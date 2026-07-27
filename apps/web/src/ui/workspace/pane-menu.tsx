@@ -14,7 +14,10 @@ import {
 	ClipboardCopy,
 	MoreHorizontal,
 	Plus,
+	RotateCcw,
 	X,
+	ZoomIn,
+	ZoomOut,
 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { writeClipboardText } from "@/platform/files";
@@ -23,6 +26,13 @@ import { copy } from "@/ui/copy";
 import { listViews } from "@/views/registry";
 import type { ViewDefinition } from "@/views/types";
 import { largerLayout, smallerLayout } from "@/workspace/layout";
+import {
+	DEFAULT_PANE_ZOOM,
+	MAX_PANE_ZOOM,
+	MIN_PANE_ZOOM,
+	paneZoomPercent,
+	stepPaneZoom,
+} from "@/workspace/zoom";
 
 interface PaneControlProps {
 	readonly paneId: string;
@@ -47,6 +57,11 @@ export function PaneIdentity({
 export function PaneMenu({ paneId, view }: PaneControlProps) {
 	const views = listViews();
 	const triggerRef = useRef<HTMLButtonElement>(null);
+	const zoom = useTabeloStore(
+		(state) =>
+			state.workspace.panes.find((pane) => pane.id === paneId)?.zoom ??
+			DEFAULT_PANE_ZOOM,
+	);
 	// Pane count changes move between presets, so what is possible here is
 	// exactly what the layout gallery can express — see docs/adr/0006.
 	const canAdd = useTabeloStore(
@@ -64,6 +79,9 @@ export function PaneMenu({ paneId, view }: PaneControlProps) {
 		triggerRef.current?.focus();
 		useTabeloStore.getState().clearPaneMenuFocus();
 	}, [wantsFocus]);
+
+	const setZoom = (next: number) =>
+		useTabeloStore.getState().setPaneZoom(paneId, next);
 
 	return (
 		<DropdownMenu>
@@ -104,6 +122,41 @@ export function PaneMenu({ paneId, view }: PaneControlProps) {
 							) : null}
 						</DropdownMenuItem>
 					))}
+				</DropdownMenuGroup>
+
+				<DropdownMenuSeparator />
+
+				<DropdownMenuGroup>
+					{/* The group's label carries the current value, so a screen reader
+					    reports the percentage on entering the group and again after each
+					    step — the items stay in place and the menu stays open. */}
+					<DropdownMenuLabel aria-live="polite">
+						{copy.workspace.zoom(paneZoomPercent(zoom))}
+					</DropdownMenuLabel>
+					<DropdownMenuItem
+						closeOnClick={false}
+						disabled={zoom <= MIN_PANE_ZOOM}
+						onClick={() => setZoom(stepPaneZoom(zoom, -1))}
+					>
+						<ZoomOut aria-hidden />
+						{copy.workspace.zoomOut}
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						closeOnClick={false}
+						disabled={zoom === DEFAULT_PANE_ZOOM}
+						onClick={() => setZoom(DEFAULT_PANE_ZOOM)}
+					>
+						<RotateCcw aria-hidden />
+						{copy.workspace.resetZoom}
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						closeOnClick={false}
+						disabled={zoom >= MAX_PANE_ZOOM}
+						onClick={() => setZoom(stepPaneZoom(zoom, 1))}
+					>
+						<ZoomIn aria-hidden />
+						{copy.workspace.zoomIn}
+					</DropdownMenuItem>
 				</DropdownMenuGroup>
 
 				<DropdownMenuSeparator />

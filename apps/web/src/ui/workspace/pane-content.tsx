@@ -19,13 +19,13 @@ function PaneLoading() {
 	);
 }
 
-function GridPane() {
+function GridPane({ zoom }: { readonly zoom: number }) {
 	const document = useTabeloStore((state) => state.document);
 	const blank = useMemo(() => isDocumentBlank(document), [document]);
 
 	return (
 		<>
-			<TableGrid />
+			<TableGrid zoom={zoom} />
 			{blank ? <EmptyState /> : null}
 		</>
 	);
@@ -36,10 +36,13 @@ function GridPane() {
 interface PaneContentProps {
 	readonly paneId: string;
 	readonly view: ViewDefinition;
+	// Content scale. Text-only views read it from `--pane-zoom` in the cascade;
+	// the grid needs the number because column widths are measured, not styled.
+	readonly zoom: number;
 }
 
-export function PaneContent({ paneId, view }: PaneContentProps) {
-	if (view.kind === "grid") return <GridPane />;
+export function PaneContent({ paneId, view, zoom }: PaneContentProps) {
+	if (view.kind === "grid") return <GridPane zoom={zoom} />;
 
 	return (
 		<Suspense fallback={<PaneLoading />}>

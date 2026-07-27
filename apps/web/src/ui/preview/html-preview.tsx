@@ -22,7 +22,7 @@ export default function HtmlPreview() {
 		<div className="h-full overflow-auto p-6">
 			<table
 				aria-label={copy.a11y.preview}
-				className="w-full border-collapse text-sm"
+				className="w-full border-collapse text-content"
 			>
 				<thead>
 					<tr>

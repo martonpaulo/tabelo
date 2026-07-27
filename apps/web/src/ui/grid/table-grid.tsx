@@ -20,7 +20,7 @@ const alignClass: Record<Alignment, string> = {
 	right: "text-right",
 };
 
-export function TableGrid() {
+export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const document = useTabeloStore((state) => state.document);
 	const selection = useTabeloStore((state) => state.selection);
 	const editing = useTabeloStore((state) => state.editing);
@@ -240,7 +240,7 @@ export function TableGrid() {
 				aria-label={copy.a11y.grid}
 				aria-rowcount={document.rows.length + 1}
 				aria-colcount={document.columns.length}
-				className="w-max border-separate border-spacing-0 text-sm"
+				className="w-max border-separate border-spacing-0 text-content"
 				onKeyDown={handleKeyDown}
 				onCopy={(event) => {
 					if (useTabeloStore.getState().editing) return;
@@ -261,11 +261,17 @@ export function TableGrid() {
 				}}
 			>
 				<colgroup>
+					{/* The gutter holds row numbers and menu affordances rather than
+					    table content, so it keeps its size at every zoom level. */}
 					<col style={{ width: GUTTER_WIDTH }} />
 					{document.columns.map((column) => (
 						<col
 							key={column.id}
-							style={{ width: column.width ?? DEFAULT_COLUMN_WIDTH }}
+							style={{
+								width: Math.round(
+									(column.width ?? DEFAULT_COLUMN_WIDTH) * zoom,
+								),
+							}}
 						/>
 					))}
 				</colgroup>
@@ -290,6 +296,7 @@ export function TableGrid() {
 								}
 								editing={editingHeader === columnIndex}
 								width={column.width ?? DEFAULT_COLUMN_WIDTH}
+								zoom={zoom}
 							/>
 						))}
 					</tr>
@@ -430,7 +437,7 @@ export function TableGrid() {
 												}}
 											/>
 										) : (
-											<span className="block h-5 overflow-hidden whitespace-pre">
+											<span className="block h-content-line overflow-hidden whitespace-pre">
 												{value}
 											</span>
 										)}
@@ -451,7 +458,10 @@ interface HeaderCellProps {
 	readonly align: Alignment;
 	readonly selected: boolean;
 	readonly editing: boolean;
+	// The stored width, in document units. Zoom scales what is rendered, so the
+	// drag gesture converts screen pixels back before writing a width down.
 	readonly width: number;
+	readonly zoom: number;
 }
 
 function HeaderCell({
@@ -461,6 +471,7 @@ function HeaderCell({
 	selected,
 	editing,
 	width,
+	zoom,
 }: HeaderCellProps) {
 	const resizeState = useRef<{ startX: number; startWidth: number } | null>(
 		null,
@@ -525,7 +536,7 @@ function HeaderCell({
 					if (!state) return;
 					const next = Math.max(
 						MIN_COLUMN_WIDTH,
-						state.startWidth + event.clientX - state.startX,
+						state.startWidth + (event.clientX - state.startX) / zoom,
 					);
 					useTabeloStore.getState().resizeColumn(columnIndex, next);
 				}}

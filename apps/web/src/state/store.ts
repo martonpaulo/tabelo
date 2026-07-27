@@ -57,6 +57,7 @@ import {
 	smallerLayout,
 	type Workspace,
 } from "@/workspace/layout";
+import { clampPaneZoom } from "@/workspace/zoom";
 
 // How many steps the document timeline keeps. Deep enough to cover a working
 // session, bounded so a long session cannot grow without limit.
@@ -147,6 +148,7 @@ export interface TabeloState {
 	confirmPaneAction: () => void;
 	clearPaneMenuFocus: () => void;
 	setActivePane: (paneId: string) => void;
+	setPaneZoom: (paneId: string, zoom: number) => void;
 	setColumnRatio: (ratio: number) => void;
 	setRowRatio: (ratio: number) => void;
 
@@ -613,6 +615,24 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set((state) => ({
 			workspace: { ...state.workspace, activePaneId: paneId },
 		})),
+
+	// Zoom is presentation, like column width: it never reaches the document and
+	// never consumes an undo step.
+	setPaneZoom: (paneId, zoom) => {
+		const state = get();
+		const target = state.workspace.panes.find((pane) => pane.id === paneId);
+		const next = clampPaneZoom(zoom);
+		if (!target || target.zoom === next) return;
+
+		set({
+			workspace: {
+				...state.workspace,
+				panes: state.workspace.panes.map((pane) =>
+					pane.id === paneId ? { ...pane, zoom: next } : pane,
+				),
+			},
+		});
+	},
 
 	setColumnRatio: (ratio) =>
 		set((state) => ({

@@ -151,6 +151,31 @@ wrong-theme flash.
 empty-state containers, and source feedback overlays. It never applies to grid
 cells, row or column headers, pane frames, pane divisions, or layout glyphs.
 
+### Per-pane content scale
+
+One pane can scale what it displays without touching the rest of the app.
+
+| Token | Utility | Use |
+| :--- | :--- | :--- |
+| `--pane-zoom` | inline on the pane body | The pane's scale factor, 0.8–1.5 |
+| `--text-content` | `text-content` | Any text that is pane *content* |
+| `--spacing-content-line` | `h-content-line` | A one-line clip box that scales with it |
+
+`--pane-zoom` is set on the pane body and nowhere else. At 100% both utilities
+resolve to exactly `text-sm`, so the default rendering is unchanged.
+
+**Only content scales.** Pane headers, titles, controls, hit targets, focus
+rings, the grid's row-number gutter, and menu text keep their size at every zoom
+level — a pane zoomed out must not become harder to operate. Use `text-content`
+for table cells, source text, and the rendered preview; use `text-sm` for
+everything that frames them.
+
+Do not implement scale as a transform on the pane: that breaks hit testing and
+text rendering. Scale the type, and scale measured geometry — the grid's column
+widths — in the component that owns it. Zoom is a local preference belonging to
+the pane, never document state and never a history step; it is bounded, and
+browser zoom remains the way to scale the whole interface.
+
 ### Spacing rhythm
 
 Use Tailwind's scale, restricted to: `0.5`, `1`, `1.5`, `2`, `3`, `4`, `6`.
@@ -281,8 +306,8 @@ resizes the pane.
 - Each pane header shows a stable, non-interactive view identity. View changes
   and other low-frequency pane actions share one visibly labelled Pane menu;
   the grid's contextual Table actions may remain beside it.
-- The Pane menu is flat. Changing the view, adding a view, and closing the view
-  are all plain items in it — never a submenu of formats. Add view grows
+- The Pane menu is flat. Changing the view, adding a view, closing the view, and
+  zooming are all plain items in it — never a submenu of formats. Add view grows
   the workspace and hands the new pane's menu the focus, so the second half of
   the intent is one keystroke rather than a nested level to open.
 - Add view and Close view are disabled, not hidden, at four panes and at one.

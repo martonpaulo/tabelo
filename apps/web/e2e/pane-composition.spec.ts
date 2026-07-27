@@ -114,3 +114,73 @@ test("closing a pane that owns an invalid draft asks before discarding it", asyn
 	await expect(tabelo.pane("Markdown")).toHaveCount(0);
 	await expect(tabelo.workspace.getByRole("region")).toHaveCount(1);
 });
+
+test("pane zoom scales that pane's content and nothing else", async ({
+	tabelo,
+}) => {
+	const header = tabelo.pane("Markdown").getByRole("heading").first();
+	const trigger = tabelo.paneMenuTrigger("Markdown");
+	const chromeBefore = await trigger.boundingBox();
+
+	const contentSize = () =>
+		tabelo
+			.pane("Markdown")
+			.locator(".cm-content")
+			.evaluate((element) =>
+				Number.parseFloat(getComputedStyle(element).fontSize),
+			);
+
+	expect(await contentSize()).toBeCloseTo(14, 1);
+
+	await tabelo.runPaneCommand("Markdown", "Zoom in");
+	await expect.poll(contentSize).toBeGreaterThan(14);
+
+	// Chrome is not content: the header text, the pane title, and the hit target
+	// of the menu button all stay exactly where they were.
+	await expect(header).toHaveCSS("font-size", "14px");
+	expect((await trigger.boundingBox())?.height).toBe(chromeBefore?.height);
+	await expect(tabelo.pane("Markdown").locator("header")).toHaveCSS(
+		"height",
+		"44px",
+	);
+
+	// The pane beside it is untouched.
+	await expect(tabelo.grid()).toHaveCSS("font-size", "14px");
+});
+
+test("zoom resets in one action and survives a reload", async ({ tabelo }) => {
+	const contentSize = () =>
+		tabelo
+			.pane("Markdown")
+			.locator(".cm-content")
+			.evaluate((element) =>
+				Number.parseFloat(getComputedStyle(element).fontSize),
+			);
+
+	await tabelo.runPaneCommand("Markdown", "Zoom out");
+	await expect.poll(contentSize).toBeLessThan(14);
+
+	await tabelo.page.reload();
+	await expect(tabelo.workspace).toBeVisible();
+	await expect.poll(contentSize).toBeLessThan(14);
+
+	await tabelo.runPaneCommand("Markdown", "Reset zoom");
+	await expect.poll(contentSize).toBeCloseTo(14, 1);
+});
+
+test("the zoom level is reported to assistive technology", async ({
+	tabelo,
+}) => {
+	const menu = await tabelo.openPaneMenu("Markdown");
+	await expect(menu).toContainText("Zoom 100%");
+	await expect(
+		menu.getByRole("menuitem", { name: "Reset zoom" }),
+	).toBeDisabled();
+
+	// The menu stays open so the level can be stepped and read repeatedly.
+	await menu.getByRole("menuitem", { name: "Zoom in", exact: true }).click();
+	await expect(menu).toContainText("Zoom 110%");
+	await expect(
+		menu.getByRole("menuitem", { name: "Reset zoom" }),
+	).toBeEnabled();
+});

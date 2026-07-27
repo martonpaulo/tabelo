@@ -1,4 +1,5 @@
 import type { ViewId } from "@/views/types";
+import { DEFAULT_PANE_ZOOM } from "./zoom";
 
 // The workspace is a 2x2 grid of slots:
 //
@@ -188,6 +189,8 @@ export interface WorkspacePane {
 	readonly id: string;
 	readonly view: ViewId;
 	readonly slots: readonly SlotId[];
+	// Local content scale. Presentation only — see workspace/zoom.ts.
+	readonly zoom: number;
 }
 
 export interface Workspace {
@@ -280,6 +283,7 @@ export function applyLayout(
 			id: existing?.id ?? nextPaneId(used),
 			view: existing?.view ?? nextView(),
 			slots,
+			zoom: existing?.zoom ?? DEFAULT_PANE_ZOOM,
 		};
 	});
 }

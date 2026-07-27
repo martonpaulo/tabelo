@@ -2,6 +2,11 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { paneCount } from "@/workspace/layout";
+import {
+	DEFAULT_PANE_ZOOM,
+	MAX_PANE_ZOOM,
+	MIN_PANE_ZOOM,
+} from "@/workspace/zoom";
 import { useTabeloStore } from "./store";
 
 // Adding and closing a view are the direct route to the same presets the
@@ -231,5 +236,91 @@ describe("closing a view that owns a draft", () => {
 
 		expect(useTabeloStore.getState().draft?.text).toBe(invalidMarkdown);
 		expect(useTabeloStore.getState().pendingPaneAction).toBeNull();
+	});
+});
+
+describe("per-pane zoom", () => {
+	it("starts every pane at the default", () => {
+		expect(
+			workspace().panes.every((pane) => pane.zoom === DEFAULT_PANE_ZOOM),
+		).toBe(true);
+	});
+
+	it("scales only the pane it was set on", () => {
+		const [first, second] = workspace().panes;
+
+		useTabeloStore.getState().setPaneZoom(first.id, 1.2);
+
+		const panes = workspace().panes;
+		expect(panes.find((pane) => pane.id === first.id)?.zoom).toBe(1.2);
+		expect(panes.find((pane) => pane.id === second.id)?.zoom).toBe(
+			DEFAULT_PANE_ZOOM,
+		);
+	});
+
+	it("clamps a value outside the ladder", () => {
+		const paneId = workspace().panes[0].id;
+
+		useTabeloStore.getState().setPaneZoom(paneId, 40);
+		expect(workspace().panes[0].zoom).toBe(MAX_PANE_ZOOM);
+
+		useTabeloStore.getState().setPaneZoom(paneId, 0);
+		expect(workspace().panes[0].zoom).toBe(MIN_PANE_ZOOM);
+	});
+
+	it("belongs to the pane, so it survives a view change", () => {
+		const paneId = markdownPaneId();
+		useTabeloStore.getState().setPaneZoom(paneId, 1.3);
+
+		useTabeloStore.getState().setPaneView(paneId, "jira");
+
+		expect(workspace().panes.find((pane) => pane.id === paneId)?.zoom).toBe(
+			1.3,
+		);
+	});
+
+	it("follows its pane across a layout change", () => {
+		const paneId = markdownPaneId();
+		useTabeloStore.getState().setPaneZoom(paneId, 0.8);
+
+		useTabeloStore.getState().setLayout("quad");
+
+		expect(workspace().panes.find((pane) => pane.id === paneId)?.zoom).toBe(
+			0.8,
+		);
+	});
+
+	it("does not leak into a pane added afterwards", () => {
+		const paneId = workspace().panes[0].id;
+		useTabeloStore.getState().setPaneZoom(paneId, 1.5);
+
+		useTabeloStore.getState().addPane();
+
+		const added = workspace().panes.at(-1);
+		expect(added?.zoom).toBe(DEFAULT_PANE_ZOOM);
+	});
+
+	it("goes away with the pane rather than transferring to a survivor", () => {
+		const store = useTabeloStore.getState();
+		store.addPane();
+		const target = workspace().panes.at(-1);
+		useTabeloStore.getState().setPaneZoom(target?.id ?? "", 1.4);
+
+		useTabeloStore.getState().closePane(target?.id ?? "");
+
+		expect(
+			workspace().panes.every((pane) => pane.zoom === DEFAULT_PANE_ZOOM),
+		).toBe(true);
+	});
+
+	it("is presentation, so it never becomes an undo step", () => {
+		const before = useTabeloStore.getState();
+		const paneId = before.workspace.panes[0].id;
+
+		useTabeloStore.getState().setPaneZoom(paneId, 1.2);
+
+		const after = useTabeloStore.getState();
+		expect(after.past).toBe(before.past);
+		expect(after.document).toBe(before.document);
 	});
 });

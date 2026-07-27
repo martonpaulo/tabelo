@@ -22,6 +22,10 @@ export const copy = {
 		activePane: "Active pane",
 		resizeColumns: "Resize columns",
 		resizeRows: "Resize rows",
+		zoom: (percent: number) => `Zoom ${percent}%`,
+		zoomOut: "Zoom out",
+		zoomIn: "Zoom in",
+		resetZoom: "Reset zoom",
 	},
 
 	status: {

@@ -25,8 +25,8 @@ describe("loading a stored payload", () => {
 			workspace: {
 				layout: "columns",
 				panes: [
-					{ id: "ac", view: "grid", slots: ["a", "c"] },
-					{ id: "bd", view: "markdown", slots: ["b", "d"] },
+					{ id: "ac", view: "grid", slots: ["a", "c"], zoom: 1 },
+					{ id: "bd", view: "markdown", slots: ["b", "d"], zoom: 1.2 },
 				],
 				columnRatio: 0.5,
 				rowRatio: 0.5,
@@ -41,6 +41,28 @@ describe("loading a stored payload", () => {
 		expect(outcome.status).toBe("ok");
 		if (outcome.status !== "ok") return;
 		expect(outcome.state.draft?.text).toContain("not valid");
+		expect(outcome.state.workspace.panes.map((pane) => pane.zoom)).toEqual([
+			1, 1.2,
+		]);
+	});
+
+	it("refuses a pane zoom outside the supported range", () => {
+		const outcome = migrateAndValidate({
+			version: CURRENT_VERSION,
+			document: v1Document,
+			workspace: {
+				layout: "single",
+				panes: [
+					{ id: "only", view: "grid", slots: ["a", "b", "c", "d"], zoom: 12 },
+				],
+				columnRatio: 0.5,
+				rowRatio: 0.5,
+				activePaneId: "only",
+			},
+			draft: null,
+		});
+
+		expect(outcome.status).toBe("unreadable");
 	});
 
 	it("refuses a payload with no version rather than guessing", () => {
@@ -70,7 +92,9 @@ describe("loading a stored payload", () => {
 			document: v1Document,
 			workspace: {
 				layout: "single",
-				panes: [{ id: "only", view: "grid", slots: ["a", "b", "c", "d"] }],
+				panes: [
+					{ id: "only", view: "grid", slots: ["a", "b", "c", "d"], zoom: 1 },
+				],
 				columnRatio: 0.5,
 				rowRatio: 0.5,
 				activePaneId: "only",
@@ -146,5 +170,52 @@ describe("migrating previous versions", () => {
 		expect(outcome.status).toBe("ok");
 		if (outcome.status !== "ok") return;
 		expect(outcome.state.draft).toBeNull();
+	});
+
+	it("gives every pane stored before zoom existed the default scale", () => {
+		const outcome = migrateAndValidate({
+			version: 3,
+			document: v1Document,
+			workspace: {
+				layout: "columns",
+				panes: [
+					{ id: "ac", view: "grid", slots: ["a", "c"] },
+					{ id: "bd", view: "markdown", slots: ["b", "d"] },
+				],
+				columnRatio: 0.4,
+				rowRatio: 0.5,
+				activePaneId: "bd",
+			},
+			draft: null,
+		});
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.workspace.panes.map((pane) => pane.zoom)).toEqual([
+			1, 1,
+		]);
+		// The rest of the workspace survives the migration untouched.
+		expect(outcome.state.workspace.columnRatio).toBe(0.4);
+		expect(outcome.state.workspace.activePaneId).toBe("bd");
+		expect(outcome.state.workspace.panes.map((pane) => pane.view)).toEqual([
+			"grid",
+			"markdown",
+		]);
+	});
+
+	it("carries a v1 payload all the way to the current version", () => {
+		const outcome = migrateAndValidate({
+			version: 1,
+			document: v1Document,
+			textFormat: "csv",
+			textPanelVisible: true,
+		});
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.version).toBe(CURRENT_VERSION);
+		expect(outcome.state.workspace.panes.every((pane) => pane.zoom === 1)).toBe(
+			true,
+		);
 	});
 });

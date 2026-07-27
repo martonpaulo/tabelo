@@ -7,10 +7,16 @@ import { tags } from "@lezer/highlight";
 // on purpose: structure is emphasised, content is left alone.
 // See docs/design-system.md §1.
 
+// The source text is pane content, so it follows that pane's zoom. This is the
+// same expression the `text-content` utility carries in index.css; CodeMirror
+// styles come from a JS theme rather than a class, so the calc is repeated here
+// instead of being reached through Tailwind.
+const contentFontSize = "calc(var(--pane-zoom, 1) * 0.875rem)";
+
 export const editorTheme = EditorView.theme({
 	"&": {
 		height: "100%",
-		fontSize: "0.875rem",
+		fontSize: contentFontSize,
 		backgroundColor: "var(--surface-panel)",
 		color: "var(--foreground)",
 	},
@@ -32,7 +38,9 @@ export const editorTheme = EditorView.theme({
 	},
 	".cm-lineNumbers .cm-gutterElement": {
 		padding: "0 calc(var(--spacing) * 2)",
-		minWidth: "2.5rem",
+		// Grows with the digits it holds, so a zoomed-in editor does not clip
+		// three-figure line numbers.
+		minWidth: "calc(var(--pane-zoom, 1) * 2.5rem)",
 	},
 	".cm-activeLine": { backgroundColor: "var(--selection-fill)" },
 	".cm-activeLineGutter": {

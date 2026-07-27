@@ -69,7 +69,7 @@ test("unreadable storage stays byte-exact until explicit replacement", async ({
 		await tabelo.page.evaluate(() =>
 			JSON.parse(window.localStorage.getItem("tabelo.document") ?? "null"),
 		),
-	).toMatchObject({ version: 3, draft: null });
+	).toMatchObject({ version: 4, draft: null });
 });
 
 test("quota notice clears after a later successful write", async ({

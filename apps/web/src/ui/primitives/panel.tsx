@@ -54,12 +54,13 @@ function PanelSpacer() {
 function PanelBody({
 	children,
 	className,
-}: {
-	children: ReactNode;
-	className?: string;
-}) {
+	...props
+}: React.ComponentProps<"div">) {
 	return (
-		<div className={cn("relative min-h-0 flex-1 overflow-auto", className)}>
+		<div
+			className={cn("relative min-h-0 flex-1 overflow-auto", className)}
+			{...props}
+		>
 			{children}
 		</div>
 	);

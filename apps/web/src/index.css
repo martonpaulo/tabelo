@@ -39,6 +39,16 @@
 	--font-source: var(--font-family-source);
 }
 
+/* Per-pane content scale. `--pane-zoom` is set on one pane's body, and only
+   what that pane displays reads it — headers, controls, hit targets, and focus
+   rings keep their size so a zoomed-out pane never becomes harder to operate.
+   At 100% these resolve to exactly `text-sm`, so nothing moves by default. */
+@theme inline {
+	--text-content: calc(var(--pane-zoom, 1) * 0.875rem);
+	--text-content--line-height: calc(var(--pane-zoom, 1) * 1.25rem);
+	--spacing-content-line: calc(var(--pane-zoom, 1) * 1.25rem);
+}
+
 :root {
 	color-scheme: light dark;
 

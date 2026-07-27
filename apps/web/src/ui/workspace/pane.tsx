@@ -197,10 +197,13 @@ export const Pane = memo(function Pane({ pane, active, compact }: PaneProps) {
 				<PaneMenu paneId={pane.id} view={view} compact={compact} />
 			</Panel.Header>
 
+			{/* Content scale is published to the body and nowhere else, so a zoomed
+			    pane keeps its header, controls, and focus targets at full size. */}
 			<Panel.Body
+				style={{ "--pane-zoom": pane.zoom } as React.CSSProperties}
 				className={view.kind === "source" ? "overflow-hidden" : undefined}
 			>
-				<PaneContent paneId={pane.id} view={view} />
+				<PaneContent paneId={pane.id} view={view} zoom={pane.zoom} />
 				{view.kind === "source" ? (
 					<SourceIssue paneId={pane.id} viewId={pane.view} />
 				) : null}

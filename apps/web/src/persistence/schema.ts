@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+	DEFAULT_PANE_ZOOM,
+	MAX_PANE_ZOOM,
+	MIN_PANE_ZOOM,
+} from "@/workspace/zoom";
 
 // The stored shape is versioned so the internal document format can change
 // without stranding somebody's table. A payload that fails validation is
@@ -6,7 +11,7 @@ import { z } from "zod";
 
 export const STORAGE_KEY = "tabelo.document";
 export const RECOVERY_KEY = "tabelo.document.recovery";
-export const CURRENT_VERSION = 3;
+export const CURRENT_VERSION = 4;
 
 const alignmentSchema = z.enum(["default", "left", "center", "right"]);
 
@@ -43,6 +48,9 @@ const paneSchema = z.object({
 	id: z.string().min(1),
 	view: viewIdSchema,
 	slots: z.array(slotSchema).min(1).max(4),
+	// Bounded like the split ratios: a value outside the ladder means the
+	// payload was not written by Tabelo, so it is reported rather than coerced.
+	zoom: z.number().min(MIN_PANE_ZOOM).max(MAX_PANE_ZOOM),
 });
 
 const workspaceSchema = z.object({
@@ -141,9 +149,34 @@ function migrateV2ToV3(input: unknown): unknown {
 	return { ...input, version: 3, draft: null };
 }
 
+// v4 gave every pane its own content scale. Panes stored before it existed
+// were all at 100%, so the migration says exactly that rather than dropping
+// the workspace and rebuilding a default one.
+function migrateV3ToV4(input: unknown): unknown {
+	if (typeof input !== "object" || input === null) return input;
+	const source = input as { workspace?: { panes?: unknown } };
+	const panes = source.workspace?.panes;
+
+	return {
+		...input,
+		version: 4,
+		workspace: {
+			...source.workspace,
+			panes: Array.isArray(panes)
+				? panes.map((pane) =>
+						typeof pane === "object" && pane !== null
+							? { ...pane, zoom: DEFAULT_PANE_ZOOM }
+							: pane,
+					)
+				: panes,
+		},
+	};
+}
+
 const migrations: Record<number, Migration> = {
 	1: migrateV1ToV2,
 	2: migrateV2ToV3,
+	3: migrateV3ToV4,
 };
 
 export type LoadOutcome =
