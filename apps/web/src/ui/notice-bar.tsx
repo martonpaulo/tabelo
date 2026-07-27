@@ -5,6 +5,7 @@ import { getCodec } from "@/formats";
 import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
+import { Notice, type NoticeTone } from "@/ui/primitives/notice";
 import type { PwaUpdate } from "@/ui/pwa-update";
 
 // Notices sit in the layout rather than floating over it. A toast that covers
@@ -179,19 +180,12 @@ function Bar({
 	tone,
 	children,
 }: {
-	readonly tone: "info" | "warning";
+	readonly tone: NoticeTone;
 	readonly children: React.ReactNode;
 }) {
 	return (
-		<div
-			role="status"
-			className={
-				tone === "warning"
-					? "mx-3 my-2 flex shrink-0 flex-wrap items-center gap-2 rounded-interactive bg-destructive/10 px-3 py-2 text-sm"
-					: "mx-3 my-2 flex shrink-0 flex-wrap items-center gap-2 rounded-interactive bg-surface-header px-3 py-2 text-sm"
-			}
-		>
+		<Notice tone={tone} className="mx-3 my-2 shrink-0">
 			{children}
-		</div>
+		</Notice>
 	);
 }

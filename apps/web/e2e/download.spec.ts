@@ -133,3 +133,132 @@ test("the chooser is keyboard operable and Escape returns focus", async ({
 		page.getByRole("button", { name: "File", exact: true }),
 	).toBeFocused();
 });
+
+// Mod+S means "keep my work" everywhere else, and the browser would otherwise
+// answer it with Save Page — which writes the app shell, not the table.
+
+const shortcut = process.platform === "darwin" ? "Meta+s" : "Control+s";
+
+for (const key of ["Meta+s", "Control+s"]) {
+	test(`${key} opens the chooser instead of the browser's Save Page`, async ({
+		page,
+		tabelo,
+	}) => {
+		await expect(tabelo.workspace).toBeVisible();
+		await tabelo.cell(1, 1).click();
+
+		await page.keyboard.press(key);
+
+		await expect(page.getByRole("dialog")).toBeVisible();
+		await expect(page.getByRole("dialog")).toContainText("Download table");
+	});
+}
+
+test("the shortcut works from a source editor, where the browser would win", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.source("Markdown").click();
+	await page.keyboard.press(shortcut);
+	await expect(page.getByRole("dialog")).toBeVisible();
+
+	await page.keyboard.press("Escape");
+	await expect(page.getByRole("dialog")).toHaveCount(0);
+
+	// And from the preview pane, which owns no keyboard model of its own.
+	await tabelo.choosePaneView("Markdown", "Rendered preview");
+	await tabelo.pane("Rendered preview").click();
+	await page.keyboard.press(shortcut);
+	await expect(page.getByRole("dialog")).toBeVisible();
+});
+
+test("valid source work is already in the file the shortcut downloads", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.source("Markdown").fill("| Name |\n| --- |\n| Ana |");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ana");
+
+	const file = await savedFile(page, async () => {
+		await page.keyboard.press(shortcut);
+		await expect(page.getByRole("dialog")).toBeVisible();
+		await page.getByRole("button", { name: "Download", exact: true }).click();
+	});
+
+	expect(file.name).toBe("table.md");
+	expect(file.body).toContain("Ana");
+});
+
+test("an invalid draft is named rather than silently left out", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.source("Markdown").fill("| Name |\n| --- |\n| Ana |");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ana");
+	await tabelo.source("Markdown").fill("| Name |\n| not a divider |\n| Bo |");
+	await expect(tabelo.source("Markdown")).toHaveAttribute(
+		"aria-invalid",
+		"true",
+	);
+
+	await page.keyboard.press(shortcut);
+	const dialog = page.getByRole("dialog");
+	await expect(dialog).toContainText(
+		"This source is not valid yet. Download the last valid table or copy the draft.",
+	);
+	await expect(
+		dialog.getByRole("button", { name: "Copy the draft" }),
+	).toBeVisible();
+
+	// Downloading gives exactly what the message promised: the last valid table.
+	const file = await savedFile(page, async () => {
+		await page.getByRole("button", { name: "Download", exact: true }).click();
+	});
+	expect(file.body).toContain("Ana");
+	expect(file.body).not.toContain("Bo");
+});
+
+test("the draft can be copied out of the chooser", async ({ page, tabelo }) => {
+	await page.addInitScript(() => {
+		Object.defineProperty(window, "__copied", {
+			value: [] as string[],
+			configurable: true,
+		});
+		Object.defineProperty(navigator, "clipboard", {
+			value: {
+				writeText: async (text: string) => {
+					(window as unknown as { __copied: string[] }).__copied.push(text);
+				},
+			},
+			configurable: true,
+		});
+	});
+	await page.reload();
+	await expect(tabelo.workspace).toBeVisible();
+
+	const draft = "| Name |\n| not a divider |\n| Bo |";
+	await tabelo.source("Markdown").fill(draft);
+	await expect(tabelo.source("Markdown")).toHaveAttribute(
+		"aria-invalid",
+		"true",
+	);
+
+	await page.keyboard.press(shortcut);
+	await page.getByRole("button", { name: "Copy the draft" }).click();
+
+	expect(
+		await page.evaluate(() =>
+			(window as unknown as { __copied: string[] }).__copied.at(-1),
+		),
+	).toBe(draft);
+});
+
+test("a healthy document shows no draft warning", async ({ page, tabelo }) => {
+	await expect(tabelo.workspace).toBeVisible();
+	await page.keyboard.press(shortcut);
+
+	await expect(page.getByRole("dialog")).toBeVisible();
+	await expect(page.getByRole("dialog")).not.toContainText(
+		"This source is not valid yet",
+	);
+});

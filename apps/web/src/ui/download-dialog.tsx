@@ -15,7 +15,9 @@ import { listDownloadableCodecs, outputOptionsFor } from "@/formats";
 import type { CodecId, OutputOptionId } from "@/formats/types";
 import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
+import { copyToClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
+import { Notice } from "@/ui/primitives/notice";
 
 // Downloading is a choice, not a click: which format, and — where the format
 // says it has one — how that file should be written. Both the File menu and
@@ -42,6 +44,14 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 	// never shows a switch that would do nothing.
 	const options = codec.outputOptions ?? [];
 
+	// A draft that has not parsed is not in the document, so the file would be
+	// the last valid table. Saying which is the point: a download must never
+	// claim to contain work it left out. A clean draft needs no such warning —
+	// it was read back into the document the moment it parsed.
+	const pendingDraft = useTabeloStore((state) =>
+		state.draft && state.draft.status !== "clean" ? state.draft : null,
+	);
+
 	const download = () => {
 		const document = useTabeloStore.getState().document;
 		downloadText(
@@ -67,6 +77,21 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 						{copy.download.hint}
 					</DialogDescription>
 				</DialogHeader>
+
+				{pendingDraft ? (
+					<Notice tone="warning">
+						<span className="flex-1">{copy.download.invalidDraft}</span>
+						<Button
+							variant="outline"
+							size="xs"
+							onClick={() =>
+								void copyToClipboard({ text: pendingDraft.text }, "source")
+							}
+						>
+							{copy.download.copyDraft}
+						</Button>
+					</Notice>
+				) : null}
 
 				<RadioGroup
 					aria-label={copy.download.format}

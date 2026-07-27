@@ -23,9 +23,21 @@ export function TabeloApp() {
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (!(event.metaKey || event.ctrlKey)) return;
+			const key = event.key.toLowerCase();
+
+			// Mod+S means "keep my work" everywhere else, so it opens the download
+			// chooser here — Tabelo has nowhere to save to, and the browser's Save
+			// Page would write the app shell rather than the table. Taken from
+			// every focus, including inside a source editor, because the browser
+			// would otherwise still act on it there.
+			if (key === "s") {
+				event.preventDefault();
+				setDownloading(true);
+				return;
+			}
+
 			const target = event.target as HTMLElement | null;
 			if (target?.closest(".cm-editor")) return;
-			const key = event.key.toLowerCase();
 			if (key !== "z" && key !== "y") return;
 			event.preventDefault();
 			const store = useTabeloStore.getState();
