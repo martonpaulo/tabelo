@@ -9,7 +9,12 @@ import { SourceEditor } from "./source-editor";
 // TSV, HTML, and Jira is entirely described by the registry — codec, highlight
 // language, editability — so there is nothing here that names a format.
 
-export default function SourceView({ viewId }: { readonly viewId: ViewId }) {
+interface SourceViewProps {
+	readonly paneId: string;
+	readonly viewId: ViewId;
+}
+
+export default function SourceView({ paneId, viewId }: SourceViewProps) {
 	const view = getView(viewId);
 	const document = useTabeloStore((state) => state.document);
 
@@ -23,7 +28,9 @@ export default function SourceView({ viewId }: { readonly viewId: ViewId }) {
 	// Only the view holding the pending draft shows unsaved text; every other
 	// view is a pure projection. See docs/adr/0001.
 	const draftText = useTabeloStore((state) =>
-		state.draft?.viewId === viewId ? state.draft.text : null,
+		state.draft?.paneId === paneId && state.draft.viewId === viewId
+			? state.draft.text
+			: null,
 	);
 	const isDraftOwner = draftText !== null;
 
@@ -43,7 +50,7 @@ export default function SourceView({ viewId }: { readonly viewId: ViewId }) {
 			ariaLabel={copy.a11y.sourceEditor(view.label)}
 			onChange={(text) => {
 				if (!editable) return;
-				useTabeloStore.getState().setDraft(viewId, text);
+				useTabeloStore.getState().setDraft(paneId, viewId, text);
 			}}
 			onUndoBeyondLocal={() => useTabeloStore.getState().undo()}
 			onRedoBeyondLocal={() => useTabeloStore.getState().redo()}

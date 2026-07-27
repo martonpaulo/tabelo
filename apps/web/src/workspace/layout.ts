@@ -171,31 +171,50 @@ const FILL_ORDER: readonly ViewId[] = [
 	"html-preview",
 ];
 
-export function paneIdFor(slots: readonly SlotId[]): string {
-	return slots.join("");
+function nextPaneId(used: Set<string>): string {
+	let index = 1;
+	while (used.has(`pane-${index}`)) index += 1;
+	const id = `pane-${index}`;
+	used.add(id);
+	return id;
 }
 
-// Rebuilds the pane list for a layout, carrying existing view choices across in
-// reading order so switching layouts never resets what the user was looking at.
+// Rebuilds the pane list for a layout while keeping pane identity independent
+// from shape and position. When fewer panes fit, the preferred pane replaces
+// the last carried pane so an owned draft remains mounted and reachable.
 export function applyLayout(
 	layoutId: LayoutId,
 	previousPanes: readonly WorkspacePane[] = [],
+	preferredPaneId?: string,
 ): WorkspacePane[] {
 	const preset = getLayout(layoutId);
-	const carried = previousPanes.map((pane) => pane.view);
+	const count = preset.panes.length;
+	const carried = previousPanes.slice(0, count);
+	const preferred = preferredPaneId
+		? previousPanes.find((pane) => pane.id === preferredPaneId)
+		: undefined;
 
-	return preset.panes.map((slots, index) => ({
-		id: paneIdFor(slots),
-		view: carried[index] ?? FILL_ORDER[index] ?? "markdown",
-		slots,
-	}));
+	if (
+		preferred &&
+		carried.length === count &&
+		!carried.some((pane) => pane.id === preferred.id)
+	) {
+		carried[count - 1] = preferred;
+	}
+
+	const used = new Set(previousPanes.map((pane) => pane.id));
+	return preset.panes.map((slots, index) => {
+		const existing = carried[index];
+		return {
+			id: existing?.id ?? nextPaneId(used),
+			view: existing?.view ?? FILL_ORDER[index] ?? "markdown",
+			slots,
+		};
+	});
 }
 
 export function createDefaultWorkspace(): Workspace {
-	const panes = applyLayout("columns", [
-		{ id: "ac", view: "grid", slots: ["a", "c"] },
-		{ id: "bd", view: "markdown", slots: ["b", "d"] },
-	]);
+	const panes = applyLayout("columns");
 	return {
 		layout: "columns",
 		panes,

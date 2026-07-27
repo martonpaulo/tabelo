@@ -33,7 +33,12 @@ function GridPane() {
 
 // Rendering is chosen by the view's kind, never by its id — that is what keeps
 // adding a format from touching this file.
-export function PaneContent({ view }: { readonly view: ViewDefinition }) {
+interface PaneContentProps {
+	readonly paneId: string;
+	readonly view: ViewDefinition;
+}
+
+export function PaneContent({ paneId, view }: PaneContentProps) {
 	if (view.kind === "grid") return <GridPane />;
 
 	return (
@@ -41,7 +46,7 @@ export function PaneContent({ view }: { readonly view: ViewDefinition }) {
 			{view.kind === "preview" ? (
 				<HtmlPreview />
 			) : (
-				<SourceView viewId={view.id} />
+				<SourceView key={view.id} paneId={paneId} viewId={view.id} />
 			)}
 		</Suspense>
 	);

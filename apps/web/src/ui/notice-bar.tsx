@@ -12,6 +12,7 @@ export function NoticeBar() {
 	const notice = useTabeloStore((state) => state.notice);
 	const inputError = useTabeloStore((state) => state.inputError);
 	const headerCorrection = useTabeloStore((state) => state.headerCorrection);
+	const pendingPaneView = useTabeloStore((state) => state.pendingPaneView);
 	const storageError = useTabeloStore((state) => state.storageError);
 
 	// Transient confirmations clear themselves; anything actionable stays.
@@ -54,6 +55,22 @@ export function NoticeBar() {
 					onClick={() => useTabeloStore.getState().demoteHeader()}
 				>
 					{copy.notices.headerGuessAction}
+				</Button>
+				<Dismiss />
+			</Bar>
+		);
+	}
+
+	if (pendingPaneView) {
+		return (
+			<Bar tone="warning">
+				<span>{copy.notices.pendingPaneView}</span>
+				<Button
+					variant="outline"
+					size="xs"
+					onClick={() => useTabeloStore.getState().confirmPaneView()}
+				>
+					{copy.notices.discardAndChangeView}
 				</Button>
 				<Dismiss />
 			</Bar>

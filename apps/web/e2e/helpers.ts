@@ -29,6 +29,10 @@ export class TabeloPage {
 		return this.page.getByRole("region", { name: `${view} pane` });
 	}
 
+	paneAt(view: string, index: number): Locator {
+		return this.pane(view).nth(index);
+	}
+
 	grid(): Locator {
 		return this.pane("Visual table").getByRole("grid", {
 			name: "Table editor",
@@ -54,6 +58,27 @@ export class TabeloPage {
 		return this.pane(view).getByRole("textbox", {
 			name: `${view} source`,
 		});
+	}
+
+	sourceAt(view: string, index: number): Locator {
+		return this.paneAt(view, index).getByRole("textbox");
+	}
+
+	async chooseLayout(label: string): Promise<void> {
+		await this.page.getByRole("button", { name: /^Layout:/ }).click();
+		await this.page.getByRole("menuitem").filter({ hasText: label }).click();
+	}
+
+	async choosePaneView(
+		currentView: string,
+		nextView: string,
+		index = 0,
+	): Promise<void> {
+		const pane = this.paneAt(currentView, index);
+		await pane
+			.getByRole("button", { name: `Choose view: ${currentView}` })
+			.click();
+		await this.page.getByRole("menuitem").filter({ hasText: nextView }).click();
 	}
 
 	async editCell(row: number, column: number, value: string): Promise<void> {

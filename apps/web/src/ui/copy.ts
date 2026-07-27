@@ -80,6 +80,9 @@ export const copy = {
 	},
 
 	notices: {
+		pendingPaneView:
+			"This source is not valid yet. Keep editing or discard it before changing views.",
+		discardAndChangeView: "Discard and change view",
 		headerGuess: "First row used as headers.",
 		headerGuessAction: "Use it as data instead",
 		importError: (error: ImportError) => {

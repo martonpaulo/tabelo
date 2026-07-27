@@ -14,8 +14,15 @@ import { ViewPicker } from "./view-picker";
 // pane: which view it shows, and the state of that view. Document-level
 // actions live in the app header instead — see docs/design-system.md §5.
 
-function SourceStatus({ viewId }: { readonly viewId: string }) {
-	const owns = useTabeloStore((state) => state.draft?.viewId === viewId);
+interface PaneSourceProps {
+	readonly paneId: string;
+	readonly viewId: string;
+}
+
+function SourceStatus({ paneId, viewId }: PaneSourceProps) {
+	const owns = useTabeloStore(
+		(state) => state.draft?.paneId === paneId && state.draft.viewId === viewId,
+	);
 	const invalid = useTabeloStore((state) => state.issues.length > 0);
 
 	if (!owns) {
@@ -37,8 +44,10 @@ function SourceStatus({ viewId }: { readonly viewId: string }) {
 	);
 }
 
-function SourceIssue({ viewId }: { readonly viewId: string }) {
-	const owns = useTabeloStore((state) => state.draft?.viewId === viewId);
+function SourceIssue({ paneId, viewId }: PaneSourceProps) {
+	const owns = useTabeloStore(
+		(state) => state.draft?.paneId === paneId && state.draft.viewId === viewId,
+	);
 	const issue = useTabeloStore(
 		(state) => state.issues[0] ?? state.warnings[0] ?? null,
 	);
@@ -101,19 +110,19 @@ export const Pane = memo(function Pane({ pane, active, compact }: PaneProps) {
 					</span>
 				) : null}
 				{view.kind === "source" && view.capabilities.editable ? (
-					<SourceStatus viewId={pane.view} />
+					<SourceStatus paneId={pane.id} viewId={pane.view} />
 				) : null}
 			</Panel.Header>
 
 			<Panel.Body
 				className={view.kind === "source" ? "overflow-hidden" : undefined}
 			>
-				<PaneContent view={view} />
+				<PaneContent paneId={pane.id} view={view} />
 			</Panel.Body>
 
 			{view.kind === "source" ? (
 				<PaneIssueRow>
-					<SourceIssue viewId={pane.view} />
+					<SourceIssue paneId={pane.id} viewId={pane.view} />
 				</PaneIssueRow>
 			) : null}
 		</Panel>

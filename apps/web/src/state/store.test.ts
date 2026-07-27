@@ -103,7 +103,12 @@ describe("header correction", () => {
 			.pasteClipboard({ text: "Name\tRole\nAna\tDesigner" });
 
 		const state = useTabeloStore.getState();
+		const paneId = state.workspace.panes.find(
+			(pane) => pane.view === "markdown",
+		)?.id;
+		expect(paneId).toBeDefined();
 		state.setDraft(
+			paneId ?? "",
 			"markdown",
 			"| Other | Role |\n| --- | --- |\n| Bruno | Developer |",
 		);

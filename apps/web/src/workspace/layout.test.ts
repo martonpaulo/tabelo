@@ -64,6 +64,26 @@ describe("applying a layout", () => {
 		expect(after[1].view).toBe("jira");
 	});
 
+	it("keeps carried pane identifiers stable across shape changes", () => {
+		const before = applyLayout("columns");
+		const after = applyLayout("quad", before);
+
+		expect(after.slice(0, before.length).map((pane) => pane.id)).toEqual(
+			before.map((pane) => pane.id),
+		);
+	});
+
+	it("keeps a preferred pane when a smaller layout cannot carry every pane", () => {
+		const before = applyLayout("quad");
+		const preferred = before.at(-1);
+		expect(preferred).toBeDefined();
+
+		const after = applyLayout("single", before, preferred?.id);
+
+		expect(after[0].id).toBe(preferred?.id);
+		expect(after[0].view).toBe(preferred?.view);
+	});
+
 	it("fills panes a smaller layout did not have", () => {
 		const after = applyLayout("quad", [
 			{ id: "abcd", view: "grid", slots: ["a", "b", "c", "d"] },

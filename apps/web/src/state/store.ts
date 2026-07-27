@@ -62,8 +62,14 @@ const COMMIT_DELAY_MS = 300;
 // exist at a time — every other view is a pure projection of the document, so
 // there is never a question of which pending edit wins.
 export interface Draft {
+	readonly paneId: string;
 	readonly viewId: ViewId;
 	readonly text: string;
+}
+
+export interface PendingPaneView {
+	readonly paneId: string;
+	readonly view: ViewId;
 }
 
 export interface HistoryEntry {
@@ -98,16 +104,18 @@ export interface TabeloState {
 	notice: string | null;
 	inputError: ImportError | null;
 	headerCorrection: HeaderCorrection | null;
+	pendingPaneView: PendingPaneView | null;
 
 	hydrate: () => void;
 	applyDocument: (next: TableDocument) => void;
 
-	setDraft: (viewId: ViewId, text: string) => void;
+	setDraft: (paneId: string, viewId: ViewId, text: string) => void;
 	commitDraft: () => void;
 	discardDraft: () => void;
 
 	setLayout: (layout: LayoutId) => void;
 	setPaneView: (paneId: string, view: ViewId) => void;
+	confirmPaneView: () => void;
 	setActivePane: (paneId: string) => void;
 	setColumnRatio: (ratio: number) => void;
 	setRowRatio: (ratio: number) => void;
@@ -192,6 +200,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	notice: null,
 	inputError: null,
 	headerCorrection: null,
+	pendingPaneView: null,
 
 	hydrate: () => {
 		const outcome = loadState();
@@ -204,6 +213,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				warnings: [],
 				headerCorrection: null,
 				inputError: null,
+				pendingPaneView: null,
 				selection: createSelection({ row: 0, column: 0 }),
 			});
 			return;
@@ -227,6 +237,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			warnings: [],
 			inputError: null,
 			headerCorrection: null,
+			pendingPaneView: null,
 			selection: clampSelection(
 				state.selection,
 				next.rows.length,
@@ -234,8 +245,13 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			),
 		})),
 
-	setDraft: (viewId, text) => {
-		set({ draft: { viewId, text } });
+	setDraft: (paneId, viewId, text) => {
+		const pane = get().workspace.panes.find(
+			(candidate) => candidate.id === paneId && candidate.view === viewId,
+		);
+		if (!pane) return;
+
+		set({ draft: { paneId, viewId, text }, pendingPaneView: null });
 		if (commitTimer) clearTimeout(commitTimer);
 		commitTimer = setTimeout(() => get().commitDraft(), COMMIT_DELAY_MS);
 	},
@@ -286,12 +302,16 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			clearTimeout(commitTimer);
 			commitTimer = null;
 		}
-		set({ draft: null, issues: [], warnings: [] });
+		set({ draft: null, issues: [], warnings: [], pendingPaneView: null });
 	},
 
 	setLayout: (layout) =>
 		set((state) => {
-			const panes = applyLayout(layout, state.workspace.panes);
+			const panes = applyLayout(
+				layout,
+				state.workspace.panes,
+				state.draft?.paneId,
+			);
 			return {
 				workspace: {
 					...state.workspace,
@@ -306,25 +326,55 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			};
 		}),
 
-	setPaneView: (paneId, view) =>
-		set((state) => {
-			const pane = state.workspace.panes.find(
-				(candidate) => candidate.id === paneId,
-			);
-			// Retiring the view that holds the pending draft would strand it, so
-			// commit it first rather than leaving the text nowhere.
-			if (pane && state.draft?.viewId === pane.view) get().commitDraft();
+	setPaneView: (paneId, view) => {
+		const state = get();
+		const pane = state.workspace.panes.find(
+			(candidate) => candidate.id === paneId,
+		);
+		if (!pane || pane.view === view) return;
 
-			return {
-				workspace: {
-					...get().workspace,
-					panes: get().workspace.panes.map((candidate) =>
-						candidate.id === paneId ? { ...candidate, view } : candidate,
-					),
-					activePaneId: paneId,
-				},
-			};
-		}),
+		const ownsDraft =
+			state.draft?.paneId === paneId && state.draft.viewId === pane.view;
+		if (ownsDraft) {
+			state.commitDraft();
+			const current = get();
+			if (current.issues.length > 0) {
+				set({ pendingPaneView: { paneId, view } });
+				return;
+			}
+			current.discardDraft();
+		}
+
+		set((current) => ({
+			workspace: {
+				...current.workspace,
+				panes: current.workspace.panes.map((candidate) =>
+					candidate.id === paneId ? { ...candidate, view } : candidate,
+				),
+				activePaneId: paneId,
+			},
+			pendingPaneView: null,
+		}));
+	},
+
+	confirmPaneView: () => {
+		const state = get();
+		const pending = state.pendingPaneView;
+		if (!pending) return;
+		state.discardDraft();
+		set((current) => ({
+			workspace: {
+				...current.workspace,
+				panes: current.workspace.panes.map((candidate) =>
+					candidate.id === pending.paneId
+						? { ...candidate, view: pending.view }
+						: candidate,
+				),
+				activePaneId: pending.paneId,
+			},
+			pendingPaneView: null,
+		}));
+	},
 
 	setActivePane: (paneId) =>
 		set((state) => ({
@@ -360,6 +410,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				warnings: [],
 				headerCorrection: null,
 				inputError: null,
+				pendingPaneView: null,
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -381,6 +432,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				warnings: [],
 				headerCorrection: null,
 				inputError: null,
+				pendingPaneView: null,
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -620,6 +672,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set((state) => {
 			if (state.inputError) return { inputError: null };
 			if (state.headerCorrection) return { headerCorrection: null };
+			if (state.pendingPaneView) return { pendingPaneView: null };
 			return { notice: null };
 		}),
 	setNotice: (notice) => set({ notice }),

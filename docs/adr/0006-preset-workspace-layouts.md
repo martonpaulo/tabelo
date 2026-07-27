@@ -34,9 +34,13 @@ rather than following it, because it preserves the existing full-width grid.
 The rule's purpose is to prevent L-shapes and overlaps, and a full-workspace
 pane violates neither.
 
-Switching layouts carries view choices across in reading order, so changing the
-shape never resets what the user was looking at. Panes a larger layout adds are
-filled from a fixed preference order — grid, Markdown, CSV, preview.
+Switching layouts carries pane identities and view choices across in reading
+order, so changing the shape never resets what the user was looking at. Pane
+identifiers belong to the application and do not encode slots or array
+positions. When a smaller preset cannot retain every pane, the pane owning a
+source draft is retained first so pending work stays reachable. Panes a larger
+layout adds are filled from a fixed preference order — grid, Markdown, CSV,
+preview.
 
 Split ratios are stored per axis and the resize handle appears only when the
 layout actually splits that axis, derived from the preset rather than listed,
