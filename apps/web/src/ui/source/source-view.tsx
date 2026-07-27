@@ -49,6 +49,7 @@ export default function SourceView({ paneId, viewId }: SourceViewProps) {
 
 	return (
 		<SourceEditor
+			paneId={paneId}
 			value={draftText ?? projected}
 			language={view.highlight}
 			invalidLine={invalidLine}

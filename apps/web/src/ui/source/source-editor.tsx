@@ -3,7 +3,9 @@ import {
 	history,
 	historyKeymap,
 	redo,
+	redoDepth,
 	undo,
+	undoDepth,
 } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import {
@@ -26,6 +28,10 @@ import {
 	type ViewUpdate,
 } from "@codemirror/view";
 import { useEffect, useRef } from "react";
+import {
+	notifyLocalHistoryChanged,
+	registerLocalHistory,
+} from "@/history/coordinator";
 import type { HighlightLanguage } from "@/views/types";
 import { csvLanguage } from "./csv-language";
 import { syntaxTheme } from "./editor-theme";
@@ -109,6 +115,7 @@ function minimalChange(current: string, next: string) {
 }
 
 interface SourceEditorProps {
+	readonly paneId: string;
 	readonly value: string;
 	readonly language: HighlightLanguage;
 	readonly invalidLine: number | null;
@@ -123,6 +130,7 @@ interface SourceEditorProps {
 }
 
 export function SourceEditor({
+	paneId,
 	value,
 	language,
 	invalidLine,
@@ -202,6 +210,7 @@ export function SourceEditor({
 					keymap.of([...defaultKeymap, ...historyKeymap]),
 
 					EditorView.updateListener.of((update) => {
+						notifyLocalHistoryChanged();
 						if (!update.docChanged) return;
 						if (
 							update.transactions.some((transaction) =>
@@ -217,7 +226,14 @@ export function SourceEditor({
 		});
 
 		viewRef.current = view;
+		const unregisterHistory = registerLocalHistory(paneId, {
+			undo: () => undo(view),
+			redo: () => redo(view),
+			canUndo: () => undoDepth(view.state) > 0,
+			canRedo: () => redoDepth(view.state) > 0,
+		});
 		return () => {
+			unregisterHistory();
 			view.destroy();
 			viewRef.current = null;
 		};

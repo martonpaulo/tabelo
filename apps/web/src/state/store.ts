@@ -101,6 +101,7 @@ export interface TabeloState {
 
 	selection: GridSelection;
 	editing: CellPosition | null;
+	editingSeed: string | null;
 	editingHeader: number | null;
 
 	storageError: string | null;
@@ -128,7 +129,7 @@ export interface TabeloState {
 	setSelection: (selection: GridSelection) => void;
 	selectCell: (position: CellPosition, mode?: SelectionMode) => void;
 	extendSelection: (position: CellPosition) => void;
-	setEditing: (position: CellPosition | null) => void;
+	setEditing: (position: CellPosition | null, seed?: string) => void;
 	setEditingHeader: (index: number | null) => void;
 
 	editCell: (row: number, column: number, value: string) => void;
@@ -186,6 +187,37 @@ function pushHistory(
 		: next;
 }
 
+function deriveDraft(
+	draft: Pick<Draft, "paneId" | "viewId" | "text">,
+	workspace: Workspace,
+): Draft | null {
+	const ownsDraft = workspace.panes.some(
+		(pane) => pane.id === draft.paneId && pane.view === draft.viewId,
+	);
+	if (!ownsDraft) return null;
+
+	const parse = getView(draft.viewId).codec?.parse;
+	if (!parse) return null;
+	const result = parse(draft.text);
+	return result.ok
+		? {
+				...draft,
+				status: "clean",
+				issues: [],
+				warnings: result.warnings ?? [],
+			}
+		: {
+				...draft,
+				status: "invalid",
+				issues: result.issues,
+				warnings: [],
+			};
+}
+
+function restoreDraft(draft: Draft | null, workspace: Workspace): Draft | null {
+	return draft ? deriveDraft(draft, workspace) : null;
+}
+
 // Serializes the document for a view. Views without a codec — the grid — have
 // no text projection.
 export function textForView(document: TableDocument, viewId: ViewId): string {
@@ -204,6 +236,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	selection: createSelection({ row: 0, column: 0 }),
 	editing: null,
+	editingSeed: null,
 	editingHeader: null,
 
 	storageError: null,
@@ -236,6 +269,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// over an uncommitted draft, and the draft it displaces is preserved in
 	// history rather than dropped. See docs/adr/0001 and 0003.
 	applyDocument: (next) => {
+		if (next === get().document) return;
 		clearInvalidTimer();
 		set((state) => ({
 			past: pushHistory(state.past, snapshotOf(state)),
@@ -448,7 +482,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				past: state.past.slice(0, -1),
 				future: [snapshotOf(state), ...state.future],
 				document: entry.document,
-				draft: entry.draft,
+				draft: restoreDraft(entry.draft, state.workspace),
 				headerCorrection: null,
 				inputError: null,
 				pendingPaneView: null,
@@ -470,7 +504,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				past: pushHistory(state.past, snapshotOf(state)),
 				future: state.future.slice(1),
 				document: entry.document,
-				draft: entry.draft,
+				draft: restoreDraft(entry.draft, state.workspace),
 				headerCorrection: null,
 				inputError: null,
 				pendingPaneView: null,
@@ -489,14 +523,21 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set({
 			selection: createSelection(position, mode),
 			editing: null,
+			editingSeed: null,
 			editingHeader: null,
 		}),
 
 	extendSelection: (position) =>
 		set((state) => ({ selection: { ...state.selection, focus: position } })),
 
-	setEditing: (position) => set({ editing: position, editingHeader: null }),
-	setEditingHeader: (index) => set({ editingHeader: index, editing: null }),
+	setEditing: (position, seed) =>
+		set({
+			editing: position,
+			editingSeed: position ? (seed ?? null) : null,
+			editingHeader: null,
+		}),
+	setEditingHeader: (index) =>
+		set({ editingHeader: index, editing: null, editingSeed: null }),
 
 	editCell: (row, column, value) =>
 		get().applyDocument(setCell(get().document, row, column, value)),

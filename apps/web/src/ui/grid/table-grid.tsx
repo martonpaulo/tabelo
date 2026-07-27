@@ -24,6 +24,7 @@ export function TableGrid() {
 	const document = useTabeloStore((state) => state.document);
 	const selection = useTabeloStore((state) => state.selection);
 	const editing = useTabeloStore((state) => state.editing);
+	const editingSeed = useTabeloStore((state) => state.editingSeed);
 	const editingHeader = useTabeloStore((state) => state.editingHeader);
 
 	const gridRef = useRef<HTMLTableElement>(null);
@@ -190,8 +191,7 @@ export function TableGrid() {
 		// editor, the way a spreadsheet does — it is the fastest path to typing.
 		if (!mod && !event.altKey && event.key.length === 1) {
 			event.preventDefault();
-			store.editCell(selection.focus.row, selection.focus.column, event.key);
-			store.setEditing(selection.focus);
+			store.setEditing(selection.focus, event.key);
 		}
 	};
 
@@ -397,7 +397,7 @@ export function TableGrid() {
 									>
 										{isEditing ? (
 											<CellEditor
-												initialValue={value}
+												initialValue={editingSeed ?? value}
 												align={alignClass[column.align]}
 												ariaLabel={copy.a11y.cell(rowIndex, columnIndex)}
 												onFinish={(next, exit) => {

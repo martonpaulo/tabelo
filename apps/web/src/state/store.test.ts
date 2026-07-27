@@ -54,6 +54,47 @@ describe("transactional input", () => {
 	});
 });
 
+describe("document history", () => {
+	it("does not record no-op cell commits", () => {
+		const store = useTabeloStore.getState();
+
+		store.editCell(0, 0, "");
+
+		expect(useTabeloStore.getState().past).toHaveLength(0);
+	});
+
+	it("bounds the timeline without changing row or column identity", () => {
+		const initial = useTabeloStore.getState().document;
+		const rowId = initial.rows[0]?.id;
+		const columnId = initial.columns[0]?.id;
+
+		for (let index = 1; index <= 205; index += 1) {
+			useTabeloStore.getState().editCell(0, 0, `Value ${index}`);
+		}
+
+		let state = useTabeloStore.getState();
+		expect(state.past).toHaveLength(200);
+		expect(state.document.rows[0]?.id).toBe(rowId);
+		expect(state.document.columns[0]?.id).toBe(columnId);
+
+		for (let index = 0; index < 200; index += 1) {
+			useTabeloStore.getState().undo();
+		}
+		state = useTabeloStore.getState();
+		expect(state.document.rows[0]?.cells[columnId ?? ""]).toBe("Value 5");
+		expect(state.document.rows[0]?.id).toBe(rowId);
+		expect(state.document.columns[0]?.id).toBe(columnId);
+
+		for (let index = 0; index < 200; index += 1) {
+			useTabeloStore.getState().redo();
+		}
+		state = useTabeloStore.getState();
+		expect(state.document.rows[0]?.cells[columnId ?? ""]).toBe("Value 205");
+		expect(state.document.rows[0]?.id).toBe(rowId);
+		expect(state.document.columns[0]?.id).toBe(columnId);
+	});
+});
+
 describe("header correction", () => {
 	it("does not offer correction when a numeric first row stays data", () => {
 		useTabeloStore.getState().pasteClipboard({ text: "1\t2\n3\t4" });

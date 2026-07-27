@@ -151,6 +151,39 @@ describe("draft ownership", () => {
 			status: "invalid",
 		});
 	});
+
+	it("reparses a restored draft instead of trusting stale issues", () => {
+		const store = useTabeloStore.getState();
+		const paneId = markdownPaneId();
+		store.setDraft(paneId, "markdown", invalidMarkdown);
+		store.editCell(0, 0, "Grid wins");
+		const entry = useTabeloStore.getState().past.at(-1);
+		expect(entry?.draft).not.toBeNull();
+		if (!entry) throw new Error("Expected a draft history entry.");
+		useTabeloStore.setState({
+			past: [
+				{
+					...entry,
+					draft: entry.draft
+						? {
+								...entry.draft,
+								issues: [{ message: "stale issue", line: 99 }],
+							}
+						: null,
+				},
+			],
+		});
+
+		useTabeloStore.getState().undo();
+
+		const restored = useTabeloStore.getState().draft;
+		expect(restored?.status).toBe("invalid");
+		expect(restored?.issues).not.toContainEqual({
+			message: "stale issue",
+			line: 99,
+		});
+		expect(restored?.issues.length).toBeGreaterThan(0);
+	});
 });
 
 describe("source synchronization", () => {

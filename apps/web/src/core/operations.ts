@@ -247,16 +247,21 @@ export function clearCells(
 	document: TableDocument,
 	rect: CellRect,
 ): TableDocument {
+	let changed = false;
 	const rows = document.rows.map((row, rowIndex) => {
 		if (rowIndex < rect.top || rowIndex > rect.bottom) return row;
-		const cells = { ...row.cells };
-		for (let index = rect.left; index <= rect.right; index += 1) {
-			const column = document.columns[index];
-			if (column) cells[column.id] = "";
+		const selectedColumns = document.columns.slice(rect.left, rect.right + 1);
+		if (
+			selectedColumns.every((column) => (row.cells[column.id] ?? "") === "")
+		) {
+			return row;
 		}
+		changed = true;
+		const cells = { ...row.cells };
+		for (const column of selectedColumns) cells[column.id] = "";
 		return { ...row, cells };
 	});
-	return { ...document, rows };
+	return changed ? { ...document, rows } : document;
 }
 
 // Writes a matrix starting at the given cell, growing the table when the

@@ -1,4 +1,11 @@
 import { FilePlus2, Redo2, Undo2, Upload } from "lucide-react";
+import { useSyncExternalStore } from "react";
+import {
+	canRunHistory,
+	getHistoryRevision,
+	runHistory,
+	subscribeHistory,
+} from "@/history/coordinator";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { DownloadMenu } from "@/ui/download-menu";
@@ -10,9 +17,17 @@ import { LayoutPicker } from "@/ui/workspace/layout-picker";
 // pane lives next to that thing instead — see docs/design-system.md §5.
 
 export function AppHeader({ onImport }: { readonly onImport: () => void }) {
-	const canUndo = useTabeloStore((state) => state.past.length > 0);
-	const canRedo = useTabeloStore((state) => state.future.length > 0);
+	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
+	const canRedoDocument = useTabeloStore((state) => state.future.length > 0);
+	const activePaneId = useTabeloStore((state) => state.workspace.activePaneId);
 	const layout = useTabeloStore((state) => state.workspace.layout);
+	useSyncExternalStore(
+		subscribeHistory,
+		getHistoryRevision,
+		getHistoryRevision,
+	);
+	const canUndo = canRunHistory(activePaneId, "undo", canUndoDocument);
+	const canRedo = canRunHistory(activePaneId, "redo", canRedoDocument);
 
 	return (
 		<header className="flex h-panel-header shrink-0 items-center gap-1.5 border-line-strong border-b bg-surface-header px-3">
@@ -31,7 +46,11 @@ export function AppHeader({ onImport }: { readonly onImport: () => void }) {
 				iconOnly
 				shortcut={copy.shortcuts.undo}
 				disabled={!canUndo}
-				onClick={() => useTabeloStore.getState().undo()}
+				onClick={() =>
+					runHistory(activePaneId, "undo", () =>
+						useTabeloStore.getState().undo(),
+					)
+				}
 			/>
 			<ToolbarButton
 				icon={Redo2}
@@ -39,7 +58,11 @@ export function AppHeader({ onImport }: { readonly onImport: () => void }) {
 				iconOnly
 				shortcut={copy.shortcuts.redo}
 				disabled={!canRedo}
-				onClick={() => useTabeloStore.getState().redo()}
+				onClick={() =>
+					runHistory(activePaneId, "redo", () =>
+						useTabeloStore.getState().redo(),
+					)
+				}
 			/>
 
 			<ToolbarDivider />

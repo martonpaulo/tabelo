@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { runHistory } from "@/history/coordinator";
 import { startAutosave, useTabeloStore } from "@/state/store";
 import { AppHeader } from "@/ui/app-header";
 import { importTableFile } from "@/ui/import";
@@ -19,10 +20,14 @@ export function TabeloApp() {
 			if (!(event.metaKey || event.ctrlKey)) return;
 			const target = event.target as HTMLElement | null;
 			if (target?.closest(".cm-editor")) return;
-			if (event.key.toLowerCase() !== "z") return;
+			const key = event.key.toLowerCase();
+			if (key !== "z" && key !== "y") return;
 			event.preventDefault();
-			if (event.shiftKey) useTabeloStore.getState().redo();
-			else useTabeloStore.getState().undo();
+			const store = useTabeloStore.getState();
+			const direction = key === "y" || event.shiftKey ? "redo" : "undo";
+			runHistory(store.workspace.activePaneId, direction, () =>
+				direction === "redo" ? store.redo() : store.undo(),
+			);
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
