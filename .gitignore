@@ -48,6 +48,12 @@ lerna-debug.log*
 coverage
 .nyc_output
 
+# PWA dev output
+dev-dist
+
+# Scratch space (handoffs, prototypes) — see AGENTS.md
+.scratch
+
 # Misc
 *.tgz
 .cache

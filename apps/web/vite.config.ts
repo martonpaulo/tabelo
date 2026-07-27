@@ -4,30 +4,39 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+// GitHub Pages serves this project from a subpath. The deploy workflow sets
+// BASE_PATH; local dev and preview stay at the root.
+const base = process.env.BASE_PATH ?? "/";
+
 export default defineConfig({
-  server: {
-    port: 3001,
-  },
-  resolve: {
-    tsconfigPaths: true,
-  },
-  plugins: [
-    tailwindcss(),
-    tanstackRouter({
-      target: "react",
-      autoCodeSplitting: true,
-    }),
-    react(),
-    VitePWA({
-      registerType: "autoUpdate",
-      manifest: {
-        name: "tabelo",
-        short_name: "tabelo",
-        description: "tabelo - PWA Application",
-        theme_color: "#0c0c0c",
-      },
-      pwaAssets: { disabled: false, config: true },
-      devOptions: { enabled: true },
-    }),
-  ],
+	base,
+	server: {
+		port: 3001,
+	},
+	resolve: {
+		tsconfigPaths: true,
+	},
+	plugins: [
+		tailwindcss(),
+		tanstackRouter({
+			target: "react",
+			autoCodeSplitting: true,
+		}),
+		react(),
+		VitePWA({
+			registerType: "autoUpdate",
+			manifest: {
+				name: "Tabelo",
+				short_name: "Tabelo",
+				description:
+					"Edit a table visually, as Markdown, or as CSV — always in sync.",
+				theme_color: "#0c0c0c",
+				background_color: "#0c0c0c",
+				start_url: base,
+				scope: base,
+			},
+			pwaAssets: { disabled: false, config: true },
+			devOptions: { enabled: true },
+		}),
+	],
 });
