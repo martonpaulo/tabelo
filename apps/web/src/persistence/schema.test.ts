@@ -32,8 +32,15 @@ describe("loading a stored payload", () => {
 				rowRatio: 0.5,
 				activePaneId: "ac",
 			},
+			draft: {
+				paneId: "bd",
+				viewId: "markdown",
+				text: "| Name |\n| not valid |",
+			},
 		});
 		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.draft?.text).toContain("not valid");
 	});
 
 	it("refuses a payload with no version rather than guessing", () => {
@@ -56,9 +63,30 @@ describe("loading a stored payload", () => {
 		});
 		expect(outcome.status).toBe("unreadable");
 	});
+
+	it("refuses a draft whose pane owner is missing", () => {
+		const outcome = migrateAndValidate({
+			version: CURRENT_VERSION,
+			document: v1Document,
+			workspace: {
+				layout: "single",
+				panes: [{ id: "only", view: "grid", slots: ["a", "b", "c", "d"] }],
+				columnRatio: 0.5,
+				rowRatio: 0.5,
+				activePaneId: "only",
+			},
+			draft: {
+				paneId: "missing",
+				viewId: "markdown",
+				text: "draft",
+			},
+		});
+
+		expect(outcome.status).toBe("unreadable");
+	});
 });
 
-describe("migrating v1 to v2", () => {
+describe("migrating previous versions", () => {
 	it("keeps the document and puts the old format beside the grid", () => {
 		const outcome = migrateAndValidate({
 			version: 1,
@@ -76,6 +104,7 @@ describe("migrating v1 to v2", () => {
 			"grid",
 			"csv",
 		]);
+		expect(outcome.state.draft).toBeNull();
 	});
 
 	it("turns a hidden source panel into the single layout", () => {
@@ -99,5 +128,23 @@ describe("migrating v1 to v2", () => {
 		if (outcome.status !== "ok") return;
 		expect(outcome.state.workspace.panes).toHaveLength(2);
 		expect(outcome.state.workspace.panes[1].view).toBe("markdown");
+	});
+
+	it("adds an empty draft to a v2 payload", () => {
+		const outcome = migrateAndValidate({
+			version: 2,
+			document: v1Document,
+			workspace: {
+				layout: "single",
+				panes: [{ id: "only", view: "grid", slots: ["a", "b", "c", "d"] }],
+				columnRatio: 0.5,
+				rowRatio: 0.5,
+				activePaneId: "only",
+			},
+		});
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.draft).toBeNull();
 	});
 });

@@ -40,7 +40,13 @@ import {
 	type ImportError,
 	prepareImport,
 } from "@/import/prepare";
-import { loadState, saveState } from "@/persistence/storage";
+import {
+	loadState,
+	preserveUnreadableAndSave,
+	type SaveOutcome,
+	type SavePayload,
+	saveState,
+} from "@/persistence/storage";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import {
@@ -90,6 +96,15 @@ export interface HeaderCorrection {
 	readonly document: TableDocument;
 }
 
+export type StorageIssue =
+	| { readonly kind: "unavailable" }
+	| { readonly kind: "quota" }
+	| {
+			readonly kind: "unreadable";
+			readonly raw: string;
+			readonly replacementFailure?: "unavailable" | "quota";
+	  };
+
 export interface TabeloState {
 	document: TableDocument;
 	workspace: Workspace;
@@ -104,13 +119,14 @@ export interface TabeloState {
 	editingSeed: string | null;
 	editingHeader: number | null;
 
-	storageError: string | null;
+	storageIssue: StorageIssue | null;
 	notice: string | null;
 	inputError: ImportError | null;
 	headerCorrection: HeaderCorrection | null;
 	pendingPaneView: PendingPaneView | null;
 
 	hydrate: () => void;
+	replaceUnreadableStorage: () => boolean;
 	applyDocument: (next: TableDocument) => void;
 
 	setDraft: (paneId: string, viewId: ViewId, text: string) => void;
@@ -218,6 +234,20 @@ function restoreDraft(draft: Draft | null, workspace: Workspace): Draft | null {
 	return draft ? deriveDraft(draft, workspace) : null;
 }
 
+function savePayload(state: TabeloState): SavePayload {
+	return {
+		document: state.document,
+		workspace: state.workspace,
+		draft: state.draft
+			? {
+					paneId: state.draft.paneId,
+					viewId: state.draft.viewId,
+					text: state.draft.text,
+				}
+			: null,
+	};
+}
+
 // Serializes the document for a view. Views without a codec — the grid — have
 // no text projection.
 export function textForView(document: TableDocument, viewId: ViewId): string {
@@ -239,7 +269,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editingSeed: null,
 	editingHeader: null,
 
-	storageError: null,
+	storageIssue: null,
 	notice: null,
 	inputError: null,
 	headerCorrection: null,
@@ -251,7 +281,12 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			set({
 				document: outcome.state.document,
 				workspace: outcome.state.workspace,
-				draft: null,
+				draft: outcome.state.draft
+					? deriveDraft(outcome.state.draft, outcome.state.workspace)
+					: null,
+				past: [],
+				future: [],
+				storageIssue: null,
 				headerCorrection: null,
 				inputError: null,
 				pendingPaneView: null,
@@ -259,10 +294,38 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			});
 			return;
 		}
+		if (outcome.status === "unavailable") {
+			set({ storageIssue: { kind: "unavailable" } });
+			return;
+		}
 		if (outcome.status === "unreadable") {
 			// The stored payload stays untouched so it can be recovered by hand.
-			set({ storageError: outcome.reason });
+			set({ storageIssue: { kind: "unreadable", raw: outcome.raw } });
 		}
+	},
+
+	replaceUnreadableStorage: () => {
+		const state = get();
+		if (state.storageIssue?.kind !== "unreadable") return false;
+		const outcome = preserveUnreadableAndSave(
+			state.storageIssue.raw,
+			savePayload(state),
+		);
+		if (outcome.status === "saved") {
+			set({ storageIssue: null });
+			return true;
+		}
+		if (outcome.recoveryPreserved) {
+			set({ storageIssue: { kind: outcome.status } });
+			return false;
+		}
+		set({
+			storageIssue: {
+				...state.storageIssue,
+				replacementFailure: outcome.status,
+			},
+		});
+		return false;
 	},
 
 	// The single funnel for every structural change. A table edit always wins
@@ -773,29 +836,56 @@ function currentRect(state: TabeloState) {
 // only on unload would lose work, so writes are debounced after changes settle.
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
+export type FlushOutcome = SaveOutcome | { readonly status: "blocked" };
+
+export function flushPersistence(): FlushOutcome {
+	const current = useTabeloStore.getState();
+	if (current.storageIssue?.kind === "unreadable") {
+		return { status: "blocked" };
+	}
+	const outcome = saveState(savePayload(current));
+	useTabeloStore.setState({
+		storageIssue: outcome.status === "saved" ? null : { kind: outcome.status },
+	});
+	return outcome;
+}
+
 export function startAutosave(): () => void {
-	return useTabeloStore.subscribe((state, previous) => {
+	const flush = () => {
+		if (saveTimer) {
+			clearTimeout(saveTimer);
+			saveTimer = null;
+		}
+		flushPersistence();
+	};
+	const unsubscribe = useTabeloStore.subscribe((state, previous) => {
 		if (
 			state.document === previous.document &&
-			state.workspace === previous.workspace
+			state.workspace === previous.workspace &&
+			state.draft === previous.draft
 		)
 			return;
 
 		if (saveTimer) clearTimeout(saveTimer);
 		saveTimer = setTimeout(() => {
-			const current = useTabeloStore.getState();
-			const outcome = saveState({
-				document: current.document,
-				workspace: current.workspace,
-			});
-			if (
-				outcome.status === "failed" &&
-				current.storageError !== outcome.reason
-			) {
-				useTabeloStore.setState({ storageError: outcome.reason });
-			}
+			saveTimer = null;
+			flushPersistence();
 		}, 500);
 	});
+	const onVisibilityChange = () => {
+		if (document.visibilityState === "hidden") flush();
+	};
+	window.addEventListener("pagehide", flush);
+	document.addEventListener("visibilitychange", onVisibilityChange);
+	return () => {
+		unsubscribe();
+		window.removeEventListener("pagehide", flush);
+		document.removeEventListener("visibilitychange", onVisibilityChange);
+		if (saveTimer) {
+			clearTimeout(saveTimer);
+			saveTimer = null;
+		}
+	};
 }
 
 export { documentToMatrix };

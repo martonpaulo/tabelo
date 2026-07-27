@@ -1,19 +1,22 @@
 import { Button } from "@tabelo/ui/components/button";
 import { X } from "lucide-react";
 import { useEffect } from "react";
+import { getCodec } from "@/formats";
+import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
+import type { PwaUpdate } from "@/ui/pwa-update";
 
 // Notices sit in the layout rather than floating over it. A toast that covers
 // the table would be exactly the kind of interruption this product avoids —
 // see docs/design-system.md §5.
 
-export function NoticeBar() {
+export function NoticeBar({ pwaUpdate }: { readonly pwaUpdate: PwaUpdate }) {
 	const notice = useTabeloStore((state) => state.notice);
 	const inputError = useTabeloStore((state) => state.inputError);
 	const headerCorrection = useTabeloStore((state) => state.headerCorrection);
 	const pendingPaneView = useTabeloStore((state) => state.pendingPaneView);
-	const storageError = useTabeloStore((state) => state.storageError);
+	const storageIssue = useTabeloStore((state) => state.storageIssue);
 
 	// Transient confirmations clear themselves; anything actionable stays.
 	useEffect(() => {
@@ -25,13 +28,55 @@ export function NoticeBar() {
 		return () => clearTimeout(timer);
 	}, [notice]);
 
-	if (storageError) {
+	if (storageIssue?.kind === "unavailable" || storageIssue?.kind === "quota") {
 		return (
 			<Bar tone="warning">
-				<span className="font-medium">{copy.notices.storageUnavailable}</span>
-				<span className="text-muted-foreground">
-					{copy.notices.storageUnavailableHint}
+				<span className="font-medium">
+					{storageIssue.kind === "unavailable"
+						? copy.notices.storageUnavailable
+						: copy.notices.storageQuota}
 				</span>
+				<Button variant="outline" size="xs" onClick={downloadCurrentTable}>
+					{copy.notices.downloadCopy}
+				</Button>
+			</Bar>
+		);
+	}
+
+	if (storageIssue?.kind === "unreadable") {
+		const recoveryFailure =
+			storageIssue.replacementFailure === "unavailable"
+				? copy.notices.storageRecoveryUnavailable
+				: storageIssue.replacementFailure === "quota"
+					? copy.notices.storageRecoveryQuota
+					: null;
+		return (
+			<Bar tone="warning">
+				<span className="font-medium">{copy.notices.savedTableUnreadable}</span>
+				{recoveryFailure ? (
+					<span className="text-muted-foreground">{recoveryFailure}</span>
+				) : null}
+				<Button
+					variant="outline"
+					size="xs"
+					onClick={() =>
+						downloadText("tabelo-recovery.txt", "text/plain", storageIssue.raw)
+					}
+				>
+					{copy.notices.downloadOriginal}
+				</Button>
+				<Button
+					variant="outline"
+					size="xs"
+					onClick={() => {
+						const store = useTabeloStore.getState();
+						if (store.replaceUnreadableStorage()) {
+							store.setNotice(copy.notices.replacedSavedData);
+						}
+					}}
+				>
+					{copy.notices.replaceSavedData}
+				</Button>
 			</Bar>
 		);
 	}
@@ -86,7 +131,34 @@ export function NoticeBar() {
 		);
 	}
 
+	if (pwaUpdate.ready) {
+		return (
+			<Bar tone="info">
+				<span>{copy.notices.updateReady}</span>
+				<Button
+					variant="outline"
+					size="xs"
+					disabled={pwaUpdate.updating}
+					onClick={pwaUpdate.apply}
+				>
+					{pwaUpdate.updating
+						? copy.notices.savingUpdate
+						: copy.notices.saveAndReload}
+				</Button>
+			</Bar>
+		);
+	}
+
 	return null;
+}
+
+function downloadCurrentTable() {
+	const codec = getCodec("markdown");
+	downloadText(
+		`table.${codec.extension}`,
+		codec.mimeType,
+		codec.serialize(useTabeloStore.getState().document),
+	);
 }
 
 function Dismiss() {

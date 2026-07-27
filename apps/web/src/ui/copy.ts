@@ -101,10 +101,24 @@ export const copy = {
 		copied: "Copied to the clipboard.",
 		sourceCopied: "Source copied to the clipboard.",
 		imported: "Table imported.",
-		storageUnavailable: "Changes are not being saved.",
-		storageUnavailableHint:
-			"Browser storage is unavailable, so this table will be lost when you close the tab.",
-		savedTableUnreadable: "The saved table could not be read.",
+		storageUnavailable:
+			"Changes are only in this tab. Browser storage is unavailable. Download a copy before closing.",
+		storageQuota:
+			"This table does not fit in browser storage. Download a copy before closing.",
+		savedTableUnreadable:
+			"The saved table could not be opened. Tabelo kept the original browser data unchanged.",
+		storageRecoveryUnavailable:
+			"A recovery copy could not be created because browser storage is unavailable.",
+		storageRecoveryQuota:
+			"A recovery copy could not be created because browser storage is full.",
+		downloadCopy: "Download a copy",
+		downloadOriginal: "Download original data",
+		replaceSavedData: "Replace saved data",
+		replacedSavedData:
+			"Saved data replaced. The original was kept as a recovery copy.",
+		updateReady: "An update is ready.",
+		saveAndReload: "Save and reload",
+		savingUpdate: "Saving…",
 	},
 
 	a11y: {

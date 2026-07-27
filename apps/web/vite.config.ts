@@ -24,7 +24,7 @@ export default defineConfig({
 		}),
 		react(),
 		VitePWA({
-			registerType: "autoUpdate",
+			registerType: "prompt",
 			manifest: {
 				name: "Tabelo",
 				short_name: "Tabelo",

@@ -5,7 +5,8 @@ import { z } from "zod";
 // reported, never silently replaced.
 
 export const STORAGE_KEY = "tabelo.document";
-export const CURRENT_VERSION = 2;
+export const RECOVERY_KEY = "tabelo.document.recovery";
+export const CURRENT_VERSION = 3;
 
 const alignmentSchema = z.enum(["default", "left", "center", "right"]);
 
@@ -61,13 +62,37 @@ const workspaceSchema = z.object({
 	activePaneId: z.string().min(1),
 });
 
-export const persistedStateSchema = z.object({
-	version: z.literal(CURRENT_VERSION),
-	document: documentSchema,
-	workspace: workspaceSchema,
+const persistedDraftSchema = z.object({
+	paneId: z.string().min(1),
+	viewId: viewIdSchema,
+	text: z.string(),
 });
 
+export const persistedStateSchema = z
+	.object({
+		version: z.literal(CURRENT_VERSION),
+		document: documentSchema,
+		workspace: workspaceSchema,
+		draft: persistedDraftSchema.nullable(),
+	})
+	.superRefine((state, context) => {
+		if (
+			state.draft &&
+			!state.workspace.panes.some(
+				(pane) =>
+					pane.id === state.draft?.paneId && pane.view === state.draft.viewId,
+			)
+		) {
+			context.addIssue({
+				code: "custom",
+				path: ["draft"],
+				message: "Draft owner is not present in the workspace.",
+			});
+		}
+	});
+
 export type PersistedState = z.infer<typeof persistedStateSchema>;
+export type PersistedDraft = PersistedState["draft"];
 
 // Migration chain. Each step takes the previous version's raw payload and
 // returns the next one; a version we do not recognise stops here rather than
@@ -111,8 +136,14 @@ function migrateV1ToV2(input: unknown): unknown {
 	};
 }
 
+function migrateV2ToV3(input: unknown): unknown {
+	if (typeof input !== "object" || input === null) return input;
+	return { ...input, version: 3, draft: null };
+}
+
 const migrations: Record<number, Migration> = {
 	1: migrateV1ToV2,
+	2: migrateV2ToV3,
 };
 
 export type LoadOutcome =

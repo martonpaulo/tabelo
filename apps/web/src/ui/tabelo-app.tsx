@@ -4,9 +4,12 @@ import { startAutosave, useTabeloStore } from "@/state/store";
 import { AppHeader } from "@/ui/app-header";
 import { importTableFile } from "@/ui/import";
 import { NoticeBar } from "@/ui/notice-bar";
+import { usePwaUpdate } from "@/ui/pwa-update";
 import { Workspace } from "@/ui/workspace/workspace";
 
 export function TabeloApp() {
+	const pwaUpdate = usePwaUpdate();
+
 	useEffect(() => {
 		useTabeloStore.getState().hydrate();
 		return startAutosave();
@@ -36,7 +39,7 @@ export function TabeloApp() {
 	return (
 		<div className="flex h-full min-h-0 flex-col bg-surface-app">
 			<AppHeader onImport={() => void importTableFile()} />
-			<NoticeBar />
+			<NoticeBar pwaUpdate={pwaUpdate} />
 			<Workspace />
 		</div>
 	);

@@ -2,8 +2,10 @@ import type { TableDocument } from "@/core/types";
 import type { Workspace } from "@/workspace/layout";
 import {
 	CURRENT_VERSION,
-	type LoadOutcome,
 	migrateAndValidate,
+	type PersistedDraft,
+	type PersistedState,
+	RECOVERY_KEY,
 	STORAGE_KEY,
 } from "./schema";
 
@@ -13,39 +15,58 @@ import {
 export interface SavePayload {
 	readonly document: TableDocument;
 	readonly workspace: Workspace;
+	readonly draft: PersistedDraft;
 }
 
 // localStorage is the only durable store. Reads are treated as untrusted —
 // another tab, an extension, or a half-finished write can all leave something
 // unexpected there.
 
-export function loadState(): LoadOutcome {
+export type StorageLoadOutcome =
+	| { readonly status: "empty" }
+	| { readonly status: "ok"; readonly state: PersistedState }
+	| { readonly status: "unavailable" }
+	| {
+			readonly status: "unreadable";
+			readonly reason: string;
+			readonly raw: string;
+	  };
+
+export function loadState(): StorageLoadOutcome {
 	let raw: string | null;
 	try {
 		raw = window.localStorage.getItem(STORAGE_KEY);
 	} catch {
 		// Private browsing and blocked storage both throw here.
-		return {
-			status: "unreadable",
-			reason: "Browser storage is not available.",
-		};
+		return { status: "unavailable" };
 	}
 
 	if (raw === null) return { status: "empty" };
 
 	try {
-		return migrateAndValidate(JSON.parse(raw));
+		const outcome = migrateAndValidate(JSON.parse(raw));
+		return outcome.status === "unreadable" ? { ...outcome, raw } : outcome;
 	} catch {
 		return {
 			status: "unreadable",
 			reason: "The saved table is not valid JSON.",
+			raw,
 		};
 	}
 }
 
 export type SaveOutcome =
 	| { readonly status: "saved" }
-	| { readonly status: "failed"; readonly reason: string };
+	| { readonly status: "quota" }
+	| { readonly status: "unavailable" };
+
+function classifyWriteFailure(error: unknown): SaveOutcome {
+	const quotaExceeded =
+		error instanceof DOMException &&
+		(error.name === "QuotaExceededError" ||
+			error.name === "NS_ERROR_DOM_QUOTA_REACHED");
+	return { status: quotaExceeded ? "quota" : "unavailable" };
+}
 
 export function saveState(state: SavePayload): SaveOutcome {
 	const payload = { ...state, version: CURRENT_VERSION };
@@ -53,17 +74,20 @@ export function saveState(state: SavePayload): SaveOutcome {
 		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 		return { status: "saved" };
 	} catch (error) {
-		const quotaExceeded =
-			error instanceof DOMException &&
-			(error.name === "QuotaExceededError" ||
-				error.name === "NS_ERROR_DOM_QUOTA_REACHED");
-		return {
-			status: "failed",
-			reason: quotaExceeded
-				? "This table is too large for browser storage."
-				: "Browser storage is not available.",
-		};
+		return classifyWriteFailure(error);
 	}
+}
+
+export function preserveUnreadableAndSave(
+	raw: string,
+	state: SavePayload,
+): SaveOutcome & { readonly recoveryPreserved: boolean } {
+	try {
+		window.localStorage.setItem(RECOVERY_KEY, raw);
+	} catch (error) {
+		return { ...classifyWriteFailure(error), recoveryPreserved: false };
+	}
+	return { ...saveState(state), recoveryPreserved: true };
 }
 
 export function clearState(): void {

@@ -7,7 +7,9 @@ test("a numeric first row does not offer header correction", async ({
 
 	await expect(tabelo.header(1)).toContainText("Column 1");
 	await expect(tabelo.cell(1, 1)).toHaveText("1");
-	await expect(tabelo.status).toHaveCount(0);
+	await expect(
+		tabelo.page.getByRole("button", { name: "Use it as data instead" }),
+	).toHaveCount(0);
 });
 
 test("a later document edit invalidates header correction", async ({
@@ -30,13 +32,17 @@ test("numeric and blank named files do not offer correction", async ({
 
 	await expect(tabelo.header(1)).toContainText("Column 1");
 	await expect(tabelo.cell(1, 1)).toHaveText("1");
-	await expect(tabelo.status).toHaveCount(0);
+	await expect(
+		tabelo.page.getByRole("button", { name: "Use it as data instead" }),
+	).toHaveCount(0);
 
 	await tabelo.importFile("blank.csv", "Name,\nAna,Designer", "text/csv");
 
 	await expect(tabelo.header(1)).toContainText("Column 1");
 	await expect(tabelo.cell(1, 1)).toHaveText("Name");
-	await expect(tabelo.status).toHaveCount(0);
+	await expect(
+		tabelo.page.getByRole("button", { name: "Use it as data instead" }),
+	).toHaveCount(0);
 });
 
 test("a text-header file offers correction once and dismissal keeps data", async ({
@@ -47,7 +53,9 @@ test("a text-header file offers correction once and dismissal keeps data", async
 
 	await tabelo.page.getByRole("button", { name: "Dismiss" }).click();
 
-	await expect(tabelo.status).toHaveCount(0);
+	await expect(
+		tabelo.page.getByRole("button", { name: "Use it as data instead" }),
+	).toHaveCount(0);
 	await expect(tabelo.header(1)).toContainText("Name");
 	await expect(tabelo.cell(1, 1)).toHaveText("Ana");
 });
