@@ -1,9 +1,27 @@
+import type { Locator } from "@playwright/test";
 import { expect, test } from "./fixtures";
 
 const invalidMarkdown =
 	"| Name | Role |\n| not a divider |\n| Ana | Designer |";
 const validMarkdown =
 	"| Name | Role |\n| --- | --- |\n| Immediate | Designer |";
+
+async function editorSnapshot(editor: Locator) {
+	return editor.evaluate((element) => {
+		const selection = element.ownerDocument.getSelection();
+		if (!selection?.anchorNode) return null;
+		const range = element.ownerDocument.createRange();
+		range.selectNodeContents(element);
+		range.setEnd(selection.anchorNode, selection.anchorOffset);
+		const scroller = element
+			.closest(".cm-editor")
+			?.querySelector<HTMLElement>(".cm-scroller");
+		return {
+			offset: range.toString().length,
+			scrollTop: scroller?.scrollTop ?? 0,
+		};
+	});
+}
 
 test("valid source edits synchronize without a pending healthy status", async ({
 	tabelo,
@@ -61,11 +79,17 @@ test("source cursor and local undo survive a 200-row synchronization", async ({
 	await editor.press("End");
 	await editor.press("ArrowLeft");
 	await editor.press("ArrowLeft");
+	const beforeInsert = await editorSnapshot(editor);
 	await editor.press("X");
 	await expect(tabelo.cell(200, 1)).toHaveText("Value 199X");
 	await expect(editor).toBeFocused();
+	const afterInsert = await editorSnapshot(editor);
+	expect(afterInsert?.offset).toBe((beforeInsert?.offset ?? 0) + 1);
+	expect(afterInsert?.scrollTop).toBe(beforeInsert?.scrollTop);
 
 	await editor.press("ControlOrMeta+z");
 	await expect(tabelo.cell(200, 1)).toHaveText("Value 199");
 	await expect(editor).toBeFocused();
+	const afterUndo = await editorSnapshot(editor);
+	expect(afterUndo).toEqual(beforeInsert);
 });

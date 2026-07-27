@@ -31,16 +31,25 @@ function markdownPaneId(): string {
 }
 
 describe("draft ownership", () => {
-	it.each(layoutPresets.map((preset) => preset.id))(
-		"preserves the owning pane when changing to %s",
-		(layout) => {
+	const layoutTransitions = layoutPresets.flatMap((from) =>
+		layoutPresets.flatMap((to) =>
+			[
+				["clean", validMarkdown],
+				["invalid", invalidMarkdown],
+			].map(([status, text]) => [from.id, to.id, status, text] as const),
+		),
+	);
+
+	it.each(layoutTransitions)(
+		"%s to %s preserves its %s draft owner",
+		(from, to, _status, text) => {
 			const store = useTabeloStore.getState();
-			store.setLayout("quad");
+			store.setLayout(from);
 			const paneId = useTabeloStore.getState().workspace.panes.at(-1)?.id ?? "";
 			store.setPaneView(paneId, "markdown");
-			store.setDraft(paneId, "markdown", invalidMarkdown);
+			store.setDraft(paneId, "markdown", text);
 
-			store.setLayout(layout);
+			store.setLayout(to);
 
 			const state = useTabeloStore.getState();
 			expect(state.workspace.panes.some((pane) => pane.id === paneId)).toBe(
@@ -122,6 +131,24 @@ describe("draft ownership", () => {
 			paneId,
 			viewId: "markdown",
 			text: invalidMarkdown,
+		});
+	});
+
+	it("restores an invalid draft after reset through undo", () => {
+		const store = useTabeloStore.getState();
+		const paneId = markdownPaneId();
+		store.setDraft(paneId, "markdown", invalidMarkdown);
+
+		store.resetDocument();
+		expect(useTabeloStore.getState().draft).toBeNull();
+
+		useTabeloStore.getState().undo();
+
+		expect(useTabeloStore.getState().draft).toMatchObject({
+			paneId,
+			viewId: "markdown",
+			text: invalidMarkdown,
+			status: "invalid",
 		});
 	});
 });
