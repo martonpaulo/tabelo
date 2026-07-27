@@ -130,6 +130,8 @@ Then open <http://localhost:3001>.
 | `pnpm dev` | Dev server |
 | `pnpm build` | Production build |
 | `pnpm test` | Unit tests |
+| `pnpm test:e2e:install` | Install Chromium and Firefox for browser tests |
+| `pnpm test:e2e` | Browser tests in Chromium and Firefox |
 | `pnpm check-types` | TypeScript |
 | `pnpm lint` | Biome check |
 | `pnpm check` | Biome check, writing fixes |

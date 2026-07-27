@@ -11,6 +11,8 @@
 		"check-types": "vite build && tsc --noEmit",
 		"generate-pwa-assets": "pwa-assets-generator",
 		"test": "vitest run",
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui",
 		"test:watch": "vitest"
 	},
 	"dependencies": {
@@ -37,6 +39,7 @@
 		"zustand": "^5.0.14"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.62.0",
 		"@tabelo/config": "workspace:*",
 		"@tanstack/react-router-devtools": "^1.167.0",
 		"@tanstack/router-plugin": "^1.168.19",
