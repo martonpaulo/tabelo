@@ -86,6 +86,7 @@ export const copy = {
 
 	actions: {
 		file: "File",
+		dismiss: "Dismiss",
 		undo: "Undo",
 		redo: "Redo",
 		insertRowAbove: "Insert row above",

@@ -11,9 +11,9 @@ import { importTableFile } from "@/ui/import";
 export function EmptyState() {
 	return (
 		<div className="flex justify-start px-4 py-6">
-			<div className="max-w-md border border-line-subtle bg-surface-header p-4">
+			<div className="max-w-md rounded-interactive bg-surface-header p-4">
 				<h3 className="font-medium text-sm">{copy.empty.title}</h3>
-				<p className="mt-1 text-muted-foreground text-xs leading-relaxed">
+				<p className="mt-1 text-muted-foreground text-sm leading-relaxed">
 					{copy.empty.body}
 				</p>
 				<div className="mt-3 flex flex-wrap gap-1.5">

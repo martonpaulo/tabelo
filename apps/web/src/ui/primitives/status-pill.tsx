@@ -24,7 +24,7 @@ export function StatusPill({ tone, label, hint }: StatusPillProps) {
 		<span
 			title={hint}
 			className={cn(
-				"inline-flex shrink-0 items-center gap-1.5 text-xs",
+				"inline-flex shrink-0 items-center gap-1.5 text-sm",
 				tone === "invalid" ? "text-status-invalid" : "text-muted-foreground",
 			)}
 		>

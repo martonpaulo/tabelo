@@ -41,18 +41,26 @@ task; deciding that is the user's call, not yours.
 
 ## 1. The design line
 
-Tabelo is a **square, compact, monochrome utility**. It follows the shadcn
-`base-lyra` style already configured in `packages/ui/components.json`.
+Tabelo is a **calm, compact, lightly warm table utility**. It follows the
+shadcn `base-lyra` style already configured in `packages/ui/components.json`
+without importing card-heavy dashboard styling.
 
-- **Square.** Radius is zero. There are no rounded cards, pills, or buttons.
-- **Monochrome.** Greys carry the entire interface. Exactly one accent colour
-  exists, and it means *selection*. Status colours are the only other colour,
-  and they are always paired with text.
-- **Compact.** Controls are 28–32px tall. Type is small. Density comes from
-  tight control sizing, not from cramming more onto the screen.
-- **Quiet.** Borders are 1px and low contrast. There are no shadows except on
-  floating layers, no gradients, and no decorative elements at all.
-- **Still.** Transitions are for orientation only, never for delight.
+- **Structured.** Grid cells, row and column headers, resize affordances, pane
+  edges, and major workspace divisions are rectilinear. The table remains the
+  visual anchor.
+- **Friendly.** Buttons, fields, menus, notices, empty states, and other
+  interactive or floating surfaces share one small radius. There are no pills
+  or arbitrarily rounded containers.
+- **Quietly warm.** Low-chroma warm neutrals distinguish surfaces before lines
+  do. Exactly one restrained accent colour means *selection or focus*. Status
+  colours are the only other colours and always have written meaning.
+- **Compact, not tiny.** Controls remain 28–32px tall. Critical labels stay at
+  14px; space comes from removing repetition and progressive disclosure, never
+  from shrinking essential text.
+- **Quiet.** Shadows belong only to floating layers. Borders communicate
+  structure or state, never decoration. There are no gradients or decorative
+  elements.
+- **Still.** Transitions orient the user, never decorate or flash.
 
 The table is the loudest thing on screen. Everything else recedes.
 
@@ -65,9 +73,10 @@ shadcn's tokens from `packages/ui/src/styles/globals.css`.
 
 ### Rule: never write a raw value
 
-No hex colours, no `oklch()` outside the token file, no arbitrary pixel sizes,
-no `rounded-*` on product surfaces. If you need a value that has no token,
-that is a pattern break — follow §0.
+No hex colours, no `oklch()` outside the token file, and no arbitrary pixel
+sizes. `rounded-interactive` is the only radius utility on product surfaces;
+structural table and workspace geometry stays square. If you need a value that
+has no token, that is a pattern break — follow §0.
 
 ### Surfaces
 
@@ -78,7 +87,8 @@ that is a pattern break — follow §0.
 | `--surface-header` | `bg-surface-header` | Pane headers, grid column headers |
 | `--surface-gutter` | `bg-surface-gutter` | The grid's row-number gutter |
 
-Order matters: app is furthest back, gutter and header sit above panel.
+Order matters: app is furthest back, gutter and header sit above panel. Use
+these low-chroma warm tones to group related content before adding a line.
 
 ### Lines
 
@@ -87,7 +97,9 @@ Order matters: app is furthest back, gutter and header sit above panel.
 | `--line-subtle` | `border-line-subtle` | Grid cell borders, control separators |
 | `--line-strong` | `border-line-strong` | Boundaries between panes, and the app header |
 
-Borders are always 1px. Never use a border to decorate.
+Borders are always 1px. Use them for the table grid, pane boundaries, the app
+header boundary, or an explicit state. Prefer tonal separation for buttons,
+notices, empty states, and pane headers; never use a border to decorate.
 
 ### Selection — the only accent
 
@@ -121,6 +133,11 @@ beside it. This is not optional.
 | `--grid-row-h` | `h-grid-row` | 32px — one table row |
 | `--grid-col-w` | `w-grid-col` | 168px — default column width |
 | `--grid-col-w-min` | `w-grid-col-min` | 72px — resize floor |
+| `--interactive-radius` | `rounded-interactive` | 6px — every interactive, contained, or floating surface |
+
+`--interactive-radius` applies to buttons, fields, menus, tooltips, notices,
+empty-state containers, and source feedback overlays. It never applies to grid
+cells, row or column headers, pane frames, pane divisions, or layout glyphs.
 
 ### Spacing rhythm
 
@@ -133,14 +150,17 @@ vertical.
 
 | Role | Classes |
 | :--- | :--- |
-| Pane title | `text-xs font-medium uppercase tracking-wider text-muted-foreground` |
-| Control label | `text-xs font-medium` |
+| Pane title | `text-sm font-medium` |
+| Control label | `text-sm font-medium` |
 | Table cell | `text-sm` |
 | Source editor | `text-sm font-source` |
 | Helper / status | `text-xs text-muted-foreground` |
 
-There is no `text-base` and nothing larger in the product interface. There are
-no headings above `h2` — the app has one screen.
+Critical control, pane, menu, notice, onboarding, and error labels never fall
+below `text-sm` (14px). `text-xs` is reserved for optional descriptions,
+shortcuts, file extensions, and secondary status detail. There is no
+`text-base` and nothing larger in the product interface. There are no headings
+above `h2` — the app has one screen.
 
 ---
 
@@ -198,6 +218,10 @@ menu — that is how a menu and a toolbar drift apart.
 A component in `primitives/` must not import from the store. If it needs
 document state, it belongs in a feature folder.
 
+Related controls use the shared radius and spacing to read as a family. Do not
+wrap an existing control group in another card or add a border merely to make
+the relationship visible.
+
 ---
 
 ## 4. Interaction states
@@ -246,6 +270,13 @@ resizes the pane.
   and other low-frequency pane actions share one visibly labelled Pane menu;
   the grid's contextual Table actions may remain beside it.
 - Nothing may reflow because of a selection change or a status change.
+- One-pane layouts may breathe, but do not enlarge controls or introduce an
+  otherwise absent card. Four-pane layouts keep the same 14px critical labels,
+  focus treatment, and action ownership; labels shorten only through the
+  registry's explicit short label and optional descriptions may disappear.
+- Four-pane density is recovered by hiding healthy status, removing empty
+  reserved rows, and grouping low-frequency actions. Never shrink critical
+  text, focus targets, or state cues to make four panes fit.
 
 ---
 
@@ -264,8 +295,8 @@ label and never depend on a tooltip for identification.
 ## 7. Motion
 
 Transitions are limited to `colors` and `opacity`, at 100ms. Nothing moves
-position. Nothing animates in on mount. `prefers-reduced-motion` is honoured
-globally in `index.css` and must not be re-enabled locally.
+position, flashes, pulses, or animates in on mount. `prefers-reduced-motion` is
+honoured globally in `index.css` and must not be re-enabled locally.
 
 ---
 
@@ -293,3 +324,12 @@ These are requirements, not aspirations:
 - Contrast meets WCAG AA against the surface the element actually sits on.
 - Nothing depends on hover alone — hover-revealed affordances also appear on
   keyboard focus.
+- Use progressive disclosure for low-frequency actions, but keep the owning
+  scope and menu label explicit. Do not require users to decode unfamiliar
+  icons or remember hidden locations.
+- Keep visible copy short, literal, and stable. Do not move controls or resize
+  panes when selection or status changes.
+- The design may reduce common cognitive barriers, but Tabelo must not claim
+  suitability for dyslexia, ADHD, or another condition without task-based
+  sessions with representative participants. Record participants, tasks,
+  outcomes, and changes before making such a claim.

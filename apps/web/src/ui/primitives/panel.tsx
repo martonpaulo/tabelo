@@ -34,7 +34,7 @@ function PanelHeader({
 	return (
 		<header
 			className={cn(
-				"flex h-panel-header shrink-0 items-center gap-1.5 border-line-subtle border-b bg-surface-header px-3",
+				"flex h-panel-header shrink-0 items-center gap-1.5 bg-surface-header px-3",
 				className,
 			)}
 		>
@@ -44,11 +44,7 @@ function PanelHeader({
 }
 
 function PanelTitle({ children }: { children: ReactNode }) {
-	return (
-		<h2 className="shrink-0 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-			{children}
-		</h2>
-	);
+	return <h2 className="shrink-0 font-medium text-sm">{children}</h2>;
 }
 
 function PanelSpacer() {
@@ -79,7 +75,7 @@ function PanelFooter({
 	return (
 		<footer
 			className={cn(
-				"flex min-h-control-md shrink-0 items-center gap-1.5 border-line-subtle border-t px-3 py-1.5",
+				"flex min-h-control-md shrink-0 items-center gap-1.5 bg-surface-header px-3 py-1.5",
 				className,
 			)}
 		>

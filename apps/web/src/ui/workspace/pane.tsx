@@ -84,7 +84,7 @@ function SourceIssue({ paneId, viewId }: PaneSourceProps) {
 		: primary;
 
 	return (
-		<div className="absolute inset-x-2 bottom-2 z-10 flex min-h-control-md items-center gap-1.5 border border-line-subtle bg-surface-panel px-2 shadow-md">
+		<div className="absolute inset-x-2 bottom-2 z-10 flex min-h-control-md items-center gap-1.5 rounded-interactive bg-surface-header px-2 shadow-md">
 			{feedback.error ? (
 				<span
 					id={ids.announcement}
@@ -100,7 +100,7 @@ function SourceIssue({ paneId, viewId }: PaneSourceProps) {
 				id={ids.description}
 				title={primary}
 				className={cn(
-					"min-w-0 flex-1 truncate text-xs",
+					"min-w-0 flex-1 truncate text-sm",
 					feedback.error ? "text-status-invalid" : "text-muted-foreground",
 				)}
 			>

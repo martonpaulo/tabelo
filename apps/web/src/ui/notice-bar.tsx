@@ -166,7 +166,7 @@ function Dismiss() {
 		<Button
 			variant="ghost"
 			size="icon-xs"
-			aria-label="Dismiss"
+			aria-label={copy.actions.dismiss}
 			className="ml-auto"
 			onClick={() => useTabeloStore.getState().dismissNotice()}
 		>
@@ -187,8 +187,8 @@ function Bar({
 			role="status"
 			className={
 				tone === "warning"
-					? "flex shrink-0 items-center gap-2 border-line-subtle border-b bg-destructive/10 px-3 py-1.5 text-xs"
-					: "flex shrink-0 items-center gap-2 border-line-subtle border-b bg-surface-header px-3 py-1.5 text-xs"
+					? "mx-3 my-2 flex shrink-0 flex-wrap items-center gap-2 rounded-interactive bg-destructive/10 px-3 py-2 text-sm"
+					: "mx-3 my-2 flex shrink-0 flex-wrap items-center gap-2 rounded-interactive bg-surface-header px-3 py-2 text-sm"
 			}
 		>
 			{children}
