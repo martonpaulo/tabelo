@@ -10,6 +10,7 @@
 		"dev": "pnpm -r dev",
 		"build": "pnpm -r build",
 		"check-types": "pnpm -r check-types",
+		"test": "pnpm -r test",
 		"dev:web": "pnpm --filter web dev",
 		"check": "biome check --write .",
 		"lint": "biome check .",

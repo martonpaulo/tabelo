@@ -9,28 +9,40 @@
 		"serve": "vite preview",
 		"start": "vite",
 		"check-types": "vite build && tsc --noEmit",
-		"generate-pwa-assets": "pwa-assets-generator"
+		"generate-pwa-assets": "pwa-assets-generator",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"dependencies": {
+		"@codemirror/commands": "^6.10.4",
+		"@codemirror/lang-markdown": "^6.5.1",
+		"@codemirror/language": "^6.12.4",
+		"@codemirror/state": "^6.7.1",
+		"@codemirror/view": "^6.43.6",
 		"@hookform/resolvers": "^5.4.0",
+		"@lezer/highlight": "^1.2.3",
 		"@tabelo/env": "workspace:*",
 		"@tabelo/ui": "workspace:*",
 		"@tailwindcss/vite": "^4.3.2",
 		"@tanstack/react-router": "^1.170.17",
 		"dotenv": "catalog:",
+		"immer": "^11.1.15",
 		"lucide-react": "catalog:",
 		"next-themes": "catalog:",
+		"papaparse": "^5.5.4",
 		"react": "catalog:",
 		"react-dom": "catalog:",
 		"sonner": "catalog:",
 		"vite-plugin-pwa": "^1.3.0",
-		"zod": "catalog:"
+		"zod": "catalog:",
+		"zustand": "^5.0.14"
 	},
 	"devDependencies": {
 		"@tabelo/config": "workspace:*",
 		"@tanstack/react-router-devtools": "^1.167.0",
 		"@tanstack/router-plugin": "^1.168.19",
 		"@types/node": "catalog:",
+		"@types/papaparse": "^5.5.2",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@vite-pwa/assets-generator": "^1.0.2",
@@ -38,6 +50,7 @@
 		"postcss": "^8.5.16",
 		"tailwindcss": "catalog:",
 		"typescript": "catalog:",
-		"vite": "^8.1.3"
+		"vite": "^8.1.3",
+		"vitest": "^4.1.10"
 	}
 }
