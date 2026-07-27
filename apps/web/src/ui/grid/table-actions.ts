@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import { selectionRect } from "@/core/selection";
-import { readClipboardTable, writeClipboardTable } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
+import { copyToClipboard, pasteFromClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
 
 // One description of every table action, consumed by the toolbar and by the
@@ -36,19 +36,11 @@ export interface TableActionGroup {
 }
 
 export async function copySelectionToClipboard(): Promise<boolean> {
-	const store = useTabeloStore.getState();
-	const matrix = store.selectedMatrix();
-	const ok = await writeClipboardTable(
-		matrixToTsv(matrix),
-		matrixToHtml(matrix),
+	const matrix = useTabeloStore.getState().selectedMatrix();
+	return copyToClipboard(
+		{ text: matrixToTsv(matrix), html: matrixToHtml(matrix) },
+		"selection",
 	);
-	if (ok) store.setNotice(copy.notices.copied);
-	return ok;
-}
-
-async function pasteFromClipboard(): Promise<void> {
-	const payload = await readClipboardTable();
-	if (payload) useTabeloStore.getState().pasteClipboard(payload);
 }
 
 export interface TableActionContext {

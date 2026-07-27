@@ -166,8 +166,20 @@ export const copy = {
 					return "There is no table to import. The current table was not changed.";
 			}
 		},
-		copied: "Copied to the clipboard.",
-		sourceCopied: "Source copied to the clipboard.",
+		copied: (scope: "selection" | "source") =>
+			scope === "source"
+				? "Source copied to the clipboard."
+				: "Copied to the clipboard.",
+		// Tabelo cannot grant itself clipboard permission, so the recovery is
+		// always the keyboard — which stays available because a trusted key press
+		// never needs the permission the button does.
+		clipboardReadFailed:
+			"Clipboard access was blocked. Use ⌘V/Ctrl+V or allow clipboard access, then try again.",
+		clipboardWriteFailed: (scope: "selection" | "source") =>
+			scope === "source"
+				? "The source could not be copied. Select it in the editor and use ⌘C/Ctrl+C."
+				: "The selection could not be copied. Select it and use ⌘C/Ctrl+C.",
+		clipboardEmpty: "There is nothing on the clipboard to paste.",
 		imported: "Table imported.",
 		storageUnavailable:
 			"Changes are only in this tab. Browser storage is unavailable. Download a copy before closing.",

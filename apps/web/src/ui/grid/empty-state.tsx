@@ -1,7 +1,6 @@
 import { Button } from "@tabelo/ui/components/button";
 import { ClipboardPaste, Upload } from "lucide-react";
-import { readClipboardTable } from "@/platform/files";
-import { useTabeloStore } from "@/state/store";
+import { pasteFromClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
 import { importTableFile } from "@/ui/import";
 
@@ -20,10 +19,7 @@ export function EmptyState() {
 					<Button
 						variant="outline"
 						size="sm"
-						onClick={async () => {
-							const payload = await readClipboardTable();
-							if (payload) useTabeloStore.getState().pasteClipboard(payload);
-						}}
+						onClick={() => void pasteFromClipboard()}
 					>
 						<ClipboardPaste aria-hidden />
 						{copy.empty.pasteHint}

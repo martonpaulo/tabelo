@@ -1,5 +1,6 @@
 // Browser side effects kept behind one boundary so components stay declarative
-// and the rest of the app never touches the DOM or the clipboard directly.
+// and the rest of the app never touches the DOM directly. The clipboard is the
+// one effect the user can refuse, so it has its own boundary in ./clipboard.
 
 export function downloadText(
 	filename: string,
@@ -36,60 +37,4 @@ export function pickTextFile(
 		// promise simply never resolves — harmless, and the caller does nothing.
 		input.click();
 	});
-}
-
-export async function writeClipboardText(text: string): Promise<boolean> {
-	try {
-		await navigator.clipboard.writeText(text);
-		return true;
-	} catch {
-		return false;
-	}
-}
-
-export async function writeClipboardTable(
-	text: string,
-	html: string,
-): Promise<boolean> {
-	// The rich flavour is what lets a paste into a spreadsheet keep its cells.
-	try {
-		await navigator.clipboard.write([
-			new ClipboardItem({
-				"text/plain": new Blob([text], { type: "text/plain" }),
-				"text/html": new Blob([html], { type: "text/html" }),
-			}),
-		]);
-		return true;
-	} catch {
-		return writeClipboardText(text);
-	}
-}
-
-export async function readClipboardTable(): Promise<{
-	text: string;
-	html?: string;
-} | null> {
-	// Reading needs a permission the user may decline, and Firefox does not
-	// implement read() at all. Either way the keyboard paste path still works,
-	// because that one arrives as a trusted paste event instead.
-	try {
-		const items = await navigator.clipboard.read();
-		let text = "";
-		let html: string | undefined;
-		for (const item of items) {
-			if (item.types.includes("text/html")) {
-				html = await (await item.getType("text/html")).text();
-			}
-			if (item.types.includes("text/plain")) {
-				text = await (await item.getType("text/plain")).text();
-			}
-		}
-		return { text, html };
-	} catch {
-		try {
-			return { text: await navigator.clipboard.readText() };
-		} catch {
-			return null;
-		}
-	}
 }

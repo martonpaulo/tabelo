@@ -20,8 +20,8 @@ import {
 	ZoomOut,
 } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { writeClipboardText } from "@/platform/files";
-import { textForView, useTabeloStore } from "@/state/store";
+import { useTabeloStore, visibleTextForPane } from "@/state/store";
+import { copyToClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
 import { listViews } from "@/views/registry";
 import type { ViewDefinition } from "@/views/types";
@@ -184,16 +184,12 @@ export function PaneMenu({ paneId, view }: PaneControlProps) {
 					<>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
-							onClick={async () => {
+							onClick={() => {
 								const state = useTabeloStore.getState();
-								const source =
-									state.draft?.paneId === paneId &&
-									state.draft.viewId === view.id
-										? state.draft.text
-										: textForView(state.document, view.id);
-								if (await writeClipboardText(source)) {
-									state.setNotice(copy.notices.sourceCopied);
-								}
+								void copyToClipboard(
+									{ text: visibleTextForPane(state, paneId, view.id) },
+									"source",
+								);
 							}}
 						>
 							<ClipboardCopy aria-hidden />
