@@ -180,7 +180,10 @@ export function PaneMenu({ paneId, view }: PaneControlProps) {
 					{copy.workspace.closeView}
 				</DropdownMenuItem>
 
-				{view.kind === "source" ? (
+				{/* Whether a view's text can be copied is the registry's answer, not
+				    this component's: a read-only source view offers it, and the
+				    rendered preview — which has no source to hand over — does not. */}
+				{view.capabilities.textClipboard ? (
 					<>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
