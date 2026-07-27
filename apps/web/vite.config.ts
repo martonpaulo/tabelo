@@ -10,6 +10,20 @@ const base = process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
 	base,
+	build: {
+		rolldownOptions: {
+			output: {
+				codeSplitting: {
+					groups: [
+						{
+							name: "codemirror-core",
+							test: /node_modules[\\/]@codemirror[\\/](?:commands|language|state|view)[\\/]/,
+						},
+					],
+				},
+			},
+		},
+	},
 	server: {
 		port: 3001,
 	},
