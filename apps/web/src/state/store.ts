@@ -53,6 +53,8 @@ import {
 	applyLayout,
 	createDefaultWorkspace,
 	type LayoutId,
+	largerLayout,
+	smallerLayout,
 	type Workspace,
 } from "@/workspace/layout";
 
@@ -78,10 +80,12 @@ export interface Draft {
 	readonly warnings: readonly ParseIssue[];
 }
 
-export interface PendingPaneView {
-	readonly paneId: string;
-	readonly view: ViewId;
-}
+// A pane change the user asked for that would destroy text the document has
+// not read back yet. Modelled as one explicit state rather than a flag per
+// action, so there is never a question of which confirmation is outstanding.
+export type PendingPaneAction =
+	| { readonly kind: "view"; readonly paneId: string; readonly view: ViewId }
+	| { readonly kind: "close"; readonly paneId: string };
 
 export interface HistoryEntry {
 	readonly document: TableDocument;
@@ -123,7 +127,11 @@ export interface TabeloState {
 	notice: string | null;
 	inputError: ImportError | null;
 	headerCorrection: HeaderCorrection | null;
-	pendingPaneView: PendingPaneView | null;
+	pendingPaneAction: PendingPaneAction | null;
+	// The pane whose menu should take focus next. Adding a view is one intent in
+	// two parts — make room, then say what goes there — so the control that says
+	// it is handed to the user instead of left to be hunted for.
+	paneMenuFocus: string | null;
 
 	hydrate: () => void;
 	replaceUnreadableStorage: () => boolean;
@@ -134,7 +142,10 @@ export interface TabeloState {
 
 	setLayout: (layout: LayoutId) => void;
 	setPaneView: (paneId: string, view: ViewId) => void;
-	confirmPaneView: () => void;
+	addPane: () => void;
+	closePane: (paneId: string) => void;
+	confirmPaneAction: () => void;
+	clearPaneMenuFocus: () => void;
 	setActivePane: (paneId: string) => void;
 	setColumnRatio: (ratio: number) => void;
 	setRowRatio: (ratio: number) => void;
@@ -234,6 +245,34 @@ function restoreDraft(draft: Draft | null, workspace: Workspace): Draft | null {
 	return draft ? deriveDraft(draft, workspace) : null;
 }
 
+// Removing one pane, expressed as the smaller preset that keeps every other
+// pane where it is. Returns nothing when there is no smaller shape to move to,
+// which is what leaves Close view disabled at a single pane.
+function closedPaneState(
+	state: TabeloState,
+	paneId: string,
+): Pick<TabeloState, "workspace" | "draft" | "pendingPaneAction"> | null {
+	const layout = smallerLayout(state.workspace.layout);
+	const remaining = state.workspace.panes.filter((pane) => pane.id !== paneId);
+	if (!layout || remaining.length === state.workspace.panes.length) return null;
+
+	const panes = applyLayout(layout, remaining, state.draft?.paneId);
+	return {
+		workspace: {
+			...state.workspace,
+			layout,
+			panes,
+			activePaneId: panes.some(
+				(pane) => pane.id === state.workspace.activePaneId,
+			)
+				? state.workspace.activePaneId
+				: panes[0].id,
+		},
+		draft: state.draft?.paneId === paneId ? null : state.draft,
+		pendingPaneAction: null,
+	};
+}
+
 function savePayload(state: TabeloState): SavePayload {
 	return {
 		document: state.document,
@@ -273,7 +312,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	notice: null,
 	inputError: null,
 	headerCorrection: null,
-	pendingPaneView: null,
+	pendingPaneAction: null,
+	paneMenuFocus: null,
 
 	hydrate: () => {
 		const outcome = loadState();
@@ -289,7 +329,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				storageIssue: null,
 				headerCorrection: null,
 				inputError: null,
-				pendingPaneView: null,
+				pendingPaneAction: null,
 				selection: createSelection({ row: 0, column: 0 }),
 			});
 			return;
@@ -341,7 +381,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			draft: null,
 			inputError: null,
 			headerCorrection: null,
-			pendingPaneView: null,
+			pendingPaneAction: null,
 			selection: clampSelection(
 				state.selection,
 				next.rows.length,
@@ -383,7 +423,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			if (!continuingGrace) clearInvalidTimer();
 			set((current) => ({
 				draft,
-				pendingPaneView: null,
+				pendingPaneAction: null,
 				...(ownerChanged && previousDraft.status !== "clean"
 					? {
 							past: pushHistory(current.past, snapshotOf(current)),
@@ -432,7 +472,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			},
 			headerCorrection: null,
 			inputError: null,
-			pendingPaneView: null,
+			pendingPaneAction: null,
 			selection: clampSelection(
 				current.selection,
 				document.rows.length,
@@ -443,7 +483,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	discardDraft: () => {
 		clearInvalidTimer();
-		set({ draft: null, pendingPaneView: null });
+		set({ draft: null, pendingPaneAction: null });
 	},
 
 	setLayout: (layout) =>
@@ -478,7 +518,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const ownsDraft = draft?.paneId === paneId && draft.viewId === pane.view;
 		if (ownsDraft) {
 			if (draft.status !== "clean") {
-				set({ pendingPaneView: { paneId, view } });
+				set({ pendingPaneAction: { kind: "view", paneId, view } });
 				return;
 			}
 			state.discardDraft();
@@ -492,15 +532,69 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				),
 				activePaneId: paneId,
 			},
-			pendingPaneView: null,
+			pendingPaneAction: null,
 		}));
 	},
 
-	confirmPaneView: () => {
+	// Growing the workspace never displaces a pane, so unlike a view change or a
+	// close this needs no confirmation: nothing pending can be lost. The new
+	// pane opens on the registry's next preferred view and hands its menu the
+	// focus, so changing that choice is the very next keystroke.
+	addPane: () => {
 		const state = get();
-		const pending = state.pendingPaneView;
+		const layout = largerLayout(state.workspace.layout);
+		if (!layout) return;
+
+		const previous = state.workspace.panes;
+		const panes = applyLayout(layout, previous, state.draft?.paneId);
+		const existing = new Set(previous.map((pane) => pane.id));
+		const added = panes.find((pane) => !existing.has(pane.id));
+		if (!added) return;
+
+		set({
+			workspace: {
+				...state.workspace,
+				layout,
+				panes,
+				// The pane the user just asked for is the one they are about to work
+				// in, so it takes focus for keyboard and document-level actions.
+				activePaneId: added.id,
+			},
+			paneMenuFocus: added.id,
+		});
+	},
+
+	clearPaneMenuFocus: () => set({ paneMenuFocus: null }),
+
+	closePane: (paneId) => {
+		const state = get();
+		const draft = state.draft;
+		// Text the document has not read back yet would go with the pane, so ask
+		// first rather than discarding it silently.
+		if (draft?.paneId === paneId && draft.status !== "clean") {
+			if (!smallerLayout(state.workspace.layout)) return;
+			set({ pendingPaneAction: { kind: "close", paneId } });
+			return;
+		}
+
+		const next = closedPaneState(state, paneId);
+		if (!next) return;
+		clearInvalidTimer();
+		set(next);
+	},
+
+	confirmPaneAction: () => {
+		const state = get();
+		const pending = state.pendingPaneAction;
 		if (!pending) return;
 		state.discardDraft();
+
+		if (pending.kind === "close") {
+			const next = closedPaneState(get(), pending.paneId);
+			set(next ?? { pendingPaneAction: null });
+			return;
+		}
+
 		set((current) => ({
 			workspace: {
 				...current.workspace,
@@ -511,7 +605,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				),
 				activePaneId: pending.paneId,
 			},
-			pendingPaneView: null,
+			pendingPaneAction: null,
 		}));
 	},
 
@@ -548,7 +642,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				draft: restoreDraft(entry.draft, state.workspace),
 				headerCorrection: null,
 				inputError: null,
-				pendingPaneView: null,
+				pendingPaneAction: null,
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -570,7 +664,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				draft: restoreDraft(entry.draft, state.workspace),
 				headerCorrection: null,
 				inputError: null,
-				pendingPaneView: null,
+				pendingPaneAction: null,
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -818,7 +912,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set((state) => {
 			if (state.inputError) return { inputError: null };
 			if (state.headerCorrection) return { headerCorrection: null };
-			if (state.pendingPaneView) return { pendingPaneView: null };
+			if (state.pendingPaneAction) return { pendingPaneAction: null };
 			return { notice: null };
 		}),
 	setNotice: (notice) => set({ notice }),

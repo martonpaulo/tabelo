@@ -15,7 +15,7 @@ export function NoticeBar({ pwaUpdate }: { readonly pwaUpdate: PwaUpdate }) {
 	const notice = useTabeloStore((state) => state.notice);
 	const inputError = useTabeloStore((state) => state.inputError);
 	const headerCorrection = useTabeloStore((state) => state.headerCorrection);
-	const pendingPaneView = useTabeloStore((state) => state.pendingPaneView);
+	const pendingPaneAction = useTabeloStore((state) => state.pendingPaneAction);
 	const storageIssue = useTabeloStore((state) => state.storageIssue);
 
 	// Transient confirmations clear themselves; anything actionable stays.
@@ -106,16 +106,16 @@ export function NoticeBar({ pwaUpdate }: { readonly pwaUpdate: PwaUpdate }) {
 		);
 	}
 
-	if (pendingPaneView) {
+	if (pendingPaneAction) {
 		return (
 			<Bar tone="warning">
-				<span>{copy.notices.pendingPaneView}</span>
+				<span>{copy.notices.pendingPaneAction(pendingPaneAction.kind)}</span>
 				<Button
 					variant="outline"
 					size="xs"
-					onClick={() => useTabeloStore.getState().confirmPaneView()}
+					onClick={() => useTabeloStore.getState().confirmPaneAction()}
 				>
-					{copy.notices.discardAndChangeView}
+					{copy.notices.discardPaneAction(pendingPaneAction.kind)}
 				</Button>
 				<Dismiss />
 			</Bar>

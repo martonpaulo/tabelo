@@ -13,12 +13,16 @@ import {
 	ChevronDown,
 	ClipboardCopy,
 	MoreHorizontal,
+	Plus,
+	X,
 } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { writeClipboardText } from "@/platform/files";
 import { textForView, useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { listViews } from "@/views/registry";
 import type { ViewDefinition } from "@/views/types";
+import { largerLayout, smallerLayout } from "@/workspace/layout";
 
 interface PaneControlProps {
 	readonly paneId: string;
@@ -42,12 +46,31 @@ export function PaneIdentity({
 
 export function PaneMenu({ paneId, view }: PaneControlProps) {
 	const views = listViews();
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	// Pane count changes move between presets, so what is possible here is
+	// exactly what the layout gallery can express — see docs/adr/0006.
+	const canAdd = useTabeloStore(
+		(state) => largerLayout(state.workspace.layout) !== undefined,
+	);
+	const canClose = useTabeloStore(
+		(state) => smallerLayout(state.workspace.layout) !== undefined,
+	);
+
+	// A pane the user just added hands its menu the focus, so the view it should
+	// show is one keystroke away rather than something to go looking for.
+	const wantsFocus = useTabeloStore((state) => state.paneMenuFocus === paneId);
+	useEffect(() => {
+		if (!wantsFocus) return;
+		triggerRef.current?.focus();
+		useTabeloStore.getState().clearPaneMenuFocus();
+	}, [wantsFocus]);
 
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger
 				render={
 					<Button
+						ref={triggerRef}
 						variant="ghost"
 						size="sm"
 						aria-label={`${copy.workspace.paneActions}: ${view.label}`}
@@ -82,6 +105,27 @@ export function PaneMenu({ paneId, view }: PaneControlProps) {
 						</DropdownMenuItem>
 					))}
 				</DropdownMenuGroup>
+
+				<DropdownMenuSeparator />
+
+				{/* Flat rather than a submenu of formats: the workspace grows, and the
+				    new pane's own menu opens on its view list with focus already
+				    there. See docs/design-system.md §5 on nested menus. */}
+				<DropdownMenuItem
+					disabled={!canAdd}
+					onClick={() => useTabeloStore.getState().addPane()}
+				>
+					<Plus aria-hidden />
+					{copy.workspace.addView}
+				</DropdownMenuItem>
+
+				<DropdownMenuItem
+					disabled={!canClose}
+					onClick={() => useTabeloStore.getState().closePane(paneId)}
+				>
+					<X aria-hidden />
+					{copy.workspace.closeView}
+				</DropdownMenuItem>
 
 				{view.kind === "source" ? (
 					<>

@@ -34,13 +34,32 @@ rather than following it, because it preserves the existing full-width grid.
 The rule's purpose is to prevent L-shapes and overlaps, and a full-workspace
 pane violates neither.
 
-Switching layouts carries pane identities and view choices across in reading
-order, so changing the shape never resets what the user was looking at. Pane
-identifiers belong to the application and do not encode slots or array
-positions. When a smaller preset cannot retain every pane, the pane owning a
-source draft is retained first so pending work stays reachable. Panes a larger
-layout adds are filled from a fixed preference order — grid, Markdown, CSV,
-preview.
+Switching layouts carries pane identities and view choices across, so changing
+the shape never resets what the user was looking at. Each position of the new
+layout first claims the pane that already starts in its top-left slot; panes
+with no matching position fill what is left in reading order. Position-first
+rather than order-first is what keeps a pane visually still when the shape
+around it changes. Pane identifiers belong to the application and do not encode
+slots or array positions. When a smaller preset cannot retain every pane, the
+pane owning a source draft is retained first so pending work stays reachable.
+Panes a larger layout adds are filled from a fixed preference order — grid,
+Markdown, CSV, preview — skipping any view the workspace already shows, so a
+pane the workspace gains shows something new.
+
+Pane count is also changed directly, from the pane the user is working in:
+**Add view** and **Close view** in that pane's menu. Both are expressed as moves
+between these same presets — `single → columns → left-split → quad` growing,
+and the reverse shrinking, with `rows → bottom-split` covering the horizontal
+branch — so a direct action can never reach a shape the picker cannot, and both
+routes share one implementation. The targets are chosen to be the preset that
+leaves the most surviving panes in the slot they already had. Closing removes
+the chosen pane rather than the last one; the smaller preset then absorbs the
+freed space into whichever neighbour already occupied part of it.
+
+Growing never displaces a pane, so **Add view** needs no confirmation. Closing
+can destroy a source draft the document has not read back, so a pane owning
+uncommitted text asks first, through the same notice used when a view change
+would displace a draft.
 
 Split ratios are stored per axis and the resize handle appears only when the
 layout actually splits that axis, derived from the preset rather than listed,
@@ -48,9 +67,16 @@ so a new preset needs no edit there.
 
 ## Consequences
 
-- The layout control is one menu of eight pictures, with nothing to learn.
+- The layout control is one menu of eight pictures, with nothing to learn, and
+  it is the advanced path rather than the only one: adding or closing a view
+  needs no understanding of layout names at all.
 - Invalid layouts are unrepresentable, so there is no validation to write and
-  no error state to design.
+  no error state to design — including for the direct commands, which can only
+  move between presets.
+- Two of the eight three-pane presets, `right-split` and `bottom-split`, have
+  no four-pane preset that preserves every corner, because `quad` is the only
+  one. Growing from those moves one surviving pane. Shrinking is always
+  corner-stable.
 - The cost is expressiveness: a user cannot invent an arrangement that is not
   in the list. With a 2×2 grid the presets cover every rectangular tiling that
   respects the constraint, so this costs nothing today — but a 3×3 workspace

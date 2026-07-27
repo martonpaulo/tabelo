@@ -281,6 +281,11 @@ resizes the pane.
 - Each pane header shows a stable, non-interactive view identity. View changes
   and other low-frequency pane actions share one visibly labelled Pane menu;
   the grid's contextual Table actions may remain beside it.
+- The Pane menu is flat. Changing the view, adding a view, and closing the view
+  are all plain items in it — never a submenu of formats. Add view grows
+  the workspace and hands the new pane's menu the focus, so the second half of
+  the intent is one keystroke rather than a nested level to open.
+- Add view and Close view are disabled, not hidden, at four panes and at one.
 - Nothing may reflow because of a selection change or a status change.
 - One-pane layouts may breathe, but do not enlarge controls or introduce an
   otherwise absent card. Four-pane layouts keep the same 14px critical labels,

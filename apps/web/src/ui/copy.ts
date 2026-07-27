@@ -15,6 +15,8 @@ export const copy = {
 		layout: "Layout",
 		layoutHint: "Choose how the workspace is divided.",
 		changeView: "Change view",
+		addView: "Add view",
+		closeView: "Close view",
 		pane: "Pane",
 		paneActions: "Pane actions",
 		activePane: "Active pane",
@@ -136,9 +138,12 @@ export const copy = {
 	},
 
 	notices: {
-		pendingPaneView:
-			"This source is not valid yet. Keep editing or discard it before changing views.",
-		discardAndChangeView: "Discard and change view",
+		pendingPaneAction: (kind: "view" | "close") =>
+			kind === "close"
+				? "This source is not valid yet. Keep editing or discard it before closing this view."
+				: "This source is not valid yet. Keep editing or discard it before changing views.",
+		discardPaneAction: (kind: "view" | "close") =>
+			kind === "close" ? "Discard and close view" : "Discard and change view",
 		headerGuess: "First row used as headers.",
 		headerGuessAction: "Use it as data instead",
 		importError: (error: ImportError) => {

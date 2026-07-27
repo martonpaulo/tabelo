@@ -4,11 +4,15 @@ import {
 	createDefaultWorkspace,
 	gridAreaOf,
 	type LayoutId,
+	largerLayout,
 	layoutPresets,
 	layoutSplitsColumns,
 	layoutSplitsRows,
+	paneCount,
 	SLOT_ORDER,
 	type SlotId,
+	smallerLayout,
+	type WorkspacePane,
 } from "./layout";
 
 // The invariant that makes the workspace safe: every preset tiles the 2x2 grid
@@ -93,6 +97,22 @@ describe("applying a layout", () => {
 		expect(after.every((pane) => pane.view.length > 0)).toBe(true);
 	});
 
+	it("fills a new pane with a view the workspace is not already showing", () => {
+		const before = applyLayout("columns").map((pane) => ({
+			...pane,
+			view: "csv" as const,
+		}));
+
+		const after = applyLayout("quad", before);
+
+		const added = after.filter(
+			(pane) => !before.some((candidate) => candidate.id === pane.id),
+		);
+		expect(added).toHaveLength(2);
+		expect(added.map((pane) => pane.view)).not.toContain("csv");
+		expect(new Set(added.map((pane) => pane.view)).size).toBe(added.length);
+	});
+
 	it("keeps the grid when collapsing to a single pane", () => {
 		const wide = applyLayout("quad");
 		const single = applyLayout("single", wide);
@@ -106,6 +126,124 @@ describe("applying a layout", () => {
 			const ids = new Set(panes.map((pane) => pane.id));
 			expect(ids.size).toBe(panes.length);
 		}
+	});
+});
+
+// Add view and Close view are expressed as moves between presets, so the
+// invariants that make the gallery safe have to hold for them too: one pane at
+// a time, every count reachable, and nothing invented outside the preset list.
+
+const layoutIds = layoutPresets.map((preset) => preset.id);
+
+function cornerOf(pane: WorkspacePane): string {
+	const area = gridAreaOf(pane.slots);
+	return `${area.rowStart}:${area.columnStart}`;
+}
+
+describe("pane count transitions", () => {
+	it.each(layoutIds)("grows from %s by exactly one pane", (id) => {
+		const target = largerLayout(id);
+		if (paneCount(id) === 4) {
+			expect(target).toBeUndefined();
+			return;
+		}
+		expect(target).toBeDefined();
+		expect(paneCount(target as LayoutId)).toBe(paneCount(id) + 1);
+	});
+
+	it.each(layoutIds)("shrinks from %s by exactly one pane", (id) => {
+		const target = smallerLayout(id);
+		if (paneCount(id) === 1) {
+			expect(target).toBeUndefined();
+			return;
+		}
+		expect(target).toBeDefined();
+		expect(paneCount(target as LayoutId)).toBe(paneCount(id) - 1);
+	});
+
+	it("reaches every pane count from one to four and back", () => {
+		const counts: number[] = [];
+		let id: LayoutId = "single";
+		counts.push(paneCount(id));
+		for (let step = 0; step < 3; step += 1) {
+			const next = largerLayout(id);
+			expect(next).toBeDefined();
+			id = next as LayoutId;
+			counts.push(paneCount(id));
+		}
+		expect(counts).toEqual([1, 2, 3, 4]);
+
+		while (smallerLayout(id)) {
+			id = smallerLayout(id) as LayoutId;
+			counts.push(paneCount(id));
+		}
+		expect(counts).toEqual([1, 2, 3, 4, 3, 2, 1]);
+	});
+
+	it("shrinks without moving any pane that survives", () => {
+		for (const id of layoutIds) {
+			const target = smallerLayout(id);
+			if (!target) continue;
+			const before = applyLayout(id);
+			// Closing the last pane is the case where nothing else has to move.
+			const after = applyLayout(target, before.slice(0, -1));
+
+			for (const pane of after) {
+				const original = before.find((candidate) => candidate.id === pane.id);
+				expect(original).toBeDefined();
+				expect(cornerOf(pane)).toBe(cornerOf(original as WorkspacePane));
+			}
+		}
+	});
+
+	it("adds the new pane where no surviving pane already sits", () => {
+		for (const id of layoutIds) {
+			const target = largerLayout(id);
+			if (!target) continue;
+			const before = applyLayout(id);
+			const after = applyLayout(target, before);
+
+			const carried = after.filter((pane) =>
+				before.some((candidate) => candidate.id === pane.id),
+			);
+			expect(carried).toHaveLength(before.length);
+			for (const pane of carried) {
+				const original = before.find((candidate) => candidate.id === pane.id);
+				expect(cornerOf(pane)).toBe(cornerOf(original as WorkspacePane));
+			}
+			expect(after).toHaveLength(before.length + 1);
+		}
+	});
+
+	it("keeps every other pane in place when one in the middle is closed", () => {
+		// Top-right closes, so the pane below it takes the freed column and the
+		// two on the left do not move at all.
+		const before = applyLayout("quad").map((pane, index) => ({
+			...pane,
+			view: (["grid", "markdown", "csv", "jira"] as const)[index],
+		}));
+		const after = applyLayout(
+			smallerLayout("quad") as LayoutId,
+			before.filter((pane) => pane.id !== before[1].id),
+		);
+
+		expect(after.map((pane) => pane.view).sort()).toEqual([
+			"csv",
+			"grid",
+			"jira",
+		]);
+		expect(after.some((pane) => pane.id === before[1].id)).toBe(false);
+
+		const placed = new Map(after.map((pane) => [pane.id, cornerOf(pane)]));
+		expect(placed.get(before[0].id)).toBe(cornerOf(before[0]));
+		expect(placed.get(before[2].id)).toBe(cornerOf(before[2]));
+		// The survivor that grows keeps the slot it already occupied inside its
+		// larger shape, rather than being shuffled to a different corner.
+		expect(
+			after
+				.find((pane) => pane.id === before[3].id)
+				?.slots.includes(before[3].slots[0]),
+		).toBe(true);
 	});
 });
 

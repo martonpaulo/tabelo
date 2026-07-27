@@ -88,16 +88,20 @@ describe("draft ownership", () => {
 		expect(state.workspace.panes.find((pane) => pane.id === paneId)?.view).toBe(
 			"markdown",
 		);
-		expect(state.pendingPaneView).toEqual({ paneId, view: "csv" });
+		expect(state.pendingPaneAction).toEqual({
+			kind: "view",
+			paneId,
+			view: "csv",
+		});
 		expect(state.draft?.text).toBe(invalidMarkdown);
 
-		state.confirmPaneView();
+		state.confirmPaneAction();
 
 		state = useTabeloStore.getState();
 		expect(state.workspace.panes.find((pane) => pane.id === paneId)?.view).toBe(
 			"csv",
 		);
-		expect(state.pendingPaneView).toBeNull();
+		expect(state.pendingPaneAction).toBeNull();
 		expect(state.draft).toBeNull();
 	});
 
@@ -112,7 +116,7 @@ describe("draft ownership", () => {
 		expect(state.workspace.panes.find((pane) => pane.id === paneId)?.view).toBe(
 			"csv",
 		);
-		expect(state.pendingPaneView).toBeNull();
+		expect(state.pendingPaneAction).toBeNull();
 		expect(state.draft).toBeNull();
 		expect(state.document.columns[0]?.header).toBe("Name");
 	});

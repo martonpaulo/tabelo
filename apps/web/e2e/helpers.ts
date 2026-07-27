@@ -74,11 +74,30 @@ export class TabeloPage {
 		nextView: string,
 		index = 0,
 	): Promise<void> {
-		const pane = this.paneAt(currentView, index);
-		await pane
-			.getByRole("button", { name: `Pane actions: ${currentView}` })
-			.click();
+		await this.openPaneMenu(currentView, index);
 		await this.page.getByRole("menuitem").filter({ hasText: nextView }).click();
+	}
+
+	paneMenuTrigger(view: string, index = 0): Locator {
+		return this.paneAt(view, index).getByRole("button", {
+			name: `Pane actions: ${view}`,
+		});
+	}
+
+	async openPaneMenu(view: string, index = 0): Promise<Locator> {
+		await this.paneMenuTrigger(view, index).click();
+		return this.page.getByRole("menu", { name: `Pane actions: ${view}` });
+	}
+
+	// Add view, Close view, and the zoom steps are all plain items in the pane's
+	// own menu, so one helper covers every direct pane command.
+	async runPaneCommand(
+		view: string,
+		command: string,
+		index = 0,
+	): Promise<void> {
+		const menu = await this.openPaneMenu(view, index);
+		await menu.getByRole("menuitem", { name: command, exact: true }).click();
 	}
 
 	async editCell(row: number, column: number, value: string): Promise<void> {

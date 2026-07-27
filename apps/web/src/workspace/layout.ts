@@ -145,6 +145,45 @@ export function layoutSplitsRows(id: LayoutId): boolean {
 	});
 }
 
+export function paneCount(id: LayoutId): number {
+	return getLayout(id).panes.length;
+}
+
+// Adding and closing a view are moves between the same presets the gallery
+// offers, so the workspace has one transition model rather than two — a direct
+// action can never reach a shape the picker cannot. Each target is the preset
+// that leaves the most surviving panes in the slot they already started in,
+// which is what makes the change read as local rather than as a re-tiling.
+const LARGER_LAYOUT: Partial<Record<LayoutId, LayoutId>> = {
+	single: "columns",
+	columns: "left-split",
+	rows: "bottom-split",
+	"left-split": "quad",
+	"right-split": "quad",
+	"top-split": "quad",
+	"bottom-split": "quad",
+};
+
+const SMALLER_LAYOUT: Partial<Record<LayoutId, LayoutId>> = {
+	columns: "single",
+	rows: "single",
+	"left-split": "columns",
+	"right-split": "columns",
+	"top-split": "columns",
+	"bottom-split": "rows",
+	quad: "left-split",
+};
+
+// Undefined at the ends of the range, which is what disables the action rather
+// than hiding it.
+export function largerLayout(id: LayoutId): LayoutId | undefined {
+	return LARGER_LAYOUT[id];
+}
+
+export function smallerLayout(id: LayoutId): LayoutId | undefined {
+	return SMALLER_LAYOUT[id];
+}
+
 export interface WorkspacePane {
 	readonly id: string;
 	readonly view: ViewId;
@@ -179,9 +218,20 @@ function nextPaneId(used: Set<string>): string {
 	return id;
 }
 
+// A pane's top-left slot. Every pane is a rectangle, so this identifies its
+// position uniquely within a layout and is what makes a pane recognisable as
+// "the same one" after the shape around it changes.
+function cornerOf(slots: readonly SlotId[]): string {
+	const area = gridAreaOf(slots);
+	return `${area.rowStart}:${area.columnStart}`;
+}
+
 // Rebuilds the pane list for a layout while keeping pane identity independent
-// from shape and position. When fewer panes fit, the preferred pane replaces
-// the last carried pane so an owned draft remains mounted and reachable.
+// from shape and position. Each position of the new layout first claims the
+// pane that already starts in its top-left slot, so a shape change moves as few
+// panes as it can; whatever is left fills the remaining positions in reading
+// order. When fewer panes fit, the preferred pane replaces the last carried
+// pane so an owned draft remains mounted and reachable.
 export function applyLayout(
 	layoutId: LayoutId,
 	previousPanes: readonly WorkspacePane[] = [],
@@ -189,25 +239,46 @@ export function applyLayout(
 ): WorkspacePane[] {
 	const preset = getLayout(layoutId);
 	const count = preset.panes.length;
-	const carried = previousPanes.slice(0, count);
+
+	const claimed = new Set<string>();
+	const carried: (WorkspacePane | undefined)[] = preset.panes.map((slots) => {
+		const corner = cornerOf(slots);
+		const match = previousPanes.find(
+			(pane) => !claimed.has(pane.id) && cornerOf(pane.slots) === corner,
+		);
+		if (match) claimed.add(match.id);
+		return match;
+	});
+
+	const leftover = previousPanes.filter((pane) => !claimed.has(pane.id));
+	for (let index = 0; index < count && leftover.length > 0; index += 1) {
+		if (!carried[index]) carried[index] = leftover.shift();
+	}
+
 	const preferred = preferredPaneId
 		? previousPanes.find((pane) => pane.id === preferredPaneId)
 		: undefined;
-
-	if (
-		preferred &&
-		carried.length === count &&
-		!carried.some((pane) => pane.id === preferred.id)
-	) {
+	if (preferred && !carried.some((pane) => pane?.id === preferred.id)) {
 		carried[count - 1] = preferred;
 	}
 
 	const used = new Set(previousPanes.map((pane) => pane.id));
+	// A pane the workspace gains shows something it is not showing already,
+	// which is the whole reason to have gained it.
+	const shown = new Set(
+		carried.filter((pane) => pane !== undefined).map((pane) => pane.view),
+	);
+	const nextView = (): ViewId => {
+		const view = FILL_ORDER.find((candidate) => !shown.has(candidate));
+		shown.add(view ?? "markdown");
+		return view ?? "markdown";
+	};
+
 	return preset.panes.map((slots, index) => {
 		const existing = carried[index];
 		return {
 			id: existing?.id ?? nextPaneId(used),
-			view: existing?.view ?? FILL_ORDER[index] ?? "markdown",
+			view: existing?.view ?? nextView(),
 			slots,
 		};
 	});
