@@ -35,6 +35,9 @@ jobs:
       - name: Type check
         run: pnpm check-types
 
+      - name: Unit tests
+        run: pnpm test
+
   deploy:
     name: Deploy to GitHub Pages
     needs: check
