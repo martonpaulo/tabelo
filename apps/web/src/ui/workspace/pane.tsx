@@ -20,7 +20,7 @@ import { navigateToSourceLine } from "@/ui/source/source-navigation";
 import { getView } from "@/views/registry";
 import { gridAreaStyle, type WorkspacePane } from "@/workspace/layout";
 import { PaneContent } from "./pane-content";
-import { ViewPicker } from "./view-picker";
+import { PaneIdentity, PaneMenu } from "./pane-menu";
 
 // One pane frame for every view. The header carries only what belongs to this
 // pane: which view it shows, and the state of that view. Document-level
@@ -84,7 +84,7 @@ function SourceIssue({ paneId, viewId }: PaneSourceProps) {
 		: primary;
 
 	return (
-		<>
+		<div className="absolute inset-x-2 bottom-2 z-10 flex min-h-control-md items-center gap-1.5 border border-line-subtle bg-surface-panel px-2 shadow-md">
 			{feedback.error ? (
 				<span
 					id={ids.announcement}
@@ -157,7 +157,7 @@ function SourceIssue({ paneId, viewId }: PaneSourceProps) {
 					))}
 				</DropdownMenuContent>
 			</DropdownMenu>
-		</>
+		</div>
 	);
 }
 
@@ -188,46 +188,23 @@ export const Pane = memo(function Pane({ pane, active, compact }: PaneProps) {
 			}}
 		>
 			<Panel.Header className="overflow-x-auto">
-				<ViewPicker
-					value={pane.view}
-					compact={compact}
-					onChange={(next) =>
-						useTabeloStore.getState().setPaneView(pane.id, next)
-					}
-				/>
+				<PaneIdentity view={view} compact={compact} />
 				<Panel.Spacer />
 				{view.kind === "grid" ? <GridPaneActions compact={compact} /> : null}
-				{!view.capabilities.editable ? (
-					<span className="shrink-0 text-muted-foreground text-xs">
-						{copy.workspace.readOnly}
-					</span>
-				) : null}
 				{view.kind === "source" && view.capabilities.editable ? (
 					<SourceStatus paneId={pane.id} viewId={pane.view} />
 				) : null}
+				<PaneMenu paneId={pane.id} view={view} compact={compact} />
 			</Panel.Header>
 
 			<Panel.Body
 				className={view.kind === "source" ? "overflow-hidden" : undefined}
 			>
 				<PaneContent paneId={pane.id} view={view} />
-			</Panel.Body>
-
-			{view.kind === "source" ? (
-				<PaneIssueRow>
+				{view.kind === "source" ? (
 					<SourceIssue paneId={pane.id} viewId={pane.view} />
-				</PaneIssueRow>
-			) : null}
+				) : null}
+			</Panel.Body>
 		</Panel>
 	);
 });
-
-// The message row is always present so a parse error never changes the pane's
-// height — layout stability outranks tidiness. See docs/design-system.md §4.
-function PaneIssueRow({ children }: { readonly children: React.ReactNode }) {
-	return (
-		<div className="flex h-6 shrink-0 items-center gap-1.5 border-line-subtle border-t px-3">
-			{children}
-		</div>
-	);
-}

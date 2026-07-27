@@ -14,11 +14,12 @@ export const copy = {
 	workspace: {
 		layout: "Layout",
 		layoutHint: "Choose how the workspace is divided.",
-		chooseView: "Choose view",
+		changeView: "Change view",
+		pane: "Pane",
+		paneActions: "Pane actions",
 		activePane: "Active pane",
 		resizeColumns: "Resize columns",
 		resizeRows: "Resize rows",
-		readOnly: "Read-only",
 	},
 
 	status: {
@@ -84,6 +85,7 @@ export const copy = {
 	},
 
 	actions: {
+		file: "File",
 		undo: "Undo",
 		redo: "Redo",
 		insertRowAbove: "Insert row above",
@@ -115,7 +117,6 @@ export const copy = {
 		columnActions: "Column actions",
 		tableActions: "Table actions",
 		copySource: "Copy source",
-		download: "Download",
 		downloadAs: "Download as",
 		importFile: "Import file",
 		newTable: "New table",

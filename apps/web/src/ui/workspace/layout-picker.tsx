@@ -67,13 +67,13 @@ export function LayoutPicker({ value, onChange }: LayoutPickerProps) {
 				render={
 					<Button
 						variant="ghost"
-						size="icon-sm"
+						size="sm"
 						aria-label={`${copy.workspace.layout}: ${active.label}`}
-						title={`${copy.workspace.layout}: ${active.label}`}
 					/>
 				}
 			>
 				<LayoutGrid aria-hidden />
+				<span className="font-medium">{copy.workspace.layout}</span>
 			</DropdownMenuTrigger>
 
 			<DropdownMenuContent align="end" className="w-auto min-w-64">

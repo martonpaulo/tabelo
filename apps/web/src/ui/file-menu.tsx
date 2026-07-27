@@ -5,38 +5,56 @@ import {
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
-import { Download } from "lucide-react";
+import {
+	ChevronDown,
+	Download,
+	FilePlus2,
+	FolderOpen,
+	Upload,
+} from "lucide-react";
 import { listDownloadableCodecs } from "@/formats";
 import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 
-// Generated from the codec registry, never from a list kept in step by hand.
-// Registering a format is the only thing needed for it to become downloadable.
+// File operations share one explicit document-level entry point. Download
+// choices still come directly from the codec registry.
 
 const BASE_FILENAME = "table";
 
-export function DownloadMenu() {
+export function FileMenu({ onImport }: { readonly onImport: () => void }) {
 	const codecs = listDownloadableCodecs();
 
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger
 				render={
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label={copy.actions.download}
-						title={copy.actions.download}
-					/>
+					<Button variant="ghost" size="sm" aria-label={copy.actions.file} />
 				}
 			>
-				<Download aria-hidden />
+				<FolderOpen aria-hidden />
+				<span className="font-medium">{copy.actions.file}</span>
+				<ChevronDown aria-hidden className="opacity-60" />
 			</DropdownMenuTrigger>
 
-			<DropdownMenuContent align="end" className="w-auto min-w-48">
+			<DropdownMenuContent align="end" className="w-auto min-w-56">
+				<DropdownMenuGroup>
+					<DropdownMenuItem
+						onClick={() => useTabeloStore.getState().resetDocument()}
+					>
+						<FilePlus2 aria-hidden />
+						{copy.actions.newTable}
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={onImport}>
+						<Upload aria-hidden />
+						{copy.actions.importFile}
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
+
+				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuLabel>{copy.actions.downloadAs}</DropdownMenuLabel>
 					{codecs.map((codec) => (
@@ -51,6 +69,7 @@ export function DownloadMenu() {
 								);
 							}}
 						>
+							<Download aria-hidden />
 							<span className="flex-1">{codec.label}</span>
 							<span className="text-muted-foreground text-xs">
 								.{codec.extension}

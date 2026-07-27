@@ -155,9 +155,9 @@ one component with many boolean props.
 // Yes — composition
 <Panel>
   <Panel.Header>
-    <ViewPicker value={pane.view} onChange={…} />
+    <PaneIdentity view={pane.view} />
     <Panel.Spacer />
-    <StatusPill tone="ok" label="In sync" />
+    <PaneMenu pane={pane} />
   </Panel.Header>
   <Panel.Body>…</Panel.Body>
 </Panel>
@@ -219,8 +219,9 @@ changes. Layout stability outranks tidiness.
 
 Healthy source panes are silent: do not render repeated "In sync" or "Editing"
 labels. A transient parse failure also stays silent during its short grace
-period. Persistent invalid source uses the invalid treatment and the fixed
-message row so colour never carries the error alone.
+period. Persistent invalid source uses the invalid treatment and a non-reflowing
+editor overlay so colour never carries the error alone and feedback never
+resizes the pane.
 
 ---
 
@@ -232,11 +233,18 @@ message row so colour never carries the error alone.
 - Below 900px panes stack; the chosen layout is remembered, not discarded.
 - Pane headers are one row, `h-panel-header`, never wrapping. A narrow pane
   shortens its labels rather than wrapping them.
-- A pane's height must not change with its state: the source message row is
-  always present, empty or not.
+- A pane's height must not change with its state: exceptional source feedback
+  overlays the editor and is absent from the layout when healthy.
 - Document-level actions live in the app header. Pane-level actions live in that
   pane's header. Row and column actions live on the row or column, and in the
   context menu.
+- The app header keeps Undo and Redo visible. New, Import, and every download
+  format share one visibly labelled File menu. Layout remains a visibly labelled
+  workspace control. Do not expose those actions as a run of unfamiliar
+  icon-only buttons.
+- Each pane header shows a stable, non-interactive view identity. View changes
+  and other low-frequency pane actions share one visibly labelled Pane menu;
+  the grid's contextual Table actions may remain beside it.
 - Nothing may reflow because of a selection change or a status change.
 
 ---
@@ -246,9 +254,10 @@ message row so colour never carries the error alone.
 Lucide only, `size-4` inside `control-md` and `size-3.5` inside `control-sm`.
 Always `aria-hidden`, because the accessible name comes from the button.
 
-Icon-only buttons are permitted in the app header, where the actions are
-document-level and few, and in the grid's per-row and per-column affordances,
-where a label would not fit. Inside a pane, show the label.
+Icon-only buttons are limited to universally recognised history actions in the
+app header and the grid's per-row and per-column affordances, where a label
+would not fit. File, layout, pane, and other unfamiliar controls keep a visible
+label and never depend on a tooltip for identification.
 
 ---
 

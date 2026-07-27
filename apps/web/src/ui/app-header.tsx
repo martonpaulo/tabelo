@@ -1,4 +1,4 @@
-import { FilePlus2, Redo2, Undo2, Upload } from "lucide-react";
+import { Redo2, Undo2 } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import {
 	canRunHistory,
@@ -8,8 +8,8 @@ import {
 } from "@/history/coordinator";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
-import { DownloadMenu } from "@/ui/download-menu";
-import { ToolbarButton, ToolbarDivider } from "@/ui/primitives/toolbar-button";
+import { FileMenu } from "@/ui/file-menu";
+import { ToolbarButton } from "@/ui/primitives/toolbar-button";
 import { ThemeToggle } from "@/ui/theme-toggle";
 import { LayoutPicker } from "@/ui/workspace/layout-picker";
 
@@ -65,24 +65,7 @@ export function AppHeader({ onImport }: { readonly onImport: () => void }) {
 				}
 			/>
 
-			<ToolbarDivider />
-
-			<ToolbarButton
-				icon={Upload}
-				label={copy.actions.importFile}
-				iconOnly
-				onClick={onImport}
-			/>
-			<DownloadMenu />
-			<ToolbarButton
-				icon={FilePlus2}
-				label={copy.actions.newTable}
-				iconOnly
-				onClick={() => useTabeloStore.getState().resetDocument()}
-			/>
-
-			<ToolbarDivider />
-
+			<FileMenu onImport={onImport} />
 			<LayoutPicker
 				value={layout}
 				onChange={(next) => useTabeloStore.getState().setLayout(next)}
