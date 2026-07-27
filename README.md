@@ -1,38 +1,96 @@
 # Tabelo
 
-Edit a table visually, as Markdown, or as CSV — always in sync, entirely in your
-browser.
+**One table. Three ways to edit it. Always in sync.**
 
-> **Status: early development.** The repository is scaffolded and the
-> architecture is decided, but the editor itself is not implemented yet. The
-> "What it will do" section describes intent, not working software.
+Tabelo is a table editor that stops making you choose between a grid and a text
+file. Drag a column into place, then watch the Markdown rewrite itself. Fix a
+typo in the CSV, then watch the cell update. Same table, three windows onto it,
+no import step and no export step.
 
-## What it will do
+It runs entirely in your browser. No account, no server, no upload.
 
-Tabelo keeps one table and shows it three ways. A visual grid is always the
-primary editing surface; a second panel shows the same table as Markdown or CSV,
-and you can switch between those two at any time. Edit anywhere, and the other
-representations follow.
+**→ [martonpaulo.github.io/tabelo](https://martonpaulo.github.io/tabelo/)**
 
-- **Visual grid** — edit cells and headers; add, delete, duplicate, and reorder
-  rows and columns; select cells, rows, ranges, or columns; resize columns;
-  drive all of it from the keyboard.
-- **Markdown** — edit a Markdown table directly, with syntax highlighting,
-  column alignment, and useful feedback while the source is incomplete.
-- **CSV** — edit the same table as CSV, handling quoted delimiters, embedded
-  line breaks, escaped quotes, empty cells, and mixed line endings.
-- **Clipboard as a first-class path** — paste from spreadsheets, web tables,
-  Markdown, CSV, or TSV, including into an empty document to get started.
-- **Nothing to save** — the document is written to browser storage
-  automatically and restored when you come back.
-- **Works offline** — a service worker caches the app on first visit. No install
-  prompt, no app store, nothing to accept.
+---
 
-### What it deliberately is not
+## The whole idea in one picture
 
-A spreadsheet. No formulas, calculations, multiple sheets, charts, or macros.
-No accounts, no backend, no cloud sync, no collaboration, no analytics. Tabelo
-is a focused utility that does one thing.
+These are not three documents. They are the same document.
+
+**Grid**
+
+| Name  | Role      | Active |
+| :---- | :-------: | -----: |
+| Ana   | Designer  | Yes    |
+| Bruno | Developer | No     |
+
+**Markdown** — alignment and all
+
+```markdown
+| Name  | Role      | Active |
+| :---- | :-------: | -----: |
+| Ana   | Designer  | Yes    |
+| Bruno | Developer | No     |
+```
+
+**CSV**
+
+```csv
+Name,Role,Active
+Ana,Designer,Yes
+Bruno,Developer,No
+```
+
+Switch to CSV and back, and those `:---:` alignment markers are still there.
+CSV cannot express alignment, so Tabelo remembers it for you rather than
+throwing it away.
+
+## What it does
+
+- **Edit visually.** Cells, headers, rows, columns. Add, delete, duplicate,
+  reorder, resize, select ranges, clear.
+- **Edit the source.** Markdown or CSV, with syntax highlighting and errors that
+  tell you which line is wrong.
+- **Never lose a cell.** A value with a line break in it survives
+  CSV → Markdown → CSV byte-exact. Markdown can't hold a raw newline, so Tabelo
+  escapes it and unescapes it back. Same for pipes.
+- **Type freely.** While your Markdown is half-written and invalid, the grid
+  keeps showing your last working table instead of collapsing. It says so, too.
+- **Paste anything.** Spreadsheets, web tables, Markdown, CSV, TSV, a plain
+  column of text. Tabelo works out which it is.
+- **Nothing to save.** Your table is in browser storage and comes back when you
+  return.
+- **Works offline.** A service worker caches the app on your first visit. No
+  install prompt, no app store, nothing to accept.
+
+### What it deliberately doesn't do
+
+No formulas. No multiple sheets. No charts, macros, or pivot tables. No
+accounts, no cloud sync, no collaboration, no analytics. Tabelo is a focused
+utility, and the fastest way to ruin one is to keep adding to it.
+
+## Keyboard
+
+Both hands stay where they are.
+
+| Keys | What happens |
+| :--- | :--- |
+| Arrows | Move between cells |
+| `Shift` + arrows | Extend the selection |
+| `Enter` / `F2` | Edit the focused cell |
+| Any character | Replace the cell and start typing |
+| `Enter` while editing | Commit, move down |
+| `Shift` `Enter` while editing | Line break inside the cell |
+| `Tab` / `Shift` `Tab` | Next / previous cell |
+| `Alt` + arrows | **Move the row or column itself** |
+| `Delete` | Clear the selection |
+| `⌘` `Enter` | Add a row |
+| `⌘` `A` | Select everything |
+| `⌘` `Z` / `⌘` `⇧` `Z` | Undo / redo |
+
+Undo is layered: inside the source panel it undoes your keystrokes, and once
+that history runs out it keeps going through the table's own history. One
+timeline underneath, native behaviour on top.
 
 ## Getting started
 
@@ -46,69 +104,58 @@ pnpm install
 pnpm dev
 ```
 
-The app runs at <http://localhost:3001>.
-
-### Commands
+Then open <http://localhost:3001>.
 
 | Command | What it does |
 | :--- | :--- |
-| `pnpm dev` | Start the dev server |
+| `pnpm dev` | Dev server |
 | `pnpm build` | Production build |
-| `pnpm check-types` | TypeScript across the workspace |
-| `pnpm lint` | Biome format and lint check |
+| `pnpm test` | Unit tests |
+| `pnpm check-types` | TypeScript |
+| `pnpm lint` | Biome check |
 | `pnpm check` | Biome check, writing fixes |
 
-## Architecture
+## How it's built
 
-Scaffolded with [Better-T-Stack](https://www.better-t-stack.dev/). React 19,
-Vite, TanStack Router, Tailwind CSS v4, and shadcn/ui on Base UI, in a pnpm
-workspace: the app lives in `apps/web`, shared UI primitives in `packages/ui`.
+React 19, Vite, TanStack Router, Tailwind v4, shadcn/ui on Base UI, CodeMirror 6
+for the source panel, Papa Parse for CSV. Scaffolded with
+[Better-T-Stack](https://www.better-t-stack.dev/). The grid is hand-built — no
+grid library.
 
-The design rests on one idea — a single canonical table document, with Markdown
-and CSV as parsers and serializers around it rather than as alternative homes
-for the data. The decisions worth understanding before contributing:
+One idea holds the whole thing up: **there is a single canonical table document,
+and Markdown and CSV are parsers and serializers around it.** Neither text
+format is ever the source of truth. That is what makes round trips safe.
 
-- [Derive every representation from one table document](docs/adr/0001-single-table-document-with-derived-text-drafts.md)
+The decisions worth reading before you change anything:
+
+- [Derive every representation from one table document](docs/adr/0001-single-table-document-with-derived-text-drafts.md) — and why a CRDT wouldn't have helped
 - [Escape Markdown losslessly instead of flattening](docs/adr/0002-lossless-markdown-escaping.md)
 - [Layer text-editor undo on top of a document timeline](docs/adr/0003-layered-undo.md)
 - [Build an accessible DOM grid instead of adopting a spreadsheet component](docs/adr/0004-accessible-dom-grid-over-spreadsheet-component.md)
 
-[`CONTEXT.md`](CONTEXT.md) defines the domain vocabulary and [`AGENTS.md`](AGENTS.md)
-holds this repository's working agreements.
-
-### Working on the UI package
-
-Design tokens live in `packages/ui/src/styles/globals.css`, primitives in
-`packages/ui/src/components/`. Add more shadcn primitives from the repository
-root:
-
-```bash
-pnpm dlx shadcn@latest add dialog popover sheet -c packages/ui
-```
-
-Import them as `@tabelo/ui/components/<name>`.
+[`docs/design-system.md`](docs/design-system.md) is binding for anything visual,
+[`CONTEXT.md`](CONTEXT.md) defines the vocabulary, and [`AGENTS.md`](AGENTS.md)
+holds the working agreements.
 
 ## Privacy
 
 Your data never leaves your browser. There is no backend, no account, and no
-analytics or telemetry of any kind. The document lives in `localStorage` on your
-own machine, and clearing browser storage deletes it permanently — there is no
-copy anywhere else.
+telemetry of any kind. The document lives in `localStorage` on your machine.
+Clear your browser storage and it is gone — there is no copy anywhere else,
+including with us.
 
-## Limitations
+## Honest limitations
 
-- Built for tables around 200 rows. Larger input degrades with a warning rather
-  than being supported.
-- Cell values are opaque text. Tabelo never infers types, coerces numbers, or
-  reformats content.
-- Markdown output escapes line breaks as `<br>` so data survives the round trip;
-  strict CommonMark renderers that escape raw HTML will show that literally.
-- One document at a time.
-
-## Deployment
-
-Pushes to `main` build and publish to GitHub Pages at
-<https://martonpaulo.github.io/tabelo/>.
+- **Built for tables up to a few hundred rows.** There is no virtualization, on
+  purpose. Paste 50,000 rows and it will warn you rather than pretend.
+- **Cell values are opaque text.** Tabelo never guesses types, never coerces a
+  number, never reformats a date. What you typed is what is stored.
+- **Markdown output contains `<br>`** where a cell has a line break. That is the
+  price of not losing the line break. Strict CommonMark renderers that escape
+  raw HTML will show it literally.
+- **One document at a time.**
+- **Reordering is keyboard and menu, not drag.** This was a choice: the keyboard
+  path works for everyone, and drag-only reordering does not.
 
 ## License
 

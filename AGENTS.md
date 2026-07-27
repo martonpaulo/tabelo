@@ -107,9 +107,8 @@ Use the scaffolded versions unless a task explicitly requires an upgrade.
 - Tailwind CSS v4
 - shadcn/ui on Base UI primitives, in `@tabelo/ui`
 - CodeMirror 6 for the Markdown and CSV source panel
-- TanStack Table (headless) as the grid's column/row model
-- dnd-kit for row and column reordering, keyboard path included
-- Zustand with Immer for the document store
+- A hand-built DOM grid with no grid library — see `docs/adr/0004`
+- Zustand for the document store
 - Zod for persisted, imported, and pasted data validation
 - Papa Parse for CSV parsing and serialization
 - Biome for formatting and linting
@@ -121,6 +120,8 @@ Do not add without an explicit, demonstrated need:
 
 - a backend, server runtime, database, ORM, or authentication
 - a spreadsheet or data-grid component (Handsontable, AG Grid, Glide, Monaco)
+- a headless table or drag-and-drop library — both were considered and rejected
+  in `docs/adr/0004`; reopening that needs a reason, not a preference
 - a CRDT or collaboration layer
 - React Query, Axios, or Redux
 - a second component library, state library, validation library, or formatter
@@ -217,6 +218,11 @@ Never claim a check passed unless it ran successfully.
   changes.
 - Search for existing components, types, helpers, tokens, configuration, and
   tests before creating new ones.
+- Reuse before building, and say what you rejected. Check, in order: this
+  project's own code, the platform (browser APIs, native elements), the
+  primitives already in `packages/ui`, then a maintained dependency. Writing
+  something by hand that one of those already does is a defect, not craft — and
+  writing a dependency's job by hand needs a stated reason.
 - Prefer the smallest correct, readable, reversible solution.
 - Maintain one owner and one source of truth for each rule, state, mapping,
   default, and copy value. Derive values instead of storing synchronized copies.
@@ -242,6 +248,16 @@ Never claim a check passed unless it ran successfully.
 
 ## Product interface and accessibility
 
+**`docs/design-system.md` is normative for anything visual.** Read it before
+writing or changing UI. It owns the token catalogue, the component layers, the
+interaction states, and the copy rules. Two of its rules matter enough to repeat
+here:
+
+- Commit to the existing design line. There is always a prettier alternative;
+  chasing it is what destroys consistency.
+- When no pattern fits, stop and report before inventing one — and report
+  pattern breaks you find rather than silently fixing or silently copying them.
+
 - Two-panel layout; the grid is primary. Keep the active format and editing
   state visually obvious, and preserve the user's context when switching.
 - Define layout, hierarchy, controls, loading, empty, error, retry, disabled,
@@ -265,6 +281,11 @@ Never claim a check passed unless it ran successfully.
 - Put comments next to non-obvious constraints — intent, provenance, or a subtle
   external rule, not mechanics. Link official documentation when an external
   rule must stay visible to prevent a regression.
+- Write every TypeScript comment with `//`, including multi-line ones. Do not
+  use `/** */` or `/* */` blocks, and do not write JSDoc annotation tags.
+- Use a relative import only for a sibling in the same directory: `./thing` is
+  allowed, `../thing` and `./../thing` are not. Reach anything outside the
+  current directory through the `@/` alias.
 - Update the smallest canonical documentation section when a durable contract
   changes. Do not create empty documentation for possible future use.
 - Keep the README easy to scan. Preserve third-party licenses and notices.

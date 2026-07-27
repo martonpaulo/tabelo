@@ -24,10 +24,17 @@ costs — there is no virtualization or rendering-throughput problem to solve.
 
 ## Decision
 
-Build the grid from DOM elements, using **TanStack Table** headlessly for the
-column and row model and **dnd-kit** for reordering. Selection, focus, the
-keyboard model, and clipboard behavior are Tabelo's own code, written against
-native table semantics.
+Build the grid from DOM elements. Selection, focus, the keyboard model, and
+clipboard behaviour are Tabelo's own code, written against native table
+semantics with `role="grid"`.
+
+No grid library is used. The original plan named TanStack Table for the row and
+column model and dnd-kit for reordering; both were dropped once the grid was
+actually designed. There is no sorting, filtering, or pagination for a headless
+table model to own — the model is two arrays — and reordering turned out better
+as an explicit action (`Alt`+arrow, plus menu items) than as drag, because that
+path is keyboard-native rather than keyboard-adapted. Pointer drag remains for
+column width only.
 
 This also settles the framework question. The decisive factor is not React
 itself but the surrounding ecosystem for *accessible interaction*: headless
@@ -42,7 +49,14 @@ cleanly either way.
 - Selection, keyboard navigation, and clipboard are code Tabelo owns and must
   test. This is the largest single implementation cost in the project.
 - Accessibility is achievable rather than bolted on: real focusable elements,
-  real ARIA grid semantics, real focus rings.
+  real ARIA grid semantics, real focus rings. It also has to be asserted rather
+  than assumed — the roles have to be stated explicitly, because the computed
+  accessibility tree reported cells as `generic` when they were left implicit.
+- Owning focus means owning its failure modes. Two were found only by driving
+  the real app: the browser's default `mousedown` handling moved focus to
+  `<body>` after a cell click, and the `Enter` that committed an edit bubbled to
+  the grid and immediately reopened the editor. Neither was visible to types,
+  lint, or unit tests.
 - The visual language is entirely ours, with no spreadsheet defaults to override
   and no third-party theme to fight.
 - No licensing constraints and no large grid dependency in the bundle.
