@@ -33,11 +33,26 @@ export function listCodecs(): readonly TableCodec[] {
 	return codecOrder.map((id) => registry[id]);
 }
 
+export function listSniffableCodecs(): readonly TableCodec[] {
+	return listCodecs()
+		.filter((codec) => codec.sniffPriority !== undefined)
+		.toSorted(
+			(left, right) => (left.sniffPriority ?? 0) - (right.sniffPriority ?? 0),
+		);
+}
+
 // Every registered codec can serialize, so every one is downloadable. Keeping
 // this derived means a new format appears in the download menu automatically.
 export function listDownloadableCodecs(): readonly TableCodec[] {
 	return listCodecs();
 }
 
-export type { CodecId, ParseIssue, ParseResult, TableCodec } from "./types";
+export type {
+	CodecId,
+	MatrixParseResult,
+	ParsedTable,
+	ParseIssue,
+	ParseResult,
+	TableCodec,
+} from "./types";
 export { csvCodec, htmlCodec, jiraCodec, markdownCodec, tsvCodec };

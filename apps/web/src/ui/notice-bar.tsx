@@ -10,6 +10,7 @@ import { copy } from "@/ui/copy";
 
 export function NoticeBar() {
 	const notice = useTabeloStore((state) => state.notice);
+	const inputError = useTabeloStore((state) => state.inputError);
 	const headerGuessPending = useTabeloStore(
 		(state) => state.headerGuessPending,
 	);
@@ -32,6 +33,15 @@ export function NoticeBar() {
 				<span className="text-muted-foreground">
 					{copy.notices.storageUnavailableHint}
 				</span>
+			</Bar>
+		);
+	}
+
+	if (inputError) {
+		return (
+			<Bar tone="warning">
+				<span>{copy.notices.importError(inputError)}</span>
+				<Dismiss />
 			</Bar>
 		);
 	}

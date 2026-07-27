@@ -1,9 +1,7 @@
 import { create } from "zustand";
-import { type ClipboardPayload, readClipboardTable } from "@/clipboard/parse";
+import type { ClipboardPayload } from "@/clipboard/parse";
 import {
 	createEmptyDocument,
-	detectHeaderRow,
-	documentFromMatrix,
 	documentToMatrix,
 	isDocumentBlank,
 } from "@/core/document";
@@ -35,7 +33,12 @@ import {
 	selectionRect,
 } from "@/core/selection";
 import type { Alignment, TableDocument } from "@/core/types";
-import type { ParseIssue } from "@/formats/types";
+import type { CodecId, ParseIssue } from "@/formats/types";
+import {
+	createImportedDocument,
+	type ImportError,
+	prepareImport,
+} from "@/import/prepare";
 import { loadState, saveState } from "@/persistence/storage";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
@@ -54,10 +57,6 @@ const HISTORY_LIMIT = 200;
 // enough that typing never thrashes the other views, short enough that they
 // still feel connected to what is being written.
 const COMMIT_DELAY_MS = 300;
-
-// Beyond this the app warns instead of freezing. See AGENTS.md: Tabelo targets
-// roughly 200 rows and deliberately has no virtualization.
-export const LARGE_TABLE_ROWS = 500;
 
 // The text a source view is holding but has not committed. Exactly one can
 // exist at a time — every other view is a pure projection of the document, so
@@ -91,6 +90,7 @@ export interface TabeloState {
 
 	storageError: string | null;
 	notice: string | null;
+	inputError: ImportError | null;
 	// Set right after an import so the header guess can be corrected in one click.
 	headerGuessPending: boolean;
 
@@ -137,7 +137,7 @@ export interface TabeloState {
 	deleteSelectedStructure: () => void;
 	selectedMatrix: () => string[][];
 	pasteClipboard: (payload: ClipboardPayload) => void;
-	importText: (text: string, view?: ViewId) => void;
+	importText: (text: string, format?: CodecId) => void;
 
 	demoteHeader: () => void;
 	resetDocument: () => void;
@@ -185,6 +185,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	storageError: null,
 	notice: null,
+	inputError: null,
 	headerGuessPending: false,
 
 	hydrate: () => {
@@ -217,6 +218,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			draft: null,
 			issues: [],
 			warnings: [],
+			inputError: null,
 			selection: clampSelection(
 				state.selection,
 				next.rows.length,
@@ -533,20 +535,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	pasteClipboard: (payload) => {
 		const state = get();
-		const table = readClipboardTable(payload);
-		if (!table || table.matrix.length === 0) return;
-
-		if (table.matrix.length > LARGE_TABLE_ROWS) {
-			set({
-				notice: `That paste has ${table.matrix.length} rows. Tabelo is built for tables up to about ${LARGE_TABLE_ROWS}, so it may feel slow.`,
-			});
+		const prepared = prepareImport({ payload });
+		if (!prepared.ok) {
+			if (prepared.error.code !== "empty") {
+				set({ inputError: prepared.error });
+			}
+			return;
 		}
 
 		// Into an empty document, a paste creates the table — including the
 		// header decision. Into an existing one, it writes at the selection.
 		if (isDocumentBlank(state.document)) {
-			const headerRow = detectHeaderRow(table.matrix);
-			state.applyDocument(documentFromMatrix(table.matrix, { headerRow }));
+			state.applyDocument(createImportedDocument(prepared.value));
 			set({
 				headerGuessPending: true,
 				selection: createSelection({ row: 0, column: 0 }),
@@ -559,31 +559,22 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			pasteMatrix(
 				state.document,
 				{ rowIndex: rect.top, columnIndex: rect.left },
-				table.matrix,
+				prepared.value.matrix,
 			),
 		);
 	},
 
-	importText: (text, view) => {
+	importText: (text, format) => {
 		const state = get();
-
-		// A named view parses with its own codec; without one, fall back to
-		// sniffing, which is what a bare paste gets.
-		const parse = view ? getView(view).codec?.parse : undefined;
-		if (parse) {
-			const result = parse(text);
-			if (result.ok) {
-				state.applyDocument(result.document);
-				set({ selection: createSelection({ row: 0, column: 0 }) });
-				return;
+		const prepared = prepareImport({ payload: { text }, format });
+		if (!prepared.ok) {
+			if (prepared.error.code !== "empty") {
+				set({ inputError: prepared.error });
 			}
+			return;
 		}
 
-		const table = readClipboardTable({ text });
-		if (!table || table.matrix.length === 0) return;
-
-		const headerRow = detectHeaderRow(table.matrix);
-		state.applyDocument(documentFromMatrix(table.matrix, { headerRow }));
+		state.applyDocument(createImportedDocument(prepared.value));
 		set({
 			headerGuessPending: true,
 			selection: createSelection({ row: 0, column: 0 }),
@@ -604,7 +595,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		});
 	},
 
-	dismissNotice: () => set({ notice: null, headerGuessPending: false }),
+	dismissNotice: () =>
+		set({ notice: null, inputError: null, headerGuessPending: false }),
 	setNotice: (notice) => set({ notice }),
 }));
 

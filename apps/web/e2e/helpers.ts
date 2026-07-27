@@ -8,9 +8,11 @@ function requirePositiveIndex(value: number, name: string): void {
 
 export class TabeloPage {
 	readonly workspace: Locator;
+	readonly status: Locator;
 
 	constructor(readonly page: Page) {
 		this.workspace = page.getByRole("main", { name: "Workspace" });
+		this.status = page.getByRole("status");
 	}
 
 	async open(): Promise<void> {
@@ -52,5 +54,55 @@ export class TabeloPage {
 		return this.pane(view).getByRole("textbox", {
 			name: `${view} source`,
 		});
+	}
+
+	async editCell(row: number, column: number, value: string): Promise<void> {
+		const cell = this.cell(row, column);
+		await cell.dblclick();
+		const editor = this.grid().getByRole("textbox", {
+			name: `Row ${row}, column ${column}`,
+		});
+		await editor.fill(value);
+		await editor.press("Enter");
+		await cell.filter({ hasText: value }).waitFor();
+	}
+
+	async paste(text: string, html?: string): Promise<void> {
+		await this.grid().evaluate(
+			(grid, payload) => {
+				const data = new DataTransfer();
+				data.setData("text/plain", payload.text);
+				if (payload.html) data.setData("text/html", payload.html);
+				const event = new Event("paste", {
+					bubbles: true,
+					cancelable: true,
+				});
+				Object.defineProperty(event, "clipboardData", { value: data });
+				grid.dispatchEvent(event);
+			},
+			{ text, html },
+		);
+	}
+
+	async importFile(
+		name: string,
+		text: string,
+		mimeType = "text/plain",
+	): Promise<void> {
+		const chooserPromise = this.page.waitForEvent("filechooser");
+		await this.page.getByRole("button", { name: "Import file" }).click();
+		const chooser = await chooserPromise;
+		await chooser.setFiles({
+			name,
+			mimeType,
+			buffer: Buffer.from(text),
+		});
+	}
+
+	async cancelFileImport(): Promise<void> {
+		const chooserPromise = this.page.waitForEvent("filechooser");
+		await this.page.getByRole("button", { name: "Import file" }).click();
+		const chooser = await chooserPromise;
+		await chooser.setFiles([]);
 	}
 }

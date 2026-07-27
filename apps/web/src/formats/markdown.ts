@@ -1,6 +1,6 @@
-import { documentFromMatrix } from "@/core/document";
 import type { Alignment, TableDocument } from "@/core/types";
-import type { ParseIssue, ParseResult, TableCodec } from "./types";
+import { toDocumentParseResult } from "./parse";
+import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
 
 // Markdown cannot hold a literal pipe or line break inside a table cell, so
 // both are escaped rather than dropped. The transformation must be exactly
@@ -162,7 +162,7 @@ function alignmentMarker(align: Alignment, width: number): string {
 	}
 }
 
-function parseMarkdown(text: string): ParseResult {
+function parseMarkdownMatrix(text: string): MatrixParseResult {
 	const lines = text.split(/\r?\n/);
 	const start = lines.findIndex((line) => line.trim() !== "");
 
@@ -230,19 +230,12 @@ function parseMarkdown(text: string): ParseResult {
 	// Ragged rows are padded rather than rejected: the user is mid-edit, and
 	// their data should survive it.
 	const matrix = [headerCells.map(unescapeCell), ...bodyRows];
-	const document = documentFromMatrix(matrix, { headerRow: true });
-
-	const withAlignment: TableDocument = {
-		...document,
-		columns: document.columns.map((column, index) => ({
-			...column,
-			align: alignmentOf(delimiterCells[index] ?? ""),
-		})),
-	};
-
 	return {
 		ok: true,
-		document: withAlignment,
+		table: {
+			matrix,
+			alignments: delimiterCells.map(alignmentOf),
+		},
 		warnings: warnings.length > 0 ? warnings : undefined,
 	};
 }
@@ -277,6 +270,9 @@ export const markdownCodec: TableCodec = {
 	label: "Markdown",
 	extension: "md",
 	mimeType: "text/markdown",
-	parse: parseMarkdown,
+	parseMatrix: parseMarkdownMatrix,
+	parse: (text) => toDocumentParseResult(parseMarkdownMatrix(text)),
 	serialize: serializeMarkdown,
+	sniffPriority: 20,
+	canSniff: (text) => text.includes("|"),
 };

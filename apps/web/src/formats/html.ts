@@ -1,6 +1,7 @@
-import { documentFromMatrix, normalizeMatrix } from "@/core/document";
+import { normalizeMatrix } from "@/core/document";
 import type { Alignment, TableDocument } from "@/core/types";
-import type { ParseResult, TableCodec } from "./types";
+import { toDocumentParseResult } from "./parse";
+import type { MatrixParseResult, TableCodec } from "./types";
 
 // HTML parsing uses the platform's own parser rather than a hand-rolled one.
 // Real pasted markup is messy — nested elements, entities, attributes — and
@@ -67,7 +68,7 @@ export function readHtmlTable(html: string): HtmlTable | null {
 	return { matrix: normalizeMatrix(matrix), alignments };
 }
 
-function parseHtml(text: string): ParseResult {
+function parseHtmlMatrix(text: string): MatrixParseResult {
 	if (text.trim() === "") {
 		return { ok: false, issues: [{ message: "Nothing to read yet." }] };
 	}
@@ -91,15 +92,11 @@ function parseHtml(text: string): ParseResult {
 		};
 	}
 
-	const document = documentFromMatrix(table.matrix, { headerRow: true });
 	return {
 		ok: true,
-		document: {
-			...document,
-			columns: document.columns.map((column, index) => ({
-				...column,
-				align: table.alignments[index] ?? "default",
-			})),
+		table: {
+			matrix: table.matrix,
+			alignments: table.alignments,
 		},
 	};
 }
@@ -148,6 +145,7 @@ export const htmlCodec: TableCodec = {
 	label: "HTML",
 	extension: "html",
 	mimeType: "text/html",
-	parse: parseHtml,
+	parseMatrix: parseHtmlMatrix,
+	parse: (text) => toDocumentParseResult(parseHtmlMatrix(text)),
 	serialize: serializeHtml,
 };

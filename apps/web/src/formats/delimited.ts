@@ -1,7 +1,13 @@
 import Papa from "papaparse";
-import { documentFromMatrix, documentToMatrix } from "@/core/document";
+import { documentToMatrix } from "@/core/document";
 import type { TableDocument } from "@/core/types";
-import type { CodecId, ParseIssue, ParseResult, TableCodec } from "./types";
+import { toDocumentParseResult } from "./parse";
+import type {
+	CodecId,
+	MatrixParseResult,
+	ParseIssue,
+	TableCodec,
+} from "./types";
 
 // CSV and TSV differ only by delimiter, so they share one implementation.
 // Papa Parse owns the RFC 4180 edge cases this project promises to handle:
@@ -68,40 +74,44 @@ interface DelimitedCodecConfig {
 }
 
 export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
+	const parseMatrix = (text: string): MatrixParseResult => {
+		if (text.trim() === "") {
+			return { ok: false, issues: [{ message: "Nothing to read yet." }] };
+		}
+
+		const { matrix, issues } = parseDelimitedMatrix(
+			text,
+			config.sniffDelimiter ? undefined : config.delimiter,
+		);
+
+		// An unterminated quote means the user is mid-edit. Hold the last valid
+		// table rather than showing them a mangled one.
+		const fatal = issues.filter((issue) => /quote/i.test(issue.message));
+		if (fatal.length > 0) return { ok: false, issues: fatal };
+
+		if (matrix.length === 0) {
+			return { ok: false, issues: [{ message: "Nothing to read yet." }] };
+		}
+
+		return {
+			ok: true,
+			table: { matrix },
+			warnings: issues.length > 0 ? issues : undefined,
+		};
+	};
+
 	return {
 		id: config.id,
 		label: config.label,
 		extension: config.extension,
 		mimeType: config.mimeType,
-
-		parse(text: string): ParseResult {
-			if (text.trim() === "") {
-				return { ok: false, issues: [{ message: "Nothing to read yet." }] };
-			}
-
-			const { matrix, issues } = parseDelimitedMatrix(
-				text,
-				config.sniffDelimiter ? undefined : config.delimiter,
-			);
-
-			// An unterminated quote means the user is mid-edit. Hold the last valid
-			// table rather than showing them a mangled one.
-			const fatal = issues.filter((issue) => /quote/i.test(issue.message));
-			if (fatal.length > 0) return { ok: false, issues: fatal };
-
-			if (matrix.length === 0) {
-				return { ok: false, issues: [{ message: "Nothing to read yet." }] };
-			}
-
-			// In a source view row 1 is always the header — the document always has
-			// one. Header detection is an import-time concern only.
-			return {
-				ok: true,
-				document: documentFromMatrix(matrix, { headerRow: true }),
-				warnings: issues.length > 0 ? issues : undefined,
-			};
-		},
-
+		parseMatrix,
+		parse: (text) => toDocumentParseResult(parseMatrix(text)),
 		serialize: (document) => serializeDelimited(document, config.delimiter),
+		sniffPriority: config.id === "tsv" ? 10 : 40,
+		canSniff: (text) =>
+			config.id === "tsv"
+				? text.includes("\t")
+				: text.includes(",") || text.includes(";"),
 	};
 }

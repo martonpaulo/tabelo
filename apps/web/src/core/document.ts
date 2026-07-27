@@ -1,5 +1,5 @@
 import { createColumnId, createRowId } from "./ids";
-import type { Column, ColumnId, Row, TableDocument } from "./types";
+import type { Alignment, Column, ColumnId, Row, TableDocument } from "./types";
 
 export const DEFAULT_COLUMN_COUNT = 3;
 export const DEFAULT_ROW_COUNT = 3;
@@ -91,6 +91,7 @@ export function detectHeaderRow(
 export interface MatrixToDocumentOptions {
 	// When false, synthetic `Column N` headers are generated and row 1 stays data.
 	readonly headerRow: boolean;
+	readonly alignments?: readonly Alignment[];
 }
 
 export function documentFromMatrix(
@@ -105,9 +106,10 @@ export function documentFromMatrix(
 		: matrix[0].map((_, index) => defaultHeader(index));
 	const bodyRows = options.headerRow ? matrix.slice(1) : matrix;
 
-	const columns = headerValues.map((header, index) =>
-		createColumn(header.trim() === "" ? defaultHeader(index) : header),
-	);
+	const columns = headerValues.map((header, index) => ({
+		...createColumn(header.trim() === "" ? defaultHeader(index) : header),
+		align: options.alignments?.[index] ?? "default",
+	}));
 	const rows = bodyRows.map((values) => createRow(columns, values));
 
 	return { columns, rows: rows.length > 0 ? rows : [createRow(columns)] };

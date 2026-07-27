@@ -1,6 +1,6 @@
-import { documentFromMatrix } from "@/core/document";
 import type { TableDocument } from "@/core/types";
-import type { ParseIssue, ParseResult, TableCodec } from "./types";
+import { toDocumentParseResult } from "./parse";
+import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
 
 // Jira's wiki table syntax marks header cells with a doubled pipe:
 //
@@ -99,7 +99,7 @@ function splitJiraRow(line: string): string[] {
 
 const HEADER_LINE = /^\s*\|\|/;
 
-function parseJira(text: string): ParseResult {
+function parseJiraMatrix(text: string): MatrixParseResult {
 	const lines = text.split(/\r?\n/);
 	const start = lines.findIndex((line) => line.trim() !== "");
 
@@ -143,9 +143,7 @@ function parseJira(text: string): ParseResult {
 
 	return {
 		ok: true,
-		document: documentFromMatrix([headerCells, ...bodyRows], {
-			headerRow: true,
-		}),
+		table: { matrix: [headerCells, ...bodyRows] },
 		warnings: warnings.length > 0 ? warnings : undefined,
 	};
 }
@@ -172,6 +170,9 @@ export const jiraCodec: TableCodec = {
 	label: "Jira",
 	extension: "jira.txt",
 	mimeType: "text/plain",
-	parse: parseJira,
+	parseMatrix: parseJiraMatrix,
+	parse: (text) => toDocumentParseResult(parseJiraMatrix(text)),
 	serialize: serializeJira,
+	sniffPriority: 30,
+	canSniff: (text) => HEADER_LINE.test(text),
 };

@@ -1,3 +1,5 @@
+import type { ImportError } from "@/import/prepare";
+
 // Every user-visible string lives here. One place to keep the voice
 // consistent, and the seam a locale would plug into if Tabelo ever ships one.
 // Keep the tone plain and calm: say what happened, not how clever the app is.
@@ -80,6 +82,22 @@ export const copy = {
 	notices: {
 		headerGuess: "Tabelo used the first row as column headers.",
 		headerGuessAction: "First row is data",
+		importError: (error: ImportError) => {
+			switch (error.code) {
+				case "invalid-format":
+					return `This file is not valid ${error.format}. The current table was not changed.`;
+				case "too-many-rows":
+					return `This import has ${error.actual} rows, above Tabelo's supported limit of ${error.limit}. The current table was not changed.`;
+				case "too-many-columns":
+					return `This import has ${error.actual} columns, above Tabelo's supported limit of ${error.limit}. The current table was not changed.`;
+				case "too-many-cells":
+					return `This import has ${error.actual} cells, above Tabelo's supported limit of ${error.limit}. The current table was not changed.`;
+				case "payload-too-large":
+					return "This import is larger than Tabelo's supported limit of 1 MB. The current table was not changed.";
+				case "empty":
+					return "There is no table to import. The current table was not changed.";
+			}
+		},
 		copied: "Copied to the clipboard.",
 		sourceCopied: "Source copied to the clipboard.",
 		imported: "Table imported.",
