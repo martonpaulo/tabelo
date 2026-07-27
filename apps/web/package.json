@@ -26,7 +26,6 @@
 		"@tailwindcss/vite": "^4.3.2",
 		"@tanstack/react-router": "^1.170.17",
 		"dotenv": "catalog:",
-		"immer": "^11.1.15",
 		"lucide-react": "catalog:",
 		"next-themes": "catalog:",
 		"papaparse": "^5.5.4",

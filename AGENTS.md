@@ -112,7 +112,8 @@ Use the scaffolded versions unless a task explicitly requires an upgrade.
 - Zod for persisted, imported, and pasted data validation
 - Papa Parse for CSV parsing and serialization
 - Biome for formatting and linting
-- Vitest for unit tests, Playwright for critical end-to-end behavior
+- Vitest for unit tests. There is no end-to-end suite yet; when one is added,
+  use Playwright and cover the cross-panel flows in the success criteria
 - pnpm workspaces
 - `vite-plugin-pwa` in `generateSW` mode for offline capability
 
