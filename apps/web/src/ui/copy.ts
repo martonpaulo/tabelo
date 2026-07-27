@@ -8,31 +8,32 @@ export const copy = {
 		tagline: "Edit a table visually, as Markdown, or as CSV.",
 	},
 
-	panels: {
-		tableTitle: "Table",
-		sourceTitle: "Source",
-		showSource: "Show source panel",
-		hideSource: "Hide source panel",
-	},
-
-	format: {
-		markdown: "Markdown",
-		csv: "CSV",
-		switchLabel: "Source format",
+	workspace: {
+		layout: "Layout",
+		layoutHint: "Choose how the workspace is divided.",
+		chooseView: "Choose view",
+		activePane: "Active pane",
+		resizeColumns: "Resize columns",
+		resizeRows: "Resize rows",
+		readOnly: "Read-only",
 	},
 
 	status: {
 		synced: "In sync",
-		syncedHint: "The table and the source match.",
+		syncedHint: "Every view matches the table.",
 		typing: "Editing",
 		typingHint: "Waiting for you to pause before reading this back.",
 		invalid: "Not valid yet",
-		invalidHint: "The table below still shows your last working version.",
+		invalidHint: "The table still shows your last working version.",
 	},
 
 	actions: {
 		undo: "Undo",
 		redo: "Redo",
+		insertRowAbove: "Insert row above",
+		insertRowBelow: "Insert row below",
+		insertColumnLeft: "Insert column left",
+		insertColumnRight: "Insert column right",
 		addRow: "Add row",
 		addColumn: "Add column",
 		duplicate: "Duplicate",
@@ -56,8 +57,10 @@ export const copy = {
 		more: "More actions",
 		rowActions: "Row actions",
 		columnActions: "Column actions",
+		tableActions: "Table actions",
 		copySource: "Copy source",
 		download: "Download",
+		downloadAs: "Download as",
 		importFile: "Import file",
 		newTable: "New table",
 		selectRow: "Select row",
@@ -67,9 +70,11 @@ export const copy = {
 
 	empty: {
 		title: "Start with an empty table",
-		body: "Type in any cell, or paste a table from a spreadsheet, a web page, Markdown, or CSV.",
+		body: "Type in any cell, or paste a table from a spreadsheet, a web page, Markdown, CSV, TSV, or Jira.",
 		pasteHint: "Paste to fill the table",
 		importAction: "Import a file",
+		sourceTitle: "Nothing here yet",
+		sourceBody: (label: string) => `Paste ${label} here to create the table.`,
 	},
 
 	notices: {
@@ -77,25 +82,24 @@ export const copy = {
 		headerGuessAction: "First row is data",
 		copied: "Copied to the clipboard.",
 		sourceCopied: "Source copied to the clipboard.",
-		downloaded: "File downloaded.",
 		imported: "Table imported.",
-		restored: "Restored your last table.",
 		storageUnavailable: "Changes are not being saved.",
 		storageUnavailableHint:
 			"Browser storage is unavailable, so this table will be lost when you close the tab.",
 		savedTableUnreadable: "The saved table could not be read.",
-		savedTableUnreadableHint:
-			"Starting fresh. The stored copy was left untouched.",
 	},
 
 	a11y: {
 		grid: "Table editor",
+		workspace: "Workspace",
+		pane: (label: string) => `${label} pane`,
 		rowNumber: (index: number) => `Row ${index + 1}`,
 		columnLetter: (index: number) => `Column ${index + 1}`,
 		cell: (row: number, column: number) =>
 			`Row ${row + 1}, column ${column + 1}`,
 		headerCell: (column: number) => `Header for column ${column + 1}`,
 		sourceEditor: (format: string) => `${format} source`,
+		preview: "Rendered table preview",
 		selectionSummary: (rows: number, columns: number) =>
 			rows === 1 && columns === 1
 				? "1 cell selected"
@@ -106,8 +110,11 @@ export const copy = {
 		undo: "Mod+Z",
 		redo: "Mod+Shift+Z",
 		addRow: "Mod+Enter",
-		addColumn: "Mod+Shift+Enter",
 		edit: "Enter",
-		clear: "Delete",
+		clear: "Backspace",
+		deleteStructure: "Mod+Backspace",
+		copy: "Mod+C",
+		cut: "Mod+X",
+		paste: "Mod+V",
 	},
 } as const;

@@ -5,9 +5,9 @@ import { rectContains, selectionRect } from "@/core/selection";
 import type { Alignment } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
+import { AxisMenu } from "./axis-menu";
 import { CellEditor } from "./cell-editor";
-import { ColumnMenu } from "./column-menu";
-import { RowMenu } from "./row-menu";
+import { GridContextMenu } from "./grid-context-menu";
 
 const DEFAULT_COLUMN_WIDTH = 168;
 const MIN_COLUMN_WIDTH = 72;
@@ -149,7 +149,7 @@ export function TableGrid() {
 				return;
 			case "Enter":
 				event.preventDefault();
-				if (mod) store.addRow();
+				if (mod) store.addRowBelow();
 				else store.setEditing(selection.focus);
 				return;
 			case "F2":
@@ -162,8 +162,12 @@ export function TableGrid() {
 				return;
 			case "Delete":
 			case "Backspace":
+				// Backspace clears what is in the cells; the modifier removes the
+				// rows or columns themselves. Both are prevented from reaching the
+				// browser, which historically treated Backspace as "go back".
 				event.preventDefault();
-				store.clearSelection();
+				if (mod) store.deleteSelectedStructure();
+				else store.clearSelection();
 				return;
 			default:
 				break;
@@ -223,214 +227,221 @@ export function TableGrid() {
 	};
 
 	return (
-		<table
-			ref={gridRef}
-			// Grid semantics, not document-table semantics: this is an editable
-			// widget with its own keyboard model, so assistive technology should
-			// treat it that way. `<table role="grid">` is the ARIA Authoring
-			// Practices pattern for exactly this; the lint rule is a heuristic that
-			// does not model it. See docs/design-system.md §9.
-			// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
-			role="grid"
-			aria-label={copy.a11y.grid}
-			aria-rowcount={document.rows.length + 1}
-			aria-colcount={document.columns.length}
-			className="w-max border-separate border-spacing-0 text-sm"
-			onKeyDown={handleKeyDown}
-			onCopy={(event) => {
-				if (useTabeloStore.getState().editing) return;
-				writeClipboard(event);
-			}}
-			onCut={(event) => {
-				if (useTabeloStore.getState().editing) return;
-				writeClipboard(event);
-				useTabeloStore.getState().clearSelection();
-			}}
-			onPaste={(event) => {
-				if (useTabeloStore.getState().editing) return;
-				event.preventDefault();
-				useTabeloStore.getState().pasteClipboard({
-					text: event.clipboardData.getData("text/plain"),
-					html: event.clipboardData.getData("text/html"),
-				});
-			}}
-		>
-			<colgroup>
-				<col style={{ width: GUTTER_WIDTH }} />
-				{document.columns.map((column) => (
-					<col
-						key={column.id}
-						style={{ width: column.width ?? DEFAULT_COLUMN_WIDTH }}
-					/>
-				))}
-			</colgroup>
-
-			<thead>
-				<tr>
-					<th
-						scope="col"
-						className="sticky top-0 left-0 z-30 border-line-subtle border-r border-b bg-surface-header"
-					>
-						<span className="sr-only">{copy.a11y.grid}</span>
-					</th>
-					{document.columns.map((column, columnIndex) => (
-						<HeaderCell
+		<GridContextMenu>
+			<table
+				ref={gridRef}
+				// Grid semantics, not document-table semantics: this is an editable
+				// widget with its own keyboard model, so assistive technology should
+				// treat it that way. `<table role="grid">` is the ARIA Authoring
+				// Practices pattern for exactly this; the lint rule is a heuristic that
+				// does not model it. See docs/design-system.md §9.
+				// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
+				role="grid"
+				aria-label={copy.a11y.grid}
+				aria-rowcount={document.rows.length + 1}
+				aria-colcount={document.columns.length}
+				className="w-max border-separate border-spacing-0 text-sm"
+				onKeyDown={handleKeyDown}
+				onCopy={(event) => {
+					if (useTabeloStore.getState().editing) return;
+					writeClipboard(event);
+				}}
+				onCut={(event) => {
+					if (useTabeloStore.getState().editing) return;
+					writeClipboard(event);
+					useTabeloStore.getState().clearSelection();
+				}}
+				onPaste={(event) => {
+					if (useTabeloStore.getState().editing) return;
+					event.preventDefault();
+					useTabeloStore.getState().pasteClipboard({
+						text: event.clipboardData.getData("text/plain"),
+						html: event.clipboardData.getData("text/html"),
+					});
+				}}
+			>
+				<colgroup>
+					<col style={{ width: GUTTER_WIDTH }} />
+					{document.columns.map((column) => (
+						<col
 							key={column.id}
-							columnIndex={columnIndex}
-							header={column.header}
-							align={column.align}
-							selected={
-								selection.mode === "column" &&
-								rectContains(rect, 0, columnIndex)
-							}
-							editing={editingHeader === columnIndex}
-							width={column.width ?? DEFAULT_COLUMN_WIDTH}
+							style={{ width: column.width ?? DEFAULT_COLUMN_WIDTH }}
 						/>
 					))}
-				</tr>
-			</thead>
+				</colgroup>
 
-			<tbody>
-				{document.rows.map((row, rowIndex) => (
-					// Explicit despite looking redundant: with role="grid" on the
-					// table, browsers do not reliably expose implicit row and cell
-					// roles — the computed tree came back as "generic" without these.
-					// biome-ignore lint/a11y/noRedundantRoles: see above
-					<tr key={row.id} role="row" className="group/row">
+				<thead>
+					<tr>
 						<th
-							scope="row"
-							className={cn(
-								"sticky left-0 z-10 border-line-subtle border-r border-b bg-surface-gutter",
-								"px-1 text-center font-normal text-muted-foreground text-xs tabular-nums",
-								selection.mode === "row" &&
-									rectContains(rect, rowIndex, 0) &&
-									"bg-selection-fill text-foreground",
-							)}
+							scope="col"
+							className="sticky top-0 left-0 z-30 border-line-subtle border-r border-b bg-surface-header"
 						>
-							<div className="flex items-center justify-between gap-0.5">
-								<button
-									type="button"
-									aria-label={`${copy.actions.selectRow}: ${copy.a11y.rowNumber(rowIndex)}`}
-									className="rounded px-1 hover:text-foreground"
-									onClick={() =>
-										useTabeloStore
-											.getState()
-											.selectCell({ row: rowIndex, column: 0 }, "row")
-									}
-								>
-									{rowIndex + 1}
-								</button>
-								<RowMenu index={rowIndex} />
-							</div>
+							<span className="sr-only">{copy.a11y.grid}</span>
 						</th>
+						{document.columns.map((column, columnIndex) => (
+							<HeaderCell
+								key={column.id}
+								columnIndex={columnIndex}
+								header={column.header}
+								align={column.align}
+								selected={
+									selection.mode === "column" &&
+									rectContains(rect, 0, columnIndex)
+								}
+								editing={editingHeader === columnIndex}
+								width={column.width ?? DEFAULT_COLUMN_WIDTH}
+							/>
+						))}
+					</tr>
+				</thead>
 
-						{document.columns.map((column, columnIndex) => {
-							const isFocus =
-								selection.focus.row === rowIndex &&
-								selection.focus.column === columnIndex;
-							const inSelection = rectContains(rect, rowIndex, columnIndex);
-							const value = row.cells[column.id] ?? "";
-							const isEditing =
-								editing?.row === rowIndex && editing?.column === columnIndex;
+				<tbody>
+					{document.rows.map((row, rowIndex) => (
+						// Explicit despite looking redundant: with role="grid" on the
+						// table, browsers do not reliably expose implicit row and cell
+						// roles — the computed tree came back as "generic" without these.
+						// biome-ignore lint/a11y/noRedundantRoles: see above
+						<tr key={row.id} role="row" className="group/row">
+							<th
+								scope="row"
+								data-row-header={rowIndex}
+								className={cn(
+									"sticky left-0 z-10 border-line-subtle border-r border-b bg-surface-gutter",
+									"px-1 text-center font-normal text-muted-foreground text-xs tabular-nums",
+									selection.mode === "row" &&
+										rectContains(rect, rowIndex, 0) &&
+										"bg-selection-fill text-foreground",
+								)}
+							>
+								<div className="flex items-center justify-between gap-0.5">
+									<button
+										type="button"
+										aria-label={`${copy.actions.selectRow}: ${copy.a11y.rowNumber(rowIndex)}`}
+										className="rounded px-1 hover:text-foreground"
+										onClick={() =>
+											useTabeloStore
+												.getState()
+												.selectCell({ row: rowIndex, column: 0 }, "row")
+										}
+									>
+										{rowIndex + 1}
+									</button>
+									<AxisMenu axis="row" index={rowIndex} />
+								</div>
+							</th>
 
-							return (
-								// gridcell is stated rather than left implicit, for the same
-								// reason as the row role above: without it the computed
-								// accessibility tree reported these cells as "generic".
-								<td
-									key={column.id}
-									// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
-									role="gridcell"
-									data-cell={`${rowIndex}:${columnIndex}`}
-									tabIndex={isFocus ? 0 : -1}
-									aria-selected={inSelection}
-									aria-label={copy.a11y.cell(rowIndex, columnIndex)}
-									title={value.includes("\n") ? value : undefined}
-									className={cn(
-										"relative border-line-subtle border-r border-b px-2 py-1.5 align-top",
-										"cursor-cell select-none",
-										alignClass[column.align],
-										inSelection ? "bg-selection-fill" : "bg-background",
-										isFocus &&
-											"outline-2 outline-selection-edge -outline-offset-2",
-									)}
-									onPointerDown={(event) => {
-										if (event.button !== 0) return;
-										// Without this, the browser's own mousedown handling runs
-										// after ours and moves focus to <body>, because a <td> is
-										// not focusable by default. The cell would look selected
-										// but ignore every keystroke.
-										event.preventDefault();
-										draggingRef.current = true;
-										const store = useTabeloStore.getState();
-										if (event.shiftKey) {
-											store.extendSelection({
+							{document.columns.map((column, columnIndex) => {
+								const isFocus =
+									selection.focus.row === rowIndex &&
+									selection.focus.column === columnIndex;
+								const inSelection = rectContains(rect, rowIndex, columnIndex);
+								const value = row.cells[column.id] ?? "";
+								const isEditing =
+									editing?.row === rowIndex && editing?.column === columnIndex;
+
+								return (
+									// gridcell is stated rather than left implicit, for the same
+									// reason as the row role above: without it the computed
+									// accessibility tree reported these cells as "generic".
+									<td
+										key={column.id}
+										// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
+										role="gridcell"
+										data-cell={`${rowIndex}:${columnIndex}`}
+										tabIndex={isFocus ? 0 : -1}
+										aria-selected={inSelection}
+										aria-label={copy.a11y.cell(rowIndex, columnIndex)}
+										title={value.includes("\n") ? value : undefined}
+										className={cn(
+											"relative border-line-subtle border-r border-b px-2 py-1.5 align-top",
+											"cursor-cell select-none",
+											alignClass[column.align],
+											inSelection ? "bg-selection-fill" : "bg-background",
+											isFocus &&
+												"outline-2 outline-selection-edge -outline-offset-2",
+										)}
+										onPointerDown={(event) => {
+											if (event.button !== 0) return;
+											// Without this, the browser's own mousedown handling runs
+											// after ours and moves focus to <body>, because a <td> is
+											// not focusable by default. The cell would look selected
+											// but ignore every keystroke.
+											event.preventDefault();
+											draggingRef.current = true;
+											const store = useTabeloStore.getState();
+											if (event.shiftKey) {
+												store.extendSelection({
+													row: rowIndex,
+													column: columnIndex,
+												});
+											} else {
+												store.selectCell({
+													row: rowIndex,
+													column: columnIndex,
+												});
+											}
+											event.currentTarget.focus();
+										}}
+										onPointerEnter={() => {
+											if (!draggingRef.current) return;
+											useTabeloStore.getState().extendSelection({
 												row: rowIndex,
 												column: columnIndex,
 											});
-										} else {
-											store.selectCell({ row: rowIndex, column: columnIndex });
+										}}
+										onDoubleClick={() =>
+											useTabeloStore
+												.getState()
+												.setEditing({ row: rowIndex, column: columnIndex })
 										}
-										event.currentTarget.focus();
-									}}
-									onPointerEnter={() => {
-										if (!draggingRef.current) return;
-										useTabeloStore
-											.getState()
-											.extendSelection({ row: rowIndex, column: columnIndex });
-									}}
-									onDoubleClick={() =>
-										useTabeloStore
-											.getState()
-											.setEditing({ row: rowIndex, column: columnIndex })
-									}
-								>
-									{isEditing ? (
-										<CellEditor
-											initialValue={value}
-											align={alignClass[column.align]}
-											ariaLabel={copy.a11y.cell(rowIndex, columnIndex)}
-											onFinish={(next, exit) => {
-												const store = useTabeloStore.getState();
-												if (exit !== "cancel")
-													store.editCell(rowIndex, columnIndex, next);
-												store.setEditing(null);
-												if (exit === "next-row") {
-													store.selectCell({
-														row: Math.min(
-															rowIndex + 1,
-															store.document.rows.length - 1,
-														),
-														column: columnIndex,
-													});
-												} else if (exit === "next-column") {
-													store.selectCell({
-														row: rowIndex,
-														column: Math.min(
-															columnIndex + 1,
-															store.document.columns.length - 1,
-														),
-													});
-												} else if (exit === "previous-column") {
-													store.selectCell({
-														row: rowIndex,
-														column: Math.max(columnIndex - 1, 0),
-													});
-												}
-											}}
-										/>
-									) : (
-										<span className="block h-5 overflow-hidden whitespace-pre">
-											{value}
-										</span>
-									)}
-								</td>
-							);
-						})}
-					</tr>
-				))}
-			</tbody>
-		</table>
+									>
+										{isEditing ? (
+											<CellEditor
+												initialValue={value}
+												align={alignClass[column.align]}
+												ariaLabel={copy.a11y.cell(rowIndex, columnIndex)}
+												onFinish={(next, exit) => {
+													const store = useTabeloStore.getState();
+													if (exit !== "cancel")
+														store.editCell(rowIndex, columnIndex, next);
+													store.setEditing(null);
+													if (exit === "next-row") {
+														store.selectCell({
+															row: Math.min(
+																rowIndex + 1,
+																store.document.rows.length - 1,
+															),
+															column: columnIndex,
+														});
+													} else if (exit === "next-column") {
+														store.selectCell({
+															row: rowIndex,
+															column: Math.min(
+																columnIndex + 1,
+																store.document.columns.length - 1,
+															),
+														});
+													} else if (exit === "previous-column") {
+														store.selectCell({
+															row: rowIndex,
+															column: Math.max(columnIndex - 1, 0),
+														});
+													}
+												}}
+											/>
+										) : (
+											<span className="block h-5 overflow-hidden whitespace-pre">
+												{value}
+											</span>
+										)}
+									</td>
+								);
+							})}
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</GridContextMenu>
 	);
 }
 
@@ -458,6 +469,7 @@ function HeaderCell({
 	return (
 		<th
 			scope="col"
+			data-column-header={columnIndex}
 			aria-label={copy.a11y.headerCell(columnIndex)}
 			className={cn(
 				"group/col sticky top-0 z-20 border-line-subtle border-r border-b bg-surface-header",
@@ -493,7 +505,7 @@ function HeaderCell({
 					>
 						{header}
 					</button>
-					<ColumnMenu index={columnIndex} />
+					<AxisMenu axis="column" index={columnIndex} />
 				</div>
 			)}
 

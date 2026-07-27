@@ -26,9 +26,10 @@ import {
 	type ViewUpdate,
 } from "@codemirror/view";
 import { useEffect, useRef } from "react";
-import type { TextFormat } from "@/formats/types";
+import type { HighlightLanguage } from "@/views/types";
 import { csvLanguage } from "./csv-language";
 import { syntaxTheme } from "./editor-theme";
+import { htmlLanguage } from "./html-language";
 
 // Marks a transaction as coming from synchronization rather than the user.
 // This is the loop guard required by docs/adr/0001: sync-originated changes
@@ -36,6 +37,7 @@ import { syntaxTheme } from "./editor-theme";
 const fromSync = Annotation.define<boolean>();
 
 const languageCompartment = new Compartment();
+const editableCompartment = new Compartment();
 const invalidLineCompartment = new Compartment();
 
 const invalidLineMark = Decoration.line({ class: "cm-invalidLine" });
@@ -68,8 +70,19 @@ function invalidLineExtension(line: number | null) {
 	);
 }
 
-function languageFor(format: TextFormat) {
-	return format === "markdown" ? markdown() : csvLanguage;
+// Highlighting is chosen by name so the registry never imports CodeMirror,
+// which is what lets the whole editor stay in a lazily loaded chunk.
+function languageFor(language: HighlightLanguage) {
+	switch (language) {
+		case "markdown":
+			return markdown();
+		case "delimited":
+			return csvLanguage;
+		case "html":
+			return htmlLanguage;
+		default:
+			return [];
+	}
 }
 
 // Replaces only what actually changed, so an external update does not blow the
@@ -97,8 +110,10 @@ function minimalChange(current: string, next: string) {
 
 interface SourceEditorProps {
 	readonly value: string;
-	readonly format: TextFormat;
+	readonly language: HighlightLanguage;
 	readonly invalidLine: number | null;
+	// Read-only views still get selection and copy, just no typing.
+	readonly editable: boolean;
 	readonly ariaLabel: string;
 	readonly onChange: (value: string) => void;
 	// Called when the editor's own history is exhausted. This is the fall-through
@@ -109,8 +124,9 @@ interface SourceEditorProps {
 
 export function SourceEditor({
 	value,
-	format,
+	language,
 	invalidLine,
+	editable,
 	ariaLabel,
 	onChange,
 	onUndoBeyondLocal,
@@ -144,8 +160,9 @@ export function SourceEditor({
 					highlightActiveLine(),
 					highlightActiveLineGutter(),
 					EditorView.lineWrapping,
-					languageCompartment.of(languageFor(format)),
+					languageCompartment.of(languageFor(language)),
 					invalidLineCompartment.of(invalidLineExtension(invalidLine)),
+					editableCompartment.of(EditorView.editable.of(editable)),
 					syntaxTheme,
 					EditorView.contentAttributes.of({ "aria-label": ariaLabel }),
 
@@ -224,9 +241,19 @@ export function SourceEditor({
 		const view = viewRef.current;
 		if (!view) return;
 		view.dispatch({
-			effects: languageCompartment.reconfigure(languageFor(format)),
+			effects: languageCompartment.reconfigure(languageFor(language)),
 		});
-	}, [format]);
+	}, [language]);
+
+	useEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: editableCompartment.reconfigure(
+				EditorView.editable.of(editable),
+			),
+		});
+	}, [editable]);
 
 	useEffect(() => {
 		const view = viewRef.current;
