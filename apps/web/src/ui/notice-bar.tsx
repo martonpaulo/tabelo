@@ -11,9 +11,7 @@ import { copy } from "@/ui/copy";
 export function NoticeBar() {
 	const notice = useTabeloStore((state) => state.notice);
 	const inputError = useTabeloStore((state) => state.inputError);
-	const headerGuessPending = useTabeloStore(
-		(state) => state.headerGuessPending,
-	);
+	const headerCorrection = useTabeloStore((state) => state.headerCorrection);
 	const storageError = useTabeloStore((state) => state.storageError);
 
 	// Transient confirmations clear themselves; anything actionable stays.
@@ -46,7 +44,7 @@ export function NoticeBar() {
 		);
 	}
 
-	if (headerGuessPending) {
+	if (headerCorrection) {
 		return (
 			<Bar tone="info">
 				<span>{copy.notices.headerGuess}</span>

@@ -80,8 +80,8 @@ export const copy = {
 	},
 
 	notices: {
-		headerGuess: "Tabelo used the first row as column headers.",
-		headerGuessAction: "First row is data",
+		headerGuess: "First row used as headers.",
+		headerGuessAction: "Use it as data instead",
 		importError: (error: ImportError) => {
 			switch (error.code) {
 				case "invalid-format":

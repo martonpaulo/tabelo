@@ -73,6 +73,12 @@ export interface HistoryEntry {
 	readonly draft: Draft | null;
 }
 
+export interface HeaderCorrection {
+	// Object identity is the revision token. The action is valid only while this
+	// exact imported document remains current.
+	readonly document: TableDocument;
+}
+
 export interface TabeloState {
 	document: TableDocument;
 	workspace: Workspace;
@@ -91,8 +97,7 @@ export interface TabeloState {
 	storageError: string | null;
 	notice: string | null;
 	inputError: ImportError | null;
-	// Set right after an import so the header guess can be corrected in one click.
-	headerGuessPending: boolean;
+	headerCorrection: HeaderCorrection | null;
 
 	hydrate: () => void;
 	applyDocument: (next: TableDocument) => void;
@@ -186,7 +191,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	storageError: null,
 	notice: null,
 	inputError: null,
-	headerGuessPending: false,
+	headerCorrection: null,
 
 	hydrate: () => {
 		const outcome = loadState();
@@ -197,6 +202,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				draft: null,
 				issues: [],
 				warnings: [],
+				headerCorrection: null,
+				inputError: null,
 				selection: createSelection({ row: 0, column: 0 }),
 			});
 			return;
@@ -219,6 +226,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			issues: [],
 			warnings: [],
 			inputError: null,
+			headerCorrection: null,
 			selection: clampSelection(
 				state.selection,
 				next.rows.length,
@@ -258,6 +266,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			}),
 			future: [],
 			document: result.document,
+			headerCorrection: null,
+			inputError: null,
 			// Deliberately keeping the draft: re-serializing would rewrite the
 			// buffer the user is typing in and move their cursor. It is now equal
 			// in meaning to the document, just not character-identical.
@@ -348,6 +358,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				draft: entry.draft,
 				issues: [],
 				warnings: [],
+				headerCorrection: null,
+				inputError: null,
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -367,6 +379,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				draft: entry.draft,
 				issues: [],
 				warnings: [],
+				headerCorrection: null,
+				inputError: null,
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -404,7 +418,9 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	resizeColumn: (column, width) =>
 		set((state) => {
 			const next = setColumnWidth(state.document, column, width);
-			return next === state.document ? state : { document: next };
+			return next === state.document
+				? state
+				: { document: next, headerCorrection: null, inputError: null };
 		}),
 
 	addRowAbove: () => {
@@ -546,9 +562,10 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		// Into an empty document, a paste creates the table — including the
 		// header decision. Into an existing one, it writes at the selection.
 		if (isDocumentBlank(state.document)) {
-			state.applyDocument(createImportedDocument(prepared.value));
+			const document = createImportedDocument(prepared.value);
+			state.applyDocument(document);
 			set({
-				headerGuessPending: true,
+				headerCorrection: prepared.value.headerRow ? { document } : null,
 				selection: createSelection({ row: 0, column: 0 }),
 			});
 			return;
@@ -574,29 +591,37 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			return;
 		}
 
-		state.applyDocument(createImportedDocument(prepared.value));
+		const document = createImportedDocument(prepared.value);
+		state.applyDocument(document);
 		set({
-			headerGuessPending: true,
+			headerCorrection: prepared.value.headerRow ? { document } : null,
 			selection: createSelection({ row: 0, column: 0 }),
 		});
 	},
 
 	demoteHeader: () => {
 		const state = get();
+		if (
+			!state.headerCorrection ||
+			state.headerCorrection.document !== state.document
+		) {
+			set({ headerCorrection: null });
+			return;
+		}
 		state.applyDocument(demoteHeaderToRow(state.document));
-		set({ headerGuessPending: false });
 	},
 
 	resetDocument: () => {
 		get().applyDocument(createEmptyDocument());
-		set({
-			selection: createSelection({ row: 0, column: 0 }),
-			headerGuessPending: false,
-		});
+		set({ selection: createSelection({ row: 0, column: 0 }) });
 	},
 
 	dismissNotice: () =>
-		set({ notice: null, inputError: null, headerGuessPending: false }),
+		set((state) => {
+			if (state.inputError) return { inputError: null };
+			if (state.headerCorrection) return { headerCorrection: null };
+			return { notice: null };
+		}),
 	setNotice: (notice) => set({ notice }),
 }));
 
