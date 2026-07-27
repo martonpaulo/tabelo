@@ -50,6 +50,7 @@ test("interactive surfaces share one radius while table structure stays square",
 	const emptyState = page.getByText("Start with an empty table").locator("..");
 
 	await expect(fileButton).toHaveCSS("border-radius", "6px");
+	await expect(tabelo.workspace.getByRole("region")).toHaveCount(2);
 	await expect(emptyState).toHaveCSS("border-radius", "6px");
 	await expect(tabelo.cell(1, 1)).toHaveCSS("border-radius", "0px");
 	await expect(pane).toHaveCSS("border-radius", "0px");
@@ -84,6 +85,44 @@ test("a single pane keeps the same compact hierarchy without extra framing", asy
 	await expect(
 		panes.first().getByRole("button", { name: /^Pane actions:/ }),
 	).toBeVisible();
+});
+
+test("a three-pane preset keeps the same readable action hierarchy", async ({
+	tabelo,
+}) => {
+	await tabelo.chooseLayout("Split left");
+	const panes = tabelo.workspace.getByRole("region");
+	await expect(panes).toHaveCount(3);
+	for (const pane of await panes.all()) {
+		await expect(pane.getByRole("heading").first()).toHaveCSS(
+			"font-size",
+			"14px",
+		);
+		await expect(
+			pane.getByRole("button", { name: /^Pane actions:/ }),
+		).toBeVisible();
+	}
+});
+
+test("critical document controls remain available at 200% text size", async ({
+	page,
+	tabelo,
+}) => {
+	await page.setViewportSize({ width: 1280, height: 720 });
+	await page.evaluate(() => {
+		document.documentElement.style.fontSize = "200%";
+	});
+
+	await expect(
+		page.getByRole("button", { name: "File", exact: true }),
+	).toBeVisible();
+	await expect(page.getByRole("button", { name: /^Layout:/ })).toBeVisible();
+	await expect(tabelo.workspace).toBeVisible();
+	expect(
+		await page.evaluate(
+			() => document.documentElement.scrollWidth <= window.innerWidth,
+		),
+	).toBe(true);
 });
 
 test("light and dark text and focus tokens meet their contrast floors", async ({
