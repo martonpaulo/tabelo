@@ -87,9 +87,9 @@ jobs:
       - name: Add SPA fallback
         run: cp apps/web/dist/index.html apps/web/dist/404.html
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: apps/web/dist
 
