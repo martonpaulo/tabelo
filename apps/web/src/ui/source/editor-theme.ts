@@ -14,7 +14,10 @@ export const editorTheme = EditorView.theme({
 		backgroundColor: "var(--surface-panel)",
 		color: "var(--foreground)",
 	},
-	"&.cm-focused": { outline: "none" },
+	"&.cm-focused": {
+		outline: "2px solid var(--selection-edge)",
+		outlineOffset: "-2px",
+	},
 	".cm-scroller": {
 		fontFamily: "var(--font-family-source)",
 		lineHeight: "1.6",

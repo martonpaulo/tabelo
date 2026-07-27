@@ -115,4 +115,13 @@ body {
 		/* biome-ignore lint/complexity/noImportantStyles: same reason. */
 		transition-duration: 0.01ms !important;
 	}
+
+	/* CodeMirror's cursor uses an infinite stepped animation. Shortening its
+	   duration would accelerate the blink, so reduced motion disables that
+	   animation explicitly and leaves the cursor solid. */
+	.cm-cursorLayer {
+		/* biome-ignore lint/complexity/noImportantStyles: this must override
+		   CodeMirror's component stylesheet inside the global media query. */
+		animation: none !important;
+	}
 }
