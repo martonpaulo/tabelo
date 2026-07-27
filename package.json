@@ -1,0 +1,36 @@
+{
+  "name": "tabelo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "check-types": "pnpm -r check-types",
+    "dev:web": "pnpm --filter web dev",
+    "check": "biome check --write .",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@tabelo/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.2",
+    "@tabelo/config": "workspace:*",
+    "@types/node": "catalog:",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
+    "typescript": "catalog:"
+  },
+  "lint-staged": {
+    "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
+      "biome check --write ."
+    ]
+  },
+  "packageManager": "pnpm@11.4.0"
+}

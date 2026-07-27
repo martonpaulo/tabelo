@@ -1,0 +1,3 @@
+{
+  "extends": "@tabelo/config/tsconfig.base.json"
+}
