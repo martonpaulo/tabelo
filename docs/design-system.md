@@ -122,6 +122,18 @@ not accent-coloured. Links are not accent-coloured.
 **Colour never carries meaning alone.** Every status dot has a text label
 beside it. This is not optional.
 
+### Theme
+
+Tabelo follows `prefers-color-scheme` on first paint and whenever the operating
+system changes. CSS media queries own theme selection; no React state, root
+class, persistent toolbar control, or stored manual override may compete with
+the system.
+
+The retired `tabelo.theme` preference is removed during startup. Its value must
+never influence paint, so old Light, Dark, System, malformed, or inaccessible
+storage all resolve deterministically to the current system theme without a
+wrong-theme flash.
+
 ### Geometry
 
 | Token | Utility | Value |

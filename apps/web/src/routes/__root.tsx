@@ -5,7 +5,6 @@ import {
 	Outlet,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { ThemeProvider } from "@/components/theme-provider";
 import "@/index.css";
 
 export type RouterAppContext = Record<string, never>;
@@ -35,17 +34,10 @@ function RootComponent() {
 	return (
 		<>
 			<HeadContent />
-			<ThemeProvider
-				attribute="class"
-				defaultTheme="system"
-				disableTransitionOnChange
-				storageKey="tabelo.theme"
-			>
-				<div className="h-full">
-					<Outlet />
-				</div>
-				<Toaster richColors />
-			</ThemeProvider>
+			<div className="h-full">
+				<Outlet />
+			</div>
+			<Toaster richColors />
 			<TanStackRouterDevtools position="bottom-left" />
 		</>
 	);

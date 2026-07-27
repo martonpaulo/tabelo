@@ -40,6 +40,8 @@
 }
 
 :root {
+	color-scheme: light dark;
+
 	--surface-app: oklch(0.982 0.006 78);
 	--surface-panel: oklch(0.995 0.004 78);
 	--surface-header: oklch(0.963 0.009 78);
@@ -88,30 +90,32 @@
 		ui-monospace, "SF Mono", "Cascadia Mono", "Menlo", monospace;
 }
 
-.dark {
-	--surface-app: oklch(0.15 0.008 65);
-	--surface-panel: oklch(0.18 0.009 65);
-	--surface-header: oklch(0.225 0.011 65);
-	--surface-gutter: oklch(0.205 0.01 65);
+@media (prefers-color-scheme: dark) {
+	:root {
+		--surface-app: oklch(0.15 0.008 65);
+		--surface-panel: oklch(0.18 0.009 65);
+		--surface-header: oklch(0.225 0.011 65);
+		--surface-gutter: oklch(0.205 0.01 65);
 
-	--line-subtle: oklch(0.92 0.008 70 / 12%);
-	--line-strong: oklch(0.92 0.008 70 / 21%);
+		--line-subtle: oklch(0.92 0.008 70 / 12%);
+		--line-strong: oklch(0.92 0.008 70 / 21%);
 
-	--selection-fill: oklch(0.67 0.13 250 / 25%);
-	--selection-edge: oklch(0.72 0.13 250);
+		--selection-fill: oklch(0.67 0.13 250 / 25%);
+		--selection-edge: oklch(0.72 0.13 250);
 
-	--status-ok: oklch(0.72 0.15 155);
-	--status-pending: oklch(0.79 0.14 75);
+		--status-ok: oklch(0.72 0.15 155);
+		--status-pending: oklch(0.79 0.14 75);
 
-	--foreground: oklch(0.94 0.009 75);
-	--card-foreground: var(--foreground);
-	--popover-foreground: var(--foreground);
-	--primary: var(--foreground);
-	--primary-foreground: var(--surface-panel);
-	--secondary-foreground: var(--foreground);
-	--muted-foreground: oklch(0.72 0.014 72);
-	--accent: oklch(0.28 0.014 65);
-	--accent-foreground: var(--foreground);
+		--foreground: oklch(0.94 0.009 75);
+		--card-foreground: var(--foreground);
+		--popover-foreground: var(--foreground);
+		--primary: var(--foreground);
+		--primary-foreground: var(--surface-panel);
+		--secondary-foreground: var(--foreground);
+		--muted-foreground: oklch(0.72 0.014 72);
+		--accent: oklch(0.28 0.014 65);
+		--accent-foreground: var(--foreground);
+	}
 }
 
 /* The editor owns the viewport: the page never scrolls, only the panels do.

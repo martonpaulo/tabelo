@@ -91,9 +91,7 @@ test("light and dark text and focus tokens meet their contrast floors", async ({
 }) => {
 	await page.goto("/");
 	for (const dark of [false, true]) {
-		await page.evaluate((enabled) => {
-			document.documentElement.classList.toggle("dark", enabled);
-		}, dark);
+		await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
 		expect(
 			await contrastBetween(page, "--foreground", "--surface-panel"),
 		).toBeGreaterThanOrEqual(4.5);

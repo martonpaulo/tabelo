@@ -10,7 +10,6 @@ import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { FileMenu } from "@/ui/file-menu";
 import { ToolbarButton } from "@/ui/primitives/toolbar-button";
-import { ThemeToggle } from "@/ui/theme-toggle";
 import { LayoutPicker } from "@/ui/workspace/layout-picker";
 
 // Document-level actions only. Anything that acts on a row, a column, or one
@@ -70,7 +69,6 @@ export function AppHeader({ onImport }: { readonly onImport: () => void }) {
 				value={layout}
 				onChange={(next) => useTabeloStore.getState().setLayout(next)}
 			/>
-			<ThemeToggle />
 		</header>
 	);
 }

@@ -4,8 +4,10 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	page,
 	tabelo,
 }) => {
-	await page.getByRole("button", { name: /^Theme:/ }).click();
-	await page.getByRole("menuitem", { name: "Light" }).click();
+	await page.emulateMedia({
+		colorScheme: "light",
+		reducedMotion: "no-preference",
+	});
 
 	const pane = tabelo.pane("Markdown");
 	const editor = tabelo.source("Markdown");
@@ -30,7 +32,7 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	expect(lightFocus.style).toBe("solid");
 	expect(lightFocus.width).toBe("2px");
 
-	await page.emulateMedia({ reducedMotion: "reduce" });
+	await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
 	await expect
 		.poll(() =>
 			cursorLayer.evaluate(
@@ -41,15 +43,14 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	await expect
 		.poll(() =>
 			page
-				.getByRole("button", { name: /^Theme:/ })
+				.getByRole("button", { name: "File", exact: true })
 				.evaluate((element) =>
 					Number.parseFloat(getComputedStyle(element).transitionDuration),
 				),
 		)
 		.toBeLessThan(0.001);
 
-	await page.getByRole("button", { name: /^Theme:/ }).click();
-	await page.getByRole("menuitem", { name: "Dark" }).click();
+	await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
 	await editor.focus();
 	const darkFocusColor = await editorFrame.evaluate(
 		(element) => getComputedStyle(element).outlineColor,

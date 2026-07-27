@@ -29,7 +29,6 @@
 		"@tanstack/react-router": "^1.170.17",
 		"dotenv": "catalog:",
 		"lucide-react": "catalog:",
-		"next-themes": "catalog:",
 		"papaparse": "^5.5.4",
 		"react": "catalog:",
 		"react-dom": "catalog:",
