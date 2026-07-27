@@ -112,7 +112,6 @@ describe("header correction", () => {
 			"markdown",
 			"| Other | Role |\n| --- | --- |\n| Bruno | Developer |",
 		);
-		state.commitDraft();
 
 		expect(useTabeloStore.getState().headerCorrection).toBeNull();
 	});

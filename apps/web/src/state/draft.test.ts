@@ -1,6 +1,12 @@
-import { beforeEach, describe, expect, it } from "vitest";
+// @vitest-environment happy-dom
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { documentFromMatrix, documentToMatrix } from "@/core/document";
+import { createSelection } from "@/core/selection";
+import { listViews } from "@/views/registry";
+import { canParse } from "@/views/types";
 import { layoutPresets } from "@/workspace/layout";
-import { useTabeloStore } from "./store";
+import { textForView, useTabeloStore } from "./store";
 
 const initialState = useTabeloStore.getInitialState();
 const invalidMarkdown = "| Name |\n| not a divider |\n| Ana |";
@@ -9,6 +15,11 @@ const validMarkdown = "| Name |\n| --- |\n| Ana |";
 beforeEach(() => {
 	useTabeloStore.getState().discardDraft();
 	useTabeloStore.setState(initialState, true);
+});
+
+afterEach(() => {
+	useTabeloStore.getState().discardDraft();
+	vi.useRealTimers();
 });
 
 function markdownPaneId(): string {
@@ -61,7 +72,6 @@ describe("draft ownership", () => {
 		const store = useTabeloStore.getState();
 		const paneId = markdownPaneId();
 		store.setDraft(paneId, "markdown", invalidMarkdown);
-		store.commitDraft();
 
 		store.setPaneView(paneId, "csv");
 
@@ -102,7 +112,6 @@ describe("draft ownership", () => {
 		const store = useTabeloStore.getState();
 		const paneId = markdownPaneId();
 		store.setDraft(paneId, "markdown", invalidMarkdown);
-		store.commitDraft();
 
 		store.editCell(0, 0, "Grid wins");
 		expect(useTabeloStore.getState().draft).toBeNull();
@@ -114,5 +123,124 @@ describe("draft ownership", () => {
 			viewId: "markdown",
 			text: invalidMarkdown,
 		});
+	});
+});
+
+describe("source synchronization", () => {
+	const parsedDocument = documentFromMatrix(
+		[
+			["Name", "Role"],
+			["Ana", "Designer"],
+		],
+		{ headerRow: true },
+	);
+	const editableViews = listViews().filter(canParse);
+
+	it.each(
+		editableViews.map((view) => [
+			view.id,
+			view.codec?.serialize(parsedDocument) ?? "",
+		]),
+	)("parses a valid %s transaction immediately", (viewId, text) => {
+		const paneId = markdownPaneId();
+		const store = useTabeloStore.getState();
+		store.setPaneView(paneId, viewId);
+
+		store.setDraft(paneId, viewId, text);
+
+		const state = useTabeloStore.getState();
+		expect(documentToMatrix(state.document)).toEqual([
+			["Name", "Role"],
+			["Ana", "Designer"],
+		]);
+		expect(state.draft).toMatchObject({
+			paneId,
+			viewId,
+			status: "clean",
+			issues: [],
+		});
+	});
+
+	it("shows a persistent parse error only after the grace period", () => {
+		vi.useFakeTimers();
+		const paneId = markdownPaneId();
+
+		useTabeloStore.getState().setDraft(paneId, "markdown", invalidMarkdown);
+
+		expect(useTabeloStore.getState().draft?.status).toBe("invalid-grace");
+		vi.advanceTimersByTime(299);
+		expect(useTabeloStore.getState().draft?.status).toBe("invalid-grace");
+		vi.advanceTimersByTime(1);
+		expect(useTabeloStore.getState().draft?.status).toBe("invalid");
+	});
+
+	it("returns to clean immediately when transient syntax becomes valid", () => {
+		vi.useFakeTimers();
+		const paneId = markdownPaneId();
+		const store = useTabeloStore.getState();
+		const before = store.document;
+
+		store.setDraft(paneId, "markdown", invalidMarkdown);
+		expect(useTabeloStore.getState().document).toBe(before);
+
+		store.setDraft(paneId, "markdown", validMarkdown);
+
+		expect(useTabeloStore.getState().draft?.status).toBe("clean");
+		expect(useTabeloStore.getState().document.columns[0]?.header).toBe("Name");
+		vi.advanceTimersByTime(300);
+		expect(useTabeloStore.getState().draft?.status).toBe("clean");
+	});
+
+	it("records one document step for one valid source transaction", () => {
+		const paneId = markdownPaneId();
+		const before = useTabeloStore.getState().document;
+
+		useTabeloStore.getState().setDraft(paneId, "markdown", validMarkdown);
+
+		expect(useTabeloStore.getState().past).toHaveLength(1);
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().document).toBe(before);
+	});
+
+	it("preserves identifiers while synchronizing a 200-row source", () => {
+		const parsed = documentFromMatrix(
+			[
+				["Name"],
+				...Array.from({ length: 200 }, (_, index) => [`Value ${index}`]),
+			],
+			{ headerRow: true },
+		);
+		const document = {
+			...parsed,
+			columns: [{ ...parsed.columns[0], width: 240 }],
+		};
+		const selection = createSelection({ row: 199, column: 0 });
+		useTabeloStore.setState({
+			document,
+			selection,
+			past: [],
+			future: [],
+			draft: null,
+		});
+		const paneId = markdownPaneId();
+		const rowIds = document.rows.map((row) => row.id);
+		const columnIds = document.columns.map((column) => column.id);
+		const changed = textForView(document, "markdown").replace(
+			"Value 199",
+			"Changed",
+		);
+
+		useTabeloStore.getState().setDraft(paneId, "markdown", changed);
+
+		const state = useTabeloStore.getState();
+		expect(state.document.rows).toHaveLength(200);
+		expect(state.document.rows.map((row) => row.id)).toEqual(rowIds);
+		expect(state.document.columns.map((column) => column.id)).toEqual(
+			columnIds,
+		);
+		expect(state.document.columns[0]?.width).toBe(240);
+		expect(state.selection).toEqual(selection);
+		expect(state.document.rows[199]?.cells[columnIds[0] ?? ""]).toBe("Changed");
+		expect(state.past).toHaveLength(1);
 	});
 });

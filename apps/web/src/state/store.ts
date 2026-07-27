@@ -4,6 +4,7 @@ import {
 	createEmptyDocument,
 	documentToMatrix,
 	isDocumentBlank,
+	reconcileDocument,
 } from "@/core/document";
 import {
 	clearCells,
@@ -53,18 +54,22 @@ import {
 // session, bounded so a long session cannot grow without limit.
 const HISTORY_LIMIT = 200;
 
-// How long a source view waits after the last keystroke before parsing. Long
-// enough that typing never thrashes the other views, short enough that they
-// still feel connected to what is being written.
-const COMMIT_DELAY_MS = 300;
+// Syntax errors get a short grace period so a transient broken delimiter never
+// flashes feedback while the user is still completing the transaction.
+const INVALID_GRACE_MS = 300;
 
-// The text a source view is holding but has not committed. Exactly one can
-// exist at a time — every other view is a pure projection of the document, so
-// there is never a question of which pending edit wins.
+export type DraftStatus = "clean" | "invalid-grace" | "invalid";
+
+// The exact pane and format holding an editor buffer. A clean buffer has
+// already committed its meaning to the document but stays here so
+// synchronization never rewrites the user's formatting, cursor, or history.
 export interface Draft {
 	readonly paneId: string;
 	readonly viewId: ViewId;
 	readonly text: string;
+	readonly status: DraftStatus;
+	readonly issues: readonly ParseIssue[];
+	readonly warnings: readonly ParseIssue[];
 }
 
 export interface PendingPaneView {
@@ -90,8 +95,6 @@ export interface TabeloState {
 	workspace: Workspace;
 
 	draft: Draft | null;
-	issues: readonly ParseIssue[];
-	warnings: readonly ParseIssue[];
 
 	past: readonly HistoryEntry[];
 	future: readonly HistoryEntry[];
@@ -110,7 +113,6 @@ export interface TabeloState {
 	applyDocument: (next: TableDocument) => void;
 
 	setDraft: (paneId: string, viewId: ViewId, text: string) => void;
-	commitDraft: () => void;
 	discardDraft: () => void;
 
 	setLayout: (layout: LayoutId) => void;
@@ -158,10 +160,20 @@ export interface TabeloState {
 	setNotice: (notice: string | null) => void;
 }
 
-let commitTimer: ReturnType<typeof setTimeout> | null = null;
+let invalidTimer: ReturnType<typeof setTimeout> | null = null;
 
 function snapshotOf(state: TabeloState): HistoryEntry {
-	return { document: state.document, draft: state.draft };
+	const draft =
+		state.draft?.status === "invalid-grace"
+			? { ...state.draft, status: "invalid" as const }
+			: state.draft;
+	return { document: state.document, draft };
+}
+
+function clearInvalidTimer(): void {
+	if (!invalidTimer) return;
+	clearTimeout(invalidTimer);
+	invalidTimer = null;
 }
 
 function pushHistory(
@@ -186,8 +198,6 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	workspace: createDefaultWorkspace(),
 
 	draft: null,
-	issues: [],
-	warnings: [],
 
 	past: [],
 	future: [],
@@ -209,8 +219,6 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				document: outcome.state.document,
 				workspace: outcome.state.workspace,
 				draft: null,
-				issues: [],
-				warnings: [],
 				headerCorrection: null,
 				inputError: null,
 				pendingPaneView: null,
@@ -227,14 +235,13 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// The single funnel for every structural change. A table edit always wins
 	// over an uncommitted draft, and the draft it displaces is preserved in
 	// history rather than dropped. See docs/adr/0001 and 0003.
-	applyDocument: (next) =>
+	applyDocument: (next) => {
+		clearInvalidTimer();
 		set((state) => ({
 			past: pushHistory(state.past, snapshotOf(state)),
 			future: [],
 			document: next,
 			draft: null,
-			issues: [],
-			warnings: [],
 			inputError: null,
 			headerCorrection: null,
 			pendingPaneView: null,
@@ -243,66 +250,103 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				next.rows.length,
 				next.columns.length,
 			),
-		})),
+		}));
+	},
 
 	setDraft: (paneId, viewId, text) => {
-		const pane = get().workspace.panes.find(
+		const state = get();
+		const pane = state.workspace.panes.find(
 			(candidate) => candidate.id === paneId && candidate.view === viewId,
 		);
 		if (!pane) return;
 
-		set({ draft: { paneId, viewId, text }, pendingPaneView: null });
-		if (commitTimer) clearTimeout(commitTimer);
-		commitTimer = setTimeout(() => get().commitDraft(), COMMIT_DELAY_MS);
-	},
-
-	commitDraft: () => {
-		if (commitTimer) {
-			clearTimeout(commitTimer);
-			commitTimer = null;
-		}
-		const state = get();
-		const draft = state.draft;
-		if (!draft) return;
-
-		const parse = getView(draft.viewId).codec?.parse;
+		const parse = getView(viewId).codec?.parse;
 		if (!parse) return;
 
-		const result = parse(draft.text);
+		const previousDraft = state.draft;
+		const sameOwner =
+			previousDraft?.paneId === paneId && previousDraft.viewId === viewId;
+		const ownerChanged = previousDraft !== null && !sameOwner;
+		const result = parse(text);
+
 		if (!result.ok) {
-			// Hold the last valid table. Every other view stays editable throughout.
-			set({ issues: result.issues, warnings: [] });
+			const continuingVisibleError =
+				sameOwner && previousDraft.status === "invalid";
+			const continuingGrace =
+				sameOwner && previousDraft.status === "invalid-grace";
+			const draft: Draft = {
+				paneId,
+				viewId,
+				text,
+				status: continuingVisibleError ? "invalid" : "invalid-grace",
+				issues: result.issues,
+				warnings: [],
+			};
+
+			if (!continuingGrace) clearInvalidTimer();
+			set((current) => ({
+				draft,
+				pendingPaneView: null,
+				...(ownerChanged && previousDraft.status !== "clean"
+					? {
+							past: pushHistory(current.past, snapshotOf(current)),
+							future: [],
+						}
+					: {}),
+			}));
+
+			if (!continuingVisibleError && !continuingGrace) {
+				invalidTimer = setTimeout(() => {
+					invalidTimer = null;
+					set((current) =>
+						current.draft?.paneId === paneId &&
+						current.draft.viewId === viewId &&
+						current.draft.status === "invalid-grace"
+							? {
+									draft: { ...current.draft, status: "invalid" },
+								}
+							: {},
+					);
+				}, INVALID_GRACE_MS);
+			}
 			return;
 		}
 
+		clearInvalidTimer();
+		const document = reconcileDocument(state.document, result.document);
+		const documentChanged = document !== state.document;
+		const displacedInvalid = ownerChanged && previousDraft.status !== "clean";
+
 		set((current) => ({
-			past: pushHistory(current.past, {
-				document: current.document,
-				draft: null,
-			}),
-			future: [],
-			document: result.document,
+			...(documentChanged || displacedInvalid
+				? {
+						past: pushHistory(current.past, snapshotOf(current)),
+						future: [],
+					}
+				: {}),
+			document,
+			draft: {
+				paneId,
+				viewId,
+				text,
+				status: "clean",
+				issues: [],
+				warnings: result.warnings ?? [],
+			},
 			headerCorrection: null,
 			inputError: null,
-			// Deliberately keeping the draft: re-serializing would rewrite the
-			// buffer the user is typing in and move their cursor. It is now equal
-			// in meaning to the document, just not character-identical.
-			issues: [],
-			warnings: result.warnings ?? [],
+			pendingPaneView: null,
 			selection: clampSelection(
 				current.selection,
-				result.document.rows.length,
-				result.document.columns.length,
+				document.rows.length,
+				document.columns.length,
 			),
 		}));
 	},
 
 	discardDraft: () => {
-		if (commitTimer) {
-			clearTimeout(commitTimer);
-			commitTimer = null;
-		}
-		set({ draft: null, issues: [], warnings: [], pendingPaneView: null });
+		clearInvalidTimer();
+		set({ draft: null, pendingPaneView: null });
 	},
 
 	setLayout: (layout) =>
@@ -333,16 +377,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		);
 		if (!pane || pane.view === view) return;
 
-		const ownsDraft =
-			state.draft?.paneId === paneId && state.draft.viewId === pane.view;
+		const draft = state.draft;
+		const ownsDraft = draft?.paneId === paneId && draft.viewId === pane.view;
 		if (ownsDraft) {
-			state.commitDraft();
-			const current = get();
-			if (current.issues.length > 0) {
+			if (draft.status !== "clean") {
 				set({ pendingPaneView: { paneId, view } });
 				return;
 			}
-			current.discardDraft();
+			state.discardDraft();
 		}
 
 		set((current) => ({
@@ -397,7 +439,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			},
 		})),
 
-	undo: () =>
+	undo: () => {
+		clearInvalidTimer();
 		set((state) => {
 			const entry = state.past.at(-1);
 			if (!entry) return state;
@@ -406,8 +449,6 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				future: [snapshotOf(state), ...state.future],
 				document: entry.document,
 				draft: entry.draft,
-				issues: [],
-				warnings: [],
 				headerCorrection: null,
 				inputError: null,
 				pendingPaneView: null,
@@ -417,9 +458,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 					entry.document.columns.length,
 				),
 			};
-		}),
+		});
+	},
 
-	redo: () =>
+	redo: () => {
+		clearInvalidTimer();
 		set((state) => {
 			const entry = state.future[0];
 			if (!entry) return state;
@@ -428,8 +471,6 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				future: state.future.slice(1),
 				document: entry.document,
 				draft: entry.draft,
-				issues: [],
-				warnings: [],
 				headerCorrection: null,
 				inputError: null,
 				pendingPaneView: null,
@@ -439,7 +480,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 					entry.document.columns.length,
 				),
 			};
-		}),
+		});
+	},
 
 	setSelection: (selection) => set({ selection }),
 

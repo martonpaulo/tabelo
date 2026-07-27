@@ -4,7 +4,7 @@ import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { GridPaneActions } from "@/ui/grid/grid-pane-actions";
 import { Panel } from "@/ui/primitives/panel";
-import { StatusPill, type StatusTone } from "@/ui/primitives/status-pill";
+import { StatusPill } from "@/ui/primitives/status-pill";
 import { getView } from "@/views/registry";
 import { gridAreaStyle, type WorkspacePane } from "@/workspace/layout";
 import { PaneContent } from "./pane-content";
@@ -20,50 +20,58 @@ interface PaneSourceProps {
 }
 
 function SourceStatus({ paneId, viewId }: PaneSourceProps) {
-	const owns = useTabeloStore(
-		(state) => state.draft?.paneId === paneId && state.draft.viewId === viewId,
+	const status = useTabeloStore((state) =>
+		state.draft?.paneId === paneId && state.draft.viewId === viewId
+			? state.draft.status
+			: null,
 	);
-	const invalid = useTabeloStore((state) => state.issues.length > 0);
-
-	if (!owns) {
-		return (
-			<StatusPill
-				tone="ok"
-				label={copy.status.synced}
-				hint={copy.status.syncedHint}
-			/>
-		);
-	}
-	const tone: StatusTone = invalid ? "invalid" : "pending";
+	if (status !== "invalid") return null;
 	return (
 		<StatusPill
-			tone={tone}
-			label={invalid ? copy.status.invalid : copy.status.typing}
-			hint={invalid ? copy.status.invalidHint : copy.status.typingHint}
+			tone="invalid"
+			label={copy.status.invalid}
+			hint={copy.status.invalidFeedback}
 		/>
 	);
 }
 
 function SourceIssue({ paneId, viewId }: PaneSourceProps) {
-	const owns = useTabeloStore(
-		(state) => state.draft?.paneId === paneId && state.draft.viewId === viewId,
-	);
-	const issue = useTabeloStore(
-		(state) => state.issues[0] ?? state.warnings[0] ?? null,
-	);
-	const isError = useTabeloStore((state) => state.issues.length > 0);
+	const draft = useTabeloStore((state) => {
+		const draft = state.draft;
+		if (draft?.paneId !== paneId || draft.viewId !== viewId) return null;
+		return draft;
+	});
+	const feedback =
+		draft?.status === "invalid"
+			? {
+					message: copy.status.invalidFeedback,
+					detail: draft.issues[0] ?? null,
+					error: true,
+				}
+			: draft?.warnings[0]
+				? {
+						message: draft.warnings[0].message,
+						detail: draft.warnings[0],
+						error: false,
+					}
+				: null;
 
-	if (!owns || !issue) return null;
+	if (!feedback) return null;
+
+	const detail = feedback.detail;
+	const title = detail
+		? `${detail.line !== undefined ? `Line ${detail.line}: ` : ""}${detail.message}`
+		: undefined;
 
 	return (
 		<p
+			title={title}
 			className={cn(
 				"truncate text-xs",
-				isError ? "text-status-invalid" : "text-muted-foreground",
+				feedback.error ? "text-status-invalid" : "text-muted-foreground",
 			)}
 		>
-			{issue.line !== undefined ? `Line ${issue.line}: ` : null}
-			{issue.message}
+			{feedback.message}
 		</p>
 	);
 }

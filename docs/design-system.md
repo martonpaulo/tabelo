@@ -217,6 +217,11 @@ not a polish item.
 Disabled actions stay visible so the interface does not reflow as the selection
 changes. Layout stability outranks tidiness.
 
+Healthy source panes are silent: do not render repeated "In sync" or "Editing"
+labels. A transient parse failure also stays silent during its short grace
+period. Persistent invalid source uses the invalid treatment and the fixed
+message row so colour never carries the error alone.
+
 ---
 
 ## 5. Layout

@@ -115,6 +115,61 @@ export function documentFromMatrix(
 	return { columns, rows: rows.length > 0 ? rows : [createRow(columns)] };
 }
 
+// A source parser necessarily constructs fresh identifiers. Synchronization
+// reconciles that parsed shape with the current document by position so normal
+// text edits keep selection, column widths, and row identity attached.
+export function reconcileDocument(
+	current: TableDocument,
+	parsed: TableDocument,
+): TableDocument {
+	const columns = parsed.columns.map((column, index) => {
+		const existing = current.columns[index];
+		if (!existing) return column;
+		return {
+			...column,
+			id: existing.id,
+			...(existing.width === undefined ? {} : { width: existing.width }),
+		};
+	});
+
+	const rows = parsed.rows.map((row, rowIndex) => {
+		const existing = current.rows[rowIndex];
+		const cells: Record<ColumnId, string> = {};
+		columns.forEach((column, columnIndex) => {
+			const parsedColumn = parsed.columns[columnIndex];
+			cells[column.id] = parsedColumn ? (row.cells[parsedColumn.id] ?? "") : "";
+		});
+		return { id: existing?.id ?? row.id, cells };
+	});
+
+	const unchanged =
+		columns.length === current.columns.length &&
+		rows.length === current.rows.length &&
+		columns.every((column, index) => {
+			const existing = current.columns[index];
+			return (
+				existing !== undefined &&
+				column.id === existing.id &&
+				column.header === existing.header &&
+				column.align === existing.align &&
+				column.width === existing.width
+			);
+		}) &&
+		rows.every((row, rowIndex) => {
+			const existing = current.rows[rowIndex];
+			return (
+				existing !== undefined &&
+				row.id === existing.id &&
+				columns.every(
+					(column) =>
+						row.cells[column.id] === (existing.cells[column.id] ?? ""),
+				)
+			);
+		});
+
+	return unchanged ? current : { columns, rows };
+}
+
 export interface DocumentToMatrixOptions {
 	readonly includeHeader?: boolean;
 }

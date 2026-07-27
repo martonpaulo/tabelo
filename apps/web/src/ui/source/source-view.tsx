@@ -32,12 +32,18 @@ export default function SourceView({ paneId, viewId }: SourceViewProps) {
 			? state.draft.text
 			: null,
 	);
-	const isDraftOwner = draftText !== null;
 
-	const issues = useTabeloStore((state) => state.issues);
-	const invalidLine = isDraftOwner
-		? (issues.find((issue) => issue.line !== undefined)?.line ?? null)
-		: null;
+	const invalidLine = useTabeloStore((state) => {
+		const draft = state.draft;
+		if (
+			draft?.paneId !== paneId ||
+			draft.viewId !== viewId ||
+			draft.status !== "invalid"
+		) {
+			return null;
+		}
+		return draft.issues.find((issue) => issue.line !== undefined)?.line ?? null;
+	});
 
 	const editable = view.capabilities.editable;
 

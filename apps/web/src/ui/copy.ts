@@ -21,12 +21,9 @@ export const copy = {
 	},
 
 	status: {
-		synced: "In sync",
-		syncedHint: "Every view matches the table.",
-		typing: "Editing",
-		typingHint: "Waiting for you to pause before reading this back.",
 		invalid: "Not valid yet",
-		invalidHint: "The table still shows your last working version.",
+		invalidFeedback:
+			"Source is not valid yet. Other views still show the last valid table.",
 	},
 
 	actions: {
