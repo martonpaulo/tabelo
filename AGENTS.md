@@ -178,7 +178,7 @@ Never claim a check passed unless it ran successfully.
   different rules, each with a sibling `CLAUDE.md` symbolic link.
 - Do not duplicate the same rules across instruction files.
 
-## Personal skill paths
+## Agent skill paths
 
 - Domain glossary: `CONTEXT.md`
 - ADRs: `docs/adr/`
