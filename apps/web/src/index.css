@@ -1,1 +1,118 @@
 @import "@tabelo/ui/globals.css";
+
+/* Tabelo's semantic token layer.
+   Nothing in the app should reach for a raw colour, size, or radius — every
+   value used by a component is named here for what it MEANS, not what it is.
+   Changing the product's look should be possible from this file alone.
+   The rules that govern how these are used live in docs/design-system.md. */
+
+@theme inline {
+	/* Surfaces, from furthest back to closest to the user. */
+	--color-surface-app: var(--surface-app);
+	--color-surface-panel: var(--surface-panel);
+	--color-surface-header: var(--surface-header);
+	--color-surface-gutter: var(--surface-gutter);
+
+	/* Separators. Subtle is the default; strong marks a panel boundary. */
+	--color-line-subtle: var(--line-subtle);
+	--color-line-strong: var(--line-strong);
+
+	/* The one accent in the product: what the user has selected. */
+	--color-selection-fill: var(--selection-fill);
+	--color-selection-edge: var(--selection-edge);
+
+	/* Synchronization state. Always paired with a text label, never colour alone. */
+	--color-status-ok: var(--status-ok);
+	--color-status-pending: var(--status-pending);
+	--color-status-invalid: var(--status-invalid);
+
+	/* Control geometry. */
+	--spacing-control-sm: var(--control-h-sm);
+	--spacing-control-md: var(--control-h-md);
+	--spacing-panel-header: var(--panel-header-h);
+	--spacing-grid-gutter: var(--grid-gutter-w);
+	--spacing-grid-row: var(--grid-row-h);
+	--spacing-grid-col: var(--grid-col-w);
+	--spacing-grid-col-min: var(--grid-col-w-min);
+
+	--font-source: var(--font-family-source);
+}
+
+:root {
+	--surface-app: oklch(0.985 0 0);
+	--surface-panel: oklch(1 0 0);
+	--surface-header: oklch(0.975 0 0);
+	--surface-gutter: oklch(0.982 0 0);
+
+	--line-subtle: oklch(0.918 0 0);
+	--line-strong: oklch(0.878 0 0);
+
+	--selection-fill: oklch(0.623 0.214 259.815 / 10%);
+	--selection-edge: oklch(0.546 0.245 262.881);
+
+	--status-ok: oklch(0.63 0.15 155);
+	--status-pending: oklch(0.72 0.15 75);
+	--status-invalid: var(--destructive);
+
+	/* base-lyra is a square design language. Radius stays at zero on purpose —
+	   see docs/design-system.md before introducing a rounded surface. */
+	--control-h-sm: 1.75rem;
+	--control-h-md: 2rem;
+	--panel-header-h: 2.75rem;
+	--grid-gutter-w: 2.75rem;
+	--grid-row-h: 2rem;
+	--grid-col-w: 10.5rem;
+	--grid-col-w-min: 4.5rem;
+
+	--font-family-source:
+		ui-monospace, "SF Mono", "Cascadia Mono", "Menlo", monospace;
+}
+
+.dark {
+	--surface-app: oklch(0.155 0 0);
+	--surface-panel: oklch(0.185 0 0);
+	--surface-header: oklch(0.225 0 0);
+	--surface-gutter: oklch(0.205 0 0);
+
+	--line-subtle: oklch(1 0 0 / 11%);
+	--line-strong: oklch(1 0 0 / 18%);
+
+	--selection-fill: oklch(0.623 0.214 259.815 / 24%);
+	--selection-edge: oklch(0.709 0.18 259.815);
+
+	--status-ok: oklch(0.72 0.15 155);
+	--status-pending: oklch(0.79 0.14 75);
+}
+
+/* The editor owns the viewport: the page never scrolls, only the panels do.
+   This is what keeps the layout from shifting while the user types. */
+html,
+body,
+#app {
+	height: 100%;
+}
+
+body {
+	overscroll-behavior: none;
+	background-color: var(--surface-app);
+}
+
+/* One focus treatment for the whole app, including inside the grid.
+   Keyboard operation is a first-class path here, not a fallback. */
+:focus-visible {
+	outline: 2px solid var(--selection-edge);
+	outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		/* biome-ignore lint/complexity/noImportantStyles: a reduced-motion
+		   preference must beat every component transition, and specificity alone
+		   cannot guarantee that against utility classes. */
+		animation-duration: 0.01ms !important;
+		/* biome-ignore lint/complexity/noImportantStyles: same reason. */
+		transition-duration: 0.01ms !important;
+	}
+}
