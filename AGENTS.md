@@ -44,10 +44,10 @@ describes the migration and its downstream effects.
 
 ## Product
 
-Tabelo is a browser-based table editor. The same table is always available
-through three synchronized representations: a visual grid, Markdown source, and
-CSV source. Two panels: the grid is the primary editing surface, and the text
-panel shows either Markdown or CSV.
+Tabelo is a browser-based table editor. One table document is shown through
+several synchronized views — a visual grid, Markdown, CSV, TSV, HTML source,
+Jira syntax, and a rendered preview — arranged in a configurable workspace of
+up to four panes.
 
 **Simple by design.** No accounts, no backend, no cloud sync, no collaboration,
 no analytics, no telemetry. No formulas, calculations, multiple sheets, charts,
@@ -58,7 +58,7 @@ product change, not a default.
 The product priority order is fixed:
 
 1. Data preservation — never lose a user's table content silently
-2. Predictable synchronization between the three representations
+2. Predictable synchronization between every open view
 3. Fast keyboard interaction and accessibility
 4. Calm, minimal, immediately understandable interface
 5. Runtime performance
@@ -82,21 +82,33 @@ vocabulary and `docs/adr/` for the reasoning.
   `<br>`; the parser reverses both. A value must survive
   CSV → Markdown → CSV byte-exact. Never flatten or drop content to make
   Markdown look cleaner.
-- **The grid holds the last valid parse and stays editable.** When text does not
-  parse, keep displaying the last successful parse, surface the error inline in
-  the text panel, and leave the grid fully editable. A grid edit then wins and
-  regenerates the text; the superseded draft must remain recoverable through
-  undo and is never silently destroyed.
-- **Undo is layered.** Inside the text panel, undo is the editor's own
+- **Every other view holds the last valid parse and stays editable.** When a
+  draft does not parse, keep displaying the last successful parse everywhere
+  else, surface the error in the owning pane, and leave the grid fully editable.
+  A grid edit then wins and regenerates the text; the superseded draft must
+  remain recoverable through undo and is never silently destroyed.
+- **Undo is layered.** Inside a source view, undo is the editor's own
   keystroke-level history. When that history is exhausted, or when focus is on
   the grid, undo walks a single document timeline in which each committed parse
   and each grid operation is one step.
-- **Column alignment is document state.** Alignment is Markdown-specific
-  metadata but belongs to the document, so it survives time spent in CSV mode
-  and round-trips back into Markdown unchanged.
+- **Column alignment is document state.** Alignment is Markdown- and
+  HTML-specific metadata but belongs to the document, so it survives time spent
+  in CSV, TSV, or Jira — none of which can express it — and round-trips back
+  unchanged.
 - **Target scale is roughly 200 rows.** Do not add virtualization, Web Workers,
   or IndexedDB. Oversized input must degrade gracefully with a clear message,
   never by freezing the tab.
+- **Exactly one draft can be pending at a time.** The view being typed into owns
+  it; every other view is a pure projection of the document. There is never a
+  question of which pending edit wins.
+- **Formats and views are registry data, never branching.** Nothing outside
+  `formats/index.ts` and `views/registry.ts` may enumerate formats. Render by
+  `kind`, decide behaviour by `capabilities`, and never switch on a view id.
+  Adding a format is one file plus one registry line — see `docs/adr/0005`.
+- **Backspace clears contents; the modifier removes structure.** `Backspace`
+  empties the selected cells, `Mod+Backspace` deletes the selected rows or
+  columns. Neither may fire while text is being edited in a cell or a source
+  view.
 
 ## Frozen technical direction
 
@@ -106,14 +118,15 @@ Use the scaffolded versions unless a task explicitly requires an upgrade.
 - TanStack Router with file-based routing, SPA only
 - Tailwind CSS v4
 - shadcn/ui on Base UI primitives, in `@tabelo/ui`
-- CodeMirror 6 for the Markdown and CSV source panel
+- CodeMirror 6 for every source view, lazily loaded
 - A hand-built DOM grid with no grid library — see `docs/adr/0004`
 - Zustand for the document store
 - Zod for persisted, imported, and pasted data validation
 - Papa Parse for CSV parsing and serialization
 - Biome for formatting and linting
-- Vitest for unit tests. There is no end-to-end suite yet; when one is added,
-  use Playwright and cover the cross-panel flows in the success criteria
+- Vitest for unit tests, with happy-dom for the codec that uses `DOMParser`.
+  There is no end-to-end suite yet; when one is added, use Playwright and cover
+  the cross-view flows in the success criteria
 - pnpm workspaces
 - `vite-plugin-pwa` in `generateSW` mode for offline capability
 
@@ -138,12 +151,15 @@ depend on the core, never the reverse.
 - **Table document** — the internal representation. Columns, rows, cell values,
   stable identifiers, alignment, schema version. Plain data, no framework
   imports.
+- **Workspace** — the slot model, layout presets, and pane placement. Knows
+  about view ids and nothing else about views.
 - **Table operations** — pure functions over the document: insert, delete,
   duplicate, move, resize, set cell, edit header, clear range. No React, no DOM.
-- **Format parsers and serializers** — Markdown and CSV, each a pair behind one
-  shared `TableFormat` contract so a further format can be added without a
-  generic plugin system. Format-specific escaping rules live here and nowhere
-  else.
+- **Codecs** — one `parse`/`serialize` pair per format behind a shared
+  contract, plus the file facts needed to download it. Format-specific escaping
+  rules live here and nowhere else.
+- **View registry** — what the workspace can display, described by capability.
+  It may import codecs; it must never import the editor or any component.
 - **Synchronization** — owns the text draft buffer, debouncing, parse
   scheduling, structural diffing that preserves identifiers, and loop
   prevention. Every editor transaction carries an origin annotation;
@@ -169,6 +185,7 @@ Prefer the smallest relevant check.
 - `pnpm build` — production build for every workspace
 - `pnpm check-types` — TypeScript across the workspace
 - `pnpm check` — Biome format and lint with `--write`
+- `pnpm test` — unit tests
 
 Never claim a check passed unless it ran successfully.
 
@@ -259,8 +276,9 @@ here:
 - When no pattern fits, stop and report before inventing one — and report
   pattern breaks you find rather than silently fixing or silently copying them.
 
-- Two-panel layout; the grid is primary. Keep the active format and editing
-  state visually obvious, and preserve the user's context when switching.
+- Panes are configured from layout presets, never by free slot assignment —
+  see `docs/adr/0006`. Keep each pane's view and sync state visually obvious,
+  and preserve the user's context when the layout or a view changes.
 - Define layout, hierarchy, controls, loading, empty, error, retry, disabled,
   and destructive states when applicable.
 - Include keyboard navigation, focus order, screen-reader labels, scalable text,

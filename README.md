@@ -1,11 +1,12 @@
 # Tabelo
 
-**One table. Three ways to edit it. Always in sync.**
+**One table. Seven ways to look at it. All in sync, all at once.**
 
 Tabelo is a table editor that stops making you choose between a grid and a text
-file. Drag a column into place, then watch the Markdown rewrite itself. Fix a
-typo in the CSV, then watch the cell update. Same table, three windows onto it,
-no import step and no export step.
+file. Move a column, and the Markdown rewrites itself. Fix a typo in the CSV,
+and the cell updates. Split the workspace into four and watch the grid, the
+Markdown, the Jira syntax, and the rendered result all agree — no import step
+and no export step.
 
 It runs entirely in your browser. No account, no server, no upload.
 
@@ -15,7 +16,7 @@ It runs entirely in your browser. No account, no server, no upload.
 
 ## The whole idea in one picture
 
-These are not three documents. They are the same document.
+These are not separate documents. They are the same document.
 
 **Grid**
 
@@ -41,23 +42,38 @@ Ana,Designer,Yes
 Bruno,Developer,No
 ```
 
-Switch to CSV and back, and those `:---:` alignment markers are still there.
-CSV cannot express alignment, so Tabelo remembers it for you rather than
-throwing it away.
+**Jira**
+
+```
+||Name||Role||Active||
+|Ana|Designer|Yes|
+|Bruno|Developer|No|
+```
+
+Go through CSV or Jira and back, and those `:---:` alignment markers are still
+there. Neither format can express alignment, so Tabelo remembers it for you
+rather than throwing it away.
 
 ## What it does
 
-- **Edit visually.** Cells, headers, rows, columns. Add, delete, duplicate,
-  reorder, resize, select ranges, clear.
-- **Edit the source.** Markdown or CSV, with syntax highlighting and errors that
-  tell you which line is wrong.
+- **Arrange the workspace.** One to four panes from a menu of layouts, each
+  showing whichever view you want. Drag the dividers; it remembers.
+- **Seven views.** Visual grid, Markdown, CSV, TSV, HTML source, Jira table
+  syntax, and a rendered preview. Every one stays in sync with the others.
+- **Edit visually.** Cells, headers, rows, columns. Insert above, below, left,
+  right. Delete, duplicate, reorder, resize, select ranges, clear. Right-click
+  anything for the actions that apply to it.
+- **Edit the source.** Syntax highlighting and errors that tell you which line
+  is wrong.
 - **Never lose a cell.** A value with a line break in it survives
   CSV → Markdown → CSV byte-exact. Markdown can't hold a raw newline, so Tabelo
   escapes it and unescapes it back. Same for pipes.
 - **Type freely.** While your Markdown is half-written and invalid, the grid
   keeps showing your last working table instead of collapsing. It says so, too.
-- **Paste anything.** Spreadsheets, web tables, Markdown, CSV, TSV, a plain
-  column of text. Tabelo works out which it is.
+- **Paste anything.** Spreadsheets, web tables, Markdown, CSV, TSV, Jira
+  syntax, a plain column of text. Tabelo works out which it is.
+- **Download anything.** Markdown, CSV, TSV, HTML, or Jira, with the right
+  extension and MIME type.
 - **Nothing to save.** Your table is in browser storage and comes back when you
   return.
 - **Works offline.** A service worker caches the app on your first visit. No
@@ -83,14 +99,17 @@ Both hands stay where they are.
 | `Shift` `Enter` while editing | Line break inside the cell |
 | `Tab` / `Shift` `Tab` | Next / previous cell |
 | `Alt` + arrows | **Move the row or column itself** |
-| `Delete` | Clear the selection |
-| `⌘` `Enter` | Add a row |
+| `Backspace` | Clear the selected cells |
+| `⌘` `Backspace` | Delete the selected rows or columns |
+| `⌘` `Enter` | Add a row below |
 | `⌘` `A` | Select everything |
 | `⌘` `Z` / `⌘` `⇧` `Z` | Undo / redo |
 
-Undo is layered: inside the source panel it undoes your keystrokes, and once
-that history runs out it keeps going through the table's own history. One
-timeline underneath, native behaviour on top.
+Undo is layered: inside a source view it undoes your keystrokes, and once that
+history runs out it keeps going through the table's own history. One timeline
+underneath, native behaviour on top.
+
+Every shortcut also has a menu entry, so nothing is reachable only by keyboard.
 
 ## Getting started
 
@@ -118,13 +137,17 @@ Then open <http://localhost:3001>.
 ## How it's built
 
 React 19, Vite, TanStack Router, Tailwind v4, shadcn/ui on Base UI, CodeMirror 6
-for the source panel, Papa Parse for CSV. Scaffolded with
-[Better-T-Stack](https://www.better-t-stack.dev/). The grid is hand-built — no
-grid library.
+for source views (lazily loaded), Papa Parse for delimited formats. Scaffolded
+with [Better-T-Stack](https://www.better-t-stack.dev/). The grid is hand-built —
+no grid library.
 
 One idea holds the whole thing up: **there is a single canonical table document,
-and Markdown and CSV are parsers and serializers around it.** Neither text
-format is ever the source of truth. That is what makes round trips safe.
+and every format is a parser and serializer around it.** No text format is ever
+the source of truth. That is what makes round trips safe.
+
+Formats and views live in two small registries. Adding a format is one file plus
+one registry line, and it becomes editable, downloadable, importable, and
+pasteable everywhere at once.
 
 The decisions worth reading before you change anything:
 
@@ -132,6 +155,8 @@ The decisions worth reading before you change anything:
 - [Escape Markdown losslessly instead of flattening](docs/adr/0002-lossless-markdown-escaping.md)
 - [Layer text-editor undo on top of a document timeline](docs/adr/0003-layered-undo.md)
 - [Build an accessible DOM grid instead of adopting a spreadsheet component](docs/adr/0004-accessible-dom-grid-over-spreadsheet-component.md)
+- [Describe formats and views in registries, not in the core](docs/adr/0005-view-and-codec-registries.md)
+- [Offer preset workspace layouts instead of free slot assignment](docs/adr/0006-preset-workspace-layouts.md)
 
 [`docs/design-system.md`](docs/design-system.md) is binding for anything visual,
 [`CONTEXT.md`](CONTEXT.md) defines the vocabulary, and [`AGENTS.md`](AGENTS.md)
@@ -153,9 +178,12 @@ including with us.
 - **Markdown output contains `<br>`** where a cell has a line break. That is the
   price of not losing the line break. Strict CommonMark renderers that escape
   raw HTML will show it literally.
-- **One document at a time.**
+- **One document at a time.** Four views of it, but one table.
 - **Reordering is keyboard and menu, not drag.** This was a choice: the keyboard
   path works for everyone, and drag-only reordering does not.
+- **Layouts come from a preset list.** Eight arrangements of a 2×2 grid, not a
+  free-form slot editor. That covers every rectangular tiling and keeps the
+  control to one click.
 
 ## License
 

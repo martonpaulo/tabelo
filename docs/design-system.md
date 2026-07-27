@@ -73,9 +73,9 @@ that is a pattern break — follow §0.
 
 | Token | Utility | Use |
 | :--- | :--- | :--- |
-| `--surface-app` | `bg-surface-app` | The page behind the panels |
-| `--surface-panel` | `bg-surface-panel` | A panel's content area |
-| `--surface-header` | `bg-surface-header` | Panel headers, grid column headers |
+| `--surface-app` | `bg-surface-app` | The page behind the panes |
+| `--surface-panel` | `bg-surface-panel` | A pane's content area |
+| `--surface-header` | `bg-surface-header` | Pane headers, grid column headers |
 | `--surface-gutter` | `bg-surface-gutter` | The grid's row-number gutter |
 
 Order matters: app is furthest back, gutter and header sit above panel.
@@ -85,7 +85,7 @@ Order matters: app is furthest back, gutter and header sit above panel.
 | Token | Utility | Use |
 | :--- | :--- | :--- |
 | `--line-subtle` | `border-line-subtle` | Grid cell borders, control separators |
-| `--line-strong` | `border-line-strong` | The boundary between the two panels |
+| `--line-strong` | `border-line-strong` | Boundaries between panes, and the app header |
 
 Borders are always 1px. Never use a border to decorate.
 
@@ -116,7 +116,7 @@ beside it. This is not optional.
 | :--- | :--- | :--- |
 | `--control-h-sm` | `h-control-sm` | 28px — dense toolbars, menu triggers |
 | `--control-h-md` | `h-control-md` | 32px — default control height |
-| `--panel-header-h` | `h-panel-header` | 44px — every panel header |
+| `--panel-header-h` | `h-panel-header` | 44px — the app header and every pane header |
 | `--grid-gutter-w` | `w-grid-gutter` | 44px — row-number column |
 | `--grid-row-h` | `h-grid-row` | 32px — one table row |
 | `--grid-col-w` | `w-grid-col` | 168px — default column width |
@@ -126,14 +126,14 @@ beside it. This is not optional.
 
 Use Tailwind's scale, restricted to: `0.5`, `1`, `1.5`, `2`, `3`, `4`, `6`.
 Anything else is a pattern break. Gaps inside a control group are `1` or `1.5`;
-padding inside a panel header is `3`; cell padding is `2` horizontal, `1.5`
+padding inside a pane header is `3`; cell padding is `2` horizontal, `1.5`
 vertical.
 
 ### Typography
 
 | Role | Classes |
 | :--- | :--- |
-| Panel title | `text-xs font-medium uppercase tracking-wider text-muted-foreground` |
+| Pane title | `text-xs font-medium uppercase tracking-wider text-muted-foreground` |
 | Control label | `text-xs font-medium` |
 | Table cell | `text-sm` |
 | Source editor | `text-sm font-source` |
@@ -155,15 +155,15 @@ one component with many boolean props.
 // Yes — composition
 <Panel>
   <Panel.Header>
-    <Panel.Title>Source</Panel.Title>
+    <ViewPicker value={pane.view} onChange={…} />
     <Panel.Spacer />
-    <FormatSwitch />
+    <StatusPill tone="ok" label="In sync" />
   </Panel.Header>
   <Panel.Body>…</Panel.Body>
 </Panel>
 
 // No — configuration
-<Panel title="Source" showSpacer headerRight={<FormatSwitch />} />
+<Panel view={pane.view} showSpacer headerRight={<StatusPill … />} />
 ```
 
 A prop that only exists to toggle a piece of layout is a signal the piece
@@ -187,8 +187,13 @@ pnpm dlx shadcn@latest add <name> -c packages/ui
 | Layer | Location | Holds |
 | :--- | :--- | :--- |
 | Primitives | `packages/ui/src/components/` | Generic, product-agnostic shadcn components |
-| Product primitives | `apps/web/src/ui/primitives/` | Tabelo's own shared shapes: Panel, ToolbarButton, StatusPill, FormatSwitch |
-| Features | `apps/web/src/ui/grid/`, `ui/source/` | Components that know about the table document |
+| Product primitives | `apps/web/src/ui/primitives/` | Tabelo's own shared shapes: Panel, ToolbarButton, StatusPill |
+| Features | `apps/web/src/ui/{grid,source,preview,workspace}/` | Components that know about the table document |
+
+Actions are described once and rendered many times. `ui/grid/table-actions.ts`
+is the single list of table operations; the pane menu, the axis menus, and the
+context menu are three renderers over it. Never write an action inline in a
+menu — that is how a menu and a toolbar drift apart.
 
 A component in `primitives/` must not import from the store. If it needs
 document state, it belongs in a feature folder.
@@ -216,11 +221,17 @@ changes. Layout stability outranks tidiness.
 
 ## 5. Layout
 
-- Two panels: the grid on the left, the source on the right.
-- The grid is always primary. It never collapses; the source panel can hide.
-- The page never scrolls. Panels scroll independently.
-- Below 900px the panels stack, grid on top.
-- Panel headers are one row, `h-panel-header`, never wrapping.
+- The workspace is a 2×2 slot grid holding one to four panes, arranged by
+  preset — see `docs/adr/0006`. Never build a free slot editor.
+- The page never scrolls. Panes scroll independently.
+- Below 900px panes stack; the chosen layout is remembered, not discarded.
+- Pane headers are one row, `h-panel-header`, never wrapping. A narrow pane
+  shortens its labels rather than wrapping them.
+- A pane's height must not change with its state: the source message row is
+  always present, empty or not.
+- Document-level actions live in the app header. Pane-level actions live in that
+  pane's header. Row and column actions live on the row or column, and in the
+  context menu.
 - Nothing may reflow because of a selection change or a status change.
 
 ---
@@ -230,8 +241,9 @@ changes. Layout stability outranks tidiness.
 Lucide only, `size-4` inside `control-md` and `size-3.5` inside `control-sm`.
 Always `aria-hidden`, because the accessible name comes from the button.
 
-Icon-only buttons are permitted only in the grid's per-row and per-column
-affordances, where a label would not fit. Everywhere else, show the label.
+Icon-only buttons are permitted in the app header, where the actions are
+document-level and few, and in the grid's per-row and per-column affordances,
+where a label would not fit. Inside a pane, show the label.
 
 ---
 

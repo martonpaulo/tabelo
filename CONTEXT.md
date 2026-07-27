@@ -12,33 +12,59 @@ columns, an ordered list of rows, cell values, stable identifiers, alignment,
 and a schema version. It is plain data with no framework dependency, and it is
 the only source of truth.
 
-Related to: Column, Row, Cell, Representation
+Related to: Column, Row, Cell, View
 
-### Representation
+### View
 
-One of the three ways the table document is shown: the **grid**, **Markdown**,
-or **CSV**. A representation is always derived from the table document — never
-an independent copy of it.
+One way of showing the table document: the grid, a source format (Markdown,
+CSV, TSV, HTML, Jira), or the rendered preview. A view is always derived from
+the table document — never an independent copy of it. Every view is described
+in the view registry by its capabilities rather than by its name.
 
-Avoided synonym: "view" is ambiguous with route/component; prefer
-"representation" for the data-level concept and "panel" for the UI surface.
+Related to: Table document, Pane, Codec, Workspace
 
-Related to: Table document, Panel, Text format
+### Pane
 
-### Panel
+One region of the workspace, showing exactly one view. A pane occupies one
+slot, two adjacent slots, or the whole workspace.
 
-One of the two editing surfaces in the interface: the **grid panel** (always the
-visual table) and the **text panel** (either Markdown or CSV).
+Related to: View, Slot, Workspace
 
-Related to: Representation, Text format
+### Workspace
 
-### Text format
+The 2×2 arrangement of slots that holds one to four panes. Its shape comes from
+a named layout preset; free slot assignment does not exist.
 
-The format currently active in the text panel: Markdown or CSV. Switching the
-text format changes which serializer renders the text panel. It never creates a
-separate document and never resets the table.
+Related to: Pane, Slot, Layout preset
 
-Related to: Panel, Parser, Serializer
+### Slot
+
+One of the four quadrants — `a` top-left, `b` top-right, `c` bottom-left,
+`d` bottom-right — that a pane occupies.
+
+Related to: Workspace, Pane
+
+### Layout preset
+
+A named arrangement of panes over the slots, such as "two columns" or "four
+panes". Every preset tiles all four slots exactly once with rectangular panes.
+
+Related to: Workspace, Slot
+
+### Codec
+
+A parse/serialize pair for one text format, together with the file extension
+and MIME type needed to download it. Codecs know nothing about the interface.
+
+Related to: View, Parser, Serializer
+
+### Capability
+
+Something a view can do — being editable, offering syntax highlighting, taking
+part in structured clipboard operations. Behaviour is decided by reading
+capabilities, never by checking a view's identity.
+
+Related to: View
 
 ### Column
 
@@ -72,19 +98,20 @@ Related to: Row, Column
 
 ### Alignment
 
-A column's Markdown alignment: default, left, center, or right. It is
-Markdown-specific metadata that nonetheless lives in the table document, so it
-survives time spent in CSV mode.
+A column's alignment: default, left, center, or right. Only Markdown and HTML
+can express it, but it lives on the table document, so it survives time spent
+in a format that cannot.
 
 Related to: Column, Serializer
 
 ### Draft
 
-The text currently in the text panel that has not yet been committed to the
-table document. A draft may be invalid; an invalid draft never modifies the
-table document.
+Text in a source view that has not yet been committed to the table document.
+Exactly one draft exists at a time, owned by the view being typed into; every
+other view is a pure projection. A draft may be invalid, and an invalid draft
+never modifies the table document.
 
-Related to: Commit, Parser, Superseded draft
+Related to: Commit, Parser, Superseded draft, View
 
 ### Commit
 
@@ -95,16 +122,16 @@ Related to: Draft, Document timeline
 
 ### Superseded draft
 
-A draft that was still uncommitted when a grid edit took ownership and
-regenerated the text panel. It is displaced, never destroyed, and remains
-reachable through undo.
+A draft that was still uncommitted when a table edit took ownership and
+regenerated every view. It is displaced, never destroyed, and remains reachable
+through undo.
 
 Related to: Draft, Document timeline
 
 ### Document timeline
 
 The single ordered history of table document states. Each committed parse and
-each table operation is one step. The text panel's own keystroke history is a
+each table operation is one step. A source view's own keystroke history is a
 separate, shallower layer that falls through to this timeline when exhausted.
 
 Related to: Commit, Table operation
@@ -122,20 +149,20 @@ Related to: Table document, Document timeline
 A function from format text to a table document, or to a structured failure
 describing why the text is not yet valid.
 
-Related to: Serializer, Text format, Draft
+Related to: Serializer, Codec, Draft
 
 ### Serializer
 
-A function from a table document to format text. Markdown and CSV serializers
-are paired with their parsers behind one shared format contract.
+A function from a table document to format text. Every serializer is paired
+with its parser in a codec.
 
 Related to: Parser, Escaping
 
 ### Escaping
 
 The format-specific transformation that lets a cell value survive a format that
-cannot represent it literally — in Markdown, `|` becomes `\|` and a newline
-becomes `<br>`. Escaping is always reversible.
+cannot represent it literally — in Markdown a newline becomes `<br>`, in Jira it
+becomes `\\`, and both escape the pipe. Escaping is always reversible.
 
 Related to: Serializer, Parser
 
@@ -157,7 +184,7 @@ Related to: Header detection, Format sniffing
 ### Format sniffing
 
 Inspecting pasted content to decide how to parse it, in priority order: HTML
-table, TSV, Markdown table, CSV, then plain text.
+table, TSV, Markdown table, Jira table, CSV, then plain text.
 
 Related to: Import, Parser
 
@@ -172,19 +199,23 @@ Related to: Table document, Import
 ## Rules and relationships
 
 - A table document has exactly one header row and zero or more data rows.
+- A workspace holds one to four panes, and its panes tile all four slots exactly
+  once. Every pane is rectangular; an L-shape is not representable.
+- At most one draft exists at any moment.
 - Every column and every row has a stable identifier that is never shown to the
   user and never reused after deletion.
-- A representation is always derived from the table document. Markdown and CSV
-  text are reconstructible, never canonical.
-- Switching text format changes only which serializer runs. It never creates a
+- A view is always derived from the table document. Serialized text is
+  reconstructible, never canonical.
+- Changing a pane's view changes only which serializer runs. It never creates a
   second document, resets the table, or loses content.
 - A draft that does not parse leaves the table document untouched; the grid keeps
   showing the last committed state and stays editable.
 - A grid edit always wins over an uncommitted draft, and always leaves that draft
   recoverable through undo.
-- Alignment belongs to the column, so a Markdown → CSV → Markdown round trip
-  preserves it even though CSV cannot express it.
+- Alignment belongs to the column, so it survives a round trip through any
+  format that cannot express it — CSV, TSV, and Jira all lose it on paper and
+  none of them lose it in Tabelo.
 - Escaping must be reversible: any cell value survives
   CSV → Markdown → CSV byte-exact.
 - Header detection is an import-time decision, never a stored document property.
-- Cell values are opaque strings; no representation may reinterpret them.
+- Cell values are opaque strings; no view may reinterpret them.
