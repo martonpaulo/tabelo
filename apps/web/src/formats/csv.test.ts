@@ -68,6 +68,10 @@ describe("csv parsing", () => {
 	it("holds back on an unterminated quote so the last good table survives", () => {
 		const result = csvCodec.parse('A,B\n1,"unterminated');
 		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.issues).toEqual([
+			{ code: "delimited-unclosed-quote", line: 2 },
+		]);
 	});
 
 	it("detects a semicolon-delimited file", () => {

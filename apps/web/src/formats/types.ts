@@ -2,11 +2,36 @@ import type { Alignment, TableDocument } from "@/core/types";
 
 export type CodecId = "markdown" | "csv" | "tsv" | "html" | "jira";
 
-export interface ParseIssue {
-	readonly message: string;
+interface LocatedParseIssue {
 	// 1-based line in the source text, when the problem can be located.
 	readonly line?: number;
 }
+
+interface ColumnCountParseIssue extends LocatedParseIssue {
+	readonly actual: number;
+	readonly expected: number;
+}
+
+// Codecs report product-owned facts, never parser-authored prose. The UI is the
+// single owner of visible copy and turns these discriminated values into calm,
+// actionable messages.
+export type ParseIssue =
+	| ({ readonly code: "empty-source" } & LocatedParseIssue)
+	| ({ readonly code: "markdown-table-incomplete" } & LocatedParseIssue)
+	| ({ readonly code: "markdown-divider-required" } & LocatedParseIssue)
+	| ({ readonly code: "markdown-divider-column-count" } & ColumnCountParseIssue)
+	| ({
+			readonly code: "row-column-count";
+			readonly row: number;
+	  } & ColumnCountParseIssue)
+	| ({ readonly code: "jira-header-required" } & LocatedParseIssue)
+	| ({ readonly code: "html-unavailable" } & LocatedParseIssue)
+	| ({ readonly code: "html-table-required" } & LocatedParseIssue)
+	| ({ readonly code: "delimited-unclosed-quote" } & LocatedParseIssue)
+	| ({ readonly code: "delimited-invalid-quote" } & LocatedParseIssue)
+	| ({ readonly code: "delimited-delimiter-undetected" } & LocatedParseIssue)
+	| ({ readonly code: "delimited-field-count" } & LocatedParseIssue)
+	| ({ readonly code: "delimited-parse-error" } & LocatedParseIssue);
 
 // A successful parse can still carry warnings — a ragged row is recoverable by
 // padding, and saying so is better than silently reshaping the user's table.

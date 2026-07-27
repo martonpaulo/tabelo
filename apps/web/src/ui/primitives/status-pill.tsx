@@ -22,9 +22,6 @@ interface StatusPillProps {
 export function StatusPill({ tone, label, hint }: StatusPillProps) {
 	return (
 		<span
-			// Polite, not assertive: interrupting someone mid-keystroke to announce
-			// that their table is still being typed would be hostile.
-			aria-live="polite"
 			title={hint}
 			className={cn(
 				"inline-flex shrink-0 items-center gap-1.5 text-xs",

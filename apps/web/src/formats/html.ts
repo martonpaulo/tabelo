@@ -70,12 +70,12 @@ export function readHtmlTable(html: string): HtmlTable | null {
 
 function parseHtmlMatrix(text: string): MatrixParseResult {
 	if (text.trim() === "") {
-		return { ok: false, issues: [{ message: "Nothing to read yet." }] };
+		return { ok: false, issues: [{ code: "empty-source" }] };
 	}
 	if (typeof DOMParser === "undefined") {
 		return {
 			ok: false,
-			issues: [{ message: "HTML cannot be read in this environment." }],
+			issues: [{ code: "html-unavailable" }],
 		};
 	}
 
@@ -83,12 +83,7 @@ function parseHtmlMatrix(text: string): MatrixParseResult {
 	if (!table) {
 		return {
 			ok: false,
-			issues: [
-				{
-					message:
-						"No <table> found yet. A table needs rows of <th> or <td> cells.",
-				},
-			],
+			issues: [{ code: "html-table-required" }],
 		};
 	}
 

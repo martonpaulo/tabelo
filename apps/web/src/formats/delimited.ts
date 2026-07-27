@@ -39,10 +39,22 @@ export function parseDelimitedMatrix(
 		if (last.length === 1 && last[0] === "") matrix.pop();
 	}
 
-	const issues = result.errors.map((error) => ({
-		message: error.message,
-		line: typeof error.row === "number" ? error.row + 1 : undefined,
-	}));
+	const issues: ParseIssue[] = result.errors.map((error) => {
+		const line = typeof error.row === "number" ? error.row + 1 : undefined;
+		switch (error.code) {
+			case "MissingQuotes":
+				return { code: "delimited-unclosed-quote", line };
+			case "InvalidQuotes":
+				return { code: "delimited-invalid-quote", line };
+			case "UndetectableDelimiter":
+				return { code: "delimited-delimiter-undetected", line };
+			case "TooFewFields":
+			case "TooManyFields":
+				return { code: "delimited-field-count", line };
+			default:
+				return { code: "delimited-parse-error", line };
+		}
+	});
 
 	return { matrix, issues };
 }
@@ -76,7 +88,7 @@ interface DelimitedCodecConfig {
 export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 	const parseMatrix = (text: string): MatrixParseResult => {
 		if (text.trim() === "") {
-			return { ok: false, issues: [{ message: "Nothing to read yet." }] };
+			return { ok: false, issues: [{ code: "empty-source" }] };
 		}
 
 		const { matrix, issues } = parseDelimitedMatrix(
@@ -86,11 +98,15 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 
 		// An unterminated quote means the user is mid-edit. Hold the last valid
 		// table rather than showing them a mangled one.
-		const fatal = issues.filter((issue) => /quote/i.test(issue.message));
+		const fatal = issues.filter(
+			(issue) =>
+				issue.code === "delimited-unclosed-quote" ||
+				issue.code === "delimited-invalid-quote",
+		);
 		if (fatal.length > 0) return { ok: false, issues: fatal };
 
 		if (matrix.length === 0) {
-			return { ok: false, issues: [{ message: "Nothing to read yet." }] };
+			return { ok: false, issues: [{ code: "empty-source" }] };
 		}
 
 		return {

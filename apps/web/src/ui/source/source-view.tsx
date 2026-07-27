@@ -4,6 +4,7 @@ import { copy } from "@/ui/copy";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import { SourceEditor } from "./source-editor";
+import { sourceFeedbackIds } from "./source-feedback";
 
 // One component serves every source format. What differs between Markdown, CSV,
 // TSV, HTML, and Jira is entirely described by the registry — codec, highlight
@@ -33,6 +34,15 @@ export default function SourceView({ paneId, viewId }: SourceViewProps) {
 			: null,
 	);
 
+	const invalid = useTabeloStore((state) => {
+		const draft = state.draft;
+		return (
+			draft?.paneId === paneId &&
+			draft.viewId === viewId &&
+			draft.status === "invalid"
+		);
+	});
+
 	const invalidLine = useTabeloStore((state) => {
 		const draft = state.draft;
 		if (
@@ -46,6 +56,7 @@ export default function SourceView({ paneId, viewId }: SourceViewProps) {
 	});
 
 	const editable = view.capabilities.editable;
+	const feedbackIds = sourceFeedbackIds(paneId);
 
 	return (
 		<SourceEditor
@@ -53,6 +64,8 @@ export default function SourceView({ paneId, viewId }: SourceViewProps) {
 			value={draftText ?? projected}
 			language={view.highlight}
 			invalidLine={invalidLine}
+			invalid={invalid}
+			describedBy={invalid ? feedbackIds.description : undefined}
 			editable={editable}
 			ariaLabel={copy.a11y.sourceEditor(view.label)}
 			onChange={(text) => {

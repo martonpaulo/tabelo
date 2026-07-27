@@ -167,7 +167,7 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 	const start = lines.findIndex((line) => line.trim() !== "");
 
 	if (start === -1) {
-		return { ok: false, issues: [{ message: "Nothing to read yet." }] };
+		return { ok: false, issues: [{ code: "empty-source" }] };
 	}
 
 	// A Markdown table is a contiguous block of non-blank lines.
@@ -180,8 +180,7 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 			ok: false,
 			issues: [
 				{
-					message:
-						"A Markdown table needs a header row and a divider row below it.",
+					code: "markdown-table-incomplete",
 					line: start + 1,
 				},
 			],
@@ -196,7 +195,7 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 			ok: false,
 			issues: [
 				{
-					message: "The second line must be a divider like | --- | --- |.",
+					code: "markdown-divider-required",
 					line: start + 2,
 				},
 			],
@@ -208,7 +207,9 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 			ok: false,
 			issues: [
 				{
-					message: `The divider has ${delimiterCells.length} columns but the header has ${headerCells.length}.`,
+					code: "markdown-divider-column-count",
+					actual: delimiterCells.length,
+					expected: headerCells.length,
 					line: start + 2,
 				},
 			],
@@ -220,7 +221,10 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 		const cells = splitRow(line);
 		if (cells.length !== headerCells.length) {
 			warnings.push({
-				message: `Row ${offset + 1} has ${cells.length} cells, the table has ${headerCells.length} columns.`,
+				code: "row-column-count",
+				row: offset + 1,
+				actual: cells.length,
+				expected: headerCells.length,
 				line: start + 3 + offset,
 			});
 		}

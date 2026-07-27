@@ -104,7 +104,7 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 	const start = lines.findIndex((line) => line.trim() !== "");
 
 	if (start === -1) {
-		return { ok: false, issues: [{ message: "Nothing to read yet." }] };
+		return { ok: false, issues: [{ code: "empty-source" }] };
 	}
 
 	let end = start;
@@ -116,8 +116,7 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 			ok: false,
 			issues: [
 				{
-					message:
-						"A Jira table starts with a header row using || around each cell.",
+					code: "jira-header-required",
 					line: start + 1,
 				},
 			],
@@ -134,7 +133,10 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 		const cells = splitJiraRow(line);
 		if (cells.length !== headerCells.length) {
 			warnings.push({
-				message: `Row ${offset + 1} has ${cells.length} cells, the table has ${headerCells.length} columns.`,
+				code: "row-column-count",
+				row: offset + 1,
+				actual: cells.length,
+				expected: headerCells.length,
 				line: start + 2 + offset,
 			});
 		}

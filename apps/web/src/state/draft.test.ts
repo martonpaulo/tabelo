@@ -167,7 +167,7 @@ describe("draft ownership", () => {
 					draft: entry.draft
 						? {
 								...entry.draft,
-								issues: [{ message: "stale issue", line: 99 }],
+								issues: [{ code: "empty-source", line: 99 }],
 							}
 						: null,
 				},
@@ -179,7 +179,7 @@ describe("draft ownership", () => {
 		const restored = useTabeloStore.getState().draft;
 		expect(restored?.status).toBe("invalid");
 		expect(restored?.issues).not.toContainEqual({
-			message: "stale issue",
+			code: "empty-source",
 			line: 99,
 		});
 		expect(restored?.issues.length).toBeGreaterThan(0);

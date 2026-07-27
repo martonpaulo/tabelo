@@ -1,10 +1,22 @@
+import { Button } from "@tabelo/ui/components/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuTrigger,
+} from "@tabelo/ui/components/dropdown-menu";
 import { cn } from "@tabelo/ui/lib/utils";
+import { ChevronDown } from "lucide-react";
 import { memo } from "react";
+import type { ParseIssue } from "@/formats/types";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { GridPaneActions } from "@/ui/grid/grid-pane-actions";
 import { Panel } from "@/ui/primitives/panel";
 import { StatusPill } from "@/ui/primitives/status-pill";
+import { sourceFeedbackIds } from "@/ui/source/source-feedback";
+import { navigateToSourceLine } from "@/ui/source/source-navigation";
 import { getView } from "@/views/registry";
 import { gridAreaStyle, type WorkspacePane } from "@/workspace/layout";
 import { PaneContent } from "./pane-content";
@@ -41,38 +53,111 @@ function SourceIssue({ paneId, viewId }: PaneSourceProps) {
 		if (draft?.paneId !== paneId || draft.viewId !== viewId) return null;
 		return draft;
 	});
-	const feedback =
+	const feedback: {
+		readonly kind: "issue" | "warning";
+		readonly details: readonly ParseIssue[];
+		readonly error: boolean;
+	} | null =
 		draft?.status === "invalid"
 			? {
-					message: copy.status.invalidFeedback,
-					detail: draft.issues[0] ?? null,
+					kind: "issue",
+					details: draft.issues,
 					error: true,
 				}
-			: draft?.warnings[0]
+			: draft?.warnings.length
 				? {
-						message: draft.warnings[0].message,
-						detail: draft.warnings[0],
+						kind: "warning",
+						details: draft.warnings,
 						error: false,
 					}
 				: null;
 
 	if (!feedback) return null;
 
-	const detail = feedback.detail;
-	const title = detail
-		? `${detail.line !== undefined ? `Line ${detail.line}: ` : ""}${detail.message}`
-		: undefined;
+	const primaryDetail = feedback.details[0];
+	if (!primaryDetail) return null;
+
+	const ids = sourceFeedbackIds(paneId);
+	const primary = copy.source.issue(primaryDetail);
+	const description = feedback.error
+		? `${copy.status.invalidFeedback} ${primary}`
+		: primary;
 
 	return (
-		<p
-			title={title}
-			className={cn(
-				"truncate text-xs",
-				feedback.error ? "text-status-invalid" : "text-muted-foreground",
-			)}
-		>
-			{feedback.message}
-		</p>
+		<>
+			{feedback.error ? (
+				<span
+					id={ids.announcement}
+					role="status"
+					aria-live="polite"
+					aria-atomic="true"
+					className="sr-only"
+				>
+					{copy.status.invalidFeedback}
+				</span>
+			) : null}
+			<p
+				id={ids.description}
+				title={primary}
+				className={cn(
+					"min-w-0 flex-1 truncate text-xs",
+					feedback.error ? "text-status-invalid" : "text-muted-foreground",
+				)}
+			>
+				<span className="sr-only">{description}</span>
+				<span aria-hidden>{primary}</span>
+			</p>
+
+			<DropdownMenu>
+				<DropdownMenuTrigger
+					render={
+						<Button
+							variant="ghost"
+							size="xs"
+							aria-label={copy.source.showFeedback(
+								feedback.kind,
+								feedback.details.length,
+							)}
+							aria-controls={ids.list}
+						/>
+					}
+				>
+					{copy.source.details}
+					<ChevronDown aria-hidden />
+				</DropdownMenuTrigger>
+				<DropdownMenuContent
+					id={ids.list}
+					align="end"
+					side="top"
+					className="w-auto min-w-60 max-w-xs"
+				>
+					{feedback.error ? (
+						<DropdownMenuLabel className="whitespace-normal">
+							{copy.status.invalidFeedback}
+						</DropdownMenuLabel>
+					) : null}
+					{feedback.details.map((detail, index) => (
+						<DropdownMenuItem
+							key={`${detail.code}-${detail.line ?? "source"}-${index}`}
+							className="whitespace-normal"
+							onClick={() => {
+								const line = detail.line;
+								if (line !== undefined) {
+									// Base UI restores focus to the trigger as the menu closes.
+									// Move to the requested line on the next frame so the explicit
+									// navigation remains the final focus destination.
+									requestAnimationFrame(() =>
+										navigateToSourceLine(paneId, line),
+									);
+								}
+							}}
+						>
+							{copy.source.issue(detail)}
+						</DropdownMenuItem>
+					))}
+				</DropdownMenuContent>
+			</DropdownMenu>
+		</>
 	);
 }
 
@@ -141,7 +226,7 @@ export const Pane = memo(function Pane({ pane, active, compact }: PaneProps) {
 // height — layout stability outranks tidiness. See docs/design-system.md §4.
 function PaneIssueRow({ children }: { readonly children: React.ReactNode }) {
 	return (
-		<div className="flex h-6 shrink-0 items-center border-line-subtle border-t px-3">
+		<div className="flex h-6 shrink-0 items-center gap-1.5 border-line-subtle border-t px-3">
 			{children}
 		</div>
 	);

@@ -1,3 +1,4 @@
+import type { ParseIssue } from "@/formats/types";
 import type { ImportError } from "@/import/prepare";
 
 // Every user-visible string lives here. One place to keep the voice
@@ -24,6 +25,62 @@ export const copy = {
 		invalid: "Not valid yet",
 		invalidFeedback:
 			"Source is not valid yet. Other views still show the last valid table.",
+	},
+
+	source: {
+		details: "Details",
+		showFeedback: (kind: "issue" | "warning", count: number) =>
+			`Show ${count} ${kind}${count === 1 ? "" : "s"}`,
+		issue: (issue: ParseIssue) => {
+			let message: string;
+			switch (issue.code) {
+				case "empty-source":
+					message = "Nothing to read yet.";
+					break;
+				case "markdown-table-incomplete":
+					message =
+						"A Markdown table needs a header row and a divider row below it.";
+					break;
+				case "markdown-divider-required":
+					message = "The second line must be a divider like | --- | --- |.";
+					break;
+				case "markdown-divider-column-count":
+					message = `The divider has ${issue.actual} columns but the header has ${issue.expected}.`;
+					break;
+				case "row-column-count":
+					message = `Row ${issue.row} has ${issue.actual} ${issue.actual === 1 ? "cell" : "cells"}, the table has ${issue.expected} columns.`;
+					break;
+				case "jira-header-required":
+					message =
+						"A Jira table starts with a header row using || around each cell.";
+					break;
+				case "html-unavailable":
+					message = "HTML cannot be read in this environment.";
+					break;
+				case "html-table-required":
+					message =
+						"No <table> found yet. A table needs rows of <th> or <td> cells.";
+					break;
+				case "delimited-unclosed-quote":
+					message = "A quoted field is not closed.";
+					break;
+				case "delimited-invalid-quote":
+					message = "A quoted field contains an unexpected quote.";
+					break;
+				case "delimited-delimiter-undetected":
+					message = "The column separator could not be detected.";
+					break;
+				case "delimited-field-count":
+					message = "This row has a different number of fields.";
+					break;
+				case "delimited-parse-error":
+					message = "This source could not be read yet.";
+					break;
+			}
+			return issue.line === undefined
+				? message
+				: `Line ${issue.line}: ${message}`;
+		},
 	},
 
 	actions: {

@@ -82,7 +82,7 @@ describe("markdown parsing", () => {
 		const result = markdownCodec.parse("| Name | Role |");
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
-		expect(result.issues[0].message).toMatch(/divider/i);
+		expect(result.issues[0].code).toBe("markdown-table-incomplete");
 	});
 
 	it("rejects a divider whose column count disagrees with the header", () => {

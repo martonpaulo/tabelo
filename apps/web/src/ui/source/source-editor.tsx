@@ -36,6 +36,7 @@ import type { HighlightLanguage } from "@/views/types";
 import { csvLanguage } from "./csv-language";
 import { syntaxTheme } from "./editor-theme";
 import { htmlLanguage } from "./html-language";
+import { registerSourceNavigator } from "./source-navigation";
 
 // Marks a transaction as coming from synchronization rather than the user.
 // This is the loop guard required by docs/adr/0001: sync-originated changes
@@ -45,6 +46,7 @@ const fromSync = Annotation.define<boolean>();
 const languageCompartment = new Compartment();
 const editableCompartment = new Compartment();
 const invalidLineCompartment = new Compartment();
+const attributesCompartment = new Compartment();
 
 const invalidLineMark = Decoration.line({ class: "cm-invalidLine" });
 
@@ -74,6 +76,19 @@ function invalidLineExtension(line: number | null) {
 		},
 		{ decorations: (plugin) => plugin.decorations },
 	);
+}
+
+function contentAttributes(
+	ariaLabel: string,
+	invalid: boolean,
+	describedBy: string | undefined,
+) {
+	return {
+		"aria-label": ariaLabel,
+		...(invalid
+			? { "aria-invalid": "true", "aria-describedby": describedBy }
+			: {}),
+	};
 }
 
 // Highlighting is chosen by name so the registry never imports CodeMirror,
@@ -119,6 +134,8 @@ interface SourceEditorProps {
 	readonly value: string;
 	readonly language: HighlightLanguage;
 	readonly invalidLine: number | null;
+	readonly invalid: boolean;
+	readonly describedBy?: string;
 	// Read-only views still get selection and copy, just no typing.
 	readonly editable: boolean;
 	readonly ariaLabel: string;
@@ -134,6 +151,8 @@ export function SourceEditor({
 	value,
 	language,
 	invalidLine,
+	invalid,
+	describedBy,
 	editable,
 	ariaLabel,
 	onChange,
@@ -172,7 +191,11 @@ export function SourceEditor({
 					invalidLineCompartment.of(invalidLineExtension(invalidLine)),
 					editableCompartment.of(EditorView.editable.of(editable)),
 					syntaxTheme,
-					EditorView.contentAttributes.of({ "aria-label": ariaLabel }),
+					attributesCompartment.of(
+						EditorView.contentAttributes.of(
+							contentAttributes(ariaLabel, invalid, describedBy),
+						),
+					),
 
 					// Precedence matters: this must see Mod-z before the default
 					// history keymap consumes it.
@@ -232,7 +255,17 @@ export function SourceEditor({
 			canUndo: () => undoDepth(view.state) > 0,
 			canRedo: () => redoDepth(view.state) > 0,
 		});
+		const unregisterNavigator = registerSourceNavigator(paneId, (line) => {
+			const lineNumber = Math.min(Math.max(line, 1), view.state.doc.lines);
+			const position = view.state.doc.line(lineNumber).from;
+			view.dispatch({
+				selection: { anchor: position },
+				effects: EditorView.scrollIntoView(position, { y: "center" }),
+			});
+			view.focus();
+		});
 		return () => {
+			unregisterNavigator();
 			unregisterHistory();
 			view.destroy();
 			viewRef.current = null;
@@ -280,6 +313,18 @@ export function SourceEditor({
 			),
 		});
 	}, [invalidLine]);
+
+	useEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: attributesCompartment.reconfigure(
+				EditorView.contentAttributes.of(
+					contentAttributes(ariaLabel, invalid, describedBy),
+				),
+			),
+		});
+	}, [ariaLabel, invalid, describedBy]);
 
 	return <div ref={hostRef} className="h-full min-h-0 [&_.cm-editor]:h-full" />;
 }
