@@ -34,7 +34,13 @@ import {
 	selectionRect,
 } from "@/core/selection";
 import type { Alignment, TableDocument } from "@/core/types";
-import type { CodecId, ParseIssue } from "@/formats/types";
+import type {
+	CodecId,
+	OutputOptionId,
+	OutputOptions,
+	ParseIssue,
+} from "@/formats/types";
+import { defaultOutputOptions } from "@/formats/types";
 import {
 	createImportedDocument,
 	type ImportError,
@@ -129,6 +135,11 @@ export interface TabeloState {
 	inputError: ImportError | null;
 	headerCorrection: HeaderCorrection | null;
 	pendingPaneAction: PendingPaneAction | null;
+	// What the next download should produce. Deliberately session-only: it
+	// changes the shape of the exported file, and a silently remembered "no
+	// header row" would surprise someone weeks later. Never persisted, never
+	// document state, never a history step. See docs/adr/0005.
+	outputOptions: Required<OutputOptions>;
 	// The pane whose menu should take focus next. Adding a view is one intent in
 	// two parts — make room, then say what goes there — so the control that says
 	// it is handed to the user instead of left to be hunted for.
@@ -148,6 +159,7 @@ export interface TabeloState {
 	confirmPaneAction: () => void;
 	clearPaneMenuFocus: () => void;
 	setActivePane: (paneId: string) => void;
+	setOutputOption: (id: OutputOptionId, value: boolean) => void;
 	setPaneZoom: (paneId: string, zoom: number) => void;
 	setColumnRatio: (ratio: number) => void;
 	setRowRatio: (ratio: number) => void;
@@ -331,6 +343,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	headerCorrection: null,
 	pendingPaneAction: null,
 	paneMenuFocus: null,
+	outputOptions: { ...defaultOutputOptions },
 
 	hydrate: () => {
 		const outcome = loadState();
@@ -629,6 +642,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	setActivePane: (paneId) =>
 		set((state) => ({
 			workspace: { ...state.workspace, activePaneId: paneId },
+		})),
+
+	setOutputOption: (id, value) =>
+		set((state) => ({
+			outputOptions: { ...state.outputOptions, [id]: value },
 		})),
 
 	// Zoom is presentation, like column width: it never reaches the document and

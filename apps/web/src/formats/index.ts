@@ -3,7 +3,7 @@ import { htmlCodec } from "./html";
 import { jiraCodec } from "./jira";
 import { markdownCodec } from "./markdown";
 import { tsvCodec } from "./tsv";
-import type { CodecId, TableCodec } from "./types";
+import type { CodecId, OutputOptions, TableCodec } from "./types";
 
 // The codec registry. Downloads, clipboard sniffing, and the view registry all
 // read from here, so adding a format is a single registration rather than an
@@ -47,12 +47,29 @@ export function listDownloadableCodecs(): readonly TableCodec[] {
 	return listCodecs();
 }
 
+// Narrows the user's chosen values to the ones this format actually promises.
+// Formats can share an implementation — CSV and TSV are one serializer — so a
+// value left in would be honoured by a format that never offered the choice,
+// and unchecking a box under CSV would quietly change a TSV file too.
+export function outputOptionsFor(
+	codec: TableCodec,
+	values: Required<OutputOptions>,
+): OutputOptions {
+	const declared = codec.outputOptions ?? [];
+	return Object.fromEntries(
+		declared.map((id) => [id, values[id]]),
+	) satisfies OutputOptions;
+}
+
 export type {
 	CodecId,
 	MatrixParseResult,
+	OutputOptionId,
+	OutputOptions,
 	ParsedTable,
 	ParseIssue,
 	ParseResult,
 	TableCodec,
 } from "./types";
+export { defaultOutputOptions } from "./types";
 export { csvCodec, htmlCodec, jiraCodec, markdownCodec, tsvCodec };

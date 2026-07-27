@@ -125,11 +125,31 @@ export const copy = {
 		tableActions: "Table actions",
 		copySource: "Copy source",
 		downloadAs: "Download as",
+		downloadTable: "Download table",
+		download: "Download",
+		cancel: "Cancel",
 		importFile: "Import file",
 		newTable: "New table",
 		selectRow: "Select row",
 		selectColumn: "Select column",
 		resizeColumn: "Resize column",
+	},
+
+	download: {
+		title: "Download table",
+		hint: "Choose a file format.",
+		format: "File format",
+		options: "Options",
+		// Output-only choices, listed by the id the codec declares.
+		option: (id: "includeHeader") =>
+			id === "includeHeader" ? "Include header row" : id,
+		optionHint: (id: "includeHeader") =>
+			id === "includeHeader"
+				? "The table always has a header row. This decides whether the file prints it."
+				: "",
+		invalidDraft:
+			"This source is not valid yet. Download the last valid table or copy the draft.",
+		copyDraft: "Copy the draft",
 	},
 
 	empty: {

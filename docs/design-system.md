@@ -239,6 +239,30 @@ Add a missing primitive with the shadcn CLI rather than hand-writing it:
 pnpm dlx shadcn@latest add <name> -c packages/ui
 ```
 
+### Dialog
+
+A dialog is allowed **only as the direct result of a command the user issued**,
+and only when the command has a choice to make that a menu cannot hold — a
+choice with its own options, or one that needs stating before it happens. The
+download chooser is the one today: a format, plus whatever that format declares
+about how its file should be written.
+
+A dialog is never used to announce something. Notices belong in the notice bar,
+which sits in the layout instead of covering the table.
+
+| Rule | Treatment |
+| :--- | :--- |
+| Surface | `rounded-interactive`, `bg-popover`, one shadow — a floating layer |
+| Body text | `text-sm`; the same 14px floor as everywhere else |
+| Title | `DialogTitle`, `text-sm font-medium` |
+| Supporting copy | `DialogDescription`, one sentence saying what to choose |
+| Dismissal | Escape and an explicit Cancel; focus returns to what opened it |
+| Confirmation | One primary verb naming the operation — "Download", not "OK" |
+
+Compose `packages/ui`'s `Dialog`; do not build a second modal. Prefer the
+explicit Cancel and Confirm pair over the primitive's corner close button, so
+the two ways out are both visible and both labelled.
+
 ### Layer ownership
 
 | Layer | Location | Holds |

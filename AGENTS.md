@@ -287,7 +287,9 @@ here:
 - Reduce cognitive load: keep visible actions manageable, place them near the
   content they affect, avoid deeply nested menus and unnecessary configuration,
   and use progressive disclosure for less common actions.
-- Avoid unexpected layout changes, dialogs, and interruptions.
+- Avoid unexpected layout changes and interruptions. A dialog is allowed only
+  as the direct result of a command the user issued, and only for a choice a
+  menu cannot hold — see `docs/design-system.md` §3.
 - Keep visible copy centralized and consistent.
 - Keep expensive work out of render paths. Measure before claiming a performance
   problem.

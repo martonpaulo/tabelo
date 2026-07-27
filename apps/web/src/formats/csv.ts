@@ -1,10 +1,8 @@
-import type { TableDocument } from "@/core/types";
-import {
-	createDelimitedCodec,
-	type DelimitedOptions,
-	serializeDelimited,
-} from "./delimited";
+import { createDelimitedCodec } from "./delimited";
 
+// The header row is document state and always exists; whether a CSV file
+// prints it is a property of that file. CSV is the only format that promises
+// the choice, so it is the only one that declares it. See AGENTS.md.
 export const csvCodec = createDelimitedCodec({
 	id: "csv",
 	label: "CSV",
@@ -12,15 +10,7 @@ export const csvCodec = createDelimitedCodec({
 	mimeType: "text/csv",
 	delimiter: ",",
 	sniffDelimiter: true,
+	outputOptions: ["includeHeader"],
 });
-
-// Header-less output is an export preference, never document state. See
-// AGENTS.md on header handling.
-export function serializeCsvWith(
-	document: TableDocument,
-	options: DelimitedOptions = {},
-): string {
-	return serializeDelimited(document, ",", options);
-}
 
 export { parseDelimitedMatrix as parseCsvMatrix } from "./delimited";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
-import { csvCodec, serializeCsvWith } from "./csv";
+import { csvCodec } from "./csv";
 
 // The CSV cases the product promises to handle, stated as tests so a future
 // parser swap has to keep them.
@@ -103,7 +103,14 @@ describe("csv serialization", () => {
 			],
 			{ headerRow: true },
 		);
-		expect(serializeCsvWith(document, { includeHeader: false })).toBe("1,2");
+		expect(csvCodec.serialize(document, { includeHeader: false })).toBe("1,2");
+		// The choice belongs to the file, never to the table.
+		expect(csvCodec.serialize(document)).toBe("A,B\n1,2");
+		expect(document.columns.map((column) => column.header)).toEqual(["A", "B"]);
+	});
+
+	it("declares the header choice so the download chooser can offer it", () => {
+		expect(csvCodec.outputOptions).toEqual(["includeHeader"]);
 	});
 
 	it("round-trips hostile values", () => {

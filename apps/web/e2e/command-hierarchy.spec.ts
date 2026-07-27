@@ -25,8 +25,12 @@ test("document actions use a compact, explicit command hierarchy", async ({
 	await expect(
 		menu.getByRole("menuitem", { name: "Import file" }),
 	).toBeVisible();
-	await expect(menu.getByText("Download as")).toBeVisible();
-	await expect(menu.getByRole("menuitem", { name: /Markdown/ })).toBeVisible();
+	// Formats are chosen in the download chooser, not by making the File menu
+	// carry one item per format.
+	await expect(
+		menu.getByRole("menuitem", { name: "Download table" }),
+	).toBeVisible();
+	await expect(menu.getByRole("menuitem", { name: /Markdown/ })).toHaveCount(0);
 });
 
 test("each pane keeps identity while low-frequency actions share one menu", async ({

@@ -4,7 +4,6 @@ import {
 	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
@@ -15,19 +14,20 @@ import {
 	FolderOpen,
 	Upload,
 } from "lucide-react";
-import { listDownloadableCodecs } from "@/formats";
-import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 
-// File operations share one explicit document-level entry point. Download
-// choices still come directly from the codec registry.
+// File operations share one explicit document-level entry point. Downloading
+// opens the chooser rather than firing immediately, because a format is not
+// the only choice a download has to make — see ui/download-dialog.tsx.
 
-const BASE_FILENAME = "table";
-
-export function FileMenu({ onImport }: { readonly onImport: () => void }) {
-	const codecs = listDownloadableCodecs();
-
+export function FileMenu({
+	onImport,
+	onDownload,
+}: {
+	readonly onImport: () => void;
+	readonly onDownload: () => void;
+}) {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger
@@ -56,26 +56,10 @@ export function FileMenu({ onImport }: { readonly onImport: () => void }) {
 
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
-					<DropdownMenuLabel>{copy.actions.downloadAs}</DropdownMenuLabel>
-					{codecs.map((codec) => (
-						<DropdownMenuItem
-							key={codec.id}
-							onClick={() => {
-								const document = useTabeloStore.getState().document;
-								downloadText(
-									`${BASE_FILENAME}.${codec.extension}`,
-									codec.mimeType,
-									codec.serialize(document),
-								);
-							}}
-						>
-							<Download aria-hidden />
-							<span className="flex-1">{codec.label}</span>
-							<span className="text-muted-foreground text-xs">
-								.{codec.extension}
-							</span>
-						</DropdownMenuItem>
-					))}
+					<DropdownMenuItem onClick={onDownload}>
+						<Download aria-hidden />
+						{copy.actions.downloadTable}
+					</DropdownMenuItem>
 				</DropdownMenuGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>

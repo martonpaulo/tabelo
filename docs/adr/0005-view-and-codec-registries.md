@@ -28,6 +28,20 @@ about the UI. Downloads, clipboard sniffing, and file import all derive from
 this registry, so registering a codec makes a format downloadable, pasteable,
 and importable with no further edit.
 
+A codec may also declare `outputOptions`: choices that belong to the file it
+writes and to nothing else. CSV declares `includeHeader`, because the table
+always has exactly one header row and whether the file prints it is a property
+of that file — not `hasHeader` state creeping back into the document. The
+download chooser reads the declaration rather than naming CSV, so a format with
+no choices is offered none and a format that gains one needs no edit there.
+Values are labelled in `ui/copy.ts` by id, keeping visible strings out of the
+registry.
+
+The chosen values are **session-only**, held in the store and never persisted.
+They change the shape of the exported file, and a silently remembered "no
+header row" would surprise someone weeks later; every session starts from the
+codec's declared default instead.
+
 **A view registry** holds what the workspace can display. A `ViewDefinition`
 adds presentation to a codec: a label, a description, an icon, a `kind`
 (`grid`, `source`, or `preview`), a highlight language named as a string, and a

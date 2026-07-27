@@ -15,7 +15,13 @@ import { LayoutPicker } from "@/ui/workspace/layout-picker";
 // Document-level actions only. Anything that acts on a row, a column, or one
 // pane lives next to that thing instead — see docs/design-system.md §5.
 
-export function AppHeader({ onImport }: { readonly onImport: () => void }) {
+export function AppHeader({
+	onImport,
+	onDownload,
+}: {
+	readonly onImport: () => void;
+	readonly onDownload: () => void;
+}) {
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
 	const canRedoDocument = useTabeloStore((state) => state.future.length > 0);
 	const activePaneId = useTabeloStore((state) => state.workspace.activePaneId);
@@ -64,7 +70,7 @@ export function AppHeader({ onImport }: { readonly onImport: () => void }) {
 				}
 			/>
 
-			<FileMenu onImport={onImport} />
+			<FileMenu onImport={onImport} onDownload={onDownload} />
 			<LayoutPicker
 				value={layout}
 				onChange={(next) => useTabeloStore.getState().setLayout(next)}

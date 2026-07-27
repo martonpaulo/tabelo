@@ -56,6 +56,21 @@ export type MatrixParseResult =
 	  }
 	| { readonly ok: false; readonly issues: readonly ParseIssue[] };
 
+// Choices that belong to the output file and to nothing else. They never reach
+// the document, the history timeline, or any source projection: the table
+// always has exactly one header row, and whether a download prints it is a
+// property of that download. See AGENTS.md on header handling.
+export type OutputOptionId = "includeHeader";
+
+export interface OutputOptions {
+	readonly includeHeader?: boolean;
+}
+
+// One owner for what an unconfigured download produces.
+export const defaultOutputOptions: Required<OutputOptions> = {
+	includeHeader: true,
+};
+
 // A codec is a parser/serializer pair over the table document, plus the file
 // facts needed to download it. Adding a format means adding one of these and
 // registering it; synchronization, history, persistence, downloads, and the
@@ -71,7 +86,14 @@ export interface TableCodec {
 	// application document is constructed or rendered.
 	readonly parseMatrix: (text: string) => MatrixParseResult;
 	readonly parse: (text: string) => ParseResult;
-	readonly serialize: (document: TableDocument) => string;
+	readonly serialize: (
+		document: TableDocument,
+		options?: OutputOptions,
+	) => string;
+	// Which output choices this format understands. Absent means the download
+	// has nothing to ask, which is what keeps the chooser from offering an
+	// option that would do nothing.
+	readonly outputOptions?: readonly OutputOptionId[];
 	// Text clipboard sniffing is format-owned. Lower priorities run first.
 	readonly sniffPriority?: number;
 	readonly canSniff?: (text: string) => boolean;
