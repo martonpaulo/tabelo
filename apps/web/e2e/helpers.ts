@@ -115,7 +115,7 @@ export class TabeloPage {
 		mimeType = "text/plain",
 	): Promise<void> {
 		const chooserPromise = this.page.waitForEvent("filechooser");
-		await this.page.getByRole("button", { name: "File" }).click();
+		await this.page.getByRole("button", { name: "File", exact: true }).click();
 		await this.page.getByRole("menuitem", { name: "Import file" }).click();
 		const chooser = await chooserPromise;
 		await chooser.setFiles({
@@ -127,7 +127,7 @@ export class TabeloPage {
 
 	async cancelFileImport(): Promise<void> {
 		const chooserPromise = this.page.waitForEvent("filechooser");
-		await this.page.getByRole("button", { name: "File" }).click();
+		await this.page.getByRole("button", { name: "File", exact: true }).click();
 		await this.page.getByRole("menuitem", { name: "Import file" }).click();
 		const chooser = await chooserPromise;
 		await chooser.setFiles([]);
