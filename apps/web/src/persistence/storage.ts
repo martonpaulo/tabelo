@@ -1,5 +1,5 @@
 import type { TableDocument } from "@/core/types";
-import type { TextFormat } from "@/formats/types";
+import type { Workspace } from "@/workspace/layout";
 import {
 	CURRENT_VERSION,
 	type LoadOutcome,
@@ -12,8 +12,7 @@ import {
 // serves the document, not the other way round.
 export interface SavePayload {
 	readonly document: TableDocument;
-	readonly textFormat: TextFormat;
-	readonly textPanelVisible: boolean;
+	readonly workspace: Workspace;
 }
 
 // localStorage is the only durable store. Reads are treated as untrusted —

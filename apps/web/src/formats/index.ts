@@ -1,20 +1,43 @@
-import { csvFormat } from "./csv";
-import { markdownFormat } from "./markdown";
-import type { TableFormat, TextFormat } from "./types";
+import { csvCodec } from "./csv";
+import { htmlCodec } from "./html";
+import { jiraCodec } from "./jira";
+import { markdownCodec } from "./markdown";
+import { tsvCodec } from "./tsv";
+import type { CodecId, TableCodec } from "./types";
 
-// The registry is deliberately a plain lookup rather than a plugin system.
-// Adding TSV or JSON later means adding a TableFormat here and widening
-// TextFormat — nothing else has to change. See docs/adr/0001.
-export const formats: Record<TextFormat, TableFormat> = {
-	markdown: markdownFormat,
-	csv: csvFormat,
+// The codec registry. Downloads, clipboard sniffing, and the view registry all
+// read from here, so adding a format is a single registration rather than an
+// edit in five places. See docs/adr/0005.
+const registry: Record<CodecId, TableCodec> = {
+	markdown: markdownCodec,
+	csv: csvCodec,
+	tsv: tsvCodec,
+	html: htmlCodec,
+	jira: jiraCodec,
 };
 
-export const formatOrder: readonly TextFormat[] = ["markdown", "csv"];
+// Order is the product's own preference, shown wherever formats are listed.
+export const codecOrder: readonly CodecId[] = [
+	"markdown",
+	"csv",
+	"tsv",
+	"html",
+	"jira",
+];
 
-export function getFormat(id: TextFormat): TableFormat {
-	return formats[id];
+export function getCodec(id: CodecId): TableCodec {
+	return registry[id];
 }
 
-export type { ParseIssue, ParseResult, TableFormat, TextFormat } from "./types";
-export { csvFormat, markdownFormat };
+export function listCodecs(): readonly TableCodec[] {
+	return codecOrder.map((id) => registry[id]);
+}
+
+// Every registered codec can serialize, so every one is downloadable. Keeping
+// this derived means a new format appears in the download menu automatically.
+export function listDownloadableCodecs(): readonly TableCodec[] {
+	return listCodecs();
+}
+
+export type { CodecId, ParseIssue, ParseResult, TableCodec } from "./types";
+export { csvCodec, htmlCodec, jiraCodec, markdownCodec, tsvCodec };

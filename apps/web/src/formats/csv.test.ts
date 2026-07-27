@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
-import { csvFormat, serializeCsvWith } from "./csv";
+import { csvCodec, serializeCsvWith } from "./csv";
 
 // The CSV cases the product promises to handle, stated as tests so a future
 // parser swap has to keep them.
 
 function matrixOf(text: string) {
-	const result = csvFormat.parse(text);
+	const result = csvCodec.parse(text);
 	expect(result.ok).toBe(true);
 	if (!result.ok) throw new Error("expected a valid parse");
 	return documentToMatrix(result.document);
@@ -66,7 +66,7 @@ describe("csv parsing", () => {
 	});
 
 	it("holds back on an unterminated quote so the last good table survives", () => {
-		const result = csvFormat.parse('A,B\n1,"unterminated');
+		const result = csvCodec.parse('A,B\n1,"unterminated');
 		expect(result.ok).toBe(false);
 	});
 
@@ -87,7 +87,7 @@ describe("csv serialization", () => {
 			],
 			{ headerRow: true },
 		);
-		const out = csvFormat.serialize(document);
+		const out = csvCodec.serialize(document);
 		expect(out).toBe('A,B\nplain,"has,comma"');
 	});
 
@@ -109,6 +109,6 @@ describe("csv serialization", () => {
 			["", ""],
 		];
 		const document = documentFromMatrix(original, { headerRow: true });
-		expect(matrixOf(csvFormat.serialize(document))).toEqual(original);
+		expect(matrixOf(csvCodec.serialize(document))).toEqual(original);
 	});
 });

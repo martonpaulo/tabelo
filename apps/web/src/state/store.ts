@@ -35,37 +35,50 @@ import {
 	selectionRect,
 } from "@/core/selection";
 import type { Alignment, TableDocument } from "@/core/types";
-import { getFormat } from "@/formats";
-import type { ParseIssue, TextFormat } from "@/formats/types";
+import type { ParseIssue } from "@/formats/types";
 import { loadState, saveState } from "@/persistence/storage";
+import { getView } from "@/views/registry";
+import type { ViewId } from "@/views/types";
+import {
+	applyLayout,
+	createDefaultWorkspace,
+	type LayoutId,
+	type Workspace,
+} from "@/workspace/layout";
 
 // How many steps the document timeline keeps. Deep enough to cover a working
 // session, bounded so a long session cannot grow without limit.
 const HISTORY_LIMIT = 200;
 
-// How long the text panel waits after the last keystroke before parsing.
-// Long enough that typing a table never thrashes the grid, short enough that
-// the grid still feels connected to what you are writing.
+// How long a source view waits after the last keystroke before parsing. Long
+// enough that typing never thrashes the other views, short enough that they
+// still feel connected to what is being written.
 const COMMIT_DELAY_MS = 300;
 
 // Beyond this the app warns instead of freezing. See AGENTS.md: Tabelo targets
 // roughly 200 rows and deliberately has no virtualization.
 export const LARGE_TABLE_ROWS = 500;
 
+// The text a source view is holding but has not committed. Exactly one can
+// exist at a time — every other view is a pure projection of the document, so
+// there is never a question of which pending edit wins.
+export interface Draft {
+	readonly viewId: ViewId;
+	readonly text: string;
+}
+
 export interface HistoryEntry {
 	readonly document: TableDocument;
 	// A draft that was still uncommitted when this entry was superseded.
 	// Restoring it is what keeps a grid edit from destroying pending text.
-	readonly draft: { readonly format: TextFormat; readonly text: string } | null;
+	readonly draft: Draft | null;
 }
 
 export interface TabeloState {
 	document: TableDocument;
-	textFormat: TextFormat;
-	textPanelVisible: boolean;
+	workspace: Workspace;
 
-	draftText: string;
-	draftDirty: boolean;
+	draft: Draft | null;
 	issues: readonly ParseIssue[];
 	warnings: readonly ParseIssue[];
 
@@ -84,10 +97,15 @@ export interface TabeloState {
 	hydrate: () => void;
 	applyDocument: (next: TableDocument) => void;
 
-	setDraftText: (text: string) => void;
+	setDraft: (viewId: ViewId, text: string) => void;
 	commitDraft: () => void;
-	setTextFormat: (format: TextFormat) => void;
-	toggleTextPanel: () => void;
+	discardDraft: () => void;
+
+	setLayout: (layout: LayoutId) => void;
+	setPaneView: (paneId: string, view: ViewId) => void;
+	setActivePane: (paneId: string) => void;
+	setColumnRatio: (ratio: number) => void;
+	setRowRatio: (ratio: number) => void;
 
 	undo: () => void;
 	redo: () => void;
@@ -103,40 +121,34 @@ export interface TabeloState {
 	setColumnAlignment: (column: number, align: Alignment) => void;
 	resizeColumn: (column: number, width: number | undefined) => void;
 
-	addRow: (at?: number) => void;
+	addRowAbove: () => void;
+	addRowBelow: () => void;
 	removeSelectedRows: () => void;
 	duplicateSelectedRows: () => void;
 	moveSelectedRow: (offset: number) => void;
 
-	addColumn: (at?: number) => void;
+	addColumnLeft: () => void;
+	addColumnRight: () => void;
 	removeSelectedColumns: () => void;
 	duplicateSelectedColumns: () => void;
 	moveSelectedColumn: (offset: number) => void;
 
 	clearSelection: () => void;
-	copySelection: () => { text: string; matrix: string[][] };
-	cutSelection: () => { text: string; matrix: string[][] };
+	deleteSelectedStructure: () => void;
+	selectedMatrix: () => string[][];
 	pasteClipboard: (payload: ClipboardPayload) => void;
-	importText: (text: string, format?: TextFormat) => void;
+	importText: (text: string, view?: ViewId) => void;
 
 	demoteHeader: () => void;
 	resetDocument: () => void;
 	dismissNotice: () => void;
+	setNotice: (notice: string | null) => void;
 }
 
 let commitTimer: ReturnType<typeof setTimeout> | null = null;
 
-function serialize(document: TableDocument, format: TextFormat): string {
-	return getFormat(format).serialize(document);
-}
-
 function snapshotOf(state: TabeloState): HistoryEntry {
-	return {
-		document: state.document,
-		draft: state.draftDirty
-			? { format: state.textFormat, text: state.draftText }
-			: null,
-	};
+	return { document: state.document, draft: state.draft };
 }
 
 function pushHistory(
@@ -149,456 +161,460 @@ function pushHistory(
 		: next;
 }
 
-export const useTabeloStore = create<TabeloState>((set, get) => {
-	const initialDocument = createEmptyDocument();
+// Serializes the document for a view. Views without a codec — the grid — have
+// no text projection.
+export function textForView(document: TableDocument, viewId: ViewId): string {
+	const codec = getView(viewId).codec;
+	return codec ? codec.serialize(document) : "";
+}
 
-	return {
-		document: initialDocument,
-		textFormat: "markdown",
-		textPanelVisible: true,
+export const useTabeloStore = create<TabeloState>((set, get) => ({
+	document: createEmptyDocument(),
+	workspace: createDefaultWorkspace(),
 
-		draftText: serialize(initialDocument, "markdown"),
-		draftDirty: false,
-		issues: [],
-		warnings: [],
+	draft: null,
+	issues: [],
+	warnings: [],
 
-		past: [],
-		future: [],
+	past: [],
+	future: [],
 
-		selection: createSelection({ row: 0, column: 0 }),
-		editing: null,
-		editingHeader: null,
+	selection: createSelection({ row: 0, column: 0 }),
+	editing: null,
+	editingHeader: null,
 
-		storageError: null,
-		notice: null,
-		headerGuessPending: false,
+	storageError: null,
+	notice: null,
+	headerGuessPending: false,
 
-		hydrate: () => {
-			const outcome = loadState();
-			if (outcome.status === "ok") {
-				set({
-					document: outcome.state.document,
-					textFormat: outcome.state.textFormat,
-					textPanelVisible: outcome.state.textPanelVisible,
-					draftText: serialize(
-						outcome.state.document,
-						outcome.state.textFormat,
+	hydrate: () => {
+		const outcome = loadState();
+		if (outcome.status === "ok") {
+			set({
+				document: outcome.state.document,
+				workspace: outcome.state.workspace,
+				draft: null,
+				issues: [],
+				warnings: [],
+				selection: createSelection({ row: 0, column: 0 }),
+			});
+			return;
+		}
+		if (outcome.status === "unreadable") {
+			// The stored payload stays untouched so it can be recovered by hand.
+			set({ storageError: outcome.reason });
+		}
+	},
+
+	// The single funnel for every structural change. A table edit always wins
+	// over an uncommitted draft, and the draft it displaces is preserved in
+	// history rather than dropped. See docs/adr/0001 and 0003.
+	applyDocument: (next) =>
+		set((state) => ({
+			past: pushHistory(state.past, snapshotOf(state)),
+			future: [],
+			document: next,
+			draft: null,
+			issues: [],
+			warnings: [],
+			selection: clampSelection(
+				state.selection,
+				next.rows.length,
+				next.columns.length,
+			),
+		})),
+
+	setDraft: (viewId, text) => {
+		set({ draft: { viewId, text } });
+		if (commitTimer) clearTimeout(commitTimer);
+		commitTimer = setTimeout(() => get().commitDraft(), COMMIT_DELAY_MS);
+	},
+
+	commitDraft: () => {
+		if (commitTimer) {
+			clearTimeout(commitTimer);
+			commitTimer = null;
+		}
+		const state = get();
+		const draft = state.draft;
+		if (!draft) return;
+
+		const parse = getView(draft.viewId).codec?.parse;
+		if (!parse) return;
+
+		const result = parse(draft.text);
+		if (!result.ok) {
+			// Hold the last valid table. Every other view stays editable throughout.
+			set({ issues: result.issues, warnings: [] });
+			return;
+		}
+
+		set((current) => ({
+			past: pushHistory(current.past, {
+				document: current.document,
+				draft: null,
+			}),
+			future: [],
+			document: result.document,
+			// Deliberately keeping the draft: re-serializing would rewrite the
+			// buffer the user is typing in and move their cursor. It is now equal
+			// in meaning to the document, just not character-identical.
+			issues: [],
+			warnings: result.warnings ?? [],
+			selection: clampSelection(
+				current.selection,
+				result.document.rows.length,
+				result.document.columns.length,
+			),
+		}));
+	},
+
+	discardDraft: () => {
+		if (commitTimer) {
+			clearTimeout(commitTimer);
+			commitTimer = null;
+		}
+		set({ draft: null, issues: [], warnings: [] });
+	},
+
+	setLayout: (layout) =>
+		set((state) => {
+			const panes = applyLayout(layout, state.workspace.panes);
+			return {
+				workspace: {
+					...state.workspace,
+					layout,
+					panes,
+					activePaneId: panes.some(
+						(pane) => pane.id === state.workspace.activePaneId,
+					)
+						? state.workspace.activePaneId
+						: panes[0].id,
+				},
+			};
+		}),
+
+	setPaneView: (paneId, view) =>
+		set((state) => {
+			const pane = state.workspace.panes.find(
+				(candidate) => candidate.id === paneId,
+			);
+			// Retiring the view that holds the pending draft would strand it, so
+			// commit it first rather than leaving the text nowhere.
+			if (pane && state.draft?.viewId === pane.view) get().commitDraft();
+
+			return {
+				workspace: {
+					...get().workspace,
+					panes: get().workspace.panes.map((candidate) =>
+						candidate.id === paneId ? { ...candidate, view } : candidate,
 					),
-					draftDirty: false,
-					issues: [],
-					warnings: [],
-					selection: createSelection({ row: 0, column: 0 }),
-				});
-				return;
-			}
-			if (outcome.status === "unreadable") {
-				// The stored payload stays untouched so it can be recovered by hand.
-				set({ storageError: outcome.reason });
-			}
-		},
+					activePaneId: paneId,
+				},
+			};
+		}),
 
-		// The single funnel for every structural change. A grid edit always wins
-		// over an uncommitted draft, and the draft it displaces is preserved in
-		// history rather than dropped. See docs/adr/0001 and 0003.
-		applyDocument: (next) =>
-			set((state) => ({
-				past: pushHistory(state.past, snapshotOf(state)),
-				future: [],
-				document: next,
-				draftText: serialize(next, state.textFormat),
-				draftDirty: false,
+	setActivePane: (paneId) =>
+		set((state) => ({
+			workspace: { ...state.workspace, activePaneId: paneId },
+		})),
+
+	setColumnRatio: (ratio) =>
+		set((state) => ({
+			workspace: {
+				...state.workspace,
+				columnRatio: Math.min(0.85, Math.max(0.15, ratio)),
+			},
+		})),
+
+	setRowRatio: (ratio) =>
+		set((state) => ({
+			workspace: {
+				...state.workspace,
+				rowRatio: Math.min(0.85, Math.max(0.15, ratio)),
+			},
+		})),
+
+	undo: () =>
+		set((state) => {
+			const entry = state.past.at(-1);
+			if (!entry) return state;
+			return {
+				past: state.past.slice(0, -1),
+				future: [snapshotOf(state), ...state.future],
+				document: entry.document,
+				draft: entry.draft,
 				issues: [],
 				warnings: [],
 				selection: clampSelection(
 					state.selection,
-					next.rows.length,
-					next.columns.length,
+					entry.document.rows.length,
+					entry.document.columns.length,
 				),
-			})),
+			};
+		}),
 
-		setDraftText: (text) => {
-			set({ draftText: text, draftDirty: true });
-			if (commitTimer) clearTimeout(commitTimer);
-			commitTimer = setTimeout(() => get().commitDraft(), COMMIT_DELAY_MS);
-		},
-
-		commitDraft: () => {
-			if (commitTimer) {
-				clearTimeout(commitTimer);
-				commitTimer = null;
-			}
-			const state = get();
-			if (!state.draftDirty) return;
-
-			const result = getFormat(state.textFormat).parse(state.draftText);
-			if (!result.ok) {
-				// Hold the last valid table. The grid stays editable throughout.
-				set({ issues: result.issues, warnings: [] });
-				return;
-			}
-
-			set((current) => ({
-				past: pushHistory(current.past, {
-					document: current.document,
-					draft: null,
-				}),
-				future: [],
-				document: result.document,
-				// Deliberately not re-serializing: rewriting the buffer the user is
-				// typing in would move their cursor.
-				draftDirty: false,
-				issues: [],
-				warnings: result.warnings ?? [],
-				selection: clampSelection(
-					current.selection,
-					result.document.rows.length,
-					result.document.columns.length,
-				),
-			}));
-		},
-
-		setTextFormat: (format) => {
-			const before = get();
-			if (before.textFormat === format) return;
-
-			// Try to keep a pending edit: commit it if it parses.
-			if (before.draftDirty) get().commitDraft();
-			const after = get();
-
-			set({
-				textFormat: format,
-				draftText: serialize(after.document, format),
-				draftDirty: false,
+	redo: () =>
+		set((state) => {
+			const entry = state.future[0];
+			if (!entry) return state;
+			return {
+				past: pushHistory(state.past, snapshotOf(state)),
+				future: state.future.slice(1),
+				document: entry.document,
+				draft: entry.draft,
 				issues: [],
 				warnings: [],
-				// A draft that still would not parse is superseded, not destroyed.
-				past: after.draftDirty
-					? pushHistory(after.past, snapshotOf(after))
-					: after.past,
-				future: after.draftDirty ? [] : after.future,
-			});
-		},
-
-		toggleTextPanel: () =>
-			set((state) => ({ textPanelVisible: !state.textPanelVisible })),
-
-		undo: () =>
-			set((state) => {
-				const entry = state.past.at(-1);
-				if (!entry) return state;
-
-				const restored = snapshotOf(state);
-				const base = {
-					past: state.past.slice(0, -1),
-					future: [restored, ...state.future],
-					document: entry.document,
-					issues: [] as readonly ParseIssue[],
-					warnings: [] as readonly ParseIssue[],
-					selection: clampSelection(
-						state.selection,
-						entry.document.rows.length,
-						entry.document.columns.length,
-					),
-				};
-
-				if (entry.draft) {
-					return {
-						...base,
-						textFormat: entry.draft.format,
-						draftText: entry.draft.text,
-						draftDirty: true,
-					};
-				}
-				return {
-					...base,
-					draftText: serialize(entry.document, state.textFormat),
-					draftDirty: false,
-				};
-			}),
-
-		redo: () =>
-			set((state) => {
-				const entry = state.future[0];
-				if (!entry) return state;
-
-				const current = snapshotOf(state);
-				const base = {
-					past: pushHistory(state.past, current),
-					future: state.future.slice(1),
-					document: entry.document,
-					issues: [] as readonly ParseIssue[],
-					warnings: [] as readonly ParseIssue[],
-					selection: clampSelection(
-						state.selection,
-						entry.document.rows.length,
-						entry.document.columns.length,
-					),
-				};
-
-				if (entry.draft) {
-					return {
-						...base,
-						textFormat: entry.draft.format,
-						draftText: entry.draft.text,
-						draftDirty: true,
-					};
-				}
-				return {
-					...base,
-					draftText: serialize(entry.document, state.textFormat),
-					draftDirty: false,
-				};
-			}),
-
-		setSelection: (selection) => set({ selection }),
-
-		selectCell: (position, mode = "cell") =>
-			set({
-				selection: createSelection(position, mode),
-				editing: null,
-				editingHeader: null,
-			}),
-
-		extendSelection: (position) =>
-			set((state) => ({ selection: { ...state.selection, focus: position } })),
-
-		setEditing: (position) => set({ editing: position, editingHeader: null }),
-		setEditingHeader: (index) => set({ editingHeader: index, editing: null }),
-
-		editCell: (row, column, value) =>
-			get().applyDocument(setCell(get().document, row, column, value)),
-
-		editHeader: (column, value) =>
-			get().applyDocument(setHeader(get().document, column, value)),
-
-		setColumnAlignment: (column, align) =>
-			get().applyDocument(setAlignment(get().document, column, align)),
-
-		// Width is presentation state, so it bypasses the document timeline —
-		// dragging a column edge should not consume an undo step.
-		resizeColumn: (column, width) =>
-			set((state) => {
-				const next = setColumnWidth(state.document, column, width);
-				return next === state.document
-					? state
-					: { document: next, draftText: state.draftText };
-			}),
-
-		addRow: (at) => {
-			const state = get();
-			const rect = selectionRect(
-				state.selection,
-				state.document.rows.length,
-				state.document.columns.length,
-			);
-			const index = at ?? rect.bottom + 1;
-			state.applyDocument(insertRows(state.document, index));
-			set({ selection: createSelection({ row: index, column: rect.left }) });
-		},
-
-		removeSelectedRows: () => {
-			const state = get();
-			const rect = selectionRect(
-				state.selection,
-				state.document.rows.length,
-				state.document.columns.length,
-			);
-			state.applyDocument(deleteRows(state.document, rectRows(rect)));
-		},
-
-		duplicateSelectedRows: () => {
-			const state = get();
-			const rect = selectionRect(
-				state.selection,
-				state.document.rows.length,
-				state.document.columns.length,
-			);
-			state.applyDocument(duplicateRows(state.document, rectRows(rect)));
-		},
-
-		moveSelectedRow: (offset) => {
-			const state = get();
-			const rect = selectionRect(
-				state.selection,
-				state.document.rows.length,
-				state.document.columns.length,
-			);
-			const from = rect.top;
-			const to = from + offset;
-			if (to < 0 || to >= state.document.rows.length) return;
-			state.applyDocument(moveRow(state.document, from, to));
-			set({
-				selection: {
-					...state.selection,
-					anchor: { row: to, column: rect.left },
-					focus: { row: to, column: rect.right },
-				},
-			});
-		},
-
-		addColumn: (at) => {
-			const state = get();
-			const rect = selectionRect(
-				state.selection,
-				state.document.rows.length,
-				state.document.columns.length,
-			);
-			const index = at ?? rect.right + 1;
-			state.applyDocument(insertColumns(state.document, index));
-			set({ selection: createSelection({ row: rect.top, column: index }) });
-		},
-
-		removeSelectedColumns: () => {
-			const state = get();
-			const rect = selectionRect(
-				state.selection,
-				state.document.rows.length,
-				state.document.columns.length,
-			);
-			state.applyDocument(deleteColumns(state.document, rectColumns(rect)));
-		},
-
-		duplicateSelectedColumns: () => {
-			const state = get();
-			const rect = selectionRect(
-				state.selection,
-				state.document.rows.length,
-				state.document.columns.length,
-			);
-			state.applyDocument(duplicateColumns(state.document, rectColumns(rect)));
-		},
-
-		moveSelectedColumn: (offset) => {
-			const state = get();
-			const rect = selectionRect(
-				state.selection,
-				state.document.rows.length,
-				state.document.columns.length,
-			);
-			const from = rect.left;
-			const to = from + offset;
-			if (to < 0 || to >= state.document.columns.length) return;
-			state.applyDocument(moveColumn(state.document, from, to));
-			set({
-				selection: {
-					...state.selection,
-					anchor: { row: rect.top, column: to },
-					focus: { row: rect.bottom, column: to },
-				},
-			});
-		},
-
-		clearSelection: () => {
-			const state = get();
-			const rect = selectionRect(
-				state.selection,
-				state.document.rows.length,
-				state.document.columns.length,
-			);
-			state.applyDocument(clearCells(state.document, rect));
-		},
-
-		copySelection: () => {
-			const state = get();
-			const rect = selectionRect(
-				state.selection,
-				state.document.rows.length,
-				state.document.columns.length,
-			);
-			const body = documentToMatrix(state.document, { includeHeader: false })
-				.slice(rect.top, rect.bottom + 1)
-				.map((row) => row.slice(rect.left, rect.right + 1));
-
-			// Copying whole columns carries their headers, which is what makes the
-			// result useful when pasted somewhere else.
-			const matrix =
-				state.selection.mode === "column"
-					? [
-							state.document.columns
-								.slice(rect.left, rect.right + 1)
-								.map((c) => c.header),
-							...body,
-						]
-					: body;
-
-			return { text: "", matrix };
-		},
-
-		cutSelection: () => {
-			const result = get().copySelection();
-			get().clearSelection();
-			return result;
-		},
-
-		pasteClipboard: (payload) => {
-			const state = get();
-			const table = readClipboardTable(payload);
-			if (!table || table.matrix.length === 0) return;
-
-			if (table.matrix.length > LARGE_TABLE_ROWS) {
-				set({
-					notice: `That paste has ${table.matrix.length} rows. Tabelo is built for tables up to about ${LARGE_TABLE_ROWS}, so it may feel slow.`,
-				});
-			}
-
-			// Into an empty document, a paste creates the table — including the
-			// header decision. Into an existing one, it writes at the selection.
-			if (isDocumentBlank(state.document)) {
-				const headerRow = detectHeaderRow(table.matrix);
-				state.applyDocument(documentFromMatrix(table.matrix, { headerRow }));
-				set({
-					headerGuessPending: true,
-					selection: createSelection({ row: 0, column: 0 }),
-				});
-				return;
-			}
-
-			const rect = selectionRect(
-				state.selection,
-				state.document.rows.length,
-				state.document.columns.length,
-			);
-			state.applyDocument(
-				pasteMatrix(
-					state.document,
-					{ rowIndex: rect.top, columnIndex: rect.left },
-					table.matrix,
+				selection: clampSelection(
+					state.selection,
+					entry.document.rows.length,
+					entry.document.columns.length,
 				),
+			};
+		}),
+
+	setSelection: (selection) => set({ selection }),
+
+	selectCell: (position, mode = "cell") =>
+		set({
+			selection: createSelection(position, mode),
+			editing: null,
+			editingHeader: null,
+		}),
+
+	extendSelection: (position) =>
+		set((state) => ({ selection: { ...state.selection, focus: position } })),
+
+	setEditing: (position) => set({ editing: position, editingHeader: null }),
+	setEditingHeader: (index) => set({ editingHeader: index, editing: null }),
+
+	editCell: (row, column, value) =>
+		get().applyDocument(setCell(get().document, row, column, value)),
+
+	editHeader: (column, value) =>
+		get().applyDocument(setHeader(get().document, column, value)),
+
+	setColumnAlignment: (column, align) =>
+		get().applyDocument(setAlignment(get().document, column, align)),
+
+	// Width is presentation state, so it bypasses the document timeline —
+	// dragging a column edge should not consume an undo step.
+	resizeColumn: (column, width) =>
+		set((state) => {
+			const next = setColumnWidth(state.document, column, width);
+			return next === state.document ? state : { document: next };
+		}),
+
+	addRowAbove: () => {
+		const state = get();
+		const rect = currentRect(state);
+		state.applyDocument(insertRows(state.document, rect.top));
+		set({ selection: createSelection({ row: rect.top, column: rect.left }) });
+	},
+
+	addRowBelow: () => {
+		const state = get();
+		const rect = currentRect(state);
+		state.applyDocument(insertRows(state.document, rect.bottom + 1));
+		set({
+			selection: createSelection({ row: rect.bottom + 1, column: rect.left }),
+		});
+	},
+
+	removeSelectedRows: () => {
+		const state = get();
+		state.applyDocument(
+			deleteRows(state.document, rectRows(currentRect(state))),
+		);
+	},
+
+	duplicateSelectedRows: () => {
+		const state = get();
+		state.applyDocument(
+			duplicateRows(state.document, rectRows(currentRect(state))),
+		);
+	},
+
+	moveSelectedRow: (offset) => {
+		const state = get();
+		const rect = currentRect(state);
+		const to = rect.top + offset;
+		if (to < 0 || to >= state.document.rows.length) return;
+		state.applyDocument(moveRow(state.document, rect.top, to));
+		set({
+			selection: {
+				...state.selection,
+				anchor: { row: to, column: rect.left },
+				focus: { row: to, column: rect.right },
+			},
+		});
+	},
+
+	addColumnLeft: () => {
+		const state = get();
+		const rect = currentRect(state);
+		state.applyDocument(insertColumns(state.document, rect.left));
+		set({ selection: createSelection({ row: rect.top, column: rect.left }) });
+	},
+
+	addColumnRight: () => {
+		const state = get();
+		const rect = currentRect(state);
+		state.applyDocument(insertColumns(state.document, rect.right + 1));
+		set({
+			selection: createSelection({ row: rect.top, column: rect.right + 1 }),
+		});
+	},
+
+	removeSelectedColumns: () => {
+		const state = get();
+		state.applyDocument(
+			deleteColumns(state.document, rectColumns(currentRect(state))),
+		);
+	},
+
+	duplicateSelectedColumns: () => {
+		const state = get();
+		state.applyDocument(
+			duplicateColumns(state.document, rectColumns(currentRect(state))),
+		);
+	},
+
+	moveSelectedColumn: (offset) => {
+		const state = get();
+		const rect = currentRect(state);
+		const to = rect.left + offset;
+		if (to < 0 || to >= state.document.columns.length) return;
+		state.applyDocument(moveColumn(state.document, rect.left, to));
+		set({
+			selection: {
+				...state.selection,
+				anchor: { row: rect.top, column: to },
+				focus: { row: rect.bottom, column: to },
+			},
+		});
+	},
+
+	clearSelection: () => {
+		const state = get();
+		state.applyDocument(clearCells(state.document, currentRect(state)));
+	},
+
+	// Backspace clears contents; adding the modifier removes the structure. The
+	// selection mode decides whether that means rows or columns.
+	deleteSelectedStructure: () => {
+		const state = get();
+		if (state.selection.mode === "column") state.removeSelectedColumns();
+		else state.removeSelectedRows();
+	},
+
+	selectedMatrix: () => {
+		const state = get();
+		const rect = currentRect(state);
+		const body = state.document.rows
+			.slice(rect.top, rect.bottom + 1)
+			.map((row) =>
+				state.document.columns
+					.slice(rect.left, rect.right + 1)
+					.map((column) => row.cells[column.id] ?? ""),
 			);
-		},
 
-		importText: (text, format) => {
-			const state = get();
-			const table = readClipboardTable({ text });
-			if (!table || table.matrix.length === 0) return;
+		// Copying whole columns carries their headers, which is what makes the
+		// result useful when pasted somewhere else.
+		return state.selection.mode === "column"
+			? [
+					state.document.columns
+						.slice(rect.left, rect.right + 1)
+						.map((c) => c.header),
+					...body,
+				]
+			: body;
+	},
 
+	pasteClipboard: (payload) => {
+		const state = get();
+		const table = readClipboardTable(payload);
+		if (!table || table.matrix.length === 0) return;
+
+		if (table.matrix.length > LARGE_TABLE_ROWS) {
+			set({
+				notice: `That paste has ${table.matrix.length} rows. Tabelo is built for tables up to about ${LARGE_TABLE_ROWS}, so it may feel slow.`,
+			});
+		}
+
+		// Into an empty document, a paste creates the table — including the
+		// header decision. Into an existing one, it writes at the selection.
+		if (isDocumentBlank(state.document)) {
 			const headerRow = detectHeaderRow(table.matrix);
 			state.applyDocument(documentFromMatrix(table.matrix, { headerRow }));
 			set({
 				headerGuessPending: true,
 				selection: createSelection({ row: 0, column: 0 }),
-				...(format ? { textFormat: format } : {}),
 			});
-		},
+			return;
+		}
 
-		demoteHeader: () => {
-			const state = get();
-			state.applyDocument(demoteHeaderToRow(state.document));
-			set({ headerGuessPending: false });
-		},
+		const rect = currentRect(state);
+		state.applyDocument(
+			pasteMatrix(
+				state.document,
+				{ rowIndex: rect.top, columnIndex: rect.left },
+				table.matrix,
+			),
+		);
+	},
 
-		resetDocument: () => {
-			const next = createEmptyDocument();
-			get().applyDocument(next);
-			set({
-				selection: createSelection({ row: 0, column: 0 }),
-				headerGuessPending: false,
-			});
-		},
+	importText: (text, view) => {
+		const state = get();
 
-		dismissNotice: () => set({ notice: null, headerGuessPending: false }),
-	};
-});
+		// A named view parses with its own codec; without one, fall back to
+		// sniffing, which is what a bare paste gets.
+		const parse = view ? getView(view).codec?.parse : undefined;
+		if (parse) {
+			const result = parse(text);
+			if (result.ok) {
+				state.applyDocument(result.document);
+				set({ selection: createSelection({ row: 0, column: 0 }) });
+				return;
+			}
+		}
+
+		const table = readClipboardTable({ text });
+		if (!table || table.matrix.length === 0) return;
+
+		const headerRow = detectHeaderRow(table.matrix);
+		state.applyDocument(documentFromMatrix(table.matrix, { headerRow }));
+		set({
+			headerGuessPending: true,
+			selection: createSelection({ row: 0, column: 0 }),
+		});
+	},
+
+	demoteHeader: () => {
+		const state = get();
+		state.applyDocument(demoteHeaderToRow(state.document));
+		set({ headerGuessPending: false });
+	},
+
+	resetDocument: () => {
+		get().applyDocument(createEmptyDocument());
+		set({
+			selection: createSelection({ row: 0, column: 0 }),
+			headerGuessPending: false,
+		});
+	},
+
+	dismissNotice: () => set({ notice: null, headerGuessPending: false }),
+	setNotice: (notice) => set({ notice }),
+}));
+
+function currentRect(state: TabeloState) {
+	return selectionRect(
+		state.selection,
+		state.document.rows.length,
+		state.document.columns.length,
+	);
+}
 
 // Autosave. Persisting on every keystroke would be wasteful, and persisting
 // only on unload would lose work, so writes are debounced after changes settle.
@@ -608,18 +624,16 @@ export function startAutosave(): () => void {
 	return useTabeloStore.subscribe((state, previous) => {
 		if (
 			state.document === previous.document &&
-			state.textFormat === previous.textFormat &&
-			state.textPanelVisible === previous.textPanelVisible
-		) {
+			state.workspace === previous.workspace
+		)
 			return;
-		}
+
 		if (saveTimer) clearTimeout(saveTimer);
 		saveTimer = setTimeout(() => {
 			const current = useTabeloStore.getState();
 			const outcome = saveState({
 				document: current.document,
-				textFormat: current.textFormat,
-				textPanelVisible: current.textPanelVisible,
+				workspace: current.workspace,
 			});
 			if (
 				outcome.status === "failed" &&
@@ -630,3 +644,5 @@ export function startAutosave(): () => void {
 		}, 500);
 	});
 }
+
+export { documentToMatrix };

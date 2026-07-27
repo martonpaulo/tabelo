@@ -1,6 +1,6 @@
 import { documentFromMatrix } from "@/core/document";
 import type { Alignment, TableDocument } from "@/core/types";
-import type { ParseIssue, ParseResult, TableFormat } from "./types";
+import type { ParseIssue, ParseResult, TableCodec } from "./types";
 
 // Markdown cannot hold a literal pipe or line break inside a table cell, so
 // both are escaped rather than dropped. The transformation must be exactly
@@ -272,7 +272,7 @@ function serializeMarkdown(document: TableDocument): string {
 	return [line(headers), divider, ...body.map(line)].join("\n");
 }
 
-export const markdownFormat: TableFormat = {
+export const markdownCodec: TableCodec = {
 	id: "markdown",
 	label: "Markdown",
 	extension: "md",

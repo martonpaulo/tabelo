@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
-import { csvFormat } from "./csv";
-import { escapeCell, markdownFormat, unescapeCell } from "./markdown";
+import { csvCodec } from "./csv";
+import { escapeCell, markdownCodec, unescapeCell } from "./markdown";
 
 // The escaping contract from docs/adr/0002 is the one thing in this project
 // that must never regress: a value has to survive the round trip byte-exact.
@@ -41,7 +41,7 @@ describe("markdown cell escaping", () => {
 
 describe("markdown parsing", () => {
 	it("reads a table with alignment markers", () => {
-		const result = markdownFormat.parse(
+		const result = markdownCodec.parse(
 			[
 				"| Name | Role | Active |",
 				"| :--- | :---: | ---: |",
@@ -66,7 +66,7 @@ describe("markdown parsing", () => {
 	});
 
 	it("keeps an escaped pipe inside one cell", () => {
-		const result = markdownFormat.parse(
+		const result = markdownCodec.parse(
 			"| A | B |\n| --- | --- |\n| x \\| y | z |",
 		);
 		expect(result.ok).toBe(true);
@@ -79,19 +79,19 @@ describe("markdown parsing", () => {
 	});
 
 	it("rejects a table that has no divider row yet", () => {
-		const result = markdownFormat.parse("| Name | Role |");
+		const result = markdownCodec.parse("| Name | Role |");
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
 		expect(result.issues[0].message).toMatch(/divider/i);
 	});
 
 	it("rejects a divider whose column count disagrees with the header", () => {
-		const result = markdownFormat.parse("| A | B | C |\n| --- | --- |");
+		const result = markdownCodec.parse("| A | B | C |\n| --- | --- |");
 		expect(result.ok).toBe(false);
 	});
 
 	it("reports ragged rows as warnings but keeps the data", () => {
-		const result = markdownFormat.parse(
+		const result = markdownCodec.parse(
 			"| A | B |\n| --- | --- |\n| only-one |",
 		);
 		expect(result.ok).toBe(true);
@@ -101,7 +101,7 @@ describe("markdown parsing", () => {
 	});
 
 	it("tolerates rows written without outer pipes", () => {
-		const result = markdownFormat.parse("A | B\n--- | ---\n1 | 2");
+		const result = markdownCodec.parse("A | B\n--- | ---\n1 | 2");
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
 		expect(result.document.columns).toHaveLength(2);
@@ -111,11 +111,11 @@ describe("markdown parsing", () => {
 describe("markdown serialization", () => {
 	it("emits the alignment it parsed", () => {
 		const source = "| A | B |\n| :-- | --: |\n| 1 | 2 |";
-		const parsed = markdownFormat.parse(source);
+		const parsed = markdownCodec.parse(source);
 		expect(parsed.ok).toBe(true);
 		if (!parsed.ok) return;
 
-		const out = markdownFormat.serialize(parsed.document);
+		const out = markdownCodec.serialize(parsed.document);
 		expect(out.split("\n")[1]).toMatch(/\|\s*:-+\s*\|\s*-+:\s*\|/);
 	});
 
@@ -129,7 +129,7 @@ describe("markdown serialization", () => {
 			{ headerRow: true },
 		);
 
-		const reparsed = markdownFormat.parse(markdownFormat.serialize(document));
+		const reparsed = markdownCodec.parse(markdownCodec.serialize(document));
 		expect(reparsed.ok).toBe(true);
 		if (!reparsed.ok) return;
 
@@ -152,13 +152,13 @@ describe("cross-format round trip", () => {
 
 		const document = documentFromMatrix(original, { headerRow: true });
 
-		const asMarkdown = markdownFormat.serialize(document);
-		const backFromMarkdown = markdownFormat.parse(asMarkdown);
+		const asMarkdown = markdownCodec.serialize(document);
+		const backFromMarkdown = markdownCodec.parse(asMarkdown);
 		expect(backFromMarkdown.ok).toBe(true);
 		if (!backFromMarkdown.ok) return;
 
-		const asCsv = csvFormat.serialize(backFromMarkdown.document);
-		const backFromCsv = csvFormat.parse(asCsv);
+		const asCsv = csvCodec.serialize(backFromMarkdown.document);
+		const backFromCsv = csvCodec.parse(asCsv);
 		expect(backFromCsv.ok).toBe(true);
 		if (!backFromCsv.ok) return;
 

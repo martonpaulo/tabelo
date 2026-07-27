@@ -1,6 +1,6 @@
 import type { TableDocument } from "@/core/types";
 
-export type TextFormat = "markdown" | "csv";
+export type CodecId = "markdown" | "csv" | "tsv" | "html" | "jira";
 
 export interface ParseIssue {
 	readonly message: string;
@@ -18,15 +18,17 @@ export type ParseResult =
 	  }
 	| { readonly ok: false; readonly issues: readonly ParseIssue[] };
 
-// A format is a parser/serializer pair over the table document. Adding TSV,
-// JSON, or HTML later means adding one of these — synchronization, history,
-// and persistence do not change. See docs/adr/0001.
-export interface TableFormat {
-	readonly id: TextFormat;
+// A codec is a parser/serializer pair over the table document, plus the file
+// facts needed to download it. Adding a format means adding one of these and
+// registering it; synchronization, history, persistence, downloads, and the
+// clipboard all read the registry rather than naming formats. See
+// docs/adr/0005.
+export interface TableCodec {
+	readonly id: CodecId;
 	readonly label: string;
-	// File extension used for export, without the dot.
+	// Without the leading dot.
 	readonly extension: string;
 	readonly mimeType: string;
-	parse(text: string): ParseResult;
-	serialize(document: TableDocument): string;
+	readonly parse: (text: string) => ParseResult;
+	readonly serialize: (document: TableDocument) => string;
 }
