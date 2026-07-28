@@ -39,19 +39,18 @@ export class TabeloPage {
 		});
 	}
 
+	// Cells and headers are addressed by position rather than by accessible
+	// name: their names are now their contents, which is the point — a cell is
+	// named after its value, not after its coordinates.
 	header(column: number): Locator {
 		requirePositiveIndex(column, "column");
-		return this.grid().getByRole("columnheader", {
-			name: `Header for column ${column}`,
-		});
+		return this.grid().locator(`[data-column-header="${column - 1}"]`);
 	}
 
 	cell(row: number, column: number): Locator {
 		requirePositiveIndex(row, "row");
 		requirePositiveIndex(column, "column");
-		return this.grid().getByRole("gridcell", {
-			name: `Row ${row}, column ${column}`,
-		});
+		return this.grid().locator(`[data-cell="${row - 1}:${column - 1}"]`);
 	}
 
 	source(view: string): Locator {

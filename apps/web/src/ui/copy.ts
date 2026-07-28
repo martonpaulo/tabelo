@@ -133,6 +133,11 @@ export const copy = {
 		selectRow: "Select row",
 		selectColumn: "Select column",
 		resizeColumn: "Resize column",
+		columnWidth: (pixels: number) => `Column width ${pixels}px`,
+		widenColumn: "Widen column",
+		narrowColumn: "Narrow column",
+		resetColumnWidth: "Reset column width",
+		editHeader: "Rename column",
 	},
 
 	download: {
@@ -227,9 +232,18 @@ export const copy = {
 		pane: (label: string) => `${label} pane`,
 		rowNumber: (index: number) => `Row ${index + 1}`,
 		columnLetter: (index: number) => `Column ${index + 1}`,
-		cell: (row: number, column: number) =>
+		// Header cells name themselves after what they contain, because that name
+		// is what a screen reader reads out as the context for every cell beneath
+		// or beside them. A column with an empty header falls back to its
+		// position so the announcement is never silent.
+		columnHeader: (header: string, column: number) =>
+			header.trim() === "" ? `Column ${column + 1}` : header,
+		// The editor that opens inside a cell is a control, not a cell, so it
+		// names itself by position rather than borrowing the cell's value.
+		cellEditor: (row: number, column: number) =>
 			`Row ${row + 1}, column ${column + 1}`,
-		headerCell: (column: number) => `Header for column ${column + 1}`,
+		headerEditor: (header: string, column: number) =>
+			`Rename ${header.trim() === "" ? `column ${column + 1}` : header}`,
 		sourceEditor: (format: string) => `${format} source`,
 		preview: "Rendered table preview",
 		selectionSummary: (rows: number, columns: number) =>
@@ -248,5 +262,6 @@ export const copy = {
 		copy: "Mod+C",
 		cut: "Mod+X",
 		paste: "Mod+V",
+		editHeader: "F2",
 	},
 } as const;

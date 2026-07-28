@@ -1,16 +1,19 @@
 import { cn } from "@tabelo/ui/lib/utils";
 import { useCallback, useEffect, useRef } from "react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
-import { rectContains, selectionRect } from "@/core/selection";
+import {
+	type CellPosition,
+	rectContains,
+	selectionRect,
+} from "@/core/selection";
 import type { Alignment } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { AxisMenu } from "./axis-menu";
 import { CellEditor } from "./cell-editor";
+import { clampColumnWidth, resolveColumnWidth } from "./column-width";
 import { GridContextMenu } from "./grid-context-menu";
 
-const DEFAULT_COLUMN_WIDTH = 168;
-const MIN_COLUMN_WIDTH = 72;
 const GUTTER_WIDTH = 44;
 
 const alignClass: Record<Alignment, string> = {
@@ -19,6 +22,19 @@ const alignClass: Record<Alignment, string> = {
 	center: "text-center",
 	right: "text-right",
 };
+
+// The next cell in reading order, or nothing when there is none — which is how
+// Tab knows it has reached an edge and should let focus leave the grid.
+function adjacentCell(
+	from: CellPosition,
+	direction: 1 | -1,
+	rows: number,
+	columns: number,
+): CellPosition | null {
+	const index = from.row * columns + from.column + direction;
+	if (index < 0 || index >= rows * columns) return null;
+	return { row: Math.floor(index / columns), column: index % columns };
+}
 
 export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const document = useTabeloStore((state) => state.document);
@@ -133,10 +149,21 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				event.preventDefault();
 				moveFocus(0, 1, event.shiftKey);
 				return;
-			case "Tab":
+			case "Tab": {
+				// Tab walks the cells in reading order, the way a spreadsheet does,
+				// but the grid is not a trap: at the very first and very last cell
+				// the key is left to the browser so focus continues out of the grid.
+				const next = adjacentCell(
+					selection.focus,
+					event.shiftKey ? -1 : 1,
+					store.document.rows.length,
+					store.document.columns.length,
+				);
+				if (!next) return;
 				event.preventDefault();
-				moveFocus(0, event.shiftKey ? -1 : 1, false);
+				store.selectCell(next);
 				return;
+			}
 			case "Home":
 				event.preventDefault();
 				store.selectCell({ row: mod ? 0 : selection.focus.row, column: 0 });
@@ -268,9 +295,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 						<col
 							key={column.id}
 							style={{
-								width: Math.round(
-									(column.width ?? DEFAULT_COLUMN_WIDTH) * zoom,
-								),
+								width: Math.round(resolveColumnWidth(column.width) * zoom),
 							}}
 						/>
 					))}
@@ -278,12 +303,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 				<thead>
 					<tr>
+						{/* The corner above the row numbers. Deliberately nameless: it
+						    heads nothing, and any text here would be read out as part of
+						    the header row and again as the column of every row number. */}
 						<th
 							scope="col"
 							className="sticky top-0 left-0 z-30 border-line-subtle border-r border-b bg-surface-header"
-						>
-							<span className="sr-only">{copy.a11y.grid}</span>
-						</th>
+						/>
 						{document.columns.map((column, columnIndex) => (
 							<HeaderCell
 								key={column.id}
@@ -295,7 +321,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									rectContains(rect, 0, columnIndex)
 								}
 								editing={editingHeader === columnIndex}
-								width={column.width ?? DEFAULT_COLUMN_WIDTH}
+								width={resolveColumnWidth(column.width)}
 								zoom={zoom}
 							/>
 						))}
@@ -307,10 +333,21 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 						// Explicit despite looking redundant: with role="grid" on the
 						// table, browsers do not reliably expose implicit row and cell
 						// roles — the computed tree came back as "generic" without these.
-						// biome-ignore lint/a11y/noRedundantRoles: see above
-						<tr key={row.id} role="row" className="group/row">
+						<tr
+							key={row.id}
+							// biome-ignore lint/a11y/noRedundantRoles: see above
+							role="row"
+							// The header row is row 1, so the body starts at 2 — which is
+							// what makes the declared aria-rowcount add up.
+							aria-rowindex={rowIndex + 2}
+							className="group/row"
+						>
 							<th
 								scope="row"
+								// The heading a screen reader reads as the row context for
+								// every cell beside it, so it names the row rather than
+								// concatenating the two controls it contains.
+								aria-label={copy.a11y.rowNumber(rowIndex)}
 								data-row-header={rowIndex}
 								className={cn(
 									"sticky left-0 z-10 border-line-subtle border-r border-b bg-surface-gutter",
@@ -357,7 +394,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										data-cell={`${rowIndex}:${columnIndex}`}
 										tabIndex={isFocus ? 0 : -1}
 										aria-selected={inSelection}
-										aria-label={copy.a11y.cell(rowIndex, columnIndex)}
+										aria-colindex={columnIndex + 1}
+										// Deliberately unlabelled: the cell's name is its value,
+										// and the row and column headers supply the rest. An
+										// aria-label here would replace the content with
+										// coordinates and repeat them on every arrow key.
 										title={value.includes("\n") ? value : undefined}
 										className={cn(
 											"relative border-line-subtle border-r border-b px-2 py-1.5 align-top",
@@ -406,7 +447,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 											<CellEditor
 												initialValue={editingSeed ?? value}
 												align={alignClass[column.align]}
-												ariaLabel={copy.a11y.cell(rowIndex, columnIndex)}
+												ariaLabel={copy.a11y.cellEditor(rowIndex, columnIndex)}
 												onFinish={(next, exit) => {
 													const store = useTabeloStore.getState();
 													if (exit !== "cancel")
@@ -480,8 +521,12 @@ function HeaderCell({
 	return (
 		<th
 			scope="col"
+			// The name a screen reader reads as the column context for every cell
+			// below, so it is the header's own text rather than a description of
+			// the two controls this cell contains.
+			aria-label={copy.a11y.columnHeader(header, columnIndex)}
+			aria-colindex={columnIndex + 1}
 			data-column-header={columnIndex}
-			aria-label={copy.a11y.headerCell(columnIndex)}
 			className={cn(
 				"group/col sticky top-0 z-20 border-line-subtle border-r border-b bg-surface-header",
 				"relative px-2 py-1.5 font-medium",
@@ -493,7 +538,7 @@ function HeaderCell({
 				<CellEditor
 					initialValue={header}
 					align={alignClass[align]}
-					ariaLabel={copy.a11y.headerCell(columnIndex)}
+					ariaLabel={copy.a11y.headerEditor(header, columnIndex)}
 					onFinish={(next, exit) => {
 						const store = useTabeloStore.getState();
 						if (exit !== "cancel") store.editHeader(columnIndex, next);
@@ -502,9 +547,14 @@ function HeaderCell({
 				/>
 			) : (
 				<div className="flex items-center gap-1">
+					{/* Space selects the column, because that is what activating a
+					    button does; Enter and F2 rename it, matching the cells below.
+					    Both are the same pair the grid uses, so there is one thing to
+					    learn rather than two. */}
 					<button
 						type="button"
 						className="min-w-0 flex-1 truncate text-left"
+						title={`${copy.actions.editHeader} (${copy.shortcuts.editHeader})`}
 						onClick={() =>
 							useTabeloStore
 								.getState()
@@ -513,6 +563,13 @@ function HeaderCell({
 						onDoubleClick={() =>
 							useTabeloStore.getState().setEditingHeader(columnIndex)
 						}
+						onKeyDown={(event) => {
+							if (event.key !== "Enter" && event.key !== "F2") return;
+							// Without this the browser turns Enter into a click, which
+							// would select the column instead of renaming it.
+							event.preventDefault();
+							useTabeloStore.getState().setEditingHeader(columnIndex);
+						}}
 					>
 						{header}
 					</button>
@@ -520,9 +577,9 @@ function HeaderCell({
 				</div>
 			)}
 
-			{/* A pointer-only affordance, deliberately hidden from assistive
-			    technology: column width is presentation, it never reaches the
-			    document, and there is nothing here for a keyboard user to miss. */}
+			{/* Pointer-only by design, and hidden from assistive technology because
+			    it duplicates a command: the column menu carries the same widen,
+			    narrow, and reset without needing a drag. */}
 			<div
 				aria-hidden
 				className="absolute top-0 -right-1 z-20 h-full w-2 cursor-col-resize touch-none hover:bg-selection-edge/40"
@@ -534,11 +591,14 @@ function HeaderCell({
 				onPointerMove={(event) => {
 					const state = resizeState.current;
 					if (!state) return;
-					const next = Math.max(
-						MIN_COLUMN_WIDTH,
-						state.startWidth + (event.clientX - state.startX) / zoom,
-					);
-					useTabeloStore.getState().resizeColumn(columnIndex, next);
+					useTabeloStore
+						.getState()
+						.resizeColumn(
+							columnIndex,
+							clampColumnWidth(
+								state.startWidth + (event.clientX - state.startX) / zoom,
+							),
+						);
 				}}
 				onPointerUp={(event) => {
 					event.currentTarget.releasePointerCapture(event.pointerId);

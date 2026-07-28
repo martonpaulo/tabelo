@@ -14,12 +14,21 @@ import {
 	AlignLeft,
 	AlignRight,
 	ChevronDown,
+	ChevronsLeftRight,
+	ChevronsRightLeft,
 	MoreVertical,
+	RotateCcw,
 } from "lucide-react";
 import { Fragment } from "react";
 import type { Alignment } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
+import {
+	atMinimumColumnWidth,
+	isDefaultColumnWidth,
+	resolveColumnWidth,
+	stepColumnWidth,
+} from "./column-width";
 import { buildTableActions } from "./table-actions";
 
 // One menu component for both axes, replacing the near-identical row and column
@@ -84,6 +93,49 @@ export function AxisMenu({ axis, index }: AxisMenuProps) {
 			>
 				{axis === "column" ? (
 					<>
+						<DropdownMenuGroup>
+							{/* The drag handle is a pointer affordance; this is the same
+							    change without one. The label carries the current width so
+							    stepping can be heard as well as seen. */}
+							<DropdownMenuLabel aria-live="polite">
+								{copy.actions.columnWidth(resolveColumnWidth(column?.width))}
+							</DropdownMenuLabel>
+							<DropdownMenuItem
+								closeOnClick={false}
+								disabled={atMinimumColumnWidth(column?.width)}
+								onClick={() =>
+									useTabeloStore
+										.getState()
+										.resizeColumn(index, stepColumnWidth(column?.width, -1))
+								}
+							>
+								<ChevronsRightLeft aria-hidden />
+								{copy.actions.narrowColumn}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								closeOnClick={false}
+								disabled={isDefaultColumnWidth(column?.width)}
+								onClick={() =>
+									useTabeloStore.getState().resizeColumn(index, undefined)
+								}
+							>
+								<RotateCcw aria-hidden />
+								{copy.actions.resetColumnWidth}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								closeOnClick={false}
+								onClick={() =>
+									useTabeloStore
+										.getState()
+										.resizeColumn(index, stepColumnWidth(column?.width, 1))
+								}
+							>
+								<ChevronsLeftRight aria-hidden />
+								{copy.actions.widenColumn}
+							</DropdownMenuItem>
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+
 						<DropdownMenuGroup>
 							<DropdownMenuLabel>{copy.actions.alignment}</DropdownMenuLabel>
 							{alignments.map((option) => (

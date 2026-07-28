@@ -383,7 +383,8 @@ Labels are sentence case. Actions are verbs: "Add row", not "New row".
 
 These are requirements, not aspirations:
 
-- The grid is fully operable from the keyboard, including reordering.
+- The grid is fully operable from the keyboard, including reordering. The model
+  below is the contract, not a summary of it.
 - Every control has an accessible name; icon-only controls use `aria-label`.
 - Focus is always visible and never trapped.
 - Status is conveyed by text as well as colour.
@@ -399,3 +400,45 @@ These are requirements, not aspirations:
   suitability for dyslexia, ADHD, or another condition without task-based
   sessions with representative participants. Record participants, tasks,
   outcomes, and changes before making such a claim.
+
+### The grid keyboard model
+
+One rule shapes the rest: **arrows are internal navigation, and Tab is how you
+get out.** A widget that answers every key is a trap.
+
+| Key | Effect |
+| :--- | :--- |
+| Arrows | Move the focused cell. They stop at the edges and never leave the grid |
+| `Shift`+Arrows | Extend the selection from the anchor |
+| `Alt`+Arrows | Reorder the row or column instead of navigating |
+| `Tab` / `Shift`+`Tab` | Move one cell in reading order, wrapping at row ends. At the very first and very last cell the key is **not** taken, so focus leaves the grid |
+| `Home` / `End` | First or last column of the row; with the modifier, the first or last cell of the table |
+| `Enter` / `F2` | Edit the focused cell. On a column header, rename it |
+| `Space` | On a column header, select the column — activating a button does what buttons do |
+| `Escape` | Leave the editor without committing; from a cell, collapse the selection |
+| `Backspace` | Clear the contents of the selection |
+| `Mod`+`Backspace` | Remove the selected rows or columns |
+| `Mod`+`Enter` | Add a row below |
+| Any printable character | Replace the cell and start editing |
+
+While a cell or header editor is open it owns every key, and the grid's own
+handler stands down — a `Backspace` in an editor must never delete the row the
+editor is sitting in.
+
+**Every pointer affordance needs a keyboard equal.** Column width is the case
+that proves it: the drag handle stays pointer-only and `aria-hidden`, and the
+column menu carries the same widen, narrow, and reset — which is what makes
+hiding the handle honest rather than a way of avoiding the problem.
+
+### Naming inside the grid
+
+A cell is named by **its value**, never by its coordinates. Row and column
+headers carry the context around it, so a screen reader composes the
+announcement itself and stays quiet about the parts that did not change as the
+user moves along a row.
+
+That means header cells name themselves after what they contain, not after the
+controls they hold: the row header is "Row 3", the column header is its own
+text, and the corner above the row numbers is deliberately nameless. An
+`aria-label` on a gridcell is a defect — it replaces the content with
+coordinates and repeats them on every arrow key.
