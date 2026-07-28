@@ -2,9 +2,9 @@ import { Button } from "@tabelo/ui/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
 	DropdownMenuLabel,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
 import { cn } from "@tabelo/ui/lib/utils";
@@ -77,12 +77,22 @@ export function LayoutPicker({ value, onChange }: LayoutPickerProps) {
 			</DropdownMenuTrigger>
 
 			<DropdownMenuContent align="end" className="w-auto min-w-64">
-				<DropdownMenuGroup>
+				{/* One of these is the current layout, so they are radio items: the
+				    glyph shows which to a sighted user and aria-checked says the same
+				    thing to everyone else. See docs/design-system.md §3. */}
+				<DropdownMenuRadioGroup
+					value={value}
+					onValueChange={(next) => onChange(next as LayoutId)}
+				>
 					<DropdownMenuLabel>{copy.workspace.layoutHint}</DropdownMenuLabel>
 					{layoutPresets.map((preset) => (
-						<DropdownMenuItem
+						<DropdownMenuRadioItem
 							key={preset.id}
-							onClick={() => onChange(preset.id)}
+							value={preset.id}
+							// Choosing a layout is finished the moment it is chosen. Base UI
+							// keeps radio menus open by default; here that would leave the
+							// menu covering the layout it just applied.
+							closeOnClick
 						>
 							<LayoutGlyph preset={preset} active={preset.id === value} />
 							<span className="flex-1">
@@ -91,9 +101,9 @@ export function LayoutPicker({ value, onChange }: LayoutPickerProps) {
 									{preset.description}
 								</span>
 							</span>
-						</DropdownMenuItem>
+						</DropdownMenuRadioItem>
 					))}
-				</DropdownMenuGroup>
+				</DropdownMenuRadioGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

@@ -63,10 +63,12 @@ export class TabeloPage {
 		return this.paneAt(view, index).getByRole("textbox");
 	}
 
+	// Layout presets, pane views, and column alignments are radio items: they
+	// are current states rather than one-off actions.
 	async chooseLayout(label: string): Promise<void> {
 		await this.page.getByRole("button", { name: /^Layout:/ }).click();
 		const menu = this.page.getByRole("menu", { name: /^Layout:/ });
-		await menu.getByRole("menuitem").filter({ hasText: label }).click();
+		await menu.getByRole("menuitemradio").filter({ hasText: label }).click();
 	}
 
 	async choosePaneView(
@@ -75,7 +77,7 @@ export class TabeloPage {
 		index = 0,
 	): Promise<void> {
 		const menu = await this.openPaneMenu(currentView, index);
-		await menu.getByRole("menuitem").filter({ hasText: nextView }).click();
+		await menu.getByRole("menuitemradio").filter({ hasText: nextView }).click();
 		// Selecting a view closes this menu as a side effect. A caller that
 		// immediately reopens the same pane's menu needs that close to be
 		// finished first, not merely under way.

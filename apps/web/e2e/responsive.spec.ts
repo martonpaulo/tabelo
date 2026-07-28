@@ -107,9 +107,11 @@ test("every stacked pane is reachable by scrolling and by keyboard", async ({
 	});
 	expect(scrollable).toBe(true);
 
+	// Focusing scrolls the pane into view by itself, which is the behaviour that
+	// matters: no pane is stranded below the fold and out of the tab order.
 	for (const view of ["Visual table", "Markdown", "Rendered preview", "CSV"]) {
 		const trigger = tabelo.paneMenuTrigger(view);
-		await trigger.scrollIntoViewIfNeeded();
+		await expect(trigger).toBeAttached();
 		await trigger.focus();
 		await expect(trigger).toBeFocused();
 	}

@@ -32,7 +32,7 @@ test("the added pane's view is chosen without touching the layout menu", async (
 	await page.keyboard.press("Enter");
 	await page
 		.getByRole("menu", { name: "Pane actions: CSV" })
-		.getByRole("menuitem", { name: /Jira/ })
+		.getByRole("menuitemradio", { name: /Jira/ })
 		.click();
 
 	await expect(tabelo.pane("Jira")).toBeVisible();

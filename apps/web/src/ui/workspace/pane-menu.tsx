@@ -5,11 +5,12 @@ import {
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
 import {
-	Check,
 	ChevronDown,
 	ClipboardCopy,
 	MoreHorizontal,
@@ -24,7 +25,7 @@ import { useTabeloStore, visibleTextForPane } from "@/state/store";
 import { copyToClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
 import { listViews } from "@/views/registry";
-import type { ViewDefinition } from "@/views/types";
+import type { ViewDefinition, ViewId } from "@/views/types";
 import { largerLayout, smallerLayout } from "@/workspace/layout";
 import {
 	DEFAULT_PANE_ZOOM,
@@ -101,14 +102,22 @@ export function PaneMenu({ paneId, view }: PaneControlProps) {
 			</DropdownMenuTrigger>
 
 			<DropdownMenuContent align="end" className="w-auto min-w-64">
-				<DropdownMenuGroup>
+				{/* The pane shows exactly one view, so the list is a radio group.
+				    The checked value follows the store rather than the click, which
+				    is what keeps a refused change — an invalid draft — from leaving
+				    the menu claiming something the pane is not showing. */}
+				<DropdownMenuRadioGroup
+					value={view.id}
+					onValueChange={(next) =>
+						useTabeloStore.getState().setPaneView(paneId, next as ViewId)
+					}
+				>
 					<DropdownMenuLabel>{copy.workspace.changeView}</DropdownMenuLabel>
 					{views.map((candidate) => (
-						<DropdownMenuItem
+						<DropdownMenuRadioItem
 							key={candidate.id}
-							onClick={() =>
-								useTabeloStore.getState().setPaneView(paneId, candidate.id)
-							}
+							value={candidate.id}
+							closeOnClick
 						>
 							<candidate.icon aria-hidden />
 							<span className="flex-1">
@@ -117,12 +126,9 @@ export function PaneMenu({ paneId, view }: PaneControlProps) {
 									{candidate.description}
 								</span>
 							</span>
-							{candidate.id === view.id ? (
-								<Check aria-hidden className="opacity-70" />
-							) : null}
-						</DropdownMenuItem>
+						</DropdownMenuRadioItem>
 					))}
-				</DropdownMenuGroup>
+				</DropdownMenuRadioGroup>
 
 				<DropdownMenuSeparator />
 

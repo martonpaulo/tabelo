@@ -44,7 +44,7 @@ test("each pane keeps identity while low-frequency actions share one menu", asyn
 	await pane.getByRole("button", { name: "Pane actions: Markdown" }).click();
 	const menu = page.getByRole("menu", { name: "Pane actions: Markdown" });
 	await expect(menu.getByText("Change view")).toBeVisible();
-	await expect(menu.getByRole("menuitem", { name: /CSV/ })).toBeVisible();
+	await expect(menu.getByRole("menuitemradio", { name: /CSV/ })).toBeVisible();
 	await expect(
 		menu.getByRole("menuitem", { name: "Copy source" }),
 	).toBeVisible();

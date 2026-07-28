@@ -4,6 +4,8 @@ import {
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
@@ -136,25 +138,28 @@ export function AxisMenu({ axis, index }: AxisMenuProps) {
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 
-						<DropdownMenuGroup>
+						{/* A column has one alignment, so these are radio items rather
+						    than a tinted background that only a sighted user can read. */}
+						<DropdownMenuRadioGroup
+							value={column?.align ?? "default"}
+							onValueChange={(next) =>
+								useTabeloStore
+									.getState()
+									.setColumnAlignment(index, next as Alignment)
+							}
+						>
 							<DropdownMenuLabel>{copy.actions.alignment}</DropdownMenuLabel>
 							{alignments.map((option) => (
-								<DropdownMenuItem
+								<DropdownMenuRadioItem
 									key={option.value}
-									onClick={() =>
-										useTabeloStore
-											.getState()
-											.setColumnAlignment(index, option.value)
-									}
-									className={
-										column?.align === option.value ? "bg-accent/60" : undefined
-									}
+									value={option.value}
+									closeOnClick
 								>
 									<option.icon aria-hidden />
 									{option.label}
-								</DropdownMenuItem>
+								</DropdownMenuRadioItem>
 							))}
-						</DropdownMenuGroup>
+						</DropdownMenuRadioGroup>
 						<DropdownMenuSeparator />
 					</>
 				) : null}

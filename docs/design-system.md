@@ -239,6 +239,22 @@ Add a missing primitive with the shadcn CLI rather than hand-writing it:
 pnpm dlx shadcn@latest add <name> -c packages/ui
 ```
 
+### Menus that carry a choice
+
+A menu option that is one of several **mutually exclusive current states** —
+the layout, a pane's view, a column's alignment — is a `DropdownMenuRadioItem`
+inside a `DropdownMenuRadioGroup`, never a plain item wearing a tick or a tint.
+The primitive supplies `menuitemradio`, `aria-checked`, and the arrow-key
+behaviour; the visible check stays as redundant confirmation.
+
+The checked value is read from the state that owns it, not from the last click,
+so a change the product refuses leaves the menu telling the truth. Pass
+`closeOnClick` on these items: Base UI keeps radio menus open by default, which
+is right for a stepper and wrong for a choice that is finished once made.
+
+A group whose items are *actions* rather than states — zoom, add, close —
+stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
+
 ### Dialog
 
 A dialog is allowed **only as the direct result of a command the user issued**,
