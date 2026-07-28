@@ -17,7 +17,7 @@ function focusedCell(page: Page): Promise<string | null> {
 	);
 }
 
-test("Tab walks the cells in reading order and wraps at the row end", async ({
+test("Tab walks the grid in reading order and leaves after the last cell", async ({
 	page,
 	tabelo,
 }) => {
@@ -35,19 +35,15 @@ test("Tab walks the cells in reading order and wraps at the row end", async ({
 
 	await page.keyboard.press("Shift+Tab");
 	expect(await focusedCell(page)).toBe("0:2");
-});
 
-// The defect this issue was opened for: Tab used to preventDefault at every
-// edge, so the last cell held focus for ever.
-test("Tab leaves the grid at the last cell instead of trapping focus", async ({
-	page,
-	tabelo,
-}) => {
-	await tabelo.cell(3, 3).click();
+	// Continue to the last cell. Tab used to preventDefault at this edge, so the
+	// grid held focus forever.
+	for (let press = 0; press < 6; press += 1) {
+		await page.keyboard.press("Tab");
+	}
 	expect(await focusedCell(page)).toBe("2:2");
 
 	await page.keyboard.press("Tab");
-
 	expect(await focusedCell(page)).toBeNull();
 	expect(await insideGrid(page)).toBe(false);
 });

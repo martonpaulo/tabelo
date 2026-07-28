@@ -351,6 +351,11 @@ here:
   highest-value test surface.
 - Test observable contracts at stable seams; avoid tests that only mirror
   implementation details or framework behavior.
+- Run the complete browser suite in Chromium. Reserve Firefox for flows that
+  are genuinely sensitive to browser-engine differences, such as clipboard and
+  download APIs, keyboard focus, persistence, responsive layout, and source
+  editor synchronization. Keep that selection centralized in the Playwright
+  configuration instead of duplicating the full suite across browsers.
 - Run the smallest relevant check repeatedly until it passes. Only then move to
   the next broader relevant validation, and finish with coverage proportional to
   the risk.

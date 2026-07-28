@@ -2,6 +2,20 @@ import { defineConfig, devices } from "@playwright/test";
 
 const serverUrl = "http://127.0.0.1:4173";
 
+// Chromium owns the complete behavioural suite. Firefox repeats only contracts
+// where browser engines materially differ, so cross-browser confidence does not
+// require running every product assertion twice.
+const firefoxContractSpecs = [
+	"**/clipboard.spec.ts",
+	"**/download.spec.ts",
+	"**/grid-keyboard.spec.ts",
+	"**/history.spec.ts",
+	"**/persistence.spec.ts",
+	"**/responsive.spec.ts",
+	"**/smoke.spec.ts",
+	"**/source-sync.spec.ts",
+];
+
 export default defineConfig({
 	testDir: "./e2e",
 	fullyParallel: true,
@@ -22,6 +36,7 @@ export default defineConfig({
 		},
 		{
 			name: "firefox",
+			testMatch: firefoxContractSpecs,
 			use: { ...devices["Desktop Firefox"] },
 		},
 	],
