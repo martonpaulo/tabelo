@@ -376,7 +376,12 @@ Always `aria-hidden`, because the accessible name comes from the button.
 
 Icon-only buttons are limited to universally recognised history actions in the
 app header and the grid's per-row and per-column affordances, where a label
-would not fit. File, layout, pane, and other unfamiliar controls keep a visible
+would not fit. Those axis affordances stay visually quiet — a small icon at
+rest — but their target is grown to the 28px control minimum with an `::after`
+box rather than by taking layout the row gutter does not have. They appear on
+hover, on `focus-within` of the row or column, while the menu is open, and for
+whichever row and column the selection is currently in: the last of those is
+what teaches the relationship without putting an icon on every row at once. File, layout, pane, and other unfamiliar controls keep a visible
 label and never depend on a tooltip for identification.
 
 ---

@@ -31,10 +31,7 @@ test("the layout menu reports the current preset", async ({ page, tabelo }) => {
 	).toBeChecked();
 });
 
-test("the view list reports what the pane is showing", async ({
-	page,
-	tabelo,
-}) => {
+test("the view list reports what the pane is showing", async ({ tabelo }) => {
 	const menu = await tabelo.openPaneMenu("Markdown");
 	await expect(menu.getByRole("menuitemradio")).toHaveCount(7);
 	await expect(menu.getByRole("menuitemradio", { checked: true })).toHaveCount(
@@ -118,6 +115,9 @@ test("choosing with the keyboard still works and returns focus", async ({
 	page,
 	tabelo,
 }) => {
+	// The fixture is what opens the app, so it is requested even where the
+	// assertions read from `page`.
+	await expect(tabelo.workspace).toBeVisible();
 	const trigger = page.getByRole("button", { name: /^Layout:/ });
 	await trigger.click();
 	const menu = page.getByRole("menu", { name: /^Layout:/ });

@@ -10,6 +10,7 @@ import {
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
+import { cn } from "@tabelo/ui/lib/utils";
 import {
 	AlignCenter,
 	AlignJustify,
@@ -52,9 +53,13 @@ const alignments: {
 interface AxisMenuProps {
 	readonly axis: "row" | "column";
 	readonly index: number;
+	// Whether this row or column is the one the user is working in. Revealing
+	// the affordance there is what teaches the relationship between a selection
+	// and its actions, without putting an icon on every row at once.
+	readonly revealed?: boolean;
 }
 
-export function AxisMenu({ axis, index }: AxisMenuProps) {
+export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 	const document = useTabeloStore((state) => state.document);
 	const column = axis === "column" ? document.columns[index] : undefined;
 
@@ -74,16 +79,29 @@ export function AxisMenu({ axis, index }: AxisMenuProps) {
 			: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(index)}`;
 
 	const Icon = axis === "column" ? ChevronDown : MoreVertical;
+	// Anywhere in the row or column counts, not just the icon itself: hovering,
+	// tabbing into it, or having the selection there all bring it out.
 	const groupClass =
 		axis === "column"
-			? "group-hover/col:opacity-100"
-			: "group-hover/row:opacity-100";
+			? "group-hover/col:opacity-100 group-focus-within/col:opacity-100"
+			: "group-hover/row:opacity-100 group-focus-within/row:opacity-100";
 
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger
 				aria-label={label}
-				className={`inline-flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:opacity-100 data-popup-open:opacity-100 ${groupClass}`}
+				// The icon stays small so the grid stays quiet, while the ::after box
+				// grows the target to the 28px control minimum without taking any
+				// layout — the row gutter has no room to spare. Same technique as the
+				// checkbox and radio primitives.
+				className={cn(
+					"relative inline-flex size-5 shrink-0 items-center justify-center rounded",
+					"after:absolute after:-inset-1 after:content-['']",
+					"text-muted-foreground transition-opacity hover:bg-accent hover:text-accent-foreground",
+					"focus-visible:opacity-100 data-popup-open:opacity-100",
+					revealed ? "opacity-100" : "opacity-0",
+					groupClass,
+				)}
 				onClick={select}
 			>
 				<Icon aria-hidden className="size-3.5" />

@@ -320,6 +320,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									selection.mode === "column" &&
 									rectContains(rect, 0, columnIndex)
 								}
+								focused={selection.focus.column === columnIndex}
 								editing={editingHeader === columnIndex}
 								width={resolveColumnWidth(column.width)}
 								zoom={zoom}
@@ -370,7 +371,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									>
 										{rowIndex + 1}
 									</button>
-									<AxisMenu axis="row" index={rowIndex} />
+									<AxisMenu
+										axis="row"
+										index={rowIndex}
+										revealed={selection.focus.row === rowIndex}
+									/>
 								</div>
 							</th>
 
@@ -498,6 +503,8 @@ interface HeaderCellProps {
 	readonly header: string;
 	readonly align: Alignment;
 	readonly selected: boolean;
+	// The column the user is working in, which is where its actions appear.
+	readonly focused: boolean;
 	readonly editing: boolean;
 	// The stored width, in document units. Zoom scales what is rendered, so the
 	// drag gesture converts screen pixels back before writing a width down.
@@ -510,6 +517,7 @@ function HeaderCell({
 	header,
 	align,
 	selected,
+	focused,
 	editing,
 	width,
 	zoom,
@@ -573,7 +581,7 @@ function HeaderCell({
 					>
 						{header}
 					</button>
-					<AxisMenu axis="column" index={columnIndex} />
+					<AxisMenu axis="column" index={columnIndex} revealed={focused} />
 				</div>
 			)}
 
