@@ -8,7 +8,7 @@ export default defineConfig({
 	forbidOnly: Boolean(process.env.CI),
 	retries: process.env.CI ? 1 : 0,
 	workers: process.env.CI ? 1 : undefined,
-	reporter: process.env.CI ? [["line"], ["html", { open: "never" }]] : "list",
+	reporter: process.env.CI ? [["line"], ["blob"]] : "list",
 	outputDir: "test-results",
 	use: {
 		baseURL: serverUrl,
