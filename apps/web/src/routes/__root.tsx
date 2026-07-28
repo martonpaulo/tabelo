@@ -1,4 +1,3 @@
-import { Toaster } from "@tabelo/ui/components/sonner";
 import {
 	createRootRouteWithContext,
 	HeadContent,
@@ -37,7 +36,6 @@ function RootComponent() {
 			<div className="h-full">
 				<Outlet />
 			</div>
-			<Toaster richColors />
 			<TanStackRouterDevtools position="bottom-left" />
 		</>
 	);
