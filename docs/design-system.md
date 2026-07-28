@@ -95,10 +95,10 @@ these low-chroma warm tones to group related content before adding a line.
 | Token | Utility | Use |
 | :--- | :--- | :--- |
 | `--line-subtle` | `border-line-subtle` | Grid cell borders, control separators |
-| `--line-strong` | `border-line-strong` | Boundaries between panes, and the app header |
+| `--line-strong` | `border-line-strong` | Boundaries between panes |
 
-Borders are always 1px. Use them for the table grid, pane boundaries, the app
-header boundary, or an explicit state. Prefer tonal separation for buttons,
+Borders are always 1px. Use them for the table grid, pane boundaries, or an
+explicit state. Prefer tonal separation for buttons,
 notices, empty states, and pane headers; never use a border to decorate.
 
 ### Selection — the only accent
@@ -115,12 +115,10 @@ not accent-coloured. Links are not accent-coloured.
 
 | Token | Utility | Meaning |
 | :--- | :--- | :--- |
-| `--status-ok` | `bg-status-ok` | Source and table are in sync |
-| `--status-pending` | `bg-status-pending` | Edit not yet read back |
-| `--status-invalid` | `bg-status-invalid` | Source does not parse |
+| `--status-warning` | `bg-status-warning` | Source parses with a non-blocking warning |
 
-**Colour never carries meaning alone.** Every status dot has a text label
-beside it. This is not optional.
+**Colour never carries meaning alone.** A source diagnostic combines underline
+shape with written tooltip text. This is not optional.
 
 ### Theme
 
@@ -129,10 +127,9 @@ system changes. CSS media queries own theme selection; no React state, root
 class, persistent toolbar control, or stored manual override may compete with
 the system.
 
-The retired `tabelo.theme` preference is removed during startup. Its value must
-never influence paint, so old Light, Dark, System, malformed, or inaccessible
-storage all resolve deterministically to the current system theme without a
-wrong-theme flash.
+Tabelo never reads a stored theme preference. System theme is the only current
+contract, so obsolete storage is ignored and never participates in startup or
+paint.
 
 ### Geometry
 
@@ -140,15 +137,15 @@ wrong-theme flash.
 | :--- | :--- | :--- |
 | `--control-h-sm` | `h-control-sm` | 28px — dense toolbars, menu triggers |
 | `--control-h-md` | `h-control-md` | 32px — default control height |
-| `--panel-header-h` | `h-panel-header` | 44px — the app header and every pane header |
+| `--panel-header-h` | `h-panel-header` | 44px — every pane header |
 | `--grid-gutter-w` | `w-grid-gutter` | 44px — row-number column |
 | `--grid-row-h` | `h-grid-row` | 32px — one table row |
 | `--grid-col-w` | `w-grid-col` | 168px — default column width |
 | `--grid-col-w-min` | `w-grid-col-min` | 72px — resize floor |
 | `--interactive-radius` | `rounded-interactive` | 6px — every interactive, contained, or floating surface |
 
-`--interactive-radius` applies to buttons, fields, menus, tooltips, notices,
-empty-state containers, and source feedback overlays. It never applies to grid
+`--interactive-radius` applies to buttons, fields, menus, tooltips, notices, and
+empty-state containers. It never applies to grid
 cells, row or column headers, pane frames, pane divisions, or layout glyphs.
 
 ### Per-pane content scale
@@ -175,6 +172,22 @@ text rendering. Scale the type, and scale measured geometry — the grid's colum
 widths — in the component that owns it. Zoom is a local preference belonging to
 the pane, never document state and never a history step; it is bounded, and
 browser zoom remains the way to scale the whole interface.
+
+### Syntax and table structure
+
+Every editable source view uses the existing CodeMirror integration for syntax
+highlighting. Markdown uses its installed language support; CSV and TSV share
+the existing delimiter-aware tokenizer; HTML keeps its existing table-focused
+tokenizer; Jira uses the same small project-owned `StreamLanguage` approach
+because its grammar is narrow and domain-specific. The first row is visually
+distinct as the table header in Markdown, CSV, TSV, and Jira, while HTML receives
+element, attribute, and text treatment. Highlighting must preserve source text
+exactly and must not become another parser or source of truth.
+
+The visual table mirrors structure rather than source punctuation: its header
+row has a contrasting surface and a discreet alignment indicator, while body
+cells keep the normal content treatment. Do not colour-code columns or infer
+cell types.
 
 ### Spacing rhythm
 
@@ -220,7 +233,7 @@ one component with many boolean props.
 </Panel>
 
 // No — configuration
-<Panel view={pane.view} showSpacer headerRight={<StatusPill … />} />
+<Panel view={pane.view} compact={compact} actions={paneActions} />
 ```
 
 A prop that only exists to toggle a piece of layout is a signal the piece
@@ -260,8 +273,9 @@ stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
 A dialog is allowed **only as the direct result of a command the user issued**,
 and only when the command has a choice to make that a menu cannot hold — a
 choice with its own options, or one that needs stating before it happens. The
-download chooser is the one today: a format, plus whatever that format declares
-about how its file should be written.
+download chooser holds format-specific output choices. New table also uses a
+dialog when the current document or a pending draft would be lost; an already
+empty document with no draft clears without interruption.
 
 A dialog is never used to announce something. Notices belong in the notice bar,
 which sits in the layout instead of covering the table.
@@ -284,7 +298,7 @@ the two ways out are both visible and both labelled.
 | Layer | Location | Holds |
 | :--- | :--- | :--- |
 | Primitives | `packages/ui/src/components/` | Generic, product-agnostic shadcn components |
-| Product primitives | `apps/web/src/ui/primitives/` | Tabelo's own shared shapes: Panel, ToolbarButton, StatusPill |
+| Product primitives | `apps/web/src/ui/primitives/` | Tabelo's shared Panel frame |
 | Features | `apps/web/src/ui/{grid,source,preview,workspace}/` | Components that know about the table document |
 
 Actions are described once and rendered many times. `ui/grid/table-actions.ts`
@@ -313,16 +327,21 @@ not a polish item.
 | Focus | 2px `--selection-edge` outline, inset. Never remove it |
 | Selected | `bg-selection-fill`, plus outline when it is the focused cell |
 | Disabled | `opacity-50`, pointer events off. Never hide a disabled action |
-| Invalid | `--status-invalid` on the text, plus a written message |
+| Invalid | Red wavy underline; written diagnostic on hover and in the editor description |
+| Warning | Yellow dotted underline; written diagnostic on hover and in the editor description |
 
 Disabled actions stay visible so the interface does not reflow as the selection
 changes. Layout stability outranks tidiness.
 
 Healthy source panes are silent: do not render repeated "In sync" or "Editing"
 labels. A transient parse failure also stays silent during its short grace
-period. Persistent invalid source uses the invalid treatment and a non-reflowing
-editor overlay so colour never carries the error alone and feedback never
-resizes the pane.
+period. Persistent diagnostics decorate the affected source range without
+changing layout: a blocking error uses a red wavy underline and a non-blocking
+warning uses a yellow dotted underline. Hover reveals the written diagnostic in
+a tooltip; keyboard and screen-reader users receive the same text through the
+editor's accessible description. There is no separate Details control and no
+automatic cursor movement. Underline shape and written text ensure colour is
+not the only signal.
 
 ---
 
@@ -341,17 +360,15 @@ resizes the pane.
   being emitted rather than be overridden.
 - Pane headers are one row, `h-panel-header`, never wrapping. A narrow pane
   shortens its labels rather than wrapping them.
-- A pane's height must not change with its state: exceptional source feedback
-  overlays the editor and is absent from the layout when healthy.
-- Document-level actions live in the app header. Pane-level actions live in that
-  pane's header. Row and column actions live on the row or column, and in the
-  context menu.
-- The app header keeps Undo and Redo visible. New, Import, and every download
-  format share one visibly labelled File menu. Layout remains a visibly labelled
-  workspace control. Do not expose those actions as a run of unfamiliar
-  icon-only buttons. Those labels are what makes the row wider than the
-  narrowest phone, so the header scrolls itself, exactly as a pane header does —
-  the page still never scrolls. Anything added there has to keep that true.
+- A pane's height must not change with its state: source diagnostics decorate
+  the text and use tooltips rather than inserting a feedback row.
+- There is no app header. One floating action button is the document-level
+  command surface at every viewport width. Its menu contains the Tabelo identity
+  and description, Undo, Redo, New table, Import, Download, Layout, and a link to
+  the GitHub repository. The trigger has a stable accessible name and never
+  replaces visible menu labels with unexplained icons.
+- Pane-level actions live in that pane's header. Row and column actions live on
+  the row or column, and in the context menu.
 - Each pane header shows a stable, non-interactive view identity. View changes
   and other low-frequency pane actions share one visibly labelled Pane menu;
   the grid's contextual Table actions may remain beside it.
@@ -359,6 +376,9 @@ resizes the pane.
   zooming are all plain items in it — never a submenu of formats. Add view grows
   the workspace and hands the new pane's menu the focus, so the second half of
   the intent is one keystroke rather than a nested level to open.
+- A view already open in another pane remains listed but disabled. The current
+  pane's own view remains selected and enabled. No workspace may show two
+  instances of the same registered view.
 - Add view and Close view are disabled, not hidden, at four panes and at one.
 - Nothing may reflow because of a selection change or a status change.
 - One-pane layouts may breathe, but do not enlarge controls or introduce an
@@ -376,15 +396,18 @@ resizes the pane.
 Lucide only, `size-4` inside `control-md` and `size-3.5` inside `control-sm`.
 Always `aria-hidden`, because the accessible name comes from the button.
 
-Icon-only buttons are limited to universally recognised history actions in the
-app header and the grid's per-row and per-column affordances, where a label
-would not fit. Those axis affordances stay visually quiet — a small icon at
+Icon-only buttons are limited to the globally stable floating action trigger
+and the grid's per-row and per-column affordances, where a label would not fit.
+Those axis affordances stay visually quiet — a small icon at
 rest — but their target is grown to the 28px control minimum with an `::after`
 box rather than by taking layout the row gutter does not have. They appear on
 hover, on `focus-within` of the row or column, while the menu is open, and for
 whichever row and column the selection is currently in: the last of those is
-what teaches the relationship without putting an icon on every row at once. File, layout, pane, and other unfamiliar controls keep a visible
-label and never depend on a tooltip for identification.
+what teaches the relationship without putting an icon on every row at once.
+The floating trigger has a stable accessible name, and every command inside its
+menu keeps a visible label. The project icon is a small table grid with a
+visibly distinct header row; it must remain legible at favicon size and use the
+product palette rather than introducing new colours.
 
 ---
 
@@ -468,7 +491,9 @@ announcement itself and stays quiet about the parts that did not change as the
 user moves along a row.
 
 That means header cells name themselves after what they contain, not after the
-controls they hold: the row header is "Row 3", the column header is its own
-text, and the corner above the row numbers is deliberately nameless. An
+controls they hold: the header row is visibly numbered 1, the first data row is
+"Row 2", and each column header is its own text. The header row uses its own
+contrasting surface and each column header carries a discreet, non-colour-only
+alignment indicator for default, left, centre, or right. An
 `aria-label` on a gridcell is a defect — it replaces the content with
 coordinates and repeats them on every arrow key.

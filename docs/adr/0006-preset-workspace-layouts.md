@@ -46,6 +46,12 @@ Panes a larger layout adds are filled from a fixed preference order — grid,
 Markdown, CSV, preview — skipping any view the workspace already shows, so a
 pane the workspace gains shows something new.
 
+A registered view may appear in only one pane. The view picker keeps views that
+another pane already shows visible but disabled, so the available set and the
+reason a choice cannot be made remain understandable. The workspace schema
+enforces the same invariant at the persistence boundary. This removes duplicate
+projections without coupling synchronization to pane layout or view identity.
+
 Pane count is also changed directly, from the pane the user is working in:
 **Add view** and **Close view** in that pane's menu. Both are expressed as moves
 between these same presets — `single → columns → left-split → quad` growing,

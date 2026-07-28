@@ -16,15 +16,17 @@ landing-page contract, or release policy only through an explicit task that
 describes the migration and its downstream effects.
 
 - Project and public name: `Tabelo`
-- Description: edit a table visually, as Markdown, or as CSV — always in sync,
-  entirely in your browser
+- Description: edit one table visually or as Markdown, CSV, TSV, HTML, and Jira
+  — always in sync, entirely in your browser
 - Repository: `martonpaulo/tabelo` (public)
 - Public identifiers: workspace app `web`; internal packages `@tabelo/ui`,
   `@tabelo/env`, `@tabelo/config`. All workspace packages are private and are
   never published to a registry
 - Landing page: the application itself, at
   `https://martonpaulo.github.io/tabelo/`, built from `apps/web` and published
-  to GitHub Pages by CI. There is no separate marketing site
+  to GitHub Pages by CI. There is no separate marketing site. `/tabelo/` is the
+  canonical production path; any deeper application path redirects to it. The
+  equivalent canonical path in local development is `/`
 - License: `MIT`, © 2026 Marton Paulo
 - Development language: English (code, comments, commits, filenames, tests,
   configuration, developer docs)
@@ -101,6 +103,10 @@ vocabulary and `docs/adr/` for the reasoning.
 - **Exactly one draft can be pending at a time.** The view being typed into owns
   it; every other view is a pure projection of the document. There is never a
   question of which pending edit wins.
+- **Each view appears at most once in the workspace.** A workspace may contain
+  one visual table, one Markdown view, one CSV view, and so on. View choices
+  already present in another pane stay visible but disabled; persisted workspace
+  data that violates this invariant is invalid.
 - **Formats and views are registry data, never branching.** Nothing outside
   `formats/index.ts` and `views/registry.ts` may enumerate formats. Render by
   `kind`, decide behaviour by `capabilities`, and never switch on a view id.
@@ -109,6 +115,9 @@ vocabulary and `docs/adr/` for the reasoning.
   empties the selected cells, `Mod+Backspace` deletes the selected rows or
   columns. Neither may fire while text is being edited in a cell or a source
   view.
+- **New table is destructive only when work exists.** Confirm before replacing a
+  non-empty document or any pending draft, including an invalid draft. Skip the
+  confirmation only when the document is empty and no draft exists.
 
 ## Frozen technical direction
 
@@ -167,9 +176,10 @@ depend on the core, never the reverse.
   sync-originated transactions never re-trigger a parse.
 - **History** — the document timeline and its interaction with the text editor's
   local history.
-- **Persistence** — versioned `localStorage` document with validation on read
-  and an explicit migration chain. A corrupt or unknown-version payload falls
-  back safely rather than throwing away user data without warning.
+- **Persistence** — one current, versioned `localStorage` schema with validation
+  on read and no migration chain. A corrupt or unsupported-version payload falls
+  back safely and is never coerced into the current shape. This current-schema
+  policy does not narrow the valid syntax accepted by import codecs.
 - **Clipboard** — format sniffing for paste and payload construction for
   copy/cut, independent of both the grid and the text panel.
 - **Visual grid** — selection, focus, keyboard model, and rendering. Presentation
@@ -336,14 +346,28 @@ here:
 ## Tests and validation
 
 - Add or update focused tests for changed behavior, regressions, persistence,
-  migrations, validation, and critical accessibility.
+  validation, and critical accessibility.
 - Parser and serializer work requires round-trip tests; this is the project's
   highest-value test surface.
 - Test observable contracts at stable seams; avoid tests that only mirror
   implementation details or framework behavior.
-- Run the smallest relevant check during iteration, then one broader validation
-  proportional to risk.
+- Run the smallest relevant check repeatedly until it passes. Only then move to
+  the next broader relevant validation, and finish with coverage proportional to
+  the risk.
 - Report exact skips, blockers, residual risk, and manual gaps.
+
+### Issue tracking for unresolved defects
+
+- When work reveals an error, bug, or warning, first search existing GitHub
+  issues to avoid duplicates, then prefer fixing it within the current task.
+- Do not create an issue for a defect that is fixed immediately. If a defect
+  remains at handoff, create or complete one GitHub issue before reporting it as
+  remaining.
+- A new or updated issue must contain the observed behavior, expected behavior,
+  reproduction steps, affected environment and version or commit, severity,
+  dependencies, concrete evidence, validation already attempted, and any known
+  workaround or blocker. Apply all applicable repository metadata.
+- Missing manual validation alone is not a defect and does not require an issue.
 
 ## Artifacts and processes
 

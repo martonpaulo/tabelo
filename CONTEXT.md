@@ -33,7 +33,8 @@ Related to: View, Slot, Workspace
 ### Workspace
 
 The 2×2 arrangement of slots that holds one to four panes. Its shape comes from
-a named layout preset; free slot assignment does not exist.
+a named layout preset; free slot assignment does not exist. A registered view
+may appear in at most one pane at a time.
 
 Related to: Pane, Slot, Layout preset
 
@@ -199,8 +200,10 @@ Related to: Table document, Import
 ## Rules and relationships
 
 - A table document has exactly one header row and zero or more data rows.
+- Row numbering includes that header row as row 1; data rows begin at row 2.
 - A workspace holds one to four panes, and its panes tile all four slots exactly
   once. Every pane is rectangular; an L-shape is not representable.
+- A registered view appears in at most one pane in the workspace.
 - At most one draft exists at any moment.
 - Every column and every row has a stable identifier that is never shown to the
   user and never reused after deletion.

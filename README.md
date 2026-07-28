@@ -1,89 +1,89 @@
 # Tabelo
 
-**One table. Seven ways to look at it. All in sync, all at once.**
+**One table, seven views, zero copy-and-paste between them.**
 
-Tabelo is a table editor that stops making you choose between a grid and a text
-file. Move a column, and the Markdown rewrites itself. Fix a typo in the CSV,
-and the cell updates. Split the workspace into four and watch the grid, the
-Markdown, the Jira syntax, and the rendered result all agree — no import step
-and no export step.
+Hi! Tabelo is a small table editor for the moments when a spreadsheet is too
+much, but hand-editing pipes and commas is no fun either. Change a cell in the
+visual table and the Markdown updates. Fix the CSV and the table updates. Open
+up to four views and they all stay in sync.
 
-It runs entirely in your browser. No account, no server, no upload.
+Everything runs in your browser. No account, no server, no upload.
 
 **→ [martonpaulo.github.io/tabelo](https://martonpaulo.github.io/tabelo/)**
 
 ---
 
-## The whole idea in one picture
+## Here is the whole idea
 
-These are not separate documents. They are the same document.
+These are not separate files. They are the same table:
 
 **Grid**
 
 | Name  | Role      | Active |
 | :---- | :-------: | -----: |
-| Ana   | Designer  | Yes    |
-| Bruno | Developer | No     |
+| Inez  | Designer  | Yes    |
+| Mark  | Developer | No     |
 
 **Markdown** — alignment and all
 
 ```markdown
 | Name  | Role      | Active |
 | :---- | :-------: | -----: |
-| Ana   | Designer  | Yes    |
-| Bruno | Developer | No     |
+| Inez  | Designer  | Yes    |
+| Mark  | Developer | No     |
 ```
 
 **CSV**
 
 ```csv
 Name,Role,Active
-Ana,Designer,Yes
-Bruno,Developer,No
+Inez,Designer,Yes
+Mark,Developer,No
 ```
 
 **Jira**
 
-```
+```jira
 ||Name||Role||Active||
-|Ana|Designer|Yes|
-|Bruno|Developer|No|
+|Inez|Designer|Yes|
+|Mark|Developer|No|
 ```
 
-Go through CSV or Jira and back, and those `:---:` alignment markers are still
-there. Neither format can express alignment, so Tabelo remembers it for you
-rather than throwing it away.
+Go through CSV or Jira and back and those `:---:` alignment markers are still
+there. Those formats cannot express alignment, so Tabelo quietly remembers it.
 
 ## What it does
 
-- **Arrange the workspace.** One to four panes from a menu of layouts, each
-  showing whichever view you want. Drag the dividers; it remembers.
+- **Arrange the workspace.** One to four panes, with each view available only
+  once. Open the floating Tabelo button for files, layouts, undo, redo, and the
+  GitHub link.
 - **Seven views.** Visual grid, Markdown, CSV, TSV, HTML source, Jira table
   syntax, and a rendered preview. Every one stays in sync with the others.
 - **Edit visually.** Cells, headers, rows, columns. Insert above, below, left,
   right. Delete, duplicate, reorder, resize, select ranges, clear. Right-click
   anything for the actions that apply to it.
-- **Edit the source.** Syntax highlighting and errors that tell you which line
-  is wrong.
+- **Edit the source.** Markdown, CSV, TSV, HTML, and Jira all have syntax
+  highlighting. Errors get a red underline, warnings a yellow one; hover either
+  to see the explanation.
 - **Never lose a cell.** A value with a line break in it survives
   CSV → Markdown → CSV byte-exact. Markdown can't hold a raw newline, so Tabelo
   escapes it and unescapes it back. Same for pipes.
 - **Type freely.** While your Markdown is half-written and invalid, the grid
-  keeps showing your last working table instead of collapsing. It says so, too.
+  keeps showing your last working table instead of collapsing. The underline
+  tells you what needs fixing.
 - **Paste anything.** Spreadsheets, web tables, Markdown, CSV, TSV, Jira
   syntax, a plain column of text. Tabelo works out which it is.
 - **Download anything.** Markdown, CSV, TSV, HTML, or Jira, with the right
   extension and MIME type.
-- **Nothing to save.** Your table is in browser storage and comes back when you
-  return.
+- **Nothing to save.** Your table stays in browser storage and comes back when
+  you return. Starting a new table asks before clearing real work.
 - **Works offline.** A service worker caches the app on your first visit. No
   install prompt, no app store, nothing to accept.
 
 ### What it deliberately doesn't do
 
-No formulas. No multiple sheets. No charts, macros, or pivot tables. No
-accounts, no cloud sync, no collaboration, no analytics. Tabelo is a focused
-utility, and the fastest way to ruin one is to keep adding to it.
+No formulas, extra sheets, charts, macros, pivot tables, accounts, cloud sync,
+collaboration, or analytics. Tabelo is happiest staying small.
 
 ## Keyboard
 
@@ -111,7 +111,7 @@ underneath, native behaviour on top.
 
 Every shortcut also has a menu entry, so nothing is reachable only by keyboard.
 
-## Getting started
+## Run it locally
 
 Requires [Node.js](https://nodejs.org) 24+ and [pnpm](https://pnpm.io) 11+.
 
@@ -136,7 +136,7 @@ Then open <http://localhost:3001>.
 | `pnpm lint` | Biome check |
 | `pnpm check` | Biome check, writing fixes |
 
-## How it's built
+## A quick look under the hood
 
 React 19, Vite, TanStack Router, Tailwind v4, shadcn/ui on Base UI, CodeMirror 6
 for source views (lazily loaded), Papa Parse for delimited formats. Scaffolded
