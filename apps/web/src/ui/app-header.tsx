@@ -36,9 +36,9 @@ export function AppHeader({
 
 	return (
 		<header className="flex h-panel-header shrink-0 items-center gap-1.5 border-line-strong border-b bg-surface-header px-3">
-			<span className="shrink-0 font-semibold text-sm tracking-tight">
+			<h1 className="shrink-0 font-semibold text-sm tracking-tight">
 				{copy.app.name}
-			</span>
+			</h1>
 			<span className="hidden shrink-0 text-muted-foreground text-xs lg:inline">
 				{copy.app.tagline}
 			</span>

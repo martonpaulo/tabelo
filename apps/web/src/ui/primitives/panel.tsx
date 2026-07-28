@@ -43,10 +43,6 @@ function PanelHeader({
 	);
 }
 
-function PanelTitle({ children }: { children: ReactNode }) {
-	return <h2 className="shrink-0 font-medium text-sm">{children}</h2>;
-}
-
 function PanelSpacer() {
 	return <div aria-hidden className="flex-1" />;
 }
@@ -87,7 +83,6 @@ function PanelFooter({
 
 export const Panel = Object.assign(PanelRoot, {
 	Header: PanelHeader,
-	Title: PanelTitle,
 	Spacer: PanelSpacer,
 	Body: PanelBody,
 	Footer: PanelFooter,
