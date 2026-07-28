@@ -66,7 +66,8 @@ export class TabeloPage {
 
 	async chooseLayout(label: string): Promise<void> {
 		await this.page.getByRole("button", { name: /^Layout:/ }).click();
-		await this.page.getByRole("menuitem").filter({ hasText: label }).click();
+		const menu = this.page.getByRole("menu", { name: /^Layout:/ });
+		await menu.getByRole("menuitem").filter({ hasText: label }).click();
 	}
 
 	async choosePaneView(
@@ -74,8 +75,12 @@ export class TabeloPage {
 		nextView: string,
 		index = 0,
 	): Promise<void> {
-		await this.openPaneMenu(currentView, index);
-		await this.page.getByRole("menuitem").filter({ hasText: nextView }).click();
+		const menu = await this.openPaneMenu(currentView, index);
+		await menu.getByRole("menuitem").filter({ hasText: nextView }).click();
+		// Selecting a view closes this menu as a side effect. A caller that
+		// immediately reopens the same pane's menu needs that close to be
+		// finished first, not merely under way.
+		await menu.waitFor({ state: "hidden" });
 	}
 
 	paneMenuTrigger(view: string, index = 0): Locator {

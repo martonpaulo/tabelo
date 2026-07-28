@@ -108,7 +108,12 @@ test("every source view offers the action and the preview does not", async ({
 		await expect(
 			menu.getByRole("menuitem", { name: "Copy source" }),
 		).toBeVisible();
-		await tabelo.page.keyboard.press("Escape");
+		// The next iteration reopens this same pane's menu, so it has to be
+		// fully closed first. The trigger's own toggle is used rather than
+		// Escape, which this menu does not always answer to — see AGENTS.md
+		// on reporting rather than silently masking a product defect.
+		await tabelo.paneMenuTrigger(view).click();
+		await expect(menu).toHaveCount(0);
 	}
 
 	await tabelo.choosePaneView(current, "Rendered preview");
