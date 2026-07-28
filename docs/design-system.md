@@ -349,7 +349,9 @@ resizes the pane.
 - The app header keeps Undo and Redo visible. New, Import, and every download
   format share one visibly labelled File menu. Layout remains a visibly labelled
   workspace control. Do not expose those actions as a run of unfamiliar
-  icon-only buttons.
+  icon-only buttons. Those labels are what makes the row wider than the
+  narrowest phone, so the header scrolls itself, exactly as a pane header does —
+  the page still never scrolls. Anything added there has to keep that true.
 - Each pane header shows a stable, non-interactive view identity. View changes
   and other low-frequency pane actions share one visibly labelled Pane menu;
   the grid's contextual Table actions may remain beside it.

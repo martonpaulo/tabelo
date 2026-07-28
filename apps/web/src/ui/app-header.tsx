@@ -35,7 +35,11 @@ export function AppHeader({
 	const canRedo = canRunHistory(activePaneId, "redo", canRedoDocument);
 
 	return (
-		<header className="flex h-panel-header shrink-0 items-center gap-1.5 border-line-strong border-b bg-surface-header px-3">
+		// Undo, Redo, File, and Layout keep their labels at every width, so on a
+		// narrow phone this row can be wider than the viewport. It scrolls itself
+		// rather than pushing the page sideways — the same treatment the pane
+		// header uses, and what keeps "the page never scrolls" true.
+		<header className="flex h-panel-header shrink-0 items-center gap-1.5 overflow-x-auto border-line-strong border-b bg-surface-header px-3">
 			<h1 className="shrink-0 font-semibold text-sm tracking-tight">
 				{copy.app.name}
 			</h1>
