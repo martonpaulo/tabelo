@@ -124,9 +124,10 @@ Use the scaffolded versions unless a task explicitly requires an upgrade.
 - Zod for persisted, imported, and pasted data validation
 - Papa Parse for CSV parsing and serialization
 - Biome for formatting and linting
-- Vitest for unit tests, with happy-dom for the codec that uses `DOMParser`.
-  There is no end-to-end suite yet; when one is added, use Playwright and cover
-  the cross-view flows in the success criteria
+- Vitest for unit tests, with happy-dom for the codec that uses `DOMParser`
+- Playwright for the browser suite, covering the cross-view, history,
+  persistence, import, responsive, and keyboard contracts that unit tests
+  cannot reach. Chromium and Firefox both run locally and in CI
 - pnpm workspaces
 - `vite-plugin-pwa` in `generateSW` mode for offline capability
 
@@ -186,8 +187,16 @@ Prefer the smallest relevant check.
 - `pnpm check-types` — TypeScript across the workspace
 - `pnpm check` — Biome format and lint with `--write`
 - `pnpm test` — unit tests
+- `pnpm test:e2e` — the Playwright suite in Chromium and Firefox. It builds and
+  serves the app itself, so it needs no running dev server. First run only:
+  `pnpm test:e2e:install`. Narrow it with `--project=chromium`, a spec name, or
+  `-g "<title>"` while iterating, and run it whole before reporting
 
 Never claim a check passed unless it ran successfully.
+
+A behaviour that crosses a UI boundary belongs in the browser suite, not only
+in a unit test. Keep it behavioural: stable roles and labels, no arbitrary
+sleeps, no pixel snapshots, and storage isolated per test.
 
 ## Agent instruction files
 
