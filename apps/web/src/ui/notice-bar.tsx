@@ -6,13 +6,12 @@ import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { Notice, type NoticeTone } from "@/ui/primitives/notice";
-import type { PwaUpdate } from "@/ui/pwa-update";
 
 // Notices sit in the layout rather than floating over it. A toast that covers
 // the table would be exactly the kind of interruption this product avoids —
 // see docs/design-system.md §5.
 
-export function NoticeBar({ pwaUpdate }: { readonly pwaUpdate: PwaUpdate }) {
+export function NoticeBar() {
 	const notice = useTabeloStore((state) => state.notice);
 	const inputError = useTabeloStore((state) => state.inputError);
 	const headerCorrection = useTabeloStore((state) => state.headerCorrection);
@@ -128,24 +127,6 @@ export function NoticeBar({ pwaUpdate }: { readonly pwaUpdate: PwaUpdate }) {
 			<Bar tone="info">
 				<span>{notice}</span>
 				<Dismiss />
-			</Bar>
-		);
-	}
-
-	if (pwaUpdate.ready) {
-		return (
-			<Bar tone="info">
-				<span>{copy.notices.updateReady}</span>
-				<Button
-					variant="outline"
-					size="xs"
-					disabled={pwaUpdate.updating}
-					onClick={pwaUpdate.apply}
-				>
-					{pwaUpdate.updating
-						? copy.notices.savingUpdate
-						: copy.notices.saveAndReload}
-				</Button>
 			</Bar>
 		);
 	}

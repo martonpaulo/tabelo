@@ -11,7 +11,6 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 
 	const pane = tabelo.pane("Markdown");
 	const editor = tabelo.source("Markdown");
-	const editorFrame = pane.locator(".cm-editor");
 	const cursorLayer = pane.locator(".cm-cursorLayer");
 	await editor.focus();
 	const normalCursorAnimation = await cursorLayer.evaluate((element) => {
@@ -21,16 +20,14 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	expect(normalCursorAnimation.name).not.toBe("none");
 	expect(normalCursorAnimation.duration).not.toBe("0.00001s");
 
-	const lightFocus = await editorFrame.evaluate((element) => {
+	const lightFocus = await pane.evaluate((element) => {
 		const style = getComputedStyle(element);
 		return {
-			style: style.outlineStyle,
-			width: style.outlineWidth,
-			color: style.outlineColor,
+			shadow: style.boxShadow,
 		};
 	});
-	expect(lightFocus.style).toBe("solid");
-	expect(lightFocus.width).toBe("2px");
+	expect(lightFocus.shadow).toContain("inset");
+	await expect(pane.locator(".cm-content")).toHaveCSS("outline-style", "none");
 
 	await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
 	await expect
@@ -52,9 +49,9 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 
 	await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
 	await editor.focus();
-	const darkFocusColor = await editorFrame.evaluate(
-		(element) => getComputedStyle(element).outlineColor,
+	const darkFocus = await pane.evaluate(
+		(element) => getComputedStyle(element).boxShadow,
 	);
-	expect(darkFocusColor).not.toBe("rgba(0, 0, 0, 0)");
-	expect(darkFocusColor).not.toBe(lightFocus.color);
+	expect(darkFocus).toContain("inset");
+	expect(darkFocus).not.toBe(lightFocus.shadow);
 });

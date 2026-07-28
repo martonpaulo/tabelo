@@ -281,18 +281,18 @@ describe("per-pane zoom", () => {
 
 	it("follows its pane across a layout change", () => {
 		const paneId = markdownPaneId();
-		useTabeloStore.getState().setPaneZoom(paneId, 0.8);
+		useTabeloStore.getState().setPaneZoom(paneId, 0.5);
 
 		useTabeloStore.getState().setLayout("quad");
 
 		expect(workspace().panes.find((pane) => pane.id === paneId)?.zoom).toBe(
-			0.8,
+			0.5,
 		);
 	});
 
 	it("does not leak into a pane added afterwards", () => {
 		const paneId = workspace().panes[0].id;
-		useTabeloStore.getState().setPaneZoom(paneId, 1.5);
+		useTabeloStore.getState().setPaneZoom(paneId, 2);
 
 		useTabeloStore.getState().addPane();
 

@@ -119,11 +119,15 @@ notices, empty states, and pane headers; never use a border to decorate.
 | :--- | :--- | :--- |
 | `--selection-fill` | `bg-selection-fill` | Background of selected cells |
 | `--selection-edge` | `outline-selection-edge` | The focused cell's outline, focus rings, resize affordance |
+| `--text-selection-fill` | CSS selection | Native and source-editor text selection |
+| `--active-line-fill` | Source editor theme | Current source line without competing with selected text |
 
 The accent family is blue in both themes. Use its solid tone only for focus,
 selection, and checked or active controls; use the pale tone for hover or
-selection fills. Ordinary neutral buttons and links do not become blue merely
-for decoration.
+selection fills. Text selection is intentionally stronger than an active line
+and is a separate token from structural cell selection, so the two meanings do
+not accumulate into a muddy block in dark mode. Ordinary neutral buttons and
+links do not become blue merely for decoration.
 
 ### Status
 
@@ -169,7 +173,7 @@ One pane can scale what it displays without touching the rest of the app.
 
 | Token | Utility | Use |
 | :--- | :--- | :--- |
-| `--pane-zoom` | inline on the pane body | The pane's scale factor, 0.8–1.5 |
+| `--pane-zoom` | inline on the pane body | The pane's scale factor, 0.5–2 |
 | `--text-content` | `text-content` | Any text that is pane *content* |
 | `--spacing-content-line` | `h-content-line` | A one-line clip box that scales with it |
 
@@ -186,7 +190,8 @@ Do not implement scale as a transform on the pane: that breaks hit testing and
 text rendering. Scale the type, and scale measured geometry — the grid's column
 widths — in the component that owns it. Zoom is a local preference belonging to
 the pane, never document state and never a history step; it is bounded, and
-browser zoom remains the way to scale the whole interface.
+browser zoom remains the way to scale the whole interface. `Mod`+`+` and
+`Mod`+`-` step the active pane; `Mod`+`0` resets it.
 
 ### Syntax and table structure
 
@@ -287,6 +292,21 @@ is right for a stepper and wrong for a choice that is finished once made.
 A group whose items are *actions* rather than states — zoom, add, close —
 stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
 
+Every dropdown and context menu uses the shared primitive's one spacing rhythm:
+4px outer padding, 32px minimum item height, 8px horizontal padding, and 6px
+vertical padding. Primary option labels are 14px; a genuine description or
+shortcut may use 12px. Floating menus are translucent over a backdrop blur when
+the browser supports it, with the opaque popover colour as the fallback.
+
+### Empty workspace
+
+After hydration, an empty document with no source draft presents the existing
+Start with surface in the centre of the workspace. The normal workspace stays
+visible only as blurred context and is inert; the global action button is hidden
+until the user chooses an empty table, pastes, or imports. This is an onboarding
+surface, not a dialog: it does not claim modal semantics and never appears over
+saved content or an unfinished draft.
+
 ### Dialog
 
 A dialog is allowed **only as the direct result of a command the user issued**,
@@ -352,6 +372,12 @@ not a polish item.
 Disabled actions stay visible so the interface does not reflow as the selection
 changes. Layout stability outranks tidiness.
 
+The pane frame owns focus for a source view. CodeMirror never draws a second
+inner rectangle: its caret and selection remain visible, while the pane's 2px
+inset edge supplies all four focus sides. The source caret is a 2px accent line
+aligned to the editor's line metrics; native text editors use the same accent
+through `caret-color`.
+
 Healthy source panes are silent: do not render repeated "In sync" or "Editing"
 labels. A transient parse failure also stays silent during its short grace
 period. Persistent diagnostics decorate the affected source range without
@@ -389,6 +415,9 @@ not the only signal.
   and description, Undo, Redo, New table, Import, Download, Layout, and a link to
   the GitHub repository. The trigger has a stable accessible name and never
   replaces visible menu labels with unexplained icons.
+- A service-worker update never creates a notice or reload prompt. The current
+  editing visit continues undisturbed; the browser activates the new worker
+  after that visit and the next visit receives the current application.
 - Pane-level actions live in that pane's header. Row and column actions live on
   the row or column, and in the context menu.
 - Each pane header shows a stable, non-interactive view identity. View changes
@@ -510,6 +539,12 @@ editor is sitting in.
 that proves it: the drag handle stays pointer-only and `aria-hidden`, and the
 column menu carries the same widen, narrow, and reset — which is what makes
 hiding the handle honest rather than a way of avoiding the problem.
+
+Cursor shape confirms the interaction before a click: buttons, menu actions,
+checkboxes, radio controls, and clickable row or column labels use `pointer`;
+editable text uses `text`; cells use `cell`; split and column handles use the
+matching resize cursor; disabled controls use `not-allowed`. Do not apply a
+pointer cursor to passive labels or read-only content.
 
 ### Naming inside the grid
 

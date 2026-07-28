@@ -158,9 +158,10 @@ export const copy = {
 	},
 
 	empty: {
-		title: "Start with an empty table",
-		body: "Type in any cell, or paste a table from a spreadsheet, a web page, Markdown, CSV, TSV, or Jira.",
-		pasteHint: "Paste to fill the table",
+		title: "Start with a table",
+		body: "Use an empty table, paste from the clipboard, or import Markdown, CSV, TSV, HTML, or Jira.",
+		emptyAction: "Use an empty table",
+		pasteHint: "Paste a table",
 		importAction: "Import a file",
 		sourceTitle: "Nothing here yet",
 		sourceBody: (label: string) => `Paste ${label} here to create the table.`,
@@ -221,9 +222,6 @@ export const copy = {
 		replaceSavedData: "Replace saved data",
 		replacedSavedData:
 			"Saved data replaced. The original was kept as a recovery copy.",
-		updateReady: "An update is ready.",
-		saveAndReload: "Save and reload",
-		savingUpdate: "Saving…",
 	},
 
 	a11y: {
@@ -262,6 +260,9 @@ export const copy = {
 		copy: "Mod+C",
 		cut: "Mod+X",
 		paste: "Mod+V",
+		zoomOut: "Mod+-",
+		resetZoom: "Mod+0",
+		zoomIn: "Mod++",
 		editHeader: "F2",
 	},
 } as const;

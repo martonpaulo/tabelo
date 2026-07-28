@@ -20,7 +20,15 @@ export class TabeloPage {
 		// isolated. A clear-and-reload cycle duplicated that guarantee and Firefox
 		// could abort the second navigation while the PWA finished registering.
 		await this.page.goto("/");
+		await this.dismissWelcome();
 		await this.workspace.waitFor({ state: "visible" });
+	}
+
+	async dismissWelcome(): Promise<void> {
+		const emptyStart = this.page.getByRole("button", {
+			name: "Use an empty table",
+		});
+		await emptyStart.click();
 	}
 
 	pane(view: string): Locator {

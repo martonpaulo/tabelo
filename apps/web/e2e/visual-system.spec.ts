@@ -47,7 +47,6 @@ test("controls and surfaces use their hierarchy radii while table structure stay
 }) => {
 	const pane = tabelo.pane("Visual table");
 	const appButton = page.getByRole("button", { name: "Open Tabelo menu" });
-	const emptyState = page.getByText("Start with an empty table").locator("..");
 
 	expect(
 		await page
@@ -58,7 +57,6 @@ test("controls and surfaces use their hierarchy radii while table structure stay
 	await expect(appButton.locator("img")).toHaveAttribute("src", /logo\.svg$/);
 	await expect(appButton.locator("img")).toHaveJSProperty("complete", true);
 	await expect(tabelo.workspace.getByRole("region")).toHaveCount(2);
-	await expect(emptyState).toHaveCSS("border-radius", "8px");
 	await expect(tabelo.cell(1, 1)).toHaveCSS("border-radius", "0px");
 	await expect(pane).toHaveCSS("border-radius", "8px");
 	await expect(pane.getByRole("heading").first()).toHaveCSS(
@@ -77,6 +75,118 @@ test("controls and surfaces use their hierarchy radii while table structure stay
 		"font-size",
 		"14px",
 	);
+	await expect(menu.getByRole("menuitem", { name: "New table" })).toHaveCSS(
+		"cursor",
+		"pointer",
+	);
+	await expect(menu).toHaveCSS("padding", "4px");
+	expect(
+		await menu.evaluate((element) => getComputedStyle(element).backdropFilter),
+	).toContain("blur");
+});
+
+test("an empty first visit shows one centered start surface over an inert blurred workspace", async ({
+	page,
+}) => {
+	await page.goto("/");
+	const startSurface = page
+		.getByRole("heading", { name: "Start with a table" })
+		.locator("..");
+	const overlay = startSurface.locator("..");
+
+	await expect(startSurface).toBeVisible();
+	await expect(startSurface).toHaveCSS("border-radius", "8px");
+	await expect(page.locator("main").locator("..")).toHaveAttribute(
+		"aria-hidden",
+		"true",
+	);
+	await expect(
+		page.getByRole("button", { name: "Open Tabelo menu" }),
+	).toHaveCount(0);
+	expect(
+		await overlay.evaluate(
+			(element) => getComputedStyle(element).backdropFilter,
+		),
+	).toContain("blur");
+
+	await page.getByRole("button", { name: "Use an empty table" }).click();
+	await expect(page.locator("main").locator("..")).not.toHaveAttribute(
+		"aria-hidden",
+		"true",
+	);
+	await expect(
+		page.getByRole("button", { name: "Open Tabelo menu" }),
+	).toBeVisible();
+});
+
+test("source focus belongs to the pane while caret and line numbers share its metrics", async ({
+	tabelo,
+}) => {
+	const pane = tabelo.pane("Markdown");
+	await tabelo.source("Markdown").click();
+
+	await expect(pane.locator(".cm-content")).toHaveCSS("outline-style", "none");
+	await expect(pane.locator(".cm-cursor")).toHaveCSS(
+		"border-left-width",
+		"2px",
+	);
+	expect(
+		await pane.evaluate((element) => getComputedStyle(element).boxShadow),
+	).toContain("inset");
+
+	const line = await pane.locator(".cm-line").first().boundingBox();
+	const activeLine = await pane.locator(".cm-activeLine").boundingBox();
+	const cursor = await pane.locator(".cm-cursor").boundingBox();
+	const number = await pane
+		.locator(".cm-lineNumbers .cm-gutterElement")
+		.filter({ hasText: /^1$/ })
+		.boundingBox();
+	expect(line).not.toBeNull();
+	expect(activeLine).not.toBeNull();
+	expect(cursor).not.toBeNull();
+	expect(number).not.toBeNull();
+	expect(Math.abs((line?.y ?? 0) - (number?.y ?? 0))).toBeLessThanOrEqual(1);
+	expect(cursor?.height ?? 0).toBeGreaterThanOrEqual(
+		(line?.height ?? 0) * 0.85,
+	);
+	expect(cursor?.height ?? 0).toBeLessThanOrEqual(line?.height ?? 0);
+	expect(
+		Math.abs(
+			(activeLine?.y ?? 0) +
+				(activeLine?.height ?? 0) / 2 -
+				((cursor?.y ?? 0) + (cursor?.height ?? 0) / 2),
+		),
+	).toBeLessThanOrEqual(1);
+
+	await tabelo.page.keyboard.press("ControlOrMeta+A");
+	const selectionColours = () =>
+		pane.locator(".cm-editor").evaluate((editor) => {
+			const drawn = editor.querySelector<HTMLElement>(
+				".cm-selectionBackground",
+			);
+			const content = editor.querySelector<HTMLElement>(".cm-content");
+			return {
+				drawn: drawn ? getComputedStyle(drawn).backgroundColor : "",
+				native: content
+					? getComputedStyle(content, "::selection").backgroundColor
+					: "",
+			};
+		});
+	await expect
+		.poll(async () => {
+			const colours = await selectionColours();
+			return colours.drawn === "" ? null : colours;
+		})
+		.toEqual({
+			drawn: "rgba(15, 108, 189, 0.24)",
+			native: "rgba(15, 108, 189, 0.24)",
+		});
+
+	await tabelo.page.emulateMedia({ colorScheme: "dark" });
+	await expect.poll(selectionColours).toEqual({
+		drawn: "rgba(77, 166, 255, 0.32)",
+		native: "rgba(77, 166, 255, 0.32)",
+	});
 });
 
 test("read-only panes use a written cue and a distinct surface", async ({
@@ -173,6 +283,16 @@ test("light and dark text and focus tokens meet their contrast floors", async ({
 		expect(
 			await contrastBetween(page, "--selection-edge", "--surface-panel"),
 		).toBeGreaterThanOrEqual(3);
+
+		const selectionFills = await page.evaluate(() => {
+			const styles = getComputedStyle(document.documentElement);
+			return [
+				styles.getPropertyValue("--selection-fill").trim(),
+				styles.getPropertyValue("--text-selection-fill").trim(),
+				styles.getPropertyValue("--active-line-fill").trim(),
+			];
+		});
+		expect(new Set(selectionFills).size).toBe(3);
 	}
 });
 

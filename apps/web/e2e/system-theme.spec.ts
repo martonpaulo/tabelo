@@ -37,7 +37,7 @@ test("system changes apply live and an obsolete preference is ignored", async ({
 		localStorage.setItem("tabelo.theme", "dark");
 	});
 	await page.goto("/");
-	await page.getByRole("main", { name: "Workspace" }).waitFor();
+	await page.getByRole("heading", { name: "Start with a table" }).waitFor();
 
 	expect(await page.evaluate(() => localStorage.getItem("tabelo.theme"))).toBe(
 		"dark",

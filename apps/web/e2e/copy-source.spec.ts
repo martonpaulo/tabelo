@@ -39,6 +39,7 @@ function lastCopied(page: Page): Promise<string | undefined> {
 test("copies the visible source of a valid view", async ({ page, tabelo }) => {
 	await recordingClipboard(page);
 	await page.reload();
+	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 	await tabelo.editCell(1, 1, "Inez");
 
@@ -58,6 +59,7 @@ test("copies a pending invalid draft byte for byte", async ({
 }) => {
 	await recordingClipboard(page);
 	await page.reload();
+	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 
 	await tabelo.source("Markdown").fill(invalidMarkdown);
@@ -129,6 +131,7 @@ test("a refused copy explains itself with source-specific advice", async ({
 		});
 	});
 	await page.reload();
+	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 
 	await tabelo.runPaneCommand("Markdown", "Copy source");

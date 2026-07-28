@@ -42,7 +42,7 @@ export const Pane = memo(function Pane({
 				// Tall enough to be worth scrolling to, and still allowed to grow
 				// when it is the only pane on screen.
 				stacked && "min-h-pane-stack flex-1",
-				active && "ring-1 ring-selection-edge/40 ring-inset",
+				active && "ring-2 ring-selection-edge ring-inset",
 			)}
 			onPointerDownCapture={() => {
 				if (!active) useTabeloStore.getState().setActivePane(pane.id);

@@ -19,10 +19,9 @@ describe("the pane zoom ladder", () => {
 		]);
 	});
 
-	// The floor is an accessibility decision, not a rendering one: below this
-	// the 14px content base stops being comfortably readable.
-	it("never scales content below 80%", () => {
-		expect(MIN_PANE_ZOOM).toBeGreaterThanOrEqual(0.8);
+	it("covers the complete 50% to 200% product range", () => {
+		expect(MIN_PANE_ZOOM).toBe(0.5);
+		expect(MAX_PANE_ZOOM).toBe(2);
 	});
 });
 
@@ -75,7 +74,7 @@ describe("stepping the zoom", () => {
 describe("reporting the zoom", () => {
 	it("reads as a whole percentage", () => {
 		expect(paneZoomPercent(1)).toBe(100);
-		expect(paneZoomPercent(0.8)).toBe(80);
-		expect(paneZoomPercent(1.5)).toBe(150);
+		expect(paneZoomPercent(0.5)).toBe(50);
+		expect(paneZoomPercent(2)).toBe(200);
 	});
 });

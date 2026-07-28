@@ -20,39 +20,52 @@ export const editorTheme = EditorView.theme({
 		backgroundColor: "var(--surface-panel)",
 		color: "var(--foreground)",
 	},
-	"&.cm-focused": {
-		outline: "2px solid var(--selection-edge)",
-		outlineOffset: "-2px",
-	},
 	".cm-scroller": {
 		fontFamily: "var(--font-family-source)",
 		lineHeight: "1.6",
 	},
-	".cm-content": { padding: "calc(var(--spacing) * 3) 0" },
+	".cm-content": {
+		padding: "calc(var(--spacing) * 3) 0",
+		outline: "none",
+	},
 	".cm-line": { padding: "0 calc(var(--spacing) * 3)" },
 	".cm-gutters": {
 		backgroundColor: "var(--surface-gutter)",
 		color: "var(--muted-foreground)",
+		fontFamily: "var(--font-family-source)",
+		fontSize: contentFontSize,
+		lineHeight: "1.6",
 		border: "none",
 		borderRight: "1px solid var(--line-subtle)",
 	},
 	".cm-lineNumbers .cm-gutterElement": {
 		padding: "0 calc(var(--spacing) * 2)",
+		lineHeight: "1.6",
 		// Grows with the digits it holds, so a zoomed-in editor does not clip
 		// three-figure line numbers.
 		minWidth: "calc(var(--pane-zoom, 1) * 2.5rem)",
 	},
-	".cm-activeLine": { backgroundColor: "var(--selection-fill)" },
+	".cm-activeLine": { backgroundColor: "var(--active-line-fill)" },
 	".cm-activeLineGutter": {
-		backgroundColor: "var(--selection-fill)",
+		backgroundColor: "var(--active-line-fill)",
 		color: "var(--foreground)",
 	},
-	".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--foreground)" },
-	"&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":
-		{
-			backgroundColor: "var(--selection-fill)",
-		},
-	".cm-selectionMatch": { backgroundColor: "var(--selection-fill)" },
+	".cm-cursor, .cm-dropCursor": {
+		borderLeft: "2px solid var(--selection-edge)",
+		height: "calc(var(--pane-zoom, 1) * 1.25rem) !important",
+		marginLeft: "-1px",
+		marginTop: "calc(var(--pane-zoom, 1) * -0.125rem)",
+	},
+	"&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
+		// CodeMirror's base theme uses a more specific light/dark selector for
+		// this drawn layer. The product token must win because system theme, not
+		// CodeMirror state, owns Tabelo's colour scheme.
+		background: "var(--text-selection-fill) !important",
+	},
+	".cm-content ::selection": {
+		backgroundColor: "var(--text-selection-fill)",
+	},
+	".cm-selectionMatch": { backgroundColor: "var(--text-selection-fill)" },
 	".cm-tableHeaderLine": {
 		backgroundColor: "var(--surface-header)",
 		boxShadow: "inset 0 -1px 0 var(--line-strong)",

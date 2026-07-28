@@ -1,7 +1,4 @@
-import { lazy, Suspense, useMemo } from "react";
-import { isDocumentBlank } from "@/core/document";
-import { useTabeloStore } from "@/state/store";
-import { EmptyState } from "@/ui/grid/empty-state";
+import { lazy, Suspense } from "react";
 import { TableGrid } from "@/ui/grid/table-grid";
 import type { ViewDefinition } from "@/views/types";
 
@@ -20,15 +17,7 @@ function PaneLoading() {
 }
 
 function GridPane({ zoom }: { readonly zoom: number }) {
-	const document = useTabeloStore((state) => state.document);
-	const blank = useMemo(() => isDocumentBlank(document), [document]);
-
-	return (
-		<>
-			<TableGrid zoom={zoom} />
-			{blank ? <EmptyState /> : null}
-		</>
-	);
+	return <TableGrid zoom={zoom} />;
 }
 
 // Rendering is chosen by the view's kind, never by its id — that is what keeps

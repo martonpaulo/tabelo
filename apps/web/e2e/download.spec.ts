@@ -234,6 +234,7 @@ test("the draft can be copied out of the chooser", async ({ page, tabelo }) => {
 		});
 	});
 	await page.reload();
+	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 
 	const draft = "| Name |\n| not a divider |\n| Bo |";

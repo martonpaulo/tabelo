@@ -64,6 +64,8 @@
 	--line-strong: #d1d1d1;
 
 	--selection-fill: rgb(15 108 189 / 14%);
+	--text-selection-fill: rgb(15 108 189 / 24%);
+	--active-line-fill: rgb(15 108 189 / 7%);
 	--selection-edge: #0f6cbd;
 
 	--status-warning: #f59e0b;
@@ -119,6 +121,8 @@
 		--line-strong: #484848;
 
 		--selection-fill: rgb(77 166 255 / 24%);
+		--text-selection-fill: rgb(77 166 255 / 32%);
+		--active-line-fill: rgb(77 166 255 / 9%);
 		--selection-edge: #4da6ff;
 
 		--status-warning: #fbbf24;
@@ -147,6 +151,16 @@ body,
 body {
 	overscroll-behavior: none;
 	background-color: var(--surface-app);
+}
+
+::selection {
+	background-color: var(--text-selection-fill);
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+	caret-color: var(--selection-edge);
 }
 
 /* One focus treatment for the whole app, including inside the grid.

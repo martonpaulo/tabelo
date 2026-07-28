@@ -57,6 +57,7 @@ test("a refused copy explains itself instead of doing nothing", async ({
 }) => {
 	await faultyClipboard(page, "blocked");
 	await page.reload();
+	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 	await tabelo.editCell(1, 1, "Inez");
 
@@ -72,6 +73,7 @@ test("a refused cut keeps the data it could not copy", async ({
 }) => {
 	await faultyClipboard(page, "blocked");
 	await page.reload();
+	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 	await tabelo.editCell(1, 1, "Inez");
 
@@ -89,6 +91,7 @@ test("a refused paste explains itself and leaves the table alone", async ({
 }) => {
 	await faultyClipboard(page, "blocked");
 	await page.reload();
+	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 	await tabelo.editCell(1, 1, "Inez");
 
@@ -105,9 +108,9 @@ test("a browser without the clipboard API still explains the failure", async ({
 }) => {
 	await faultyClipboard(page, "absent");
 	await page.reload();
-	await expect(tabelo.workspace).toBeVisible();
+	await expect(page.locator("main")).toBeVisible();
 
-	await page.getByRole("button", { name: "Paste to fill the table" }).click();
+	await page.getByRole("button", { name: "Paste a table" }).click();
 
 	await expect(tabelo.status.filter({ hasText: readRecovery })).toBeVisible();
 });
@@ -118,9 +121,9 @@ test("an empty clipboard says so rather than claiming it was blocked", async ({
 }) => {
 	await faultyClipboard(page, "empty");
 	await page.reload();
-	await expect(tabelo.workspace).toBeVisible();
+	await expect(page.locator("main")).toBeVisible();
 
-	await page.getByRole("button", { name: "Paste to fill the table" }).click();
+	await page.getByRole("button", { name: "Paste a table" }).click();
 
 	await expect(
 		tabelo.status.filter({ hasText: "There is nothing on the clipboard" }),
@@ -136,6 +139,7 @@ test("keyboard paste still works while the clipboard API is refusing", async ({
 }) => {
 	await faultyClipboard(page, "blocked");
 	await page.reload();
+	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 
 	await tabelo.paste("Name\tRole\nInez\tDesigner");
@@ -170,6 +174,7 @@ test("a granted copy confirms what it did and keeps the rich flavour", async ({
 		});
 	});
 	await page.reload();
+	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 	await tabelo.editCell(1, 1, "Inez");
 

@@ -4,14 +4,12 @@
 // the preference disappears with the pane rather than following the view
 // somewhere else.
 //
-// The ladder is bounded deliberately. Unbounded zoom-out would trade a density
-// problem for a legibility one, so the floor stays at 80% of Tabelo's 14px
-// content base — 11.2px — which is the smallest size still comfortable to read
-// in a four-pane workspace. Browser zoom remains available on top of this and
-// is what scales the chrome; this only scales what a pane displays.
+// The ladder is bounded deliberately. Fifty percent is useful for overview and
+// two hundred percent for close reading; browser zoom remains available on top
+// when the entire interface, rather than one pane's content, needs to scale.
 
 export const PANE_ZOOM_LEVELS: readonly number[] = [
-	0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5,
+	0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2,
 ];
 
 export const DEFAULT_PANE_ZOOM = 1;

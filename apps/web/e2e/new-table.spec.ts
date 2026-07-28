@@ -46,9 +46,10 @@ test("an untouched empty table clears without an unnecessary dialog", async ({
 
 test("an unknown path redirects to the only application route", async ({
 	page,
-	tabelo,
 }) => {
 	await page.goto("/not-a-tabelo-route");
-	await expect(tabelo.workspace).toBeVisible();
+	await expect(
+		page.getByRole("heading", { name: "Start with a table" }),
+	).toBeVisible();
 	await expect(page).toHaveURL(/\/$/);
 });

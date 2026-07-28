@@ -370,7 +370,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									<button
 										type="button"
 										aria-label={`${copy.actions.selectRow}: ${copy.a11y.rowNumber(rowIndex)}`}
-										className="rounded px-1 hover:text-foreground"
+										className="cursor-pointer rounded-interactive px-1 hover:text-foreground"
 										onClick={() =>
 											useTabeloStore
 												.getState()
@@ -570,7 +570,10 @@ function HeaderCell({
 					    learn rather than two. */}
 					<button
 						type="button"
-						className={cn("min-w-0 flex-1 truncate", alignClass[align])}
+						className={cn(
+							"min-w-0 flex-1 cursor-pointer truncate",
+							alignClass[align],
+						)}
 						title={`${copy.actions.editHeader} (${copy.shortcuts.editHeader})`}
 						onClick={() =>
 							useTabeloStore

@@ -8,6 +8,7 @@ import {
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
+	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
 import {
@@ -152,28 +153,40 @@ export function PaneMenu({
 						{copy.workspace.zoom(paneZoomPercent(zoom))}
 					</DropdownMenuLabel>
 					<DropdownMenuItem
+						aria-label={copy.workspace.zoomOut}
 						closeOnClick={false}
 						disabled={zoom <= MIN_PANE_ZOOM}
 						onClick={() => setZoom(stepPaneZoom(zoom, -1))}
 					>
 						<ZoomOut aria-hidden />
 						{copy.workspace.zoomOut}
+						<DropdownMenuShortcut aria-hidden>
+							{copy.shortcuts.zoomOut}
+						</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
+						aria-label={copy.workspace.resetZoom}
 						closeOnClick={false}
 						disabled={zoom === DEFAULT_PANE_ZOOM}
 						onClick={() => setZoom(DEFAULT_PANE_ZOOM)}
 					>
 						<RotateCcw aria-hidden />
 						{copy.workspace.resetZoom}
+						<DropdownMenuShortcut aria-hidden>
+							{copy.shortcuts.resetZoom}
+						</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
+						aria-label={copy.workspace.zoomIn}
 						closeOnClick={false}
 						disabled={zoom >= MAX_PANE_ZOOM}
 						onClick={() => setZoom(stepPaneZoom(zoom, 1))}
 					>
 						<ZoomIn aria-hidden />
 						{copy.workspace.zoomIn}
+						<DropdownMenuShortcut aria-hidden>
+							{copy.shortcuts.zoomIn}
+						</DropdownMenuShortcut>
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 

@@ -1,32 +1,47 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { isDocumentBlank } from "@/core/document";
 import { runHistory } from "@/history/coordinator";
 import { startAutosave, useTabeloStore } from "@/state/store";
 import { AppMenu } from "@/ui/app-menu";
 import { DownloadDialog } from "@/ui/download-dialog";
+import { EmptyState } from "@/ui/grid/empty-state";
 import { importTableFile } from "@/ui/import";
 import { NewTableDialog } from "@/ui/new-table-dialog";
 import { NoticeBar } from "@/ui/notice-bar";
-import { usePwaUpdate } from "@/ui/pwa-update";
 import { Workspace } from "@/ui/workspace/workspace";
+import { DEFAULT_PANE_ZOOM, stepPaneZoom } from "@/workspace/zoom";
 
 export function TabeloApp() {
-	const pwaUpdate = usePwaUpdate();
 	const [downloading, setDownloading] = useState(false);
 	const [confirmingNewTable, setConfirmingNewTable] = useState(false);
+	const [hydrated, setHydrated] = useState(false);
+	const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+	const document = useTabeloStore((state) => state.document);
+	const draft = useTabeloStore((state) => state.draft);
+	const showWelcome =
+		hydrated &&
+		!welcomeDismissed &&
+		isDocumentBlank(document) &&
+		draft === null;
 
 	const requestNewTable = () => {
 		const state = useTabeloStore.getState();
 		if (isDocumentBlank(state.document) && state.draft === null) {
 			state.resetDocument();
+			setWelcomeDismissed(true);
 			return;
 		}
 		setConfirmingNewTable(true);
 	};
 
-	useEffect(() => {
+	// Hydrate before the first paint so saved content never flashes the empty
+	// welcome surface. The surface is shown only when hydration confirms that
+	// there is no table content and no pending source draft.
+	useLayoutEffect(() => {
 		useTabeloStore.getState().hydrate();
-		return startAutosave();
+		const stopAutosave = startAutosave();
+		setHydrated(true);
+		return stopAutosave;
 	}, []);
 
 	// Undo and redo are document-level, so they work wherever focus is — except
@@ -36,6 +51,26 @@ export function TabeloApp() {
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (!(event.metaKey || event.ctrlKey)) return;
 			const key = event.key.toLowerCase();
+			const store = useTabeloStore.getState();
+			const activePane = store.workspace.panes.find(
+				(pane) => pane.id === store.workspace.activePaneId,
+			);
+
+			// Pane zoom follows the standard browser/editor shortcuts but changes
+			// only the active view. It owns these keys even inside CodeMirror.
+			if (activePane && (key === "+" || key === "=" || key === "-")) {
+				event.preventDefault();
+				store.setPaneZoom(
+					activePane.id,
+					stepPaneZoom(activePane.zoom, key === "-" ? -1 : 1),
+				);
+				return;
+			}
+			if (activePane && key === "0") {
+				event.preventDefault();
+				store.setPaneZoom(activePane.id, DEFAULT_PANE_ZOOM);
+				return;
+			}
 
 			// Mod+S means "keep my work" everywhere else, so it opens the download
 			// chooser here — Tabelo has nowhere to save to, and the browser's Save
@@ -52,7 +87,6 @@ export function TabeloApp() {
 			if (target?.closest(".cm-editor")) return;
 			if (key !== "z" && key !== "y") return;
 			event.preventDefault();
-			const store = useTabeloStore.getState();
 			const direction = key === "y" || event.shiftKey ? "redo" : "undo";
 			runHistory(store.workspace.activePaneId, direction, () =>
 				direction === "redo" ? store.redo() : store.undo(),
@@ -64,13 +98,26 @@ export function TabeloApp() {
 
 	return (
 		<div className="flex h-full min-h-0 flex-col bg-surface-app">
-			<NoticeBar pwaUpdate={pwaUpdate} />
-			<Workspace />
-			<AppMenu
-				onImport={() => void importTableFile()}
-				onDownload={() => setDownloading(true)}
-				onNewTable={requestNewTable}
-			/>
+			<NoticeBar />
+			<div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
+				<div
+					className="flex min-h-0 min-w-0 flex-1"
+					aria-hidden={showWelcome || undefined}
+					inert={showWelcome || undefined}
+				>
+					<Workspace />
+				</div>
+				{showWelcome ? (
+					<EmptyState onStartEmpty={() => setWelcomeDismissed(true)} />
+				) : null}
+			</div>
+			{showWelcome ? null : (
+				<AppMenu
+					onImport={() => void importTableFile()}
+					onDownload={() => setDownloading(true)}
+					onNewTable={requestNewTable}
+				/>
+			)}
 			<DownloadDialog open={downloading} onOpenChange={setDownloading} />
 			<NewTableDialog
 				open={confirmingNewTable}

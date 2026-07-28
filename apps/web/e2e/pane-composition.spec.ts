@@ -148,6 +148,27 @@ test("pane zoom scales that pane's content and nothing else", async ({
 	await expect(tabelo.grid()).toHaveCSS("font-size", "14px");
 });
 
+test("keyboard zoom changes only the active pane and resets with the standard shortcut", async ({
+	page,
+	tabelo,
+}) => {
+	const markdownSize = () =>
+		tabelo
+			.pane("Markdown")
+			.locator(".cm-content")
+			.evaluate((element) =>
+				Number.parseFloat(getComputedStyle(element).fontSize),
+			);
+
+	await tabelo.source("Markdown").click();
+	await page.keyboard.press("ControlOrMeta+=");
+	await expect.poll(markdownSize).toBeGreaterThan(14);
+	await expect(tabelo.grid()).toHaveCSS("font-size", "14px");
+
+	await page.keyboard.press("ControlOrMeta+0");
+	await expect.poll(markdownSize).toBeCloseTo(14, 1);
+});
+
 test("zoom resets in one action and survives a reload", async ({ tabelo }) => {
 	const contentSize = () =>
 		tabelo
@@ -161,6 +182,7 @@ test("zoom resets in one action and survives a reload", async ({ tabelo }) => {
 	await expect.poll(contentSize).toBeLessThan(14);
 
 	await tabelo.page.reload();
+	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 	await expect.poll(contentSize).toBeLessThan(14);
 
