@@ -17,7 +17,12 @@ const PRESETS = [
 	"Four panes",
 ] as const;
 
-const NARROW = [320, 390, 600, 800, 899];
+// 300 is below any real device on purpose. The app header fits 320px with a
+// few pixels to spare on a Mac and not at all on the CI runner, which renders
+// the same labels wider, so a check pinned to 320 passed locally while failing
+// there. Sampling a width no platform can fit keeps "nothing spills sideways"
+// honest on both.
+const NARROW = [300, 320, 390, 600, 800, 899];
 
 async function paneWidths(page: Page): Promise<number[]> {
 	return page.evaluate(() =>
@@ -49,13 +54,18 @@ for (const preset of PRESETS) {
 			expect(await paneWidths(page), `${preset} at ${width}px`).toHaveLength(
 				expected,
 			);
-			// And nothing spills sideways.
-			expect(
-				await page.evaluate(
-					() => document.documentElement.scrollWidth <= window.innerWidth,
-				),
-				`${preset} at ${width}px`,
-			).toBe(true);
+			// And nothing spills sideways. Polled for its own reason: after the
+			// viewport shrinks, the document keeps the wider scroll area it had
+			// for a frame, so reading it once can report the previous width.
+			await expect
+				.poll(
+					() =>
+						page.evaluate(
+							() => document.documentElement.scrollWidth - window.innerWidth,
+						),
+					{ message: `${preset} at ${width}px` },
+				)
+				.toBeLessThanOrEqual(0);
 		}
 	});
 }
