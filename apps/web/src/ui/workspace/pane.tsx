@@ -167,17 +167,29 @@ interface PaneProps {
 	// A pane occupying a single slot has half the width, so its header labels
 	// shorten rather than wrap.
 	readonly compact: boolean;
+	// Stacked, the pane takes the full width in reading order and must not name
+	// a slot: an inline grid area pointing at column two would conjure that
+	// column back into existence.
+	readonly stacked: boolean;
 }
 
-export const Pane = memo(function Pane({ pane, active, compact }: PaneProps) {
+export const Pane = memo(function Pane({
+	pane,
+	active,
+	compact,
+	stacked,
+}: PaneProps) {
 	const view = getView(pane.view);
 
 	return (
 		<Panel
 			aria-label={copy.a11y.pane(view.label)}
-			style={{ gridArea: gridAreaStyle(pane.slots) }}
+			style={stacked ? undefined : { gridArea: gridAreaStyle(pane.slots) }}
 			className={cn(
 				"min-w-0",
+				// Tall enough to be worth scrolling to, and still allowed to grow
+				// when it is the only pane on screen.
+				stacked && "min-h-pane-stack flex-1",
 				active && "ring-1 ring-selection-edge/40 ring-inset",
 			)}
 			onPointerDownCapture={() => {

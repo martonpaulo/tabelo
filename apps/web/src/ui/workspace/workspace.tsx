@@ -1,3 +1,4 @@
+import { cn } from "@tabelo/ui/lib/utils";
 import { useCallback, useRef } from "react";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
@@ -7,10 +8,16 @@ import {
 	layoutSplitsRows,
 } from "@/workspace/layout";
 import { Pane } from "./pane";
+import { useStackedWorkspace } from "./stacking";
 
 // The workspace is one CSS grid. Panes place themselves from their slots, and
 // the 1px gap plus a coloured background gives the separators without any pane
 // needing to know its neighbours.
+//
+// Below the stacking width that tiling is not narrowed, it is abandoned: the
+// grid becomes a column, the panes stop naming slots, and the workspace scrolls
+// between them. The preset and its ratios are untouched, so widening the window
+// restores exactly what the user chose.
 
 type Axis = "columns" | "rows";
 
@@ -105,37 +112,47 @@ function Resizer({ axis, ratio, containerRef }: ResizerProps) {
 export function Workspace() {
 	const workspace = useTabeloStore((state) => state.workspace);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const stacked = useStackedWorkspace();
 
-	const splitsColumns = layoutSplitsColumns(workspace.layout);
-	const splitsRows = layoutSplitsRows(workspace.layout);
-
-	// Below this width the 2x2 grid stops being readable, so every pane simply
-	// stacks. The layout choice is remembered, not discarded.
-	const stacked = "max-[899px]:!grid-cols-1 max-[899px]:!grid-rows-none";
+	// A resizer is only meaningful where its axis actually splits, and stacking
+	// splits neither: there is one column and the panes size themselves.
+	const splitsColumns = !stacked && layoutSplitsColumns(workspace.layout);
+	const splitsRows = !stacked && layoutSplitsRows(workspace.layout);
 
 	return (
 		<main
 			ref={containerRef}
 			aria-label={copy.a11y.workspace}
-			className={`relative grid min-h-0 flex-1 gap-px bg-line-strong ${stacked}`}
-			style={{
-				gridTemplateColumns: splitsColumns
-					? `${workspace.columnRatio}fr ${1 - workspace.columnRatio}fr`
-					: "1fr 1fr",
-				gridTemplateRows: splitsRows
-					? `${workspace.rowRatio}fr ${1 - workspace.rowRatio}fr`
-					: "1fr 1fr",
-			}}
+			className={cn(
+				"relative min-h-0 flex-1 gap-px bg-line-strong",
+				// Stacked, the workspace itself scrolls between panes; tiled, it
+				// never does and each pane scrolls its own content.
+				stacked ? "flex flex-col overflow-y-auto" : "grid",
+			)}
+			style={
+				stacked
+					? undefined
+					: {
+							gridTemplateColumns: splitsColumns
+								? `${workspace.columnRatio}fr ${1 - workspace.columnRatio}fr`
+								: "1fr 1fr",
+							gridTemplateRows: splitsRows
+								? `${workspace.rowRatio}fr ${1 - workspace.rowRatio}fr`
+								: "1fr 1fr",
+						}
+			}
 		>
 			{workspace.panes.map((pane) => {
 				const area = gridAreaOf(pane.slots);
-				const compact = area.columnEnd - area.columnStart === 1;
+				// Stacked panes have the whole width, so nothing needs shortening.
+				const compact = !stacked && area.columnEnd - area.columnStart === 1;
 				return (
 					<Pane
 						key={pane.id}
 						pane={pane}
 						active={pane.id === workspace.activePaneId}
 						compact={compact}
+						stacked={stacked}
 					/>
 				);
 			})}

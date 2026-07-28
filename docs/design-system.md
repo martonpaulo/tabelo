@@ -316,6 +316,13 @@ resizes the pane.
   preset — see `docs/adr/0006`. Never build a free slot editor.
 - The page never scrolls. Panes scroll independently.
 - Below 900px panes stack; the chosen layout is remembered, not discarded.
+  Stacking **abandons** the tiling rather than narrowing it: the grid becomes a
+  single column, panes stop naming slots, each keeps `min-h-pane-stack` so it
+  stays worth scrolling to, and the workspace — not the page — scrolls between
+  them. Resizers are not rendered, because neither axis splits. An inline
+  `grid-area` naming a second column is the trap here: CSS will create that
+  column even when the template says there is one, so the placement has to stop
+  being emitted rather than be overridden.
 - Pane headers are one row, `h-panel-header`, never wrapping. A narrow pane
   shortens its labels rather than wrapping them.
 - A pane's height must not change with its state: exceptional source feedback
