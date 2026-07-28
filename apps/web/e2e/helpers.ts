@@ -16,12 +16,10 @@ export class TabeloPage {
 	}
 
 	async open(): Promise<void> {
+		// Playwright gives every test a fresh BrowserContext, so storage is already
+		// isolated. A clear-and-reload cycle duplicated that guarantee and Firefox
+		// could abort the second navigation while the PWA finished registering.
 		await this.page.goto("/");
-		await this.page.evaluate(() => {
-			window.localStorage.clear();
-			window.sessionStorage.clear();
-		});
-		await this.page.reload();
 		await this.workspace.waitFor({ state: "visible" });
 	}
 
