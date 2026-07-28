@@ -46,7 +46,9 @@ test("the row and column being worked in reveal their own actions", async ({
 	tabelo,
 }) => {
 	const rowTrigger = (index: number) =>
-		tabelo.grid().getByRole("button", { name: `Row actions: Row ${index}` });
+		tabelo
+			.grid()
+			.getByRole("button", { name: `Row actions: Row ${index + 1}` });
 	const columnTrigger = (name: string) =>
 		tabelo.grid().getByRole("button", { name: `Column actions: ${name}` });
 
@@ -71,7 +73,9 @@ test("moving by keyboard moves the revealed affordance with it", async ({
 	tabelo,
 }) => {
 	const rowTrigger = (index: number) =>
-		tabelo.grid().getByRole("button", { name: `Row actions: Row ${index}` });
+		tabelo
+			.grid()
+			.getByRole("button", { name: `Row actions: Row ${index + 1}` });
 
 	await tabelo.cell(1, 1).click();
 	await page.mouse.move(0, 0);
@@ -100,7 +104,7 @@ test("tabbing into a header reveals its actions without a pointer", async ({
 test("hovering a row still reveals its actions", async ({ tabelo }) => {
 	const trigger = tabelo
 		.grid()
-		.getByRole("button", { name: "Row actions: Row 3" });
+		.getByRole("button", { name: "Row actions: Row 4" });
 	expect(await opacity(trigger)).toBe("0");
 
 	await tabelo.cell(3, 1).hover();
@@ -117,9 +121,9 @@ test("the axis menus and the pane menu describe the same actions", async ({
 	await tabelo.cell(1, 1).click();
 	await tabelo
 		.grid()
-		.getByRole("button", { name: "Row actions: Row 1" })
+		.getByRole("button", { name: "Row actions: Row 2" })
 		.click();
-	const rowMenu = page.getByRole("menu", { name: "Row actions: Row 1" });
+	const rowMenu = page.getByRole("menu", { name: "Row actions: Row 2" });
 	await expect(rowMenu).toBeVisible();
 	const fromRow = await rowMenu
 		.getByRole("menuitem")

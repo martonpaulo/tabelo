@@ -9,8 +9,8 @@ import { layoutPresets } from "@/workspace/layout";
 import { textForView, useTabeloStore } from "./store";
 
 const initialState = useTabeloStore.getInitialState();
-const invalidMarkdown = "| Name |\n| not a divider |\n| Ana |";
-const validMarkdown = "| Name |\n| --- |\n| Ana |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
+const validMarkdown = "| Name |\n| --- |\n| Inez |";
 
 beforeEach(() => {
 	useTabeloStore.getState().discardDraft();
@@ -45,8 +45,18 @@ describe("draft ownership", () => {
 		(from, to, _status, text) => {
 			const store = useTabeloStore.getState();
 			store.setLayout(from);
-			const paneId = useTabeloStore.getState().workspace.panes.at(-1)?.id ?? "";
-			store.setPaneView(paneId, "markdown");
+			const existingMarkdown = useTabeloStore
+				.getState()
+				.workspace.panes.find((pane) => pane.view === "markdown");
+			const candidateId =
+				existingMarkdown?.id ??
+				useTabeloStore.getState().workspace.panes.at(-1)?.id ??
+				"";
+			store.setPaneView(candidateId, "markdown");
+			const paneId =
+				useTabeloStore
+					.getState()
+					.workspace.panes.find((pane) => pane.view === "markdown")?.id ?? "";
 			store.setDraft(paneId, "markdown", text);
 
 			store.setLayout(to);
@@ -59,22 +69,28 @@ describe("draft ownership", () => {
 		},
 	);
 
-	it("does not let another duplicate pane claim the owner's draft", () => {
+	it("does not let another pane duplicate the draft owner's view", () => {
 		const store = useTabeloStore.getState();
 		store.setLayout("quad");
 		const panes = useTabeloStore.getState().workspace.panes;
-		const first = panes[1];
-		const second = panes[2];
-		store.setPaneView(second.id, "markdown");
-		store.setDraft(second.id, "markdown", invalidMarkdown);
+		const owner = panes.find((pane) => pane.view === "markdown");
+		const other = panes.find((pane) => pane.view !== "markdown");
+		expect(owner).toBeDefined();
+		expect(other).toBeDefined();
+		store.setDraft(owner?.id ?? "", "markdown", invalidMarkdown);
 
-		store.setPaneView(first.id, "csv");
+		store.setPaneView(other?.id ?? "", "markdown");
 
 		expect(useTabeloStore.getState().draft).toMatchObject({
-			paneId: second.id,
+			paneId: owner?.id,
 			viewId: "markdown",
 			text: invalidMarkdown,
 		});
+		expect(
+			useTabeloStore
+				.getState()
+				.workspace.panes.filter((pane) => pane.view === "markdown"),
+		).toHaveLength(1);
 	});
 
 	it("requires an explicit discard before retiring an invalid owner", () => {
@@ -194,7 +210,7 @@ describe("source synchronization", () => {
 	const parsedDocument = documentFromMatrix(
 		[
 			["Name", "Role"],
-			["Ana", "Designer"],
+			["Inez", "Designer"],
 		],
 		{ headerRow: true },
 	);
@@ -215,7 +231,7 @@ describe("source synchronization", () => {
 		const state = useTabeloStore.getState();
 		expect(documentToMatrix(state.document)).toEqual([
 			["Name", "Role"],
-			["Ana", "Designer"],
+			["Inez", "Designer"],
 		]);
 		expect(state.draft).toMatchObject({
 			paneId,

@@ -58,7 +58,7 @@ test("a refused copy explains itself instead of doing nothing", async ({
 	await faultyClipboard(page, "blocked");
 	await page.reload();
 	await expect(tabelo.workspace).toBeVisible();
-	await tabelo.editCell(1, 1, "Ana");
+	await tabelo.editCell(1, 1, "Inez");
 
 	await openTableActions(page);
 	await page.getByRole("menuitem", { name: "Copy" }).click();
@@ -73,14 +73,14 @@ test("a refused cut keeps the data it could not copy", async ({
 	await faultyClipboard(page, "blocked");
 	await page.reload();
 	await expect(tabelo.workspace).toBeVisible();
-	await tabelo.editCell(1, 1, "Ana");
+	await tabelo.editCell(1, 1, "Inez");
 
 	await openTableActions(page);
 	await page.getByRole("menuitem", { name: "Cut" }).click();
 
 	await expect(tabelo.status.filter({ hasText: writeRecovery })).toBeVisible();
 	// The only copy of the value was in the table, and it is still there.
-	await expect(tabelo.cell(1, 1)).toHaveText("Ana");
+	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 });
 
 test("a refused paste explains itself and leaves the table alone", async ({
@@ -90,13 +90,13 @@ test("a refused paste explains itself and leaves the table alone", async ({
 	await faultyClipboard(page, "blocked");
 	await page.reload();
 	await expect(tabelo.workspace).toBeVisible();
-	await tabelo.editCell(1, 1, "Ana");
+	await tabelo.editCell(1, 1, "Inez");
 
 	await openTableActions(page);
 	await page.getByRole("menuitem", { name: "Paste" }).click();
 
 	await expect(tabelo.status.filter({ hasText: readRecovery })).toBeVisible();
-	await expect(tabelo.cell(1, 1)).toHaveText("Ana");
+	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 });
 
 test("a browser without the clipboard API still explains the failure", async ({
@@ -138,9 +138,9 @@ test("keyboard paste still works while the clipboard API is refusing", async ({
 	await page.reload();
 	await expect(tabelo.workspace).toBeVisible();
 
-	await tabelo.paste("Name\tRole\nAna\tDesigner");
+	await tabelo.paste("Name\tRole\nInez\tDesigner");
 
-	await expect(tabelo.cell(1, 1)).toHaveText("Ana");
+	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 	await expect(tabelo.cell(1, 2)).toHaveText("Designer");
 });
 
@@ -171,7 +171,7 @@ test("a granted copy confirms what it did and keeps the rich flavour", async ({
 	});
 	await page.reload();
 	await expect(tabelo.workspace).toBeVisible();
-	await tabelo.editCell(1, 1, "Ana");
+	await tabelo.editCell(1, 1, "Inez");
 
 	await openTableActions(page);
 	await page.getByRole("menuitem", { name: "Copy" }).click();

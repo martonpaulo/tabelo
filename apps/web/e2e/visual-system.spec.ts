@@ -46,10 +46,10 @@ test("interactive surfaces share one radius while table structure stays square",
 	tabelo,
 }) => {
 	const pane = tabelo.pane("Visual table");
-	const fileButton = page.getByRole("button", { name: "File", exact: true });
+	const appButton = page.getByRole("button", { name: "Open Tabelo menu" });
 	const emptyState = page.getByText("Start with an empty table").locator("..");
 
-	await expect(fileButton).toHaveCSS("border-radius", "6px");
+	await expect(appButton).toHaveCSS("border-radius", "6px");
 	await expect(tabelo.workspace.getByRole("region")).toHaveCount(2);
 	await expect(emptyState).toHaveCSS("border-radius", "6px");
 	await expect(tabelo.cell(1, 1)).toHaveCSS("border-radius", "0px");
@@ -63,8 +63,8 @@ test("interactive surfaces share one radius while table structure stays square",
 		"0px",
 	);
 
-	await fileButton.click();
-	const menu = page.getByRole("menu", { name: "File" });
+	await appButton.click();
+	const menu = page.getByRole("menu", { name: "Open Tabelo menu" });
 	await expect(menu).toHaveCSS("border-radius", "6px");
 	await expect(menu.getByRole("menuitem", { name: "New table" })).toHaveCSS(
 		"font-size",
@@ -114,9 +114,10 @@ test("critical document controls remain available at 200% text size", async ({
 	});
 
 	await expect(
-		page.getByRole("button", { name: "File", exact: true }),
+		page.getByRole("button", { name: "Open Tabelo menu" }),
 	).toBeVisible();
-	await expect(page.getByRole("button", { name: /^Layout:/ })).toBeVisible();
+	const menu = await tabelo.openAppMenu();
+	await expect(menu.getByRole("menuitem", { name: "Layout" })).toBeVisible();
 	await expect(tabelo.workspace).toBeVisible();
 	expect(
 		await page.evaluate(

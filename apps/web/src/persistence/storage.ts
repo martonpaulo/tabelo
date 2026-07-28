@@ -2,11 +2,11 @@ import type { TableDocument } from "@/core/types";
 import type { Workspace } from "@/workspace/layout";
 import {
 	CURRENT_VERSION,
-	migrateAndValidate,
 	type PersistedDraft,
 	type PersistedState,
 	RECOVERY_KEY,
 	STORAGE_KEY,
+	validatePersistedState,
 } from "./schema";
 
 // What the app hands over to be saved. Deliberately expressed in the domain's
@@ -44,7 +44,7 @@ export function loadState(): StorageLoadOutcome {
 	if (raw === null) return { status: "empty" };
 
 	try {
-		const outcome = migrateAndValidate(JSON.parse(raw));
+		const outcome = validatePersistedState(JSON.parse(raw));
 		return outcome.status === "unreadable" ? { ...outcome, raw } : outcome;
 	} catch {
 		return {

@@ -84,9 +84,9 @@ test("the tiling returns unchanged at 900px", async ({ page, tabelo }) => {
 		.poll(async () => Math.max(...(await paneWidths(page))))
 		.toBeLessThan(600);
 	expect(await paneWidths(page)).toHaveLength(2);
-	await expect(page.getByRole("button", { name: /^Layout:/ })).toContainText(
-		"Layout",
-	);
+	await expect(
+		page.getByRole("button", { name: "Open Tabelo menu" }),
+	).toBeVisible();
 });
 
 test("a stacked workspace exposes no resizer for an axis that no longer splits", async ({
@@ -145,9 +145,9 @@ test("the chosen preset and its ratios survive a trip through narrow", async ({
 	await expect(page.getByRole("separator")).toHaveCount(0);
 	await page.setViewportSize({ width: 1280, height: 720 });
 
-	await expect(page.getByRole("button", { name: /^Layout:/ })).toContainText(
-		"Layout",
-	);
+	await expect(
+		page.getByRole("button", { name: "Open Tabelo menu" }),
+	).toBeVisible();
 	await expect(
 		page.getByRole("separator", { name: "Resize columns" }),
 	).toHaveAttribute("aria-valuenow", ratio ?? "");
@@ -157,28 +157,31 @@ test("a pending draft survives the responsive change", async ({
 	page,
 	tabelo,
 }) => {
-	const invalid = "| Name |\n| not a divider |\n| Ana |";
-	await tabelo.source("Markdown").fill(invalid);
-	await expect(tabelo.source("Markdown")).toHaveAttribute(
-		"aria-invalid",
-		"true",
-	);
+	const invalid = "| Name |\n| not a divider |\n| Inez |";
+	const source = tabelo.source("Markdown");
+	const sourceText = () =>
+		source.evaluate((element) =>
+			Array.from(
+				element.querySelectorAll(".cm-line"),
+				(line) => line.textContent ?? "",
+			).join("\n"),
+		);
+
+	// Use the editor's keyboard path here. Firefox can reduce Playwright's direct
+	// contenteditable fill to a partial deletion under parallel test load, which
+	// would make this test measure an unfinished setup action instead.
+	await source.focus();
+	await source.press("ControlOrMeta+a");
+	await source.press("Backspace");
+	await expect.poll(sourceText, { timeout: 10_000 }).toBe("");
+	await page.keyboard.insertText(invalid);
+	await expect.poll(sourceText, { timeout: 10_000 }).toBe(invalid);
+	await expect(source).toHaveAttribute("aria-invalid", "true");
 
 	await page.setViewportSize({ width: 390, height: 700 });
 
 	// Stacking is presentation: it must not discard work in progress.
-	await expect
-		.poll(() =>
-			tabelo
-				.source("Markdown")
-				.evaluate((element) =>
-					Array.from(
-						element.querySelectorAll(".cm-line"),
-						(line) => line.textContent ?? "",
-					).join("\n"),
-				),
-		)
-		.toBe(invalid);
+	await expect.poll(sourceText, { timeout: 10_000 }).toBe(invalid);
 });
 
 test("browser zoom at 200% still shows every view", async ({

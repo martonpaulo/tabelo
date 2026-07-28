@@ -2,7 +2,7 @@ import type { Locator } from "@playwright/test";
 import { expect, test } from "./fixtures";
 
 const invalidMarkdown =
-	"| Name | Role |\n| not a divider |\n| Ana | Designer |";
+	"| Name | Role |\n| not a divider |\n| Inez | Designer |";
 const validMarkdown =
 	"| Name | Role |\n| --- | --- |\n| Immediate | Designer |";
 
@@ -51,14 +51,14 @@ test("transient invalid source stays quiet and keeps the last valid table", asyn
 	);
 });
 
-test("persistent invalid source shows the written recovery contract", async ({
+test("persistent invalid source is underlined while the grid stays valid", async ({
 	tabelo,
 }) => {
 	await tabelo.source("Markdown").fill(invalidMarkdown);
 
-	await expect(tabelo.pane("Markdown")).toContainText(
-		"Source is not valid yet. Other views still show the last valid table.",
-	);
+	await expect(
+		tabelo.pane("Markdown").locator(".cm-diagnosticError"),
+	).toHaveCount(1);
 	await expect(tabelo.cell(1, 1)).toHaveText("");
 });
 

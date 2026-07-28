@@ -12,7 +12,7 @@ import { type Draft, textForView, visibleTextForPane } from "./store";
 const document = documentFromMatrix(
 	[
 		["Name", "Role"],
-		["Ana", "Designer"],
+		["Inez", "Designer"],
 	],
 	{ headerRow: true },
 );
@@ -44,16 +44,6 @@ describe("the text a pane is showing", () => {
 		).toBe(pending.text);
 	});
 
-	it("is the projection for a second pane on the same format", () => {
-		const pending = draft({});
-
-		// The draft belongs to pane-1; pane-2 shows Markdown too but is a pure
-		// projection, so it copies the last valid table rather than the draft.
-		expect(
-			visibleTextForPane({ document, draft: pending }, "pane-2", "markdown"),
-		).toBe(textForView(document, "markdown"));
-	});
-
 	it("is the projection when the pane owns a draft in a different view", () => {
 		const pending = draft({});
 
@@ -65,7 +55,7 @@ describe("the text a pane is showing", () => {
 	it("is a clean draft's own text, keeping the user's formatting", () => {
 		const pending = draft({
 			status: "clean",
-			text: "| Name  |  Role |\n| --- | --- |\n| Ana | Designer |",
+			text: "| Name  |  Role |\n| --- | --- |\n| Inez | Designer |",
 		});
 
 		expect(

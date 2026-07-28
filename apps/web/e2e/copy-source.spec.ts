@@ -6,7 +6,7 @@ import { expect, test } from "./fixtures";
 // still showing the last valid table, but this pane is showing the draft, and
 // the draft is what has to reach the clipboard.
 
-const invalidMarkdown = "| Name |\n| not a divider |\n| Ana |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
 const writeRecovery = "The source could not be copied";
 
 // A clipboard that accepts everything and remembers it, so the copied bytes can
@@ -40,7 +40,7 @@ test("copies the visible source of a valid view", async ({ page, tabelo }) => {
 	await recordingClipboard(page);
 	await page.reload();
 	await expect(tabelo.workspace).toBeVisible();
-	await tabelo.editCell(1, 1, "Ana");
+	await tabelo.editCell(1, 1, "Inez");
 
 	await tabelo.runPaneCommand("Markdown", "Copy source");
 
@@ -48,7 +48,7 @@ test("copies the visible source of a valid view", async ({ page, tabelo }) => {
 		tabelo.status.filter({ hasText: "Source copied to the clipboard." }),
 	).toBeVisible();
 	const copied = await lastCopied(page);
-	expect(copied).toContain("Ana");
+	expect(copied).toContain("Inez");
 	expect(copied).toContain("---");
 });
 
@@ -72,27 +72,13 @@ test("copies a pending invalid draft byte for byte", async ({
 	expect(await lastCopied(page)).toBe(invalidMarkdown);
 });
 
-test("a second pane on the same format copies its own projection", async ({
-	page,
-	tabelo,
-}) => {
-	await recordingClipboard(page);
-	await page.reload();
-	await expect(tabelo.workspace).toBeVisible();
-	await tabelo.editCell(1, 1, "Ana");
-
-	// Two Markdown panes: the first owns the invalid draft, the second is a
-	// pure projection of the document.
+test("a second pane cannot duplicate a format", async ({ tabelo }) => {
 	await tabelo.runPaneCommand("Visual table", "Add view");
-	await tabelo.choosePaneView("CSV", "Markdown");
-	await expect(tabelo.pane("Markdown")).toHaveCount(2);
-
-	await tabelo.sourceAt("Markdown", 0).fill(invalidMarkdown);
-	await tabelo.runPaneCommand("Markdown", "Copy source", 1);
-
-	const copied = await lastCopied(page);
-	expect(copied).not.toBe(invalidMarkdown);
-	expect(copied).toContain("---");
+	const menu = await tabelo.openPaneMenu("CSV");
+	await expect(
+		menu.getByRole("menuitemradio", { name: /Markdown/ }),
+	).toBeDisabled();
+	await expect(tabelo.pane("Markdown")).toHaveCount(1);
 });
 
 test("every source view offers the action and the preview does not", async ({
@@ -162,7 +148,7 @@ test("copying returns focus to the pane menu without disturbing the grid", async
 					?.getAttribute("data-cell") ?? null,
 		);
 
-	await tabelo.editCell(2, 1, "Ana");
+	await tabelo.editCell(2, 1, "Inez");
 	const before = await selected();
 	expect(before).not.toBeNull();
 

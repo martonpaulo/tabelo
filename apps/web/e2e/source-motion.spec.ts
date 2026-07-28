@@ -43,7 +43,7 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	await expect
 		.poll(() =>
 			page
-				.getByRole("button", { name: "File", exact: true })
+				.getByRole("button", { name: "Open Tabelo menu" })
 				.evaluate((element) =>
 					Number.parseFloat(getComputedStyle(element).transitionDuration),
 				),

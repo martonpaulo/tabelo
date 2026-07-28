@@ -10,7 +10,12 @@ export type ViewKind = "grid" | "source" | "preview";
 // Which highlighting the source editor loads. Kept as a name rather than a
 // CodeMirror extension so the registry stays free of editor imports and the
 // editor itself can be lazy-loaded.
-export type HighlightLanguage = "markdown" | "delimited" | "html" | "plain";
+export type HighlightLanguage =
+	| "markdown"
+	| "delimited"
+	| "html"
+	| "jira"
+	| "plain";
 
 export interface ViewCapabilities {
 	// Can the user change the table from inside this view?

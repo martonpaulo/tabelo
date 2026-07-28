@@ -29,8 +29,8 @@ describe("jira parsing", () => {
 		const result = jiraCodec.parse(
 			[
 				"||Name||Role||Active||",
-				"|Ana|Designer|Yes|",
-				"|Bruno|Developer|No|",
+				"|Inez|Designer|Yes|",
+				"|Mark|Developer|No|",
 			].join("\n"),
 		);
 
@@ -39,13 +39,13 @@ describe("jira parsing", () => {
 
 		expect(documentToMatrix(result.document)).toEqual([
 			["Name", "Role", "Active"],
-			["Ana", "Designer", "Yes"],
-			["Bruno", "Developer", "No"],
+			["Inez", "Designer", "Yes"],
+			["Mark", "Developer", "No"],
 		]);
 	});
 
 	it("rejects text with no header row", () => {
-		expect(jiraCodec.parse("|Ana|Designer|").ok).toBe(false);
+		expect(jiraCodec.parse("|Inez|Designer|").ok).toBe(false);
 	});
 
 	it("reports a ragged row without discarding it", () => {
@@ -72,8 +72,8 @@ describe("jira serialization", () => {
 	it("survives a full round trip with hostile values", () => {
 		const original = [
 			["Name", "Note"],
-			["Ana", "line one\nline two"],
-			["Bruno", "a | b"],
+			["Inez", "line one\nline two"],
+			["Mark", "a | b"],
 		];
 		const document = documentFromMatrix(original, { headerRow: true });
 

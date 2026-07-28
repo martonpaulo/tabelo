@@ -4,7 +4,7 @@ import { expect, test } from "./fixtures";
 // naming a tiling first. The presets still own every shape — these flows prove
 // the direct commands cannot reach anything the layout gallery cannot.
 
-const invalidMarkdown = "| Name |\n| not a divider |\n| Ana |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
 
 test("a view is added from the pane and its picker takes the focus", async ({
 	tabelo,

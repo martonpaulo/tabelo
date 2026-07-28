@@ -1,13 +1,8 @@
 import { z } from "zod";
-import {
-	DEFAULT_PANE_ZOOM,
-	MAX_PANE_ZOOM,
-	MIN_PANE_ZOOM,
-} from "@/workspace/zoom";
+import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
-// The stored shape is versioned so the internal document format can change
-// without stranding somebody's table. A payload that fails validation is
-// reported, never silently replaced.
+// Browser storage accepts only the current schema. During this pre-user phase,
+// stale local payloads are preserved for recovery but never migrated forward.
 
 export const STORAGE_KEY = "tabelo.document";
 export const RECOVERY_KEY = "tabelo.document.recovery";
@@ -84,6 +79,15 @@ export const persistedStateSchema = z
 		draft: persistedDraftSchema.nullable(),
 	})
 	.superRefine((state, context) => {
+		const views = state.workspace.panes.map((pane) => pane.view);
+		if (new Set(views).size !== views.length) {
+			context.addIssue({
+				code: "custom",
+				path: ["workspace", "panes"],
+				message: "A workspace cannot show the same view more than once.",
+			});
+		}
+
 		if (
 			state.draft &&
 			!state.workspace.panes.some(
@@ -102,95 +106,15 @@ export const persistedStateSchema = z
 export type PersistedState = z.infer<typeof persistedStateSchema>;
 export type PersistedDraft = PersistedState["draft"];
 
-// Migration chain. Each step takes the previous version's raw payload and
-// returns the next one; a version we do not recognise stops here rather than
-// being coerced into a shape it was never in.
-type Migration = (input: unknown) => unknown;
-
-// v1 stored a single text format and a boolean for whether the source panel was
-// visible. That maps cleanly onto the workspace: visible becomes the two-column
-// layout with the grid beside that format, hidden becomes the single layout.
-function migrateV1ToV2(input: unknown): unknown {
-	const source = input as {
-		document?: unknown;
-		textFormat?: string;
-		textPanelVisible?: boolean;
-	};
-
-	const view = source.textFormat === "csv" ? "csv" : "markdown";
-	const showSource = source.textPanelVisible !== false;
-
-	return {
-		version: 2,
-		document: source.document,
-		workspace: showSource
-			? {
-					layout: "columns",
-					panes: [
-						{ id: "ac", view: "grid", slots: ["a", "c"] },
-						{ id: "bd", view, slots: ["b", "d"] },
-					],
-					columnRatio: 0.5,
-					rowRatio: 0.5,
-					activePaneId: "ac",
-				}
-			: {
-					layout: "single",
-					panes: [{ id: "abcd", view: "grid", slots: ["a", "b", "c", "d"] }],
-					columnRatio: 0.5,
-					rowRatio: 0.5,
-					activePaneId: "abcd",
-				},
-	};
-}
-
-function migrateV2ToV3(input: unknown): unknown {
-	if (typeof input !== "object" || input === null) return input;
-	return { ...input, version: 3, draft: null };
-}
-
-// v4 gave every pane its own content scale. Panes stored before it existed
-// were all at 100%, so the migration says exactly that rather than dropping
-// the workspace and rebuilding a default one.
-function migrateV3ToV4(input: unknown): unknown {
-	if (typeof input !== "object" || input === null) return input;
-	const source = input as { workspace?: { panes?: unknown } };
-	const panes = source.workspace?.panes;
-
-	return {
-		...input,
-		version: 4,
-		workspace: {
-			...source.workspace,
-			panes: Array.isArray(panes)
-				? panes.map((pane) =>
-						typeof pane === "object" && pane !== null
-							? { ...pane, zoom: DEFAULT_PANE_ZOOM }
-							: pane,
-					)
-				: panes,
-		},
-	};
-}
-
-const migrations: Record<number, Migration> = {
-	1: migrateV1ToV2,
-	2: migrateV2ToV3,
-	3: migrateV3ToV4,
-};
-
 export type LoadOutcome =
 	| { readonly status: "empty" }
 	| { readonly status: "ok"; readonly state: PersistedState }
 	| { readonly status: "unreadable"; readonly reason: string };
 
-export function migrateAndValidate(raw: unknown): LoadOutcome {
+export function validatePersistedState(raw: unknown): LoadOutcome {
 	if (raw === null || raw === undefined) return { status: "empty" };
 
-	// Explicitly unknown: narrowing above would otherwise fix this to `{}` and
-	// reject the migration output.
-	let candidate: unknown = raw;
-	let version =
+	const version =
 		typeof raw === "object" && raw !== null && "version" in raw
 			? Number((raw as { version: unknown }).version)
 			: Number.NaN;
@@ -199,26 +123,14 @@ export function migrateAndValidate(raw: unknown): LoadOutcome {
 		return { status: "unreadable", reason: "The saved table has no version." };
 	}
 
-	while (version < CURRENT_VERSION) {
-		const migration = migrations[version];
-		if (!migration) {
-			return {
-				status: "unreadable",
-				reason: `No migration from version ${version}.`,
-			};
-		}
-		candidate = migration(candidate);
-		version += 1;
-	}
-
-	if (version > CURRENT_VERSION) {
+	if (version !== CURRENT_VERSION) {
 		return {
 			status: "unreadable",
-			reason: "The saved table was written by a newer version of Tabelo.",
+			reason: "The saved table uses an unsupported version.",
 		};
 	}
 
-	const parsed = persistedStateSchema.safeParse(candidate);
+	const parsed = persistedStateSchema.safeParse(raw);
 	if (!parsed.success) {
 		return {
 			status: "unreadable",

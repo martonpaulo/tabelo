@@ -8,12 +8,13 @@ import { StreamLanguage } from "@codemirror/language";
 interface HtmlState {
 	inTag: boolean;
 	inComment: boolean;
+	inHeaderCell: boolean;
 }
 
 export const htmlLanguage = StreamLanguage.define<HtmlState>({
 	name: "html",
 
-	startState: () => ({ inTag: false, inComment: false }),
+	startState: () => ({ inTag: false, inComment: false, inHeaderCell: false }),
 
 	token(stream, state) {
 		if (state.inComment) {
@@ -45,8 +46,12 @@ export const htmlLanguage = StreamLanguage.define<HtmlState>({
 			return null;
 		}
 
-		if (stream.match(/^<\/?[A-Za-z][\w-]*/)) {
+		const tag = stream.match(/^<\/?[A-Za-z][\w-]*/) as RegExpMatchArray | null;
+		if (tag) {
 			state.inTag = true;
+			const name = tag[0].toLowerCase();
+			if (name === "<th") state.inHeaderCell = true;
+			if (name === "</th") state.inHeaderCell = false;
 			return "tagName";
 		}
 
@@ -58,6 +63,6 @@ export const htmlLanguage = StreamLanguage.define<HtmlState>({
 			if (next === "<" || next === "&") break;
 			stream.next();
 		}
-		return null;
+		return state.inHeaderCell ? "heading" : null;
 	},
 });

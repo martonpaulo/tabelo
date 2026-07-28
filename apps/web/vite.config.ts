@@ -43,7 +43,7 @@ export default defineConfig({
 				name: "Tabelo",
 				short_name: "Tabelo",
 				description:
-					"Edit a table visually, as Markdown, or as CSV — always in sync.",
+					"Edit one table visually or as Markdown, CSV, TSV, HTML, and Jira — always in sync, entirely in your browser.",
 				theme_color: "#0c0c0c",
 				background_color: "#0c0c0c",
 				start_url: base,

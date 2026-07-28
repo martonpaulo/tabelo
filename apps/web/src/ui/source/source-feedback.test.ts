@@ -26,8 +26,6 @@ describe("source feedback ids", () => {
 		expect(sourceFeedbackIds("pane-2")).toEqual(first);
 		expect(first).toEqual({
 			description: "source-feedback-pane-2",
-			announcement: "source-feedback-announcement-pane-2",
-			list: "source-feedback-list-pane-2",
 		});
 		expect(sourceFeedbackIds("pane-3").description).not.toBe(first.description);
 	});

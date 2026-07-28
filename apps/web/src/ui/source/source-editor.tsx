@@ -13,6 +13,7 @@ import {
 	Compartment,
 	EditorState,
 	Prec,
+	type Range,
 	Transaction,
 } from "@codemirror/state";
 import {
@@ -22,8 +23,10 @@ import {
 	EditorView,
 	highlightActiveLine,
 	highlightActiveLineGutter,
+	hoverTooltip,
 	keymap,
 	lineNumbers,
+	MatchDecorator,
 	ViewPlugin,
 	type ViewUpdate,
 } from "@codemirror/view";
@@ -36,7 +39,7 @@ import type { HighlightLanguage } from "@/views/types";
 import { csvLanguage } from "./csv-language";
 import { syntaxTheme } from "./editor-theme";
 import { htmlLanguage } from "./html-language";
-import { registerSourceNavigator } from "./source-navigation";
+import { jiraLanguage } from "./jira-language";
 
 // Marks a transaction as coming from synchronization rather than the user.
 // This is the loop guard required by docs/adr/0001: sync-originated changes
@@ -45,12 +48,117 @@ const fromSync = Annotation.define<boolean>();
 
 const languageCompartment = new Compartment();
 const editableCompartment = new Compartment();
-const invalidLineCompartment = new Compartment();
+const diagnosticsCompartment = new Compartment();
+const headerLineCompartment = new Compartment();
 const attributesCompartment = new Compartment();
 
-const invalidLineMark = Decoration.line({ class: "cm-invalidLine" });
+const markdownTableStructureMatcher = new MatchDecorator({
+	regexp: /\||:?-{3,}:?/g,
+	decoration: (match) =>
+		Decoration.mark({
+			class: match[0] === "|" ? "cm-tableDelimiter" : "cm-tableDivider",
+		}),
+});
 
-function invalidLineExtension(line: number | null) {
+const markdownTableStructure = ViewPlugin.fromClass(
+	class {
+		decorations: DecorationSet;
+
+		constructor(view: EditorView) {
+			this.decorations = markdownTableStructureMatcher.createDeco(view);
+		}
+
+		update(update: ViewUpdate) {
+			this.decorations = markdownTableStructureMatcher.updateDeco(
+				update,
+				this.decorations,
+			);
+		}
+	},
+	{ decorations: (plugin) => plugin.decorations },
+);
+
+export interface SourceDiagnostic {
+	readonly line?: number;
+	readonly message: string;
+	readonly severity: "error" | "warning";
+}
+
+function diagnosticExtension(diagnostics: readonly SourceDiagnostic[]) {
+	const byLine = new Map<number, readonly SourceDiagnostic[]>();
+	for (const diagnostic of diagnostics) {
+		const line = diagnostic.line ?? 1;
+		byLine.set(line, [...(byLine.get(line) ?? []), diagnostic]);
+	}
+
+	const decorations = ViewPlugin.fromClass(
+		class {
+			decorations: DecorationSet;
+
+			constructor(view: EditorView) {
+				this.decorations = this.build(view);
+			}
+
+			update(update: ViewUpdate) {
+				if (update.docChanged || update.viewportChanged) {
+					this.decorations = this.build(update.view);
+				}
+			}
+
+			build(view: EditorView): DecorationSet {
+				const ranges: Range<Decoration>[] = [];
+				for (const [lineNumber, lineDiagnostics] of byLine) {
+					if (lineNumber < 1 || lineNumber > view.state.doc.lines) continue;
+					const line = view.state.doc.line(lineNumber);
+					if (line.from === line.to) continue;
+					const severity = lineDiagnostics.some(
+						(diagnostic) => diagnostic.severity === "error",
+					)
+						? "error"
+						: "warning";
+					ranges.push(
+						Decoration.mark({
+							class:
+								severity === "error"
+									? "cm-diagnosticError"
+									: "cm-diagnosticWarning",
+						}).range(line.from, line.to),
+					);
+				}
+				return Decoration.set(ranges, true);
+			}
+		},
+		{ decorations: (plugin) => plugin.decorations },
+	);
+
+	const tooltip = hoverTooltip((view, position) => {
+		const line = view.state.doc.lineAt(position);
+		const messages = byLine.get(line.number);
+		if (!messages?.length) return null;
+		return {
+			pos: line.from,
+			end: line.to,
+			above: true,
+			create: () => {
+				const dom = document.createElement("div");
+				dom.className = "cm-diagnosticTooltip";
+				dom.textContent = messages.map(({ message }) => message).join("\n");
+				return { dom };
+			},
+		};
+	});
+
+	return [decorations, tooltip];
+}
+
+function headerLineExtension(language: HighlightLanguage) {
+	if (
+		language !== "markdown" &&
+		language !== "delimited" &&
+		language !== "jira"
+	) {
+		return [];
+	}
 	return ViewPlugin.fromClass(
 		class {
 			decorations: DecorationSet;
@@ -66,12 +174,14 @@ function invalidLineExtension(line: number | null) {
 			}
 
 			build(view: EditorView): DecorationSet {
-				if (line === null || line < 1 || line > view.state.doc.lines) {
-					return Decoration.none;
+				for (let number = 1; number <= view.state.doc.lines; number += 1) {
+					const line = view.state.doc.line(number);
+					if (line.text.trim() === "") continue;
+					return Decoration.set([
+						Decoration.line({ class: "cm-tableHeaderLine" }).range(line.from),
+					]);
 				}
-				return Decoration.set([
-					invalidLineMark.range(view.state.doc.line(line).from),
-				]);
+				return Decoration.none;
 			}
 		},
 		{ decorations: (plugin) => plugin.decorations },
@@ -85,9 +195,8 @@ function contentAttributes(
 ) {
 	return {
 		"aria-label": ariaLabel,
-		...(invalid
-			? { "aria-invalid": "true", "aria-describedby": describedBy }
-			: {}),
+		...(invalid ? { "aria-invalid": "true" } : {}),
+		...(describedBy ? { "aria-describedby": describedBy } : {}),
 	};
 }
 
@@ -96,11 +205,13 @@ function contentAttributes(
 function languageFor(language: HighlightLanguage) {
 	switch (language) {
 		case "markdown":
-			return markdown();
+			return [markdown(), markdownTableStructure];
 		case "delimited":
 			return csvLanguage;
 		case "html":
 			return htmlLanguage;
+		case "jira":
+			return jiraLanguage;
 		default:
 			return [];
 	}
@@ -133,7 +244,7 @@ interface SourceEditorProps {
 	readonly paneId: string;
 	readonly value: string;
 	readonly language: HighlightLanguage;
-	readonly invalidLine: number | null;
+	readonly diagnostics: readonly SourceDiagnostic[];
 	readonly invalid: boolean;
 	readonly describedBy?: string;
 	// Read-only views still get selection and copy, just no typing.
@@ -150,7 +261,7 @@ export function SourceEditor({
 	paneId,
 	value,
 	language,
-	invalidLine,
+	diagnostics,
 	invalid,
 	describedBy,
 	editable,
@@ -188,7 +299,8 @@ export function SourceEditor({
 					highlightActiveLineGutter(),
 					EditorView.lineWrapping,
 					languageCompartment.of(languageFor(language)),
-					invalidLineCompartment.of(invalidLineExtension(invalidLine)),
+					diagnosticsCompartment.of(diagnosticExtension(diagnostics)),
+					headerLineCompartment.of(headerLineExtension(language)),
 					editableCompartment.of(EditorView.editable.of(editable)),
 					syntaxTheme,
 					attributesCompartment.of(
@@ -255,17 +367,7 @@ export function SourceEditor({
 			canUndo: () => undoDepth(view.state) > 0,
 			canRedo: () => redoDepth(view.state) > 0,
 		});
-		const unregisterNavigator = registerSourceNavigator(paneId, (line) => {
-			const lineNumber = Math.min(Math.max(line, 1), view.state.doc.lines);
-			const position = view.state.doc.line(lineNumber).from;
-			view.dispatch({
-				selection: { anchor: position },
-				effects: EditorView.scrollIntoView(position, { y: "center" }),
-			});
-			view.focus();
-		});
 		return () => {
-			unregisterNavigator();
 			unregisterHistory();
 			view.destroy();
 			viewRef.current = null;
@@ -290,7 +392,10 @@ export function SourceEditor({
 		const view = viewRef.current;
 		if (!view) return;
 		view.dispatch({
-			effects: languageCompartment.reconfigure(languageFor(language)),
+			effects: [
+				languageCompartment.reconfigure(languageFor(language)),
+				headerLineCompartment.reconfigure(headerLineExtension(language)),
+			],
 		});
 	}, [language]);
 
@@ -308,11 +413,11 @@ export function SourceEditor({
 		const view = viewRef.current;
 		if (!view) return;
 		view.dispatch({
-			effects: invalidLineCompartment.reconfigure(
-				invalidLineExtension(invalidLine),
+			effects: diagnosticsCompartment.reconfigure(
+				diagnosticExtension(diagnostics),
 			),
 		});
-	}, [invalidLine]);
+	}, [diagnostics]);
 
 	useEffect(() => {
 		const view = viewRef.current;

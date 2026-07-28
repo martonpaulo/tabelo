@@ -35,7 +35,7 @@ import {
 	stepPaneZoom,
 } from "@/workspace/zoom";
 
-interface PaneControlProps {
+interface PaneIdentityProps {
 	readonly paneId: string;
 	readonly view: ViewDefinition;
 	readonly compact: boolean;
@@ -44,7 +44,7 @@ interface PaneControlProps {
 export function PaneIdentity({
 	view,
 	compact,
-}: Omit<PaneControlProps, "paneId">) {
+}: Omit<PaneIdentityProps, "paneId">) {
 	const Icon = view.icon;
 
 	return (
@@ -55,7 +55,10 @@ export function PaneIdentity({
 	);
 }
 
-export function PaneMenu({ paneId, view }: PaneControlProps) {
+export function PaneMenu({
+	paneId,
+	view,
+}: Pick<PaneIdentityProps, "paneId" | "view">) {
 	const views = listViews();
 	const triggerRef = useRef<HTMLButtonElement>(null);
 	const zoom = useTabeloStore(
@@ -71,6 +74,7 @@ export function PaneMenu({ paneId, view }: PaneControlProps) {
 	const canClose = useTabeloStore(
 		(state) => smallerLayout(state.workspace.layout) !== undefined,
 	);
+	const openPanes = useTabeloStore((state) => state.workspace.panes);
 
 	// A pane the user just added hands its menu the focus, so the view it should
 	// show is one keystroke away rather than something to go looking for.
@@ -117,6 +121,9 @@ export function PaneMenu({ paneId, view }: PaneControlProps) {
 						<DropdownMenuRadioItem
 							key={candidate.id}
 							value={candidate.id}
+							disabled={openPanes.some(
+								(pane) => pane.id !== paneId && pane.view === candidate.id,
+							)}
 							closeOnClick
 						>
 							<candidate.icon aria-hidden />

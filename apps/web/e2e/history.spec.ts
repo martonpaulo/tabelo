@@ -8,19 +8,19 @@ test("first-character editing creates exactly one undoable grid step", async ({
 	await cell.press("A");
 
 	const editor = tabelo.grid().getByRole("textbox", {
-		name: "Row 1, column 1",
+		name: "Row 2, column 1",
 	});
 	await expect(editor).toHaveValue("A");
 	await editor.press("Enter");
 	await expect(cell).toHaveText("A");
 
-	await tabelo.page.getByRole("button", { name: "Undo" }).click();
+	await tabelo.runAppCommand("Undo");
 	await expect(cell).toHaveText("");
-	await expect(
-		tabelo.page.getByRole("button", { name: "Undo" }),
-	).toBeDisabled();
+	const menu = await tabelo.openAppMenu();
+	await expect(menu.getByRole("menuitem", { name: "Undo" })).toBeDisabled();
+	await tabelo.page.keyboard.press("Escape");
 
-	await tabelo.page.getByRole("button", { name: "Redo" }).click();
+	await tabelo.runAppCommand("Redo");
 	await expect(cell).toHaveText("A");
 });
 
@@ -33,9 +33,8 @@ test("canceling first-character editing does not create history", async ({
 	await tabelo.grid().getByRole("textbox").press("Escape");
 
 	await expect(cell).toHaveText("");
-	await expect(
-		tabelo.page.getByRole("button", { name: "Undo" }),
-	).toBeDisabled();
+	const menu = await tabelo.openAppMenu();
+	await expect(menu.getByRole("menuitem", { name: "Undo" })).toBeDisabled();
 });
 
 test("global undo supports both redo shortcuts", async ({ tabelo }) => {
@@ -51,42 +50,42 @@ test("global undo supports both redo shortcuts", async ({ tabelo }) => {
 	await expect(tabelo.cell(1, 1)).toHaveText("A");
 });
 
-test("toolbar undo and redo use the active source editor first", async ({
+test("app menu undo and redo use the active source editor first", async ({
 	tabelo,
 }) => {
 	const source = tabelo.source("Markdown");
-	await source.fill("| Name |\n| --- |\n| Ana |");
+	await source.fill("| Name |\n| --- |\n| Inez |");
 	await source.press("End");
 	await source.press("ArrowLeft");
 	await source.press("X");
-	await expect(tabelo.cell(1, 1)).toHaveText("Ana X");
+	await expect(tabelo.cell(1, 1)).toHaveText("Inez X");
 
-	await tabelo.page.getByRole("button", { name: "Undo" }).click();
-	await expect(tabelo.cell(1, 1)).toHaveText("Ana");
+	await tabelo.runAppCommand("Undo");
+	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 
-	await tabelo.page.getByRole("button", { name: "Redo" }).click();
-	await expect(tabelo.cell(1, 1)).toHaveText("Ana X");
+	await tabelo.runAppCommand("Redo");
+	await expect(tabelo.cell(1, 1)).toHaveText("Inez X");
 });
 
 test("document undo restores an invalid draft with explicit feedback", async ({
 	tabelo,
 }) => {
 	const source = tabelo.source("Markdown");
-	const invalid = "| Name |\n| not a divider |\n| Ana |";
-	await source.fill("| Name |\n| --- |\n| Ana |");
+	const invalid = "| Name |\n| not a divider |\n| Inez |";
+	await source.fill("| Name |\n| --- |\n| Inez |");
 	await source.fill(invalid);
-	await expect(tabelo.pane("Markdown")).toContainText(
-		"Source is not valid yet. Other views still show the last valid table.",
-	);
+	await expect(
+		tabelo.pane("Markdown").locator(".cm-diagnosticError"),
+	).toHaveCount(1);
 
 	await tabelo.editCell(1, 1, "Grid wins");
 	await expect(tabelo.cell(1, 1)).toHaveText("Grid wins");
-	await tabelo.page.getByRole("button", { name: "Undo" }).click();
+	await tabelo.runAppCommand("Undo");
 
-	await expect(tabelo.cell(1, 1)).toHaveText("Ana");
-	await expect(tabelo.pane("Markdown")).toContainText(
-		"Source is not valid yet. Other views still show the last valid table.",
-	);
+	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await expect(
+		tabelo.pane("Markdown").locator(".cm-diagnosticError"),
+	).toHaveCount(1);
 	await expect
 		.poll(() =>
 			source.evaluate((element) =>

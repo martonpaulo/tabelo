@@ -1,7 +1,7 @@
 import { expect, test } from "./fixtures";
 
-const validMarkdown = "| Name |\n| --- |\n| Ana |";
-const invalidMarkdown = "| Name |\n| not a divider |\n| Ana |";
+const validMarkdown = "| Name |\n| --- |\n| Inez |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
 const unreadableCopy =
 	"The saved table could not be opened. Tabelo kept the original browser data unchanged.";
 const quotaCopy =
@@ -12,16 +12,16 @@ test("reload within debounce restores an invalid draft and its last valid table"
 }) => {
 	const source = tabelo.source("Markdown");
 	await source.fill(validMarkdown);
-	await expect(tabelo.cell(1, 1)).toHaveText("Ana");
+	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 	await source.fill(invalidMarkdown);
 
 	await tabelo.page.reload();
 
 	await expect(tabelo.workspace).toBeVisible();
-	await expect(tabelo.cell(1, 1)).toHaveText("Ana");
-	await expect(tabelo.pane("Markdown")).toContainText(
-		"Source is not valid yet. Other views still show the last valid table.",
-	);
+	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await expect(
+		tabelo.pane("Markdown").locator(".cm-diagnosticError"),
+	).toHaveCount(1);
 	await expect
 		.poll(() =>
 			tabelo

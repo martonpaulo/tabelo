@@ -1,4 +1,5 @@
 import { cn } from "@tabelo/ui/lib/utils";
+import { AlignCenter, AlignJustify, AlignLeft, AlignRight } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import {
@@ -22,6 +23,13 @@ const alignClass: Record<Alignment, string> = {
 	center: "text-center",
 	right: "text-right",
 };
+
+const alignmentIcon = {
+	default: AlignJustify,
+	left: AlignLeft,
+	center: AlignCenter,
+	right: AlignRight,
+} satisfies Record<Alignment, typeof AlignLeft>;
 
 // The next cell in reading order, or nothing when there is none — which is how
 // Tab knows it has reached an edge and should let focus leave the grid.
@@ -303,13 +311,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 				<thead>
 					<tr>
-						{/* The corner above the row numbers. Deliberately nameless: it
-						    heads nothing, and any text here would be read out as part of
-						    the header row and again as the column of every row number. */}
 						<th
-							scope="col"
-							className="sticky top-0 left-0 z-30 border-line-subtle border-r border-b bg-surface-header"
-						/>
+							scope="row"
+							aria-label="Row 1"
+							className="sticky top-0 left-0 z-30 border-line-strong border-r border-b bg-surface-header text-center font-semibold text-foreground text-xs tabular-nums"
+						>
+							1
+						</th>
 						{document.columns.map((column, columnIndex) => (
 							<HeaderCell
 								key={column.id}
@@ -369,7 +377,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 												.selectCell({ row: rowIndex, column: 0 }, "row")
 										}
 									>
-										{rowIndex + 1}
+										{rowIndex + 2}
 									</button>
 									<AxisMenu
 										axis="row"
@@ -522,6 +530,7 @@ function HeaderCell({
 	width,
 	zoom,
 }: HeaderCellProps) {
+	const AlignmentIcon = alignmentIcon[align];
 	const resizeState = useRef<{ startX: number; startWidth: number } | null>(
 		null,
 	);
@@ -536,8 +545,8 @@ function HeaderCell({
 			aria-colindex={columnIndex + 1}
 			data-column-header={columnIndex}
 			className={cn(
-				"group/col sticky top-0 z-20 border-line-subtle border-r border-b bg-surface-header",
-				"relative px-2 py-1.5 font-medium",
+				"group/col sticky top-0 z-20 border-line-strong border-r border-b bg-surface-header",
+				"relative px-2 py-1.5 font-semibold",
 				alignClass[align],
 				selected && "bg-selection-fill",
 			)}
@@ -561,7 +570,7 @@ function HeaderCell({
 					    learn rather than two. */}
 					<button
 						type="button"
-						className="min-w-0 flex-1 truncate text-left"
+						className={cn("min-w-0 flex-1 truncate", alignClass[align])}
 						title={`${copy.actions.editHeader} (${copy.shortcuts.editHeader})`}
 						onClick={() =>
 							useTabeloStore
@@ -581,6 +590,10 @@ function HeaderCell({
 					>
 						{header}
 					</button>
+					<AlignmentIcon
+						aria-hidden
+						className="size-3.5 shrink-0 text-muted-foreground"
+					/>
 					<AxisMenu axis="column" index={columnIndex} revealed={focused} />
 				</div>
 			)}

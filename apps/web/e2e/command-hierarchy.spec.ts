@@ -1,26 +1,15 @@
 import { expect, test } from "./fixtures";
 
-test("document actions use a compact, explicit command hierarchy", async ({
+test("document actions live in one compact floating menu", async ({
 	page,
 	tabelo,
 }) => {
 	await expect(tabelo.workspace).toBeVisible();
-	const header = page.getByRole("banner");
-
-	expect(await header.getByRole("button").count()).toBeLessThan(7);
-	await expect(header.getByRole("button", { name: "File" })).toBeVisible();
-	await expect(header.getByRole("button", { name: /^Layout:/ })).toContainText(
-		"Layout",
-	);
-	await expect(header.getByRole("button", { name: "Import file" })).toHaveCount(
-		0,
-	);
-	await expect(header.getByRole("button", { name: "New table" })).toHaveCount(
-		0,
-	);
-
-	await header.getByRole("button", { name: "File" }).click();
-	const menu = page.getByRole("menu", { name: "File" });
+	await expect(page.getByRole("banner")).toHaveCount(0);
+	const trigger = page.getByRole("button", { name: "Open Tabelo menu" });
+	await expect(trigger).toBeVisible();
+	const menu = await tabelo.openAppMenu();
+	await expect(menu).toContainText("Tabelo");
 	await expect(menu.getByRole("menuitem", { name: "New table" })).toBeVisible();
 	await expect(
 		menu.getByRole("menuitem", { name: "Import file" }),
@@ -29,6 +18,10 @@ test("document actions use a compact, explicit command hierarchy", async ({
 	// carry one item per format.
 	await expect(
 		menu.getByRole("menuitem", { name: "Download table" }),
+	).toBeVisible();
+	await expect(menu.getByRole("menuitem", { name: "Layout" })).toBeVisible();
+	await expect(
+		menu.getByRole("menuitem", { name: "View on GitHub" }),
 	).toBeVisible();
 	await expect(menu.getByRole("menuitem", { name: /Markdown/ })).toHaveCount(0);
 });
@@ -50,9 +43,7 @@ test("each pane keeps identity while low-frequency actions share one menu", asyn
 	).toBeVisible();
 });
 
-test("source feedback overlays the editor without reserving healthy space", async ({
-	tabelo,
-}) => {
+test("source diagnostics do not reserve editor space", async ({ tabelo }) => {
 	await tabelo.chooseLayout("Four panes");
 	const pane = tabelo.pane("Markdown");
 	const editor = tabelo.source("Markdown");
@@ -67,5 +58,6 @@ test("source feedback overlays the editor without reserving healthy space", asyn
 
 	const descriptionId = await editor.getAttribute("aria-describedby");
 	expect(descriptionId).toBeTruthy();
-	await expect(pane.locator(`#${descriptionId}`)).toBeVisible();
+	await expect(pane.locator(`#${descriptionId}`)).toContainText("Line 2:");
+	await expect(pane.getByText("Details", { exact: true })).toHaveCount(0);
 });

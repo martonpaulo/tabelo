@@ -9,12 +9,22 @@ interface CsvState {
 	// Tracks whether the tokenizer is inside a quoted field that spans lines,
 	// which RFC 4180 allows and Tabelo explicitly supports.
 	inQuotes: boolean;
+	header: boolean;
+}
+
+function finishToken(
+	stream: { eol(): boolean },
+	state: CsvState,
+	style: string | null,
+) {
+	if (stream.eol() && !state.inQuotes) state.header = false;
+	return style;
 }
 
 export const csvLanguage = StreamLanguage.define<CsvState>({
 	name: "csv",
 
-	startState: () => ({ inQuotes: false }),
+	startState: () => ({ inQuotes: false, header: true }),
 
 	token(stream, state) {
 		if (state.inQuotes) {
@@ -29,7 +39,7 @@ export const csvLanguage = StreamLanguage.define<CsvState>({
 					break;
 				}
 			}
-			return "string";
+			return finishToken(stream, state, state.header ? "heading" : "string");
 		}
 
 		if (stream.eat('"')) {
@@ -44,11 +54,11 @@ export const csvLanguage = StreamLanguage.define<CsvState>({
 					break;
 				}
 			}
-			return "string";
+			return finishToken(stream, state, state.header ? "heading" : "string");
 		}
 
 		if (stream.eat(",") || stream.eat(";") || stream.eat("\t")) {
-			return "punctuation";
+			return finishToken(stream, state, "punctuation");
 		}
 
 		while (!stream.eol()) {
@@ -56,11 +66,11 @@ export const csvLanguage = StreamLanguage.define<CsvState>({
 			if (next === "," || next === ";" || next === "\t" || next === '"') break;
 			stream.next();
 		}
-		return null;
+		return finishToken(stream, state, state.header ? "heading" : null);
 	},
 
 	// A quoted field left open at end of line continues on the next one.
 	blankLine(state) {
-		if (!state.inQuotes) state.inQuotes = false;
+		if (!state.inQuotes) state.header = false;
 	},
 });

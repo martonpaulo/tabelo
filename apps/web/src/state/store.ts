@@ -311,7 +311,7 @@ export function textForView(document: TableDocument, viewId: ViewId): string {
 // The exact text a pane is showing. A pane owning an uncommitted draft is
 // displaying that draft, not the last valid parse, so copying it must hand
 // over what is on screen — including source that does not parse. Every other
-// pane, including a second pane on the same format, is a pure projection.
+// pane is a pure projection of the document.
 export function visibleTextForPane(
 	state: Pick<TabeloState, "document" | "draft">,
 	paneId: string,
@@ -542,7 +542,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const pane = state.workspace.panes.find(
 			(candidate) => candidate.id === paneId,
 		);
-		if (!pane || pane.view === view) return;
+		if (
+			!pane ||
+			pane.view === view ||
+			state.workspace.panes.some(
+				(candidate) => candidate.id !== paneId && candidate.view === view,
+			)
+		)
+			return;
 
 		const draft = state.draft;
 		const ownsDraft = draft?.paneId === paneId && draft.viewId === pane.view;
@@ -622,6 +629,15 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		if (pending.kind === "close") {
 			const next = closedPaneState(get(), pending.paneId);
 			set(next ?? { pendingPaneAction: null });
+			return;
+		}
+		if (
+			get().workspace.panes.some(
+				(candidate) =>
+					candidate.id !== pending.paneId && candidate.view === pending.view,
+			)
+		) {
+			set({ pendingPaneAction: null });
 			return;
 		}
 

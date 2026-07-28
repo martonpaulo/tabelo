@@ -1,10 +1,10 @@
 import { expect, test } from "./fixtures";
 
 const invalidMarkdown =
-	"| Name | Role |\n| not a divider |\n| Ana | Designer |";
-const validMarkdown = "| Name | Role |\n| --- | --- |\n| Ana | Designer |";
+	"| Name | Role |\n| not a divider |\n| Inez | Designer |";
+const validMarkdown = "| Name | Role |\n| --- | --- |\n| Inez | Designer |";
 
-test("persistent parse feedback describes the editor and announces once", async ({
+test("parse errors underline the source and describe the editor", async ({
 	tabelo,
 }) => {
 	const pane = tabelo.pane("Markdown");
@@ -19,22 +19,13 @@ test("persistent parse feedback describes the editor and announces once", async 
 	expect(descriptionId).toBeTruthy();
 	const description = pane.locator(`#${descriptionId}`);
 	await expect(description).toContainText(
-		"Source is not valid yet. Other views still show the last valid table.",
-	);
-	await expect(description).toContainText(
 		"Line 2: The second line must be a divider like | --- | --- |.",
 	);
-
-	const announcement = pane.getByRole("status");
-	await expect(announcement).toHaveText(
-		"Source is not valid yet. Other views still show the last valid table.",
-	);
-	const announcementId = await announcement.getAttribute("id");
-	await editor.press("End");
-	await editor.press("x");
-	await expect(announcement).toHaveAttribute("id", announcementId ?? "");
-	await expect(announcement).toHaveText(
-		"Source is not valid yet. Other views still show the last valid table.",
+	const underline = pane.locator(".cm-diagnosticError");
+	await expect(underline).toHaveCount(1);
+	await underline.hover();
+	await expect(pane.locator(".cm-diagnosticTooltip")).toContainText(
+		"Line 2: The second line must be a divider like | --- | --- |.",
 	);
 
 	await editor.fill(validMarkdown);
@@ -61,7 +52,7 @@ test("CSV parse failures use product-owned copy", async ({ tabelo }) => {
 	await expect(pane).not.toContainText("Quoted field unterminated");
 });
 
-test("all warnings remain expandable and navigate to their source lines", async ({
+test("warnings use yellow underlines and hover tooltips without moving focus", async ({
 	page,
 	tabelo,
 }) => {
@@ -75,27 +66,19 @@ test("all warnings remain expandable and navigate to their source lines", async 
 		"| A | B |\n| --- | --- |\n| one |\n| two | extra | extra |",
 	);
 
-	await expect(pane).toContainText(
+	const descriptionId = await editor.getAttribute("aria-describedby");
+	expect(descriptionId).toBeTruthy();
+	await expect(pane.locator(`#${descriptionId}`)).toContainText(
 		"Line 3: Row 1 has 1 cell, the table has 2 columns.",
 	);
-	const details = pane.getByRole("button", { name: "Show 2 warnings" });
-	await details.click();
-	await expect(details).toHaveAttribute("aria-expanded", "true");
-
-	const menu = page.getByRole("menu", { name: "Show 2 warnings" });
-	const items = menu.getByRole("menuitem");
-	await expect(items).toHaveCount(2);
-	await expect(items.nth(0)).toHaveText(
-		"Line 3: Row 1 has 1 cell, the table has 2 columns.",
-	);
-	await expect(items.nth(1)).toHaveText(
+	const underlines = pane.locator(".cm-diagnosticWarning");
+	await expect(underlines).toHaveCount(2);
+	await underlines.nth(1).hover();
+	await expect(pane.locator(".cm-diagnosticTooltip")).toContainText(
 		"Line 4: Row 2 has 3 cells, the table has 2 columns.",
 	);
-
-	await items.nth(1).click();
 	await expect(editor).toBeFocused();
-	await expect(pane.locator(".cm-activeLine")).toHaveText(
-		"| two | extra | extra |",
-	);
-	await expect(details).toHaveAttribute("aria-expanded", "false");
+	await expect(
+		pane.getByRole("button", { name: /Show .* warnings/ }),
+	).toHaveCount(0);
 });

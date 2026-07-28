@@ -3,7 +3,7 @@ import { textForView, useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
-import { SourceEditor } from "./source-editor";
+import { type SourceDiagnostic, SourceEditor } from "./source-editor";
 import { sourceFeedbackIds } from "./source-feedback";
 
 // One component serves every source format. What differs between Markdown, CSV,
@@ -28,52 +28,52 @@ export default function SourceView({ paneId, viewId }: SourceViewProps) {
 
 	// Only the view holding the pending draft shows unsaved text; every other
 	// view is a pure projection. See docs/adr/0001.
-	const draftText = useTabeloStore((state) =>
+	const draft = useTabeloStore((state) =>
 		state.draft?.paneId === paneId && state.draft.viewId === viewId
-			? state.draft.text
+			? state.draft
 			: null,
 	);
 
-	const invalid = useTabeloStore((state) => {
-		const draft = state.draft;
-		return (
-			draft?.paneId === paneId &&
-			draft.viewId === viewId &&
-			draft.status === "invalid"
-		);
-	});
-
-	const invalidLine = useTabeloStore((state) => {
-		const draft = state.draft;
-		if (
-			draft?.paneId !== paneId ||
-			draft.viewId !== viewId ||
-			draft.status !== "invalid"
-		) {
-			return null;
-		}
-		return draft.issues.find((issue) => issue.line !== undefined)?.line ?? null;
-	});
+	const invalid = draft?.status === "invalid";
+	const diagnostics = useMemo((): readonly SourceDiagnostic[] => {
+		if (!draft) return [];
+		const severity = draft.status === "invalid" ? "error" : "warning";
+		const details = draft.status === "invalid" ? draft.issues : draft.warnings;
+		return details.map((issue) => ({
+			line: issue.line,
+			message: copy.source.issue(issue),
+			severity,
+		}));
+	}, [draft]);
 
 	const editable = view.capabilities.editable;
 	const feedbackIds = sourceFeedbackIds(paneId);
 
+	const description = diagnostics.map(({ message }) => message).join(" ");
+
 	return (
-		<SourceEditor
-			paneId={paneId}
-			value={draftText ?? projected}
-			language={view.highlight}
-			invalidLine={invalidLine}
-			invalid={invalid}
-			describedBy={invalid ? feedbackIds.description : undefined}
-			editable={editable}
-			ariaLabel={copy.a11y.sourceEditor(view.label)}
-			onChange={(text) => {
-				if (!editable) return;
-				useTabeloStore.getState().setDraft(paneId, viewId, text);
-			}}
-			onUndoBeyondLocal={() => useTabeloStore.getState().undo()}
-			onRedoBeyondLocal={() => useTabeloStore.getState().redo()}
-		/>
+		<>
+			{description ? (
+				<p id={feedbackIds.description} className="sr-only" aria-live="polite">
+					{description}
+				</p>
+			) : null}
+			<SourceEditor
+				paneId={paneId}
+				value={draft?.text ?? projected}
+				language={view.highlight}
+				diagnostics={diagnostics}
+				invalid={invalid}
+				describedBy={description ? feedbackIds.description : undefined}
+				editable={editable}
+				ariaLabel={copy.a11y.sourceEditor(view.label)}
+				onChange={(text) => {
+					if (!editable) return;
+					useTabeloStore.getState().setDraft(paneId, viewId, text);
+				}}
+				onUndoBeyondLocal={() => useTabeloStore.getState().undo()}
+				onRedoBeyondLocal={() => useTabeloStore.getState().redo()}
+			/>
+		</>
 	);
 }

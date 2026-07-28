@@ -6,8 +6,8 @@ import { flushPersistence, useTabeloStore } from "@/state/store";
 import { activateUpdateAfterSave } from "./update";
 
 const initialState = useTabeloStore.getInitialState();
-const validMarkdown = "| Name |\n| --- |\n| Ana |";
-const invalidMarkdown = "| Name |\n| not a divider |\n| Ana |";
+const validMarkdown = "| Name |\n| --- |\n| Inez |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
 
 beforeEach(() => {
 	window.localStorage.clear();

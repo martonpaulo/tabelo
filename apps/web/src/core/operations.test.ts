@@ -186,7 +186,7 @@ describe("header handling", () => {
 		expect(
 			detectHeaderRow([
 				["Name", "Role"],
-				["Ana", "Designer"],
+				["Inez", "Designer"],
 			]),
 		).toBe(true);
 	});
@@ -194,8 +194,8 @@ describe("header handling", () => {
 	it("treats a first row containing a number as data", () => {
 		expect(
 			detectHeaderRow([
-				["Ana", "31"],
-				["Bruno", "24"],
+				["Inez", "31"],
+				["Mark", "24"],
 			]),
 		).toBe(false);
 	});
@@ -203,8 +203,8 @@ describe("header handling", () => {
 	it("treats a first row with a blank cell as data", () => {
 		expect(
 			detectHeaderRow([
-				["Ana", ""],
-				["Bruno", "x"],
+				["Inez", ""],
+				["Mark", "x"],
 			]),
 		).toBe(false);
 	});
@@ -212,8 +212,8 @@ describe("header handling", () => {
 	it("generates placeholder headers when row 1 is data", () => {
 		const document = documentFromMatrix(
 			[
-				["Ana", "31"],
-				["Bruno", "24"],
+				["Inez", "31"],
+				["Mark", "24"],
 			],
 			{ headerRow: false },
 		);

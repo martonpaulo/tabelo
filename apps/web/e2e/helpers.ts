@@ -66,9 +66,26 @@ export class TabeloPage {
 	// Layout presets, pane views, and column alignments are radio items: they
 	// are current states rather than one-off actions.
 	async chooseLayout(label: string): Promise<void> {
-		await this.page.getByRole("button", { name: /^Layout:/ }).click();
-		const menu = this.page.getByRole("menu", { name: /^Layout:/ });
+		const menu = await this.openLayoutMenu();
 		await menu.getByRole("menuitemradio").filter({ hasText: label }).click();
+	}
+
+	async openAppMenu(): Promise<Locator> {
+		await this.page.getByRole("button", { name: "Open Tabelo menu" }).click();
+		return this.page.getByRole("menu", { name: "Open Tabelo menu" });
+	}
+
+	async openLayoutMenu(): Promise<Locator> {
+		await this.openAppMenu();
+		await this.page.getByRole("menuitem", { name: "Layout" }).click();
+		const menu = this.page.getByRole("menu", { name: "Layout" });
+		await menu.waitFor({ state: "visible" });
+		return menu;
+	}
+
+	async runAppCommand(command: string): Promise<void> {
+		const menu = await this.openAppMenu();
+		await menu.getByRole("menuitem", { name: command }).click();
 	}
 
 	async choosePaneView(
@@ -110,7 +127,7 @@ export class TabeloPage {
 		const cell = this.cell(row, column);
 		await cell.dblclick();
 		const editor = this.grid().getByRole("textbox", {
-			name: `Row ${row}, column ${column}`,
+			name: `Row ${row + 1}, column ${column}`,
 		});
 		await editor.fill(value);
 		await editor.press("Enter");
@@ -140,7 +157,7 @@ export class TabeloPage {
 		mimeType = "text/plain",
 	): Promise<void> {
 		const chooserPromise = this.page.waitForEvent("filechooser");
-		await this.page.getByRole("button", { name: "File", exact: true }).click();
+		await this.openAppMenu();
 		await this.page.getByRole("menuitem", { name: "Import file" }).click();
 		const chooser = await chooserPromise;
 		await chooser.setFiles({
@@ -152,7 +169,7 @@ export class TabeloPage {
 
 	async cancelFileImport(): Promise<void> {
 		const chooserPromise = this.page.waitForEvent("filechooser");
-		await this.page.getByRole("button", { name: "File", exact: true }).click();
+		await this.openAppMenu();
 		await this.page.getByRole("menuitem", { name: "Import file" }).click();
 		const chooser = await chooserPromise;
 		await chooser.setFiles([]);

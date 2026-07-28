@@ -3,7 +3,6 @@ import {
 	HeadContent,
 	Outlet,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import "@/index.css";
 
 export type RouterAppContext = Record<string, never>;
@@ -16,7 +15,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 			{
 				name: "description",
 				content:
-					"Edit a table visually, as Markdown, or as CSV — always in sync. Runs entirely in your browser.",
+					"Edit one table visually or as Markdown, CSV, TSV, HTML, and Jira — always in sync, entirely in your browser.",
 			},
 		],
 		links: [
@@ -36,7 +35,6 @@ function RootComponent() {
 			<div className="h-full">
 				<Outlet />
 			</div>
-			<TanStackRouterDevtools position="bottom-left" />
 		</>
 	);
 }

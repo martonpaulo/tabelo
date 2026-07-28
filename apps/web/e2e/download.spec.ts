@@ -24,7 +24,7 @@ async function savedFile(
 }
 
 async function openChooser(page: Page): Promise<void> {
-	await page.getByRole("button", { name: "File", exact: true }).click();
+	await page.getByRole("button", { name: "Open Tabelo menu" }).click();
 	await page.getByRole("menuitem", { name: "Download table" }).click();
 	await expect(page.getByRole("dialog")).toBeVisible();
 }
@@ -62,7 +62,7 @@ test("only CSV offers the header row choice", async ({ page, tabelo }) => {
 });
 
 test("CSV includes the header row by default", async ({ page, tabelo }) => {
-	await tabelo.editCell(1, 1, "Ana");
+	await tabelo.editCell(1, 1, "Inez");
 
 	const file = await savedFile(page, async () => {
 		await openChooser(page);
@@ -72,14 +72,14 @@ test("CSV includes the header row by default", async ({ page, tabelo }) => {
 
 	expect(file.name).toBe("table.csv");
 	expect(file.body.split("\n")[0]).toBe("Column 1,Column 2,Column 3");
-	expect(file.body).toContain("Ana");
+	expect(file.body).toContain("Inez");
 });
 
 test("unchecking the option omits the header row from the file only", async ({
 	page,
 	tabelo,
 }) => {
-	await tabelo.editCell(1, 1, "Ana");
+	await tabelo.editCell(1, 1, "Inez");
 
 	const file = await savedFile(page, async () => {
 		await openChooser(page);
@@ -89,7 +89,7 @@ test("unchecking the option omits the header row from the file only", async ({
 		await page.getByRole("button", { name: "Download", exact: true }).click();
 	});
 
-	expect(file.body.split("\n")[0]).toBe("Ana,,");
+	expect(file.body.split("\n")[0]).toBe("Inez,,");
 	expect(file.body).not.toContain("Column 1");
 
 	// The table itself still has its header, and so does every other view.
@@ -102,7 +102,7 @@ test("the option does not leak into other formats", async ({
 	page,
 	tabelo,
 }) => {
-	await tabelo.editCell(1, 1, "Ana");
+	await tabelo.editCell(1, 1, "Inez");
 
 	await openChooser(page);
 	const dialog = page.getByRole("dialog");
@@ -130,7 +130,7 @@ test("the chooser is keyboard operable and Escape returns focus", async ({
 	await page.keyboard.press("Escape");
 	await expect(page.getByRole("dialog")).toHaveCount(0);
 	await expect(
-		page.getByRole("button", { name: "File", exact: true }),
+		page.getByRole("button", { name: "Open Tabelo menu" }),
 	).toBeFocused();
 });
 
@@ -176,8 +176,8 @@ test("valid source work is already in the file the shortcut downloads", async ({
 	page,
 	tabelo,
 }) => {
-	await tabelo.source("Markdown").fill("| Name |\n| --- |\n| Ana |");
-	await expect(tabelo.cell(1, 1)).toHaveText("Ana");
+	await tabelo.source("Markdown").fill("| Name |\n| --- |\n| Inez |");
+	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 
 	const file = await savedFile(page, async () => {
 		await page.keyboard.press(shortcut);
@@ -186,15 +186,15 @@ test("valid source work is already in the file the shortcut downloads", async ({
 	});
 
 	expect(file.name).toBe("table.md");
-	expect(file.body).toContain("Ana");
+	expect(file.body).toContain("Inez");
 });
 
 test("an invalid draft is named rather than silently left out", async ({
 	page,
 	tabelo,
 }) => {
-	await tabelo.source("Markdown").fill("| Name |\n| --- |\n| Ana |");
-	await expect(tabelo.cell(1, 1)).toHaveText("Ana");
+	await tabelo.source("Markdown").fill("| Name |\n| --- |\n| Inez |");
+	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 	await tabelo.source("Markdown").fill("| Name |\n| not a divider |\n| Bo |");
 	await expect(tabelo.source("Markdown")).toHaveAttribute(
 		"aria-invalid",
@@ -214,7 +214,7 @@ test("an invalid draft is named rather than silently left out", async ({
 	const file = await savedFile(page, async () => {
 		await page.getByRole("button", { name: "Download", exact: true }).click();
 	});
-	expect(file.body).toContain("Ana");
+	expect(file.body).toContain("Inez");
 	expect(file.body).not.toContain("Bo");
 });
 

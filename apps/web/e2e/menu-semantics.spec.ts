@@ -5,10 +5,9 @@ import { expect, test } from "./fixtures";
 // the product is a radio group, so the state is in the accessibility tree
 // rather than only in the pixels.
 
-test("the layout menu reports the current preset", async ({ page, tabelo }) => {
+test("the layout menu reports the current preset", async ({ tabelo }) => {
 	await expect(tabelo.workspace).toBeVisible();
-	await page.getByRole("button", { name: /^Layout:/ }).click();
-	const menu = page.getByRole("menu", { name: /^Layout:/ });
+	const menu = await tabelo.openLayoutMenu();
 
 	const options = menu.getByRole("menuitemradio");
 	await expect(options).toHaveCount(8);
@@ -21,8 +20,7 @@ test("the layout menu reports the current preset", async ({ page, tabelo }) => {
 
 	await menu.getByRole("menuitemradio", { name: /Four panes/ }).click();
 
-	await page.getByRole("button", { name: /^Layout:/ }).click();
-	const reopened = page.getByRole("menu", { name: /^Layout:/ });
+	const reopened = await tabelo.openLayoutMenu();
 	await expect(
 		reopened.getByRole("menuitemradio", { checked: true }),
 	).toHaveCount(1);
@@ -50,6 +48,16 @@ test("the view list reports what the pane is showing", async ({ tabelo }) => {
 	await expect(
 		reopened.getByRole("menuitemradio", { name: /Markdown/ }),
 	).not.toBeChecked();
+});
+
+test("a view already open elsewhere is disabled", async ({ tabelo }) => {
+	const menu = await tabelo.openPaneMenu("Markdown");
+	await expect(
+		menu.getByRole("menuitemradio", { name: /Visual table/ }),
+	).toBeDisabled();
+	await expect(
+		menu.getByRole("menuitemradio", { name: /Markdown/ }),
+	).toBeChecked();
 });
 
 // The pane refuses a view change while a draft does not parse. The menu must
@@ -118,43 +126,40 @@ test("choosing with the keyboard still works and returns focus", async ({
 	// The fixture is what opens the app, so it is requested even where the
 	// assertions read from `page`.
 	await expect(tabelo.workspace).toBeVisible();
-	const trigger = page.getByRole("button", { name: /^Layout:/ });
-	await trigger.click();
-	const menu = page.getByRole("menu", { name: /^Layout:/ });
+	const trigger = page.getByRole("button", { name: "Open Tabelo menu" });
+	const menu = await tabelo.openLayoutMenu();
 	await expect(menu).toBeVisible();
 
-	// Arrows move through the options, Enter chooses, focus comes back.
-	await page.keyboard.press("ArrowDown");
-	await page.keyboard.press("ArrowDown");
+	// Enter chooses the focused radio option and returns focus to the FAB.
+	await menu.getByRole("menuitemradio", { name: /Four panes/ }).focus();
 	await page.keyboard.press("Enter");
 
 	await expect(menu).toHaveCount(0);
 	await expect(trigger).toBeFocused();
 
-	await trigger.click();
+	const reopened = await tabelo.openLayoutMenu();
 	await expect(
-		page.getByRole("menu", { name: /^Layout:/ }).getByRole("menuitemradio", {
+		reopened.getByRole("menuitemradio", {
 			checked: true,
 		}),
 	).toHaveCount(1);
 
 	// Escape closes without choosing.
 	await page.keyboard.press("Escape");
-	await expect(page.getByRole("menu", { name: /^Layout:/ })).toHaveCount(0);
+	await page.keyboard.press("Escape");
+	await expect(reopened).toHaveCount(0);
 	await expect(trigger).toBeFocused();
 });
 
 test("no choice depends on colour or a hidden icon alone", async ({
-	page,
 	tabelo,
 }) => {
 	await expect(tabelo.workspace).toBeVisible();
-	await page.getByRole("button", { name: /^Layout:/ }).click();
+	const menu = await tabelo.openLayoutMenu();
 
 	// Every option carries its state as a role and aria-checked, so nothing is
 	// left to a tint that a screen reader cannot see.
-	const states = await page
-		.getByRole("menu", { name: /^Layout:/ })
+	const states = await menu
 		.locator('[role="menuitemradio"]')
 		.evaluateAll((items) =>
 			items.map((item) => item.getAttribute("aria-checked")),

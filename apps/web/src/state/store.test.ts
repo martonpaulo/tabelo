@@ -16,7 +16,7 @@ describe("transactional input", () => {
 		});
 		const before = useTabeloStore.getState();
 
-		before.importText('Name,Note\nAna,"unterminated', "csv");
+		before.importText('Name,Note\nInez,"unterminated', "csv");
 
 		const after = useTabeloStore.getState();
 		expect(after.document).toBe(before.document);
@@ -44,7 +44,7 @@ describe("transactional input", () => {
 	it("keeps a successful import to one document-history operation", () => {
 		const before = documentToMatrix(useTabeloStore.getState().document);
 
-		useTabeloStore.getState().importText("Name,Role\nAna,Designer", "csv");
+		useTabeloStore.getState().importText("Name,Role\nInez,Designer", "csv");
 
 		expect(useTabeloStore.getState().past).toHaveLength(1);
 		useTabeloStore.getState().undo();
@@ -109,7 +109,7 @@ describe("header correction", () => {
 	});
 
 	it("does not offer correction when a blank first-row cell stays data", () => {
-		useTabeloStore.getState().importText("Name,\nAna,Designer", "csv");
+		useTabeloStore.getState().importText("Name,\nInez,Designer", "csv");
 
 		const state = useTabeloStore.getState();
 		expect(state.headerCorrection).toBeNull();
@@ -122,7 +122,7 @@ describe("header correction", () => {
 	it("binds text-header correction to the imported document", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nAna\tDesigner" });
+			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
 
 		const state = useTabeloStore.getState();
 		expect(state.headerCorrection?.document).toBe(state.document);
@@ -131,9 +131,9 @@ describe("header correction", () => {
 	it("invalidates correction after a grid edit", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nAna\tDesigner" });
+			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
 
-		useTabeloStore.getState().editCell(0, 0, "Bruno");
+		useTabeloStore.getState().editCell(0, 0, "Mark");
 
 		expect(useTabeloStore.getState().headerCorrection).toBeNull();
 	});
@@ -141,7 +141,7 @@ describe("header correction", () => {
 	it("invalidates correction after a successful source commit", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nAna\tDesigner" });
+			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
 
 		const state = useTabeloStore.getState();
 		const paneId = state.workspace.panes.find(
@@ -151,7 +151,7 @@ describe("header correction", () => {
 		state.setDraft(
 			paneId ?? "",
 			"markdown",
-			"| Other | Role |\n| --- | --- |\n| Bruno | Developer |",
+			"| Other | Role |\n| --- | --- |\n| Mark | Developer |",
 		);
 
 		expect(useTabeloStore.getState().headerCorrection).toBeNull();
@@ -160,12 +160,12 @@ describe("header correction", () => {
 	it("refuses a correction whose imported revision is no longer current", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nAna\tDesigner" });
+			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
 		const imported = useTabeloStore.getState().document;
 		const replacement = documentFromMatrix(
 			[
 				["Other", "Role"],
-				["Bruno", "Developer"],
+				["Mark", "Developer"],
 			],
 			{ headerRow: true },
 		);
@@ -183,7 +183,7 @@ describe("header correction", () => {
 	it("makes correction and undo one atomic step each", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nAna\tDesigner" });
+			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
 		const imported = documentToMatrix(useTabeloStore.getState().document);
 
 		useTabeloStore.getState().demoteHeader();
@@ -191,7 +191,7 @@ describe("header correction", () => {
 		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
 			["Column 1", "Column 2"],
 			["Name", "Role"],
-			["Ana", "Designer"],
+			["Inez", "Designer"],
 		]);
 		expect(useTabeloStore.getState().headerCorrection).toBeNull();
 
@@ -206,7 +206,7 @@ describe("header correction", () => {
 	it("dismisses only the correction notice", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nAna\tDesigner" });
+			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
 		const before = useTabeloStore.getState().document;
 
 		useTabeloStore.getState().dismissNotice();

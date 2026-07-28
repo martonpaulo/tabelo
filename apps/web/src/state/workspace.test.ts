@@ -14,8 +14,8 @@ import { useTabeloStore } from "./store";
 // reach a shape the gallery cannot, and cannot lose work on the way.
 
 const initialState = useTabeloStore.getInitialState();
-const invalidMarkdown = "| Name |\n| not a divider |\n| Ana |";
-const validMarkdown = "| Name |\n| --- |\n| Ana |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
+const validMarkdown = "| Name |\n| --- |\n| Inez |";
 
 beforeEach(() => {
 	useTabeloStore.getState().discardDraft();
@@ -93,7 +93,7 @@ describe("adding a view", () => {
 
 	it("does not disturb a pending draft in another pane", () => {
 		const paneId = markdownPaneId();
-		useTabeloStore.getState().setDraft(paneId, "markdown", "Name\nAna");
+		useTabeloStore.getState().setDraft(paneId, "markdown", "Name\nInez");
 
 		useTabeloStore.getState().addPane();
 

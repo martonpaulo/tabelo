@@ -53,10 +53,38 @@ export const editorTheme = EditorView.theme({
 			backgroundColor: "var(--selection-fill)",
 		},
 	".cm-selectionMatch": { backgroundColor: "var(--selection-fill)" },
-	// The line the parser complained about, marked without moving anything.
-	".cm-invalidLine": {
-		backgroundColor: "color-mix(in oklch, var(--destructive), transparent 88%)",
-		boxShadow: "inset 2px 0 0 var(--destructive)",
+	".cm-tableHeaderLine": {
+		backgroundColor: "var(--surface-header)",
+		boxShadow: "inset 0 -1px 0 var(--line-strong)",
+	},
+	".cm-tableDelimiter": { color: "var(--muted-foreground)" },
+	".cm-tableDivider": { color: "var(--selection-edge)" },
+	".cm-diagnosticError": {
+		textDecorationLine: "underline",
+		textDecorationStyle: "wavy",
+		textDecorationColor: "var(--destructive)",
+		textDecorationThickness: "1.5px",
+		textUnderlineOffset: "3px",
+	},
+	".cm-diagnosticWarning": {
+		textDecorationLine: "underline",
+		textDecorationStyle: "dotted",
+		textDecorationColor: "var(--status-warning)",
+		textDecorationThickness: "1.5px",
+		textUnderlineOffset: "3px",
+	},
+	".cm-tooltip": {
+		border: "1px solid var(--line-strong)",
+		backgroundColor: "var(--popover)",
+		color: "var(--popover-foreground)",
+	},
+	".cm-diagnosticTooltip": {
+		maxWidth: "20rem",
+		padding: "calc(var(--spacing) * 2)",
+		whiteSpace: "pre-line",
+		fontFamily: "var(--font-sans)",
+		fontSize: "0.75rem",
+		lineHeight: "1.5",
 	},
 });
 
@@ -78,7 +106,10 @@ export const highlightStyle = HighlightStyle.define([
 	{ tag: tags.monospace, color: "var(--foreground)" },
 	// Quoted CSV fields — the case where punctuation inside a value is data.
 	{ tag: tags.string, color: "var(--selection-edge)" },
-	{ tag: tags.escape, color: "var(--status-pending)" },
+	{ tag: tags.escape, color: "var(--status-warning)" },
+	{ tag: tags.tagName, color: "var(--selection-edge)" },
+	{ tag: tags.attributeName, color: "var(--status-warning)" },
+	{ tag: tags.comment, color: "var(--muted-foreground)", fontStyle: "italic" },
 	{ tag: tags.invalid, color: "var(--destructive)" },
 ]);
 

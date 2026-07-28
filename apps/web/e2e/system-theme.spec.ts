@@ -29,7 +29,7 @@ test("first paint follows the system before application JavaScript runs", async 
 	expect(dark.rootClass).not.toContain("dark");
 });
 
-test("system changes apply live and the retired preference is cleared", async ({
+test("system changes apply live and an obsolete preference is ignored", async ({
 	page,
 }) => {
 	await page.emulateMedia({ colorScheme: "light" });
@@ -39,9 +39,9 @@ test("system changes apply live and the retired preference is cleared", async ({
 	await page.goto("/");
 	await page.getByRole("main", { name: "Workspace" }).waitFor();
 
-	expect(
-		await page.evaluate(() => localStorage.getItem("tabelo.theme")),
-	).toBeNull();
+	expect(await page.evaluate(() => localStorage.getItem("tabelo.theme"))).toBe(
+		"dark",
+	);
 	await expect(page.getByRole("button", { name: /^Theme:/ })).toHaveCount(0);
 	const lightBackground = await page
 		.locator("body")

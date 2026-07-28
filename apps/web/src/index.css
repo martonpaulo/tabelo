@@ -22,9 +22,7 @@
 	--color-selection-edge: var(--selection-edge);
 
 	/* Synchronization state. Always paired with a text label, never colour alone. */
-	--color-status-ok: var(--status-ok);
-	--color-status-pending: var(--status-pending);
-	--color-status-invalid: var(--status-invalid);
+	--color-status-warning: var(--status-warning);
 
 	/* Control geometry. */
 	--spacing-control-sm: var(--control-h-sm);
@@ -35,6 +33,7 @@
 	--spacing-grid-col: var(--grid-col-w);
 	--spacing-grid-col-min: var(--grid-col-w-min);
 	--spacing-pane-stack: var(--pane-stack-h);
+	--spacing-fab: var(--fab-size);
 	--radius-interactive: var(--interactive-radius);
 
 	--font-source: var(--font-family-source);
@@ -64,9 +63,7 @@
 	--selection-fill: oklch(0.61 0.15 250 / 12%);
 	--selection-edge: oklch(0.53 0.15 250);
 
-	--status-ok: oklch(0.63 0.15 155);
-	--status-pending: oklch(0.72 0.15 75);
-	--status-invalid: var(--destructive);
+	--status-warning: oklch(0.72 0.15 75);
 
 	--control-h-sm: 1.75rem;
 	--control-h-md: 2rem;
@@ -78,6 +75,7 @@
 	/* How tall a pane stays once the workspace stacks. Enough of the table to
 	   work in, accepting that reaching the next pane means scrolling. */
 	--pane-stack-h: 60vh;
+	--fab-size: 3rem;
 	--interactive-radius: 0.375rem;
 	--radius: var(--interactive-radius);
 
@@ -117,8 +115,7 @@
 		--selection-fill: oklch(0.67 0.13 250 / 25%);
 		--selection-edge: oklch(0.72 0.13 250);
 
-		--status-ok: oklch(0.72 0.15 155);
-		--status-pending: oklch(0.79 0.14 75);
+		--status-warning: oklch(0.79 0.14 75);
 
 		--foreground: oklch(0.94 0.009 75);
 		--card-foreground: var(--foreground);

@@ -8,7 +8,14 @@ import type { ImportError } from "@/import/prepare";
 export const copy = {
 	app: {
 		name: "Tabelo",
-		tagline: "Edit a table visually, as Markdown, or as CSV.",
+		tagline: "Edit one table in every view — always in sync.",
+	},
+
+	newTable: {
+		title: "Start a new table?",
+		description:
+			"This clears the current table and any unfinished source edits.",
+		confirm: "Start new table",
 	},
 
 	workspace: {
@@ -28,16 +35,7 @@ export const copy = {
 		resetZoom: "Reset zoom",
 	},
 
-	status: {
-		invalid: "Not valid yet",
-		invalidFeedback:
-			"Source is not valid yet. Other views still show the last valid table.",
-	},
-
 	source: {
-		details: "Details",
-		showFeedback: (kind: "issue" | "warning", count: number) =>
-			`Show ${count} ${kind}${count === 1 ? "" : "s"}`,
 		issue: (issue: ParseIssue) => {
 			let message: string;
 			switch (issue.code) {
@@ -91,7 +89,8 @@ export const copy = {
 	},
 
 	actions: {
-		file: "File",
+		openAppMenu: "Open Tabelo menu",
+		github: "View on GitHub",
 		dismiss: "Dismiss",
 		undo: "Undo",
 		redo: "Redo",
@@ -230,7 +229,7 @@ export const copy = {
 		grid: "Table editor",
 		workspace: "Workspace",
 		pane: (label: string) => `${label} pane`,
-		rowNumber: (index: number) => `Row ${index + 1}`,
+		rowNumber: (index: number) => `Row ${index + 2}`,
 		columnLetter: (index: number) => `Column ${index + 1}`,
 		// Header cells name themselves after what they contain, because that name
 		// is what a screen reader reads out as the context for every cell beneath
@@ -241,7 +240,7 @@ export const copy = {
 		// The editor that opens inside a cell is a control, not a cell, so it
 		// names itself by position rather than borrowing the cell's value.
 		cellEditor: (row: number, column: number) =>
-			`Row ${row + 1}, column ${column + 1}`,
+			`Row ${row + 2}, column ${column + 1}`,
 		headerEditor: (header: string, column: number) =>
 			`Rename ${header.trim() === "" ? `column ${column + 1}` : header}`,
 		sourceEditor: (format: string) => `${format} source`,

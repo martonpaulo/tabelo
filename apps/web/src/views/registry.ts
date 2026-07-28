@@ -104,7 +104,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		icon: Tags,
 		kind: "source",
 		codec: jiraCodec,
-		highlight: "plain",
+		highlight: "jira",
 		capabilities: sourceCapabilities,
 	},
 

@@ -1,11 +1,8 @@
-import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { createRouter, Navigate, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
-import { migrateLegacyThemePreference } from "@/theme/system-theme";
 
 import Loader from "./components/loader";
 import { routeTree } from "./routeTree.gen";
-
-migrateLegacyThemePreference(window);
 
 const router = createRouter({
 	routeTree,
@@ -13,6 +10,7 @@ const router = createRouter({
 	defaultPreload: "intent",
 	scrollRestoration: true,
 	defaultPendingComponent: () => <Loader />,
+	defaultNotFoundComponent: () => <Navigate to="/" replace />,
 	context: {},
 });
 

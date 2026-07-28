@@ -14,23 +14,23 @@ function matrixOf(text: string) {
 
 describe("csv parsing", () => {
 	it("keeps a delimiter inside a quoted value", () => {
-		expect(matrixOf('Name,Note\nAna,"a,b"')).toEqual([
+		expect(matrixOf('Name,Note\nInez,"a,b"')).toEqual([
 			["Name", "Note"],
-			["Ana", "a,b"],
+			["Inez", "a,b"],
 		]);
 	});
 
 	it("keeps a line break inside a quoted value", () => {
-		expect(matrixOf('Name,Note\nAna,"line one\nline two"')).toEqual([
+		expect(matrixOf('Name,Note\nInez,"line one\nline two"')).toEqual([
 			["Name", "Note"],
-			["Ana", "line one\nline two"],
+			["Inez", "line one\nline two"],
 		]);
 	});
 
 	it("unescapes doubled quotes", () => {
-		expect(matrixOf('Name,Note\nAna,"he said ""hi"""')).toEqual([
+		expect(matrixOf('Name,Note\nInez,"he said ""hi"""')).toEqual([
 			["Name", "Note"],
-			["Ana", 'he said "hi"'],
+			["Inez", 'he said "hi"'],
 		]);
 	});
 
@@ -116,7 +116,7 @@ describe("csv serialization", () => {
 	it("round-trips hostile values", () => {
 		const original = [
 			["Name", "Note"],
-			["Ana", 'a,b\nc"d'],
+			["Inez", 'a,b\nc"d'],
 			["", ""],
 		];
 		const document = documentFromMatrix(original, { headerRow: true });
