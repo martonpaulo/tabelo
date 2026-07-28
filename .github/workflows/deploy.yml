@@ -52,13 +52,10 @@ jobs:
         include:
           - project: chromium
             shard: 1
-            shard_total: 3
+            shard_total: 2
           - project: chromium
             shard: 2
-            shard_total: 3
-          - project: chromium
-            shard: 3
-            shard_total: 3
+            shard_total: 2
           - project: firefox
             shard: 1
             shard_total: 2
