@@ -169,7 +169,7 @@ jobs:
 
   deploy:
     name: Deploy to GitHub Pages
-    needs: [check, e2e, merge-reports, build-pages]
+    needs: [check, e2e, build-pages]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
