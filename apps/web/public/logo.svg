@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Tabelo">
+  <style>
+    :root {
+      --mark-ink: #242424;
+      --mark-accent: #0f6cbd;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --mark-ink: #ffffff;
+        --mark-accent: #4da6ff;
+      }
+    }
+  </style>
+  <path fill="var(--mark-accent)" d="M9 9h46v13H9zM24.5 24.5h15v14H24.5z" />
+  <g fill="none" stroke="var(--mark-ink)" stroke-linecap="round" stroke-linejoin="round" stroke-width="5">
+    <rect x="6.5" y="6.5" width="51" height="51" rx="7.5" />
+    <path d="M7 23h50M7 40h50M23.5 7v50M40.5 7v50" />
+  </g>
+</svg>

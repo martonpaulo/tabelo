@@ -26,6 +26,7 @@ export const copy = {
 		closeView: "Close view",
 		pane: "Pane",
 		paneActions: "Pane actions",
+		readOnly: "Read only",
 		activePane: "Active pane",
 		resizeColumns: "Resize columns",
 		resizeRows: "Resize rows",

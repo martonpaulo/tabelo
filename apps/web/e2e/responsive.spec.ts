@@ -32,6 +32,19 @@ async function paneWidths(page: Page): Promise<number[]> {
 	);
 }
 
+async function workspaceContentWidth(page: Page): Promise<number> {
+	return page.evaluate(() => {
+		const main = document.querySelector("main");
+		if (!main) return 0;
+		const style = getComputedStyle(main);
+		return Math.round(
+			main.clientWidth -
+				Number.parseFloat(style.paddingLeft) -
+				Number.parseFloat(style.paddingRight),
+		);
+	});
+}
+
 for (const preset of PRESETS) {
 	test(`${preset} stacks into one readable column below 900px`, async ({
 		page,
@@ -43,14 +56,15 @@ for (const preset of PRESETS) {
 		for (const width of NARROW) {
 			await page.setViewportSize({ width, height: 700 });
 
-			// Every pane spans the viewport: none is a sliver beside another.
+			// Every pane spans the workspace content box: none is a sliver beside
+			// another. The app background remains visible as the designed inset.
 			// Polled, because the media query and React's re-render land a frame
 			// after the resize.
 			await expect
 				.poll(async () => Math.min(...(await paneWidths(page))), {
 					message: `${preset} at ${width}px`,
 				})
-				.toBeGreaterThanOrEqual(width - 2);
+				.toBeGreaterThanOrEqual((await workspaceContentWidth(page)) - 2);
 			expect(await paneWidths(page), `${preset} at ${width}px`).toHaveLength(
 				expected,
 			);
@@ -75,7 +89,7 @@ test("the tiling returns unchanged at 900px", async ({ page, tabelo }) => {
 	await page.setViewportSize({ width: 390, height: 700 });
 	await expect
 		.poll(async () => Math.min(...(await paneWidths(page))))
-		.toBeGreaterThanOrEqual(388);
+		.toBeGreaterThanOrEqual((await workspaceContentWidth(page)) - 2);
 
 	await page.setViewportSize({ width: 900, height: 700 });
 

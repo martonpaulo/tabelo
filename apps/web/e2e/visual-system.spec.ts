@@ -41,7 +41,7 @@ async function contrastBetween(
 	);
 }
 
-test("interactive surfaces share one radius while table structure stays square", async ({
+test("controls and surfaces use their hierarchy radii while table structure stays square", async ({
 	page,
 	tabelo,
 }) => {
@@ -49,27 +49,55 @@ test("interactive surfaces share one radius while table structure stays square",
 	const appButton = page.getByRole("button", { name: "Open Tabelo menu" });
 	const emptyState = page.getByText("Start with an empty table").locator("..");
 
-	await expect(appButton).toHaveCSS("border-radius", "6px");
+	expect(
+		await page
+			.locator("body")
+			.evaluate((element) => getComputedStyle(element).fontFamily),
+	).toContain("Segoe UI");
+	await expect(appButton).toHaveCSS("border-radius", "4px");
+	await expect(appButton.locator("img")).toHaveAttribute("src", /logo\.svg$/);
+	await expect(appButton.locator("img")).toHaveJSProperty("complete", true);
 	await expect(tabelo.workspace.getByRole("region")).toHaveCount(2);
-	await expect(emptyState).toHaveCSS("border-radius", "6px");
+	await expect(emptyState).toHaveCSS("border-radius", "8px");
 	await expect(tabelo.cell(1, 1)).toHaveCSS("border-radius", "0px");
-	await expect(pane).toHaveCSS("border-radius", "0px");
+	await expect(pane).toHaveCSS("border-radius", "8px");
 	await expect(pane.getByRole("heading").first()).toHaveCSS(
 		"font-size",
 		"14px",
 	);
 	await expect(pane.getByRole("heading").first().locator("..")).toHaveCSS(
 		"border-bottom-width",
-		"0px",
+		"1px",
 	);
 
 	await appButton.click();
 	const menu = page.getByRole("menu", { name: "Open Tabelo menu" });
-	await expect(menu).toHaveCSS("border-radius", "6px");
+	await expect(menu).toHaveCSS("border-radius", "8px");
 	await expect(menu.getByRole("menuitem", { name: "New table" })).toHaveCSS(
 		"font-size",
 		"14px",
 	);
+});
+
+test("read-only panes use a written cue and a distinct surface", async ({
+	tabelo,
+}) => {
+	await tabelo.choosePaneView("Markdown", "Rendered preview");
+	const editablePane = tabelo.pane("Visual table");
+	const readOnlyPane = tabelo.pane("Rendered preview");
+
+	await expect(
+		readOnlyPane.getByText("Read only", { exact: true }),
+	).toBeVisible();
+	const editableBackground = await editablePane
+		.locator(":scope > div")
+		.last()
+		.evaluate((element) => getComputedStyle(element).backgroundColor);
+	const readOnlyBackground = await readOnlyPane
+		.locator(":scope > div")
+		.last()
+		.evaluate((element) => getComputedStyle(element).backgroundColor);
+	expect(readOnlyBackground).not.toBe(editableBackground);
 });
 
 test("a single pane keeps the same compact hierarchy without extra framing", async ({
@@ -132,6 +160,10 @@ test("light and dark text and focus tokens meet their contrast floors", async ({
 	await page.goto("/");
 	for (const dark of [false, true]) {
 		await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
+		await expect(page.locator("body")).toHaveCSS(
+			"background-color",
+			dark ? "rgb(31, 31, 31)" : "rgb(240, 240, 240)",
+		);
 		expect(
 			await contrastBetween(page, "--foreground", "--surface-panel"),
 		).toBeGreaterThanOrEqual(4.5);

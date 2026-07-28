@@ -21,7 +21,7 @@ export function Notice({
 		<div
 			role="status"
 			className={cn(
-				"flex flex-wrap items-center gap-2 rounded-interactive px-3 py-2 text-sm",
+				"flex flex-wrap items-center gap-2 rounded-surface px-3 py-2 text-sm",
 				tone === "warning" ? "bg-destructive/10" : "bg-surface-header",
 				className,
 			)}

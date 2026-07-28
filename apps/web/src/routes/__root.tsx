@@ -21,6 +21,12 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 		links: [
 			{
 				rel: "icon",
+				type: "image/svg+xml",
+				href: `${import.meta.env.BASE_URL}logo.svg`,
+			},
+			{
+				rel: "icon",
+				sizes: "any",
 				// Base-relative: GitHub Pages serves this app from a subpath.
 				href: `${import.meta.env.BASE_URL}favicon.ico`,
 			},

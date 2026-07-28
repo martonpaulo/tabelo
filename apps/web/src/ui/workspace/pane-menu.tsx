@@ -51,6 +51,11 @@ export function PaneIdentity({
 		<h2 className="flex min-w-0 items-center gap-1.5 font-medium text-sm">
 			<Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
 			<span className="truncate">{compact ? view.shortLabel : view.label}</span>
+			{view.capabilities.editable ? null : (
+				<span className="shrink-0 rounded-interactive bg-surface-panel px-1.5 py-0.5 font-normal text-muted-foreground text-xs ring-1 ring-line-subtle">
+					{copy.workspace.readOnly}
+				</span>
+			)}
 		</h2>
 	);
 }

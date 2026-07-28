@@ -1,5 +1,9 @@
 # Tabelo
 
+<p align="center">
+  <img src="apps/web/public/logo.svg" width="96" height="96" alt="Tabelo logo" />
+</p>
+
 **One table, seven views, zero copy-and-paste between them.**
 
 Hi! Tabelo is a small table editor for the moments when a spreadsheet is too

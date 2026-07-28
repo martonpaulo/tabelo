@@ -20,7 +20,6 @@ import {
 	ExternalLink,
 	FilePlus2,
 	LayoutGrid,
-	Menu,
 	Redo2,
 	Undo2,
 	Upload,
@@ -107,12 +106,18 @@ export function AppMenu({ onImport, onDownload, onNewTable }: AppMenuProps) {
 					<Button
 						ref={triggerRef}
 						aria-label={copy.actions.openAppMenu}
+						variant="outline"
 						size="icon-lg"
-						className="fixed right-3 bottom-3 z-40 size-fab border-line-strong shadow-lg"
+						className="fixed right-3 bottom-3 z-40 size-fab border-line-strong bg-surface-panel shadow-lg"
 					/>
 				}
 			>
-				<Menu aria-hidden className="size-5" />
+				<img
+					aria-hidden
+					alt=""
+					src={`${import.meta.env.BASE_URL}logo.svg`}
+					className="size-7"
+				/>
 			</DropdownMenuTrigger>
 
 			<DropdownMenuContent

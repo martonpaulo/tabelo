@@ -10,7 +10,7 @@ import { importTableFile } from "@/ui/import";
 export function EmptyState() {
 	return (
 		<div className="flex justify-start px-4 py-6">
-			<div className="max-w-md rounded-interactive bg-surface-header p-4">
+			<div className="max-w-md rounded-surface bg-surface-header p-4">
 				<h3 className="font-medium text-sm">{copy.empty.title}</h3>
 				<p className="mt-1 text-muted-foreground text-sm leading-relaxed">
 					{copy.empty.body}

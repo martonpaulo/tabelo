@@ -14,7 +14,7 @@ function PanelRoot({
 	return (
 		<section
 			className={cn(
-				"flex min-h-0 min-w-0 flex-col overflow-hidden bg-surface-panel",
+				"flex min-h-0 min-w-0 flex-col overflow-hidden rounded-surface bg-surface-panel ring-1 ring-line-subtle",
 				className,
 			)}
 			{...props}
@@ -34,7 +34,7 @@ function PanelHeader({
 	return (
 		<header
 			className={cn(
-				"flex h-panel-header shrink-0 items-center gap-1.5 bg-surface-header px-3",
+				"flex h-panel-header shrink-0 items-center gap-1.5 border-line-subtle border-b bg-surface-header px-3",
 				className,
 			)}
 		>

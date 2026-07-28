@@ -12,6 +12,7 @@
 	--color-surface-panel: var(--surface-panel);
 	--color-surface-header: var(--surface-header);
 	--color-surface-gutter: var(--surface-gutter);
+	--color-surface-readonly: var(--surface-readonly);
 
 	/* Separators. Subtle is the default; strong marks a panel boundary. */
 	--color-line-subtle: var(--line-subtle);
@@ -34,7 +35,8 @@
 	--spacing-grid-col-min: var(--grid-col-w-min);
 	--spacing-pane-stack: var(--pane-stack-h);
 	--spacing-fab: var(--fab-size);
-	--radius-interactive: var(--interactive-radius);
+	--radius-interactive: var(--control-radius);
+	--radius-surface: var(--surface-radius);
 
 	--font-source: var(--font-family-source);
 }
@@ -52,18 +54,19 @@
 :root {
 	color-scheme: light dark;
 
-	--surface-app: oklch(0.982 0.006 78);
-	--surface-panel: oklch(0.995 0.004 78);
-	--surface-header: oklch(0.963 0.009 78);
-	--surface-gutter: oklch(0.974 0.007 78);
+	--surface-app: #f0f0f0;
+	--surface-panel: #ffffff;
+	--surface-header: #f5f5f5;
+	--surface-gutter: #f5f5f5;
+	--surface-readonly: #f5f5f5;
 
-	--line-subtle: oklch(0.9 0.009 78);
-	--line-strong: oklch(0.84 0.012 78);
+	--line-subtle: #e0e0e0;
+	--line-strong: #d1d1d1;
 
-	--selection-fill: oklch(0.61 0.15 250 / 12%);
-	--selection-edge: oklch(0.53 0.15 250);
+	--selection-fill: rgb(15 108 189 / 14%);
+	--selection-edge: #0f6cbd;
 
-	--status-warning: oklch(0.72 0.15 75);
+	--status-warning: #f59e0b;
 
 	--control-h-sm: 1.75rem;
 	--control-h-md: 2rem;
@@ -76,24 +79,26 @@
 	   work in, accepting that reaching the next pane means scrolling. */
 	--pane-stack-h: 60vh;
 	--fab-size: 3rem;
-	--interactive-radius: 0.375rem;
-	--radius: var(--interactive-radius);
+	--control-radius: 0.25rem;
+	--surface-radius: 0.5rem;
+	--radius: var(--control-radius);
 
-	/* Keep shadcn primitives on the same warm product surfaces. */
+	/* Keep shadcn primitives on the same neutral product surfaces. */
 	--background: var(--surface-panel);
-	--foreground: oklch(0.18 0.012 70);
+	--foreground: #242424;
 	--card: var(--surface-panel);
 	--card-foreground: var(--foreground);
 	--popover: var(--surface-panel);
 	--popover-foreground: var(--foreground);
-	--primary: var(--foreground);
-	--primary-foreground: var(--surface-panel);
+	--primary: #0f6cbd;
+	--primary-foreground: #ffffff;
 	--secondary: var(--surface-header);
 	--secondary-foreground: var(--foreground);
 	--muted: var(--surface-header);
-	--muted-foreground: oklch(0.46 0.018 70);
-	--accent: oklch(0.94 0.012 78);
-	--accent-foreground: var(--foreground);
+	--muted-foreground: #616161;
+	--accent: #eff6fc;
+	--accent-foreground: #0f6cbd;
+	--destructive: #dc2626;
 	--border: var(--line-subtle);
 	--input: var(--line-subtle);
 	--ring: var(--selection-edge);
@@ -104,28 +109,30 @@
 
 @media (prefers-color-scheme: dark) {
 	:root {
-		--surface-app: oklch(0.15 0.008 65);
-		--surface-panel: oklch(0.18 0.009 65);
-		--surface-header: oklch(0.225 0.011 65);
-		--surface-gutter: oklch(0.205 0.01 65);
+		--surface-app: #1f1f1f;
+		--surface-panel: #292929;
+		--surface-header: #333333;
+		--surface-gutter: #333333;
+		--surface-readonly: #242424;
 
-		--line-subtle: oklch(0.92 0.008 70 / 12%);
-		--line-strong: oklch(0.92 0.008 70 / 21%);
+		--line-subtle: #3d3d3d;
+		--line-strong: #484848;
 
-		--selection-fill: oklch(0.67 0.13 250 / 25%);
-		--selection-edge: oklch(0.72 0.13 250);
+		--selection-fill: rgb(77 166 255 / 24%);
+		--selection-edge: #4da6ff;
 
-		--status-warning: oklch(0.79 0.14 75);
+		--status-warning: #fbbf24;
 
-		--foreground: oklch(0.94 0.009 75);
+		--foreground: #ffffff;
 		--card-foreground: var(--foreground);
 		--popover-foreground: var(--foreground);
-		--primary: var(--foreground);
-		--primary-foreground: var(--surface-panel);
+		--primary: #4da6ff;
+		--primary-foreground: #1f1f1f;
 		--secondary-foreground: var(--foreground);
-		--muted-foreground: oklch(0.72 0.014 72);
-		--accent: oklch(0.28 0.014 65);
-		--accent-foreground: var(--foreground);
+		--muted-foreground: #d6d6d6;
+		--accent: #17324a;
+		--accent-foreground: #75b6e7;
+		--destructive: #f87171;
 	}
 }
 

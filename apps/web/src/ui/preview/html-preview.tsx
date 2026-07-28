@@ -19,49 +19,51 @@ export default function HtmlPreview() {
 	const document = useTabeloStore((state) => state.document);
 
 	return (
-		<div className="h-full overflow-auto p-6">
-			<table
-				aria-label={copy.a11y.preview}
-				className="w-full border-collapse text-content"
-			>
-				<thead>
-					<tr>
-						{document.columns.map((column) => (
-							<th
-								key={column.id}
-								scope="col"
-								className={cn(
-									"border-line-strong border-b-2 px-3 py-2 font-semibold",
-									alignClass[column.align],
-								)}
-							>
-								{column.header}
-							</th>
-						))}
-					</tr>
-				</thead>
-				<tbody>
-					{document.rows.map((row) => (
-						<tr key={row.id} className="even:bg-surface-header/60">
+		<div className="h-full overflow-auto p-4">
+			<div className="overflow-hidden rounded-surface bg-surface-panel ring-1 ring-line-subtle">
+				<table
+					aria-label={copy.a11y.preview}
+					className="w-full border-collapse text-content"
+				>
+					<thead>
+						<tr className="bg-surface-header">
 							{document.columns.map((column) => (
-								<td
+								<th
 									key={column.id}
+									scope="col"
 									className={cn(
-										"border-line-subtle border-b px-3 py-2 align-top",
+										"border-line-strong border-b-2 px-3 py-2 font-semibold",
 										alignClass[column.align],
 									)}
 								>
-									{/* A cell may legitimately contain line breaks; preserving
-									    them is the point of the escaping the codecs do. */}
-									<span className="whitespace-pre-wrap">
-										{row.cells[column.id] ?? ""}
-									</span>
-								</td>
+									{column.header}
+								</th>
 							))}
 						</tr>
-					))}
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						{document.rows.map((row) => (
+							<tr key={row.id} className="even:bg-surface-header/60">
+								{document.columns.map((column) => (
+									<td
+										key={column.id}
+										className={cn(
+											"border-line-subtle border-b px-3 py-2 align-top",
+											alignClass[column.align],
+										)}
+									>
+										{/* A cell may legitimately contain line breaks; preserving
+									    them is the point of the escaping the codecs do. */}
+										<span className="whitespace-pre-wrap">
+											{row.cells[column.id] ?? ""}
+										</span>
+									</td>
+								))}
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
 		</div>
 	);
 }

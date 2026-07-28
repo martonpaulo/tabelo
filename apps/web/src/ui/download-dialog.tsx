@@ -69,7 +69,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 				showCloseButton={false}
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
-				className="rounded-interactive text-sm"
+				className="text-sm"
 			>
 				<DialogHeader>
 					<DialogTitle id={titleId}>{copy.download.title}</DialogTitle>

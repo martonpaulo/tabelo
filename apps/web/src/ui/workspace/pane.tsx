@@ -62,7 +62,12 @@ export const Pane = memo(function Pane({
 			    pane keeps its header, controls, and focus targets at full size. */}
 			<Panel.Body
 				style={{ "--pane-zoom": pane.zoom } as React.CSSProperties}
-				className={view.kind === "source" ? "overflow-hidden" : undefined}
+				className={cn(
+					view.kind === "source" && "overflow-hidden",
+					view.capabilities.editable
+						? "bg-surface-panel"
+						: "bg-surface-readonly",
+				)}
 			>
 				<PaneContent paneId={pane.id} view={view} zoom={pane.zoom} />
 			</Panel.Body>

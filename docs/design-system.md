@@ -41,18 +41,24 @@ task; deciding that is the user's call, not yours.
 
 ## 1. The design line
 
-Tabelo is a **calm, compact, lightly warm table utility**. It follows the
-shadcn `base-lyra` style already configured in `packages/ui/components.json`
-without importing card-heavy dashboard styling.
+Tabelo is a **calm, compact, neutral table utility**. It follows the shadcn
+`base-lyra` style already configured in `packages/ui/components.json` without
+importing card-heavy dashboard styling.
+
+The neutral palette, system sans-serif stack, and 4px/8px radius scale are
+inspired by [petrroll/markdown-to-teams](https://github.com/petrroll/markdown-to-teams).
+This is visual direction, not a template: Tabelo keeps its own blue accent,
+stronger element hierarchy, and explicit editable/read-only distinction. No
+source code or visual asset from that project is copied into Tabelo.
 
 - **Structured.** Grid cells, row and column headers, resize affordances, pane
   edges, and major workspace divisions are rectilinear. The table remains the
   visual anchor.
-- **Friendly.** Buttons, fields, menus, notices, empty states, and other
-  interactive or floating surfaces share one small radius. There are no pills
-  or arbitrarily rounded containers.
-- **Quietly warm.** Low-chroma warm neutrals distinguish surfaces before lines
-  do. Exactly one restrained accent colour means *selection or focus*. Status
+- **Friendly.** Buttons and fields use a 4px control radius. Panels, menus,
+  dialogs, notices, and other contained or floating surfaces use an 8px surface
+  radius. There are no pills or arbitrarily rounded containers.
+- **Neutral with one blue accent.** Neutral greys distinguish surfaces before
+  lines do. Blue marks focus, selection, and checked or active controls. Status
   colours are the only other colours and always have written meaning.
 - **Compact, not tiny.** Controls remain 28–32px tall. Critical labels stay at
   14px; space comes from removing repetition and progressive disclosure, never
@@ -74,9 +80,12 @@ shadcn's tokens from `packages/ui/src/styles/globals.css`.
 ### Rule: never write a raw value
 
 No hex colours, no `oklch()` outside the token file, and no arbitrary pixel
-sizes. `rounded-interactive` is the only radius utility on product surfaces;
-structural table and workspace geometry stays square. If you need a value that
-has no token, that is a pattern break — follow §0.
+sizes. Use `rounded-interactive` for controls and `rounded-surface` for panels
+and contained or floating surfaces. Structural table geometry stays square. If
+you need a value that has no token, that is a pattern break — follow §0.
+Platform metadata and standalone SVG assets are the narrow exception because
+they cannot consume CSS variables; they repeat an existing token exactly and
+must never introduce another palette value.
 
 ### Surfaces
 
@@ -86,9 +95,12 @@ has no token, that is a pattern break — follow §0.
 | `--surface-panel` | `bg-surface-panel` | A pane's content area |
 | `--surface-header` | `bg-surface-header` | Pane headers, grid column headers |
 | `--surface-gutter` | `bg-surface-gutter` | The grid's row-number gutter |
+| `--surface-readonly` | `bg-surface-readonly` | A pane body that cannot be edited |
 
 Order matters: app is furthest back, gutter and header sit above panel. Use
-these low-chroma warm tones to group related content before adding a line.
+these neutral tones to group related content before adding a line. Editable
+pane bodies use `--surface-panel`; a read-only pane uses
+`--surface-readonly` and a written "Read only" cue in its header.
 
 ### Lines
 
@@ -101,15 +113,17 @@ Borders are always 1px. Use them for the table grid, pane boundaries, or an
 explicit state. Prefer tonal separation for buttons,
 notices, empty states, and pane headers; never use a border to decorate.
 
-### Selection — the only accent
+### Accent
 
 | Token | Utility | Use |
 | :--- | :--- | :--- |
 | `--selection-fill` | `bg-selection-fill` | Background of selected cells |
 | `--selection-edge` | `outline-selection-edge` | The focused cell's outline, focus rings, resize affordance |
 
-Do not use the accent for anything that is not selection or focus. Buttons are
-not accent-coloured. Links are not accent-coloured.
+The accent family is blue in both themes. Use its solid tone only for focus,
+selection, and checked or active controls; use the pale tone for hover or
+selection fills. Ordinary neutral buttons and links do not become blue merely
+for decoration.
 
 ### Status
 
@@ -142,11 +156,12 @@ paint.
 | `--grid-row-h` | `h-grid-row` | 32px — one table row |
 | `--grid-col-w` | `w-grid-col` | 168px — default column width |
 | `--grid-col-w-min` | `w-grid-col-min` | 72px — resize floor |
-| `--interactive-radius` | `rounded-interactive` | 6px — every interactive, contained, or floating surface |
+| `--control-radius` | `rounded-interactive` | 4px — buttons, fields, menu items, badges |
+| `--surface-radius` | `rounded-surface` | 8px — panes, menus, dialogs, notices, empty states |
 
-`--interactive-radius` applies to buttons, fields, menus, tooltips, notices, and
-empty-state containers. It never applies to grid
-cells, row or column headers, pane frames, pane divisions, or layout glyphs.
+The two radii communicate hierarchy rather than decoration. Grid cells, row or
+column headers, resize tracks, and layout glyphs stay square because their
+geometry communicates table structure.
 
 ### Per-pane content scale
 
@@ -197,6 +212,10 @@ padding inside a pane header is `3`; cell padding is `2` horizontal, `1.5`
 vertical.
 
 ### Typography
+
+Interface text uses `"Segoe UI", Aptos, Calibri, -apple-system,
+BlinkMacSystemFont, sans-serif`. The source editor keeps the existing
+`ui-monospace`, `SF Mono`, `Cascadia Mono`, `Menlo`, `monospace` stack.
 
 | Role | Classes |
 | :--- | :--- |
@@ -282,7 +301,7 @@ which sits in the layout instead of covering the table.
 
 | Rule | Treatment |
 | :--- | :--- |
-| Surface | `rounded-interactive`, `bg-popover`, one shadow — a floating layer |
+| Surface | `rounded-surface`, `bg-popover`, one shadow — a floating layer |
 | Body text | `text-sm`; the same 14px floor as everywhere else |
 | Title | `DialogTitle`, `text-sm font-medium` |
 | Supporting copy | `DialogDescription`, one sentence saying what to choose |
@@ -349,6 +368,9 @@ not the only signal.
 
 - The workspace is a 2×2 slot grid holding one to four panes, arranged by
   preset — see `docs/adr/0006`. Never build a free slot editor.
+- The app surface remains visible as an 8px inset and an 8px gap between panes.
+  Each pane is an 8px-radius surface with a subtle outline; the active pane adds
+  the blue focus edge. This framing applies at every supported width.
 - The page never scrolls. Panes scroll independently.
 - Below 900px panes stack; the chosen layout is remembered, not discarded.
   Stacking **abandons** the tiling rather than narrowing it: the grid becomes a
@@ -372,6 +394,9 @@ not the only signal.
 - Each pane header shows a stable, non-interactive view identity. View changes
   and other low-frequency pane actions share one visibly labelled Pane menu;
   the grid's contextual Table actions may remain beside it.
+- Editable pane bodies use the main panel surface. A non-editable pane uses the
+  read-only surface and the written "Read only" label. Never rely on a muted
+  background alone to communicate editability.
 - The Pane menu is flat. Changing the view, adding a view, closing the view, and
   zooming are all plain items in it — never a submenu of formats. Add view grows
   the workspace and hands the new pane's menu the focus, so the second half of
@@ -405,9 +430,12 @@ hover, on `focus-within` of the row or column, while the menu is open, and for
 whichever row and column the selection is currently in: the last of those is
 what teaches the relationship without putting an icon on every row at once.
 The floating trigger has a stable accessible name, and every command inside its
-menu keeps a visible label. The project icon is a small table grid with a
-visibly distinct header row; it must remain legible at favicon size and use the
-product palette rather than introducing new colours.
+menu keeps a visible label. It displays the project mark rather than a generic
+menu glyph. The mark is a small table grid whose blue header row and active
+centre cell form a compact T. `logo.svg` is the transparent, theme-adaptive
+browser and interface source; `logo-maskable.svg` supplies a full blue field
+and safe-area geometry for generated installable icons. Both must remain
+legible at 16px, use only product tokens, and keep the grid silhouette intact.
 
 ---
 
