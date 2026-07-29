@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	applyLayout,
 	createDefaultWorkspace,
+	getLayout,
 	gridAreaOf,
 	type LayoutId,
 	largerLayout,
@@ -20,6 +21,18 @@ import {
 // top of each other.
 
 describe("layout presets", () => {
+	it("contains only layouts with two to four panes", () => {
+		expect(layoutPresets).toHaveLength(7);
+		expect(layoutPresets.map((preset) => preset.id)).not.toContain("single");
+		expect(layoutPresets.every((preset) => preset.panes.length >= 2)).toBe(
+			true,
+		);
+	});
+
+	it("falls back to the named default layout", () => {
+		expect(getLayout("unknown" as LayoutId).id).toBe("columns");
+	});
+
 	it.each(layoutPresets.map((preset) => [preset.id, preset] as const))(
 		"%s covers every slot exactly once",
 		(_id, preset) => {
@@ -43,8 +56,6 @@ describe("layout presets", () => {
 	);
 
 	it("reports a split axis only when some pane occupies a single track", () => {
-		expect(layoutSplitsColumns("single")).toBe(false);
-		expect(layoutSplitsRows("single")).toBe(false);
 		expect(layoutSplitsColumns("columns")).toBe(true);
 		expect(layoutSplitsRows("columns")).toBe(false);
 		expect(layoutSplitsColumns("rows")).toBe(false);
@@ -82,10 +93,10 @@ describe("applying a layout", () => {
 		const preferred = before.at(-1);
 		expect(preferred).toBeDefined();
 
-		const after = applyLayout("single", before, preferred?.id);
+		const after = applyLayout("columns", before, preferred?.id);
 
-		expect(after[0].id).toBe(preferred?.id);
-		expect(after[0].view).toBe(preferred?.view);
+		expect(after.some((pane) => pane.id === preferred?.id)).toBe(true);
+		expect(after.some((pane) => pane.view === preferred?.view)).toBe(true);
 	});
 
 	it("fills panes a smaller layout did not have", () => {
@@ -113,11 +124,11 @@ describe("applying a layout", () => {
 		expect(new Set(added.map((pane) => pane.view)).size).toBe(added.length);
 	});
 
-	it("keeps the grid when collapsing to a single pane", () => {
+	it("keeps the grid when collapsing to two panes", () => {
 		const wide = applyLayout("quad");
-		const single = applyLayout("single", wide);
-		expect(single).toHaveLength(1);
-		expect(single[0].view).toBe(wide[0].view);
+		const columns = applyLayout("columns", wide);
+		expect(columns).toHaveLength(2);
+		expect(columns[0].view).toBe(wide[0].view);
 	});
 
 	it("gives every pane a distinct id", () => {
@@ -153,7 +164,7 @@ describe("pane count transitions", () => {
 
 	it.each(layoutIds)("shrinks from %s by exactly one pane", (id) => {
 		const target = smallerLayout(id);
-		if (paneCount(id) === 1) {
+		if (paneCount(id) === 2) {
 			expect(target).toBeUndefined();
 			return;
 		}
@@ -161,26 +172,44 @@ describe("pane count transitions", () => {
 		expect(paneCount(target as LayoutId)).toBe(paneCount(id) - 1);
 	});
 
-	it("reaches every pane count from one to four and back", () => {
+	it("reaches every pane count from two to four and back", () => {
 		const counts: number[] = [];
-		let id: LayoutId = "single";
+		let id: LayoutId = "columns";
 		counts.push(paneCount(id));
-		for (let step = 0; step < 3; step += 1) {
+		for (let step = 0; step < 2; step += 1) {
 			const next = largerLayout(id);
 			expect(next).toBeDefined();
 			id = next as LayoutId;
 			counts.push(paneCount(id));
 		}
-		expect(counts).toEqual([1, 2, 3, 4]);
+		expect(counts).toEqual([2, 3, 4]);
 
 		while (smallerLayout(id)) {
 			id = smallerLayout(id) as LayoutId;
 			counts.push(paneCount(id));
 		}
-		expect(counts).toEqual([1, 2, 3, 4, 3, 2, 1]);
+		expect(counts).toEqual([2, 3, 4, 3, 2]);
 	});
 
-	it("shrinks without moving any pane that survives", () => {
+	it("keeps both two-pane presets at the floor", () => {
+		expect(smallerLayout("columns")).toBeUndefined();
+		expect(smallerLayout("rows")).toBeUndefined();
+	});
+
+	it.each(["columns", "rows", "left-split"] as const)(
+		"closes back to %s after expanding it",
+		(id) => {
+			const larger = largerLayout(id);
+			expect(larger).toBeDefined();
+			expect(smallerLayout(larger as LayoutId)).toBe(id);
+		},
+	);
+
+	it("closes a top split back to rows", () => {
+		expect(smallerLayout("top-split")).toBe("rows");
+	});
+
+	it("shrinks without losing any surviving pane", () => {
 		for (const id of layoutIds) {
 			const target = smallerLayout(id);
 			if (!target) continue;
@@ -188,11 +217,12 @@ describe("pane count transitions", () => {
 			// Closing the last pane is the case where nothing else has to move.
 			const after = applyLayout(target, before.slice(0, -1));
 
-			for (const pane of after) {
-				const original = before.find((candidate) => candidate.id === pane.id);
-				expect(original).toBeDefined();
-				expect(cornerOf(pane)).toBe(cornerOf(original as WorkspacePane));
-			}
+			expect(after.map((pane) => pane.id).sort()).toEqual(
+				before
+					.slice(0, -1)
+					.map((pane) => pane.id)
+					.sort(),
+			);
 		}
 	});
 

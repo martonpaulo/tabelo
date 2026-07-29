@@ -7,8 +7,8 @@ import { DEFAULT_PANE_ZOOM } from "./zoom";
 //   --+--
 //   c | d
 //
-// A pane occupies one slot, two adjacent slots, or, as the "single" preset,
-// all four. Free-form slot assignment was deliberately not built: presets keep
+// A pane occupies one slot or two adjacent slots. Free-form slot assignment
+// was deliberately not built: presets keep
 // the choice to one obvious picker instead of a layout editor, which is the
 // difference between a utility and an IDE.
 
@@ -17,7 +17,6 @@ export type SlotId = "a" | "b" | "c" | "d";
 export const SLOT_ORDER: readonly SlotId[] = ["a", "b", "c", "d"];
 
 export type LayoutId =
-	| "single"
 	| "columns"
 	| "rows"
 	| "left-split"
@@ -33,10 +32,6 @@ export interface LayoutPreset {
 }
 
 export const layoutPresets: readonly LayoutPreset[] = [
-	{
-		id: "single",
-		panes: [["a", "b", "c", "d"]],
-	},
 	{
 		id: "columns",
 		panes: [
@@ -73,8 +68,12 @@ export const layoutPresets: readonly LayoutPreset[] = [
 	},
 ];
 
+const DEFAULT_LAYOUT = layoutPresets.find((preset) => preset.id === "columns");
+if (!DEFAULT_LAYOUT)
+	throw new Error("The default workspace layout is missing.");
+
 export function getLayout(id: LayoutId): LayoutPreset {
-	return layoutPresets.find((preset) => preset.id === id) ?? layoutPresets[1];
+	return layoutPresets.find((preset) => preset.id === id) ?? DEFAULT_LAYOUT;
 }
 
 export interface GridArea {
@@ -138,7 +137,6 @@ export function paneCount(id: LayoutId): number {
 // that leaves the most surviving panes in the slot they already started in,
 // which is what makes the change read as local rather than as a re-tiling.
 const LARGER_LAYOUT: Partial<Record<LayoutId, LayoutId>> = {
-	single: "columns",
 	columns: "left-split",
 	rows: "bottom-split",
 	"left-split": "quad",
@@ -148,11 +146,9 @@ const LARGER_LAYOUT: Partial<Record<LayoutId, LayoutId>> = {
 };
 
 const SMALLER_LAYOUT: Partial<Record<LayoutId, LayoutId>> = {
-	columns: "single",
-	rows: "single",
 	"left-split": "columns",
 	"right-split": "columns",
-	"top-split": "columns",
+	"top-split": "rows",
 	"bottom-split": "rows",
 	quad: "left-split",
 };

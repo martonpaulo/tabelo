@@ -408,7 +408,7 @@ not the only signal.
 
 ## 5. Layout
 
-- The workspace is a 2×2 slot grid holding one to four panes, arranged by
+- The workspace is a 2×2 slot grid holding two to four panes, arranged by
   preset: see `docs/adr/0006`. Never build a free slot editor.
 - The app surface remains visible as a 0.5rem inset and a 0.5rem gap between panes.
   Each pane is a 0.5rem-radius surface with a subtle outline; the active pane adds
@@ -453,9 +453,9 @@ not the only signal.
   tooltip explaining that it is already open. The current
   pane's own view remains selected and enabled. No workspace may show two
   instances of the same registered view.
-- Add view and Close view are disabled, not hidden, at four panes and at one.
+- Add view and Close view are disabled, not hidden, at four panes and at two.
 - Nothing may reflow because of a selection change or a status change.
-- One-pane layouts may breathe, but do not enlarge controls or introduce an
+- Two-pane layouts may breathe, but do not enlarge controls or introduce an
   otherwise absent card. Four-pane layouts keep the same 0.875rem critical labels,
   focus treatment, and action ownership; labels shorten only through the
   registry's explicit short label and optional descriptions may disappear.

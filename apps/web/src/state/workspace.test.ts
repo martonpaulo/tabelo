@@ -134,17 +134,16 @@ describe("closing a view", () => {
 		}
 	});
 
-	it("does nothing at a single pane", () => {
-		const store = useTabeloStore.getState();
-		store.setLayout("single");
-		const single = workspace();
+	it("does nothing at two panes", () => {
+		const twoPanes = workspace();
 
-		useTabeloStore.getState().closePane(single.panes[0].id);
+		useTabeloStore.getState().closePane(twoPanes.panes[0].id);
 
-		expect(workspace()).toBe(single);
+		expect(workspace()).toBe(twoPanes);
 	});
 
 	it("moves the active pane when the active one is closed", () => {
+		useTabeloStore.getState().addPane();
 		const before = workspace();
 		useTabeloStore.getState().setActivePane(before.panes[0].id);
 
@@ -157,23 +156,24 @@ describe("closing a view", () => {
 		);
 	});
 
-	it("is reversible: every pane count from one to four is reachable again", () => {
+	it("is reversible: every pane count from two to four is reachable again", () => {
 		const store = useTabeloStore.getState();
 		const counts: number[] = [workspace().panes.length];
 		while (workspace().panes.length < 4) {
 			store.addPane();
 			counts.push(workspace().panes.length);
 		}
-		while (workspace().panes.length > 1) {
+		while (workspace().panes.length > 2) {
 			store.closePane(workspace().panes.at(-1)?.id ?? "");
 			counts.push(workspace().panes.length);
 		}
-		expect(counts).toEqual([2, 3, 4, 3, 2, 1]);
+		expect(counts).toEqual([2, 3, 4, 3, 2]);
 	});
 });
 
 describe("closing a view that owns a draft", () => {
 	it("asks before discarding text the document has not read back", () => {
+		useTabeloStore.getState().addPane();
 		const paneId = markdownPaneId();
 		useTabeloStore.getState().setDraft(paneId, "markdown", invalidMarkdown);
 		const before = workspace();
@@ -189,6 +189,7 @@ describe("closing a view that owns a draft", () => {
 	});
 
 	it("closes the pane once the discard is confirmed", () => {
+		useTabeloStore.getState().addPane();
 		const paneId = markdownPaneId();
 		useTabeloStore.getState().setDraft(paneId, "markdown", invalidMarkdown);
 		useTabeloStore.getState().closePane(paneId);
@@ -201,6 +202,7 @@ describe("closing a view that owns a draft", () => {
 	});
 
 	it("keeps the pane when the question is dismissed instead of answered", () => {
+		useTabeloStore.getState().addPane();
 		const paneId = markdownPaneId();
 		useTabeloStore.getState().setDraft(paneId, "markdown", invalidMarkdown);
 		useTabeloStore.getState().closePane(paneId);
@@ -213,6 +215,7 @@ describe("closing a view that owns a draft", () => {
 	});
 
 	it("closes straight away when the draft is already committed", () => {
+		useTabeloStore.getState().addPane();
 		const paneId = markdownPaneId();
 		useTabeloStore.getState().setDraft(paneId, "markdown", validMarkdown);
 

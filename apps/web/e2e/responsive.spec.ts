@@ -8,7 +8,6 @@ import { expect, test } from "./fixtures";
 // created that column again, so two panes sat side by side on a phone.
 
 const PRESETS = [
-	"single",
 	"columns",
 	"rows",
 	"left-split",

@@ -56,7 +56,6 @@ export const copy = {
 	views,
 
 	layouts: {
-		single: { label: "Single", description: "One view, full width." },
 		columns: { label: "Two columns", description: "Side by side." },
 		rows: { label: "Two rows", description: "Stacked." },
 		"left-split": {
@@ -114,7 +113,7 @@ export const copy = {
 		zoomDefault: "Zoom is already at 100%.",
 		zoomMaximum: "Zoom is already at 200%.",
 		addViewLimit: "The current layout already has four views.",
-		closeOnlyView: "At least one view must stay open.",
+		closeOnlyView: "At least two views must stay open.",
 		undo: "There is nothing to undo.",
 		redo: "There is nothing to redo.",
 		minimumColumnWidth: "This column is already at its minimum width.",

@@ -13,26 +13,16 @@ particular merge is not allowed. That is a layout editor, and a layout editor
 inside a table utility is precisely the "complex IDE" the product is supposed
 not to become.
 
-There is also a constraint the literal reading misses. Hiding the source panel
-: giving the grid the whole window: was an existing feature. Expressed in
-slots it is one view across all four, which the stated rule does not allow.
-
 ## Decision
 
-Eight named presets, each drawing its own shape in the picker: single, two
-columns, two rows, split left, split right, split top, split bottom, and four
-panes. Choosing one is a single click, and the glyph shows the result before it
-is applied.
+Seven named presets, each drawing its own shape in the picker: two columns, two
+rows, split left, split right, split top, split bottom, and four panes. Choosing
+one is a single click, and the glyph shows the result before it is applied.
 
 Every preset is a valid tiling by construction, so no rule needs enforcing at
 runtime and no invalid intermediate state exists. Tests assert the invariant
 directly: each preset covers all four slots exactly once, and every pane is a
 rectangle.
-
-`single` intentionally spans all four slots. This extends the stated rule
-rather than following it, because it preserves the existing full-width grid.
-The rule's purpose is to prevent L-shapes and overlaps, and a full-workspace
-pane violates neither.
 
 Switching layouts carries pane identities and view choices across, so changing
 the shape never resets what the user was looking at. Each position of the new
@@ -54,13 +44,15 @@ projections without coupling synchronization to pane layout or view identity.
 
 Pane count is also changed directly, from the pane the user is working in:
 **Add view** and **Close view** in that pane's menu. Both are expressed as moves
-between these same presets: `single → columns → left-split → quad` growing,
-and the reverse shrinking, with `rows → bottom-split` covering the horizontal
-branch. A direct action can never reach a shape the picker cannot, and both
-routes share one implementation. The targets are chosen to be the preset that
-leaves the most surviving panes in the slot they already had. Closing removes
-the chosen pane rather than the last one; the smaller preset then absorbs the
-freed space into whichever neighbour already occupied part of it.
+between these same presets: `columns → left-split → quad` growing, and the
+reverse shrinking, with `rows → bottom-split` covering the horizontal branch.
+Closing `top-split` also returns to `rows`. A direct action can never reach a
+shape the picker cannot, and both routes share one implementation. The targets
+are chosen to be the preset that leaves the most surviving panes in the slot
+they already had.
+Closing removes the chosen pane rather than the last one; the smaller preset
+then absorbs the freed space into whichever neighbour already occupied part of
+it. Two panes is the floor, so Close view is disabled in both two-pane presets.
 
 Growing never displaces a pane, so **Add view** needs no confirmation. Closing
 can destroy a source draft the document has not read back, so a pane owning
@@ -73,7 +65,7 @@ so a new preset needs no edit there.
 
 ## Consequences
 
-- The layout control is one menu of eight pictures, with nothing to learn, and
+- The layout control is one menu of seven pictures, with nothing to learn, and
   it is the advanced path rather than the only one: adding or closing a view
   needs no understanding of layout names at all.
 - Invalid layouts are unrepresentable, so there is no validation to write and
