@@ -22,7 +22,7 @@ operation cannot be undone while the text panel holds focus.
 Undo is layered, and the layer is chosen by focus.
 
 - With focus in the text panel, ⌘Z is the editor's own keystroke-level history.
-- When that local history is exhausted — or when focus is on the grid — ⌘Z walks
+- When that local history is exhausted: or when focus is on the grid: ⌘Z walks
   the **document timeline**, where each committed parse and each table operation
   is exactly one step.
 - A grid edit that supersedes an uncommitted draft pushes that draft onto the

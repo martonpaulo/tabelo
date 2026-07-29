@@ -12,7 +12,7 @@
       }
     }
   </style>
-  <path fill="var(--mark-accent)" d="M9 9h46v13H9zM24.5 24.5h15v14H24.5z" />
+  <path fill="var(--mark-accent)" d="M9 9h46v13H9zM24.5 24.5h15v14H24.5zM24.5 41.5h15V55h-15z" />
   <g fill="none" stroke="var(--mark-ink)" stroke-linecap="round" stroke-linejoin="round" stroke-width="5">
     <rect x="6.5" y="6.5" width="51" height="51" rx="7.5" />
     <path d="M7 23h50M7 40h50M23.5 7v50M40.5 7v50" />

@@ -24,6 +24,7 @@ import {
 import type { Alignment } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
+import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import {
 	atMinimumColumnWidth,
 	isDefaultColumnWidth,
@@ -60,6 +61,8 @@ interface AxisMenuProps {
 export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 	const document = useTabeloStore((state) => state.document);
 	const column = axis === "column" ? document.columns[index] : undefined;
+	const atMinimumWidth = atMinimumColumnWidth(column?.width);
+	const atDefaultWidth = isDefaultColumnWidth(column?.width);
 
 	const select = () =>
 		useTabeloStore
@@ -90,7 +93,7 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 				aria-label={label}
 				// The icon stays small so the grid stays quiet, while the ::after box
 				// grows the target to the control minimum without taking any
-				// layout — the row gutter has no room to spare. Same technique as the
+				// layout: the row gutter has no room to spare. Same technique as the
 				// checkbox and radio primitives.
 				className={cn(
 					"relative inline-flex size-5 shrink-0 items-center justify-center rounded",
@@ -118,28 +121,40 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 							<DropdownMenuLabel aria-live="polite">
 								{copy.actions.columnWidth(resolveColumnWidth(column?.width))}
 							</DropdownMenuLabel>
-							<DropdownMenuItem
-								closeOnClick={false}
-								disabled={atMinimumColumnWidth(column?.width)}
-								onClick={() =>
-									useTabeloStore
-										.getState()
-										.resizeColumn(index, stepColumnWidth(column?.width, -1))
+							<DisabledTooltip
+								reason={
+									atMinimumWidth ? copy.disabled.minimumColumnWidth : undefined
 								}
 							>
-								<ChevronsRightLeft aria-hidden />
-								{copy.actions.narrowColumn}
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								closeOnClick={false}
-								disabled={isDefaultColumnWidth(column?.width)}
-								onClick={() =>
-									useTabeloStore.getState().resizeColumn(index, undefined)
+								<DropdownMenuItem
+									closeOnClick={false}
+									disabled={atMinimumWidth}
+									onClick={() =>
+										useTabeloStore
+											.getState()
+											.resizeColumn(index, stepColumnWidth(column?.width, -1))
+									}
+								>
+									<ChevronsRightLeft aria-hidden />
+									{copy.actions.narrowColumn}
+								</DropdownMenuItem>
+							</DisabledTooltip>
+							<DisabledTooltip
+								reason={
+									atDefaultWidth ? copy.disabled.defaultColumnWidth : undefined
 								}
 							>
-								<RotateCcw aria-hidden />
-								{copy.actions.resetColumnWidth}
-							</DropdownMenuItem>
+								<DropdownMenuItem
+									closeOnClick={false}
+									disabled={atDefaultWidth}
+									onClick={() =>
+										useTabeloStore.getState().resizeColumn(index, undefined)
+									}
+								>
+									<RotateCcw aria-hidden />
+									{copy.actions.resetColumnWidth}
+								</DropdownMenuItem>
+							</DisabledTooltip>
 							<DropdownMenuItem
 								closeOnClick={false}
 								onClick={() =>

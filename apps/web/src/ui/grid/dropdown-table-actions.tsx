@@ -4,6 +4,7 @@ import {
 	DropdownMenuShortcut,
 } from "@tabelo/ui/components/dropdown-menu";
 import { Fragment } from "react";
+import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { buildTableActions, type TableActionContext } from "./table-actions";
 
 interface DropdownTableActionsProps {
@@ -22,21 +23,25 @@ export function DropdownTableActions({
 		<Fragment key={group.id}>
 			{groupIndex > 0 ? <DropdownMenuSeparator /> : null}
 			{group.actions.map((action) => (
-				<DropdownMenuItem
+				<DisabledTooltip
 					key={action.id}
-					disabled={action.disabled}
-					variant={action.danger ? "destructive" : "default"}
-					onClick={() => {
-						beforeRun?.();
-						action.run();
-					}}
+					reason={action.disabled ? action.disabledReason : undefined}
 				>
-					<action.icon aria-hidden />
-					{action.label}
-					{action.shortcut ? (
-						<DropdownMenuShortcut>{action.shortcut}</DropdownMenuShortcut>
-					) : null}
-				</DropdownMenuItem>
+					<DropdownMenuItem
+						disabled={action.disabled}
+						variant={action.danger ? "destructive" : "default"}
+						onClick={() => {
+							beforeRun?.();
+							action.run();
+						}}
+					>
+						<action.icon aria-hidden />
+						{action.label}
+						{action.shortcut ? (
+							<DropdownMenuShortcut>{action.shortcut}</DropdownMenuShortcut>
+						) : null}
+					</DropdownMenuItem>
+				</DisabledTooltip>
 			))}
 		</Fragment>
 	));

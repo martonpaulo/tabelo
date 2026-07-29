@@ -34,7 +34,7 @@ export function pickTextFile(
 			resolve({ name: file.name, text: await file.text() });
 		});
 		// A cancelled picker fires no change event in most browsers, so the
-		// promise simply never resolves — harmless, and the caller does nothing.
+		// promise simply never resolves: harmless, and the caller does nothing.
 		input.click();
 	});
 }

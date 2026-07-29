@@ -5,7 +5,7 @@ import { expect, test } from "./fixtures";
 // Below the stacking width the 2x2 tiling is abandoned rather than squeezed.
 // The defect this covers was subtle: the container became one column, but each
 // pane still carried an inline grid area naming column two, and CSS obligingly
-// created that column again — so two panes sat side by side on a phone.
+// created that column again, so two panes sat side by side on a phone.
 
 const PRESETS = [
 	"single",

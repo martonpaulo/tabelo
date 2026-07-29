@@ -8,7 +8,7 @@ import { copy } from "@/ui/copy";
 import { Notice, type NoticeTone } from "@/ui/primitives/notice";
 
 // Notices sit in the layout rather than floating over it. A toast that covers
-// the table would be exactly the kind of interruption this product avoids —
+// the table would be exactly the kind of interruption this product avoids.
 // see docs/design-system.md §5.
 
 export function NoticeBar() {

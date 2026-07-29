@@ -122,12 +122,12 @@ test("hovering a row still reveals its actions", async ({ tabelo }) => {
 	await expect.poll(() => opacity(trigger)).toBe("1");
 });
 
-test("the axis menus and the pane menu describe the same actions", async ({
+test("the axis and context menus describe the same actions", async ({
 	page,
 	tabelo,
 }) => {
-	// One action list, three renderers: the row menu, the table menu, and the
-	// context menu must not drift into three different vocabularies.
+	// One action list serves both renderers, so row and context menus cannot
+	// drift into different vocabularies.
 	await tabelo.cell(1, 1).click();
 	await tabelo
 		.grid()
@@ -145,10 +145,10 @@ test("the axis menus and the pane menu describe the same actions", async ({
 	await page.keyboard.press("Escape");
 	await expect(rowMenu).toBeHidden();
 
-	await page.getByRole("button", { name: copy.actions.tableActions }).click();
-	const tableMenu = page.getByRole("menu", { name: copy.actions.tableActions });
-	await expect(tableMenu).toBeVisible();
-	const fromTable = await tableMenu
+	await tabelo.cell(1, 1).click({ button: "right" });
+	const contextMenu = page.getByRole("menu");
+	await expect(contextMenu).toBeVisible();
+	const fromContext = await contextMenu
 		.getByRole("menuitem")
 		.evaluateAll((items) => items.map((item) => item.textContent?.trim()));
 
@@ -160,13 +160,62 @@ test("the axis menus and the pane menu describe the same actions", async ({
 		copy.actions.clear,
 	]) {
 		expect(fromRow.some((label) => label?.startsWith(action))).toBe(true);
-		expect(fromTable.some((label) => label?.startsWith(action))).toBe(true);
+		expect(fromContext.some((label) => label?.startsWith(action))).toBe(true);
 	}
 	expect(
 		fromRow.some((label) => label?.startsWith(copy.actions.insertRowAbove)),
 	).toBe(true);
 	// A row menu offers nothing about columns.
 	expect(fromRow.some((label) => label?.includes("column"))).toBe(false);
+});
+
+test("column headers extend selection by drag, Shift, and the platform modifier", async ({
+	page,
+	tabelo,
+}) => {
+	const selected = async (column: number) =>
+		(await tabelo.header(column).getAttribute("aria-selected")) === "true";
+
+	const first = await tabelo
+		.header(1)
+		.getByRole("button")
+		.first()
+		.boundingBox();
+	const third = await tabelo
+		.header(3)
+		.getByRole("button")
+		.first()
+		.boundingBox();
+	expect(first).not.toBeNull();
+	expect(third).not.toBeNull();
+	await page.mouse.move((first?.x ?? 0) + 4, (first?.y ?? 0) + 4);
+	await page.mouse.down();
+	await page.mouse.move((third?.x ?? 0) + 4, (third?.y ?? 0) + 4);
+	await page.mouse.up();
+	expect(await selected(1)).toBe(true);
+	expect(await selected(2)).toBe(true);
+	expect(await selected(3)).toBe(true);
+
+	await tabelo.header(1).getByRole("button").first().click();
+	await tabelo
+		.header(2)
+		.getByRole("button")
+		.first()
+		.click({ modifiers: ["Shift"] });
+	expect(await selected(1)).toBe(true);
+	expect(await selected(2)).toBe(true);
+	expect(await selected(3)).toBe(false);
+
+	const modifier = process.platform === "darwin" ? "Meta" : "Control";
+	await tabelo.header(1).getByRole("button").first().click();
+	await tabelo
+		.header(3)
+		.getByRole("button")
+		.first()
+		.click({ modifiers: [modifier] });
+	expect(await selected(1)).toBe(true);
+	expect(await selected(2)).toBe(true);
+	expect(await selected(3)).toBe(true);
 });
 
 test("four panes stay quiet: no action icons in the cells", async ({

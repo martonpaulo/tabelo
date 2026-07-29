@@ -45,13 +45,16 @@ export async function readTableFromClipboard(): Promise<ClipboardPayload | null>
 	return null;
 }
 
-export async function pasteFromClipboard(): Promise<void> {
+export async function pasteFromClipboard(): Promise<boolean> {
 	const payload = await readTableFromClipboard();
-	if (payload) useTabeloStore.getState().pasteClipboard(payload);
+	if (!payload) return false;
+	const before = useTabeloStore.getState().document;
+	useTabeloStore.getState().pasteClipboard(payload);
+	return useTabeloStore.getState().document !== before;
 }
 
 function clipboardReadMessage(reason: ClipboardBlock): string {
-	// An empty clipboard is not a failure to recover from — the user asked and
+	// An empty clipboard is not a failure to recover from: the user asked and
 	// the answer is simply that there is nothing there.
 	return reason === "empty"
 		? copy.notices.clipboardEmpty

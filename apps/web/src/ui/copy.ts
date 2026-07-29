@@ -38,6 +38,11 @@ const views = {
 		shortLabel: "Jira",
 		description: "Jira wiki table syntax.",
 	},
+	json: {
+		label: "JSON",
+		shortLabel: "JSON",
+		description: "A JSON array of rows, with headers first.",
+	},
 	"html-preview": {
 		label: "Rendered preview",
 		shortLabel: "Preview",
@@ -98,6 +103,25 @@ export const copy = {
 		resetZoom: "Reset zoom",
 	},
 
+	disabled: {
+		viewAlreadyOpen: (label: string) => `${label} is already open.`,
+		zoomMinimum: "Zoom is already at 50%.",
+		zoomDefault: "Zoom is already at 100%.",
+		zoomMaximum: "Zoom is already at 200%.",
+		addViewLimit: "The current layout already has four views.",
+		closeOnlyView: "At least one view must stay open.",
+		undo: "There is nothing to undo.",
+		redo: "There is nothing to redo.",
+		minimumColumnWidth: "This column is already at its minimum width.",
+		defaultColumnWidth: "This column already uses the default width.",
+		firstRow: "The selected row is already first.",
+		lastRow: "The selected row is already last.",
+		firstColumn: "The selected column is already first.",
+		lastColumn: "The selected column is already last.",
+		lastRemainingRow: "A table must keep at least one row.",
+		lastRemainingColumn: "A table must keep at least one column.",
+	},
+
 	source: {
 		issue: (issue: ParseIssue) => {
 			let message: string;
@@ -128,6 +152,21 @@ export const copy = {
 				case "html-table-required":
 					message =
 						"No <table> found yet. A table needs rows of <th> or <td> cells.";
+					break;
+				case "json-invalid":
+					message = "This is not valid JSON yet.";
+					break;
+				case "json-rows-required":
+					message = "JSON must be a non-empty array of rows.";
+					break;
+				case "json-row-array-required":
+					message = "Each JSON row must be an array.";
+					break;
+				case "json-header-required":
+					message = "The first JSON row must contain at least one header.";
+					break;
+				case "json-string-cells-required":
+					message = "Every JSON cell must be a string.";
 					break;
 				case "delimited-unclosed-quote":
 					message = "A quoted field is not closed.";
@@ -184,7 +223,6 @@ export const copy = {
 		more: "More actions",
 		rowActions: "Row actions",
 		columnActions: "Column actions",
-		tableActions: "Table actions",
 		copySource: "Copy source",
 		downloadAs: "Download as",
 		downloadTable: "Download table",
@@ -222,7 +260,7 @@ export const copy = {
 
 	empty: {
 		title: "Start with a table",
-		body: "Use an empty table, paste from the clipboard, or import Markdown, CSV, TSV, HTML, or Jira.",
+		body: "Use an empty table, paste from the clipboard, or import Markdown, CSV, TSV, HTML, Jira, or JSON.",
 		emptyAction: "Use an empty table",
 		pasteHint: "Paste a table",
 		importAction: "Import a file",
@@ -264,7 +302,7 @@ export const copy = {
 				? "Source copied to the clipboard."
 				: "Copied to the clipboard.",
 		// Tabelo cannot grant itself clipboard permission, so the recovery is
-		// always the keyboard — which stays available because a trusted key press
+		// always the keyboard. It stays available because a trusted key press
 		// never needs the permission the button does.
 		clipboardReadFailed:
 			"Clipboard access was blocked. Use ⌘V/Ctrl+V or allow clipboard access, then try again.",

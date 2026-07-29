@@ -29,7 +29,7 @@ const alignmentIcon = {
 	right: AlignRight,
 } satisfies Record<Alignment, typeof AlignLeft>;
 
-// The next cell in reading order, or nothing when there is none — which is how
+// The next cell in reading order, or nothing when there is none. This is how
 // Tab knows it has reached an edge and should let focus leave the grid.
 function adjacentCell(
 	from: CellPosition,
@@ -50,7 +50,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const editingHeader = useTabeloStore((state) => state.editingHeader);
 
 	const gridRef = useRef<HTMLTableElement>(null);
-	const draggingRef = useRef(false);
+	const draggingRef = useRef<"cell" | "column" | null>(null);
 
 	const rect = selectionRect(
 		selection,
@@ -84,10 +84,28 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 	useEffect(() => {
 		const stop = () => {
-			draggingRef.current = false;
+			draggingRef.current = null;
 		};
 		window.addEventListener("pointerup", stop);
 		return () => window.removeEventListener("pointerup", stop);
+	}, []);
+
+	const selectColumn = useCallback((column: number, extend: boolean) => {
+		const store = useTabeloStore.getState();
+		if (!extend) {
+			store.selectCell({ row: 0, column }, "column");
+			return;
+		}
+
+		const anchorColumn =
+			store.selection.mode === "column"
+				? store.selection.anchor.column
+				: store.selection.focus.column;
+		store.setSelection({
+			anchor: { row: 0, column: anchorColumn },
+			focus: { row: 0, column },
+			mode: "column",
+		});
 	}, []);
 
 	const moveFocus = useCallback(
@@ -212,16 +230,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			store.setSelection({
 				anchor: { row: 0, column: 0 },
 				focus: {
-					row: store.document.rows.length - 1,
+					row: 0,
 					column: store.document.columns.length - 1,
 				},
-				mode: "cell",
+				mode: "column",
 			});
 			return;
 		}
 
 		// A printable character replaces the cell and drops straight into the
-		// editor, the way a spreadsheet does — it is the fastest path to typing.
+		// editor, the way a spreadsheet does: it is the fastest path to typing.
 		if (!mod && !event.altKey && event.key.length === 1) {
 			event.preventDefault();
 			store.setEditing(selection.focus, event.key);
@@ -330,6 +348,14 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								editing={editingHeader === columnIndex}
 								width={resolveColumnWidth(column.width)}
 								zoom={zoom}
+								onSelect={(extend) => selectColumn(columnIndex, extend)}
+								onDragStart={() => {
+									draggingRef.current = "column";
+								}}
+								onDragEnter={() => {
+									if (draggingRef.current !== "column") return;
+									selectColumn(columnIndex, true);
+								}}
 							/>
 						))}
 					</tr>
@@ -339,12 +365,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					{document.rows.map((row, rowIndex) => (
 						// Explicit despite looking redundant: with role="grid" on the
 						// table, browsers do not reliably expose implicit row and cell
-						// roles — the computed tree came back as "generic" without these.
+						// roles: the computed tree came back as "generic" without these.
 						<tr
 							key={row.id}
 							// biome-ignore lint/a11y/noRedundantRoles: see above
 							role="row"
-							// The header row is row 1, so the body starts at 2 — which is
+							// The header row is row 1, so the body starts at 2. This is
 							// what makes the declared aria-rowcount add up.
 							aria-rowindex={rowIndex + 2}
 							className="group/row"
@@ -426,7 +452,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 											// not focusable by default. The cell would look selected
 											// but ignore every keystroke.
 											event.preventDefault();
-											draggingRef.current = true;
+											draggingRef.current = "cell";
 											const store = useTabeloStore.getState();
 											if (event.shiftKey) {
 												store.extendSelection({
@@ -442,7 +468,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 											event.currentTarget.focus();
 										}}
 										onPointerEnter={() => {
-											if (!draggingRef.current) return;
+											if (draggingRef.current !== "cell") return;
 											useTabeloStore.getState().extendSelection({
 												row: rowIndex,
 												column: columnIndex,
@@ -516,6 +542,9 @@ interface HeaderCellProps {
 	// gesture converts viewport pixels back before writing a width down.
 	readonly width: number;
 	readonly zoom: number;
+	readonly onSelect: (extend: boolean) => void;
+	readonly onDragStart: () => void;
+	readonly onDragEnter: () => void;
 }
 
 function HeaderCell({
@@ -527,6 +556,9 @@ function HeaderCell({
 	editing,
 	width,
 	zoom,
+	onSelect,
+	onDragStart,
+	onDragEnter,
 }: HeaderCellProps) {
 	const AlignmentIcon = alignmentIcon[align];
 	const resizeState = useRef<{
@@ -543,6 +575,7 @@ function HeaderCell({
 			// the two controls this cell contains.
 			aria-label={copy.a11y.columnHeader(header, columnIndex)}
 			aria-colindex={columnIndex + 1}
+			aria-selected={selected}
 			data-column-header={columnIndex}
 			className={cn(
 				"group/col sticky top-0 z-20 border-line-strong border-r border-b bg-surface-header",
@@ -550,6 +583,7 @@ function HeaderCell({
 				alignClass[align],
 				selected && "bg-selection-fill",
 			)}
+			onPointerEnter={onDragEnter}
 		>
 			{editing ? (
 				<CellEditor
@@ -575,11 +609,15 @@ function HeaderCell({
 							alignClass[align],
 						)}
 						title={`${copy.actions.editHeader} (${copy.shortcuts.editHeader})`}
-						onClick={() =>
-							useTabeloStore
-								.getState()
-								.selectCell({ row: 0, column: columnIndex }, "column")
-						}
+						onPointerDown={(event) => {
+							if (event.button !== 0) return;
+							onDragStart();
+							onSelect(event.shiftKey || event.metaKey || event.ctrlKey);
+						}}
+						onClick={(event) => {
+							// A keyboard-generated click has no pointer detail.
+							if (event.detail === 0) onSelect(event.shiftKey);
+						}}
 						onDoubleClick={() =>
 							useTabeloStore.getState().setEditingHeader(columnIndex)
 						}

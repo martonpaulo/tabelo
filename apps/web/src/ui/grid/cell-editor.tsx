@@ -54,8 +54,8 @@ export function CellEditor({
 			onBlur={() => finish("commit")}
 			onKeyDown={(event) => {
 				// While editing, the grid must never see the keystroke. Without this
-				// the Enter that commits also bubbles up to the grid, which — by
-				// then no longer editing — reads it as "start editing" and reopens
+				// the Enter that commits also bubbles up to the grid, which: by
+				// then no longer editing: reads it as "start editing" and reopens
 				// the editor on the cell the user just left.
 				event.stopPropagation();
 
@@ -75,7 +75,7 @@ export function CellEditor({
 					finish(event.shiftKey ? "previous-column" : "next-column");
 					return;
 				}
-				// Everything else belongs to the textarea, including arrow keys —
+				// Everything else belongs to the textarea, including arrow keys.
 				// while editing, arrows move the caret, not the selection.
 			}}
 			className={cn(

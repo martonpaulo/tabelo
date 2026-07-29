@@ -4,8 +4,8 @@ import { listDownloadableCodecs } from "@/formats";
 import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
-// Downloading is a choice, so it is a chooser: which format, and — only where
-// the format declares one — how the file should be written. The header row is
+// Downloading is a choice, so it is a chooser. The user chooses the format and,
+// only where the format declares an option, how the file should be written. The header row is
 // the case that matters: the table always has one, and whether the file prints
 // it is a property of that file and of nothing else.
 
@@ -166,7 +166,7 @@ test("the chooser is keyboard operable and Escape returns focus", async ({
 });
 
 // Mod+S means "keep my work" everywhere else, and the browser would otherwise
-// answer it with Save Page — which writes the app shell, not the table.
+// answer it with Save Page, which writes the app shell, not the table.
 
 const shortcut = process.platform === "darwin" ? "Meta+s" : "Control+s";
 

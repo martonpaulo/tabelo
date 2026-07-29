@@ -1,6 +1,7 @@
 import { csvCodec } from "./csv";
 import { htmlCodec } from "./html";
 import { jiraCodec } from "./jira";
+import { jsonCodec } from "./json";
 import { markdownCodec } from "./markdown";
 import { tsvCodec } from "./tsv";
 import type { CodecId, OutputOptions, TableCodec } from "./types";
@@ -14,6 +15,7 @@ const registry: Record<CodecId, TableCodec> = {
 	tsv: tsvCodec,
 	html: htmlCodec,
 	jira: jiraCodec,
+	json: jsonCodec,
 };
 
 // Order is the product's own preference, shown wherever formats are listed.
@@ -23,6 +25,7 @@ export const codecOrder: readonly CodecId[] = [
 	"tsv",
 	"html",
 	"jira",
+	"json",
 ];
 
 export function getCodec(id: CodecId): TableCodec {
@@ -48,7 +51,7 @@ export function listDownloadableCodecs(): readonly TableCodec[] {
 }
 
 // Narrows the user's chosen values to the ones this format actually promises.
-// Formats can share an implementation — CSV and TSV are one serializer — so a
+// Formats can share an implementation. CSV and TSV use one serializer, so a
 // value left in would be honoured by a format that never offered the choice,
 // and unchecking a box under CSV would quietly change a TSV file too.
 export function outputOptionsFor(
@@ -72,4 +75,4 @@ export type {
 	TableCodec,
 } from "./types";
 export { defaultOutputOptions } from "./types";
-export { csvCodec, htmlCodec, jiraCodec, markdownCodec, tsvCodec };
+export { csvCodec, htmlCodec, jiraCodec, jsonCodec, markdownCodec, tsvCodec };

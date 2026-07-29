@@ -43,7 +43,7 @@ export function getCell(
 	return document.rows.find((row) => row.id === rowId)?.cells[columnId] ?? "";
 }
 
-// True when the document holds no content at all — only blank cells.
+// True when the document holds no content at all: only blank cells.
 export function isDocumentBlank(document: TableDocument): boolean {
 	const headersBlank = document.columns.every(
 		(column, index) =>
@@ -70,8 +70,8 @@ export function normalizeMatrix(
 //
 // Defaults to treating row 1 as the header, because that is what a Markdown
 // table always means and what most pasted tables intend. Only positive
-// evidence that row 1 is data — a blank cell or a numeric value where headers
-// would carry labels — flips the decision.
+// evidence that row 1 is data: a blank cell or a numeric value where headers
+// would carry labels: flips the decision.
 const NUMERIC_LIKE = /^-?[\d.,\s]*\d[\d.,\s]*%?$/;
 
 export function detectHeaderRow(

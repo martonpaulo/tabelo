@@ -141,7 +141,7 @@ export interface TabeloState {
 	// document state, never a history step. See docs/adr/0005.
 	outputOptions: Required<OutputOptions>;
 	// The pane whose menu should take focus next. Adding a view is one intent in
-	// two parts — make room, then say what goes there — so the control that says
+	// two parts: make room, then say what goes there. The control that says
 	// it is handed to the user instead of left to be hunted for.
 	paneMenuFocus: string | null;
 
@@ -301,7 +301,7 @@ function savePayload(state: TabeloState): SavePayload {
 	};
 }
 
-// Serializes the document for a view. Views without a codec — the grid — have
+// Serializes the document for a view. Views without a codec: the grid: have
 // no text projection.
 export function textForView(document: TableDocument, viewId: ViewId): string {
 	const codec = getView(viewId).codec;
@@ -310,7 +310,7 @@ export function textForView(document: TableDocument, viewId: ViewId): string {
 
 // The exact text a pane is showing. A pane owning an uncommitted draft is
 // displaying that draft, not the last valid parse, so copying it must hand
-// over what is on screen — including source that does not parse. Every other
+// over what is on screen: including source that does not parse. Every other
 // pane is a pure projection of the document.
 export function visibleTextForPane(
 	state: Pick<TabeloState, "document" | "draft">,
@@ -774,7 +774,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	setColumnAlignment: (column, align) =>
 		get().applyDocument(setAlignment(get().document, column, align)),
 
-	// Width is presentation state, so it bypasses the document timeline —
+	// Width is presentation state, so it bypasses the document timeline.
 	// dragging a column edge should not consume an undo step.
 	resizeColumn: (column, width) =>
 		set((state) => {
@@ -920,7 +920,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			return;
 		}
 
-		// Into an empty document, a paste creates the table — including the
+		// Into an empty document, a paste creates the table: including the
 		// header decision. Into an existing one, it writes at the selection.
 		if (isDocumentBlank(state.document)) {
 			const document = createImportedDocument(prepared.value);

@@ -2,8 +2,8 @@
 
 ## Context
 
-Tabelo shows the same table three ways — a visual grid, Markdown source, and CSV
-source — and every one of them is editable. Left unmanaged, that is three
+Tabelo shows the same table three ways: a visual grid, Markdown source, and CSV
+source. Every one of them is editable. Left unmanaged, that is three
 mutable copies of the same data, which produces update loops, cursor jumps, and
 silent divergence.
 
@@ -22,7 +22,7 @@ a second state model, and a collaboration story the product explicitly rejects.
 ## Decision
 
 One canonical **table document**. The grid mutates it through pure table
-operations. The text panel does not own data at all — it holds a **draft**
+operations. The text panel does not own data at all: it holds a **draft**
 string plus the serialized projection of the document.
 
 The synchronization layer owns the round trip:
@@ -48,7 +48,7 @@ serializers around the document, not alternative homes for the data.
 
 - There is exactly one thing to persist, undo, and validate.
 - Adding a format later means adding a parser/serializer pair behind the shared
-  format contract — no change to synchronization, history, or persistence.
+  format contract: no change to synchronization, history, or persistence.
 - The structural diff is the load-bearing part of the design and the place bugs
   will concentrate. It needs strong round-trip and identity-preservation tests.
 - Valid source edits reach every projection in the same interaction turn.

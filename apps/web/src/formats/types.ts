@@ -1,6 +1,6 @@
 import type { Alignment, TableDocument } from "@/core/types";
 
-export type CodecId = "markdown" | "csv" | "tsv" | "html" | "jira";
+export type CodecId = "markdown" | "csv" | "tsv" | "html" | "jira" | "json";
 
 interface LocatedParseIssue {
 	// 1-based line in the source text, when the problem can be located.
@@ -27,13 +27,18 @@ export type ParseIssue =
 	| ({ readonly code: "jira-header-required" } & LocatedParseIssue)
 	| ({ readonly code: "html-unavailable" } & LocatedParseIssue)
 	| ({ readonly code: "html-table-required" } & LocatedParseIssue)
+	| ({ readonly code: "json-invalid" } & LocatedParseIssue)
+	| ({ readonly code: "json-rows-required" } & LocatedParseIssue)
+	| ({ readonly code: "json-row-array-required" } & LocatedParseIssue)
+	| ({ readonly code: "json-header-required" } & LocatedParseIssue)
+	| ({ readonly code: "json-string-cells-required" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-unclosed-quote" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-invalid-quote" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-delimiter-undetected" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-field-count" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-parse-error" } & LocatedParseIssue);
 
-// A successful parse can still carry warnings — a ragged row is recoverable by
+// A successful parse can still carry warnings: a ragged row is recoverable by
 // padding, and saying so is better than silently reshaping the user's table.
 export type ParseResult =
 	| {

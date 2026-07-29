@@ -4,7 +4,7 @@
   <img src="apps/web/public/logo.svg" width="96" height="96" alt="Tabelo logo" />
 </p>
 
-**One table, seven views, zero copy-and-paste between them.**
+**One table, eight views, zero copy-and-paste between them.**
 
 Hi! Tabelo is a small table editor for the moments when a spreadsheet is too
 much, but hand-editing pipes and commas is no fun either. Change a cell in the
@@ -28,7 +28,7 @@ These are not separate files. They are the same table:
 | Inez  | Designer  | Yes    |
 | Mark  | Developer | No     |
 
-**Markdown** — alignment and all
+**Markdown**: alignment and all
 
 ```markdown
 | Name  | Role      | Active |
@@ -53,6 +53,16 @@ Mark,Developer,No
 |Mark|Developer|No|
 ```
 
+**JSON**
+
+```json
+[
+  ["Name","Role","Active"],
+  ["Inez","Designer","Yes"],
+  ["Mark","Developer","No"]
+]
+```
+
 Go through CSV or Jira and back and those `:---:` alignment markers are still
 there. Those formats cannot express alignment, so Tabelo quietly remembers it.
 
@@ -61,12 +71,12 @@ there. Those formats cannot express alignment, so Tabelo quietly remembers it.
 - **Arrange the workspace.** One to four panes, with each view available only
   once. Open the floating Tabelo button for files, layouts, undo, redo, and the
   GitHub link.
-- **Seven views.** Visual grid, Markdown, CSV, TSV, HTML source, Jira table
-  syntax, and a rendered preview. Every one stays in sync with the others.
+- **Eight views.** Visual grid, Markdown, CSV, TSV, HTML source, Jira table
+  syntax, JSON, and a rendered preview. Every one stays in sync with the others.
 - **Edit visually.** Cells, headers, rows, columns. Insert above, below, left,
   right. Delete, duplicate, reorder, resize, select ranges, clear. Right-click
   anything for the actions that apply to it.
-- **Edit the source.** Markdown, CSV, TSV, HTML, and Jira all have syntax
+- **Edit the source.** Markdown, CSV, TSV, HTML, Jira, and JSON all have syntax
   highlighting. Errors get a red underline, warnings a yellow one; hover either
   to see the explanation.
 - **Never lose a cell.** A value with a line break in it survives
@@ -75,9 +85,9 @@ there. Those formats cannot express alignment, so Tabelo quietly remembers it.
 - **Type freely.** While your Markdown is half-written and invalid, the grid
   keeps showing your last working table instead of collapsing. The underline
   tells you what needs fixing.
-- **Paste anything.** Spreadsheets, web tables, Markdown, CSV, TSV, Jira
+- **Paste anything.** Spreadsheets, web tables, Markdown, CSV, TSV, Jira, JSON
   syntax, a plain column of text. Tabelo works out which it is.
-- **Download anything.** Markdown, CSV, TSV, HTML, or Jira, with the right
+- **Download anything.** Markdown, CSV, TSV, HTML, Jira, or JSON, with the right
   extension and MIME type.
 - **Nothing to save.** Your table stays in browser storage and comes back when
   you return. Starting a new table asks before clearing real work.
@@ -144,7 +154,7 @@ Then open <http://localhost:3001>.
 
 React 19, Vite, TanStack Router, Tailwind v4, shadcn/ui on Base UI, CodeMirror 6
 for source views (lazily loaded), Papa Parse for delimited formats. Scaffolded
-with [Better-T-Stack](https://www.better-t-stack.dev/). The grid is hand-built —
+with [Better-T-Stack](https://www.better-t-stack.dev/). The grid is hand-built.
 no grid library.
 
 One idea holds the whole thing up: **there is a single canonical table document,
@@ -157,7 +167,7 @@ pasteable everywhere at once.
 
 The decisions worth reading before you change anything:
 
-- [Derive every representation from one table document](docs/adr/0001-single-table-document-with-derived-text-drafts.md) — and why a CRDT wouldn't have helped
+- [Derive every representation from one table document](docs/adr/0001-single-table-document-with-derived-text-drafts.md), and why a CRDT wouldn't have helped
 - [Escape Markdown losslessly instead of flattening](docs/adr/0002-lossless-markdown-escaping.md)
 - [Layer text-editor undo on top of a document timeline](docs/adr/0003-layered-undo.md)
 - [Build an accessible DOM grid instead of adopting a spreadsheet component](docs/adr/0004-accessible-dom-grid-over-spreadsheet-component.md)
@@ -172,7 +182,7 @@ holds the working agreements.
 
 Your data never leaves your browser. There is no backend, no account, and no
 telemetry of any kind. The document lives in `localStorage` on your machine.
-Clear your browser storage and it is gone — there is no copy anywhere else,
+Clear your browser storage and it is gone: there is no copy anywhere else,
 including with us.
 
 ## Honest limitations

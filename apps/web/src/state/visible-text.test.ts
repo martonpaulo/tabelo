@@ -5,7 +5,7 @@ import type { ViewId } from "@/views/types";
 import { type Draft, textForView, visibleTextForPane } from "./store";
 
 // Copy source hands over what the pane is showing. The only case where that is
-// not the document's projection is a pane holding its own uncommitted draft —
+// not the document's projection is a pane holding its own uncommitted draft.
 // including one that does not parse, which is exactly when copying it out is
 // most useful.
 
@@ -90,6 +90,7 @@ describe("which views offer Copy source", () => {
 			"tsv",
 			"html",
 			"jira",
+			"json",
 		]);
 		expect(copyable).not.toContain("grid");
 		expect(copyable).not.toContain("html-preview");

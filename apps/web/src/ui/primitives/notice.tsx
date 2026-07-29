@@ -2,8 +2,8 @@ import { cn } from "@tabelo/ui/lib/utils";
 import type { ReactNode } from "react";
 
 // One shape for "here is something you should know, and here is what you can
-// do about it". It sits in the layout rather than floating over the table —
-// see docs/design-system.md §5 — and the download chooser reuses it so a
+// do about it". It sits in the layout rather than floating over the table.
+// See docs/design-system.md §5. The download chooser reuses it so a
 // warning reads the same wherever it appears.
 
 export type NoticeTone = "info" | "warning";

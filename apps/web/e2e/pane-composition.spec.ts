@@ -2,7 +2,7 @@ import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
 // Composing the workspace from the pane you are working in, rather than by
-// naming a tiling first. The presets still own every shape — these flows prove
+// naming a tiling first. The presets still own every shape. These flows prove
 // the direct commands cannot reach anything the layout gallery cannot.
 
 const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";

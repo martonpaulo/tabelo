@@ -13,14 +13,16 @@ const ACCEPT = [
 	"text/plain",
 ].join(",");
 
-export async function importTableFile(): Promise<void> {
+export async function importTableFile(): Promise<boolean> {
 	const file = await pickTextFile(ACCEPT);
-	if (!file) return;
+	if (!file) return false;
 
 	// The extension picks the codec; anything unrecognised falls through to
 	// sniffing inside importText.
 	const match = listCodecs().find((codec) =>
 		file.name.toLowerCase().endsWith(`.${codec.extension}`),
 	);
+	const before = useTabeloStore.getState().document;
 	useTabeloStore.getState().importText(file.text, match?.id);
+	return useTabeloStore.getState().document !== before;
 }

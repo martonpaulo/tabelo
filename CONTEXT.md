@@ -17,8 +17,8 @@ Related to: Column, Row, Cell, View
 ### View
 
 One way of showing the table document: the grid, a source format (Markdown,
-CSV, TSV, HTML, Jira), or the rendered preview. A view is always derived from
-the table document — never an independent copy of it. Every view is described
+CSV, TSV, HTML, Jira, JSON), or the rendered preview. A view is always derived from
+the table document: never an independent copy of it. Every view is described
 in the view registry by its capabilities rather than by its name.
 
 Related to: Table document, Pane, Codec, Workspace
@@ -40,8 +40,8 @@ Related to: Pane, Slot, Layout preset
 
 ### Slot
 
-One of the four quadrants — `a` top-left, `b` top-right, `c` bottom-left,
-`d` bottom-right — that a pane occupies.
+One of the four quadrants that a pane occupies: `a` top-left, `b` top-right,
+`c` bottom-left, or `d` bottom-right.
 
 Related to: Workspace, Pane
 
@@ -61,7 +61,7 @@ Related to: View, Parser, Serializer
 
 ### Capability
 
-Something a view can do — being editable, offering syntax highlighting, taking
+Something a view can do: being editable, offering syntax highlighting, taking
 part in structured clipboard operations. Behaviour is decided by reading
 capabilities, never by checking a view's identity.
 
@@ -92,7 +92,7 @@ Related to: Cell, Table document
 
 ### Cell
 
-The value at one row/column intersection. Always an opaque string — Tabelo never
+The value at one row/column intersection. Always an opaque string: Tabelo never
 infers types, coerces numbers, or reformats content.
 
 Related to: Row, Column
@@ -162,7 +162,7 @@ Related to: Parser, Escaping
 ### Escaping
 
 The format-specific transformation that lets a cell value survive a format that
-cannot represent it literally — in Markdown a newline becomes `<br>`, in Jira it
+cannot represent it literally: in Markdown a newline becomes `<br>`, in Jira it
 becomes `\\`, and both escape the pipe. Escaping is always reversible.
 
 Related to: Serializer, Parser
@@ -185,7 +185,7 @@ Related to: Header detection, Format sniffing
 ### Format sniffing
 
 Inspecting pasted content to decide how to parse it, in priority order: HTML
-table, TSV, Markdown table, Jira table, CSV, then plain text.
+table, JSON matrix, TSV, Markdown table, Jira table, CSV, then plain text.
 
 Related to: Import, Parser
 
@@ -216,7 +216,7 @@ Related to: Table document, Import
 - A grid edit always wins over an uncommitted draft, and always leaves that draft
   recoverable through undo.
 - Alignment belongs to the column, so it survives a round trip through any
-  format that cannot express it — CSV, TSV, and Jira all lose it on paper and
+  format that cannot express it: CSV, TSV, and Jira all lose it on paper and
   none of them lose it in Tabelo.
 - Escaping must be reversible: any cell value survives
   CSV → Markdown → CSV byte-exact.

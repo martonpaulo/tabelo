@@ -24,10 +24,13 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	const lightFocus = await pane.evaluate((element) => {
 		const style = getComputedStyle(element);
 		return {
-			shadow: style.boxShadow,
+			color: style.outlineColor,
+			style: style.outlineStyle,
+			width: Number.parseFloat(style.outlineWidth),
 		};
 	});
-	expect(lightFocus.shadow).toContain("inset");
+	expect(lightFocus.style).toBe("solid");
+	expect(lightFocus.width).toBeGreaterThan(0);
 	await expect(pane.locator(".cm-content")).toHaveCSS("outline-style", "none");
 
 	await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
@@ -50,9 +53,13 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 
 	await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
 	await editor.focus();
-	const darkFocus = await pane.evaluate(
-		(element) => getComputedStyle(element).boxShadow,
-	);
-	expect(darkFocus).toContain("inset");
-	expect(darkFocus).not.toBe(lightFocus.shadow);
+	const darkFocus = await pane.evaluate((element) => {
+		const style = getComputedStyle(element);
+		return {
+			style: style.outlineStyle,
+			width: Number.parseFloat(style.outlineWidth),
+		};
+	});
+	expect(darkFocus.width).toBe(lightFocus.width);
+	expect(darkFocus.style).toBe("solid");
 });

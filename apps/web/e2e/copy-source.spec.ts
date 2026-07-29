@@ -103,7 +103,7 @@ test("every source view offers the action and the preview does not", async ({
 		// Escape: Base UI attaches the menu's dismissal listener in an effect
 		// that runs after the opening click commits, and the trigger does not
 		// hold focus meanwhile, so an Escape inside that window is dropped.
-		// Measured at under 8ms — only automation is fast enough to hit it,
+		// Measured at under 8ms: only automation is fast enough to hit it,
 		// which is why it is left upstream rather than patched here.
 		await tabelo.paneMenuTrigger(view).click();
 		await expect(menu).toHaveCount(0);

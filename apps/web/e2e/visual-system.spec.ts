@@ -71,6 +71,13 @@ test("controls, surfaces, and menus share their semantic visual hierarchy", asyn
 
 	await appButton.click();
 	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
+	const menuBackground = await menu.evaluate(
+		(element) => getComputedStyle(element).backgroundColor,
+	);
+	const paneBackground = await pane.evaluate(
+		(element) => getComputedStyle(element).backgroundColor,
+	);
+	expect(menuBackground).not.toBe(paneBackground);
 	expect(
 		await menu.evaluate((element) => getComputedStyle(element).borderRadius),
 	).toBe(paneRadius);
@@ -90,6 +97,72 @@ test("controls, surfaces, and menus share their semantic visual hierarchy", asyn
 	expect(
 		await menu.evaluate((element) => getComputedStyle(element).backdropFilter),
 	).toContain("blur");
+});
+
+test("only view content participates in native text selection", async ({
+	tabelo,
+}) => {
+	const markdownPane = tabelo.pane("markdown");
+	await expect(markdownPane.getByRole("heading").first()).toHaveCSS(
+		"user-select",
+		"none",
+	);
+	await expect(markdownPane.locator(".cm-gutters")).toHaveCSS(
+		"user-select",
+		"none",
+	);
+	await expect(markdownPane.locator(".cm-content")).toHaveCSS(
+		"user-select",
+		"text",
+	);
+
+	await tabelo.choosePaneView("markdown", "html-preview");
+	await expect(tabelo.pane("html-preview").locator("table")).toHaveCSS(
+		"user-select",
+		"text",
+	);
+});
+
+test("the active pane has a stronger blue boundary", async ({ tabelo }) => {
+	await tabelo.cell(1, 1).click();
+	const active = tabelo.pane("grid");
+	const inactive = tabelo.pane("markdown");
+	await expect(active).toHaveCSS("outline-style", "solid");
+	const colours = await active.evaluate((element) => {
+		const probe = document.createElement("span");
+		probe.style.color = "var(--selection-edge)";
+		element.append(probe);
+		const result = {
+			outline: getComputedStyle(element).outlineColor,
+			token: getComputedStyle(probe).color,
+		};
+		probe.remove();
+		return result;
+	});
+	expect(colours.outline).toBe(colours.token);
+	await expect(inactive).toHaveCSS("outline-style", "none");
+});
+
+test("the initial surface accepts the standard paste event directly", async ({
+	page,
+}) => {
+	await page.goto("/");
+	await expect(
+		page.getByRole("heading", { name: copy.empty.title }),
+	).toBeVisible();
+	await page.evaluate(() => {
+		const clipboardData = new DataTransfer();
+		clipboardData.setData("text/plain", "Name\tRole\nInez\tDesigner");
+		const event = new Event("paste", { bubbles: true, cancelable: true });
+		Object.defineProperty(event, "clipboardData", { value: clipboardData });
+		window.dispatchEvent(event);
+	});
+
+	await expect(
+		page.getByRole("heading", { name: copy.empty.title }),
+	).toHaveCount(0);
+	await expect(page.getByRole("columnheader", { name: "Name" })).toBeVisible();
+	await expect(page.getByRole("gridcell").first()).toContainText("Inez");
 });
 
 test("an empty first visit shows one centered start surface over an inert blurred workspace", async ({
@@ -136,33 +209,60 @@ test("source focus belongs to the pane while caret and line numbers share its me
 		"border-left-style",
 		"solid",
 	);
-	expect(
-		await pane.evaluate((element) => getComputedStyle(element).boxShadow),
-	).toContain("inset");
+	await expect(pane).toHaveCSS("outline-style", "solid");
 
-	const line = await pane.locator(".cm-line").first().boundingBox();
-	const activeLine = await pane.locator(".cm-activeLine").boundingBox();
-	const cursor = await pane.locator(".cm-cursor").boundingBox();
-	const number = await pane
-		.locator(".cm-lineNumbers .cm-gutterElement")
-		.filter({ hasText: /^1$/ })
-		.boundingBox();
-	expect(line).not.toBeNull();
-	expect(activeLine).not.toBeNull();
-	expect(cursor).not.toBeNull();
-	expect(number).not.toBeNull();
-	expect(Math.abs((line?.y ?? 0) - (number?.y ?? 0))).toBeLessThanOrEqual(1);
-	expect(cursor?.height ?? 0).toBeGreaterThanOrEqual(
-		(line?.height ?? 0) * 0.85,
-	);
-	expect(cursor?.height ?? 0).toBeLessThanOrEqual(line?.height ?? 0);
-	expect(
-		Math.abs(
-			(activeLine?.y ?? 0) +
-				(activeLine?.height ?? 0) / 2 -
-				((cursor?.y ?? 0) + (cursor?.height ?? 0) / 2),
-		),
-	).toBeLessThanOrEqual(1);
+	const assertEditorGeometry = async () => {
+		await pane.evaluate(
+			() =>
+				new Promise<void>((resolve) => {
+					requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+				}),
+		);
+		const line = await pane.locator(".cm-line").first().boundingBox();
+		const activeLine = await pane.locator(".cm-activeLine").boundingBox();
+		const cursor = await pane.locator(".cm-cursor").boundingBox();
+		const number = await pane
+			.locator(".cm-lineNumbers .cm-gutterElement")
+			.filter({ hasText: /^1$/ })
+			.boundingBox();
+		expect(line).not.toBeNull();
+		expect(activeLine).not.toBeNull();
+		expect(cursor).not.toBeNull();
+		expect(number).not.toBeNull();
+		const logicalLineHeight = line?.height ?? 1;
+		const visualLineHeight = await pane
+			.locator(".cm-line")
+			.first()
+			.evaluate((element) =>
+				Number.parseFloat(getComputedStyle(element).lineHeight),
+			);
+		expect(
+			Math.abs((line?.y ?? 0) - (number?.y ?? 0)) / visualLineHeight,
+		).toBeLessThan(0.1);
+		expect((number?.height ?? 0) / logicalLineHeight).toBeGreaterThan(0.95);
+		expect((number?.height ?? 0) / logicalLineHeight).toBeLessThan(1.05);
+		expect((cursor?.height ?? 0) / visualLineHeight).toBeGreaterThan(0.75);
+		expect((cursor?.height ?? 0) / visualLineHeight).toBeLessThanOrEqual(1.05);
+		const cursorLineOffset =
+			((cursor?.y ?? 0) - (activeLine?.y ?? 0)) % visualLineHeight;
+		expect(
+			Math.min(
+				Math.abs(cursorLineOffset),
+				Math.abs(visualLineHeight - cursorLineOffset),
+			) / visualLineHeight,
+		).toBeLessThan(0.2);
+	};
+
+	await assertEditorGeometry();
+	for (let step = 0; step < 5; step += 1) {
+		await tabelo.page.keyboard.press("ControlOrMeta+-");
+	}
+	await assertEditorGeometry();
+	for (let step = 0; step < 15; step += 1) {
+		await tabelo.page.keyboard.press("ControlOrMeta+=");
+	}
+	await assertEditorGeometry();
+	await tabelo.page.keyboard.press("ControlOrMeta+0");
 
 	await tabelo.page.keyboard.press("ControlOrMeta+A");
 	const selectionColours = () =>
@@ -345,6 +445,7 @@ for (const viewport of [
 					name: new RegExp(`^${copy.workspace.paneActions}:`),
 				}),
 			).toBeVisible();
+			await expect(pane.locator("header")).toHaveCSS("overflow-x", "hidden");
 		}
 		expect(headingSizes.size).toBe(1);
 	});

@@ -228,6 +228,34 @@ test("the documented grid commands still work", async ({ page, tabelo }) => {
 	expect(await tabelo.grid().getByRole("row").count()).toBe(rowsBefore - 1);
 });
 
+test("Mod+A selects the header row and every body cell", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("ControlOrMeta+A");
+
+	for (let column = 1; column <= 3; column += 1) {
+		await expect(tabelo.header(column)).toHaveAttribute(
+			"aria-selected",
+			"true",
+		);
+		await expect(tabelo.cell(3, column)).toHaveAttribute(
+			"aria-selected",
+			"true",
+		);
+	}
+
+	const copied = await tabelo.grid().evaluate((grid) => {
+		const clipboardData = new DataTransfer();
+		const event = new Event("copy", { bubbles: true, cancelable: true });
+		Object.defineProperty(event, "clipboardData", { value: clipboardData });
+		grid.dispatchEvent(event);
+		return clipboardData.getData("text/plain");
+	});
+	expect(copied.split("\n")[0]).toBe("Column 1\tColumn 2\tColumn 3");
+});
+
 test("typing in a cell never reaches the grid's structural shortcuts", async ({
 	tabelo,
 }) => {

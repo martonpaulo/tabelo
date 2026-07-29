@@ -1,8 +1,17 @@
-import { Code2, Eye, FileText, Sheet, Table2, Tags } from "lucide-react";
+import {
+	Braces,
+	Code2,
+	Eye,
+	FileText,
+	Sheet,
+	Table2,
+	Tags,
+} from "lucide-react";
 import {
 	csvCodec,
 	htmlCodec,
 	jiraCodec,
+	jsonCodec,
 	markdownCodec,
 	tsvCodec,
 } from "@/formats";
@@ -97,6 +106,16 @@ const registry: Record<ViewId, ViewDefinition> = {
 		capabilities: sourceCapabilities,
 	},
 
+	json: {
+		id: "json",
+		...copy.views.json,
+		icon: Braces,
+		kind: "source",
+		codec: jsonCodec,
+		highlight: "json",
+		capabilities: sourceCapabilities,
+	},
+
 	"html-preview": {
 		id: "html-preview",
 		...copy.views["html-preview"],
@@ -123,6 +142,7 @@ export const viewOrder: readonly ViewId[] = [
 	"html",
 	"html-preview",
 	"jira",
+	"json",
 ];
 
 export function getView(id: ViewId): ViewDefinition {

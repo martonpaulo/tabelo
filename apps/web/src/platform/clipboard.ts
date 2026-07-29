@@ -2,7 +2,7 @@ import type { ClipboardPayload } from "@/clipboard/parse";
 
 // The clipboard is the one browser API Tabelo uses that the user can refuse.
 // Permission can be denied, the read half is absent in some browsers, and a
-// restrictive context can remove the whole thing — so every call reports what
+// restrictive context can remove the whole thing, so every call reports what
 // happened instead of returning false and leaving the caller to guess.
 //
 // Trusted keyboard copy and paste arrive as events and never come through
@@ -90,7 +90,7 @@ export async function writeClipboardTable(
 		return { ok: true, richness: "table" };
 	} catch (error) {
 		// A refusal is about permission, not about richness, so retrying as plain
-		// text would only fail again — and would hide why.
+		// text would only fail again and would hide why.
 		if (reasonFor(error) === "blocked") return { ok: false, reason: "blocked" };
 		return writeClipboardText(text);
 	}
@@ -139,7 +139,7 @@ async function readRich(
 		// A refusal applies to the whole clipboard, so falling through to
 		// readText() would only produce the same refusal a second time.
 		if (reason === "blocked") return { ok: false, reason };
-		// Anything else may still be readable as plain text — Firefox has no
+		// Anything else may still be readable as plain text: Firefox has no
 		// read() but does have readText().
 		return null;
 	}

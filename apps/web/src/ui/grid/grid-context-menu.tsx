@@ -8,6 +8,7 @@ import {
 } from "@tabelo/ui/components/context-menu";
 import { Fragment, type ReactNode, useState } from "react";
 import { useTabeloStore } from "@/state/store";
+import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { buildTableActions, type TableActionContext } from "./table-actions";
 
 // One context menu for the whole grid rather than one per cell. Mounting a
@@ -93,18 +94,22 @@ export function GridContextMenu({
 					<Fragment key={group.id}>
 						{index > 0 ? <ContextMenuSeparator /> : null}
 						{group.actions.map((action) => (
-							<ContextMenuItem
+							<DisabledTooltip
 								key={action.id}
-								disabled={action.disabled}
-								variant={action.danger ? "destructive" : "default"}
-								onClick={action.run}
+								reason={action.disabled ? action.disabledReason : undefined}
 							>
-								<action.icon aria-hidden />
-								{action.label}
-								{action.shortcut ? (
-									<ContextMenuShortcut>{action.shortcut}</ContextMenuShortcut>
-								) : null}
-							</ContextMenuItem>
+								<ContextMenuItem
+									disabled={action.disabled}
+									variant={action.danger ? "destructive" : "default"}
+									onClick={action.run}
+								>
+									<action.icon aria-hidden />
+									{action.label}
+									{action.shortcut ? (
+										<ContextMenuShortcut>{action.shortcut}</ContextMenuShortcut>
+									) : null}
+								</ContextMenuItem>
+							</DisabledTooltip>
 						))}
 					</Fragment>
 				))}

@@ -27,6 +27,7 @@ export const editorTheme = EditorView.theme({
 	".cm-content": {
 		padding: "calc(var(--spacing) * 3) 0",
 		outline: "none",
+		userSelect: "text",
 	},
 	".cm-line": { padding: "0 calc(var(--spacing) * 3)" },
 	".cm-gutters": {
@@ -37,6 +38,7 @@ export const editorTheme = EditorView.theme({
 		lineHeight: "1.6",
 		border: "none",
 		borderRight: "0.0625rem solid var(--line-subtle)",
+		userSelect: "none",
 	},
 	".cm-lineNumbers .cm-gutterElement": {
 		padding: "0 calc(var(--spacing) * 2)",
@@ -117,7 +119,7 @@ export const highlightStyle = HighlightStyle.define([
 		textDecoration: "underline",
 	},
 	{ tag: tags.monospace, color: "var(--foreground)" },
-	// Quoted CSV fields — the case where punctuation inside a value is data.
+	// Quoted CSV fields: the case where punctuation inside a value is data.
 	{ tag: tags.string, color: "var(--selection-edge)" },
 	{ tag: tags.escape, color: "var(--status-warning)" },
 	{ tag: tags.tagName, color: "var(--selection-edge)" },

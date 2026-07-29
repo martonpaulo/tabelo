@@ -1,7 +1,7 @@
 @import "@tabelo/ui/globals.css";
 
 /* Tabelo's semantic token layer.
-   Nothing in the app should reach for a raw colour, size, or radius — every
+   Nothing in the app should reach for a raw colour, size, or radius: every
    value used by a component is named here for what it MEANS, not what it is.
    Changing the product's look should be possible from this file alone.
    The rules that govern how these are used live in docs/design-system.md. */
@@ -13,6 +13,7 @@
 	--color-surface-header: var(--surface-header);
 	--color-surface-gutter: var(--surface-gutter);
 	--color-surface-readonly: var(--surface-readonly);
+	--color-surface-floating: var(--surface-floating);
 
 	/* Separators. Subtle is the default; strong marks a panel boundary. */
 	--color-line-subtle: var(--line-subtle);
@@ -42,7 +43,7 @@
 }
 
 /* Per-pane content scale. `--pane-zoom` is set on one pane's body, and only
-   what that pane displays reads it — headers, controls, hit targets, and focus
+   what that pane displays reads it: headers, controls, hit targets, and focus
    rings keep their size so a zoomed-out pane never becomes harder to operate.
    At 100% these resolve to exactly `text-sm`, so nothing moves by default. */
 @theme inline {
@@ -59,6 +60,7 @@
 	--surface-header: #f5f5f5;
 	--surface-gutter: #f5f5f5;
 	--surface-readonly: #f5f5f5;
+	--surface-floating: #fafafa;
 
 	--line-subtle: #e0e0e0;
 	--line-strong: #d1d1d1;
@@ -81,6 +83,7 @@
 	   work in, accepting that reaching the next pane means scrolling. */
 	--pane-stack-h: 60vh;
 	--fab-size: 3rem;
+	--pane-active-edge: 0.1875rem;
 	--control-radius: 0.25rem;
 	--surface-radius: 0.5rem;
 	--radius: var(--control-radius);
@@ -90,7 +93,7 @@
 	--foreground: #242424;
 	--card: var(--surface-panel);
 	--card-foreground: var(--foreground);
-	--popover: var(--surface-panel);
+	--popover: var(--surface-floating);
 	--popover-foreground: var(--foreground);
 	--primary: #0f6cbd;
 	--primary-foreground: #ffffff;
@@ -116,6 +119,7 @@
 		--surface-header: #333333;
 		--surface-gutter: #333333;
 		--surface-readonly: #242424;
+		--surface-floating: #3a3a3a;
 
 		--line-subtle: #3d3d3d;
 		--line-strong: #484848;
@@ -153,6 +157,15 @@ body {
 	background-color: var(--surface-app);
 }
 
+#app {
+	user-select: none;
+}
+
+.tabelo-active-pane {
+	outline: var(--pane-active-edge) solid var(--selection-edge);
+	outline-offset: calc(-1 * var(--pane-active-edge));
+}
+
 ::selection {
 	background-color: var(--text-selection-fill);
 }
@@ -161,6 +174,7 @@ input,
 textarea,
 [contenteditable="true"] {
 	caret-color: var(--selection-edge);
+	user-select: text;
 }
 
 /* One focus treatment for the whole app, including inside the grid.

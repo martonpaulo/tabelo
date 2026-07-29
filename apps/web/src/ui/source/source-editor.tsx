@@ -7,6 +7,7 @@ import {
 	undo,
 	undoDepth,
 } from "@codemirror/commands";
+import { json } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
 import {
 	Annotation,
@@ -30,7 +31,7 @@ import {
 	ViewPlugin,
 	type ViewUpdate,
 } from "@codemirror/view";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import {
 	notifyLocalHistoryChanged,
 	registerLocalHistory,
@@ -51,6 +52,13 @@ const editableCompartment = new Compartment();
 const diagnosticsCompartment = new Compartment();
 const headerLineCompartment = new Compartment();
 const attributesCompartment = new Compartment();
+const zoomCompartment = new Compartment();
+
+function zoomExtension(zoom: number) {
+	return EditorView.theme({
+		"&": { "--pane-zoom": String(zoom) },
+	});
+}
 
 const markdownTableStructureMatcher = new MatchDecorator({
 	regexp: /\||:?-{3,}:?/g,
@@ -155,7 +163,8 @@ function headerLineExtension(language: HighlightLanguage) {
 	if (
 		language !== "markdown" &&
 		language !== "delimited" &&
-		language !== "jira"
+		language !== "jira" &&
+		language !== "json"
 	) {
 		return [];
 	}
@@ -177,6 +186,12 @@ function headerLineExtension(language: HighlightLanguage) {
 				for (let number = 1; number <= view.state.doc.lines; number += 1) {
 					const line = view.state.doc.line(number);
 					if (line.text.trim() === "") continue;
+					if (
+						language === "json" &&
+						(line.text.trim() === "[" || line.text.trim() === "]")
+					) {
+						continue;
+					}
 					return Decoration.set([
 						Decoration.line({ class: "cm-tableHeaderLine" }).range(line.from),
 					]);
@@ -212,6 +227,8 @@ function languageFor(language: HighlightLanguage) {
 			return htmlLanguage;
 		case "jira":
 			return jiraLanguage;
+		case "json":
+			return json();
 		default:
 			return [];
 	}
@@ -242,6 +259,7 @@ function minimalChange(current: string, next: string) {
 
 interface SourceEditorProps {
 	readonly paneId: string;
+	readonly zoom: number;
 	readonly value: string;
 	readonly language: HighlightLanguage;
 	readonly diagnostics: readonly SourceDiagnostic[];
@@ -252,13 +270,14 @@ interface SourceEditorProps {
 	readonly ariaLabel: string;
 	readonly onChange: (value: string) => void;
 	// Called when the editor's own history is exhausted. This is the fall-through
-	// that makes undo layered rather than split — see docs/adr/0003.
+	// that makes undo layered rather than split: see docs/adr/0003.
 	readonly onUndoBeyondLocal: () => void;
 	readonly onRedoBeyondLocal: () => void;
 }
 
 export function SourceEditor({
 	paneId,
+	zoom,
 	value,
 	language,
 	diagnostics,
@@ -273,7 +292,7 @@ export function SourceEditor({
 	const hostRef = useRef<HTMLDivElement>(null);
 	const viewRef = useRef<EditorView | null>(null);
 
-	// Handlers are read through refs so the editor is created exactly once —
+	// Handlers are read through refs so the editor is created exactly once.
 	// tearing it down on every render would destroy history and cursor state.
 	const handlers = useRef({ onChange, onUndoBeyondLocal, onRedoBeyondLocal });
 	handlers.current = { onChange, onUndoBeyondLocal, onRedoBeyondLocal };
@@ -308,6 +327,7 @@ export function SourceEditor({
 							contentAttributes(ariaLabel, invalid, describedBy),
 						),
 					),
+					zoomCompartment.of(zoomExtension(zoom)),
 
 					// Precedence matters: this must see Mod-z before the default
 					// history keymap consumes it.
@@ -387,6 +407,19 @@ export function SourceEditor({
 			annotations: [fromSync.of(true), Transaction.addToHistory.of(false)],
 		});
 	}, [value]);
+
+	// The font size comes from the pane's CSS variable. CodeMirror cannot infer
+	// that an ancestor variable changed, so explicitly remeasure its cursor,
+	// lines, and gutters after each zoom step.
+	useLayoutEffect(() => {
+		if (zoom <= 0) return;
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: zoomCompartment.reconfigure(zoomExtension(zoom)),
+		});
+		view.requestMeasure();
+	}, [zoom]);
 
 	useEffect(() => {
 		const view = viewRef.current;

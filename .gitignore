@@ -53,7 +53,7 @@ test-results
 # PWA dev output
 dev-dist
 
-# Scratch space (handoffs, prototypes) — see AGENTS.md
+# Scratch space (handoffs, prototypes): see AGENTS.md
 .scratch
 
 # Misc

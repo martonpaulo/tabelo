@@ -18,7 +18,7 @@ export interface Row {
 	readonly cells: Readonly<Record<ColumnId, string>>;
 }
 
-// The canonical table. Every representation — grid, Markdown, CSV — is derived
+// The canonical table. Every representation: grid, Markdown, CSV: is derived
 // from this. See docs/adr/0001.
 export interface TableDocument {
 	readonly columns: readonly Column[];

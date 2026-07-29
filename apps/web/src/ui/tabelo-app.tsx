@@ -15,20 +15,14 @@ export function TabeloApp() {
 	const [downloading, setDownloading] = useState(false);
 	const [confirmingNewTable, setConfirmingNewTable] = useState(false);
 	const [hydrated, setHydrated] = useState(false);
-	const [welcomeDismissed, setWelcomeDismissed] = useState(false);
-	const document = useTabeloStore((state) => state.document);
-	const draft = useTabeloStore((state) => state.draft);
-	const showWelcome =
-		hydrated &&
-		!welcomeDismissed &&
-		isDocumentBlank(document) &&
-		draft === null;
+	const [welcomeOpen, setWelcomeOpen] = useState(false);
+	const showWelcome = hydrated && welcomeOpen;
 
 	const requestNewTable = () => {
 		const state = useTabeloStore.getState();
 		if (isDocumentBlank(state.document) && state.draft === null) {
 			state.resetDocument();
-			setWelcomeDismissed(true);
+			setWelcomeOpen(false);
 			return;
 		}
 		setConfirmingNewTable(true);
@@ -39,12 +33,35 @@ export function TabeloApp() {
 	// there is no table content and no pending source draft.
 	useLayoutEffect(() => {
 		useTabeloStore.getState().hydrate();
+		const state = useTabeloStore.getState();
+		setWelcomeOpen(isDocumentBlank(state.document) && state.draft === null);
 		const stopAutosave = startAutosave();
 		setHydrated(true);
 		return stopAutosave;
 	}, []);
 
-	// Undo and redo are document-level, so they work wherever focus is — except
+	// A trusted paste event carries the clipboard payload even when the browser
+	// denies the async clipboard API. While the first-visit surface is open, it
+	// should be enough to press the standard paste shortcut anywhere.
+	useEffect(() => {
+		if (!showWelcome) return;
+		const onPaste = (event: ClipboardEvent) => {
+			if (!event.clipboardData) return;
+			const payload = {
+				text: event.clipboardData.getData("text/plain"),
+				html: event.clipboardData.getData("text/html"),
+			};
+			const before = useTabeloStore.getState().document;
+			useTabeloStore.getState().pasteClipboard(payload);
+			if (useTabeloStore.getState().document === before) return;
+			event.preventDefault();
+			setWelcomeOpen(false);
+		};
+		window.addEventListener("paste", onPaste);
+		return () => window.removeEventListener("paste", onPaste);
+	}, [showWelcome]);
+
+	// Undo and redo are document-level, so they work wherever focus is, except
 	// inside a source editor, which owns the shortcut first and falls through to
 	// these same actions once its own history is spent. See docs/adr/0003.
 	useEffect(() => {
@@ -73,7 +90,7 @@ export function TabeloApp() {
 			}
 
 			// Mod+S means "keep my work" everywhere else, so it opens the download
-			// chooser here — Tabelo has nowhere to save to, and the browser's Save
+			// chooser here: Tabelo has nowhere to save to, and the browser's Save
 			// Page would write the app shell rather than the table. Taken from
 			// every focus, including inside a source editor, because the browser
 			// would otherwise still act on it there.
@@ -108,7 +125,10 @@ export function TabeloApp() {
 					<Workspace />
 				</div>
 				{showWelcome ? (
-					<EmptyState onStartEmpty={() => setWelcomeDismissed(true)} />
+					<EmptyState
+						onStartEmpty={() => setWelcomeOpen(false)}
+						onStarted={() => setWelcomeOpen(false)}
+					/>
 				) : null}
 			</div>
 			{showWelcome ? null : (

@@ -4,7 +4,7 @@ import { expect, test } from "./fixtures";
 
 // A refused clipboard is the case that used to look like a broken button.
 // Permission cannot be denied through Playwright, so the boundary itself is
-// replaced before the app loads — which is exactly what the browser does when
+// replaced before the app loads. This is exactly what the browser does when
 // the user declines, when the context is restricted, or when the half of the
 // API being called does not exist.
 
@@ -49,7 +49,7 @@ async function faultyClipboard(
 }
 
 async function openTableActions(page: Page): Promise<void> {
-	await page.getByRole("button", { name: copy.actions.tableActions }).click();
+	await page.getByRole("gridcell").first().click({ button: "right" });
 }
 
 test("a refused copy explains itself instead of doing nothing", async ({

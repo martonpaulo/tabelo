@@ -33,6 +33,7 @@ import {
 } from "@/history/coordinator";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
+import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
 import {
 	gridAreaOf,
@@ -138,16 +139,20 @@ export function AppMenu({ onImport, onDownload, onNewTable }: AppMenuProps) {
 
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
-					<DropdownMenuItem disabled={!canUndo} onClick={() => run("undo")}>
-						<Undo2 aria-hidden />
-						{copy.actions.undo}
-						<DropdownMenuShortcut>{copy.shortcuts.undo}</DropdownMenuShortcut>
-					</DropdownMenuItem>
-					<DropdownMenuItem disabled={!canRedo} onClick={() => run("redo")}>
-						<Redo2 aria-hidden />
-						{copy.actions.redo}
-						<DropdownMenuShortcut>{copy.shortcuts.redo}</DropdownMenuShortcut>
-					</DropdownMenuItem>
+					<DisabledTooltip reason={canUndo ? undefined : copy.disabled.undo}>
+						<DropdownMenuItem disabled={!canUndo} onClick={() => run("undo")}>
+							<Undo2 aria-hidden />
+							{copy.actions.undo}
+							<DropdownMenuShortcut>{copy.shortcuts.undo}</DropdownMenuShortcut>
+						</DropdownMenuItem>
+					</DisabledTooltip>
+					<DisabledTooltip reason={canRedo ? undefined : copy.disabled.redo}>
+						<DropdownMenuItem disabled={!canRedo} onClick={() => run("redo")}>
+							<Redo2 aria-hidden />
+							{copy.actions.redo}
+							<DropdownMenuShortcut>{copy.shortcuts.redo}</DropdownMenuShortcut>
+						</DropdownMenuItem>
+					</DisabledTooltip>
 				</DropdownMenuGroup>
 
 				<DropdownMenuSeparator />

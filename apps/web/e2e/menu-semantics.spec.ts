@@ -34,7 +34,7 @@ test("the layout menu reports the current preset", async ({ tabelo }) => {
 
 test("the view list reports what the pane is showing", async ({ tabelo }) => {
 	const menu = await tabelo.openPaneMenu("markdown");
-	await expect(menu.getByRole("menuitemradio")).toHaveCount(7);
+	await expect(menu.getByRole("menuitemradio")).toHaveCount(8);
 	await expect(menu.getByRole("menuitemradio", { checked: true })).toHaveCount(
 		1,
 	);
@@ -53,11 +53,21 @@ test("the view list reports what the pane is showing", async ({ tabelo }) => {
 	).not.toBeChecked();
 });
 
-test("a view already open elsewhere is disabled", async ({ tabelo }) => {
+test("a view already open elsewhere is disabled and explains why", async ({
+	page,
+	tabelo,
+}) => {
 	const menu = await tabelo.openPaneMenu("markdown");
+	const blocked = menu.getByRole("menuitemradio", {
+		name: copy.views.grid.label,
+	});
+	await expect(blocked).toBeDisabled();
+	await blocked.hover();
 	await expect(
-		menu.getByRole("menuitemradio", { name: copy.views.grid.label }),
-	).toBeDisabled();
+		page.getByRole("tooltip", {
+			name: copy.disabled.viewAlreadyOpen(copy.views.grid.label),
+		}),
+	).toBeVisible();
 	await expect(
 		menu.getByRole("menuitemradio", { name: copy.views.markdown.label }),
 	).toBeChecked();

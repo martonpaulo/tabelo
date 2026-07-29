@@ -10,7 +10,7 @@ import {
 } from "./schema";
 
 // What the app hands over to be saved. Deliberately expressed in the domain's
-// own readonly types rather than the schema's inferred ones — persistence
+// own readonly types rather than the schema's inferred ones: persistence
 // serves the document, not the other way round.
 export interface SavePayload {
 	readonly document: TableDocument;
@@ -18,7 +18,7 @@ export interface SavePayload {
 	readonly draft: PersistedDraft;
 }
 
-// localStorage is the only durable store. Reads are treated as untrusted —
+// localStorage is the only durable store. Reads are treated as untrusted.
 // another tab, an extension, or a half-finished write can all leave something
 // unexpected there.
 
@@ -94,6 +94,6 @@ export function clearState(): void {
 	try {
 		window.localStorage.removeItem(STORAGE_KEY);
 	} catch {
-		// Nothing to recover from — the document stays in memory either way.
+		// Nothing to recover from: the document stays in memory either way.
 	}
 }

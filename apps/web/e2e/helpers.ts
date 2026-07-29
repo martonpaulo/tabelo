@@ -77,7 +77,7 @@ export class TabeloPage {
 	}
 
 	// Cells and headers are addressed by position rather than by accessible
-	// name: their names are now their contents, which is the point — a cell is
+	// name: their names are now their contents, which is the point: a cell is
 	// named after its value, not after its coordinates.
 	header(column: number): Locator {
 		requirePositiveIndex(column, "column");

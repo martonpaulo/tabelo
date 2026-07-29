@@ -19,8 +19,8 @@ import { copyToClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
 import { Notice } from "@/ui/primitives/notice";
 
-// Downloading is a choice, not a click: which format, and — where the format
-// says it has one — how that file should be written. Both the File menu and
+// Downloading is a choice, not a click. The user chooses the format and, where
+// the format offers options, how the file should be written. Both the File menu and
 // the keyboard shortcut open this same chooser, so there is one format list
 // and one set of options rather than a parallel pair. See docs/adr/0005.
 
@@ -46,7 +46,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 
 	// A draft that has not parsed is not in the document, so the file would be
 	// the last valid table. Saying which is the point: a download must never
-	// claim to contain work it left out. A clean draft needs no such warning —
+	// claim to contain work it left out. A clean draft needs no such warning.
 	// it was read back into the document the moment it parsed.
 	const pendingDraft = useTabeloStore((state) =>
 		state.draft && state.draft.status !== "clean" ? state.draft : null,

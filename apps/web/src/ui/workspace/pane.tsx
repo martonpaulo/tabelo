@@ -2,7 +2,6 @@ import { cn } from "@tabelo/ui/lib/utils";
 import { memo } from "react";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
-import { GridPaneActions } from "@/ui/grid/grid-pane-actions";
 import { Panel } from "@/ui/primitives/panel";
 import { getView } from "@/views/registry";
 import { gridAreaStyle, type WorkspacePane } from "@/workspace/layout";
@@ -10,8 +9,8 @@ import { PaneContent } from "./pane-content";
 import { PaneIdentity, PaneMenu } from "./pane-menu";
 
 // One pane frame for every view. The header carries only what belongs to this
-// pane: which view it shows, and the state of that view. Document-level
-// actions live in the floating app menu — see docs/design-system.md §5.
+// pane: which view it shows and the state of that view. Document-level
+// actions live in the floating app menu: see docs/design-system.md §5.
 
 interface PaneProps {
 	readonly pane: WorkspacePane;
@@ -42,7 +41,7 @@ export const Pane = memo(function Pane({
 				// Tall enough to be worth scrolling to, and still allowed to grow
 				// when it is the only pane on screen.
 				stacked && "min-h-pane-stack flex-1",
-				active && "ring-2 ring-selection-edge ring-inset",
+				active && "tabelo-active-pane",
 			)}
 			onPointerDownCapture={() => {
 				if (!active) useTabeloStore.getState().setActivePane(pane.id);
@@ -51,10 +50,9 @@ export const Pane = memo(function Pane({
 				if (!active) useTabeloStore.getState().setActivePane(pane.id);
 			}}
 		>
-			<Panel.Header className="overflow-x-auto">
+			<Panel.Header className="overflow-hidden">
 				<PaneIdentity view={view} compact={compact} />
 				<Panel.Spacer />
-				{view.kind === "grid" ? <GridPaneActions compact={compact} /> : null}
 				<PaneMenu paneId={pane.id} view={view} />
 			</Panel.Header>
 

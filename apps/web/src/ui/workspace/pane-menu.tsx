@@ -25,6 +25,7 @@ import { useEffect, useRef } from "react";
 import { useTabeloStore, visibleTextForPane } from "@/state/store";
 import { copyToClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
+import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
 import { listViews } from "@/views/registry";
 import type { ViewDefinition, ViewId } from "@/views/types";
@@ -74,7 +75,7 @@ export function PaneMenu({
 			DEFAULT_PANE_ZOOM,
 	);
 	// Pane count changes move between presets, so what is possible here is
-	// exactly what the layout gallery can express — see docs/adr/0006.
+	// exactly what the layout gallery can express: see docs/adr/0006.
 	const canAdd = useTabeloStore(
 		(state) => largerLayout(state.workspace.layout) !== undefined,
 	);
@@ -115,7 +116,7 @@ export function PaneMenu({
 			<DropdownMenuContent align="end" className="w-auto min-w-64">
 				{/* The pane shows exactly one view, so the list is a radio group.
 				    The checked value follows the store rather than the click, which
-				    is what keeps a refused change — an invalid draft — from leaving
+				    is what keeps a refused change: an invalid draft: from leaving
 				    the menu claiming something the pane is not showing. */}
 				<DropdownMenuRadioGroup
 					value={view.id}
@@ -124,22 +125,33 @@ export function PaneMenu({
 					}
 				>
 					<DropdownMenuLabel>{copy.workspace.changeView}</DropdownMenuLabel>
-					{views.map((candidate) => (
-						<DropdownMenuRadioItem
-							key={candidate.id}
-							value={candidate.id}
-							disabled={openPanes.some(
-								(pane) => pane.id !== paneId && pane.view === candidate.id,
-							)}
-							closeOnClick
-						>
-							<candidate.icon aria-hidden />
-							<MenuOption
-								label={candidate.label}
-								description={candidate.description}
-							/>
-						</DropdownMenuRadioItem>
-					))}
+					{views.map((candidate) => {
+						const alreadyOpen = openPanes.some(
+							(pane) => pane.id !== paneId && pane.view === candidate.id,
+						);
+						return (
+							<DisabledTooltip
+								key={candidate.id}
+								reason={
+									alreadyOpen
+										? copy.disabled.viewAlreadyOpen(candidate.label)
+										: undefined
+								}
+							>
+								<DropdownMenuRadioItem
+									value={candidate.id}
+									disabled={alreadyOpen}
+									closeOnClick
+								>
+									<candidate.icon aria-hidden />
+									<MenuOption
+										label={candidate.label}
+										description={candidate.description}
+									/>
+								</DropdownMenuRadioItem>
+							</DisabledTooltip>
+						);
+					})}
 				</DropdownMenuRadioGroup>
 
 				<DropdownMenuSeparator />
@@ -147,46 +159,64 @@ export function PaneMenu({
 				<DropdownMenuGroup>
 					{/* The group's label carries the current value, so a screen reader
 					    reports the percentage on entering the group and again after each
-					    step — the items stay in place and the menu stays open. */}
+					    step: the items stay in place and the menu stays open. */}
 					<DropdownMenuLabel aria-live="polite">
 						{copy.workspace.zoom(paneZoomPercent(zoom))}
 					</DropdownMenuLabel>
-					<DropdownMenuItem
-						aria-label={copy.workspace.zoomOut}
-						closeOnClick={false}
-						disabled={zoom <= MIN_PANE_ZOOM}
-						onClick={() => setZoom(stepPaneZoom(zoom, -1))}
+					<DisabledTooltip
+						reason={
+							zoom <= MIN_PANE_ZOOM ? copy.disabled.zoomMinimum : undefined
+						}
 					>
-						<ZoomOut aria-hidden />
-						{copy.workspace.zoomOut}
-						<DropdownMenuShortcut aria-hidden>
-							{copy.shortcuts.zoomOut}
-						</DropdownMenuShortcut>
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						aria-label={copy.workspace.resetZoom}
-						closeOnClick={false}
-						disabled={zoom === DEFAULT_PANE_ZOOM}
-						onClick={() => setZoom(DEFAULT_PANE_ZOOM)}
+						<DropdownMenuItem
+							aria-label={copy.workspace.zoomOut}
+							closeOnClick={false}
+							disabled={zoom <= MIN_PANE_ZOOM}
+							onClick={() => setZoom(stepPaneZoom(zoom, -1))}
+						>
+							<ZoomOut aria-hidden />
+							{copy.workspace.zoomOut}
+							<DropdownMenuShortcut aria-hidden>
+								{copy.shortcuts.zoomOut}
+							</DropdownMenuShortcut>
+						</DropdownMenuItem>
+					</DisabledTooltip>
+					<DisabledTooltip
+						reason={
+							zoom === DEFAULT_PANE_ZOOM ? copy.disabled.zoomDefault : undefined
+						}
 					>
-						<RotateCcw aria-hidden />
-						{copy.workspace.resetZoom}
-						<DropdownMenuShortcut aria-hidden>
-							{copy.shortcuts.resetZoom}
-						</DropdownMenuShortcut>
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						aria-label={copy.workspace.zoomIn}
-						closeOnClick={false}
-						disabled={zoom >= MAX_PANE_ZOOM}
-						onClick={() => setZoom(stepPaneZoom(zoom, 1))}
+						<DropdownMenuItem
+							aria-label={copy.workspace.resetZoom}
+							closeOnClick={false}
+							disabled={zoom === DEFAULT_PANE_ZOOM}
+							onClick={() => setZoom(DEFAULT_PANE_ZOOM)}
+						>
+							<RotateCcw aria-hidden />
+							{copy.workspace.resetZoom}
+							<DropdownMenuShortcut aria-hidden>
+								{copy.shortcuts.resetZoom}
+							</DropdownMenuShortcut>
+						</DropdownMenuItem>
+					</DisabledTooltip>
+					<DisabledTooltip
+						reason={
+							zoom >= MAX_PANE_ZOOM ? copy.disabled.zoomMaximum : undefined
+						}
 					>
-						<ZoomIn aria-hidden />
-						{copy.workspace.zoomIn}
-						<DropdownMenuShortcut aria-hidden>
-							{copy.shortcuts.zoomIn}
-						</DropdownMenuShortcut>
-					</DropdownMenuItem>
+						<DropdownMenuItem
+							aria-label={copy.workspace.zoomIn}
+							closeOnClick={false}
+							disabled={zoom >= MAX_PANE_ZOOM}
+							onClick={() => setZoom(stepPaneZoom(zoom, 1))}
+						>
+							<ZoomIn aria-hidden />
+							{copy.workspace.zoomIn}
+							<DropdownMenuShortcut aria-hidden>
+								{copy.shortcuts.zoomIn}
+							</DropdownMenuShortcut>
+						</DropdownMenuItem>
+					</DisabledTooltip>
 				</DropdownMenuGroup>
 
 				<DropdownMenuSeparator />
@@ -194,25 +224,33 @@ export function PaneMenu({
 				{/* Flat rather than a submenu of formats: the workspace grows, and the
 				    new pane's own menu opens on its view list with focus already
 				    there. See docs/design-system.md §5 on nested menus. */}
-				<DropdownMenuItem
-					disabled={!canAdd}
-					onClick={() => useTabeloStore.getState().addPane()}
+				<DisabledTooltip
+					reason={canAdd ? undefined : copy.disabled.addViewLimit}
 				>
-					<Plus aria-hidden />
-					{copy.workspace.addView}
-				</DropdownMenuItem>
+					<DropdownMenuItem
+						disabled={!canAdd}
+						onClick={() => useTabeloStore.getState().addPane()}
+					>
+						<Plus aria-hidden />
+						{copy.workspace.addView}
+					</DropdownMenuItem>
+				</DisabledTooltip>
 
-				<DropdownMenuItem
-					disabled={!canClose}
-					onClick={() => useTabeloStore.getState().closePane(paneId)}
+				<DisabledTooltip
+					reason={canClose ? undefined : copy.disabled.closeOnlyView}
 				>
-					<X aria-hidden />
-					{copy.workspace.closeView}
-				</DropdownMenuItem>
+					<DropdownMenuItem
+						disabled={!canClose}
+						onClick={() => useTabeloStore.getState().closePane(paneId)}
+					>
+						<X aria-hidden />
+						{copy.workspace.closeView}
+					</DropdownMenuItem>
+				</DisabledTooltip>
 
 				{/* Whether a view's text can be copied is the registry's answer, not
-				    this component's: a read-only source view offers it, and the
-				    rendered preview — which has no source to hand over — does not. */}
+				    this component's. A read-only source view offers it. The rendered
+				    preview has no source to hand over, so it does not. */}
 				{view.capabilities.textClipboard ? (
 					<>
 						<DropdownMenuSeparator />

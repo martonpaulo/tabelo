@@ -1,7 +1,7 @@
 // Dropdown and context menus are different interaction primitives with the
 // same visual contract. Shared strings keep geometry and states in one place.
 export const menuPopupStyles =
-	"rounded-surface bg-popover p-1 text-popover-foreground shadow-md outline-none ring-1 ring-foreground/10 supports-backdrop-filter:bg-popover/88 supports-backdrop-filter:backdrop-blur-md";
+	"rounded-surface bg-popover p-1 text-popover-foreground shadow-xl outline-none ring-1 ring-line-strong supports-backdrop-filter:bg-popover/94 supports-backdrop-filter:backdrop-blur-md";
 
 export const menuLabelStyles =
 	"px-2 py-1.5 text-muted-foreground text-xs leading-none data-inset:pl-7";

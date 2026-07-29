@@ -9,8 +9,10 @@ import { importTableFile } from "@/ui/import";
 // but is inert until the user chooses how to begin.
 export function EmptyState({
 	onStartEmpty,
+	onStarted,
 }: {
 	readonly onStartEmpty: () => void;
+	readonly onStarted: () => void;
 }) {
 	return (
 		<div className="absolute inset-0 z-40 flex items-center justify-center bg-surface-app/60 p-4 supports-backdrop-filter:backdrop-blur-sm">
@@ -32,7 +34,11 @@ export function EmptyState({
 					<Button
 						variant="outline"
 						size="sm"
-						onClick={() => void pasteFromClipboard()}
+						onClick={() => {
+							void pasteFromClipboard().then((started) => {
+								if (started) onStarted();
+							});
+						}}
 					>
 						<ClipboardPaste aria-hidden />
 						{copy.empty.pasteHint}
@@ -40,7 +46,11 @@ export function EmptyState({
 					<Button
 						variant="outline"
 						size="sm"
-						onClick={() => void importTableFile()}
+						onClick={() => {
+							void importTableFile().then((started) => {
+								if (started) onStarted();
+							});
+						}}
 					>
 						<Upload aria-hidden />
 						{copy.empty.importAction}

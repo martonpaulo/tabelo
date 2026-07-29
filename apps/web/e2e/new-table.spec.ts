@@ -17,6 +17,9 @@ test("a new table confirms before clearing document content", async ({
 	await tabelo.runAppCommand("newTable");
 	await dialog.getByRole("button", { name: copy.newTable.confirm }).click();
 	await expect(tabelo.cell(1, 1)).toHaveText("");
+	await expect(
+		tabelo.page.getByRole("heading", { name: copy.empty.title }),
+	).toHaveCount(0);
 });
 
 test("an unfinished source draft also requires confirmation", async ({

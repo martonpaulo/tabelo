@@ -4,7 +4,7 @@ import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
 
 // Markdown cannot hold a literal pipe or line break inside a table cell, so
 // both are escaped rather than dropped. The transformation must be exactly
-// reversible — see docs/adr/0002 — which is why the escape sequences
+// reversible. See docs/adr/0002. This is why the escape sequences
 // themselves (`\`, `\|`, and a literal `<br>`) are escaped too.
 export function escapeCell(value: string): string {
 	let out = "";

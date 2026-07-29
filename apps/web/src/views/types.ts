@@ -15,6 +15,7 @@ export type HighlightLanguage =
 	| "delimited"
 	| "html"
 	| "jira"
+	| "json"
 	| "plain";
 
 export interface ViewCapabilities {

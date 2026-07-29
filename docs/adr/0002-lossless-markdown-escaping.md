@@ -11,7 +11,7 @@ A user pastes a spreadsheet column containing an address with a line break,
 switches the text panel to Markdown, switches back, and expects their data
 intact. The product requirement is explicit: no silent data loss.
 
-The obvious alternative — replace the newline with a space and warn — fails that
+The obvious alternative: replace the newline with a space and warn: fails that
 requirement. A warning does not make the loss acceptable, because CSV → Markdown
 → CSV is a round trip the user performs casually and repeatedly.
 

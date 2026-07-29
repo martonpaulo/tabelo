@@ -2,8 +2,8 @@
 // lets the HTML shell, router metadata, manifest, and interface share one owner.
 export const product = {
 	name: "Tabelo",
-	tagline: "Edit one table in every view — always in sync.",
-	documentTitle: "Tabelo — Edit one table in every view",
+	tagline: "Edit one table in every view, always in sync.",
+	documentTitle: "Tabelo: Edit one table in every view",
 	description:
-		"Edit one table visually or as Markdown, CSV, TSV, HTML, and Jira — always in sync, entirely in your browser.",
+		"Edit one table visually or as Markdown, CSV, TSV, HTML, Jira, and JSON, always in sync, entirely in your browser.",
 } as const;

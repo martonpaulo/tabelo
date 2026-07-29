@@ -7,7 +7,7 @@ import { DEFAULT_PANE_ZOOM } from "./zoom";
 //   --+--
 //   c | d
 //
-// A pane occupies one slot, two adjacent slots, or — as the "single" preset —
+// A pane occupies one slot, two adjacent slots, or, as the "single" preset,
 // all four. Free-form slot assignment was deliberately not built: presets keep
 // the choice to one obvious picker instead of a layout editor, which is the
 // difference between a utility and an IDE.
@@ -133,7 +133,7 @@ export function paneCount(id: LayoutId): number {
 }
 
 // Adding and closing a view are moves between the same presets the gallery
-// offers, so the workspace has one transition model rather than two — a direct
+// offers, so the workspace has one transition model rather than two: a direct
 // action can never reach a shape the picker cannot. Each target is the preset
 // that leaves the most surviving panes in the slot they already started in,
 // which is what makes the change read as local rather than as a re-tiling.
@@ -171,7 +171,7 @@ export interface WorkspacePane {
 	readonly id: string;
 	readonly view: ViewId;
 	readonly slots: readonly SlotId[];
-	// Local content scale. Presentation only — see workspace/zoom.ts.
+	// Local content scale. Presentation only: see workspace/zoom.ts.
 	readonly zoom: number;
 }
 

@@ -4,7 +4,7 @@ import { toDocumentParseResult } from "./parse";
 import type { MatrixParseResult, TableCodec } from "./types";
 
 // HTML parsing uses the platform's own parser rather than a hand-rolled one.
-// Real pasted markup is messy — nested elements, entities, attributes — and
+// Real pasted markup is messy, with nested elements, entities, and attributes.
 // DOMParser handles all of it correctly for free.
 
 const ALIGNMENTS: Record<string, Alignment> = {

@@ -26,6 +26,7 @@ export interface TableAction {
 	readonly icon: LucideIcon;
 	readonly shortcut?: string;
 	readonly disabled?: boolean;
+	readonly disabledReason?: string;
 	readonly danger?: boolean;
 	readonly run: () => void;
 }
@@ -159,6 +160,7 @@ export function buildTableActions(
 				label: copy.actions.moveUp,
 				icon: ArrowUp,
 				disabled: rect.top === 0,
+				disabledReason: copy.disabled.firstRow,
 				run: () => store.moveSelectedRow(-1),
 			},
 			{
@@ -166,6 +168,7 @@ export function buildTableActions(
 				label: copy.actions.moveDown,
 				icon: ArrowDown,
 				disabled: rect.bottom >= document.rows.length - 1,
+				disabledReason: copy.disabled.lastRow,
 				run: () => store.moveSelectedRow(1),
 			},
 		);
@@ -177,6 +180,7 @@ export function buildTableActions(
 				label: copy.actions.moveLeft,
 				icon: ArrowLeft,
 				disabled: rect.left === 0,
+				disabledReason: copy.disabled.firstColumn,
 				run: () => store.moveSelectedColumn(-1),
 			},
 			{
@@ -184,6 +188,7 @@ export function buildTableActions(
 				label: copy.actions.moveRight,
 				icon: ArrowRight,
 				disabled: rect.right >= document.columns.length - 1,
+				disabledReason: copy.disabled.lastColumn,
 				run: () => store.moveSelectedColumn(1),
 			},
 		);
@@ -198,6 +203,7 @@ export function buildTableActions(
 			shortcut: copy.shortcuts.deleteStructure,
 			danger: true,
 			disabled: lastRow,
+			disabledReason: copy.disabled.lastRemainingRow,
 			run: () => store.removeSelectedRows(),
 		});
 	}
@@ -208,6 +214,7 @@ export function buildTableActions(
 			icon: Trash2,
 			danger: true,
 			disabled: lastColumn,
+			disabledReason: copy.disabled.lastRemainingColumn,
 			run: () => store.removeSelectedColumns(),
 		});
 	}

@@ -7,15 +7,16 @@ import { type SourceDiagnostic, SourceEditor } from "./source-editor";
 import { sourceFeedbackIds } from "./source-feedback";
 
 // One component serves every source format. What differs between Markdown, CSV,
-// TSV, HTML, and Jira is entirely described by the registry — codec, highlight
-// language, editability — so there is nothing here that names a format.
+// TSV, HTML, Jira, and JSON is entirely described by the registry: codec, highlight
+// language, editability, so there is nothing here that names a format.
 
 interface SourceViewProps {
 	readonly paneId: string;
 	readonly viewId: ViewId;
+	readonly zoom: number;
 }
 
-export default function SourceView({ paneId, viewId }: SourceViewProps) {
+export default function SourceView({ paneId, viewId, zoom }: SourceViewProps) {
 	const view = getView(viewId);
 	const document = useTabeloStore((state) => state.document);
 
@@ -60,6 +61,7 @@ export default function SourceView({ paneId, viewId }: SourceViewProps) {
 			) : null}
 			<SourceEditor
 				paneId={paneId}
+				zoom={zoom}
 				value={draft?.text ?? projected}
 				language={view.highlight}
 				diagnostics={diagnostics}

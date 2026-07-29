@@ -23,7 +23,7 @@ function GridPane({ zoom }: { readonly zoom: number }) {
 	return <TableGrid zoom={zoom} />;
 }
 
-// Rendering is chosen by the view's kind, never by its id — that is what keeps
+// Rendering is chosen by the view's kind, never by its id. That is what keeps
 // adding a format from touching this file.
 interface PaneContentProps {
 	readonly paneId: string;
@@ -41,7 +41,12 @@ export function PaneContent({ paneId, view, zoom }: PaneContentProps) {
 			{view.kind === "preview" ? (
 				<HtmlPreview />
 			) : (
-				<SourceView key={view.id} paneId={paneId} viewId={view.id} />
+				<SourceView
+					key={view.id}
+					paneId={paneId}
+					viewId={view.id}
+					zoom={zoom}
+				/>
 			)}
 		</Suspense>
 	);

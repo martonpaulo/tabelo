@@ -3,7 +3,7 @@ import { createRowId } from "./ids";
 import type { Alignment, Column, ColumnId, Row, TableDocument } from "./types";
 
 // Pure operations over a table document. Every grid interaction goes through
-// one of these — the grid never mutates the document itself.
+// one of these: the grid never mutates the document itself.
 //
 // A table always keeps at least one column and one row, so the editor never
 // reaches a state with nothing to click on.
