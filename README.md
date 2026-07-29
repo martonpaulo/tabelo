@@ -17,7 +17,7 @@ Everything runs in your browser. No account, no server, no upload.
 
 ---
 
-## Here is the whole idea
+## 💡 Here is the whole idea
 
 These are not separate files. They are the same table:
 
@@ -66,7 +66,7 @@ Mark,Developer,No
 Go through CSV or Jira and back and those `:---:` alignment markers are still
 there. Those formats cannot express alignment, so Tabelo quietly remembers it.
 
-## What it does
+## ✨ What it does
 
 - **Arrange the workspace.** One to four panes, with each view available only
   once. Open the floating Tabelo button for files, layouts, undo, redo, and the
@@ -100,7 +100,7 @@ there. Those formats cannot express alignment, so Tabelo quietly remembers it.
 No formulas, extra sheets, charts, macros, pivot tables, accounts, cloud sync,
 collaboration, or analytics. Tabelo is happiest staying small.
 
-## Keyboard
+## ⌨️ Keyboard
 
 Both hands stay where they are.
 
@@ -126,7 +126,7 @@ underneath, native behaviour on top.
 
 Every shortcut also has a menu entry, so nothing is reachable only by keyboard.
 
-## Run it locally
+## 🚀 Run it locally
 
 Requires [Node.js](https://nodejs.org) 24+ and [pnpm](https://pnpm.io) 11+.
 
@@ -179,7 +179,7 @@ The decisions worth reading before you change anything:
 [`CONTEXT.md`](CONTEXT.md) defines the vocabulary, and [`AGENTS.md`](AGENTS.md)
 holds the working agreements.
 
-## Privacy
+## 🔒 Privacy
 
 Your data never leaves your browser. There is no backend, no account, and no
 telemetry of any kind. The document lives in `localStorage` on your machine.
