@@ -36,6 +36,15 @@ describe("codec document preconditions", () => {
 			columns: [0],
 		});
 		expect(precondition).toHaveBeenCalledOnce();
+
+		const nextDocument = documentFromMatrix([["Name"], ["Ada"]], {
+			headerRow: true,
+		});
+		expect(canSerialize(codec, nextDocument)).toEqual({
+			code: "test-conflict",
+			columns: [0],
+		});
+		expect(precondition).toHaveBeenCalledTimes(2);
 	});
 
 	it("filters codecs that cannot represent the document", () => {

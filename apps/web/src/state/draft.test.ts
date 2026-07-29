@@ -3,6 +3,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
 import { createSelection } from "@/core/selection";
+import { jsonCodec } from "@/formats";
+import type { TableCodec } from "@/formats/types";
 import { listViews } from "@/views/registry";
 import { canParse } from "@/views/types";
 import { layoutPresets } from "@/workspace/layout";
@@ -91,6 +93,39 @@ describe("draft ownership", () => {
 				.getState()
 				.workspace.panes.filter((pane) => pane.view === "markdown"),
 		).toHaveLength(1);
+	});
+
+	it("refuses a blocked view before it can own a draft", () => {
+		const document = documentFromMatrix([["Name"], ["Inez"]], {
+			headerRow: true,
+		});
+		const failure = { code: "test-conflict", columns: [0] } as const;
+		const mutableCodec = jsonCodec as {
+			precondition?: TableCodec["precondition"];
+		};
+		mutableCodec.precondition = () => failure;
+
+		try {
+			useTabeloStore.setState({ document });
+			const paneId = markdownPaneId();
+
+			expect(textForView(document, "json")).toEqual({
+				ok: false,
+				failure,
+			});
+
+			const store = useTabeloStore.getState();
+			store.setPaneView(paneId, "json");
+			store.setDraft(paneId, "json", '[["Name"],["Inez"]]');
+
+			const state = useTabeloStore.getState();
+			expect(
+				state.workspace.panes.find((pane) => pane.id === paneId)?.view,
+			).toBe("markdown");
+			expect(state.draft).toBeNull();
+		} finally {
+			delete mutableCodec.precondition;
+		}
 	});
 
 	it("requires an explicit discard before retiring an invalid owner", () => {

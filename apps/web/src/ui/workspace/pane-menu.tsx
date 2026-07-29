@@ -85,6 +85,9 @@ export function PaneMenu({
 	);
 	const openPanes = useTabeloStore((state) => state.workspace.panes);
 	const document = useTabeloStore((state) => state.document);
+	const currentViewFailure = view.codec
+		? canSerialize(view.codec, document)
+		: null;
 
 	// A pane the user just added hands its menu the focus, so the view it should
 	// show is one keystroke away rather than something to go looking for.
@@ -131,9 +134,10 @@ export function PaneMenu({
 						const alreadyOpen = openPanes.some(
 							(pane) => pane.id !== paneId && pane.view === candidate.id,
 						);
-						const failure = candidate.codec
-							? canSerialize(candidate.codec, document)
-							: null;
+						const failure =
+							candidate.id !== view.id && candidate.codec
+								? canSerialize(candidate.codec, document)
+								: null;
 						const disabledReason = alreadyOpen
 							? copy.disabled.viewAlreadyOpen(candidate.label)
 							: failure
@@ -257,18 +261,27 @@ export function PaneMenu({
 				{view.capabilities.textClipboard ? (
 					<>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							onClick={() => {
-								const state = useTabeloStore.getState();
-								const visible = visibleTextForPane(state, paneId, view.id);
-								if (visible.ok) {
-									void copyToClipboard({ text: visible.text }, "source");
-								}
-							}}
+						<DisabledTooltip
+							reason={
+								currentViewFailure
+									? copy.disabled.codecPrecondition(currentViewFailure)
+									: undefined
+							}
 						>
-							<ClipboardCopy aria-hidden />
-							{copy.actions.copySource}
-						</DropdownMenuItem>
+							<DropdownMenuItem
+								disabled={currentViewFailure !== null}
+								onClick={() => {
+									const state = useTabeloStore.getState();
+									const visible = visibleTextForPane(state, paneId, view.id);
+									if (visible.ok) {
+										void copyToClipboard({ text: visible.text }, "source");
+									}
+								}}
+							>
+								<ClipboardCopy aria-hidden />
+								{copy.actions.copySource}
+							</DropdownMenuItem>
+						</DisabledTooltip>
 					</>
 				) : null}
 			</DropdownMenuContent>

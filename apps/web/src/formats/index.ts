@@ -55,8 +55,9 @@ const preconditionCache = new WeakMap<
 	WeakMap<TableCodec, PreconditionFailure | null>
 >();
 
-// Document identity is stable between edits, so render-time consumers share a
-// precondition result without making codecs or the UI own another cache.
+// A document instance is stable until the next edit replaces it, so
+// render-time consumers share a precondition result without making codecs or
+// the UI own another cache.
 export function canSerialize(
 	codec: TableCodec,
 	document: TableDocument,
