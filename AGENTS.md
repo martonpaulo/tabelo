@@ -11,7 +11,7 @@ validation, git, and deployment work in this repository. A more specific
 ## Project identity and policy
 
 Stable, one-time decisions. Change an established identifier, license,
-visibility, branch policy, versioning model, localization strategy,
+visibility, versioning model, localization strategy,
 landing-page contract, or release policy only through an explicit task that
 describes the migration and its downstream effects.
 
@@ -32,7 +32,6 @@ describes the migration and its downstream effects.
   configuration, developer docs)
 - Product copy: English only, single locale, no i18n framework. Dates and
   numbers inside table cells are opaque text and are never reformatted
-- Branch policy: work only on `main`; never create, switch, or rename branches
 - Commit policy: commit automatically on task completion, one concern per commit
 - Push policy: push to `origin/main` automatically after committing
 - Product versioning: **unversioned**. The deployed site is always the current
@@ -401,7 +400,7 @@ here:
 
 ## Git
 
-- Follow the recorded branch, commit, and push policies above.
+- Follow the recorded commit and push policies above.
 - Check status and branch before editing and before the final report.
 - Use Conventional Commits in English. One commit per concern.
 - Inspect the diff before committing. Never commit secrets, caches, generated
