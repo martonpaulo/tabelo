@@ -137,12 +137,16 @@ test("column width controls constrain a column with long content", async ({
 		await item.focus();
 		await item.press("Enter");
 	};
+	const close = async (openMenu: Locator) => {
+		await openMenu.press("Escape");
+		await openMenu.waitFor({ state: "hidden" });
+	};
 
 	let open = await menu();
 	await activate(
 		open.getByRole("menuitem", { name: copy.actions.narrowColumn }),
 	);
-	await page.keyboard.press("Escape");
+	await close(open);
 	const narrowed = await width();
 	expect(narrowed).toBeLessThan(original);
 
@@ -150,43 +154,93 @@ test("column width controls constrain a column with long content", async ({
 	await activate(
 		open.getByRole("menuitem", { name: copy.actions.resetColumnWidth }),
 	);
-	await page.keyboard.press("Escape");
+	await close(open);
 	expect(await width()).toBeCloseTo(original, 0);
 
 	open = await menu();
 	await activate(
 		open.getByRole("menuitem", { name: copy.actions.widenColumn }),
 	);
-	await page.keyboard.press("Escape");
+	await close(open);
 	expect(await width()).toBeGreaterThan(original);
 
 	open = await menu();
 	await activate(
 		open.getByRole("menuitem", { name: copy.actions.resetColumnWidth }),
 	);
-	await page.keyboard.press("Escape");
+	await close(open);
 	expect(await width()).toBeCloseTo(original, 0);
 	open = await menu();
 	await expect(
 		open.getByRole("menuitem", { name: copy.actions.resetColumnWidth }),
 	).toBeDisabled();
-	await page.keyboard.press("Escape");
+	await close(open);
 
 	// Narrowing still stops at the floor rather than collapsing the column, even
 	// when its content is much wider than that floor.
-	for (let press = 0; press < 4; press += 1) {
-		open = await menu();
-		await activate(
-			open.getByRole("menuitem", { name: copy.actions.narrowColumn }),
-		);
-		await page.keyboard.press("Escape");
-	}
 	open = await menu();
-	await expect(
-		open.getByRole("menuitem", { name: copy.actions.narrowColumn }),
-	).toBeDisabled();
-	await page.keyboard.press("Escape");
+	const narrow = open.getByRole("menuitem", {
+		name: copy.actions.narrowColumn,
+	});
+	for (let press = 0; press < 8 && (await narrow.isEnabled()); press += 1) {
+		await activate(narrow);
+	}
+	await expect(narrow).toBeDisabled();
+	await close(open);
 	expect(await width()).toBeLessThan(original);
+
+	open = await menu();
+	await activate(
+		open.getByRole("menuitem", { name: copy.actions.resetColumnWidth }),
+	);
+	await close(open);
+
+	// The whole resize handle stays inside the clipped header so its complete hit
+	// target remains available.
+	const resizeHandle = header.locator("div.cursor-col-resize");
+	const handleBox = await resizeHandle.boundingBox();
+	const resizedHeaderBox = await header.boundingBox();
+	expect(handleBox).not.toBeNull();
+	expect((handleBox?.x ?? 0) + (handleBox?.width ?? 0)).toBeLessThanOrEqual(
+		(resizedHeaderBox?.x ?? 0) + (resizedHeaderBox?.width ?? 0),
+	);
+	await page.mouse.move(
+		(handleBox?.x ?? 0) + (handleBox?.width ?? 0) / 2,
+		(handleBox?.y ?? 0) + (handleBox?.height ?? 0) / 2,
+	);
+	await page.mouse.down();
+	await page.mouse.move(
+		(handleBox?.x ?? 0) + (handleBox?.width ?? 0) / 2 + 24,
+		(handleBox?.y ?? 0) + (handleBox?.height ?? 0) / 2,
+	);
+	await page.mouse.up();
+	expect(await width()).toBeGreaterThan(original);
+
+	open = await menu();
+	await activate(
+		open.getByRole("menuitem", { name: copy.actions.resetColumnWidth }),
+	);
+	await close(open);
+	const beforeZoom = await width();
+	await tabelo.runPaneCommand("grid", "zoomIn");
+	await expect.poll(width).toBeGreaterThan(beforeZoom);
+	await page.setViewportSize({ width: 500, height: 720 });
+	const scrollLeft = await tabelo.grid().evaluate((grid) => {
+		let scroller = grid.parentElement;
+		while (scroller && scroller.scrollWidth <= scroller.clientWidth) {
+			scroller = scroller.parentElement;
+		}
+		if (!scroller) return 0;
+		scroller.scrollLeft = scroller.scrollWidth;
+		return scroller.scrollLeft;
+	});
+	expect(scrollLeft).toBeGreaterThan(0);
+
+	const bodyCell = tabelo.cell(1, 1);
+	const headerBox = await header.boundingBox();
+	const bodyBox = await bodyCell.boundingBox();
+	expect(headerBox?.x).toBeCloseTo(bodyBox?.x ?? 0, 0);
+	expect(headerBox?.width).toBeCloseTo(bodyBox?.width ?? 0, 0);
 });
 
 test("a cell is named by its value, not by its coordinates", async ({
