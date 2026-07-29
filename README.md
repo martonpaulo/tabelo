@@ -11,13 +11,13 @@ but hand-editing pipes and commas is no fun either. Change a cell in the visual
 table and the Markdown updates. Fix the CSV and the table updates. Open
 up to four views and they all stay in sync.
 
-Tabelo is the word for table in the [language Esperanto](https://www.youtube.com/watch?v=whGSkjXTPjU).
-
 Everything runs in your browser. No account, no server, no upload.
 
-You can access it [here](https://martonpaulo.github.io/tabelo/).
+**Tabelo** is the word for table in the [language Esperanto](https://www.youtube.com/watch?v=whGSkjXTPjU).
 
----
+You can access it here 👉 [https://martonpaulo.github.io/tabelo/](https://martonpaulo.github.io/tabelo/)
+
+<br />
 
 ## 💡 Here is the whole idea
 
@@ -68,6 +68,8 @@ Mark,Developer,No
 Go through CSV or Jira and back and those `:---:` alignment markers are still
 there. Those formats cannot express alignment, so Tabelo quietly remembers it.
 
+<br />
+
 ## ✨ What it does
 
 - **Arrange the workspace.** One to four panes, with each view available only
@@ -102,6 +104,8 @@ there. Those formats cannot express alignment, so Tabelo quietly remembers it.
 No formulas, extra sheets, charts, macros, pivot tables, accounts, cloud sync,
 collaboration, or analytics. Tabelo is happiest staying small.
 
+<br />
+
 ## ⌨️ Keyboard
 
 Both hands stay where they are.
@@ -128,7 +132,9 @@ underneath, native behaviour on top.
 
 Every shortcut also has a menu entry, so nothing is reachable only by keyboard.
 
-## 🚀 Run it locally
+<br />
+
+## Run it locally
 
 Requires [Node.js](https://nodejs.org) 24+ and [pnpm](https://pnpm.io) 11+.
 
@@ -152,6 +158,8 @@ Then open <http://localhost:3001>.
 | `pnpm check-types` | TypeScript |
 | `pnpm lint` | Biome check |
 | `pnpm check` | Biome check, writing fixes |
+
+<br />
 
 ## A quick look under the hood
 
@@ -181,12 +189,16 @@ The decisions worth reading before you change anything:
 [`CONTEXT.md`](CONTEXT.md) defines the vocabulary, and [`AGENTS.md`](AGENTS.md)
 holds the working agreements.
 
+<br />
+
 ## 🔒 Privacy
 
 Your data never leaves your browser. There is no backend, no account, and no
 telemetry of any kind. The document lives in `localStorage` on your machine.
 Clear your browser storage and it is gone: there is no copy anywhere else,
 including with us.
+
+<br />
 
 ## Honest limitations
 
@@ -203,6 +215,8 @@ including with us.
 - **Layouts come from a preset list.** Eight arrangements of a 2×2 grid, not a
   free-form slot editor. That covers every rectangular tiling and keeps the
   control to one click.
+
+<br />
 
 ## License
 
