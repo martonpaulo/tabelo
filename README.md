@@ -6,14 +6,16 @@
 
 **One table, eight views, zero copy-and-paste between them.**
 
-Hi! Tabelo is a small table editor for the moments when a spreadsheet is too
-much, but hand-editing pipes and commas is no fun either. Change a cell in the
-visual table and the Markdown updates. Fix the CSV and the table updates. Open
+Tabelo is a small table editor for the moments when a spreadsheet is too much,
+but hand-editing pipes and commas is no fun either. Change a cell in the visual
+table and the Markdown updates. Fix the CSV and the table updates. Open
 up to four views and they all stay in sync.
+
+Tabelo is the word for table in the [language Esperanto](https://www.youtube.com/watch?v=whGSkjXTPjU).
 
 Everything runs in your browser. No account, no server, no upload.
 
-**→ [martonpaulo.github.io/tabelo](https://martonpaulo.github.io/tabelo/)**
+You can access it [here](https://martonpaulo.github.io/tabelo/).
 
 ---
 
