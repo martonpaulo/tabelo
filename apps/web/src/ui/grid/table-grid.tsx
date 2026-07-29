@@ -436,9 +436,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										// and the row and column headers supply the rest. An
 										// aria-label here would replace the content with
 										// coordinates and repeat them on every arrow key.
-										title={value.includes("\n") ? value : undefined}
+										title={value || undefined}
+										style={{
+											maxWidth: `${resolveColumnWidth(column.width) * zoom}rem`,
+										}}
 										className={cn(
-											"relative border-line-subtle border-r border-b px-2 py-1.5 align-top",
+											"relative overflow-hidden border-line-subtle border-r border-b px-2 py-1.5 align-top",
 											"cursor-cell select-none",
 											alignClass[column.align],
 											inSelection ? "bg-selection-fill" : "bg-background",
@@ -577,8 +580,9 @@ function HeaderCell({
 			aria-colindex={columnIndex + 1}
 			aria-selected={selected}
 			data-column-header={columnIndex}
+			style={{ maxWidth: `${width * zoom}rem` }}
 			className={cn(
-				"group/col sticky top-0 z-20 border-line-strong border-r border-b bg-surface-header",
+				"group/col sticky top-0 z-20 overflow-hidden border-line-strong border-r border-b bg-surface-header",
 				"relative px-2 py-1.5 font-semibold",
 				alignClass[align],
 				selected && "bg-selection-fill",
