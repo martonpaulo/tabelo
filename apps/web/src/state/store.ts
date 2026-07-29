@@ -34,11 +34,13 @@ import {
 	selectionRect,
 } from "@/core/selection";
 import type { Alignment, TableDocument } from "@/core/types";
+import { canSerialize } from "@/formats";
 import type {
 	CodecId,
 	OutputOptionId,
 	OutputOptions,
 	ParseIssue,
+	PreconditionFailure,
 } from "@/formats/types";
 import { defaultOutputOptions } from "@/formats/types";
 import {
@@ -303,9 +305,20 @@ function savePayload(state: TabeloState): SavePayload {
 
 // Serializes the document for a view. Views without a codec: the grid: have
 // no text projection.
-export function textForView(document: TableDocument, viewId: ViewId): string {
+export type TextProjection =
+	| { readonly ok: true; readonly text: string }
+	| { readonly ok: false; readonly failure: PreconditionFailure };
+
+export function textForView(
+	document: TableDocument,
+	viewId: ViewId,
+): TextProjection {
 	const codec = getView(viewId).codec;
-	return codec ? codec.serialize(document) : "";
+	if (!codec) return { ok: true, text: "" };
+	const failure = canSerialize(codec, document);
+	return failure
+		? { ok: false, failure }
+		: { ok: true, text: codec.serialize(document) };
 }
 
 // The exact text a pane is showing. A pane owning an uncommitted draft is
@@ -316,10 +329,10 @@ export function visibleTextForPane(
 	state: Pick<TabeloState, "document" | "draft">,
 	paneId: string,
 	viewId: ViewId,
-): string {
+): TextProjection {
 	const draft = state.draft;
 	return draft?.paneId === paneId && draft.viewId === viewId
-		? draft.text
+		? { ok: true, text: draft.text }
 		: textForView(state.document, viewId);
 }
 
@@ -539,6 +552,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	setPaneView: (paneId, view) => {
 		const state = get();
+		const codec = getView(view).codec;
 		const pane = state.workspace.panes.find(
 			(candidate) => candidate.id === paneId,
 		);
@@ -547,7 +561,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			pane.view === view ||
 			state.workspace.panes.some(
 				(candidate) => candidate.id !== paneId && candidate.view === view,
-			)
+			) ||
+			(codec !== undefined && canSerialize(codec, state.document) !== null)
 		)
 			return;
 
@@ -637,6 +652,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 					candidate.id !== pending.paneId && candidate.view === pending.view,
 			)
 		) {
+			set({ pendingPaneAction: null });
+			return;
+		}
+		const targetCodec = getView(pending.view).codec;
+		if (targetCodec && canSerialize(targetCodec, get().document) !== null) {
 			set({ pendingPaneAction: null });
 			return;
 		}

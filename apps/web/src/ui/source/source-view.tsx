@@ -3,6 +3,7 @@ import { textForView, useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
+import { BlockedState } from "./blocked-state";
 import { type SourceDiagnostic, SourceEditor } from "./source-editor";
 import { sourceFeedbackIds } from "./source-feedback";
 
@@ -51,6 +52,7 @@ export default function SourceView({ paneId, viewId, zoom }: SourceViewProps) {
 	const feedbackIds = sourceFeedbackIds(paneId);
 
 	const description = diagnostics.map(({ message }) => message).join(" ");
+	if (!projected.ok) return <BlockedState failure={projected.failure} />;
 
 	return (
 		<>
@@ -62,7 +64,7 @@ export default function SourceView({ paneId, viewId, zoom }: SourceViewProps) {
 			<SourceEditor
 				paneId={paneId}
 				zoom={zoom}
-				value={draft?.text ?? projected}
+				value={draft?.text ?? projected.text}
 				language={view.highlight}
 				diagnostics={diagnostics}
 				invalid={invalid}

@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 
 function csv() {
-	const codec = listDownloadableCodecs().find(
+	const codec = listDownloadableCodecs(useTabeloStore.getState().document).find(
 		(candidate) => candidate.id === "csv",
 	);
 	if (!codec) throw new Error("The CSV codec is not registered.");
@@ -61,8 +61,18 @@ describe("the download preference", () => {
 		expect(after.future).toBe(before.future);
 		expect(after.draft).toBe(before.draft);
 		// Source projections are the document's, not the download's.
-		expect(textForView(after.document, "csv")).toContain("Name,Role");
-		expect(textForView(after.document, "markdown")).toContain("Name");
+		expect(textForView(after.document, "csv")).toEqual(
+			expect.objectContaining({
+				ok: true,
+				text: expect.stringContaining("Name,Role"),
+			}),
+		);
+		expect(textForView(after.document, "markdown")).toEqual(
+			expect.objectContaining({
+				ok: true,
+				text: expect.stringContaining("Name"),
+			}),
+		);
 		expect(documentToMatrix(after.document)[0]).toEqual(["Name", "Role"]);
 	});
 
@@ -73,7 +83,7 @@ describe("the download preference", () => {
 		const document = useTabeloStore.getState().document;
 		const chosen = { includeHeader: false };
 
-		for (const codec of listDownloadableCodecs()) {
+		for (const codec of listDownloadableCodecs(document)) {
 			const narrowed = outputOptionsFor(codec, chosen);
 			if (codec.outputOptions?.includes("includeHeader")) {
 				expect(narrowed).toEqual({ includeHeader: false });
@@ -88,7 +98,7 @@ describe("the download preference", () => {
 	});
 
 	it("is offered by exactly the formats that can honour it", () => {
-		const declaring = listDownloadableCodecs()
+		const declaring = listDownloadableCodecs(useTabeloStore.getState().document)
 			.filter((codec) => codec.outputOptions?.includes("includeHeader"))
 			.map((codec) => codec.id);
 

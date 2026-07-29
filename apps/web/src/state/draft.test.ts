@@ -305,10 +305,9 @@ describe("source synchronization", () => {
 		const paneId = markdownPaneId();
 		const rowIds = document.rows.map((row) => row.id);
 		const columnIds = document.columns.map((column) => column.id);
-		const changed = textForView(document, "markdown").replace(
-			"Value 199",
-			"Changed",
-		);
+		const projection = textForView(document, "markdown");
+		if (!projection.ok) throw new Error("Markdown unexpectedly declined.");
+		const changed = projection.text.replace("Value 199", "Changed");
 
 		useTabeloStore.getState().setDraft(paneId, "markdown", changed);
 

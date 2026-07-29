@@ -37,6 +37,14 @@ no choices is offered none and a format that gains one needs no edit there.
 Values are labelled in `ui/copy.ts` by id, keeping visible strings out of the
 registry.
 
+A codec may declare a document precondition when its format cannot represent
+every valid table. Shared registry helpers evaluate that predicate before any
+projection or download. A refusal is distinct from a parse error: the document
+remains valid, no draft is created, and consumers show the codec's structured
+failure rather than stale or invented output. Static `downloadable` capability
+data still describes whether a view can produce a file at all; the precondition
+answers whether it can produce one for the current document.
+
 The chosen values are **session-only**, held in the store and never persisted.
 They change the shape of the exported file, and a silently remembered "no
 header row" would surprise someone weeks later; every session starts from the

@@ -11,12 +11,17 @@ import {
 import { Label } from "@tabelo/ui/components/label";
 import { RadioGroup, RadioGroupItem } from "@tabelo/ui/components/radio-group";
 import { useId, useState } from "react";
-import { listDownloadableCodecs, outputOptionsFor } from "@/formats";
-import type { CodecId, OutputOptionId } from "@/formats/types";
+import { canSerialize, listCodecs, outputOptionsFor } from "@/formats";
+import type {
+	CodecId,
+	OutputOptionId,
+	PreconditionFailure,
+} from "@/formats/types";
 import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copyToClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
+import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { Notice } from "@/ui/primitives/notice";
 
 // Downloading is a choice, not a click. The user chooses the format and, where
@@ -32,14 +37,21 @@ interface DownloadDialogProps {
 }
 
 export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
-	const codecs = listDownloadableCodecs();
+	const codecs = listCodecs();
 	const [selected, setSelected] = useState<CodecId>(codecs[0].id);
+	const document = useTabeloStore((state) => state.document);
 	const outputOptions = useTabeloStore((state) => state.outputOptions);
 	const titleId = useId();
 	const hintId = useId();
 
-	const codec =
+	const selectedCodec =
 		codecs.find((candidate) => candidate.id === selected) ?? codecs[0];
+	const codec =
+		canSerialize(selectedCodec, document) === null
+			? selectedCodec
+			: (codecs.find(
+					(candidate) => canSerialize(candidate, document) === null,
+				) ?? selectedCodec);
 	// Only the chosen format's own declared options are offered, so the chooser
 	// never shows a switch that would do nothing.
 	const options = codec.outputOptions ?? [];
@@ -53,7 +65,8 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 	);
 
 	const download = () => {
-		const document = useTabeloStore.getState().document;
+		const failure = canSerialize(codec, document);
+		if (failure) return;
 		downloadText(
 			`${BASE_FILENAME}.${codec.extension}`,
 			codec.mimeType,
@@ -95,7 +108,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 
 				<RadioGroup
 					aria-label={copy.download.format}
-					value={selected}
+					value={codec.id}
 					onValueChange={(value) => setSelected(value as CodecId)}
 					className="gap-1"
 				>
@@ -108,6 +121,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 							options={
 								candidate.id === codec.id ? options : ([] as OutputOptionId[])
 							}
+							failure={canSerialize(candidate, document)}
 						/>
 					))}
 				</RadioGroup>
@@ -130,22 +144,33 @@ interface FormatChoiceProps {
 	readonly label: string;
 	readonly extension: string;
 	readonly options: readonly OutputOptionId[];
+	readonly failure: PreconditionFailure | null;
 }
 
 // The options belong to the format they modify, so they sit under it rather
 // than in a separate block that would have to name the format again.
-function FormatChoice({ id, label, extension, options }: FormatChoiceProps) {
+function FormatChoice({
+	id,
+	label,
+	extension,
+	options,
+	failure,
+}: FormatChoiceProps) {
 	const radioId = useId();
 
 	return (
 		<div>
-			<div className="flex min-h-control-md items-center gap-2">
-				<RadioGroupItem id={radioId} value={id} />
-				<Label htmlFor={radioId} className="flex-1 font-medium text-sm">
-					{label}
-				</Label>
-				<span className="text-muted-foreground text-xs">.{extension}</span>
-			</div>
+			<DisabledTooltip
+				reason={failure ? copy.disabled.codecPrecondition(failure) : undefined}
+			>
+				<div className="flex min-h-control-md items-center gap-2">
+					<RadioGroupItem id={radioId} value={id} disabled={failure !== null} />
+					<Label htmlFor={radioId} className="flex-1 font-medium text-sm">
+						{label}
+					</Label>
+					<span className="text-muted-foreground text-xs">.{extension}</span>
+				</div>
+			</DisabledTooltip>
 			{options.map((option) => (
 				<OutputOption key={option} option={option} />
 			))}

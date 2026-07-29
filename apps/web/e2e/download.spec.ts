@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { defaultHeader } from "@/core/document";
-import { listDownloadableCodecs } from "@/formats";
+import { listCodecs } from "@/formats";
 import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
@@ -40,7 +40,7 @@ test("the chooser lists every registered format", async ({ page, tabelo }) => {
 
 	const dialog = page.getByRole("dialog");
 	await expect(dialog).toContainText(copy.download.hint);
-	for (const codec of listDownloadableCodecs()) {
+	for (const codec of listCodecs()) {
 		await expect(
 			dialog.getByRole("radio", { name: copy.views[codec.id].shortLabel }),
 		).toBeVisible();
