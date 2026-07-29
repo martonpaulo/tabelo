@@ -46,10 +46,9 @@ export default defineConfig({
 		}),
 		react(),
 		VitePWA({
-			// Register natively and let an updated worker take control after the
-			// current visit ends. Updates never interrupt an editing session or ask
-			// the user to reload; the next visit receives the current app shell.
-			injectRegister: "script-defer",
+			// The React virtual module owns registration so update availability can
+			// be shown in the existing FAB without a second service-worker register.
+			injectRegister: "auto",
 			registerType: "prompt",
 			manifest: {
 				name: product.name,

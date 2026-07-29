@@ -21,6 +21,7 @@ import {
 	FilePlus2,
 	LayoutGrid,
 	Redo2,
+	RefreshCw,
 	Undo2,
 	Upload,
 } from "lucide-react";
@@ -35,6 +36,7 @@ import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
+import type { PwaUpdate } from "@/ui/pwa-update";
 import {
 	gridAreaOf,
 	type LayoutId,
@@ -77,9 +79,15 @@ interface AppMenuProps {
 	readonly onImport: () => void;
 	readonly onDownload: () => void;
 	readonly onNewTable: () => void;
+	readonly pwaUpdate: PwaUpdate;
 }
 
-export function AppMenu({ onImport, onDownload, onNewTable }: AppMenuProps) {
+export function AppMenu({
+	onImport,
+	onDownload,
+	onNewTable,
+	pwaUpdate,
+}: AppMenuProps) {
 	const [open, setOpen] = useState(false);
 	const triggerRef = useRef<HTMLButtonElement>(null);
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
@@ -107,7 +115,11 @@ export function AppMenu({ onImport, onDownload, onNewTable }: AppMenuProps) {
 				render={
 					<Button
 						ref={triggerRef}
-						aria-label={copy.actions.openAppMenu}
+						aria-label={
+							pwaUpdate.ready
+								? copy.actions.openAppMenuWithUpdate
+								: copy.actions.openAppMenu
+						}
 						variant="outline"
 						size="icon-lg"
 						className="fixed right-3 bottom-3 z-40 size-fab border-line-strong bg-surface-panel shadow-lg"
@@ -120,6 +132,12 @@ export function AppMenu({ onImport, onDownload, onNewTable }: AppMenuProps) {
 					src={`${import.meta.env.BASE_URL}logo.svg`}
 					className="size-7"
 				/>
+				{pwaUpdate.ready ? (
+					<span
+						aria-hidden
+						className="absolute top-1 right-1 size-2 rounded-full bg-selection-edge ring-2 ring-surface-panel"
+					/>
+				) : null}
 			</DropdownMenuTrigger>
 
 			<DropdownMenuContent
@@ -136,6 +154,28 @@ export function AppMenu({ onImport, onDownload, onNewTable }: AppMenuProps) {
 						<span className="block">{copy.app.tagline}</span>
 					</DropdownMenuLabel>
 				</DropdownMenuGroup>
+				{pwaUpdate.ready ? (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DisabledTooltip
+								reason={
+									pwaUpdate.updating
+										? copy.disabled.updateInProgress
+										: undefined
+								}
+							>
+								<DropdownMenuItem
+									disabled={pwaUpdate.updating}
+									onClick={pwaUpdate.apply}
+								>
+									<RefreshCw aria-hidden />
+									<MenuOption {...copy.appUpdate} />
+								</DropdownMenuItem>
+							</DisabledTooltip>
+						</DropdownMenuGroup>
+					</>
+				) : null}
 
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>

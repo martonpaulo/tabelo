@@ -431,9 +431,12 @@ not the only signal.
   and description, Undo, Redo, New table, Import, Download, Layout, and a link to
   the GitHub repository. The trigger has a stable accessible name and never
   replaces visible menu labels with unexplained icons.
-- A service-worker update never creates a notice or reload prompt. The current
-  editing visit continues undisturbed; the browser activates the new worker
-  after that visit and the next visit receives the current application.
+- A ready service-worker update adds one static accent dot to the FAB and a
+  written "Reload to update" action to its menu. The trigger's accessible name
+  also states that an update is available, so colour is never the only signal.
+  Nothing moves, pulses, opens automatically, or interrupts editing. Applying
+  the update first flushes the current document and pending draft to durable
+  storage; a failed save leaves the current worker active.
 - Pane-level actions live in that pane's header. Row and column actions live on
   the row or column and in the context menu. The grid has no redundant Table
   actions menu in its pane header.

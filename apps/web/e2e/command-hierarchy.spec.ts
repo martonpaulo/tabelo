@@ -29,6 +29,9 @@ test("document actions live in one compact floating menu", async ({
 		menu.getByRole("menuitem", { name: copy.actions.github }),
 	).toBeVisible();
 	await expect(
+		menu.getByRole("menuitem", { name: copy.appUpdate.label }),
+	).toHaveCount(0);
+	await expect(
 		menu.getByRole("menuitem", { name: copy.views.markdown.label }),
 	).toHaveCount(0);
 });

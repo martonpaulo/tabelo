@@ -85,6 +85,11 @@ export const copy = {
 		confirm: "Start new table",
 	},
 
+	appUpdate: {
+		label: "Reload to update",
+		description: "A new version of Tabelo is ready.",
+	},
+
 	workspace: {
 		layout: "Layout",
 		layoutHint: "Choose how the workspace is divided.",
@@ -120,6 +125,7 @@ export const copy = {
 		lastColumn: "The selected column is already last.",
 		lastRemainingRow: "A table must keep at least one row.",
 		lastRemainingColumn: "A table must keep at least one column.",
+		updateInProgress: "The update is already being applied.",
 	},
 
 	source: {
@@ -192,6 +198,7 @@ export const copy = {
 
 	actions: {
 		openAppMenu: "Open Tabelo menu",
+		openAppMenuWithUpdate: "Open Tabelo menu, update available",
 		github: "View on GitHub",
 		dismiss: "Dismiss",
 		undo: "Undo",
@@ -327,6 +334,10 @@ export const copy = {
 		replaceSavedData: "Replace saved data",
 		replacedSavedData:
 			"Saved data replaced. The original was kept as a recovery copy.",
+		updateCheckFailed:
+			"Tabelo could not check for an update. Keep working and try again later.",
+		updateFailed:
+			"Tabelo could not apply the update. Your table is saved, so you can reload and try again.",
 	},
 
 	a11y: {

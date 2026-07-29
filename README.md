@@ -92,7 +92,8 @@ there. Those formats cannot express alignment, so Tabelo quietly remembers it.
 - **Nothing to save.** Your table stays in browser storage and comes back when
   you return. Starting a new table asks before clearing real work.
 - **Works offline.** A service worker caches the app on your first visit. No
-  install prompt, no app store, nothing to accept.
+  install prompt, no app store, nothing to accept. When an update is ready, the
+  Tabelo button marks it and offers a reload after saving the current table.
 
 ### What it deliberately doesn't do
 

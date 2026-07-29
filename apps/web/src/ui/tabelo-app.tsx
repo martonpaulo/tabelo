@@ -8,10 +8,12 @@ import { EmptyState } from "@/ui/grid/empty-state";
 import { importTableFile } from "@/ui/import";
 import { NewTableDialog } from "@/ui/new-table-dialog";
 import { NoticeBar } from "@/ui/notice-bar";
+import { usePwaUpdate } from "@/ui/pwa-update";
 import { Workspace } from "@/ui/workspace/workspace";
 import { DEFAULT_PANE_ZOOM, stepPaneZoom } from "@/workspace/zoom";
 
 export function TabeloApp() {
+	const pwaUpdate = usePwaUpdate();
 	const [downloading, setDownloading] = useState(false);
 	const [confirmingNewTable, setConfirmingNewTable] = useState(false);
 	const [hydrated, setHydrated] = useState(false);
@@ -136,6 +138,7 @@ export function TabeloApp() {
 					onImport={() => void importTableFile()}
 					onDownload={() => setDownloading(true)}
 					onNewTable={requestNewTable}
+					pwaUpdate={pwaUpdate}
 				/>
 			)}
 			<DownloadDialog open={downloading} onOpenChange={setDownloading} />
