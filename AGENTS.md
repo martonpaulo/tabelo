@@ -218,6 +218,13 @@ sleeps, no pixel snapshots, and storage isolated per test.
 
 ## Agent skill paths
 
+- Repository-local skills: `.agents/skills/`. These are the complete skill
+  source for Tabelo work in local and cloud agents; do not require or reference
+  a machine-local skills checkout.
+- GitHub issue implementation starts with
+  `.agents/skills/implement-issue/SKILL.md`, which routes to the smallest
+  applicable local specialist for debugging, domain modelling, module design,
+  research, prototypes, UI contracts, codec contracts, or conflict resolution.
 - Domain glossary: `CONTEXT.md`
 - ADRs: `docs/adr/`
 - Research notes: `docs/research/` (create only when persisting research)

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Debug Tabelo"
+  short_description: "Diagnose and fix non-trivial Tabelo bugs"
+  default_prompt: "Use $debug to reproduce, diagnose, and fix this Tabelo bug."

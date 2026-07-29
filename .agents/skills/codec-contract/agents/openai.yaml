@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tabelo Codec Contract"
+  short_description: "Protect lossless format and import behavior"
+  default_prompt: "Use $codec-contract to implement this Tabelo format or import change without data loss."

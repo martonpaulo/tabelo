@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tabelo Prototype"
+  short_description: "Run a disposable Tabelo experiment"
+  default_prompt: "Use $prototype to answer this Tabelo uncertainty with a small disposable experiment."

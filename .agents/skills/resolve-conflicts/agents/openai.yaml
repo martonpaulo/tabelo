@@ -1,0 +1,4 @@
+interface:
+  display_name: "Resolve Tabelo Conflicts"
+  short_description: "Resolve conflicts without losing issue intent"
+  default_prompt: "Use $resolve-conflicts to resolve the current Tabelo Git conflict and validate the result."

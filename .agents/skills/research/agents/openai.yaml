@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tabelo Research"
+  short_description: "Verify current technical facts from primary sources"
+  default_prompt: "Use $research to verify the external facts needed for this Tabelo decision."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tabelo UI Contract"
+  short_description: "Implement UI and accessibility contracts"
+  default_prompt: "Use $ui-contract to implement this Tabelo interface change consistently and accessibly."

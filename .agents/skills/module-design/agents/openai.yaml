@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tabelo Module Design"
+  short_description: "Keep Tabelo ownership and boundaries clear"
+  default_prompt: "Use $module-design to design the smallest sound Tabelo module change."

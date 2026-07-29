@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tabelo Domain Model"
+  short_description: "Resolve Tabelo domain rules and vocabulary"
+  default_prompt: "Use $domain-model to resolve this Tabelo domain ambiguity."
