@@ -87,5 +87,5 @@ so a new preset needs no edit there.
   in the list. With a 2×2 grid the presets cover every rectangular tiling that
   respects the constraint, so this costs nothing today — but a 3×3 workspace
   would make enumeration untenable and force this decision open again.
-- Below 900px the panes stack and the layout is remembered rather than
+- Below 56.25rem the panes stack and the layout is remembered rather than
   discarded, so a narrow window does not silently rewrite the user's choice.

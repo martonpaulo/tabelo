@@ -33,6 +33,7 @@ import {
 } from "@/history/coordinator";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
+import { MenuOption } from "@/ui/primitives/menu-option";
 import {
 	gridAreaOf,
 	type LayoutId,
@@ -51,7 +52,7 @@ function LayoutGlyph({
 		<span
 			aria-hidden
 			className={cn(
-				"grid size-6 shrink-0 grid-cols-2 grid-rows-2 gap-px border p-px",
+				"grid size-6 shrink-0 grid-cols-2 grid-rows-2 gap-[0.0625rem] border p-[0.0625rem]",
 				active ? "border-selection-edge" : "border-muted-foreground/50",
 			)}
 		>
@@ -195,12 +196,7 @@ export function AppMenu({ onImport, onDownload, onNewTable }: AppMenuProps) {
 									closeOnClick
 								>
 									<LayoutGlyph preset={preset} active={preset.id === layout} />
-									<span className="flex-1">
-										<span className="block font-medium">{preset.label}</span>
-										<span className="block text-muted-foreground text-xs">
-											{preset.description}
-										</span>
-									</span>
+									<MenuOption {...copy.layouts[preset.id]} />
 								</DropdownMenuRadioItem>
 							))}
 						</DropdownMenuRadioGroup>

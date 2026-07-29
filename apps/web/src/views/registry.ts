@@ -6,6 +6,7 @@ import {
 	markdownCodec,
 	tsvCodec,
 } from "@/formats";
+import { copy } from "@/ui/copy";
 import type { ViewDefinition, ViewId } from "./types";
 
 // Every view the workspace can show, described by capability rather than by
@@ -39,9 +40,7 @@ const readOnlySourceCapabilities = {
 const registry: Record<ViewId, ViewDefinition> = {
 	grid: {
 		id: "grid",
-		label: "Visual table",
-		shortLabel: "Table",
-		description: "Edit cells, rows, and columns directly.",
+		...copy.views.grid,
 		icon: Table2,
 		kind: "grid",
 		highlight: "plain",
@@ -50,9 +49,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 
 	markdown: {
 		id: "markdown",
-		label: "Markdown",
-		shortLabel: "Markdown",
-		description: "A Markdown table, alignment included.",
+		...copy.views.markdown,
 		icon: FileText,
 		kind: "source",
 		codec: markdownCodec,
@@ -62,9 +59,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 
 	csv: {
 		id: "csv",
-		label: "CSV",
-		shortLabel: "CSV",
-		description: "Comma-separated values.",
+		...copy.views.csv,
 		icon: Sheet,
 		kind: "source",
 		codec: csvCodec,
@@ -74,9 +69,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 
 	tsv: {
 		id: "tsv",
-		label: "TSV",
-		shortLabel: "TSV",
-		description: "Tab-separated values, what spreadsheets paste.",
+		...copy.views.tsv,
 		icon: Sheet,
 		kind: "source",
 		codec: tsvCodec,
@@ -86,9 +79,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 
 	html: {
 		id: "html",
-		label: "HTML source",
-		shortLabel: "HTML",
-		description: "A table element you can paste into a page.",
+		...copy.views.html,
 		icon: Code2,
 		kind: "source",
 		codec: htmlCodec,
@@ -98,9 +89,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 
 	jira: {
 		id: "jira",
-		label: "Jira",
-		shortLabel: "Jira",
-		description: "Jira wiki table syntax.",
+		...copy.views.jira,
 		icon: Tags,
 		kind: "source",
 		codec: jiraCodec,
@@ -110,9 +99,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 
 	"html-preview": {
 		id: "html-preview",
-		label: "Rendered preview",
-		shortLabel: "Preview",
-		description: "The table as a reader would see it.",
+		...copy.views["html-preview"],
 		icon: Eye,
 		kind: "preview",
 		// Borrows the HTML codec to serialize for download; it never parses,

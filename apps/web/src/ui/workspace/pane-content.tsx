@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { copy } from "@/ui/copy";
 import { TableGrid } from "@/ui/grid/table-grid";
 import type { ViewDefinition } from "@/views/types";
 
@@ -11,7 +12,9 @@ const HtmlPreview = lazy(() => import("@/ui/preview/html-preview"));
 function PaneLoading() {
 	return (
 		<div className="flex h-full items-center justify-center">
-			<span className="text-muted-foreground text-xs">Loading…</span>
+			<span className="text-muted-foreground text-xs">
+				{copy.status.loading}
+			</span>
 		</div>
 	);
 }

@@ -103,7 +103,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 						<FormatChoice
 							key={candidate.id}
 							id={candidate.id}
-							label={candidate.label}
+							label={copy.views[candidate.id].shortLabel}
 							extension={candidate.extension}
 							options={
 								candidate.id === codec.id ? options : ([] as OutputOptionId[])

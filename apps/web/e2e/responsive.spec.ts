@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
 // Below the stacking width the 2x2 tiling is abandoned rather than squeezed.
@@ -7,20 +8,19 @@ import { expect, test } from "./fixtures";
 // created that column again — so two panes sat side by side on a phone.
 
 const PRESETS = [
-	"Single",
-	"Two columns",
-	"Two rows",
-	"Split left",
-	"Split right",
-	"Split top",
-	"Split bottom",
-	"Four panes",
+	"single",
+	"columns",
+	"rows",
+	"left-split",
+	"right-split",
+	"top-split",
+	"bottom-split",
+	"quad",
 ] as const;
 
-// 300 is below any real device on purpose. The app header fits 320px with a
-// few pixels to spare on a Mac and not at all on the CI runner, which renders
-// the same labels wider, so a check pinned to 320 passed locally while failing
-// there. Sampling a width no platform can fit keeps "nothing spills sideways"
+// 300 is below any real device on purpose. The interface barely fits at the
+// next sampled width and not on every CI renderer, which draws the same labels
+// wider. Sampling a width no platform can fit keeps "nothing spills sideways"
 // honest on both.
 const NARROW = [300, 320, 390, 600, 800, 899];
 
@@ -46,7 +46,7 @@ async function workspaceContentWidth(page: Page): Promise<number> {
 }
 
 for (const preset of PRESETS) {
-	test(`${preset} stacks into one readable column below 900px`, async ({
+	test(`${copy.layouts[preset].label} stacks into one readable column below the compact breakpoint`, async ({
 		page,
 		tabelo,
 	}) => {
@@ -62,12 +62,13 @@ for (const preset of PRESETS) {
 			// after the resize.
 			await expect
 				.poll(async () => Math.min(...(await paneWidths(page))), {
-					message: `${preset} at ${width}px`,
+					message: `${preset} at viewport width ${width}`,
 				})
 				.toBeGreaterThanOrEqual((await workspaceContentWidth(page)) - 2);
-			expect(await paneWidths(page), `${preset} at ${width}px`).toHaveLength(
-				expected,
-			);
+			expect(
+				await paneWidths(page),
+				`${preset} at viewport width ${width}`,
+			).toHaveLength(expected);
 			// And nothing spills sideways. Polled for its own reason: after the
 			// viewport shrinks, the document keeps the wider scroll area it had
 			// for a frame, so reading it once can report the previous width.
@@ -77,15 +78,18 @@ for (const preset of PRESETS) {
 						page.evaluate(
 							() => document.documentElement.scrollWidth - window.innerWidth,
 						),
-					{ message: `${preset} at ${width}px` },
+					{ message: `${preset} at viewport width ${width}` },
 				)
 				.toBeLessThanOrEqual(0);
 		}
 	});
 }
 
-test("the tiling returns unchanged at 900px", async ({ page, tabelo }) => {
-	await tabelo.chooseLayout("Two columns");
+test("the tiling returns unchanged at the compact breakpoint", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.chooseLayout("columns");
 	await page.setViewportSize({ width: 390, height: 700 });
 	await expect
 		.poll(async () => Math.min(...(await paneWidths(page))))
@@ -99,7 +103,7 @@ test("the tiling returns unchanged at 900px", async ({ page, tabelo }) => {
 		.toBeLessThan(600);
 	expect(await paneWidths(page)).toHaveLength(2);
 	await expect(
-		page.getByRole("button", { name: "Open Tabelo menu" }),
+		page.getByRole("button", { name: copy.actions.openAppMenu }),
 	).toBeVisible();
 });
 
@@ -107,7 +111,7 @@ test("a stacked workspace exposes no resizer for an axis that no longer splits",
 	page,
 	tabelo,
 }) => {
-	await tabelo.chooseLayout("Four panes");
+	await tabelo.chooseLayout("quad");
 	await expect(page.getByRole("separator")).toHaveCount(2);
 
 	await page.setViewportSize({ width: 390, height: 700 });
@@ -121,19 +125,22 @@ test("every stacked pane is reachable by scrolling and by keyboard", async ({
 	page,
 	tabelo,
 }) => {
-	await tabelo.chooseLayout("Four panes");
+	await tabelo.chooseLayout("quad");
 	await page.setViewportSize({ width: 390, height: 700 });
 
 	// The workspace scrolls between panes rather than compressing them.
-	const scrollable = await page.evaluate(() => {
-		const main = document.querySelector("main");
-		return main ? main.scrollHeight > main.clientHeight : false;
-	});
-	expect(scrollable).toBe(true);
+	await expect
+		.poll(() =>
+			page.evaluate(() => {
+				const main = document.querySelector("main");
+				return main ? main.scrollHeight > main.clientHeight : false;
+			}),
+		)
+		.toBe(true);
 
 	// Focusing scrolls the pane into view by itself, which is the behaviour that
 	// matters: no pane is stranded below the fold and out of the tab order.
-	for (const view of ["Visual table", "Markdown", "Rendered preview", "CSV"]) {
+	for (const view of ["grid", "markdown", "html-preview", "csv"] as const) {
 		const trigger = tabelo.paneMenuTrigger(view);
 		await expect(trigger).toBeAttached();
 		await trigger.focus();
@@ -145,9 +152,11 @@ test("the chosen preset and its ratios survive a trip through narrow", async ({
 	page,
 	tabelo,
 }) => {
-	await tabelo.chooseLayout("Two columns");
+	await tabelo.chooseLayout("columns");
 	// Move the split away from the middle so a reset would be obvious.
-	const resizer = page.getByRole("separator", { name: "Resize columns" });
+	const resizer = page.getByRole("separator", {
+		name: copy.workspace.resizeColumns,
+	});
 	await resizer.focus();
 	for (let press = 0; press < 5; press += 1) {
 		await page.keyboard.press("ArrowLeft");
@@ -160,10 +169,10 @@ test("the chosen preset and its ratios survive a trip through narrow", async ({
 	await page.setViewportSize({ width: 1280, height: 720 });
 
 	await expect(
-		page.getByRole("button", { name: "Open Tabelo menu" }),
+		page.getByRole("button", { name: copy.actions.openAppMenu }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("separator", { name: "Resize columns" }),
+		page.getByRole("separator", { name: copy.workspace.resizeColumns }),
 	).toHaveAttribute("aria-valuenow", ratio ?? "");
 });
 
@@ -172,7 +181,7 @@ test("a pending draft survives the responsive change", async ({
 	tabelo,
 }) => {
 	const invalid = "| Name |\n| not a divider |\n| Inez |";
-	const source = tabelo.source("Markdown");
+	const source = tabelo.source("markdown");
 	const sourceText = () =>
 		source.evaluate((element) =>
 			Array.from(
@@ -202,7 +211,7 @@ test("browser zoom at 200% still shows every view", async ({
 	page,
 	tabelo,
 }) => {
-	await tabelo.chooseLayout("Four panes");
+	await tabelo.chooseLayout("quad");
 	await page.setViewportSize({ width: 1280, height: 720 });
 	await page.evaluate(() => {
 		document.documentElement.style.fontSize = "200%";

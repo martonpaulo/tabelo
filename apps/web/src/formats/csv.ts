@@ -5,7 +5,6 @@ import { createDelimitedCodec } from "./delimited";
 // the choice, so it is the only one that declares it. See AGENTS.md.
 export const csvCodec = createDelimitedCodec({
 	id: "csv",
-	label: "CSV",
 	extension: "csv",
 	mimeType: "text/csv",
 	delimiter: ",",

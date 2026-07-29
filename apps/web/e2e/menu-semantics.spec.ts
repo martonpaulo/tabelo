@@ -1,3 +1,4 @@
+import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
 // A tinted background and an aria-hidden tick tell a sighted user which option
@@ -15,48 +16,50 @@ test("the layout menu reports the current preset", async ({ tabelo }) => {
 		1,
 	);
 	await expect(
-		menu.getByRole("menuitemradio", { name: /Two columns/ }),
+		menu.getByRole("menuitemradio", { name: copy.layouts.columns.label }),
 	).toBeChecked();
 
-	await menu.getByRole("menuitemradio", { name: /Four panes/ }).click();
+	await menu
+		.getByRole("menuitemradio", { name: copy.layouts.quad.label })
+		.click();
 
 	const reopened = await tabelo.openLayoutMenu();
 	await expect(
 		reopened.getByRole("menuitemradio", { checked: true }),
 	).toHaveCount(1);
 	await expect(
-		reopened.getByRole("menuitemradio", { name: /Four panes/ }),
+		reopened.getByRole("menuitemradio", { name: copy.layouts.quad.label }),
 	).toBeChecked();
 });
 
 test("the view list reports what the pane is showing", async ({ tabelo }) => {
-	const menu = await tabelo.openPaneMenu("Markdown");
+	const menu = await tabelo.openPaneMenu("markdown");
 	await expect(menu.getByRole("menuitemradio")).toHaveCount(7);
 	await expect(menu.getByRole("menuitemradio", { checked: true })).toHaveCount(
 		1,
 	);
 	await expect(
-		menu.getByRole("menuitemradio", { name: /Markdown/ }),
+		menu.getByRole("menuitemradio", { name: copy.views.markdown.label }),
 	).toBeChecked();
 
-	await menu.getByRole("menuitemradio", { name: /^CSV/ }).click();
+	await menu.getByRole("menuitemradio", { name: copy.views.csv.label }).click();
 
-	const reopened = await tabelo.openPaneMenu("CSV");
+	const reopened = await tabelo.openPaneMenu("csv");
 	await expect(
-		reopened.getByRole("menuitemradio", { name: /^CSV/ }),
+		reopened.getByRole("menuitemradio", { name: copy.views.csv.label }),
 	).toBeChecked();
 	await expect(
-		reopened.getByRole("menuitemradio", { name: /Markdown/ }),
+		reopened.getByRole("menuitemradio", { name: copy.views.markdown.label }),
 	).not.toBeChecked();
 });
 
 test("a view already open elsewhere is disabled", async ({ tabelo }) => {
-	const menu = await tabelo.openPaneMenu("Markdown");
+	const menu = await tabelo.openPaneMenu("markdown");
 	await expect(
-		menu.getByRole("menuitemradio", { name: /Visual table/ }),
+		menu.getByRole("menuitemradio", { name: copy.views.grid.label }),
 	).toBeDisabled();
 	await expect(
-		menu.getByRole("menuitemradio", { name: /Markdown/ }),
+		menu.getByRole("menuitemradio", { name: copy.views.markdown.label }),
 	).toBeChecked();
 });
 
@@ -65,21 +68,21 @@ test("a view already open elsewhere is disabled", async ({ tabelo }) => {
 test("a refused view change leaves the checked option truthful", async ({
 	tabelo,
 }) => {
-	await tabelo.source("Markdown").fill("| Name |\n| not a divider |");
-	await expect(tabelo.source("Markdown")).toHaveAttribute(
+	await tabelo.source("markdown").fill("| Name |\n| not a divider |");
+	await expect(tabelo.source("markdown")).toHaveAttribute(
 		"aria-invalid",
 		"true",
 	);
 
-	const menu = await tabelo.openPaneMenu("Markdown");
-	await menu.getByRole("menuitemradio", { name: /^CSV/ }).click();
+	const menu = await tabelo.openPaneMenu("markdown");
+	await menu.getByRole("menuitemradio", { name: copy.views.csv.label }).click();
 
-	const reopened = await tabelo.openPaneMenu("Markdown");
+	const reopened = await tabelo.openPaneMenu("markdown");
 	await expect(
-		reopened.getByRole("menuitemradio", { name: /Markdown/ }),
+		reopened.getByRole("menuitemradio", { name: copy.views.markdown.label }),
 	).toBeChecked();
 	await expect(
-		reopened.getByRole("menuitemradio", { name: /^CSV/ }),
+		reopened.getByRole("menuitemradio", { name: copy.views.csv.label }),
 	).not.toBeChecked();
 });
 
@@ -89,10 +92,14 @@ test("column alignment reports the current choice", async ({
 }) => {
 	await tabelo
 		.grid()
-		.getByRole("button", { name: /^Column actions: / })
+		.getByRole("button", {
+			name: new RegExp(`^${copy.actions.columnActions}:`),
+		})
 		.first()
 		.click();
-	const menu = page.getByRole("menu", { name: /^Column actions: / });
+	const menu = page.getByRole("menu", {
+		name: new RegExp(`^${copy.actions.columnActions}:`),
+	});
 
 	const alignments = menu.getByRole("menuitemradio");
 	await expect(alignments).toHaveCount(4);
@@ -100,19 +107,25 @@ test("column alignment reports the current choice", async ({
 		1,
 	);
 	await expect(
-		menu.getByRole("menuitemradio", { name: "No alignment" }),
+		menu.getByRole("menuitemradio", { name: copy.actions.alignDefault }),
 	).toBeChecked();
 
-	await menu.getByRole("menuitemradio", { name: "Align center" }).click();
+	await menu
+		.getByRole("menuitemradio", { name: copy.actions.alignCenter })
+		.click();
 
 	await tabelo
 		.grid()
-		.getByRole("button", { name: /^Column actions: / })
+		.getByRole("button", {
+			name: new RegExp(`^${copy.actions.columnActions}:`),
+		})
 		.first()
 		.click();
-	const reopened = page.getByRole("menu", { name: /^Column actions: / });
+	const reopened = page.getByRole("menu", {
+		name: new RegExp(`^${copy.actions.columnActions}:`),
+	});
 	await expect(
-		reopened.getByRole("menuitemradio", { name: "Align center" }),
+		reopened.getByRole("menuitemradio", { name: copy.actions.alignCenter }),
 	).toBeChecked();
 	await expect(
 		reopened.getByRole("menuitemradio", { checked: true }),
@@ -126,12 +139,14 @@ test("choosing with the keyboard still works and returns focus", async ({
 	// The fixture is what opens the app, so it is requested even where the
 	// assertions read from `page`.
 	await expect(tabelo.workspace).toBeVisible();
-	const trigger = page.getByRole("button", { name: "Open Tabelo menu" });
+	const trigger = page.getByRole("button", { name: copy.actions.openAppMenu });
 	const menu = await tabelo.openLayoutMenu();
 	await expect(menu).toBeVisible();
 
 	// Enter chooses the focused radio option and returns focus to the FAB.
-	await menu.getByRole("menuitemradio", { name: /Four panes/ }).focus();
+	await menu
+		.getByRole("menuitemradio", { name: copy.layouts.quad.label })
+		.focus();
 	await page.keyboard.press("Enter");
 
 	await expect(menu).toHaveCount(0);

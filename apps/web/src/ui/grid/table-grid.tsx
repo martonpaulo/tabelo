@@ -15,8 +15,6 @@ import { CellEditor } from "./cell-editor";
 import { clampColumnWidth, resolveColumnWidth } from "./column-width";
 import { GridContextMenu } from "./grid-context-menu";
 
-const GUTTER_WIDTH = 44;
-
 const alignClass: Record<Alignment, string> = {
 	default: "text-left",
 	left: "text-left",
@@ -298,12 +296,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				<colgroup>
 					{/* The gutter holds row numbers and menu affordances rather than
 					    table content, so it keeps its size at every zoom level. */}
-					<col style={{ width: GUTTER_WIDTH }} />
+					<col style={{ width: "var(--grid-gutter-w)" }} />
 					{document.columns.map((column) => (
 						<col
 							key={column.id}
 							style={{
-								width: Math.round(resolveColumnWidth(column.width) * zoom),
+								width: `${resolveColumnWidth(column.width) * zoom}rem`,
 							}}
 						/>
 					))}
@@ -313,7 +311,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					<tr>
 						<th
 							scope="row"
-							aria-label="Row 1"
+							aria-label={copy.a11y.headerRow}
 							className="sticky top-0 left-0 z-30 border-line-strong border-r border-b bg-surface-header text-center font-semibold text-foreground text-xs tabular-nums"
 						>
 							1
@@ -514,8 +512,8 @@ interface HeaderCellProps {
 	// The column the user is working in, which is where its actions appear.
 	readonly focused: boolean;
 	readonly editing: boolean;
-	// The stored width, in document units. Zoom scales what is rendered, so the
-	// drag gesture converts screen pixels back before writing a width down.
+	// The stored width is in rem. Zoom scales what is rendered, so the drag
+	// gesture converts viewport pixels back before writing a width down.
 	readonly width: number;
 	readonly zoom: number;
 }
@@ -531,9 +529,11 @@ function HeaderCell({
 	zoom,
 }: HeaderCellProps) {
 	const AlignmentIcon = alignmentIcon[align];
-	const resizeState = useRef<{ startX: number; startWidth: number } | null>(
-		null,
-	);
+	const resizeState = useRef<{
+		startX: number;
+		startWidth: number;
+		rootFontSize: number;
+	} | null>(null);
 
 	return (
 		<th
@@ -610,7 +610,13 @@ function HeaderCell({
 				onPointerDown={(event) => {
 					event.preventDefault();
 					event.currentTarget.setPointerCapture(event.pointerId);
-					resizeState.current = { startX: event.clientX, startWidth: width };
+					resizeState.current = {
+						startX: event.clientX,
+						startWidth: width,
+						rootFontSize: Number.parseFloat(
+							getComputedStyle(document.documentElement).fontSize,
+						),
+					};
 				}}
 				onPointerMove={(event) => {
 					const state = resizeState.current;
@@ -620,7 +626,8 @@ function HeaderCell({
 						.resizeColumn(
 							columnIndex,
 							clampColumnWidth(
-								state.startWidth + (event.clientX - state.startX) / zoom,
+								state.startWidth +
+									(event.clientX - state.startX) / (state.rootFontSize * zoom),
 							),
 						);
 				}}

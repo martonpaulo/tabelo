@@ -1,12 +1,11 @@
 import type { Locator } from "@playwright/test";
+import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
-// Row and column actions were a 20px icon that only existed while the pointer
+// Row and column actions were a small icon that only existed while the pointer
 // was inside its header. They are still quiet, but they are now findable: the
 // target is the product's control minimum, and the row or column you are
 // working in shows its own without being hovered at all.
-
-const CONTROL_MIN = 28;
 
 function opacity(trigger: Locator): Promise<string> {
 	return trigger.evaluate((element) => getComputedStyle(element).opacity);
@@ -29,15 +28,24 @@ function hitArea(trigger: Locator): Promise<{ width: number; height: number }> {
 test("row and column actions meet the control minimum target", async ({
 	tabelo,
 }) => {
-	const row = tabelo.grid().getByRole("button", { name: /^Row actions: / });
-	const column = tabelo
-		.grid()
-		.getByRole("button", { name: /^Column actions: / });
+	const row = tabelo.grid().getByRole("button", {
+		name: new RegExp(`^${copy.actions.rowActions}:`),
+	});
+	const column = tabelo.grid().getByRole("button", {
+		name: new RegExp(`^${copy.actions.columnActions}:`),
+	});
 
 	for (const trigger of [row.first(), column.first()]) {
 		const area = await hitArea(trigger);
-		expect(area.width).toBeGreaterThanOrEqual(CONTROL_MIN);
-		expect(area.height).toBeGreaterThanOrEqual(CONTROL_MIN);
+		const controlMinimum = await trigger.evaluate(() => {
+			const root = getComputedStyle(document.documentElement);
+			return (
+				Number.parseFloat(root.getPropertyValue("--control-h-sm")) *
+				Number.parseFloat(root.fontSize)
+			);
+		});
+		expect(area.width).toBeGreaterThanOrEqual(controlMinimum);
+		expect(area.height).toBeGreaterThanOrEqual(controlMinimum);
 	}
 });
 
@@ -46,11 +54,13 @@ test("the row and column being worked in reveal their own actions", async ({
 	tabelo,
 }) => {
 	const rowTrigger = (index: number) =>
-		tabelo
-			.grid()
-			.getByRole("button", { name: `Row actions: Row ${index + 1}` });
+		tabelo.grid().getByRole("button", {
+			name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(index - 1)}`,
+		});
 	const columnTrigger = (name: string) =>
-		tabelo.grid().getByRole("button", { name: `Column actions: ${name}` });
+		tabelo.grid().getByRole("button", {
+			name: `${copy.actions.columnActions}: ${name}`,
+		});
 
 	// The rows the user is not in stay quiet. (Row 1 starts selected, so it is
 	// legitimately showing its own from the first paint.)
@@ -73,9 +83,9 @@ test("moving by keyboard moves the revealed affordance with it", async ({
 	tabelo,
 }) => {
 	const rowTrigger = (index: number) =>
-		tabelo
-			.grid()
-			.getByRole("button", { name: `Row actions: Row ${index + 1}` });
+		tabelo.grid().getByRole("button", {
+			name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(index - 1)}`,
+		});
 
 	await tabelo.cell(1, 1).click();
 	await page.mouse.move(0, 0);
@@ -90,9 +100,9 @@ test("moving by keyboard moves the revealed affordance with it", async ({
 test("tabbing into a header reveals its actions without a pointer", async ({
 	tabelo,
 }) => {
-	const trigger = tabelo
-		.grid()
-		.getByRole("button", { name: "Column actions: Column 3" });
+	const trigger = tabelo.grid().getByRole("button", {
+		name: `${copy.actions.columnActions}: ${copy.a11y.columnLetter(2)}`,
+	});
 	expect(await opacity(trigger)).toBe("0");
 
 	// focus-within on the header, not focus on the icon itself.
@@ -102,9 +112,9 @@ test("tabbing into a header reveals its actions without a pointer", async ({
 });
 
 test("hovering a row still reveals its actions", async ({ tabelo }) => {
-	const trigger = tabelo
-		.grid()
-		.getByRole("button", { name: "Row actions: Row 4" });
+	const trigger = tabelo.grid().getByRole("button", {
+		name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(2)}`,
+	});
 	expect(await opacity(trigger)).toBe("0");
 
 	await tabelo.cell(3, 1).hover();
@@ -121,9 +131,13 @@ test("the axis menus and the pane menu describe the same actions", async ({
 	await tabelo.cell(1, 1).click();
 	await tabelo
 		.grid()
-		.getByRole("button", { name: "Row actions: Row 2" })
+		.getByRole("button", {
+			name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(0)}`,
+		})
 		.click();
-	const rowMenu = page.getByRole("menu", { name: "Row actions: Row 2" });
+	const rowMenu = page.getByRole("menu", {
+		name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(0)}`,
+	});
 	await expect(rowMenu).toBeVisible();
 	const fromRow = await rowMenu
 		.getByRole("menuitem")
@@ -131,21 +145,26 @@ test("the axis menus and the pane menu describe the same actions", async ({
 	await page.keyboard.press("Escape");
 	await expect(rowMenu).toBeHidden();
 
-	await page.getByRole("button", { name: "Table actions" }).click();
-	const tableMenu = page.getByRole("menu", { name: "Table actions" });
+	await page.getByRole("button", { name: copy.actions.tableActions }).click();
+	const tableMenu = page.getByRole("menu", { name: copy.actions.tableActions });
 	await expect(tableMenu).toBeVisible();
 	const fromTable = await tableMenu
 		.getByRole("menuitem")
 		.evaluateAll((items) => items.map((item) => item.textContent?.trim()));
 
 	// The row menu is the row-scoped subset of the same descriptions.
-	for (const action of ["Copy", "Cut", "Paste", "Clear contents"]) {
+	for (const action of [
+		copy.actions.copy,
+		copy.actions.cut,
+		copy.actions.paste,
+		copy.actions.clear,
+	]) {
 		expect(fromRow.some((label) => label?.startsWith(action))).toBe(true);
 		expect(fromTable.some((label) => label?.startsWith(action))).toBe(true);
 	}
-	expect(fromRow.some((label) => label?.startsWith("Insert row above"))).toBe(
-		true,
-	);
+	expect(
+		fromRow.some((label) => label?.startsWith(copy.actions.insertRowAbove)),
+	).toBe(true);
 	// A row menu offers nothing about columns.
 	expect(fromRow.some((label) => label?.includes("column"))).toBe(false);
 });
@@ -153,13 +172,17 @@ test("the axis menus and the pane menu describe the same actions", async ({
 test("four panes stay quiet: no action icons in the cells", async ({
 	tabelo,
 }) => {
-	await tabelo.chooseLayout("Four panes");
+	await tabelo.chooseLayout("quad");
 	await tabelo.cell(1, 1).click();
 
 	// Only the row and column in play show a trigger; the cells carry none.
 	const visible = await tabelo
 		.grid()
-		.getByRole("button", { name: /^(Row|Column) actions: / })
+		.getByRole("button", {
+			name: new RegExp(
+				`^(${copy.actions.rowActions}|${copy.actions.columnActions}):`,
+			),
+		})
 		.evaluateAll(
 			(items) =>
 				items.filter((item) => getComputedStyle(item).opacity === "1").length,

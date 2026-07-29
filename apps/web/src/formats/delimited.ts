@@ -75,7 +75,6 @@ export function serializeDelimited(
 
 interface DelimitedCodecConfig {
 	readonly id: CodecId;
-	readonly label: string;
 	readonly extension: string;
 	readonly mimeType: string;
 	readonly delimiter: string;
@@ -120,7 +119,6 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 
 	return {
 		id: config.id,
-		label: config.label,
 		extension: config.extension,
 		mimeType: config.mimeType,
 		parseMatrix,

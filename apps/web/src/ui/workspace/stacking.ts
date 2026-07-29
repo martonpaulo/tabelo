@@ -2,9 +2,9 @@ import { useSyncExternalStore } from "react";
 
 // Below this width the 2x2 tiling stops being readable: a pane sharing the
 // width of a phone is a sliver, not a table. See docs/design-system.md §5.
-export const STACK_BELOW_PX = 900;
+export const STACK_BELOW_REM = 56.25;
 
-const QUERY = `(max-width: ${STACK_BELOW_PX - 1}px)`;
+const QUERY = `(max-width: ${STACK_BELOW_REM - 0.0625}rem)`;
 
 // Stacking is decided in JavaScript rather than by a media query alone because
 // the desktop tiling is expressed as inline grid areas, and an inline

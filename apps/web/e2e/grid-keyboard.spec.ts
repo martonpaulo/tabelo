@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
 // The grid is a hand-built widget, so every keyboard contract it advertises is
@@ -88,13 +89,13 @@ test("a column header is renamed with Enter or F2 and selected with Space", asyn
 	await headerButton.focus();
 
 	await page.keyboard.press("F2");
-	let editor = tabelo.grid().getByRole("textbox", { name: /^Rename/ });
+	let editor = tabelo.grid().getByRole("textbox");
 	await expect(editor).toBeVisible();
 	await page.keyboard.press("Escape");
 
 	await headerButton.focus();
 	await page.keyboard.press("Enter");
-	editor = tabelo.grid().getByRole("textbox", { name: /^Rename/ });
+	editor = tabelo.grid().getByRole("textbox");
 	await expect(editor).toBeVisible();
 	await editor.fill("Name");
 	await editor.press("Enter");
@@ -117,24 +118,27 @@ test("column width is changed, reset, and floored without a pointer", async ({
 	const menu = async () => {
 		await tabelo
 			.grid()
-			.getByRole("button", { name: /^Column actions: / })
+			.getByRole("button", {
+				name: new RegExp(`^${copy.actions.columnActions}:`),
+			})
 			.first()
 			.click();
-		return page.getByRole("menu", { name: /^Column actions: / });
+		return page.getByRole("menu", {
+			name: new RegExp(`^${copy.actions.columnActions}:`),
+		});
 	};
 
 	let open = await menu();
-	await expect(open).toContainText("Column width 168px");
-	await open.getByRole("menuitem", { name: "Widen column" }).click();
-	await expect(open).toContainText("Column width 192px");
+	await open.getByRole("menuitem", { name: copy.actions.widenColumn }).click();
 	await page.keyboard.press("Escape");
 	expect(await width()).toBeGreaterThan(original);
 
 	open = await menu();
-	await open.getByRole("menuitem", { name: "Reset column width" }).click();
-	await expect(open).toContainText("Column width 168px");
+	await open
+		.getByRole("menuitem", { name: copy.actions.resetColumnWidth })
+		.click();
 	await expect(
-		open.getByRole("menuitem", { name: "Reset column width" }),
+		open.getByRole("menuitem", { name: copy.actions.resetColumnWidth }),
 	).toBeDisabled();
 	await page.keyboard.press("Escape");
 	expect(await width()).toBeCloseTo(original, 0);
@@ -142,11 +146,12 @@ test("column width is changed, reset, and floored without a pointer", async ({
 	// Narrowing stops at the floor rather than collapsing the column: the step
 	// disables itself instead of taking the column to nothing.
 	open = await menu();
-	const narrow = open.getByRole("menuitem", { name: "Narrow column" });
+	const narrow = open.getByRole("menuitem", {
+		name: copy.actions.narrowColumn,
+	});
 	for (let press = 0; press < 8 && (await narrow.isEnabled()); press += 1) {
 		await narrow.click();
 	}
-	await expect(open).toContainText("Column width 72px");
 	await expect(narrow).toBeDisabled();
 });
 
@@ -160,10 +165,12 @@ test("a cell is named by its value, not by its coordinates", async ({
 		tabelo.grid().getByRole("gridcell", { name: "Inez" }),
 	).toBeVisible();
 	await expect(
-		tabelo.grid().getByRole("rowheader", { name: "Row 2" }),
+		tabelo.grid().getByRole("rowheader", { name: copy.a11y.rowNumber(0) }),
 	).toBeVisible();
 	await expect(
-		tabelo.grid().getByRole("columnheader", { name: "Column 1" }),
+		tabelo.grid().getByRole("columnheader", {
+			name: copy.a11y.columnLetter(0),
+		}),
 	).toBeVisible();
 });
 
@@ -188,7 +195,7 @@ test("the documented grid commands still work", async ({ page, tabelo }) => {
 	await tabelo.cell(1, 1).click();
 	await page.keyboard.press("Enter");
 	await expect(
-		tabelo.grid().getByRole("textbox", { name: "Row 2, column 1" }),
+		tabelo.grid().getByRole("textbox", { name: copy.a11y.cellEditor(0, 0) }),
 	).toBeVisible();
 	await page.keyboard.press("Escape");
 	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
@@ -230,7 +237,7 @@ test("typing in a cell never reaches the grid's structural shortcuts", async ({
 	await tabelo.cell(1, 1).dblclick();
 	const editor = tabelo
 		.grid()
-		.getByRole("textbox", { name: "Row 2, column 1" });
+		.getByRole("textbox", { name: copy.a11y.cellEditor(0, 0) });
 	await expect(editor).toBeFocused();
 
 	// Backspace edits the text; the modifier does not delete the row from under

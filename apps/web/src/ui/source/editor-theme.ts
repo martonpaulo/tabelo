@@ -36,7 +36,7 @@ export const editorTheme = EditorView.theme({
 		fontSize: contentFontSize,
 		lineHeight: "1.6",
 		border: "none",
-		borderRight: "1px solid var(--line-subtle)",
+		borderRight: "0.0625rem solid var(--line-subtle)",
 	},
 	".cm-lineNumbers .cm-gutterElement": {
 		padding: "0 calc(var(--spacing) * 2)",
@@ -51,9 +51,9 @@ export const editorTheme = EditorView.theme({
 		color: "var(--foreground)",
 	},
 	".cm-cursor, .cm-dropCursor": {
-		borderLeft: "2px solid var(--selection-edge)",
+		borderLeft: "0.125rem solid var(--selection-edge)",
 		height: "calc(var(--pane-zoom, 1) * 1.25rem) !important",
-		marginLeft: "-1px",
+		marginLeft: "-0.0625rem",
 		marginTop: "calc(var(--pane-zoom, 1) * -0.125rem)",
 	},
 	"&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
@@ -68,7 +68,7 @@ export const editorTheme = EditorView.theme({
 	".cm-selectionMatch": { backgroundColor: "var(--text-selection-fill)" },
 	".cm-tableHeaderLine": {
 		backgroundColor: "var(--surface-header)",
-		boxShadow: "inset 0 -1px 0 var(--line-strong)",
+		boxShadow: "inset 0 -0.0625rem 0 var(--line-strong)",
 	},
 	".cm-tableDelimiter": { color: "var(--muted-foreground)" },
 	".cm-tableDivider": { color: "var(--selection-edge)" },
@@ -76,18 +76,18 @@ export const editorTheme = EditorView.theme({
 		textDecorationLine: "underline",
 		textDecorationStyle: "wavy",
 		textDecorationColor: "var(--destructive)",
-		textDecorationThickness: "1.5px",
-		textUnderlineOffset: "3px",
+		textDecorationThickness: "0.09375rem",
+		textUnderlineOffset: "0.1875rem",
 	},
 	".cm-diagnosticWarning": {
 		textDecorationLine: "underline",
 		textDecorationStyle: "dotted",
 		textDecorationColor: "var(--status-warning)",
-		textDecorationThickness: "1.5px",
-		textUnderlineOffset: "3px",
+		textDecorationThickness: "0.09375rem",
+		textUnderlineOffset: "0.1875rem",
 	},
 	".cm-tooltip": {
-		border: "1px solid var(--line-strong)",
+		border: "0.0625rem solid var(--line-strong)",
 		backgroundColor: "var(--popover)",
 		color: "var(--popover-foreground)",
 	},

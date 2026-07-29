@@ -169,7 +169,6 @@ function serializeJira(document: TableDocument): string {
 
 export const jiraCodec: TableCodec = {
 	id: "jira",
-	label: "Jira",
 	extension: "jira.txt",
 	mimeType: "text/plain",
 	parseMatrix: parseJiraMatrix,

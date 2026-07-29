@@ -1,4 +1,33 @@
 import type { Locator, Page } from "@playwright/test";
+import { copy } from "@/ui/copy";
+import { getView } from "@/views/registry";
+import type { ViewId } from "@/views/types";
+import type { LayoutId } from "@/workspace/layout";
+
+type AppCommand = "undo" | "redo" | "newTable" | "downloadTable";
+type PaneCommand =
+	| "addView"
+	| "closeView"
+	| "zoomOut"
+	| "resetZoom"
+	| "zoomIn"
+	| "copySource";
+
+const appCommandLabels: Record<AppCommand, string> = {
+	undo: copy.actions.undo,
+	redo: copy.actions.redo,
+	newTable: copy.actions.newTable,
+	downloadTable: copy.actions.downloadTable,
+};
+
+const paneCommandLabels: Record<PaneCommand, string> = {
+	addView: copy.workspace.addView,
+	closeView: copy.workspace.closeView,
+	zoomOut: copy.workspace.zoomOut,
+	resetZoom: copy.workspace.resetZoom,
+	zoomIn: copy.workspace.zoomIn,
+	copySource: copy.actions.copySource,
+};
 
 function requirePositiveIndex(value: number, name: string): void {
 	if (!Number.isInteger(value) || value < 1) {
@@ -11,7 +40,7 @@ export class TabeloPage {
 	readonly status: Locator;
 
 	constructor(readonly page: Page) {
-		this.workspace = page.getByRole("main", { name: "Workspace" });
+		this.workspace = page.getByRole("main", { name: copy.a11y.workspace });
 		this.status = page.getByRole("status");
 	}
 
@@ -26,22 +55,24 @@ export class TabeloPage {
 
 	async dismissWelcome(): Promise<void> {
 		const emptyStart = this.page.getByRole("button", {
-			name: "Use an empty table",
+			name: copy.empty.emptyAction,
 		});
 		await emptyStart.click();
 	}
 
-	pane(view: string): Locator {
-		return this.page.getByRole("region", { name: `${view} pane` });
+	pane(view: ViewId): Locator {
+		return this.page.getByRole("region", {
+			name: copy.a11y.pane(getView(view).label),
+		});
 	}
 
-	paneAt(view: string, index: number): Locator {
+	paneAt(view: ViewId, index: number): Locator {
 		return this.pane(view).nth(index);
 	}
 
 	grid(): Locator {
-		return this.pane("Visual table").getByRole("grid", {
-			name: "Table editor",
+		return this.pane("grid").getByRole("grid", {
+			name: copy.a11y.grid,
 		});
 	}
 
@@ -59,81 +90,101 @@ export class TabeloPage {
 		return this.grid().locator(`[data-cell="${row - 1}:${column - 1}"]`);
 	}
 
-	source(view: string): Locator {
+	source(view: ViewId): Locator {
+		const label = getView(view).label;
 		return this.pane(view).getByRole("textbox", {
-			name: `${view} source`,
+			name: copy.a11y.sourceEditor(label),
 		});
 	}
 
-	sourceAt(view: string, index: number): Locator {
+	sourceAt(view: ViewId, index: number): Locator {
 		return this.paneAt(view, index).getByRole("textbox");
 	}
 
 	// Layout presets, pane views, and column alignments are radio items: they
 	// are current states rather than one-off actions.
-	async chooseLayout(label: string): Promise<void> {
+	async chooseLayout(id: LayoutId): Promise<void> {
 		const menu = await this.openLayoutMenu();
-		await menu.getByRole("menuitemradio").filter({ hasText: label }).click();
+		await menu
+			.getByRole("menuitemradio")
+			.filter({ hasText: copy.layouts[id].label })
+			.click();
 	}
 
 	async openAppMenu(): Promise<Locator> {
-		await this.page.getByRole("button", { name: "Open Tabelo menu" }).click();
-		return this.page.getByRole("menu", { name: "Open Tabelo menu" });
+		await this.page
+			.getByRole("button", { name: copy.actions.openAppMenu })
+			.click();
+		return this.page.getByRole("menu", { name: copy.actions.openAppMenu });
 	}
 
 	async openLayoutMenu(): Promise<Locator> {
 		await this.openAppMenu();
-		await this.page.getByRole("menuitem", { name: "Layout" }).click();
-		const menu = this.page.getByRole("menu", { name: "Layout" });
+		await this.page
+			.getByRole("menuitem", { name: copy.workspace.layout })
+			.click();
+		const menu = this.page.getByRole("menu", {
+			name: copy.workspace.layout,
+		});
 		await menu.waitFor({ state: "visible" });
 		return menu;
 	}
 
-	async runAppCommand(command: string): Promise<void> {
+	async runAppCommand(command: AppCommand): Promise<void> {
 		const menu = await this.openAppMenu();
-		await menu.getByRole("menuitem", { name: command }).click();
+		await menu
+			.getByRole("menuitem", { name: appCommandLabels[command] })
+			.click();
 	}
 
 	async choosePaneView(
-		currentView: string,
-		nextView: string,
+		currentView: ViewId,
+		nextView: ViewId,
 		index = 0,
 	): Promise<void> {
 		const menu = await this.openPaneMenu(currentView, index);
-		await menu.getByRole("menuitemradio").filter({ hasText: nextView }).click();
+		await menu
+			.getByRole("menuitemradio")
+			.filter({ hasText: getView(nextView).label })
+			.click();
 		// Selecting a view closes this menu as a side effect. A caller that
 		// immediately reopens the same pane's menu needs that close to be
 		// finished first, not merely under way.
 		await menu.waitFor({ state: "hidden" });
 	}
 
-	paneMenuTrigger(view: string, index = 0): Locator {
+	paneMenuTrigger(view: ViewId, index = 0): Locator {
+		const label = getView(view).label;
 		return this.paneAt(view, index).getByRole("button", {
-			name: `Pane actions: ${view}`,
+			name: `${copy.workspace.paneActions}: ${label}`,
 		});
 	}
 
-	async openPaneMenu(view: string, index = 0): Promise<Locator> {
+	async openPaneMenu(view: ViewId, index = 0): Promise<Locator> {
 		await this.paneMenuTrigger(view, index).click();
-		return this.page.getByRole("menu", { name: `Pane actions: ${view}` });
+		return this.page.getByRole("menu", {
+			name: `${copy.workspace.paneActions}: ${getView(view).label}`,
+		});
 	}
 
 	// Add view, Close view, and the zoom steps are all plain items in the pane's
 	// own menu, so one helper covers every direct pane command.
 	async runPaneCommand(
-		view: string,
-		command: string,
+		view: ViewId,
+		command: PaneCommand,
 		index = 0,
 	): Promise<void> {
 		const menu = await this.openPaneMenu(view, index);
-		await menu.getByRole("menuitem", { name: command, exact: true }).click();
+		await menu
+			.getByRole("menuitem", { name: paneCommandLabels[command], exact: true })
+			.click();
 	}
 
 	async editCell(row: number, column: number, value: string): Promise<void> {
 		const cell = this.cell(row, column);
 		await cell.dblclick();
 		const editor = this.grid().getByRole("textbox", {
-			name: `Row ${row + 1}, column ${column}`,
+			name: copy.a11y.cellEditor(row - 1, column - 1),
 		});
 		await editor.fill(value);
 		await editor.press("Enter");
@@ -164,7 +215,9 @@ export class TabeloPage {
 	): Promise<void> {
 		const chooserPromise = this.page.waitForEvent("filechooser");
 		await this.openAppMenu();
-		await this.page.getByRole("menuitem", { name: "Import file" }).click();
+		await this.page
+			.getByRole("menuitem", { name: copy.actions.importFile })
+			.click();
 		const chooser = await chooserPromise;
 		await chooser.setFiles({
 			name,
@@ -176,7 +229,9 @@ export class TabeloPage {
 	async cancelFileImport(): Promise<void> {
 		const chooserPromise = this.page.waitForEvent("filechooser");
 		await this.openAppMenu();
-		await this.page.getByRole("menuitem", { name: "Import file" }).click();
+		await this.page
+			.getByRole("menuitem", { name: copy.actions.importFile })
+			.click();
 		const chooser = await chooserPromise;
 		await chooser.setFiles([]);
 	}

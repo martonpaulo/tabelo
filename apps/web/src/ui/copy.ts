@@ -1,14 +1,76 @@
+import { defaultHeader } from "@/core/document";
 import type { ParseIssue } from "@/formats/types";
 import type { ImportError } from "@/import/prepare";
+import { product } from "@/product";
 
 // Every user-visible string lives here. One place to keep the voice
 // consistent, and the seam a locale would plug into if Tabelo ever ships one.
 // Keep the tone plain and calm: say what happened, not how clever the app is.
 
+const views = {
+	grid: {
+		label: "Visual table",
+		shortLabel: "Table",
+		description: "Edit cells, rows, and columns directly.",
+	},
+	markdown: {
+		label: "Markdown",
+		shortLabel: "Markdown",
+		description: "A Markdown table, alignment included.",
+	},
+	csv: {
+		label: "CSV",
+		shortLabel: "CSV",
+		description: "Comma-separated values.",
+	},
+	tsv: {
+		label: "TSV",
+		shortLabel: "TSV",
+		description: "Tab-separated values, what spreadsheets paste.",
+	},
+	html: {
+		label: "HTML source",
+		shortLabel: "HTML",
+		description: "A table element you can paste into a page.",
+	},
+	jira: {
+		label: "Jira",
+		shortLabel: "Jira",
+		description: "Jira wiki table syntax.",
+	},
+	"html-preview": {
+		label: "Rendered preview",
+		shortLabel: "Preview",
+		description: "The table as a reader would see it.",
+	},
+} as const;
+
 export const copy = {
-	app: {
-		name: "Tabelo",
-		tagline: "Edit one table in every view — always in sync.",
+	app: product,
+
+	views,
+
+	layouts: {
+		single: { label: "Single", description: "One view, full width." },
+		columns: { label: "Two columns", description: "Side by side." },
+		rows: { label: "Two rows", description: "Stacked." },
+		"left-split": {
+			label: "Split left",
+			description: "Two stacked on the left, one tall on the right.",
+		},
+		"right-split": {
+			label: "Split right",
+			description: "One tall on the left, two stacked on the right.",
+		},
+		"top-split": {
+			label: "Split top",
+			description: "Two across the top, one wide below.",
+		},
+		"bottom-split": {
+			label: "Split bottom",
+			description: "One wide on top, two across the bottom.",
+		},
+		quad: { label: "Four panes", description: "All four views at once." },
 	},
 
 	newTable: {
@@ -133,7 +195,8 @@ export const copy = {
 		selectRow: "Select row",
 		selectColumn: "Select column",
 		resizeColumn: "Resize column",
-		columnWidth: (pixels: number) => `Column width ${pixels}px`,
+		columnWidth: (rem: number) =>
+			`Column width ${Number.parseFloat(rem.toFixed(2))} rem`,
 		widenColumn: "Widen column",
 		narrowColumn: "Narrow column",
 		resetColumnWidth: "Reset column width",
@@ -167,6 +230,10 @@ export const copy = {
 		sourceBody: (label: string) => `Paste ${label} here to create the table.`,
 	},
 
+	status: {
+		loading: "Loading…",
+	},
+
 	notices: {
 		pendingPaneAction: (kind: "view" | "close") =>
 			kind === "close"
@@ -179,7 +246,7 @@ export const copy = {
 		importError: (error: ImportError) => {
 			switch (error.code) {
 				case "invalid-format":
-					return `This file is not valid ${error.format}. The current table was not changed.`;
+					return `This file is not valid ${views[error.format].shortLabel}. The current table was not changed.`;
 				case "too-many-rows":
 					return `This import has ${error.actual} rows, above Tabelo's supported limit of ${error.limit}. The current table was not changed.`;
 				case "too-many-columns":
@@ -227,15 +294,16 @@ export const copy = {
 	a11y: {
 		grid: "Table editor",
 		workspace: "Workspace",
+		headerRow: "Row 1",
 		pane: (label: string) => `${label} pane`,
 		rowNumber: (index: number) => `Row ${index + 2}`,
-		columnLetter: (index: number) => `Column ${index + 1}`,
+		columnLetter: defaultHeader,
 		// Header cells name themselves after what they contain, because that name
 		// is what a screen reader reads out as the context for every cell beneath
 		// or beside them. A column with an empty header falls back to its
 		// position so the announcement is never silent.
 		columnHeader: (header: string, column: number) =>
-			header.trim() === "" ? `Column ${column + 1}` : header,
+			header.trim() === "" ? defaultHeader(column) : header,
 		// The editor that opens inside a cell is a control, not a cell, so it
 		// names itself by position rather than borrowing the cell's value.
 		cellEditor: (row: number, column: number) =>

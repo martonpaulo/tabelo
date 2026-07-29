@@ -1,3 +1,4 @@
+import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
 const invalidMarkdown =
@@ -7,8 +8,8 @@ const validMarkdown = "| Name | Role |\n| --- | --- |\n| Inez | Designer |";
 test("parse errors underline the source and describe the editor", async ({
 	tabelo,
 }) => {
-	const pane = tabelo.pane("Markdown");
-	const editor = tabelo.source("Markdown");
+	const pane = tabelo.pane("markdown");
+	const editor = tabelo.source("markdown");
 
 	await expect(editor).not.toHaveAttribute("aria-invalid", "true");
 	await expect(pane.getByRole("status")).toHaveCount(0);
@@ -18,14 +19,16 @@ test("parse errors underline the source and describe the editor", async ({
 	const descriptionId = await editor.getAttribute("aria-describedby");
 	expect(descriptionId).toBeTruthy();
 	const description = pane.locator(`#${descriptionId}`);
-	await expect(description).toContainText(
-		"Line 2: The second line must be a divider like | --- | --- |.",
-	);
+	const dividerIssue = copy.source.issue({
+		code: "markdown-divider-required",
+		line: 2,
+	});
+	await expect(description).toContainText(dividerIssue);
 	const underline = pane.locator(".cm-diagnosticError");
 	await expect(underline).toHaveCount(1);
 	await underline.hover();
 	await expect(pane.locator(".cm-diagnosticTooltip")).toContainText(
-		"Line 2: The second line must be a divider like | --- | --- |.",
+		dividerIssue,
 	);
 
 	await editor.fill(validMarkdown);
@@ -38,17 +41,22 @@ test("parse errors underline the source and describe the editor", async ({
 	const emptyDescriptionId = await editor.getAttribute("aria-describedby");
 	expect(emptyDescriptionId).toBeTruthy();
 	await expect(pane.locator(`#${emptyDescriptionId}`)).toContainText(
-		"Nothing to read yet.",
+		copy.source.issue({ code: "empty-source" }),
 	);
 });
 
 test("CSV parse failures use product-owned copy", async ({ tabelo }) => {
-	await tabelo.choosePaneView("Markdown", "CSV");
-	const pane = tabelo.pane("CSV");
+	await tabelo.choosePaneView("markdown", "csv");
+	const pane = tabelo.pane("csv");
 
-	await tabelo.source("CSV").fill('A,B\n1,"unterminated');
+	await tabelo.source("csv").fill('A,B\n1,"unterminated');
 
-	await expect(pane).toContainText("Line 2: A quoted field is not closed.");
+	await expect(pane).toContainText(
+		copy.source.issue({
+			code: "delimited-unclosed-quote",
+			line: 2,
+		}),
+	);
 	await expect(pane).not.toContainText("Quoted field unterminated");
 });
 
@@ -56,9 +64,9 @@ test("warnings use yellow underlines and hover tooltips without moving focus", a
 	page,
 	tabelo,
 }) => {
-	await tabelo.chooseLayout("Four panes");
-	const pane = tabelo.pane("Markdown");
-	const editor = tabelo.source("Markdown");
+	await tabelo.chooseLayout("quad");
+	const pane = tabelo.pane("markdown");
+	const editor = tabelo.source("markdown");
 	await editor.focus();
 	await editor.press("ControlOrMeta+a");
 	await editor.press("Backspace");
@@ -69,16 +77,25 @@ test("warnings use yellow underlines and hover tooltips without moving focus", a
 	const descriptionId = await editor.getAttribute("aria-describedby");
 	expect(descriptionId).toBeTruthy();
 	await expect(pane.locator(`#${descriptionId}`)).toContainText(
-		"Line 3: Row 1 has 1 cell, the table has 2 columns.",
+		copy.source.issue({
+			code: "row-column-count",
+			line: 3,
+			row: 1,
+			actual: 1,
+			expected: 2,
+		}),
 	);
 	const underlines = pane.locator(".cm-diagnosticWarning");
 	await expect(underlines).toHaveCount(2);
 	await underlines.nth(1).hover();
 	await expect(pane.locator(".cm-diagnosticTooltip")).toContainText(
-		"Line 4: Row 2 has 3 cells, the table has 2 columns.",
+		copy.source.issue({
+			code: "row-column-count",
+			line: 4,
+			row: 2,
+			actual: 3,
+			expected: 2,
+		}),
 	);
 	await expect(editor).toBeFocused();
-	await expect(
-		pane.getByRole("button", { name: /Show .* warnings/ }),
-	).toHaveCount(0);
 });

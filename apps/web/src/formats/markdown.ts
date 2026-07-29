@@ -271,7 +271,6 @@ function serializeMarkdown(document: TableDocument): string {
 
 export const markdownCodec: TableCodec = {
 	id: "markdown",
-	label: "Markdown",
 	extension: "md",
 	mimeType: "text/markdown",
 	parseMatrix: parseMarkdownMatrix,

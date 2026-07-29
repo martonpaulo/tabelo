@@ -78,7 +78,6 @@ export const defaultOutputOptions: Required<OutputOptions> = {
 // docs/adr/0005.
 export interface TableCodec {
 	readonly id: CodecId;
-	readonly label: string;
 	// Without the leading dot.
 	readonly extension: string;
 	readonly mimeType: string;

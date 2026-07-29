@@ -1,4 +1,6 @@
 import type { Page } from "@playwright/test";
+import { copy } from "@/ui/copy";
+import type { ViewId } from "@/views/types";
 import { expect, test } from "./fixtures";
 
 // Copy source hands over the text the pane is showing. The case that decides
@@ -43,7 +45,7 @@ test("copies the visible source of a valid view", async ({ page, tabelo }) => {
 	await expect(tabelo.workspace).toBeVisible();
 	await tabelo.editCell(1, 1, "Inez");
 
-	await tabelo.runPaneCommand("Markdown", "Copy source");
+	await tabelo.runPaneCommand("markdown", "copySource");
 
 	await expect(
 		tabelo.status.filter({ hasText: "Source copied to the clipboard." }),
@@ -62,39 +64,39 @@ test("copies a pending invalid draft byte for byte", async ({
 	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 
-	await tabelo.source("Markdown").fill(invalidMarkdown);
-	await expect(tabelo.source("Markdown")).toHaveAttribute(
+	await tabelo.source("markdown").fill(invalidMarkdown);
+	await expect(tabelo.source("markdown")).toHaveAttribute(
 		"aria-invalid",
 		"true",
 	);
 
-	await tabelo.runPaneCommand("Markdown", "Copy source");
+	await tabelo.runPaneCommand("markdown", "copySource");
 
 	// Not the last valid projection the other panes are still showing.
 	expect(await lastCopied(page)).toBe(invalidMarkdown);
 });
 
 test("a second pane cannot duplicate a format", async ({ tabelo }) => {
-	await tabelo.runPaneCommand("Visual table", "Add view");
-	const menu = await tabelo.openPaneMenu("CSV");
+	await tabelo.runPaneCommand("grid", "addView");
+	const menu = await tabelo.openPaneMenu("csv");
 	await expect(
-		menu.getByRole("menuitemradio", { name: /Markdown/ }),
+		menu.getByRole("menuitemradio", { name: copy.views.markdown.label }),
 	).toBeDisabled();
-	await expect(tabelo.pane("Markdown")).toHaveCount(1);
+	await expect(tabelo.pane("markdown")).toHaveCount(1);
 });
 
 test("every source view offers the action and the preview does not", async ({
 	tabelo,
 }) => {
-	let current = "Markdown";
-	for (const view of ["Markdown", "CSV", "TSV", "HTML source", "Jira"]) {
+	let current: ViewId = "markdown";
+	for (const view of ["markdown", "csv", "tsv", "html", "jira"] as const) {
 		if (view !== current) {
 			await tabelo.choosePaneView(current, view);
 			current = view;
 		}
 		const menu = await tabelo.openPaneMenu(view);
 		await expect(
-			menu.getByRole("menuitem", { name: "Copy source" }),
+			menu.getByRole("menuitem", { name: copy.actions.copySource }),
 		).toBeVisible();
 		// The next iteration reopens this same pane's menu, so it has to be
 		// fully closed first. The trigger's own toggle is used rather than
@@ -107,10 +109,10 @@ test("every source view offers the action and the preview does not", async ({
 		await expect(menu).toHaveCount(0);
 	}
 
-	await tabelo.choosePaneView(current, "Rendered preview");
-	const preview = await tabelo.openPaneMenu("Rendered preview");
+	await tabelo.choosePaneView(current, "html-preview");
+	const preview = await tabelo.openPaneMenu("html-preview");
 	await expect(
-		preview.getByRole("menuitem", { name: "Copy source" }),
+		preview.getByRole("menuitem", { name: copy.actions.copySource }),
 	).toHaveCount(0);
 });
 
@@ -134,7 +136,7 @@ test("a refused copy explains itself with source-specific advice", async ({
 	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 
-	await tabelo.runPaneCommand("Markdown", "Copy source");
+	await tabelo.runPaneCommand("markdown", "copySource");
 
 	await expect(tabelo.status.filter({ hasText: writeRecovery })).toBeVisible();
 });
@@ -155,10 +157,10 @@ test("copying returns focus to the pane menu without disturbing the grid", async
 	const before = await selected();
 	expect(before).not.toBeNull();
 
-	await tabelo.runPaneCommand("Markdown", "Copy source");
+	await tabelo.runPaneCommand("markdown", "copySource");
 
 	// The menu hands focus back to its own trigger, and the grid selection is
 	// exactly where the user left it.
-	await expect(tabelo.paneMenuTrigger("Markdown")).toBeFocused();
+	await expect(tabelo.paneMenuTrigger("markdown")).toBeFocused();
 	expect(await selected()).toBe(before);
 });

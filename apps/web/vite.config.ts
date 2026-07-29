@@ -3,6 +3,7 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { product } from "./src/product";
 
 // GitHub Pages serves this project from a subpath. The deploy workflow sets
 // BASE_PATH; local dev and preview stay at the root.
@@ -31,6 +32,13 @@ export default defineConfig({
 		tsconfigPaths: true,
 	},
 	plugins: [
+		{
+			name: "tabelo-product-copy",
+			transformIndexHtml: (html) =>
+				html
+					.replaceAll("__TABELO_DOCUMENT_TITLE__", product.documentTitle)
+					.replaceAll("__TABELO_DESCRIPTION__", product.description),
+		},
 		tailwindcss(),
 		tanstackRouter({
 			target: "react",
@@ -44,10 +52,9 @@ export default defineConfig({
 			injectRegister: "script-defer",
 			registerType: "prompt",
 			manifest: {
-				name: "Tabelo",
-				short_name: "Tabelo",
-				description:
-					"Edit one table visually or as Markdown, CSV, TSV, HTML, and Jira — always in sync, entirely in your browser.",
+				name: product.name,
+				short_name: product.name,
+				description: product.description,
 				theme_color: "#0f6cbd",
 				background_color: "#f0f0f0",
 				start_url: base,

@@ -22,7 +22,7 @@ export const IMPORT_LIMITS = {
 export type ImportError =
 	| {
 			readonly code: "invalid-format";
-			readonly format: string;
+			readonly format: CodecId;
 			readonly issues: readonly ParseIssue[];
 	  }
 	| { readonly code: "empty" }
@@ -129,7 +129,7 @@ export function prepareImport(
 				ok: false,
 				error: {
 					code: "invalid-format",
-					format: namedCodec.label,
+					format: namedCodec.id,
 					issues: parsed.issues,
 				},
 			};

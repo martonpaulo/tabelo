@@ -26,38 +26,31 @@ async function editorSnapshot(editor: Locator) {
 test("valid source edits synchronize without a pending healthy status", async ({
 	tabelo,
 }) => {
-	await expect(tabelo.pane("Markdown")).not.toContainText("In sync");
-
-	await tabelo.source("Markdown").fill(validMarkdown);
+	await tabelo.source("markdown").fill(validMarkdown);
 
 	await expect(tabelo.cell(1, 1)).toHaveText("Immediate");
-	await expect(tabelo.pane("Markdown")).not.toContainText("Editing");
-	await expect(tabelo.pane("Markdown")).not.toContainText("In sync");
+	await expect(tabelo.pane("markdown").getByRole("status")).toHaveCount(0);
 });
 
 test("transient invalid source stays quiet and keeps the last valid table", async ({
 	tabelo,
 }) => {
-	await tabelo.source("Markdown").fill(invalidMarkdown);
-	await expect(tabelo.pane("Markdown")).not.toContainText(
-		"Source is not valid yet.",
-	);
+	await tabelo.source("markdown").fill(invalidMarkdown);
+	await expect(tabelo.pane("markdown").getByRole("status")).toHaveCount(0);
 	await expect(tabelo.cell(1, 1)).toHaveText("");
 
-	await tabelo.source("Markdown").fill(validMarkdown);
+	await tabelo.source("markdown").fill(validMarkdown);
 	await expect(tabelo.cell(1, 1)).toHaveText("Immediate");
-	await expect(tabelo.pane("Markdown")).not.toContainText(
-		"Source is not valid yet.",
-	);
+	await expect(tabelo.pane("markdown").getByRole("status")).toHaveCount(0);
 });
 
 test("persistent invalid source is underlined while the grid stays valid", async ({
 	tabelo,
 }) => {
-	await tabelo.source("Markdown").fill(invalidMarkdown);
+	await tabelo.source("markdown").fill(invalidMarkdown);
 
 	await expect(
-		tabelo.pane("Markdown").locator(".cm-diagnosticError"),
+		tabelo.pane("markdown").locator(".cm-diagnosticError"),
 	).toHaveCount(1);
 	await expect(tabelo.cell(1, 1)).toHaveText("");
 });
@@ -70,7 +63,7 @@ test("source cursor and local undo survive a 200-row synchronization", async ({
 		"| --- |",
 		...Array.from({ length: 200 }, (_, index) => `| Value ${index} |`),
 	].join("\n");
-	const editor = tabelo.source("Markdown");
+	const editor = tabelo.source("markdown");
 
 	await editor.fill(source);
 	await expect(tabelo.grid()).toHaveAttribute("aria-rowcount", "201");

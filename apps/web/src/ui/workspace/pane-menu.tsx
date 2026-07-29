@@ -25,6 +25,7 @@ import { useEffect, useRef } from "react";
 import { useTabeloStore, visibleTextForPane } from "@/state/store";
 import { copyToClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
+import { MenuOption } from "@/ui/primitives/menu-option";
 import { listViews } from "@/views/registry";
 import type { ViewDefinition, ViewId } from "@/views/types";
 import { largerLayout, smallerLayout } from "@/workspace/layout";
@@ -133,12 +134,10 @@ export function PaneMenu({
 							closeOnClick
 						>
 							<candidate.icon aria-hidden />
-							<span className="flex-1">
-								<span className="block font-medium">{candidate.label}</span>
-								<span className="block text-muted-foreground text-xs">
-									{candidate.description}
-								</span>
-							</span>
+							<MenuOption
+								label={candidate.label}
+								description={candidate.description}
+							/>
 						</DropdownMenuRadioItem>
 					))}
 				</DropdownMenuRadioGroup>

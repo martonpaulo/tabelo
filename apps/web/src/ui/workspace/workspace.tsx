@@ -11,7 +11,7 @@ import { Pane } from "./pane";
 import { useStackedWorkspace } from "./stacking";
 
 // The workspace is one CSS grid. Panes place themselves from their slots, and
-// the 1px gap plus a coloured background gives the separators without any pane
+// the narrow gap plus a coloured background gives the separators without pane
 // needing to know its neighbours.
 //
 // Below the stacking width that tiling is not narrowed, it is abandoned: the

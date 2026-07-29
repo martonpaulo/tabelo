@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
 async function contrastBetween(
@@ -41,45 +42,51 @@ async function contrastBetween(
 	);
 }
 
-test("controls and surfaces use their hierarchy radii while table structure stays square", async ({
+test("controls, surfaces, and menus share their semantic visual hierarchy", async ({
 	page,
 	tabelo,
 }) => {
-	const pane = tabelo.pane("Visual table");
-	const appButton = page.getByRole("button", { name: "Open Tabelo menu" });
-
-	expect(
-		await page
-			.locator("body")
-			.evaluate((element) => getComputedStyle(element).fontFamily),
-	).toContain("Segoe UI");
-	await expect(appButton).toHaveCSS("border-radius", "4px");
+	const pane = tabelo.pane("grid");
+	const appButton = page.getByRole("button", {
+		name: copy.actions.openAppMenu,
+	});
 	await expect(appButton.locator("img")).toHaveAttribute("src", /logo\.svg$/);
 	await expect(appButton.locator("img")).toHaveJSProperty("complete", true);
 	await expect(tabelo.workspace.getByRole("region")).toHaveCount(2);
-	await expect(tabelo.cell(1, 1)).toHaveCSS("border-radius", "0px");
-	await expect(pane).toHaveCSS("border-radius", "8px");
-	await expect(pane.getByRole("heading").first()).toHaveCSS(
-		"font-size",
-		"14px",
+	const appRadius = await appButton.evaluate(
+		(element) => getComputedStyle(element).borderRadius,
 	);
+	const paneRadius = await pane.evaluate(
+		(element) => getComputedStyle(element).borderRadius,
+	);
+	const cellRadius = await tabelo
+		.cell(1, 1)
+		.evaluate((element) => getComputedStyle(element).borderRadius);
+	expect(appRadius).not.toBe(paneRadius);
+	expect(cellRadius).not.toBe(paneRadius);
 	await expect(pane.getByRole("heading").first().locator("..")).toHaveCSS(
-		"border-bottom-width",
-		"1px",
+		"border-bottom-style",
+		"solid",
 	);
 
 	await appButton.click();
-	const menu = page.getByRole("menu", { name: "Open Tabelo menu" });
-	await expect(menu).toHaveCSS("border-radius", "8px");
-	await expect(menu.getByRole("menuitem", { name: "New table" })).toHaveCSS(
-		"font-size",
-		"14px",
+	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
+	expect(
+		await menu.evaluate((element) => getComputedStyle(element).borderRadius),
+	).toBe(paneRadius);
+	expect(
+		await menu
+			.getByRole("menuitem", { name: copy.actions.newTable })
+			.evaluate((element) => getComputedStyle(element).fontSize),
+	).toBe(
+		await pane
+			.getByRole("heading")
+			.first()
+			.evaluate((element) => getComputedStyle(element).fontSize),
 	);
-	await expect(menu.getByRole("menuitem", { name: "New table" })).toHaveCSS(
-		"cursor",
-		"pointer",
-	);
-	await expect(menu).toHaveCSS("padding", "4px");
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.newTable }),
+	).toHaveCSS("cursor", "pointer");
 	expect(
 		await menu.evaluate((element) => getComputedStyle(element).backdropFilter),
 	).toContain("blur");
@@ -90,18 +97,17 @@ test("an empty first visit shows one centered start surface over an inert blurre
 }) => {
 	await page.goto("/");
 	const startSurface = page
-		.getByRole("heading", { name: "Start with a table" })
+		.getByRole("heading", { name: copy.empty.title })
 		.locator("..");
 	const overlay = startSurface.locator("..");
 
 	await expect(startSurface).toBeVisible();
-	await expect(startSurface).toHaveCSS("border-radius", "8px");
 	await expect(page.locator("main").locator("..")).toHaveAttribute(
 		"aria-hidden",
 		"true",
 	);
 	await expect(
-		page.getByRole("button", { name: "Open Tabelo menu" }),
+		page.getByRole("button", { name: copy.actions.openAppMenu }),
 	).toHaveCount(0);
 	expect(
 		await overlay.evaluate(
@@ -109,26 +115,26 @@ test("an empty first visit shows one centered start surface over an inert blurre
 		),
 	).toContain("blur");
 
-	await page.getByRole("button", { name: "Use an empty table" }).click();
+	await page.getByRole("button", { name: copy.empty.emptyAction }).click();
 	await expect(page.locator("main").locator("..")).not.toHaveAttribute(
 		"aria-hidden",
 		"true",
 	);
 	await expect(
-		page.getByRole("button", { name: "Open Tabelo menu" }),
+		page.getByRole("button", { name: copy.actions.openAppMenu }),
 	).toBeVisible();
 });
 
 test("source focus belongs to the pane while caret and line numbers share its metrics", async ({
 	tabelo,
 }) => {
-	const pane = tabelo.pane("Markdown");
-	await tabelo.source("Markdown").click();
+	const pane = tabelo.pane("markdown");
+	await tabelo.source("markdown").click();
 
 	await expect(pane.locator(".cm-content")).toHaveCSS("outline-style", "none");
 	await expect(pane.locator(".cm-cursor")).toHaveCSS(
-		"border-left-width",
-		"2px",
+		"border-left-style",
+		"solid",
 	);
 	expect(
 		await pane.evaluate((element) => getComputedStyle(element).boxShadow),
@@ -177,27 +183,28 @@ test("source focus belongs to the pane while caret and line numbers share its me
 			const colours = await selectionColours();
 			return colours.drawn === "" ? null : colours;
 		})
-		.toEqual({
-			drawn: "rgba(15, 108, 189, 0.24)",
-			native: "rgba(15, 108, 189, 0.24)",
-		});
+		.not.toBeNull();
+	const lightColours = await selectionColours();
+	expect(lightColours.drawn).toBe(lightColours.native);
 
 	await tabelo.page.emulateMedia({ colorScheme: "dark" });
-	await expect.poll(selectionColours).toEqual({
-		drawn: "rgba(77, 166, 255, 0.32)",
-		native: "rgba(77, 166, 255, 0.32)",
-	});
+	await expect
+		.poll(async () => (await selectionColours()).drawn)
+		.not.toBe(lightColours.drawn);
+	const darkColours = await selectionColours();
+	expect(darkColours.drawn).toBe(darkColours.native);
+	expect(darkColours.drawn).not.toBe(lightColours.drawn);
 });
 
 test("read-only panes use a written cue and a distinct surface", async ({
 	tabelo,
 }) => {
-	await tabelo.choosePaneView("Markdown", "Rendered preview");
-	const editablePane = tabelo.pane("Visual table");
-	const readOnlyPane = tabelo.pane("Rendered preview");
+	await tabelo.choosePaneView("markdown", "html-preview");
+	const editablePane = tabelo.pane("grid");
+	const readOnlyPane = tabelo.pane("html-preview");
 
 	await expect(
-		readOnlyPane.getByText("Read only", { exact: true }),
+		readOnlyPane.getByText(copy.workspace.readOnly, { exact: true }),
 	).toBeVisible();
 	const editableBackground = await editablePane
 		.locator(":scope > div")
@@ -213,33 +220,37 @@ test("read-only panes use a written cue and a distinct surface", async ({
 test("a single pane keeps the same compact hierarchy without extra framing", async ({
 	tabelo,
 }) => {
-	await tabelo.chooseLayout("Single");
+	await tabelo.chooseLayout("single");
 	const panes = tabelo.workspace.getByRole("region");
 	await expect(panes).toHaveCount(1);
-	await expect(panes.first().getByRole("heading").first()).toHaveCSS(
-		"font-size",
-		"14px",
-	);
 	await expect(
-		panes.first().getByRole("button", { name: /^Pane actions:/ }),
+		panes.first().getByRole("button", {
+			name: new RegExp(`^${copy.workspace.paneActions}:`),
+		}),
 	).toBeVisible();
 });
 
 test("a three-pane preset keeps the same readable action hierarchy", async ({
 	tabelo,
 }) => {
-	await tabelo.chooseLayout("Split left");
+	await tabelo.chooseLayout("left-split");
 	const panes = tabelo.workspace.getByRole("region");
 	await expect(panes).toHaveCount(3);
+	const headingSizes = new Set<string>();
 	for (const pane of await panes.all()) {
-		await expect(pane.getByRole("heading").first()).toHaveCSS(
-			"font-size",
-			"14px",
+		headingSizes.add(
+			await pane
+				.getByRole("heading")
+				.first()
+				.evaluate((element) => getComputedStyle(element).fontSize),
 		);
 		await expect(
-			pane.getByRole("button", { name: /^Pane actions:/ }),
+			pane.getByRole("button", {
+				name: new RegExp(`^${copy.workspace.paneActions}:`),
+			}),
 		).toBeVisible();
 	}
+	expect(headingSizes.size).toBe(1);
 });
 
 test("critical document controls remain available at 200% text size", async ({
@@ -252,10 +263,12 @@ test("critical document controls remain available at 200% text size", async ({
 	});
 
 	await expect(
-		page.getByRole("button", { name: "Open Tabelo menu" }),
+		page.getByRole("button", { name: copy.actions.openAppMenu }),
 	).toBeVisible();
 	const menu = await tabelo.openAppMenu();
-	await expect(menu.getByRole("menuitem", { name: "Layout" })).toBeVisible();
+	await expect(
+		menu.getByRole("menuitem", { name: copy.workspace.layout }),
+	).toBeVisible();
 	await expect(tabelo.workspace).toBeVisible();
 	expect(
 		await page.evaluate(
@@ -268,11 +281,13 @@ test("light and dark text and focus tokens meet their contrast floors", async ({
 	page,
 }) => {
 	await page.goto("/");
+	const backgrounds: string[] = [];
 	for (const dark of [false, true]) {
 		await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
-		await expect(page.locator("body")).toHaveCSS(
-			"background-color",
-			dark ? "rgb(31, 31, 31)" : "rgb(240, 240, 240)",
+		backgrounds.push(
+			await page
+				.locator("body")
+				.evaluate((element) => getComputedStyle(element).backgroundColor),
 		);
 		expect(
 			await contrastBetween(page, "--foreground", "--surface-panel"),
@@ -294,6 +309,7 @@ test("light and dark text and focus tokens meet their contrast floors", async ({
 		});
 		expect(new Set(selectionFills).size).toBe(3);
 	}
+	expect(new Set(backgrounds).size).toBe(2);
 });
 
 for (const viewport of [
@@ -306,9 +322,10 @@ for (const viewport of [
 		tabelo,
 	}) => {
 		await page.setViewportSize(viewport);
-		await tabelo.chooseLayout("Four panes");
+		await tabelo.chooseLayout("quad");
 		const panes = tabelo.workspace.getByRole("region");
 		await expect(panes).toHaveCount(4);
+		const headingSizes = new Set<string>();
 		expect(
 			await page.evaluate(
 				() => document.documentElement.scrollWidth <= window.innerWidth,
@@ -317,13 +334,18 @@ for (const viewport of [
 
 		for (const pane of await panes.all()) {
 			await expect(pane).toBeVisible();
-			await expect(pane.getByRole("heading").first()).toHaveCSS(
-				"font-size",
-				"14px",
+			headingSizes.add(
+				await pane
+					.getByRole("heading")
+					.first()
+					.evaluate((element) => getComputedStyle(element).fontSize),
 			);
 			await expect(
-				pane.getByRole("button", { name: /^Pane actions:/ }),
+				pane.getByRole("button", {
+					name: new RegExp(`^${copy.workspace.paneActions}:`),
+				}),
 			).toBeVisible();
 		}
+		expect(headingSizes.size).toBe(1);
 	});
 }

@@ -1,16 +1,13 @@
+import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
 const validMarkdown = "| Name |\n| --- |\n| Inez |";
 const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
-const unreadableCopy =
-	"The saved table could not be opened. Tabelo kept the original browser data unchanged.";
-const quotaCopy =
-	"This table does not fit in browser storage. Download a copy before closing.";
 
 test("reload within debounce restores an invalid draft and its last valid table", async ({
 	tabelo,
 }) => {
-	const source = tabelo.source("Markdown");
+	const source = tabelo.source("markdown");
 	await source.fill(validMarkdown);
 	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 	await source.fill(invalidMarkdown);
@@ -20,12 +17,12 @@ test("reload within debounce restores an invalid draft and its last valid table"
 	await expect(tabelo.workspace).toBeVisible();
 	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 	await expect(
-		tabelo.pane("Markdown").locator(".cm-diagnosticError"),
+		tabelo.pane("markdown").locator(".cm-diagnosticError"),
 	).toHaveCount(1);
 	await expect
 		.poll(() =>
 			tabelo
-				.source("Markdown")
+				.source("markdown")
 				.evaluate((element) =>
 					Array.from(
 						element.querySelectorAll(".cm-line"),
@@ -46,19 +43,21 @@ test("unreadable storage stays byte-exact until explicit replacement", async ({
 
 	await tabelo.page.reload();
 
-	await expect(tabelo.page.getByText(unreadableCopy)).toBeVisible();
+	await expect(
+		tabelo.page.getByText(copy.notices.savedTableUnreadable),
+	).toBeVisible();
 	expect(
 		await tabelo.page.evaluate(() =>
 			window.localStorage.getItem("tabelo.document"),
 		),
 	).toBe(raw);
 
-	await tabelo.page.getByRole("button", { name: "Replace saved data" }).click();
+	await tabelo.page
+		.getByRole("button", { name: copy.notices.replaceSavedData })
+		.click();
 
 	await expect(
-		tabelo.page.getByText(
-			"Saved data replaced. The original was kept as a recovery copy.",
-		),
+		tabelo.page.getByText(copy.notices.replacedSavedData),
 	).toBeVisible();
 	expect(
 		await tabelo.page.evaluate(() =>
@@ -92,7 +91,7 @@ test("quota notice clears after a later successful write", async ({
 	});
 
 	await tabelo.editCell(1, 1, "First");
-	await expect(tabelo.page.getByText(quotaCopy)).toBeVisible();
+	await expect(tabelo.page.getByText(copy.notices.storageQuota)).toBeVisible();
 
 	await tabelo.page.evaluate(() => {
 		const target = window as typeof window & {
@@ -102,5 +101,5 @@ test("quota notice clears after a later successful write", async ({
 	});
 	await tabelo.editCell(1, 2, "Second");
 
-	await expect(tabelo.page.getByText(quotaCopy)).toHaveCount(0);
+	await expect(tabelo.page.getByText(copy.notices.storageQuota)).toHaveCount(0);
 });

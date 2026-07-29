@@ -16,14 +16,14 @@ import {
 describe("resolving a width", () => {
 	it("treats an untouched column as the default", () => {
 		expect(resolveColumnWidth(undefined)).toBe(DEFAULT_COLUMN_WIDTH);
-		expect(resolveColumnWidth(200)).toBe(200);
+		expect(resolveColumnWidth(12.5)).toBe(12.5);
 	});
 });
 
 describe("stepping a width", () => {
 	it("moves one step from wherever the column is", () => {
-		expect(stepColumnWidth(200, 1)).toBe(200 + COLUMN_WIDTH_STEP);
-		expect(stepColumnWidth(200, -1)).toBe(200 - COLUMN_WIDTH_STEP);
+		expect(stepColumnWidth(12.5, 1)).toBe(12.5 + COLUMN_WIDTH_STEP);
+		expect(stepColumnWidth(12.5, -1)).toBe(12.5 - COLUMN_WIDTH_STEP);
 	});
 
 	it("starts from the default when the column was never resized", () => {
@@ -49,19 +49,19 @@ describe("stepping a width", () => {
 	});
 
 	it("is reversible away from the floor", () => {
-		const widened = stepColumnWidth(200, 1);
-		expect(stepColumnWidth(widened, -1)).toBe(200);
+		const widened = stepColumnWidth(12.5, 1);
+		expect(stepColumnWidth(widened, -1)).toBe(12.5);
 	});
 });
 
 describe("clamping a dragged width", () => {
 	it("honours the same floor the menu does", () => {
-		expect(clampColumnWidth(10)).toBe(MIN_COLUMN_WIDTH);
+		expect(clampColumnWidth(1)).toBe(MIN_COLUMN_WIDTH);
 		expect(clampColumnWidth(MIN_COLUMN_WIDTH - 0.4)).toBe(MIN_COLUMN_WIDTH);
 	});
 
-	it("rounds to whole pixels so a drag cannot store a fraction", () => {
-		expect(clampColumnWidth(200.6)).toBe(201);
+	it("rounds to stable rem increments", () => {
+		expect(clampColumnWidth(12.54)).toBe(12.5625);
 	});
 });
 
@@ -69,7 +69,7 @@ describe("reporting a width", () => {
 	it("knows an untouched column from a resized one", () => {
 		expect(isDefaultColumnWidth(undefined)).toBe(true);
 		expect(isDefaultColumnWidth(DEFAULT_COLUMN_WIDTH)).toBe(true);
-		expect(isDefaultColumnWidth(200)).toBe(false);
+		expect(isDefaultColumnWidth(12.5)).toBe(false);
 	});
 
 	it("knows when narrowing can go no further", () => {

@@ -1,3 +1,4 @@
+import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
 test("source focus stays visible and reduced motion keeps the cursor solid", async ({
@@ -9,8 +10,8 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 		reducedMotion: "no-preference",
 	});
 
-	const pane = tabelo.pane("Markdown");
-	const editor = tabelo.source("Markdown");
+	const pane = tabelo.pane("markdown");
+	const editor = tabelo.source("markdown");
 	const cursorLayer = pane.locator(".cm-cursorLayer");
 	await editor.focus();
 	const normalCursorAnimation = await cursorLayer.evaluate((element) => {
@@ -40,7 +41,7 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	await expect
 		.poll(() =>
 			page
-				.getByRole("button", { name: "Open Tabelo menu" })
+				.getByRole("button", { name: copy.actions.openAppMenu })
 				.evaluate((element) =>
 					Number.parseFloat(getComputedStyle(element).transitionDuration),
 				),

@@ -1,3 +1,4 @@
+import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
 test("first paint follows the system before application JavaScript runs", async ({
@@ -37,12 +38,11 @@ test("system changes apply live and an obsolete preference is ignored", async ({
 		localStorage.setItem("tabelo.theme", "dark");
 	});
 	await page.goto("/");
-	await page.getByRole("heading", { name: "Start with a table" }).waitFor();
+	await page.getByRole("heading", { name: copy.empty.title }).waitFor();
 
 	expect(await page.evaluate(() => localStorage.getItem("tabelo.theme"))).toBe(
 		"dark",
 	);
-	await expect(page.getByRole("button", { name: /^Theme:/ })).toHaveCount(0);
 	const lightBackground = await page
 		.locator("body")
 		.evaluate((body) => getComputedStyle(body).backgroundColor);

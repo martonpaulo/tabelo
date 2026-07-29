@@ -310,6 +310,9 @@ here:
   as the direct result of a command the user issued, and only for a choice a
   menu cannot hold — see `docs/design-system.md` §3.
 - Keep visible copy centralized and consistent.
+- Author interface geometry, spacing, radii, typography, and breakpoints in
+  `rem`, using the shared tokens whenever one exists. Treat pixel-valued browser
+  APIs as boundaries and convert their values before storing presentation state.
 - Keep expensive work out of render paths. Measure before claiming a performance
   problem.
 
@@ -351,6 +354,10 @@ here:
   highest-value test surface.
 - Test observable contracts at stable seams; avoid tests that only mirror
   implementation details or framework behavior.
+- Resolve product copy from its canonical owner or through semantic IDs in
+  tests. Do not repeat literal UI wording in selectors or assertions.
+- Do not assert exact rendered dimensions. Test token ownership, shared values,
+  relative changes, supported ranges, and minimum interaction targets instead.
 - Run the complete browser suite in Chromium. Reserve Firefox for flows that
   are genuinely sensitive to browser-engine differences, such as clipboard and
   download APIs, keyboard focus, persistence, responsive layout, and source

@@ -45,7 +45,7 @@ Tabelo is a **calm, compact, neutral table utility**. It follows the shadcn
 `base-lyra` style already configured in `packages/ui/components.json` without
 importing card-heavy dashboard styling.
 
-The neutral palette, system sans-serif stack, and 4px/8px radius scale are
+The neutral palette, system sans-serif stack, and 0.25rem/0.5rem radius scale are
 inspired by [petrroll/markdown-to-teams](https://github.com/petrroll/markdown-to-teams).
 This is visual direction, not a template: Tabelo keeps its own blue accent,
 stronger element hierarchy, and explicit editable/read-only distinction. No
@@ -54,14 +54,14 @@ source code or visual asset from that project is copied into Tabelo.
 - **Structured.** Grid cells, row and column headers, resize affordances, pane
   edges, and major workspace divisions are rectilinear. The table remains the
   visual anchor.
-- **Friendly.** Buttons and fields use a 4px control radius. Panels, menus,
-  dialogs, notices, and other contained or floating surfaces use an 8px surface
+- **Friendly.** Buttons and fields use a 0.25rem control radius. Panels, menus,
+  dialogs, notices, and other contained or floating surfaces use a 0.5rem surface
   radius. There are no pills or arbitrarily rounded containers.
 - **Neutral with one blue accent.** Neutral greys distinguish surfaces before
   lines do. Blue marks focus, selection, and checked or active controls. Status
   colours are the only other colours and always have written meaning.
-- **Compact, not tiny.** Controls remain 28–32px tall. Critical labels stay at
-  14px; space comes from removing repetition and progressive disclosure, never
+- **Compact, not tiny.** Controls remain 1.75–2rem tall. Critical labels stay at
+  0.875rem; space comes from removing repetition and progressive disclosure, never
   from shrinking essential text.
 - **Quiet.** Shadows belong only to floating layers. Borders communicate
   structure or state, never decoration. There are no gradients or decorative
@@ -77,15 +77,24 @@ The table is the loudest thing on screen. Everything else recedes.
 All tokens live in `apps/web/src/index.css`. Product-wide primitives inherit
 shadcn's tokens from `packages/ui/src/styles/globals.css`.
 
-### Rule: never write a raw value
+### Rule: use tokens and relative units
 
-No hex colours, no `oklch()` outside the token file, and no arbitrary pixel
-sizes. Use `rounded-interactive` for controls and `rounded-surface` for panels
+No hex colours, no `oklch()` outside the token file, and no arbitrary sizes.
+Author interface geometry, spacing, radii, typography, and breakpoints in
+`rem`; do not write `px` in product CSS or component styles. This keeps the
+interface proportional when the user changes the browser's base font size.
+Use `rounded-interactive` for controls and `rounded-surface` for panels
 and contained or floating surfaces. Structural table geometry stays square. If
 you need a value that has no token, that is a pattern break — follow §0.
 Platform metadata and standalone SVG assets are the narrow exception because
 they cannot consume CSS variables; they repeat an existing token exactly and
 must never introduce another palette value.
+
+Browser APIs are another boundary exception: pointer coordinates, viewport
+fixtures, and raster dimensions are expressed in CSS or image pixels by those
+APIs. Convert pointer measurements to `rem` before storing presentation state,
+and never treat an API's pixel result as the authored unit or a value worth
+pinning in a test.
 
 ### Surfaces
 
@@ -109,7 +118,7 @@ pane bodies use `--surface-panel`; a read-only pane uses
 | `--line-subtle` | `border-line-subtle` | Grid cell borders, control separators |
 | `--line-strong` | `border-line-strong` | Boundaries between panes |
 
-Borders are always 1px. Use them for the table grid, pane boundaries, or an
+Borders are always 0.0625rem. Use them for the table grid, pane boundaries, or an
 explicit state. Prefer tonal separation for buttons,
 notices, empty states, and pane headers; never use a border to decorate.
 
@@ -153,15 +162,15 @@ paint.
 
 | Token | Utility | Value |
 | :--- | :--- | :--- |
-| `--control-h-sm` | `h-control-sm` | 28px — dense toolbars, menu triggers |
-| `--control-h-md` | `h-control-md` | 32px — default control height |
-| `--panel-header-h` | `h-panel-header` | 44px — every pane header |
-| `--grid-gutter-w` | `w-grid-gutter` | 44px — row-number column |
-| `--grid-row-h` | `h-grid-row` | 32px — one table row |
-| `--grid-col-w` | `w-grid-col` | 168px — default column width |
-| `--grid-col-w-min` | `w-grid-col-min` | 72px — resize floor |
-| `--control-radius` | `rounded-interactive` | 4px — buttons, fields, menu items, badges |
-| `--surface-radius` | `rounded-surface` | 8px — panes, menus, dialogs, notices, empty states |
+| `--control-h-sm` | `h-control-sm` | 1.75rem — dense toolbars, menu triggers |
+| `--control-h-md` | `h-control-md` | 2rem — default control height |
+| `--panel-header-h` | `h-panel-header` | 2.75rem — every pane header |
+| `--grid-gutter-w` | `w-grid-gutter` | 2.75rem — row-number column |
+| `--grid-row-h` | `h-grid-row` | 2rem — one table row |
+| `--grid-col-w` | `w-grid-col` | 10.5rem — default column width |
+| `--grid-col-w-min` | `w-grid-col-min` | 4.5rem — resize floor |
+| `--control-radius` | `rounded-interactive` | 0.25rem — buttons, fields, menu items, badges |
+| `--surface-radius` | `rounded-surface` | 0.5rem — panes, menus, dialogs, notices, empty states |
 
 The two radii communicate hierarchy rather than decoration. Grid cells, row or
 column headers, resize tracks, and layout glyphs stay square because their
@@ -231,7 +240,7 @@ BlinkMacSystemFont, sans-serif`. The source editor keeps the existing
 | Helper / status | `text-xs text-muted-foreground` |
 
 Critical control, pane, menu, notice, onboarding, and error labels never fall
-below `text-sm` (14px). `text-xs` is reserved for optional descriptions,
+below `text-sm` (0.875rem). `text-xs` is reserved for optional descriptions,
 shortcuts, file extensions, and secondary status detail. There is no
 `text-base` and nothing larger in the product interface. There are no headings
 above `h2` — the app has one screen.
@@ -293,9 +302,9 @@ A group whose items are *actions* rather than states — zoom, add, close —
 stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
 
 Every dropdown and context menu uses the shared primitive's one spacing rhythm:
-4px outer padding, 32px minimum item height, 8px horizontal padding, and 6px
-vertical padding. Primary option labels are 14px; a genuine description or
-shortcut may use 12px. Floating menus are translucent over a backdrop blur when
+0.25rem outer padding, 2rem minimum item height, 0.5rem horizontal padding, and
+0.375rem vertical padding. Primary option labels are 0.875rem; a genuine
+description or shortcut may use 0.75rem. Floating menus are translucent over a backdrop blur when
 the browser supports it, with the opaque popover colour as the fallback.
 
 ### Empty workspace
@@ -322,7 +331,7 @@ which sits in the layout instead of covering the table.
 | Rule | Treatment |
 | :--- | :--- |
 | Surface | `rounded-surface`, `bg-popover`, one shadow — a floating layer |
-| Body text | `text-sm`; the same 14px floor as everywhere else |
+| Body text | `text-sm`; the same 0.875rem floor as everywhere else |
 | Title | `DialogTitle`, `text-sm font-medium` |
 | Supporting copy | `DialogDescription`, one sentence saying what to choose |
 | Dismissal | Escape and an explicit Cancel; focus returns to what opened it |
@@ -363,7 +372,7 @@ not a polish item.
 | :--- | :--- |
 | Rest | No background |
 | Hover | `hover:bg-muted` |
-| Focus | 2px `--selection-edge` outline, inset. Never remove it |
+| Focus | 0.125rem `--selection-edge` outline, inset. Never remove it |
 | Selected | `bg-selection-fill`, plus outline when it is the focused cell |
 | Disabled | `opacity-50`, pointer events off. Never hide a disabled action |
 | Invalid | Red wavy underline; written diagnostic on hover and in the editor description |
@@ -373,8 +382,8 @@ Disabled actions stay visible so the interface does not reflow as the selection
 changes. Layout stability outranks tidiness.
 
 The pane frame owns focus for a source view. CodeMirror never draws a second
-inner rectangle: its caret and selection remain visible, while the pane's 2px
-inset edge supplies all four focus sides. The source caret is a 2px accent line
+inner rectangle: its caret and selection remain visible, while the pane's 0.125rem
+inset edge supplies all four focus sides. The source caret is a 0.125rem accent line
 aligned to the editor's line metrics; native text editors use the same accent
 through `caret-color`.
 
@@ -394,11 +403,11 @@ not the only signal.
 
 - The workspace is a 2×2 slot grid holding one to four panes, arranged by
   preset — see `docs/adr/0006`. Never build a free slot editor.
-- The app surface remains visible as an 8px inset and an 8px gap between panes.
-  Each pane is an 8px-radius surface with a subtle outline; the active pane adds
+- The app surface remains visible as a 0.5rem inset and a 0.5rem gap between panes.
+  Each pane is a 0.5rem-radius surface with a subtle outline; the active pane adds
   the blue focus edge. This framing applies at every supported width.
 - The page never scrolls. Panes scroll independently.
-- Below 900px panes stack; the chosen layout is remembered, not discarded.
+- Below 56.25rem panes stack; the chosen layout is remembered, not discarded.
   Stacking **abandons** the tiling rather than narrowing it: the grid becomes a
   single column, panes stop naming slots, each keeps `min-h-pane-stack` so it
   stays worth scrolling to, and the workspace — not the page — scrolls between
@@ -436,7 +445,7 @@ not the only signal.
 - Add view and Close view are disabled, not hidden, at four panes and at one.
 - Nothing may reflow because of a selection change or a status change.
 - One-pane layouts may breathe, but do not enlarge controls or introduce an
-  otherwise absent card. Four-pane layouts keep the same 14px critical labels,
+  otherwise absent card. Four-pane layouts keep the same 0.875rem critical labels,
   focus treatment, and action ownership; labels shorten only through the
   registry's explicit short label and optional descriptions may disappear.
 - Four-pane density is recovered by hiding healthy status, removing empty
@@ -453,7 +462,7 @@ Always `aria-hidden`, because the accessible name comes from the button.
 Icon-only buttons are limited to the globally stable floating action trigger
 and the grid's per-row and per-column affordances, where a label would not fit.
 Those axis affordances stay visually quiet — a small icon at
-rest — but their target is grown to the 28px control minimum with an `::after`
+rest — but their target is grown to the 1.75rem control minimum with an `::after`
 box rather than by taking layout the row gutter does not have. They appear on
 hover, on `focus-within` of the row or column, while the menu is open, and for
 whichever row and column the selection is currently in: the last of those is
@@ -464,7 +473,7 @@ menu glyph. The mark is a small table grid whose blue header row and active
 centre cell form a compact T. `logo.svg` is the transparent, theme-adaptive
 browser and interface source; `logo-maskable.svg` supplies a full blue field
 and safe-area geometry for generated installable icons. Both must remain
-legible at 16px, use only product tokens, and keep the grid silhouette intact.
+legible at 1rem, use only product tokens, and keep the grid silhouette intact.
 
 ---
 
@@ -478,8 +487,18 @@ honoured globally in `index.css` and must not be re-enabled locally.
 
 ## 8. Copy
 
-All user-visible strings live in `apps/web/src/ui/copy.ts`. A string literal in
-a component is a pattern break.
+Product identity and browser metadata live in `apps/web/src/product.ts`; all
+other user-visible strings live in `apps/web/src/ui/copy.ts`. A string literal
+in a component is a pattern break. Stable domain IDs, user-entered values, and
+generated document content are data rather than copy and remain owned by their
+domain modules.
+
+Tests choose commands, layouts, and views by semantic IDs and resolve their
+accessible names through the canonical copy or registry. They never repeat a
+product string just to locate or assert its UI. This keeps accessibility under
+test without turning wording into a second source of truth. A deliberately
+forbidden third-party error string may remain literal when the behavior under
+test is precisely that it must not leak to the interface.
 
 Voice: plain, calm, present tense. Say what happened and what the user can do.
 Never blame, never exclaim, never use humour in an error. Prefer "The source

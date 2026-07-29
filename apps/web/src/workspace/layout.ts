@@ -28,8 +28,6 @@ export type LayoutId =
 
 export interface LayoutPreset {
 	readonly id: LayoutId;
-	readonly label: string;
-	readonly description: string;
 	// Pane shapes in reading order, each a set of adjacent slots.
 	readonly panes: readonly (readonly SlotId[])[];
 }
@@ -37,14 +35,10 @@ export interface LayoutPreset {
 export const layoutPresets: readonly LayoutPreset[] = [
 	{
 		id: "single",
-		label: "Single",
-		description: "One view, full width.",
 		panes: [["a", "b", "c", "d"]],
 	},
 	{
 		id: "columns",
-		label: "Two columns",
-		description: "Side by side.",
 		panes: [
 			["a", "c"],
 			["b", "d"],
@@ -52,8 +46,6 @@ export const layoutPresets: readonly LayoutPreset[] = [
 	},
 	{
 		id: "rows",
-		label: "Two rows",
-		description: "Stacked.",
 		panes: [
 			["a", "b"],
 			["c", "d"],
@@ -61,32 +53,22 @@ export const layoutPresets: readonly LayoutPreset[] = [
 	},
 	{
 		id: "left-split",
-		label: "Split left",
-		description: "Two stacked on the left, one tall on the right.",
 		panes: [["a"], ["b", "d"], ["c"]],
 	},
 	{
 		id: "right-split",
-		label: "Split right",
-		description: "One tall on the left, two stacked on the right.",
 		panes: [["a", "c"], ["b"], ["d"]],
 	},
 	{
 		id: "top-split",
-		label: "Split top",
-		description: "Two across the top, one wide below.",
 		panes: [["a"], ["b"], ["c", "d"]],
 	},
 	{
 		id: "bottom-split",
-		label: "Split bottom",
-		description: "One wide on top, two across the bottom.",
 		panes: [["a", "b"], ["c"], ["d"]],
 	},
 	{
 		id: "quad",
-		label: "Four panes",
-		description: "All four views at once.",
 		panes: [["a"], ["b"], ["c"], ["d"]],
 	},
 ];

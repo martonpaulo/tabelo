@@ -3,11 +3,11 @@
 // drag handle and the column menu both work from these numbers so a dragged
 // column and a stepped one cannot end up with different floors.
 
-export const DEFAULT_COLUMN_WIDTH = 168;
-export const MIN_COLUMN_WIDTH = 72;
+export const DEFAULT_COLUMN_WIDTH = 10.5;
+export const MIN_COLUMN_WIDTH = 4.5;
 // Wide enough that a step is visible in one press, small enough that landing
 // on a particular width takes a few presses rather than luck.
-export const COLUMN_WIDTH_STEP = 24;
+export const COLUMN_WIDTH_STEP = 1.5;
 
 export function resolveColumnWidth(width: number | undefined): number {
 	return width ?? DEFAULT_COLUMN_WIDTH;
@@ -20,11 +20,13 @@ export function stepColumnWidth(
 	direction: 1 | -1,
 ): number {
 	const next = resolveColumnWidth(width) + direction * COLUMN_WIDTH_STEP;
-	return Math.max(MIN_COLUMN_WIDTH, Math.round(next));
+	return Math.max(MIN_COLUMN_WIDTH, next);
 }
 
 export function clampColumnWidth(width: number): number {
-	return Math.max(MIN_COLUMN_WIDTH, Math.round(width));
+	// Keep drag output stable at one sixteenth of a rem without turning screen
+	// pixels into persisted layout units.
+	return Math.max(MIN_COLUMN_WIDTH, Math.round(width * 16) / 16);
 }
 
 export function isDefaultColumnWidth(width: number | undefined): boolean {

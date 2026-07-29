@@ -7,7 +7,6 @@ import {
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
-	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
 import { cn } from "@tabelo/ui/lib/utils";
@@ -22,7 +21,6 @@ import {
 	MoreVertical,
 	RotateCcw,
 } from "lucide-react";
-import { Fragment } from "react";
 import type { Alignment } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
@@ -32,7 +30,7 @@ import {
 	resolveColumnWidth,
 	stepColumnWidth,
 } from "./column-width";
-import { buildTableActions } from "./table-actions";
+import { DropdownTableActions } from "./dropdown-table-actions";
 
 // One menu component for both axes, replacing the near-identical row and column
 // menus that were drifting apart. Everything it offers comes from the shared
@@ -91,7 +89,7 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 			<DropdownMenuTrigger
 				aria-label={label}
 				// The icon stays small so the grid stays quiet, while the ::after box
-				// grows the target to the 28px control minimum without taking any
+				// grows the target to the control minimum without taking any
 				// layout — the row gutter has no room to spare. Same technique as the
 				// checkbox and radio primitives.
 				className={cn(
@@ -182,28 +180,7 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 					</>
 				) : null}
 
-				{buildTableActions({ axis }).map((group, groupIndex) => (
-					<Fragment key={group.id}>
-						{groupIndex > 0 ? <DropdownMenuSeparator /> : null}
-						{group.actions.map((action) => (
-							<DropdownMenuItem
-								key={action.id}
-								disabled={action.disabled}
-								variant={action.danger ? "destructive" : "default"}
-								onClick={() => {
-									select();
-									action.run();
-								}}
-							>
-								<action.icon aria-hidden />
-								{action.label}
-								{action.shortcut ? (
-									<DropdownMenuShortcut>{action.shortcut}</DropdownMenuShortcut>
-								) : null}
-							</DropdownMenuItem>
-						))}
-					</Fragment>
-				))}
+				<DropdownTableActions axis={axis} beforeRun={select} />
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

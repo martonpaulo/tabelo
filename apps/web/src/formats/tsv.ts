@@ -4,7 +4,6 @@ import { createDelimitedCodec } from "./delimited";
 // also the shape most external pastes arrive in.
 export const tsvCodec = createDelimitedCodec({
 	id: "tsv",
-	label: "TSV",
 	extension: "tsv",
 	mimeType: "text/tab-separated-values",
 	delimiter: "\t",

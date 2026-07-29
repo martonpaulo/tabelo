@@ -292,7 +292,7 @@ describe("source synchronization", () => {
 		);
 		const document = {
 			...parsed,
-			columns: [{ ...parsed.columns[0], width: 240 }],
+			columns: [{ ...parsed.columns[0], width: 15 }],
 		};
 		const selection = createSelection({ row: 199, column: 0 });
 		useTabeloStore.setState({
@@ -318,7 +318,7 @@ describe("source synchronization", () => {
 		expect(state.document.columns.map((column) => column.id)).toEqual(
 			columnIds,
 		);
-		expect(state.document.columns[0]?.width).toBe(240);
+		expect(state.document.columns[0]?.width).toBe(15);
 		expect(state.selection).toEqual(selection);
 		expect(state.document.rows[199]?.cells[columnIds[0] ?? ""]).toBe("Changed");
 		expect(state.past).toHaveLength(1);
