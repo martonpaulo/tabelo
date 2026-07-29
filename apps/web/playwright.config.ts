@@ -13,6 +13,7 @@ const firefoxContractSpecs = [
 	"**/persistence.spec.ts",
 	"**/responsive.spec.ts",
 	"**/smoke.spec.ts",
+	"**/source-geometry.spec.ts",
 	"**/source-sync.spec.ts",
 ];
 
