@@ -22,6 +22,7 @@ import {
 	ZoomOut,
 } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { canSerialize } from "@/formats";
 import { useTabeloStore, visibleTextForPane } from "@/state/store";
 import { copyToClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
@@ -83,6 +84,10 @@ export function PaneMenu({
 		(state) => smallerLayout(state.workspace.layout) !== undefined,
 	);
 	const openPanes = useTabeloStore((state) => state.workspace.panes);
+	const document = useTabeloStore((state) => state.document);
+	const currentViewFailure = view.codec
+		? canSerialize(view.codec, document)
+		: null;
 
 	// A pane the user just added hands its menu the focus, so the view it should
 	// show is one keystroke away rather than something to go looking for.
@@ -129,18 +134,20 @@ export function PaneMenu({
 						const alreadyOpen = openPanes.some(
 							(pane) => pane.id !== paneId && pane.view === candidate.id,
 						);
+						const failure =
+							candidate.id !== view.id && candidate.codec
+								? canSerialize(candidate.codec, document)
+								: null;
+						const disabledReason = alreadyOpen
+							? copy.disabled.viewAlreadyOpen(candidate.label)
+							: failure
+								? copy.disabled.codecPrecondition(failure)
+								: undefined;
 						return (
-							<DisabledTooltip
-								key={candidate.id}
-								reason={
-									alreadyOpen
-										? copy.disabled.viewAlreadyOpen(candidate.label)
-										: undefined
-								}
-							>
+							<DisabledTooltip key={candidate.id} reason={disabledReason}>
 								<DropdownMenuRadioItem
 									value={candidate.id}
-									disabled={alreadyOpen}
+									disabled={disabledReason !== undefined}
 									closeOnClick
 								>
 									<candidate.icon aria-hidden />
@@ -254,18 +261,27 @@ export function PaneMenu({
 				{view.capabilities.textClipboard ? (
 					<>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							onClick={() => {
-								const state = useTabeloStore.getState();
-								void copyToClipboard(
-									{ text: visibleTextForPane(state, paneId, view.id) },
-									"source",
-								);
-							}}
+						<DisabledTooltip
+							reason={
+								currentViewFailure
+									? copy.disabled.codecPrecondition(currentViewFailure)
+									: undefined
+							}
 						>
-							<ClipboardCopy aria-hidden />
-							{copy.actions.copySource}
-						</DropdownMenuItem>
+							<DropdownMenuItem
+								disabled={currentViewFailure !== null}
+								onClick={() => {
+									const state = useTabeloStore.getState();
+									const visible = visibleTextForPane(state, paneId, view.id);
+									if (visible.ok) {
+										void copyToClipboard({ text: visible.text }, "source");
+									}
+								}}
+							>
+								<ClipboardCopy aria-hidden />
+								{copy.actions.copySource}
+							</DropdownMenuItem>
+						</DisabledTooltip>
 					</>
 				) : null}
 			</DropdownMenuContent>

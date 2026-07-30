@@ -388,6 +388,12 @@ Disabled actions stay visible so the interface does not reflow as the selection
 changes. Every disabled control must expose a concise reason through the shared
 disabled-tooltip pattern. Layout stability outranks tidiness.
 
+A view or download format whose codec cannot represent the current document
+stays listed and disabled with that reason. An already-open pane that becomes
+blocked replaces its content with one keyboard-focusable written status. The
+status is announced to assistive technology and identifies affected rows or
+columns without relying on the grid being visible.
+
 The pane frame owns focus for a source view. CodeMirror never draws a second
 inner rectangle: its caret and selection remain visible, while the pane's 0.125rem
 inset edge supplies all four focus sides. The source caret is a 0.125rem accent line

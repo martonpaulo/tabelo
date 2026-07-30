@@ -1,6 +1,9 @@
 import { lazy, Suspense } from "react";
+import { canSerialize } from "@/formats";
+import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { TableGrid } from "@/ui/grid/table-grid";
+import { BlockedState } from "@/ui/source/blocked-state";
 import type { ViewDefinition } from "@/views/types";
 
 // CodeMirror and the preview are the two heavy things in the bundle, and a
@@ -34,7 +37,10 @@ interface PaneContentProps {
 }
 
 export function PaneContent({ paneId, view, zoom }: PaneContentProps) {
+	const document = useTabeloStore((state) => state.document);
 	if (view.kind === "grid") return <GridPane zoom={zoom} />;
+	const failure = view.codec ? canSerialize(view.codec, document) : null;
+	if (failure) return <BlockedState failure={failure} />;
 
 	return (
 		<Suspense fallback={<PaneLoading />}>

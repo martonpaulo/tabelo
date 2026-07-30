@@ -33,7 +33,7 @@ describe("the text a pane is showing", () => {
 	it("is the document's projection when no draft exists", () => {
 		expect(
 			visibleTextForPane({ document, draft: null }, "pane-1", "markdown"),
-		).toBe(textForView(document, "markdown"));
+		).toEqual(textForView(document, "markdown"));
 	});
 
 	it("is the owning pane's draft, byte for byte, even when it does not parse", () => {
@@ -41,7 +41,7 @@ describe("the text a pane is showing", () => {
 
 		expect(
 			visibleTextForPane({ document, draft: pending }, "pane-1", "markdown"),
-		).toBe(pending.text);
+		).toEqual({ ok: true, text: pending.text });
 	});
 
 	it("is the projection when the pane owns a draft in a different view", () => {
@@ -49,7 +49,7 @@ describe("the text a pane is showing", () => {
 
 		expect(
 			visibleTextForPane({ document, draft: pending }, "pane-1", "csv"),
-		).toBe(textForView(document, "csv"));
+		).toEqual(textForView(document, "csv"));
 	});
 
 	it("is a clean draft's own text, keeping the user's formatting", () => {
@@ -60,7 +60,7 @@ describe("the text a pane is showing", () => {
 
 		expect(
 			visibleTextForPane({ document, draft: pending }, "pane-1", "markdown"),
-		).toBe(pending.text);
+		).toEqual({ ok: true, text: pending.text });
 	});
 
 	it("round-trips every copyable view's projection through its own codec", () => {
@@ -71,8 +71,9 @@ describe("the text a pane is showing", () => {
 				"pane-1",
 				view.id,
 			);
-			expect(text.length).toBeGreaterThan(0);
-			expect(text).toBe(textForView(document, view.id));
+			expect(text.ok).toBe(true);
+			if (text.ok) expect(text.text.length).toBeGreaterThan(0);
+			expect(text).toEqual(textForView(document, view.id));
 		}
 	});
 });

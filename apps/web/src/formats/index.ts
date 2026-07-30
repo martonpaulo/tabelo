@@ -1,10 +1,16 @@
+import type { TableDocument } from "@/core/types";
 import { csvCodec } from "./csv";
 import { htmlCodec } from "./html";
 import { jiraCodec } from "./jira";
 import { jsonCodec } from "./json";
 import { markdownCodec } from "./markdown";
 import { tsvCodec } from "./tsv";
-import type { CodecId, OutputOptions, TableCodec } from "./types";
+import type {
+	CodecId,
+	OutputOptions,
+	PreconditionFailure,
+	TableCodec,
+} from "./types";
 
 // The codec registry. Downloads, clipboard sniffing, and the view registry all
 // read from here, so adding a format is a single registration rather than an
@@ -44,10 +50,42 @@ export function listSniffableCodecs(): readonly TableCodec[] {
 		);
 }
 
-// Every registered codec can serialize, so every one is downloadable. Keeping
-// this derived means a new format appears in the download menu automatically.
-export function listDownloadableCodecs(): readonly TableCodec[] {
-	return listCodecs();
+const preconditionCache = new WeakMap<
+	TableDocument,
+	WeakMap<TableCodec, PreconditionFailure | null>
+>();
+
+// A document instance is stable until the next edit replaces it, so
+// render-time consumers share a precondition result without making codecs or
+// the UI own another cache.
+export function canSerialize(
+	codec: TableCodec,
+	document: TableDocument,
+): PreconditionFailure | null {
+	let codecResults = preconditionCache.get(document);
+	if (!codecResults) {
+		codecResults = new WeakMap();
+		preconditionCache.set(document, codecResults);
+	}
+	if (codecResults.has(codec)) return codecResults.get(codec) ?? null;
+
+	const failure = codec.precondition?.(document) ?? null;
+	codecResults.set(codec, failure);
+	return failure;
+}
+
+// A registered codec is downloadable only when it can represent this document.
+export function listDownloadableCodecs(
+	document: TableDocument,
+): readonly TableCodec[] {
+	return filterSerializableCodecs(listCodecs(), document);
+}
+
+export function filterSerializableCodecs(
+	codecs: readonly TableCodec[],
+	document: TableDocument,
+): readonly TableCodec[] {
+	return codecs.filter((codec) => canSerialize(codec, document) === null);
 }
 
 // Narrows the user's chosen values to the ones this format actually promises.
@@ -72,6 +110,7 @@ export type {
 	ParsedTable,
 	ParseIssue,
 	ParseResult,
+	PreconditionFailure,
 	TableCodec,
 } from "./types";
 export { defaultOutputOptions } from "./types";

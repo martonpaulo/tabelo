@@ -1,5 +1,5 @@
 import { defaultHeader } from "@/core/document";
-import type { ParseIssue } from "@/formats/types";
+import type { ParseIssue, PreconditionFailure } from "@/formats/types";
 import type { ImportError } from "@/import/prepare";
 import { product } from "@/product";
 
@@ -49,6 +49,41 @@ const views = {
 		description: "The table as a reader would see it.",
 	},
 } as const;
+
+function columnLetter(index: number): string {
+	let value = index + 1;
+	let result = "";
+	while (value > 0) {
+		value -= 1;
+		result = String.fromCharCode(65 + (value % 26)) + result;
+		value = Math.floor(value / 26);
+	}
+	return result;
+}
+
+function joinedPositions(values: readonly string[]): string {
+	if (values.length <= 1) return values[0] ?? "";
+	if (values.length === 2) return `${values[0]} and ${values[1]}`;
+	return `${values.slice(0, -1).join(", ")}, and ${values.at(-1)}`;
+}
+
+function preconditionMessage(failure: PreconditionFailure): string {
+	const locations: string[] = [];
+	if (failure.columns?.length) {
+		const columns = failure.columns.map(columnLetter);
+		locations.push(
+			`${columns.length === 1 ? "column" : "columns"} ${joinedPositions(columns)}`,
+		);
+	}
+	if (failure.rows?.length) {
+		const rows = failure.rows.map((index) => String(index + 2));
+		locations.push(
+			`${rows.length === 1 ? "row" : "rows"} ${joinedPositions(rows)}`,
+		);
+	}
+	const subject = locations.length ? ` ${joinedPositions(locations)}` : "";
+	return `This view cannot represent${subject}. Correct the table to use this view.`;
+}
 
 export const copy = {
 	app: product,
@@ -126,9 +161,12 @@ export const copy = {
 		lastRemainingRow: "A table must keep at least one row.",
 		lastRemainingColumn: "A table must keep at least one column.",
 		updateInProgress: "The update is already being applied.",
+		codecPrecondition: (failure: PreconditionFailure) =>
+			preconditionMessage(failure),
 	},
 
 	source: {
+		blocked: (failure: PreconditionFailure) => preconditionMessage(failure),
 		issue: (issue: ParseIssue) => {
 			let message: string;
 			switch (issue.code) {
@@ -361,6 +399,7 @@ export const copy = {
 			`Rename ${header.trim() === "" ? `column ${column + 1}` : header}`,
 		sourceEditor: (format: string) => `${format} source`,
 		preview: "Rendered table preview",
+		blockedView: "Blocked view reason",
 		selectionSummary: (rows: number, columns: number) =>
 			rows === 1 && columns === 1
 				? "1 cell selected"

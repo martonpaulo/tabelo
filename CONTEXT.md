@@ -55,7 +55,10 @@ Related to: Workspace, Slot
 ### Codec
 
 A parse/serialize pair for one text format, together with the file extension
-and MIME type needed to download it. Codecs know nothing about the interface.
+and MIME type needed to download it. A codec may declare a document
+precondition when that format cannot represent every valid table. A failed
+precondition declines serialization without making the document or a source
+draft invalid. Codecs know nothing about the interface.
 
 Related to: View, Parser, Serializer
 

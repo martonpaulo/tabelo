@@ -71,6 +71,15 @@ export interface OutputOptions {
 	readonly includeHeader?: boolean;
 }
 
+// A precondition failure means the document is valid, but this codec cannot
+// represent it. Indices are zero-based application positions; presentation
+// code gives them user-facing row numbers and column letters.
+export interface PreconditionFailure {
+	readonly code: string;
+	readonly columns?: readonly number[];
+	readonly rows?: readonly number[];
+}
+
 // One owner for what an unconfigured download produces.
 export const defaultOutputOptions: Required<OutputOptions> = {
 	includeHeader: true,
@@ -94,6 +103,9 @@ export interface TableCodec {
 		document: TableDocument,
 		options?: OutputOptions,
 	) => string;
+	readonly precondition?: (
+		document: TableDocument,
+	) => PreconditionFailure | null;
 	// Which output choices this format understands. Absent means the download
 	// has nothing to ask, which is what keeps the chooser from offering an
 	// option that would do nothing.
