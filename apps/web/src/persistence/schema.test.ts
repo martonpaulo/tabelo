@@ -70,6 +70,17 @@ describe("loading a stored payload", () => {
 		).toBe("unreadable");
 	});
 
+	it("refuses a workspace with only one pane", () => {
+		const workspace = payload().workspace;
+		expect(
+			validatePersistedState(
+				payload({
+					workspace: { ...workspace, panes: workspace.panes.slice(0, 1) },
+				}),
+			).status,
+		).toBe("unreadable");
+	});
+
 	it("refuses a duplicate view", () => {
 		const workspace = payload().workspace;
 		const outcome = validatePersistedState(

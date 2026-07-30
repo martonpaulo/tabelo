@@ -25,7 +25,7 @@ test("a layout collapse keeps an invalid draft reachable", async ({
 		tabelo.pane("markdown").locator(".cm-diagnosticError"),
 	).toHaveCount(1);
 
-	await tabelo.chooseLayout("single");
+	await tabelo.chooseLayout("columns");
 
 	await expect(tabelo.pane("markdown")).toBeVisible();
 	await expect(tabelo.source("markdown")).toContainText("not a divider");

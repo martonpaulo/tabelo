@@ -317,12 +317,12 @@ test("read-only panes use a written cue and a distinct surface", async ({
 	expect(readOnlyBackground).not.toBe(editableBackground);
 });
 
-test("a single pane keeps the same compact hierarchy without extra framing", async ({
+test("a two-pane layout keeps the same compact hierarchy without extra framing", async ({
 	tabelo,
 }) => {
-	await tabelo.chooseLayout("single");
+	await tabelo.chooseLayout("rows");
 	const panes = tabelo.workspace.getByRole("region");
-	await expect(panes).toHaveCount(1);
+	await expect(panes).toHaveCount(2);
 	await expect(
 		panes.first().getByRole("button", {
 			name: new RegExp(`^${copy.workspace.paneActions}:`),

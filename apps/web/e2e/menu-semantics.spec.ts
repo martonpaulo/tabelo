@@ -11,7 +11,7 @@ test("the layout menu reports the current preset", async ({ tabelo }) => {
 	const menu = await tabelo.openLayoutMenu();
 
 	const options = menu.getByRole("menuitemradio");
-	await expect(options).toHaveCount(8);
+	await expect(options).toHaveCount(7);
 	await expect(menu.getByRole("menuitemradio", { checked: true })).toHaveCount(
 		1,
 	);
@@ -189,7 +189,7 @@ test("no choice depends on colour or a hidden icon alone", async ({
 		.evaluateAll((items) =>
 			items.map((item) => item.getAttribute("aria-checked")),
 		);
-	expect(states).toHaveLength(8);
+	expect(states).toHaveLength(7);
 	expect(states.filter((state) => state === "true")).toHaveLength(1);
 	expect(states.every((state) => state === "true" || state === "false")).toBe(
 		true,

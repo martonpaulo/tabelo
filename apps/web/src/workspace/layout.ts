@@ -7,17 +7,16 @@ import { DEFAULT_PANE_ZOOM } from "./zoom";
 //   --+--
 //   c | d
 //
-// A pane occupies one slot, two adjacent slots, or, as the "single" preset,
-// all four. Free-form slot assignment was deliberately not built: presets keep
-// the choice to one obvious picker instead of a layout editor, which is the
-// difference between a utility and an IDE.
+// A pane occupies one slot or two adjacent slots, and a workspace holds two to
+// four of them. Free-form slot assignment was deliberately not built: presets
+// keep the choice to one obvious picker instead of a layout editor, which is
+// the difference between a utility and an IDE.
 
 export type SlotId = "a" | "b" | "c" | "d";
 
 export const SLOT_ORDER: readonly SlotId[] = ["a", "b", "c", "d"];
 
 export type LayoutId =
-	| "single"
 	| "columns"
 	| "rows"
 	| "left-split"
@@ -32,18 +31,18 @@ export interface LayoutPreset {
 	readonly panes: readonly (readonly SlotId[])[];
 }
 
+// The layout every unknown id falls back to, named rather than indexed so that
+// adding or removing a preset cannot silently change the fallback.
+const DEFAULT_LAYOUT: LayoutPreset = {
+	id: "columns",
+	panes: [
+		["a", "c"],
+		["b", "d"],
+	],
+};
+
 export const layoutPresets: readonly LayoutPreset[] = [
-	{
-		id: "single",
-		panes: [["a", "b", "c", "d"]],
-	},
-	{
-		id: "columns",
-		panes: [
-			["a", "c"],
-			["b", "d"],
-		],
-	},
+	DEFAULT_LAYOUT,
 	{
 		id: "rows",
 		panes: [
@@ -74,7 +73,7 @@ export const layoutPresets: readonly LayoutPreset[] = [
 ];
 
 export function getLayout(id: LayoutId): LayoutPreset {
-	return layoutPresets.find((preset) => preset.id === id) ?? layoutPresets[1];
+	return layoutPresets.find((preset) => preset.id === id) ?? DEFAULT_LAYOUT;
 }
 
 export interface GridArea {
@@ -138,7 +137,6 @@ export function paneCount(id: LayoutId): number {
 // that leaves the most surviving panes in the slot they already started in,
 // which is what makes the change read as local rather than as a re-tiling.
 const LARGER_LAYOUT: Partial<Record<LayoutId, LayoutId>> = {
-	single: "columns",
 	columns: "left-split",
 	rows: "bottom-split",
 	"left-split": "quad",
@@ -147,12 +145,15 @@ const LARGER_LAYOUT: Partial<Record<LayoutId, LayoutId>> = {
 	"bottom-split": "quad",
 };
 
+// Missing entries for both two-pane presets are the floor: the workspace never
+// drops below two panes, so Close view has nowhere to go and stays disabled.
 const SMALLER_LAYOUT: Partial<Record<LayoutId, LayoutId>> = {
-	columns: "single",
-	rows: "single",
 	"left-split": "columns",
 	"right-split": "columns",
-	"top-split": "columns",
+	// A top split keeps its horizontal divider on the way down, so it shrinks to
+	// rows rather than to columns. That costs the corner of the pane in slot b,
+	// which is the one place shrinking has to move a survivor.
+	"top-split": "rows",
 	"bottom-split": "rows",
 	quad: "left-split",
 };

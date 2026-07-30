@@ -263,7 +263,7 @@ function restoreDraft(draft: Draft | null, workspace: Workspace): Draft | null {
 
 // Removing one pane, expressed as the smaller preset that keeps every other
 // pane where it is. Returns nothing when there is no smaller shape to move to,
-// which is what leaves Close view disabled at a single pane.
+// which is what leaves Close view disabled at two panes.
 function closedPaneState(
 	state: TabeloState,
 	paneId: string,
