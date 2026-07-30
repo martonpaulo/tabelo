@@ -7,6 +7,7 @@ import {
 	MAX_PANE_ZOOM,
 	MIN_PANE_ZOOM,
 } from "@/workspace/zoom";
+import { conditionNoticeIds } from "./notice-queue";
 import { useTabeloStore } from "./store";
 
 // Adding and closing a view are the direct route to the same presets the
@@ -211,7 +212,9 @@ describe("closing a view that owns a draft", () => {
 		useTabeloStore.getState().setDraft(paneId, "markdown", invalidMarkdown);
 		useTabeloStore.getState().closePane(paneId);
 
-		useTabeloStore.getState().dismissNotice();
+		useTabeloStore
+			.getState()
+			.dismissNotice(conditionNoticeIds.pendingPaneAction);
 
 		expect(workspace().panes.some((pane) => pane.id === paneId)).toBe(true);
 		expect(useTabeloStore.getState().draft?.text).toBe(invalidMarkdown);

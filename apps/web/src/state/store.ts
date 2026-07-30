@@ -55,6 +55,13 @@ import {
 	type SavePayload,
 	saveState,
 } from "@/persistence/storage";
+import {
+	conditionNoticeIds,
+	type NoticeRequest,
+	queueNotice,
+	removeNotice,
+	type TransientNotice,
+} from "@/state/notice-queue";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import {
@@ -133,7 +140,9 @@ export interface TabeloState {
 	editingHeader: number | null;
 
 	storageIssue: StorageIssue | null;
-	notice: string | null;
+	// Messages waiting to be read, oldest first. A queue rather than one slot:
+	// nothing a producer says may be destroyed by whatever comes after it.
+	notices: readonly TransientNotice[];
 	inputError: ImportError | null;
 	headerCorrection: HeaderCorrection | null;
 	pendingPaneAction: PendingPaneAction | null;
@@ -200,8 +209,8 @@ export interface TabeloState {
 
 	demoteHeader: () => void;
 	resetDocument: () => void;
-	dismissNotice: () => void;
-	setNotice: (notice: string | null) => void;
+	dismissNotice: (id: string) => void;
+	pushNotice: (request: NoticeRequest) => void;
 }
 
 let invalidTimer: ReturnType<typeof setTimeout> | null = null;
@@ -351,7 +360,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editingHeader: null,
 
 	storageIssue: null,
-	notice: null,
+	notices: [],
 	inputError: null,
 	headerCorrection: null,
 	pendingPaneAction: null,
@@ -997,14 +1006,25 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set({ selection: createSelection({ row: 0, column: 0 }) });
 	},
 
-	dismissNotice: () =>
+	// One dismissal for every notice, whichever channel it came from. A queued
+	// message is removed; a projected condition is cleared at its source. The
+	// identifier is what makes that possible: without it, dismissal could only
+	// ever clear whichever notice happened to rank highest.
+	dismissNotice: (id) =>
 		set((state) => {
-			if (state.inputError) return { inputError: null };
-			if (state.headerCorrection) return { headerCorrection: null };
-			if (state.pendingPaneAction) return { pendingPaneAction: null };
-			return { notice: null };
+			switch (id) {
+				case conditionNoticeIds.inputError:
+					return { inputError: null };
+				case conditionNoticeIds.headerCorrection:
+					return { headerCorrection: null };
+				case conditionNoticeIds.pendingPaneAction:
+					return { pendingPaneAction: null };
+				default:
+					return { notices: removeNotice(state.notices, id) };
+			}
 		}),
-	setNotice: (notice) => set({ notice }),
+	pushNotice: (request) =>
+		set((state) => ({ notices: queueNotice(state.notices, request) })),
 }));
 
 function currentRect(state: TabeloState) {

@@ -1,172 +1,117 @@
 import { Button } from "@tabelo/ui/components/button";
 import { X } from "lucide-react";
-import { useEffect } from "react";
-import { getCodec } from "@/formats";
-import { downloadText } from "@/platform/files";
+import { useEffect, useMemo } from "react";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
-import { Notice, type NoticeTone } from "@/ui/primitives/notice";
+import {
+	type AppNotice,
+	announcementText,
+	appNotices,
+	autoDismissDelay,
+} from "@/ui/notices";
+import { LiveRegions } from "@/ui/primitives/live-region";
+import { Notice } from "@/ui/primitives/notice";
 
-// Notices sit in the layout rather than floating over it. A toast that covers
+// Notices sit in the layout rather than floating over it. A toast that covered
 // the table would be exactly the kind of interruption this product avoids.
-// see docs/design-system.md §5.
+// See docs/design-system.md §5.
+//
+// Every notice the app has to give is rendered. Ranking them and showing only
+// the winner is what used to swallow a refused clipboard write whenever
+// anything else was on screen.
 
 export function NoticeBar() {
-	const notice = useTabeloStore((state) => state.notice);
+	const notices = useAppNotices();
+	const announcements = useMemo(
+		() =>
+			notices.map((notice) => ({
+				id: notice.id,
+				urgency: notice.urgency,
+				message: announcementText(notice),
+			})),
+		[notices],
+	);
+
+	return (
+		<>
+			{notices.length > 0 ? (
+				<section
+					aria-label={copy.a11y.notices}
+					className="flex shrink-0 flex-col gap-2 px-3 py-2"
+				>
+					{notices.map((notice) => (
+						<NoticeRow key={notice.id} notice={notice} />
+					))}
+				</section>
+			) : null}
+			<LiveRegions announcements={announcements} />
+		</>
+	);
+}
+
+function useAppNotices(): readonly AppNotice[] {
+	const storageIssue = useTabeloStore((state) => state.storageIssue);
 	const inputError = useTabeloStore((state) => state.inputError);
 	const headerCorrection = useTabeloStore((state) => state.headerCorrection);
 	const pendingPaneAction = useTabeloStore((state) => state.pendingPaneAction);
-	const storageIssue = useTabeloStore((state) => state.storageIssue);
+	const notices = useTabeloStore((state) => state.notices);
 
-	// Transient confirmations clear themselves; anything actionable stays.
+	return useMemo(
+		() =>
+			appNotices({
+				storageIssue,
+				inputError,
+				headerCorrection,
+				pendingPaneAction,
+				notices,
+			}),
+		[storageIssue, inputError, headerCorrection, pendingPaneAction, notices],
+	);
+}
+
+function NoticeRow({ notice }: { readonly notice: AppNotice }) {
+	const { id } = notice;
+	const delay = autoDismissDelay(notice);
+
+	// The timer belongs to the notice that is on screen. The one this replaced
+	// sat above the precedence chain, so a message that was never rendered
+	// expired anyway and the user never saw it.
 	useEffect(() => {
-		if (!notice) return;
+		if (delay === null) return;
 		const timer = setTimeout(
-			() => useTabeloStore.setState({ notice: null }),
-			4000,
+			() => useTabeloStore.getState().dismissNotice(id),
+			delay,
 		);
 		return () => clearTimeout(timer);
-	}, [notice]);
+	}, [id, delay]);
 
-	if (storageIssue?.kind === "unavailable" || storageIssue?.kind === "quota") {
-		return (
-			<Bar tone="warning">
-				<span className="font-medium">
-					{storageIssue.kind === "unavailable"
-						? copy.notices.storageUnavailable
-						: copy.notices.storageQuota}
-				</span>
-				<Button variant="outline" size="xs" onClick={downloadCurrentTable}>
-					{copy.notices.downloadCopy}
-				</Button>
-			</Bar>
-		);
-	}
-
-	if (storageIssue?.kind === "unreadable") {
-		const recoveryFailure =
-			storageIssue.replacementFailure === "unavailable"
-				? copy.notices.storageRecoveryUnavailable
-				: storageIssue.replacementFailure === "quota"
-					? copy.notices.storageRecoveryQuota
-					: null;
-		return (
-			<Bar tone="warning">
-				<span className="font-medium">{copy.notices.savedTableUnreadable}</span>
-				{recoveryFailure ? (
-					<span className="text-muted-foreground">{recoveryFailure}</span>
-				) : null}
-				<Button
-					variant="outline"
-					size="xs"
-					onClick={() =>
-						downloadText("tabelo-recovery.txt", "text/plain", storageIssue.raw)
-					}
-				>
-					{copy.notices.downloadOriginal}
-				</Button>
-				<Button
-					variant="outline"
-					size="xs"
-					onClick={() => {
-						const store = useTabeloStore.getState();
-						if (store.replaceUnreadableStorage()) {
-							store.setNotice(copy.notices.replacedSavedData);
-						}
-					}}
-				>
-					{copy.notices.replaceSavedData}
-				</Button>
-			</Bar>
-		);
-	}
-
-	if (inputError) {
-		return (
-			<Bar tone="warning">
-				<span>{copy.notices.importError(inputError)}</span>
-				<Dismiss />
-			</Bar>
-		);
-	}
-
-	if (headerCorrection) {
-		return (
-			<Bar tone="info">
-				<span>{copy.notices.headerGuess}</span>
-				<Button
-					variant="outline"
-					size="xs"
-					onClick={() => useTabeloStore.getState().demoteHeader()}
-				>
-					{copy.notices.headerGuessAction}
-				</Button>
-				<Dismiss />
-			</Bar>
-		);
-	}
-
-	if (pendingPaneAction) {
-		return (
-			<Bar tone="warning">
-				<span>{copy.notices.pendingPaneAction(pendingPaneAction.kind)}</span>
-				<Button
-					variant="outline"
-					size="xs"
-					onClick={() => useTabeloStore.getState().confirmPaneAction()}
-				>
-					{copy.notices.discardPaneAction(pendingPaneAction.kind)}
-				</Button>
-				<Dismiss />
-			</Bar>
-		);
-	}
-
-	if (notice) {
-		return (
-			<Bar tone="info">
-				<span>{notice}</span>
-				<Dismiss />
-			</Bar>
-		);
-	}
-
-	return null;
-}
-
-function downloadCurrentTable() {
-	const codec = getCodec("markdown");
-	downloadText(
-		`table.${codec.extension}`,
-		codec.mimeType,
-		codec.serialize(useTabeloStore.getState().document),
-	);
-}
-
-function Dismiss() {
 	return (
-		<Button
-			variant="ghost"
-			size="icon-xs"
-			aria-label={copy.actions.dismiss}
-			className="ml-auto"
-			onClick={() => useTabeloStore.getState().dismissNotice()}
-		>
-			<X aria-hidden />
-		</Button>
-	);
-}
-
-function Bar({
-	tone,
-	children,
-}: {
-	readonly tone: NoticeTone;
-	readonly children: React.ReactNode;
-}) {
-	return (
-		<Notice tone={tone} className="mx-3 my-2 shrink-0">
-			{children}
+		<Notice severity={notice.severity} className="shrink-0">
+			<span>{notice.message}</span>
+			{notice.detail ? (
+				<span className="text-muted-foreground">{notice.detail}</span>
+			) : null}
+			{notice.actions.map((action) => (
+				<Button
+					key={action.id}
+					variant="outline"
+					size="xs"
+					onClick={action.run}
+				>
+					{action.label}
+				</Button>
+			))}
+			{notice.dismissible ? (
+				<Button
+					variant="ghost"
+					size="icon-xs"
+					aria-label={copy.actions.dismiss}
+					className="ml-auto"
+					onClick={() => useTabeloStore.getState().dismissNotice(id)}
+				>
+					<X aria-hidden />
+				</Button>
+			) : null}
 		</Notice>
 	);
 }

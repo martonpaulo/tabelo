@@ -5,6 +5,7 @@ import {
 	writeClipboardTable,
 	writeClipboardText,
 } from "@/platform/clipboard";
+import type { NoticeRequest } from "@/state/notice-queue";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 
@@ -26,11 +27,16 @@ export async function copyToClipboard(
 		? await writeClipboardTable(payload.text, payload.html)
 		: await writeClipboardText(payload.text);
 
-	const store = useTabeloStore.getState();
-	store.setNotice(
+	// A refusal is a failure and says so, in its own tone and without a timer.
+	// It used to arrive as an informational message in the lowest-ranked slot,
+	// which is how the recovery advice went unread.
+	useTabeloStore.getState().pushNotice(
 		outcome.ok
-			? copy.notices.copied(scope)
-			: copy.notices.clipboardWriteFailed(scope),
+			? { severity: "info", message: copy.notices.copied(scope) }
+			: {
+					severity: "error",
+					message: copy.notices.clipboardWriteFailed(scope),
+				},
 	);
 	return outcome.ok;
 }
@@ -41,7 +47,7 @@ export async function readTableFromClipboard(): Promise<ClipboardPayload | null>
 	const outcome = await readClipboardTable();
 	if (outcome.ok) return outcome.payload;
 
-	useTabeloStore.getState().setNotice(clipboardReadMessage(outcome.reason));
+	useTabeloStore.getState().pushNotice(clipboardReadNotice(outcome.reason));
 	return null;
 }
 
@@ -53,10 +59,11 @@ export async function pasteFromClipboard(): Promise<boolean> {
 	return useTabeloStore.getState().document !== before;
 }
 
-function clipboardReadMessage(reason: ClipboardBlock): string {
+function clipboardReadNotice(reason: ClipboardBlock): NoticeRequest {
 	// An empty clipboard is not a failure to recover from: the user asked and
-	// the answer is simply that there is nothing there.
+	// the answer is simply that there is nothing there. It is the one clipboard
+	// outcome that is allowed to clear itself.
 	return reason === "empty"
-		? copy.notices.clipboardEmpty
-		: copy.notices.clipboardReadFailed;
+		? { severity: "info", message: copy.notices.clipboardEmpty }
+		: { severity: "error", message: copy.notices.clipboardReadFailed };
 }

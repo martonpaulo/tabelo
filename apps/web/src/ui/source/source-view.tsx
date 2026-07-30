@@ -56,11 +56,14 @@ export default function SourceView({ paneId, viewId, zoom }: SourceViewProps) {
 
 	return (
 		<>
-			{description ? (
-				<p id={feedbackIds.description} className="sr-only" aria-live="polite">
-					{description}
-				</p>
-			) : null}
+			{/* The editor's accessible description exists whether or not there is
+			    anything to say, so a diagnostic is text arriving in an element the
+			    screen reader already has, not an element appearing with text in it.
+			    It carries no aria-live: the description is the channel for a
+			    diagnostic, and a live region on the same node reads it twice. */}
+			<p id={feedbackIds.description} className="sr-only">
+				{description}
+			</p>
 			<SourceEditor
 				paneId={paneId}
 				zoom={zoom}
