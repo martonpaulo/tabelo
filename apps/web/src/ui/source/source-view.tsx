@@ -51,16 +51,14 @@ export default function SourceView({ paneId, viewId, zoom }: SourceViewProps) {
 	const editable = view.capabilities.editable;
 	const feedbackIds = sourceFeedbackIds(paneId);
 
+	// The editor description exists for the pane's lifetime, so diagnostics
+	// update an element assistive technology already knows. It is not a live
+	// region because aria-describedby is the sole announcement channel here.
 	const description = diagnostics.map(({ message }) => message).join(" ");
 	if (!projected.ok) return <BlockedState failure={projected.failure} />;
 
 	return (
 		<>
-			{/* The editor's accessible description exists whether or not there is
-			    anything to say, so a diagnostic is text arriving in an element the
-			    screen reader already has, not an element appearing with text in it.
-			    It carries no aria-live: the description is the channel for a
-			    diagnostic, and a live region on the same node reads it twice. */}
 			<p id={feedbackIds.description} className="sr-only">
 				{description}
 			</p>
