@@ -276,11 +276,21 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		event.clipboardData.setData("text/html", matrixToHtml(matrix));
 		event.preventDefault();
 	};
+	const contentWidth = document.columns.reduce(
+		(total, column) => total + resolveColumnWidth(column.width),
+		0,
+	);
 
 	return (
 		<GridContextMenu>
 			<table
 				ref={gridRef}
+				// Automatic table layout treats column widths as minimums and lets
+				// long content expand them. Fixed layout plus an explicit total makes
+				// the colgroup authoritative while preserving per-pane zoom.
+				style={{
+					width: `calc(var(--grid-gutter-w) + ${contentWidth * zoom}rem)`,
+				}}
 				// Grid semantics, not document-table semantics: this is an editable
 				// widget with its own keyboard model, so assistive technology should
 				// treat it that way. `<table role="grid">` is the ARIA Authoring
@@ -291,7 +301,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				aria-label={copy.a11y.grid}
 				aria-rowcount={document.rows.length + 1}
 				aria-colcount={document.columns.length}
-				className="w-max border-separate border-spacing-0 text-content"
+				className="table-fixed border-separate border-spacing-0 text-content"
 				onKeyDown={handleKeyDown}
 				onCopy={(event) => {
 					if (useTabeloStore.getState().editing) return;
@@ -436,9 +446,9 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										// and the row and column headers supply the rest. An
 										// aria-label here would replace the content with
 										// coordinates and repeat them on every arrow key.
-										title={value.includes("\n") ? value : undefined}
+										title={value || undefined}
 										className={cn(
-											"relative border-line-subtle border-r border-b px-2 py-1.5 align-top",
+											"relative overflow-hidden border-line-subtle border-r border-b px-2 py-1.5 align-top",
 											"cursor-cell select-none",
 											alignClass[column.align],
 											inSelection ? "bg-selection-fill" : "bg-background",
@@ -578,7 +588,7 @@ function HeaderCell({
 			aria-selected={selected}
 			data-column-header={columnIndex}
 			className={cn(
-				"group/col sticky top-0 z-20 border-line-strong border-r border-b bg-surface-header",
+				"group/col sticky top-0 z-20 overflow-hidden border-line-strong border-r border-b bg-surface-header",
 				"relative px-2 py-1.5 font-semibold",
 				alignClass[align],
 				selected && "bg-selection-fill",
@@ -644,7 +654,7 @@ function HeaderCell({
 			    narrow, and reset without needing a drag. */}
 			<div
 				aria-hidden
-				className="absolute top-0 -right-1 z-20 h-full w-2 cursor-col-resize touch-none hover:bg-selection-edge/40"
+				className="absolute top-0 right-0 z-20 h-full w-2 cursor-col-resize touch-none hover:bg-selection-edge/40"
 				onPointerDown={(event) => {
 					event.preventDefault();
 					event.currentTarget.setPointerCapture(event.pointerId);

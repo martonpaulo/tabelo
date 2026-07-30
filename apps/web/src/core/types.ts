@@ -8,7 +8,7 @@ export interface Column {
 	readonly id: ColumnId;
 	readonly header: string;
 	readonly align: Alignment;
-	// Display width in pixels. Presentation only; never affects serialization.
+	// Display width in rem. Presentation only; never affects serialization.
 	readonly width?: number;
 }
 
