@@ -221,11 +221,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				if (mod) {
 					const refusal = store.deleteSelectedStructure();
 					if (refusal) {
-						store.setNotice(
-							refusal === "last-column"
-								? copy.disabled.lastRemainingColumn
-								: copy.disabled.lastRemainingRow,
-						);
+						store.pushNotice({
+							severity: "warning",
+							message:
+								refusal === "last-column"
+									? copy.disabled.lastRemainingColumn
+									: copy.disabled.lastRemainingRow,
+						});
 					}
 				} else store.clearSelection();
 				return;
