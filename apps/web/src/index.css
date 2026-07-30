@@ -41,6 +41,7 @@
 	--radius-surface: var(--surface-radius);
 
 	--font-source: var(--font-family-source);
+	--font-index: var(--font-family-index);
 }
 
 /* Per-pane content scale. `--pane-zoom` is set on one pane's body, and only
@@ -114,6 +115,7 @@
 
 	--font-family-source:
 		ui-monospace, "SF Mono", "Cascadia Mono", "Menlo", monospace;
+	--font-family-index: var(--font-family-source);
 }
 
 @media (prefers-color-scheme: dark) {
