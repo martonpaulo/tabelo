@@ -70,8 +70,9 @@ import {
 	applyLayout,
 	createDefaultWorkspace,
 	type LayoutId,
-	largerLayout,
+	type SplitOption,
 	smallerLayout,
+	splitOptions,
 	type Workspace,
 } from "@/workspace/layout";
 import { clampPaneZoom } from "@/workspace/zoom";
@@ -157,13 +158,6 @@ export interface TabeloState {
 	// header row" would surprise someone weeks later. Never persisted, never
 	// document state, never a history step. See docs/adr/0005.
 	outputOptions: Required<OutputOptions>;
-	// The pane whose view trigger should take focus next. Adding a view is one
-	// intent in two parts: make room, then say what goes there. The control that
-	// says it is handed to the user instead of left to be hunted for, and since
-	// the pane header split that control is the view name rather than the
-	// actions chevron beside it.
-	paneMenuFocus: string | null;
-
 	hydrate: () => void;
 	replaceUnreadableStorage: () => boolean;
 	applyDocument: (next: TableDocument) => void;
@@ -173,10 +167,9 @@ export interface TabeloState {
 
 	setLayout: (layout: LayoutId) => void;
 	setPaneView: (paneId: string, view: ViewId) => void;
-	addPane: () => void;
+	addPaneBySplit: (option: SplitOption, viewId: ViewId) => void;
 	closePane: (paneId: string) => void;
 	confirmPaneAction: () => void;
-	clearPaneMenuFocus: () => void;
 	setActivePane: (paneId: string) => void;
 	setOutputOption: (id: OutputOptionId, value: boolean) => void;
 	setPaneZoom: (paneId: string, zoom: number) => void;
@@ -372,7 +365,6 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	inputError: null,
 	headerCorrection: null,
 	pendingPaneAction: null,
-	paneMenuFocus: null,
 	outputOptions: { ...defaultOutputOptions },
 
 	hydrate: () => {
@@ -606,16 +598,25 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	},
 
 	// Growing the workspace never displaces a pane, so unlike a view change or a
-	// close this needs no confirmation: nothing pending can be lost. The new
-	// pane opens on the registry's next preferred view and hands its menu the
-	// focus, so changing that choice is the very next keystroke.
-	addPane: () => {
+	// close this needs no confirmation: nothing pending can be lost.
+	//
+	// The split and the view it should show are applied in one update, because
+	// the user was asked which view before anything moved. No intermediate
+	// workspace holding a pane with an unchosen view is ever rendered, which is
+	// what the old two-step add could not promise.
+	addPaneBySplit: (option, viewId) => {
 		const state = get();
-		const layout = largerLayout(state.workspace.layout);
-		if (!layout) return;
-
 		const previous = state.workspace.panes;
-		const panes = applyLayout(layout, previous, state.draft?.paneId);
+		// The option is derived from the workspace it was rendered against, so a
+		// stale one is refused rather than applied to a shape it never described.
+		const stale = !splitOptions(state.workspace).some(
+			(candidate) =>
+				candidate.paneId === option.paneId &&
+				candidate.layout === option.layout,
+		);
+		if (stale) return;
+
+		const panes = applyLayout(option.layout, previous, state.draft?.paneId);
 		const existing = new Set(previous.map((pane) => pane.id));
 		const added = panes.find((pane) => !existing.has(pane.id));
 		if (!added) return;
@@ -623,17 +624,16 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set({
 			workspace: {
 				...state.workspace,
-				layout,
-				panes,
+				layout: option.layout,
+				panes: panes.map((pane) =>
+					pane.id === added.id ? { ...pane, view: viewId } : pane,
+				),
 				// The pane the user just asked for is the one they are about to work
 				// in, so it takes focus for keyboard and document-level actions.
 				activePaneId: added.id,
 			},
-			paneMenuFocus: added.id,
 		});
 	},
-
-	clearPaneMenuFocus: () => set({ paneMenuFocus: null }),
 
 	closePane: (paneId) => {
 		const state = get();

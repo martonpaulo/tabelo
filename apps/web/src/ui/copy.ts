@@ -1,6 +1,7 @@
 import type { ParseIssue, PreconditionFailure } from "@/formats/types";
 import type { ImportError } from "@/import/prepare";
 import { product } from "@/product";
+import type { SplitEdge } from "@/workspace/layout";
 
 // Every user-visible string lives here. One place to keep the voice
 // consistent, and the seam a locale would plug into if Tabelo ever ships one.
@@ -148,7 +149,6 @@ export const copy = {
 		zoomMinimum: "Zoom is already at 50%.",
 		zoomDefault: "Zoom is already at 100%.",
 		zoomMaximum: "Zoom is already at 200%.",
-		addViewLimit: "The current layout already has four views.",
 		closeOnlyView: "At least two views must stay open.",
 		undo: "There is nothing to undo.",
 		redo: "There is nothing to redo.",
@@ -294,6 +294,18 @@ export const copy = {
 		editHeader: "Rename column",
 	},
 
+	addView: {
+		title: "Add a view",
+		// Says where the pane will land, because the control that opened this is
+		// on one particular edge and the answer differs per edge.
+		hint: (edge: SplitEdge, paneLabel: string) =>
+			edge === "bottom"
+				? `The new view opens below the ${paneLabel}.`
+				: `The new view opens to the right of the ${paneLabel}.`,
+		view: "View",
+		confirm: "Add view",
+	},
+
 	download: {
 		title: "Download table",
 		hint: "Choose a file format.",
@@ -398,6 +410,13 @@ export const copy = {
 		pane: (label: string) => `${label} pane`,
 		paneInteractHint: "Press Enter to interact, Escape to exit.",
 		enteredPane: "Entered pane. Press Escape to exit.",
+		paneAdded: (label: string) => `${label} pane added.`,
+		// Which pane, and which way. Four controls all called "Add view" would
+		// name nothing: the direction is the whole content of the choice.
+		addViewAt: (edge: SplitEdge, paneLabel: string) =>
+			edge === "bottom"
+				? `Add a view below the ${paneLabel}`
+				: `Add a view to the right of the ${paneLabel}`,
 		rowNumber: (index: number) => `Row ${index + 2}`,
 		columnLetter,
 		// Header cells name themselves after what they contain, because that name

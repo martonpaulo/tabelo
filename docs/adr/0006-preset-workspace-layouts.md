@@ -47,15 +47,44 @@ reason a choice cannot be made remain understandable. The workspace schema
 enforces the same invariant at the persistence boundary. This removes duplicate
 projections without coupling synchronization to pane layout or view identity.
 
-Pane count is also changed directly, from the pane the user is working in:
-**Add view** and **Close view** in that pane's menu. Both are expressed as moves
-between these same presets: `columns → left-split → quad` growing, and the
-reverse shrinking, with `rows → bottom-split` covering the horizontal branch.
-A direct action can never reach a shape the picker cannot, and both routes
-share one implementation. The targets are chosen to be the preset that leaves
-the most surviving panes in the slot they already had. Closing removes the
-chosen pane rather than the last one; the smaller preset then absorbs the freed
-space into whichever neighbour already occupied part of it.
+Pane count is also changed directly. **Close view** stays in the pane's own
+menu. **Adding** a view moved out of that menu and onto the pane edge it would
+split, because the edge is what decides where the new pane lands and a menu
+item cannot say which edge it means.
+
+A control appears at the centre of every pane edge whose split produces another
+valid preset:
+
+| From | Split | To |
+| :--- | :--- | :--- |
+| Two columns | left pane | Split left |
+| Two columns | right pane | Split right |
+| Two rows | top pane | Split top |
+| Two rows | bottom pane | Split bottom |
+| Split left, right, top, or bottom | the large pane | Four panes |
+| Four panes | none | no control shown |
+
+The set is **derived, not tabulated**: splitting a pane replaces its shape with
+its two single slots, and the target is whichever preset holds the shapes that
+leaves. A preset gains its entries the moment it exists. This replaced a single
+larger target per layout, which could not express two columns reaching both
+split left and split right depending on which pane is cut.
+
+A two-slot pane can only be cut across its long axis, so every control lands on
+an **outer** edge of the workspace. None sits on the divider between two panes,
+so which pane is being split is never ambiguous, and the edge doubles as the
+promise of where the new pane appears.
+
+The view the new pane shows is chosen **before** anything moves, so the split
+and the view are one update and no workspace holding a pane with an unchosen
+view is ever rendered. This retired the old two-step flow, which added a pane on
+a guessed view and then handed its menu the focus so the guess could be
+corrected. `FILL_ORDER` still fills panes that a **layout change** creates,
+where nobody was asked.
+
+Closing removes the chosen pane rather than the last one; the smaller preset
+then absorbs the freed space into whichever neighbour already occupied part of
+it.
 
 Two panes is the floor, so `columns` and `rows` have no smaller target and
 Close view is disabled in both, with a written reason rather than hidden. The
@@ -63,7 +92,7 @@ one preset the picker can reach that growing cannot, `top-split`, shrinks to
 `rows`: a top split reads as a horizontal division, and keeping that division
 on the way down matters more than keeping one pane's corner.
 
-Growing never displaces a pane, so **Add view** needs no confirmation. Closing
+Growing never displaces a pane, so adding one needs no confirmation. Closing
 can destroy a source draft the document has not read back, so a pane owning
 uncommitted text asks first, through the same notice used when a view change
 would displace a draft.
@@ -77,6 +106,18 @@ so a new preset needs no edit there.
 - The layout control is one menu of seven pictures, with nothing to learn, and
   it is the advanced path rather than the only one: adding or closing a view
   needs no understanding of layout names at all.
+- The preset set survives unchanged, but the way a user moves between presets
+  changed completely. Growing is now a direct manipulation of the edge that
+  will be split, so the arrangement is a result of where the user pointed
+  rather than a name they had to recognise first.
+- The edge controls are hover-revealed, which §9 forbids depending on alone, so
+  each is an ordinary tab stop at the **workspace** level of the two-level
+  keyboard ring, named after both the pane and the direction: a bare "Add view"
+  repeated on every pane would name nothing.
+- Growing can no longer reach `top-split` or `bottom-split` from `columns`, nor
+  `left-split` or `right-split` from `rows`, because a split preserves the
+  divider the current preset already has. Reaching those is the layout picker's
+  job, which is what keeps it rather than retiring it with the add flow.
 - Invalid layouts are unrepresentable, so there is no validation to write and
   no error state to design: including for the direct commands, which can only
   move between presets.

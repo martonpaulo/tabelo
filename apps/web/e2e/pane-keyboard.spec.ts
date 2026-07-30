@@ -63,8 +63,11 @@ test("the workspace ring does not grow with the table", async ({
 	await expect(rowSelect).toHaveAttribute("tabindex", "-1");
 	expect(await tabsToReach(page, markdownPane)).toBe(before);
 
+	// Backwards lands on the last workspace-level control the grid pane owns,
+	// which is the split control on its edge: the ring holds the pane's chrome,
+	// never its content.
 	await page.keyboard.press("Shift+Tab");
-	await expect(tabelo.paneMenuTrigger("grid")).toBeFocused();
+	await expect(tabelo.splitControl("grid", "bottom")).toBeFocused();
 });
 
 test("Enter moves into the grid's focused cell, not the pane header", async ({

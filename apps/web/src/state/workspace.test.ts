@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { paneCount } from "@/workspace/layout";
+import type { ViewId } from "@/views/types";
+import { paneCount, splitOptions } from "@/workspace/layout";
 import {
 	DEFAULT_PANE_ZOOM,
 	MAX_PANE_ZOOM,
@@ -10,9 +11,9 @@ import {
 import { conditionNoticeIds } from "./notice-queue";
 import { useTabeloStore } from "./store";
 
-// Adding and closing a view are the direct route to the same presets the
-// layout gallery offers. What matters here is that the direct route cannot
-// reach a shape the gallery cannot, and cannot lose work on the way.
+// Adding a view splits a pane along one of its edges, and closing one shrinks
+// back. What matters here is that neither can reach a shape no preset expresses,
+// and that neither loses work on the way.
 
 const initialState = useTabeloStore.getInitialState();
 const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
@@ -40,6 +41,16 @@ function markdownPaneId(): string {
 	return pane?.id ?? "";
 }
 
+// The first split the current workspace offers. Which one it is does not matter
+// to these tests; that it applies the preset and the chosen view in one update
+// does.
+function addFirstSplit(view: ViewId = "csv"): void {
+	const store = useTabeloStore.getState();
+	const option = splitOptions(store.workspace)[0];
+	if (!option) return;
+	store.addPaneBySplit(option, view);
+}
+
 function addedPaneId(before: readonly { id: string }[]): string {
 	const added = workspace().panes.find(
 		(pane) => !before.some((candidate) => candidate.id === pane.id),
@@ -48,23 +59,49 @@ function addedPaneId(before: readonly { id: string }[]): string {
 }
 
 describe("adding a view", () => {
-	it("appends a pane, makes it active, and offers its menu the focus", () => {
+	it("appends a pane showing the chosen view and makes it active", () => {
 		const before = workspace();
 
-		useTabeloStore.getState().addPane();
+		addFirstSplit("jira");
 
 		const after = workspace();
 		expect(after.panes).toHaveLength(before.panes.length + 1);
 		const added = addedPaneId(before.panes);
 		expect(added).not.toBe("");
 		expect(after.activePaneId).toBe(added);
-		expect(useTabeloStore.getState().paneMenuFocus).toBe(added);
+		// The view was chosen before anything moved, so it is already in place.
+		expect(after.panes.find((pane) => pane.id === added)?.view).toBe("jira");
+	});
+
+	it("applies the preset the option names", () => {
+		const option = splitOptions(workspace())[0];
+		useTabeloStore.getState().addPaneBySplit(option, "csv");
+		expect(workspace().layout).toBe(option.layout);
+	});
+
+	it("splits either pane of a two-pane preset to its own preset", () => {
+		const options = splitOptions(workspace());
+		expect(options).toHaveLength(2);
+		expect(options[0].layout).not.toBe(options[1].layout);
+
+		useTabeloStore.getState().addPaneBySplit(options[1], "csv");
+		expect(workspace().layout).toBe(options[1].layout);
+	});
+
+	it("refuses an option that no longer describes the workspace", () => {
+		const stale = splitOptions(workspace())[0];
+		useTabeloStore.getState().addPaneBySplit(stale, "csv");
+
+		const settled = workspace();
+		// Replaying it would apply a split to a shape it never described.
+		useTabeloStore.getState().addPaneBySplit(stale, "jira");
+		expect(workspace()).toBe(settled);
 	});
 
 	it("keeps every existing pane's view untouched", () => {
 		const before = workspace().panes.map((pane) => [pane.id, pane.view]);
 
-		useTabeloStore.getState().addPane();
+		addFirstSplit();
 
 		const after = new Map(
 			workspace().panes.map((pane) => [pane.id, pane.view]),
@@ -72,22 +109,20 @@ describe("adding a view", () => {
 		for (const [id, view] of before) expect(after.get(id)).toBe(view);
 	});
 
-	it("reaches four panes and then does nothing", () => {
-		const store = useTabeloStore.getState();
-		store.addPane();
-		store.addPane();
+	it("reaches four panes and then offers no further split", () => {
+		addFirstSplit("csv");
+		addFirstSplit("jira");
 		expect(workspace().panes).toHaveLength(4);
 		expect(paneCount(workspace().layout)).toBe(4);
 
-		const saturated = workspace();
-		store.addPane();
-		expect(workspace()).toBe(saturated);
+		// The floor and the ceiling are both expressed by the absence of an
+		// option rather than by a guard inside the action.
+		expect(splitOptions(workspace())).toEqual([]);
 	});
 
-	it("never leaves the workspace in a layout the gallery cannot express", () => {
-		const store = useTabeloStore.getState();
+	it("never leaves the workspace in a layout no preset expresses", () => {
 		for (let step = 0; step < 3; step += 1) {
-			store.addPane();
+			addFirstSplit();
 			expect(workspace().panes).toHaveLength(paneCount(workspace().layout));
 		}
 	});
@@ -96,29 +131,28 @@ describe("adding a view", () => {
 		const paneId = markdownPaneId();
 		useTabeloStore.getState().setDraft(paneId, "markdown", "Name\nInez");
 
-		useTabeloStore.getState().addPane();
+		addFirstSplit();
 
 		expect(useTabeloStore.getState().draft?.paneId).toBe(paneId);
 		expect(workspace().panes.some((pane) => pane.id === paneId)).toBe(true);
 	});
 
-	it("chooses a view the workspace is not already showing", () => {
+	it("shows exactly the view that was chosen for it", () => {
 		const before = workspace();
 
-		useTabeloStore.getState().addPane();
+		addFirstSplit("html-preview");
 
 		const added = workspace().panes.find(
 			(pane) => pane.id === addedPaneId(before.panes),
 		);
-		expect(added).toBeDefined();
+		expect(added?.view).toBe("html-preview");
 		expect(before.panes.map((pane) => pane.view)).not.toContain(added?.view);
 	});
 });
 
 describe("closing a view", () => {
 	it("removes that pane and keeps the others", () => {
-		const store = useTabeloStore.getState();
-		store.addPane();
+		addFirstSplit();
 		const before = workspace();
 		const target = before.panes[1];
 
@@ -148,7 +182,7 @@ describe("closing a view", () => {
 	});
 
 	it("moves the active pane when the active one is closed", () => {
-		useTabeloStore.getState().addPane();
+		addFirstSplit();
 		const before = workspace();
 		useTabeloStore.getState().setActivePane(before.panes[0].id);
 
@@ -165,7 +199,7 @@ describe("closing a view", () => {
 		const store = useTabeloStore.getState();
 		const counts: number[] = [workspace().panes.length];
 		while (workspace().panes.length < 4) {
-			store.addPane();
+			addFirstSplit();
 			counts.push(workspace().panes.length);
 		}
 		while (workspace().panes.length > 2) {
@@ -178,7 +212,7 @@ describe("closing a view", () => {
 
 describe("closing a view that owns a draft", () => {
 	it("asks before discarding text the document has not read back", () => {
-		useTabeloStore.getState().addPane();
+		addFirstSplit();
 		const paneId = markdownPaneId();
 		useTabeloStore.getState().setDraft(paneId, "markdown", invalidMarkdown);
 		const before = workspace();
@@ -194,7 +228,7 @@ describe("closing a view that owns a draft", () => {
 	});
 
 	it("closes the pane once the discard is confirmed", () => {
-		useTabeloStore.getState().addPane();
+		addFirstSplit();
 		const paneId = markdownPaneId();
 		useTabeloStore.getState().setDraft(paneId, "markdown", invalidMarkdown);
 		useTabeloStore.getState().closePane(paneId);
@@ -207,7 +241,7 @@ describe("closing a view that owns a draft", () => {
 	});
 
 	it("keeps the pane when the question is dismissed instead of answered", () => {
-		useTabeloStore.getState().addPane();
+		addFirstSplit();
 		const paneId = markdownPaneId();
 		useTabeloStore.getState().setDraft(paneId, "markdown", invalidMarkdown);
 		useTabeloStore.getState().closePane(paneId);
@@ -222,7 +256,7 @@ describe("closing a view that owns a draft", () => {
 	});
 
 	it("closes straight away when the draft is already committed", () => {
-		useTabeloStore.getState().addPane();
+		addFirstSplit();
 		const paneId = markdownPaneId();
 		useTabeloStore.getState().setDraft(paneId, "markdown", validMarkdown);
 
@@ -236,8 +270,7 @@ describe("closing a view that owns a draft", () => {
 	});
 
 	it("keeps a draft owned by a different pane", () => {
-		const store = useTabeloStore.getState();
-		store.addPane();
+		addFirstSplit();
 		const paneId = markdownPaneId();
 		useTabeloStore.getState().setDraft(paneId, "markdown", invalidMarkdown);
 		const other = workspace().panes.find((pane) => pane.id !== paneId);
@@ -304,15 +337,14 @@ describe("per-pane zoom", () => {
 		const paneId = workspace().panes[0].id;
 		useTabeloStore.getState().setPaneZoom(paneId, 2);
 
-		useTabeloStore.getState().addPane();
+		addFirstSplit();
 
 		const added = workspace().panes.at(-1);
 		expect(added?.zoom).toBe(DEFAULT_PANE_ZOOM);
 	});
 
 	it("goes away with the pane rather than transferring to a survivor", () => {
-		const store = useTabeloStore.getState();
-		store.addPane();
+		addFirstSplit();
 		const target = workspace().panes.at(-1);
 		useTabeloStore.getState().setPaneZoom(target?.id ?? "", 1.4);
 

@@ -331,6 +331,18 @@ download chooser holds format-specific output choices. New table also uses a
 dialog when the current document or a pending draft would be lost; an already
 empty document with no draft clears without interruption.
 
+Adding a view qualifies under **"needs stating before it happens"**, not under
+length. Seven views are something a menu holds comfortably, so the list is not
+what earns the dialog. Two other things do. The choice has a consequence the
+list cannot show, because the same seven views mean a different workspace
+depending on which edge was clicked, and the dialog's supporting copy is where
+that lands: "The new view opens below the Visual table pane." And a view that
+cannot be added has a reason worth reading, whether it is already open
+elsewhere or its format cannot represent the current table; a dialog can
+disable it and explain, where a menu that did the same would be a menu whose
+items mostly do nothing. The choice is also unwound by Cancel with nothing
+changed, which is the shape of a decision rather than of a command.
+
 A dialog is never used to announce something. Notices belong in the notice bar,
 which sits in the layout instead of covering the table.
 

@@ -8,7 +8,6 @@ import type { LayoutId } from "@/workspace/layout";
 
 type AppCommand = "undo" | "redo" | "newTable" | "downloadTable";
 type PaneCommand =
-	| "addView"
 	| "closeView"
 	| "zoomOut"
 	| "resetZoom"
@@ -24,7 +23,6 @@ const appCommandLabels: Record<AppCommand, string> = {
 };
 
 const paneCommandLabels: Record<PaneCommand, string> = {
-	addView: copy.workspace.addView,
 	closeView: copy.workspace.closeView,
 	zoomOut: copy.workspace.zoomOut,
 	resetZoom: copy.workspace.resetZoom,
@@ -211,6 +209,53 @@ export class TabeloPage {
 		await menu
 			.getByRole("menuitem", { name: appCommandLabels[command] })
 			.click();
+	}
+
+	// Every split control currently on screen. The count is the contract at the
+	// ends of the range: two panes offer two, four panes offer none.
+	addControls(): Locator {
+		return this.workspace.locator("[data-split-control]");
+	}
+
+	// Where a pane sits in the 2x2 slot grid, read as grid line numbers rather
+	// than pixels: the arrangement is the assertion, not the geometry.
+	async paneArea(view: ViewId): Promise<{
+		rowStart: number;
+		rowEnd: number;
+		columnStart: number;
+		columnEnd: number;
+	}> {
+		const area = await this.pane(view).evaluate(
+			(node) => window.getComputedStyle(node).gridArea,
+		);
+		const [rowStart, columnStart, rowEnd, columnEnd] = area
+			.split("/")
+			.map((part) => Number(part.trim()));
+		return { rowStart, rowEnd, columnStart, columnEnd };
+	}
+
+	// The control on a pane's splittable edge. Named after the pane and the
+	// direction, because that pair is the whole content of the choice.
+	splitControl(view: ViewId, edge: "bottom" | "right", index = 0): Locator {
+		return this.paneAt(view, index).getByRole("button", {
+			name: copy.a11y.addViewAt(edge, copy.a11y.pane(getView(view).label)),
+		});
+	}
+
+	// Split a pane and choose what the new one shows, which is one flow: the
+	// view is picked before anything moves.
+	async addViewBySplit(
+		view: ViewId,
+		edge: "bottom" | "right",
+		nextView: ViewId,
+	): Promise<void> {
+		await this.splitControl(view, edge).click();
+		const dialog = this.page.getByRole("dialog");
+		await dialog.getByRole("radio", { name: getView(nextView).label }).click();
+		await dialog
+			.getByRole("button", { name: copy.addView.confirm, exact: true })
+			.click();
+		await dialog.waitFor({ state: "hidden" });
 	}
 
 	async choosePaneView(

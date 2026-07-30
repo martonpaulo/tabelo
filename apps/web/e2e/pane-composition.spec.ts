@@ -1,52 +1,112 @@
 import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
-// Composing the workspace from the pane you are working in, rather than by
-// naming a tiling first. The presets still own every shape. These flows prove
-// the direct commands cannot reach anything the layout gallery cannot.
+// Composing the workspace by splitting the pane edge the new view should appear
+// along, rather than by naming a tiling first. The presets still own every
+// shape, so splitting can never reach one the gallery cannot.
 
 const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
 
-test("a view is added from the pane and its picker takes the focus", async ({
+test("splitting a pane adds the view that was chosen for it", async ({
 	tabelo,
 }) => {
 	const panes = tabelo.workspace.getByRole("region");
 	await expect(panes).toHaveCount(2);
 
-	await tabelo.runPaneCommand("markdown", "addView");
+	await tabelo.addViewBySplit("markdown", "bottom", "jira");
 
 	await expect(panes).toHaveCount(3);
-	// The new pane shows something the workspace was not already showing, and
-	// changing that choice is the next keystroke rather than a hunt.
-	await expect(tabelo.pane("csv")).toBeVisible();
-	await expect(tabelo.paneViewTrigger("csv")).toBeFocused();
+	// The view was picked before anything moved, so the pane never appears
+	// showing something the user did not ask for.
+	await expect(tabelo.pane("jira")).toBeVisible();
+	await expect(tabelo.pane("csv")).toHaveCount(0);
 });
 
-test("the added pane's view is chosen without touching the layout menu", async ({
+// The confirmed mapping: which pane is split decides which preset results, and
+// the edge decides which side the new pane lands on.
+test("which pane is split decides the resulting arrangement", async ({
+	tabelo,
+}) => {
+	// Splitting the left pane of two columns puts the new pane under it.
+	await tabelo.addViewBySplit("grid", "bottom", "csv");
+
+	const grid = await tabelo.paneArea("grid");
+	const added = await tabelo.paneArea("csv");
+	const markdown = await tabelo.paneArea("markdown");
+
+	expect(added.rowStart).toBe(grid.rowEnd);
+	expect(added.columnStart).toBe(grid.columnStart);
+	// The pane that was not split keeps both rows.
+	expect(markdown.rowEnd - markdown.rowStart).toBe(2);
+});
+
+test("splitting the other pane produces the mirrored arrangement", async ({
+	tabelo,
+}) => {
+	await tabelo.addViewBySplit("markdown", "bottom", "csv");
+
+	const markdown = await tabelo.paneArea("markdown");
+	const added = await tabelo.paneArea("csv");
+	const grid = await tabelo.paneArea("grid");
+
+	expect(added.rowStart).toBe(markdown.rowEnd);
+	expect(added.columnStart).toBe(markdown.columnStart);
+	expect(grid.rowEnd - grid.rowStart).toBe(2);
+});
+
+test("the picker refuses a view another pane already shows", async ({
+	tabelo,
+}) => {
+	await tabelo.splitControl("grid", "bottom").click();
+	const dialog = tabelo.page.getByRole("dialog");
+
+	const markdown = dialog.getByRole("radio", {
+		name: copy.views.markdown.label,
+	});
+	await expect(markdown).toBeVisible();
+	await expect(markdown).toBeDisabled();
+	await markdown.hover();
+	await expect(
+		tabelo.page.getByRole("tooltip", {
+			name: copy.disabled.viewAlreadyOpen(copy.views.markdown.label),
+		}),
+	).toBeVisible();
+
+	// A view nobody is showing stays available.
+	await expect(
+		dialog.getByRole("radio", { name: copy.views.jira.label }),
+	).toBeEnabled();
+});
+
+test("cancelling changes nothing and returns the focus", async ({
 	page,
 	tabelo,
 }) => {
-	await tabelo.runPaneCommand("markdown", "addView");
-	await expect(tabelo.paneViewTrigger("csv")).toBeFocused();
+	const panes = tabelo.workspace.getByRole("region");
+	const control = tabelo.splitControl("grid", "bottom");
+	await control.click();
 
-	// Enter opens the focused picker, which is the view list itself.
-	await page.keyboard.press("Enter");
 	await page
-		.getByRole("menu", {
-			name: `${copy.workspace.changeView}: ${copy.views.csv.label}`,
-		})
-		.getByRole("menuitemradio", { name: copy.views.jira.label })
+		.getByRole("dialog")
+		.getByRole("button", { name: copy.actions.cancel })
 		.click();
 
-	await expect(tabelo.pane("jira")).toBeVisible();
-	await expect(tabelo.pane("csv")).toHaveCount(0);
-	await expect(tabelo.workspace.getByRole("region")).toHaveCount(3);
+	await expect(page.getByRole("dialog")).toBeHidden();
+	await expect(panes).toHaveCount(2);
+	await expect(control).toBeFocused();
+});
+
+test("the new pane takes the focus so it is not left on a control that moved", async ({
+	tabelo,
+}) => {
+	await tabelo.addViewBySplit("grid", "bottom", "csv");
+	await expect(tabelo.pane("csv")).toBeFocused();
 });
 
 test("closing a view keeps the other panes and their views", async ({
 	tabelo,
 }) => {
-	await tabelo.runPaneCommand("markdown", "addView");
+	await tabelo.addViewBySplit("markdown", "bottom", "csv");
 	await expect(tabelo.workspace.getByRole("region")).toHaveCount(3);
 
 	await tabelo.runPaneCommand("csv", "closeView");
@@ -62,9 +122,9 @@ test("every pane count from two to four is reachable and reversible", async ({
 }) => {
 	const panes = tabelo.workspace.getByRole("region");
 
-	await tabelo.runPaneCommand("markdown", "addView");
+	await tabelo.addViewBySplit("markdown", "bottom", "csv");
 	await expect(panes).toHaveCount(3);
-	await tabelo.runPaneCommand("markdown", "addView");
+	await tabelo.addViewBySplit("grid", "bottom", "jira");
 	await expect(panes).toHaveCount(4);
 
 	await tabelo.runPaneCommand("markdown", "closeView");
@@ -73,13 +133,14 @@ test("every pane count from two to four is reachable and reversible", async ({
 	await expect(panes).toHaveCount(2);
 });
 
-test("the range ends disable the command instead of hiding it", async ({
+// The two ends of the range say so differently, and deliberately. Close view is
+// a menu item, so it is disabled with a written reason. A split control has no
+// resting place to be disabled in, so at four panes there is simply no edge
+// left that yields a valid preset and no control is drawn.
+test("the range ends stop the commands that would leave it", async ({
 	tabelo,
 }) => {
-	let menu = await tabelo.openPaneMenu("grid");
-	await expect(
-		menu.getByRole("menuitem", { name: copy.workspace.addView }),
-	).toBeEnabled();
+	const menu = await tabelo.openPaneMenu("grid");
 	await expect(
 		menu.getByRole("menuitem", { name: copy.workspace.closeView }),
 	).toBeDisabled();
@@ -89,20 +150,23 @@ test("the range ends disable the command instead of hiding it", async ({
 	).toBeVisible();
 	await tabelo.page.keyboard.press("Escape");
 
+	// Two panes: one splittable edge each.
+	await expect(tabelo.addControls()).toHaveCount(2);
+
 	await tabelo.chooseLayout("quad");
-	menu = await tabelo.openPaneMenu("grid");
+	await expect(tabelo.addControls()).toHaveCount(0);
 	await expect(
-		menu.getByRole("menuitem", { name: copy.workspace.addView }),
-	).toBeDisabled();
-	await expect(
-		menu.getByRole("menuitem", { name: copy.workspace.closeView }),
+		(await tabelo.openPaneMenu("grid")).getByRole("menuitem", {
+			name: copy.workspace.closeView,
+		}),
 	).toBeEnabled();
 });
 
 test("closing a pane that owns an invalid draft asks before discarding it", async ({
 	tabelo,
 }) => {
-	await tabelo.runPaneCommand("grid", "addView");
+	// Two panes is the floor, so a third has to exist before anything can close.
+	await tabelo.addViewBySplit("grid", "bottom", "csv");
 	await tabelo.source("markdown").fill(invalidMarkdown);
 	await expect(tabelo.source("markdown")).toHaveAttribute(
 		"aria-invalid",

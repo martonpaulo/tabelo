@@ -57,9 +57,6 @@ test("each pane names itself and separates changing the view from its actions", 
 	await expect(
 		viewMenu.getByRole("menuitem", { name: copy.actions.copySource }),
 	).toHaveCount(0);
-	await expect(
-		viewMenu.getByRole("menuitem", { name: copy.workspace.addView }),
-	).toHaveCount(0);
 	await page.keyboard.press("Escape");
 	await expect(viewMenu).toBeHidden();
 
@@ -68,8 +65,9 @@ test("each pane names itself and separates changing the view from its actions", 
 		actionsMenu.getByRole("menuitem", { name: copy.actions.copySource }),
 	).toBeVisible();
 	await expect(
-		actionsMenu.getByRole("menuitem", { name: copy.workspace.addView }),
+		actionsMenu.getByRole("menuitem", { name: copy.workspace.closeView }),
 	).toBeVisible();
+	// Adding a view is not here at all: it belongs to the edge it would split.
 	// And the view list is not repeated here.
 	await expect(actionsMenu.getByRole("menuitemradio")).toHaveCount(0);
 });
