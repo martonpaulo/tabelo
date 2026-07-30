@@ -132,7 +132,6 @@ export const copy = {
 		changeView: "Change view",
 		addView: "Add view",
 		closeView: "Close view",
-		pane: "Pane",
 		paneActions: "Pane actions",
 		readOnly: "Read only",
 		activePane: "Active pane",

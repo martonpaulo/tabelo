@@ -36,7 +36,10 @@ test("document actions live in one compact floating menu", async ({
 	).toHaveCount(0);
 });
 
-test("each pane keeps identity while low-frequency actions share one menu", async ({
+// The pane header splits its two jobs: the view name changes the view, the
+// trailing chevron carries everything else. Each trigger opens only its own
+// menu, so neither leaks the other's commands.
+test("each pane names itself and separates changing the view from its actions", async ({
 	page,
 	tabelo,
 }) => {
@@ -44,17 +47,31 @@ test("each pane keeps identity while low-frequency actions share one menu", asyn
 	await expect(
 		pane.getByRole("heading", { name: copy.views.markdown.label }),
 	).toBeVisible();
-	await tabelo.paneMenuTrigger("markdown").click();
-	const menu = page.getByRole("menu", {
-		name: `${copy.workspace.paneActions}: ${copy.views.markdown.label}`,
-	});
-	await expect(menu.getByText(copy.workspace.changeView)).toBeVisible();
+
+	const viewMenu = await tabelo.openPaneViewMenu("markdown");
+	await expect(viewMenu.getByText(copy.workspace.changeView)).toBeVisible();
 	await expect(
-		menu.getByRole("menuitemradio", { name: copy.views.csv.label }),
+		viewMenu.getByRole("menuitemradio", { name: copy.views.csv.label }),
+	).toBeVisible();
+	// Changing the view is all this menu does.
+	await expect(
+		viewMenu.getByRole("menuitem", { name: copy.actions.copySource }),
+	).toHaveCount(0);
+	await expect(
+		viewMenu.getByRole("menuitem", { name: copy.workspace.addView }),
+	).toHaveCount(0);
+	await page.keyboard.press("Escape");
+	await expect(viewMenu).toBeHidden();
+
+	const actionsMenu = await tabelo.openPaneMenu("markdown");
+	await expect(
+		actionsMenu.getByRole("menuitem", { name: copy.actions.copySource }),
 	).toBeVisible();
 	await expect(
-		menu.getByRole("menuitem", { name: copy.actions.copySource }),
+		actionsMenu.getByRole("menuitem", { name: copy.workspace.addView }),
 	).toBeVisible();
+	// And the view list is not repeated here.
+	await expect(actionsMenu.getByRole("menuitemradio")).toHaveCount(0);
 });
 
 test("source diagnostics do not reserve editor space", async ({ tabelo }) => {

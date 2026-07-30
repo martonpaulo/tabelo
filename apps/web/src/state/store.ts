@@ -157,9 +157,11 @@ export interface TabeloState {
 	// header row" would surprise someone weeks later. Never persisted, never
 	// document state, never a history step. See docs/adr/0005.
 	outputOptions: Required<OutputOptions>;
-	// The pane whose menu should take focus next. Adding a view is one intent in
-	// two parts: make room, then say what goes there. The control that says
-	// it is handed to the user instead of left to be hunted for.
+	// The pane whose view trigger should take focus next. Adding a view is one
+	// intent in two parts: make room, then say what goes there. The control that
+	// says it is handed to the user instead of left to be hunted for, and since
+	// the pane header split that control is the view name rather than the
+	// actions chevron beside it.
 	paneMenuFocus: string | null;
 
 	hydrate: () => void;

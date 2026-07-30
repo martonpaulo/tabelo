@@ -50,8 +50,11 @@ export const Pane = memo(function Pane({
 				if (!active) useTabeloStore.getState().setActivePane(pane.id);
 			}}
 		>
+			{/* Two triggers, one row: the view name changes the view, the trailing
+			    chevron opens this pane's actions. The spacer between them is what
+			    keeps the actions button right-aligned as the name shortens. */}
 			<Panel.Header className="overflow-hidden">
-				<PaneIdentity view={view} compact={compact} />
+				<PaneIdentity paneId={pane.id} view={view} compact={compact} />
 				<Panel.Spacer />
 				<PaneMenu paneId={pane.id} view={view} />
 			</Panel.Header>

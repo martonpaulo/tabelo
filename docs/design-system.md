@@ -495,15 +495,27 @@ semantics of its own.
 - Pane-level actions live in that pane's header. Row and column actions live on
   the row or column and in the context menu. The grid has no redundant Table
   actions menu in its pane header.
-- Each pane header shows a stable, non-interactive view identity. View changes
-  and other low-frequency pane actions share one visibly labelled Pane menu.
+- Each pane header carries two triggers and nothing else that acts. The **view
+  name**, with its icon and a chevron, is the control that changes the view: it
+  opens the view selector and only that. A **trailing chevron**, right-aligned,
+  opens that pane's other actions. Splitting them puts the most frequent pane
+  command on the thing it names, and stops a menu that changes what you are
+  looking at from also holding the ways to close it.
+- The view name stays wrapped in the pane's heading rather than replacing it: a
+  button inside a heading is valid, a heading that is a button is not, and the
+  pane has to keep contributing to the document outline. The `Read only` badge
+  sits beside the trigger, outside it, because it reports state.
+- Both triggers name the view they belong to, because with four panes open the
+  view is the only thing that says which pane a trigger acts on. "Change view:
+  Markdown" and "Pane actions: Markdown", never a bare "Pane".
 - Editable pane bodies use the main panel surface. A non-editable pane uses the
   read-only surface and the written "Read only" label. Never rely on a muted
   background alone to communicate editability.
-- The Pane menu is flat. Changing the view, adding a view, closing the view, and
-  zooming are all plain items in it: never a submenu of formats. Add view grows
-  the workspace and hands the new pane's menu the focus, so the second half of
-  the intent is one keystroke rather than a nested level to open.
+- Both pane menus are flat. The view selector is one radio group and never a
+  submenu of formats; adding a view, closing the view, and zooming are plain
+  items in the actions menu. Add view grows the workspace and hands the new
+  pane's **view** trigger the focus, so choosing what it should show is one
+  keystroke rather than a hunt.
 - A view already open in another pane remains listed but disabled, with a
   tooltip explaining that it is already open. The current
   pane's own view remains selected and enabled. No workspace may show two
@@ -525,8 +537,13 @@ semantics of its own.
 Lucide only, `size-4` inside `control-md` and `size-3.5` inside `control-sm`.
 Always `aria-hidden`, because the accessible name comes from the button.
 
-Icon-only buttons are limited to the globally stable floating action trigger
-and the grid's per-row and per-column affordances, where a label would not fit.
+Icon-only buttons are limited to the globally stable floating action trigger,
+the grid's per-row and per-column affordances, and the pane header's actions
+chevron, where a label would not fit. The pane chevron earns the exemption
+because the view name beside it already carries the pane's identity: a second
+labelled button there repeated the word "Pane" once per open pane. Its
+accessible name is then the only signal it has, so that name states both the
+action and the view.
 Those axis affordances stay visually quiet with a small icon at rest, but their
 target is grown to the 1.75rem control minimum with an `::after`
 box rather than by taking layout the row gutter does not have. They appear on

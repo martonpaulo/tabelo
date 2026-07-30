@@ -116,3 +116,45 @@ test("every line number stays aligned with its line across pane zoom levels", as
 	}
 	await assertAlignment();
 });
+
+// The first source line is the table's header row and paints the same surface
+// as the pane header above it. A gap between them read as two header-coloured
+// bands separated by a panel-coloured strip, which is what this measures away.
+// Positions are compared rather than pinned, so the assertion survives a change
+// of scale.
+test("the first source line meets the pane header without a gap", async ({
+	tabelo,
+}) => {
+	const pane = tabelo.pane("markdown");
+	const header = pane.locator("header");
+	const firstLine = pane.locator(".cm-line").first();
+
+	await expect(firstLine).toHaveClass(/cm-tableHeaderLine/);
+
+	const headerBox = await header.boundingBox();
+	const lineBox = await firstLine.boundingBox();
+	expect(headerBox).not.toBeNull();
+	expect(lineBox).not.toBeNull();
+
+	const gap =
+		(lineBox?.y ?? 0) - ((headerBox?.y ?? 0) + (headerBox?.height ?? 0));
+	expect(gap).toBeLessThanOrEqual(0.5);
+	expect(gap).toBeGreaterThanOrEqual(-0.5);
+
+	// The line number stayed with its line, rather than the content sliding out
+	// from under the gutter.
+	const number = await pane
+		.locator(".cm-lineNumbers .cm-gutterElement")
+		.filter({ hasText: /^1$/ })
+		.boundingBox();
+	expect(Math.abs((number?.y ?? 0) - (lineBox?.y ?? 0))).toBeLessThan(1);
+
+	// Clicking below the last line still focuses the editor, which is what the
+	// bottom padding is for and why it was kept.
+	const content = await pane.locator(".cm-content").boundingBox();
+	await tabelo.page.mouse.click(
+		(content?.x ?? 0) + 20,
+		(content?.y ?? 0) + (content?.height ?? 0) - 4,
+	);
+	await expect(tabelo.source("markdown")).toBeFocused();
+});
