@@ -83,7 +83,7 @@
 	   work in, accepting that reaching the next pane means scrolling. */
 	--pane-stack-h: 60vh;
 	--fab-size: 3rem;
-	--pane-active-edge: 0.1875rem;
+	--pane-active-edge: 0.0625rem; /* 1 px */
 	--control-radius: 0.25rem;
 	--surface-radius: 0.5rem;
 	--radius: var(--control-radius);
