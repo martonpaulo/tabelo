@@ -157,20 +157,20 @@ body {
 	overscroll-behavior: none;
 }
 
-/* Stop every product-owned scroll container from passing either axis to its
-   parent. Inner scrollers retain their own native end-of-scroll feedback. */
-.tabelo-scroll-boundary,
-[data-slot="dropdown-menu-content"],
-[data-slot="context-menu-content"] {
-	overscroll-behavior: contain;
-}
-
 body {
 	background-color: var(--surface-app);
 }
 
 #app {
 	user-select: none;
+}
+
+/* Stop every product-owned scroll container from passing either axis to its
+   parent. Inner scrollers retain their own native end-of-scroll feedback. */
+.tabelo-scroll-boundary,
+[data-slot="dropdown-menu-content"],
+[data-slot="context-menu-content"] {
+	overscroll-behavior: contain;
 }
 
 .tabelo-active-pane {
