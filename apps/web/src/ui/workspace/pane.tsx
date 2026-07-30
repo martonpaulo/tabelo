@@ -1,5 +1,5 @@
 import { cn } from "@tabelo/ui/lib/utils";
-import { memo } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { Panel } from "@/ui/primitives/panel";
@@ -7,6 +7,7 @@ import { getView } from "@/views/registry";
 import { gridAreaStyle, type WorkspacePane } from "@/workspace/layout";
 import { PaneContent } from "./pane-content";
 import { PaneIdentity, PaneMenu } from "./pane-menu";
+import { PaneEntryContext, usePaneEntry } from "./use-pane-entry";
 
 // One pane frame for every view. The header carries only what belongs to this
 // pane: which view it shows and the state of that view. Document-level
@@ -31,49 +32,64 @@ export const Pane = memo(function Pane({
 	stacked,
 }: PaneProps) {
 	const view = getView(pane.view);
+	const ref = useRef<HTMLElement>(null);
+	const entered = usePaneEntry(ref);
+
+	const [announcement, setAnnouncement] = useState("");
+	useEffect(() => {
+		if (entered) setAnnouncement(copy.a11y.enteredPane);
+		else setAnnouncement("");
+	}, [entered]);
 
 	return (
-		<Panel
-			aria-current={active ? "true" : undefined}
-			aria-label={copy.a11y.pane(view.label)}
-			style={stacked ? undefined : { gridArea: gridAreaStyle(pane.slots) }}
-			className={cn(
-				"min-w-0",
-				// Tall enough to be worth scrolling to, and still allowed to grow
-				// when it is the only pane on screen.
-				stacked && "min-h-pane-stack flex-1",
-			)}
-			onPointerDownCapture={() => {
-				if (!active) useTabeloStore.getState().setActivePane(pane.id);
-			}}
-			onFocusCapture={() => {
-				if (!active) useTabeloStore.getState().setActivePane(pane.id);
-			}}
-		>
-			{/* Two triggers, one row: the view name changes the view, the trailing
+		<PaneEntryContext.Provider value={entered}>
+			<Panel
+				ref={ref}
+				aria-current={active ? "true" : undefined}
+				aria-label={copy.a11y.pane(view.label)}
+				aria-description={entered ? undefined : copy.a11y.paneInteractHint}
+				style={stacked ? undefined : { gridArea: gridAreaStyle(pane.slots) }}
+				className={cn(
+					"min-w-0",
+					// Tall enough to be worth scrolling to, and still allowed to grow
+					// when it is the only pane on screen.
+					stacked && "min-h-pane-stack flex-1",
+				)}
+				onPointerDownCapture={() => {
+					if (!active) useTabeloStore.getState().setActivePane(pane.id);
+				}}
+				onFocusCapture={() => {
+					if (!active) useTabeloStore.getState().setActivePane(pane.id);
+				}}
+			>
+				{/* Two triggers, one row: the view name changes the view, the trailing
 			    chevron opens this pane's actions. The spacer between them is what
 			    keeps the actions button right-aligned as the name shortens. */}
-			<Panel.Header className="overflow-hidden">
-				<PaneIdentity paneId={pane.id} view={view} compact={compact} />
-				<Panel.Spacer />
-				<PaneMenu paneId={pane.id} view={view} />
-			</Panel.Header>
+				<Panel.Header className="overflow-hidden">
+					<PaneIdentity paneId={pane.id} view={view} compact={compact} />
+					<Panel.Spacer />
+					<PaneMenu paneId={pane.id} view={view} />
+				</Panel.Header>
 
-			{/* Content scale is published to the body and nowhere else, so a zoomed
+				{/* Content scale is published to the body and nowhere else, so a zoomed
 			    pane keeps its header, controls, and focus targets at full size. */}
-			<Panel.Body
-				style={{ "--pane-zoom": pane.zoom } as React.CSSProperties}
-				className={cn(
-					view.kind === "source" && "overflow-hidden",
-					view.capabilities.editable
-						? "bg-surface-panel"
-						: "bg-surface-readonly",
-				)}
-			>
-				<PaneContent paneId={pane.id} view={view} zoom={pane.zoom} />
-			</Panel.Body>
+				<Panel.Body
+					style={{ "--pane-zoom": pane.zoom } as React.CSSProperties}
+					className={cn(
+						view.kind === "source" && "overflow-hidden",
+						view.capabilities.editable
+							? "bg-surface-panel"
+							: "bg-surface-readonly",
+					)}
+				>
+					<PaneContent paneId={pane.id} view={view} zoom={pane.zoom} />
+				</Panel.Body>
 
-			{active && <Panel.Overlay className="tabelo-active-pane-indicator" />}
-		</Panel>
+				{active && <Panel.Overlay className="tabelo-active-pane-indicator" />}
+				<div role="status" className="sr-only">
+					{announcement}
+				</div>
+			</Panel>
+		</PaneEntryContext.Provider>
 	);
 });

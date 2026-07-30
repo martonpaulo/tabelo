@@ -29,19 +29,19 @@ test("valid source edits synchronize without a pending healthy status", async ({
 	await tabelo.source("markdown").fill(validMarkdown);
 
 	await expect(tabelo.cell(1, 1)).toHaveText("Immediate");
-	await expect(tabelo.pane("markdown").getByRole("status")).toHaveCount(0);
+	await expect(tabelo.pane("markdown").getByRole("status")).toHaveCount(1);
 });
 
 test("transient invalid source stays quiet and keeps the last valid table", async ({
 	tabelo,
 }) => {
 	await tabelo.source("markdown").fill(invalidMarkdown);
-	await expect(tabelo.pane("markdown").getByRole("status")).toHaveCount(0);
+	await expect(tabelo.pane("markdown").getByRole("status")).toHaveCount(1);
 	await expect(tabelo.cell(1, 1)).toHaveText("");
 
 	await tabelo.source("markdown").fill(validMarkdown);
 	await expect(tabelo.cell(1, 1)).toHaveText("Immediate");
-	await expect(tabelo.pane("markdown").getByRole("status")).toHaveCount(0);
+	await expect(tabelo.pane("markdown").getByRole("status")).toHaveCount(1);
 });
 
 test("persistent invalid source is underlined while the grid stays valid", async ({

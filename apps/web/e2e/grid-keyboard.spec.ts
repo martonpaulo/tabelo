@@ -4,7 +4,7 @@ import { expect, test } from "./fixtures";
 
 // The grid is a hand-built widget, so every keyboard contract it advertises is
 // one it has to implement itself. The rule that shapes the rest: arrows are
-// internal navigation, and Tab is how you get out.
+// internal navigation, and Tab wraps around reading order. Escape is how you get out.
 
 function insideGrid(page: Page): Promise<boolean> {
 	return page.evaluate(() =>
@@ -18,7 +18,7 @@ function focusedCell(page: Page): Promise<string | null> {
 	);
 }
 
-test("Tab walks the grid in reading order and leaves after the last cell", async ({
+test("Tab walks the grid in reading order and wraps around after the last cell", async ({
 	page,
 	tabelo,
 }) => {
@@ -37,31 +37,29 @@ test("Tab walks the grid in reading order and leaves after the last cell", async
 	await page.keyboard.press("Shift+Tab");
 	expect(await focusedCell(page)).toBe("0:2");
 
-	// Continue to the last cell. Tab used to preventDefault at this edge, so the
-	// grid held focus forever.
+	// Continue to the last cell.
 	for (let press = 0; press < 6; press += 1) {
 		await page.keyboard.press("Tab");
 	}
 	expect(await focusedCell(page)).toBe("2:2");
 
+	// Tab wraps around to the first cell of the header row.
 	await page.keyboard.press("Tab");
-	expect(await focusedCell(page)).toBeNull();
-	expect(await insideGrid(page)).toBe(false);
+	expect(await focusedCell(page)).toBe("-1:0");
+	expect(await insideGrid(page)).toBe(true);
 });
 
-test("Shift+Tab leaves the grid at the first cell", async ({
+test("Shift+Tab wraps around the grid at the first cell", async ({
 	page,
 	tabelo,
 }) => {
 	await tabelo.cell(1, 1).click();
 
-	// Backwards out of the first cell walks the grid's own controls and then
-	// leaves; what matters is that it never stops moving.
+	// Backwards out of the first cell wraps around to the last cell.
 	for (let press = 0; press < 12; press += 1) {
 		await page.keyboard.press("Shift+Tab");
-		if (!(await insideGrid(page))) return;
+		expect(await insideGrid(page)).toBe(true);
 	}
-	throw new Error("Focus never left the grid going backwards.");
 });
 
 test("arrow navigation stays inside the grid at every edge", async ({

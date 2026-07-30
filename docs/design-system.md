@@ -622,19 +622,18 @@ These are requirements, not aspirations:
 
 ### The grid keyboard model
 
-One rule shapes the rest: **arrows are internal navigation, and Tab is how you
-get out.** A widget that answers every key is a trap.
+One rule shapes the rest: **the workspace is a two-level ring. `Tab` walks between panes; `Enter` enters a pane, and `Escape` exits it.** A widget that answers every key is a trap, so the escape hatch is unconditional.
 
 | Key | Effect |
 | :--- | :--- |
 | Arrows | Move the focused cell. They stop at the edges and never leave the grid |
 | `Shift`+Arrows | Extend the selection from the anchor |
 | `Alt`+Arrows | Reorder the row or column instead of navigating |
-| `Tab` / `Shift`+`Tab` | Move one cell in reading order, wrapping at row ends. At the very first and very last cell the key is **not** taken, so focus leaves the grid |
+| `Tab` / `Shift`+`Tab` | Move one cell in reading order, wrapping at row ends and grid edges. It never leaves the grid |
 | `Home` / `End` | First or last column of the row; with the modifier, the first or last cell of the table |
 | `Enter` / `F2` | Edit the focused cell. On a column header, rename it |
 | `Space` | On a column header, select the column: activating a button does what buttons do |
-| `Escape` | Leave the editor without committing; from a cell, collapse the selection |
+| `Escape` | Close the innermost thing first: cancel an edit, collapse a selection, close a menu. If nothing else is open, exit the pane |
 | `Backspace` | Clear the contents of the selection |
 | `Mod`+`Backspace` | Remove the selected rows or columns |
 | `Mod`+`Enter` | Add a row below |

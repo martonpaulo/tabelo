@@ -96,8 +96,8 @@ export class TabeloPage {
 	constructor(readonly page: Page) {
 		this.workspace = page.getByRole("main", { name: copy.a11y.workspace });
 		this.notices = page.getByRole("region", { name: copy.a11y.notices });
-		this.announcements = page.getByRole("status");
-		this.alerts = page.getByRole("alert");
+		this.announcements = page.locator("#global-announcements");
+		this.alerts = page.locator("#global-alerts");
 	}
 
 	// One notice bar, addressed by what its message means rather than by the

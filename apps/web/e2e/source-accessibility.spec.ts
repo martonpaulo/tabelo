@@ -12,7 +12,7 @@ test("parse errors underline the source and describe the editor", async ({
 	const editor = tabelo.source("markdown");
 
 	await expect(editor).not.toHaveAttribute("aria-invalid", "true");
-	await expect(pane.getByRole("status")).toHaveCount(0);
+	await expect(pane.getByRole("status")).toHaveCount(1);
 	await editor.fill(invalidMarkdown);
 
 	await expect(editor).toHaveAttribute("aria-invalid", "true");
@@ -34,7 +34,7 @@ test("parse errors underline the source and describe the editor", async ({
 	await editor.fill(validMarkdown);
 	await expect(editor).not.toHaveAttribute("aria-invalid", "true");
 	await expect(editor).not.toHaveAttribute("aria-describedby");
-	await expect(pane.getByRole("status")).toHaveCount(0);
+	await expect(pane.getByRole("status")).toHaveCount(1);
 
 	await editor.fill("");
 	await expect(editor).toHaveAttribute("aria-invalid", "true");

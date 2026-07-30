@@ -338,6 +338,17 @@ export function SourceEditor({
 					Prec.high(
 						keymap.of([
 							{
+								key: "Escape",
+								preventDefault: true,
+								run: (target) => {
+									const panel = target.dom.closest(
+										'[tabindex="0"]',
+									) as HTMLElement | null;
+									if (panel) panel.focus();
+									return true;
+								},
+							},
+							{
 								key: "Mod-z",
 								preventDefault: true,
 								run: (target) => {

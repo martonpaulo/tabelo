@@ -26,6 +26,7 @@ import type { Alignment } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
+import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import {
 	atMinimumColumnWidth,
 	isDefaultColumnWidth,
@@ -61,6 +62,7 @@ interface AxisMenuProps {
 
 export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 	const document = useTabeloStore((state) => state.document);
+	const entered = usePaneEntered();
 	const column = axis === "column" ? document.columns[index] : undefined;
 	const atMinimumWidth = atMinimumColumnWidth(column?.width);
 	const atDefaultWidth = isDefaultColumnWidth(column?.width);
@@ -94,6 +96,7 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 		<DropdownMenu>
 			<DropdownMenuTrigger
 				aria-label={label}
+				tabIndex={entered ? 0 : -1}
 				// The icon stays small so the grid stays quiet, while the ::after box
 				// grows the target to the control minimum without taking any
 				// layout: the row gutter has no room to spare. Same technique as the

@@ -52,10 +52,10 @@ export function LiveRegions({
 
 	return (
 		<>
-			<div role="status" className="sr-only">
+			<div role="status" id="global-announcements" className="sr-only">
 				{polite}
 			</div>
-			<div role="alert" className="sr-only">
+			<div role="alert" id="global-alerts" className="sr-only">
 				{assertive}
 			</div>
 		</>

@@ -11,6 +11,7 @@ import {
 import type { Alignment } from "@/core/types";
 import { type StructureDeletionRefusal, useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
+import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import { AxisMenu } from "./axis-menu";
 import { CellEditor } from "./cell-editor";
 import { clampColumnWidth, resolveColumnWidth } from "./column-width";
@@ -48,9 +49,11 @@ function adjacentCell(
 	direction: 1 | -1,
 	rows: number,
 	columns: number,
-): CellPosition | null {
-	const index = (from.row - HEADER_ROW) * columns + from.column + direction;
-	if (index < 0 || index >= (rows + 1) * columns) return null;
+): CellPosition {
+	const total = (rows + 1) * columns;
+	const index =
+		((from.row - HEADER_ROW) * columns + from.column + direction + total) %
+		total;
 	return {
 		row: Math.floor(index / columns) + HEADER_ROW,
 		column: index % columns,
@@ -63,6 +66,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const editing = useTabeloStore((state) => state.editing);
 	const editingSeed = useTabeloStore((state) => state.editingSeed);
 	const editingHeader = useTabeloStore((state) => state.editingHeader);
+	const entered = usePaneEntered();
 
 	const gridRef = useRef<HTMLTableElement>(null);
 	const draggingRef = useRef<"cell" | "column" | null>(null);
@@ -210,16 +214,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				moveFocus(0, 1, event.shiftKey);
 				return;
 			case "Tab": {
-				// Tab walks the cells in reading order, the way a spreadsheet does,
-				// but the grid is not a trap: at the very first and very last cell
-				// the key is left to the browser so focus continues out of the grid.
 				const next = adjacentCell(
 					selection.focus,
 					event.shiftKey ? -1 : 1,
 					store.document.rows.length,
 					store.document.columns.length,
 				);
-				if (!next) return;
 				event.preventDefault();
 				store.selectCell(next);
 				return;
@@ -248,8 +248,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				beginEditing(selection.focus);
 				return;
 			case "Escape":
-				event.preventDefault();
-				store.selectCell(selection.focus);
+				// Close the innermost thing first: if the selection spans multiple
+				// cells, collapse it. If it is already a single cell, let the event
+				// bubble so the pane frame can exit.
+				if (
+					selection.anchor.row !== selection.focus.row ||
+					selection.anchor.column !== selection.focus.column
+				) {
+					event.preventDefault();
+					store.selectCell(selection.focus);
+				}
 				return;
 			case "Delete":
 			case "Backspace":
@@ -478,6 +486,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								<div className="flex items-center justify-between gap-0.5">
 									<button
 										type="button"
+										tabIndex={entered ? 0 : -1}
 										aria-label={`${copy.actions.selectRow}: ${copy.a11y.rowNumber(rowIndex)}`}
 										className="cursor-pointer rounded-interactive px-1 hover:text-foreground"
 										onClick={() =>
@@ -514,7 +523,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
 										role="gridcell"
 										data-cell={`${rowIndex}:${columnIndex}`}
-										tabIndex={isFocus ? 0 : -1}
+										tabIndex={isFocus && entered ? 0 : -1}
 										aria-selected={inSelection}
 										aria-colindex={columnIndex + 1}
 										// Deliberately unlabelled: the cell's name is its value,
@@ -651,6 +660,7 @@ function ColumnIndexCell({
 		rootFontSize: number;
 	} | null>(null);
 	const letter = copy.a11y.columnLetter(columnIndex);
+	const entered = usePaneEntered();
 
 	return (
 		<td
@@ -673,6 +683,7 @@ function ColumnIndexCell({
 				    is the same rule the header cell announces by. */}
 				<button
 					type="button"
+					tabIndex={entered ? 0 : -1}
 					aria-label={`${copy.actions.selectColumn}: ${copy.a11y.columnHeader(header, columnIndex)}`}
 					className="min-w-0 flex-1 cursor-pointer truncate rounded-interactive px-1 hover:text-foreground"
 					onPointerDown={(event) => {
@@ -754,6 +765,7 @@ function HeaderCell({
 	seed,
 }: HeaderCellProps) {
 	const AlignmentIcon = alignmentIcon[align];
+	const entered = usePaneEntered();
 
 	return (
 		<th
@@ -768,7 +780,7 @@ function HeaderCell({
 			// what lets arrows, Shift+arrows, Tab, and the focus effect treat the
 			// header row like any other row.
 			data-cell={`${HEADER_ROW}:${columnIndex}`}
-			tabIndex={focus ? 0 : -1}
+			tabIndex={focus && entered ? 0 : -1}
 			className={cn(
 				"sticky z-20 overflow-hidden border-line-strong border-r border-b",
 				"cursor-cell select-none px-2 py-1.5 font-semibold",

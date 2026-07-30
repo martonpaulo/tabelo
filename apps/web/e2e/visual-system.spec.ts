@@ -506,12 +506,10 @@ test("read-only panes use a written cue and a distinct surface", async ({
 		readOnlyPane.getByText(copy.workspace.readOnly, { exact: true }),
 	).toBeVisible();
 	const editableBackground = await editablePane
-		.locator(":scope > div")
-		.last()
+		.locator('[data-slot="panel-body"]')
 		.evaluate((element) => getComputedStyle(element).backgroundColor);
 	const readOnlyBackground = await readOnlyPane
-		.locator(":scope > div")
-		.last()
+		.locator('[data-slot="panel-body"]')
 		.evaluate((element) => getComputedStyle(element).backgroundColor);
 	expect(readOnlyBackground).not.toBe(editableBackground);
 });

@@ -391,6 +391,8 @@ export const copy = {
 		notices: "Notices",
 		headerRow: "Row 1",
 		pane: (label: string) => `${label} pane`,
+		paneInteractHint: "Press Enter to interact, Escape to exit.",
+		enteredPane: "Entered pane. Press Escape to exit.",
 		rowNumber: (index: number) => `Row ${index + 2}`,
 		columnLetter,
 		// Header cells name themselves after what they contain, because that name
