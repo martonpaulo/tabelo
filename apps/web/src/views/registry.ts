@@ -129,6 +129,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 			...readOnlySourceCapabilities,
 			syntaxHighlighting: false,
 			textClipboard: false,
+			structuredClipboard: true,
 		},
 	},
 };

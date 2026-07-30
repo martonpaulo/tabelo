@@ -17,14 +17,51 @@ const writeRecovery = "The source could not be copied";
 async function recordingClipboard(page: Page): Promise<void> {
 	await page.addInitScript(() => {
 		Object.defineProperty(window, "__copied", {
-			value: [] as string[],
+			value: [] as { text: string; html?: string }[],
 			configurable: true,
 			writable: true,
 		});
+
+		Object.defineProperty(window, "ClipboardItem", {
+			value: class {
+				types: string[];
+				data: Record<string, Blob>;
+				constructor(data: Record<string, Blob>) {
+					this.data = data;
+					this.types = Object.keys(data);
+				}
+				async getType(type: string) {
+					return this.data[type];
+				}
+			},
+			configurable: true,
+		});
+
 		Object.defineProperty(navigator, "clipboard", {
 			value: {
 				writeText: async (text: string) => {
-					(window as unknown as { __copied: string[] }).__copied.push(text);
+					(
+						window as unknown as { __copied: { text: string; html?: string }[] }
+					).__copied.push({ text });
+				},
+				write: async (
+					items: Array<{
+						types: string[];
+						getType: (type: string) => Promise<{ text: () => Promise<string> }>;
+					}>,
+				) => {
+					const item = items[0];
+					let text = "";
+					let html: string | undefined;
+					if (item.types.includes("text/plain")) {
+						text = await (await item.getType("text/plain")).text();
+					}
+					if (item.types.includes("text/html")) {
+						html = await (await item.getType("text/html")).text();
+					}
+					(
+						window as unknown as { __copied: { text: string; html?: string }[] }
+					).__copied.push({ text, html });
 				},
 			},
 			configurable: true,
@@ -32,9 +69,13 @@ async function recordingClipboard(page: Page): Promise<void> {
 	});
 }
 
-function lastCopied(page: Page): Promise<string | undefined> {
+function lastCopied(
+	page: Page,
+): Promise<{ text: string; html?: string } | undefined> {
 	return page.evaluate(() =>
-		(window as unknown as { __copied: string[] }).__copied.at(-1),
+		(
+			window as unknown as { __copied: { text: string; html?: string }[] }
+		).__copied.at(-1),
 	);
 }
 
@@ -51,8 +92,8 @@ test("copies the visible source of a valid view", async ({ page, tabelo }) => {
 		tabelo.notice().filter({ hasText: "Source copied to the clipboard." }),
 	).toBeVisible();
 	const copied = await lastCopied(page);
-	expect(copied).toContain("Inez");
-	expect(copied).toContain("---");
+	expect(copied?.text).toContain("Inez");
+	expect(copied?.text).toContain("---");
 });
 
 test("copies a pending invalid draft byte for byte", async ({
@@ -73,7 +114,7 @@ test("copies a pending invalid draft byte for byte", async ({
 	await tabelo.runPaneCommand("markdown", "copySource");
 
 	// Not the last valid projection the other panes are still showing.
-	expect(await lastCopied(page)).toBe(invalidMarkdown);
+	expect((await lastCopied(page))?.text).toBe(invalidMarkdown);
 });
 
 test("a second pane cannot duplicate a format", async ({ tabelo }) => {
@@ -116,6 +157,34 @@ test("every source view offers the action and the preview does not", async ({
 	).toHaveCount(0);
 });
 
+test("copies both HTML and TSV from the preview pane", async ({
+	page,
+	tabelo,
+}) => {
+	await recordingClipboard(page);
+	await page.reload();
+	await tabelo.dismissWelcome();
+	await expect(tabelo.workspace).toBeVisible();
+
+	// Create some content
+	await tabelo.editCell(1, 1, "Inez");
+
+	await tabelo.choosePaneView("markdown", "html-preview");
+	await tabelo.runPaneCommand("html-preview", "copyFormattedTable");
+
+	await expect(
+		tabelo
+			.notice()
+			.filter({ hasText: "Formatted table copied to the clipboard." }),
+	).toBeVisible();
+
+	const copied = await lastCopied(page);
+	expect(copied?.text).toContain("Inez");
+	expect(copied?.text).toContain("\t"); // TSV
+	expect(copied?.html).toContain("Inez");
+	expect(copied?.html).toContain("<table");
+});
+
 test("a refused copy explains itself with source-specific advice", async ({
 	page,
 	tabelo,
@@ -123,6 +192,11 @@ test("a refused copy explains itself with source-specific advice", async ({
 	await page.addInitScript(() => {
 		Object.defineProperty(navigator, "clipboard", {
 			value: {
+				write: () => {
+					const error = new Error("denied");
+					error.name = "NotAllowedError";
+					return Promise.reject(error);
+				},
 				writeText: () => {
 					const error = new Error("denied");
 					error.name = "NotAllowedError";
@@ -140,6 +214,41 @@ test("a refused copy explains itself with source-specific advice", async ({
 
 	await expect(
 		tabelo.notice().filter({ hasText: writeRecovery }),
+	).toBeVisible();
+});
+
+test("a refused copy explains itself with preview-specific advice", async ({
+	page,
+	tabelo,
+}) => {
+	await page.addInitScript(() => {
+		Object.defineProperty(navigator, "clipboard", {
+			value: {
+				write: () => {
+					const error = new Error("denied");
+					error.name = "NotAllowedError";
+					return Promise.reject(error);
+				},
+				writeText: () => {
+					const error = new Error("denied");
+					error.name = "NotAllowedError";
+					return Promise.reject(error);
+				},
+			},
+			configurable: true,
+		});
+	});
+	await page.reload();
+	await tabelo.dismissWelcome();
+	await expect(tabelo.workspace).toBeVisible();
+
+	await tabelo.choosePaneView("markdown", "html-preview");
+	await tabelo.runPaneCommand("html-preview", "copyFormattedTable");
+
+	await expect(
+		tabelo.notice().filter({
+			hasText: "The table could not be copied. Select it and use ⌘C/Ctrl+C.",
+		}),
 	).toBeVisible();
 });
 

@@ -23,7 +23,10 @@ import {
 import { useEffect, useRef } from "react";
 import { canSerialize } from "@/formats";
 import { useTabeloStore, visibleTextForPane } from "@/state/store";
-import { copyToClipboard } from "@/ui/clipboard-actions";
+import {
+	copyFormattedTableToClipboard,
+	copyToClipboard,
+} from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
@@ -279,10 +282,12 @@ export function PaneMenu({
 					</DropdownMenuItem>
 				</DisabledTooltip>
 
-				{/* Whether a view's text can be copied is the registry's answer, not
-				    this component's. A read-only source view offers it. The rendered
-				    preview has no source to hand over, so it does not. */}
-				{view.capabilities.textClipboard ? (
+				{/* Whether a view can be copied from its pane menu is the registry's
+				    answer. Source views offer text; the rendered preview offers a
+				    structured table payload. The grid handles its own copying. */}
+				{view.capabilities.textClipboard ||
+				(view.capabilities.structuredClipboard &&
+					!view.capabilities.tableOperations) ? (
 					<>
 						<DropdownMenuSeparator />
 						<DisabledTooltip
@@ -296,14 +301,20 @@ export function PaneMenu({
 								disabled={currentViewFailure !== null}
 								onClick={() => {
 									const state = useTabeloStore.getState();
-									const visible = visibleTextForPane(state, paneId, view.id);
-									if (visible.ok) {
-										void copyToClipboard({ text: visible.text }, "source");
+									if (view.capabilities.textClipboard) {
+										const visible = visibleTextForPane(state, paneId, view.id);
+										if (visible.ok) {
+											void copyToClipboard({ text: visible.text }, "source");
+										}
+									} else {
+										void copyFormattedTableToClipboard(state.document);
 									}
 								}}
 							>
 								<ClipboardCopy aria-hidden />
-								{copy.actions.copySource}
+								{view.capabilities.textClipboard
+									? copy.actions.copySource
+									: copy.actions.copyFormattedTable}
 							</DropdownMenuItem>
 						</DisabledTooltip>
 					</>

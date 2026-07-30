@@ -1,4 +1,8 @@
 import type { ClipboardPayload } from "@/clipboard/parse";
+import { matrixToTsv } from "@/clipboard/serialize";
+import { documentToMatrix } from "@/core/document";
+import type { TableDocument } from "@/core/types";
+import { htmlCodec } from "@/formats";
 import {
 	type ClipboardBlock,
 	readClipboardTable,
@@ -17,7 +21,15 @@ import { copy } from "@/ui/copy";
 // What is being copied. It selects both the confirmation and the recovery
 // advice, because "select it and press the key" means something different in a
 // table than in a text editor.
-export type CopyScope = "selection" | "source";
+export type CopyScope = "selection" | "source" | "preview";
+
+export async function copyFormattedTableToClipboard(
+	document: TableDocument,
+): Promise<boolean> {
+	const html = htmlCodec.serialize(document);
+	const text = matrixToTsv(documentToMatrix(document));
+	return copyToClipboard({ text, html }, "preview");
+}
 
 export async function copyToClipboard(
 	payload: ClipboardPayload,

@@ -276,6 +276,7 @@ export const copy = {
 		rowActions: "Row actions",
 		columnActions: "Column actions",
 		copySource: "Copy source",
+		copyFormattedTable: "Copy formatted table",
 		downloadAs: "Download as",
 		downloadTable: "Download table",
 		download: "Download",
@@ -349,19 +350,23 @@ export const copy = {
 					return "There is no table to import. The current table was not changed.";
 			}
 		},
-		copied: (scope: "selection" | "source") =>
+		copied: (scope: "selection" | "source" | "preview") =>
 			scope === "source"
 				? "Source copied to the clipboard."
-				: "Copied to the clipboard.",
+				: scope === "preview"
+					? "Formatted table copied to the clipboard."
+					: "Copied to the clipboard.",
 		// Tabelo cannot grant itself clipboard permission, so the recovery is
 		// always the keyboard. It stays available because a trusted key press
 		// never needs the permission the button does.
 		clipboardReadFailed:
 			"Clipboard access was blocked. Use ⌘V/Ctrl+V or allow clipboard access, then try again.",
-		clipboardWriteFailed: (scope: "selection" | "source") =>
+		clipboardWriteFailed: (scope: "selection" | "source" | "preview") =>
 			scope === "source"
 				? "The source could not be copied. Select it in the editor and use ⌘C/Ctrl+C."
-				: "The selection could not be copied. Select it and use ⌘C/Ctrl+C.",
+				: scope === "preview"
+					? "The table could not be copied. Select it and use ⌘C/Ctrl+C."
+					: "The selection could not be copied. Select it and use ⌘C/Ctrl+C.",
 		clipboardEmpty: "There is nothing on the clipboard to paste.",
 		imported: "Table imported.",
 		storageUnavailable:
