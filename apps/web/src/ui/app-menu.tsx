@@ -147,12 +147,9 @@ export function AppMenu({
 				className="w-auto min-w-64 max-w-[calc(100vw-1.5rem)]"
 			>
 				<DropdownMenuGroup>
-					<DropdownMenuLabel className="max-w-72 whitespace-normal">
-						<span className="block font-semibold text-foreground">
-							{copy.app.name}
-						</span>
-						<span className="block">{copy.app.tagline}</span>
-					</DropdownMenuLabel>
+					<div className="max-w-72 whitespace-normal px-2 py-1.5 text-sm">
+						<MenuOption label={copy.app.name} description={copy.app.tagline} />
+					</div>
 				</DropdownMenuGroup>
 				{pwaUpdate.ready ? (
 					<>
