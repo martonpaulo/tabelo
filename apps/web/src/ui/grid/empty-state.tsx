@@ -53,7 +53,7 @@ export function EmptyState({
 						}}
 					>
 						<Upload aria-hidden />
-						{copy.empty.importAction}
+						{copy.actions.importFile}
 					</Button>
 				</div>
 			</section>

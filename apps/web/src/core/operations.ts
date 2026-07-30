@@ -23,10 +23,6 @@ function sortedDesc(indices: readonly number[]): number[] {
 	return [...new Set(indices)].sort((a, b) => b - a);
 }
 
-function sortedAsc(indices: readonly number[]): number[] {
-	return [...new Set(indices)].sort((a, b) => a - b);
-}
-
 export function setCell(
 	document: TableDocument,
 	rowIndex: number,
@@ -302,17 +298,6 @@ export function pasteMatrix(
 	return { ...next, rows };
 }
 
-// Replaces the header row's text from a matrix row, used by paste-into-header.
-export function setHeaders(
-	document: TableDocument,
-	values: readonly string[],
-): TableDocument {
-	const columns = document.columns.map((column, index) =>
-		values[index] === undefined ? column : { ...column, header: values[index] },
-	);
-	return { ...document, columns };
-}
-
 // Turns the current header row into a data row, leaving the header row empty.
 // This is the undoable correction offered when header detection guesses wrong.
 // The new header row is blank rather than generated: the row that moved down
@@ -331,4 +316,4 @@ export function demoteHeaderToRow(document: TableDocument): TableDocument {
 	return { columns, rows: [promoted, ...document.rows] };
 }
 
-export { sortedAsc, sortedDesc };
+export { sortedDesc };

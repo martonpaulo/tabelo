@@ -250,8 +250,6 @@ export const copy = {
 			`Insert ${count === 1 ? "column" : "columns"} left`,
 		insertColumnsRight: (count: number) =>
 			`Insert ${count === 1 ? "column" : "columns"} right`,
-		addRow: "Add row",
-		addColumn: "Add column",
 		duplicateRows: (count: number) =>
 			`Duplicate ${count === 1 ? "row" : "rows"}`,
 		duplicateColumns: (count: number) =>
@@ -272,12 +270,10 @@ export const copy = {
 		copy: "Copy",
 		cut: "Cut",
 		paste: "Paste",
-		more: "More actions",
 		rowActions: "Row actions",
 		columnActions: "Column actions",
 		copySource: "Copy source",
 		copyFormattedTable: "Copy formatted table",
-		downloadAs: "Download as",
 		downloadTable: "Download table",
 		download: "Download",
 		cancel: "Cancel",
@@ -285,7 +281,6 @@ export const copy = {
 		newTable: "New table",
 		selectRow: "Select row",
 		selectColumn: "Select column",
-		resizeColumn: "Resize column",
 		columnWidth: (rem: number) =>
 			`Column width ${Number.parseFloat(rem.toFixed(2))} rem`,
 		widenColumn: "Widen column",
@@ -328,7 +323,6 @@ export const copy = {
 		body: "Use an empty table, paste from the clipboard, or import Markdown, CSV, TSV, HTML, Jira, or JSON.",
 		emptyAction: "Use an empty table",
 		pasteHint: "Paste a table",
-		importAction: "Import a file",
 		sourceTitle: "Nothing here yet",
 		sourceBody: (label: string) => `Paste ${label} here to create the table.`,
 	},
