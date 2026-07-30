@@ -40,7 +40,7 @@ const views = {
 	json: {
 		label: "JSON",
 		shortLabel: "JSON",
-		description: "A JSON array of rows, with headers first.",
+		description: "An array of rows, each one keyed by the headers.",
 	},
 	"html-preview": {
 		label: "Rendered preview",
