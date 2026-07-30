@@ -32,6 +32,7 @@ import {
 	rectRows,
 	type SelectionMode,
 	selectionRect,
+	structureDeletionGuard,
 } from "@/core/selection";
 import type { Alignment, TableDocument } from "@/core/types";
 import { canSerialize } from "@/formats";
@@ -903,8 +904,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// selection mode decides whether that means rows or columns.
 	deleteSelectedStructure: () => {
 		const state = get();
-		if (state.selection.mode === "column") state.removeSelectedColumns();
-		else state.removeSelectedRows();
+		const guard = structureDeletionGuard(
+			[state.selection],
+			state.document.rows.length,
+			state.document.columns.length,
+		);
+		if (state.selection.mode === "column") {
+			if (!guard.wouldRemoveAllColumns) state.removeSelectedColumns();
+		} else if (!guard.wouldRemoveAllRows) state.removeSelectedRows();
 	},
 
 	selectedMatrix: () => {

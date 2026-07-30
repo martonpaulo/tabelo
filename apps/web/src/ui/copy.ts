@@ -246,11 +246,13 @@ export const copy = {
 		insertColumnRight: "Insert column right",
 		addRow: "Add row",
 		addColumn: "Add column",
-		duplicate: "Duplicate",
-		duplicateRows: "Duplicate rows",
-		duplicateColumns: "Duplicate columns",
-		deleteRows: "Delete rows",
-		deleteColumns: "Delete columns",
+		duplicateRows: (count: number) =>
+			`Duplicate ${count === 1 ? "row" : "rows"}`,
+		duplicateColumns: (count: number) =>
+			`Duplicate ${count === 1 ? "column" : "columns"}`,
+		deleteRows: (count: number) => `Delete ${count === 1 ? "row" : "rows"}`,
+		deleteColumns: (count: number) =>
+			`Delete ${count === 1 ? "column" : "columns"}`,
 		clear: "Clear contents",
 		moveUp: "Move up",
 		moveDown: "Move down",
