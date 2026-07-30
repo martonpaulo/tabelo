@@ -1,7 +1,5 @@
 import {
 	Dialog,
-	DialogCancel,
-	DialogConfirm,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -9,6 +7,7 @@ import {
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { copy } from "@/ui/copy";
+import { DialogCancel, DialogConfirm } from "@/ui/primitives/dialog-buttons";
 
 interface NewTableDialogProps {
 	readonly open: boolean;

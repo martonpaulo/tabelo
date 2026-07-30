@@ -102,37 +102,6 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
 	);
 }
 
-function DialogCancel({
-	...props
-}: Omit<DialogPrimitive.Close.Props, "render">) {
-	return (
-		<DialogPrimitive.Close
-			{...props}
-			data-slot="dialog-cancel"
-			data-variant="ghost"
-			render={<Button variant="ghost" />}
-		/>
-	);
-}
-
-function DialogConfirm({
-	destructive = false,
-	...props
-}: Omit<React.ComponentProps<typeof Button>, "variant" | "size"> & {
-	readonly destructive?: boolean;
-}) {
-	const variant = destructive ? "destructive" : "default";
-
-	return (
-		<Button
-			{...props}
-			data-slot="dialog-confirm"
-			data-variant={variant}
-			variant={variant}
-		/>
-	);
-}
-
 function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
 	return (
 		<DialogPrimitive.Title
@@ -161,9 +130,7 @@ function DialogDescription({
 
 export {
 	Dialog,
-	DialogCancel,
 	DialogClose,
-	DialogConfirm,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,

@@ -2,8 +2,6 @@ import { Button } from "@tabelo/ui/components/button";
 import { Checkbox } from "@tabelo/ui/components/checkbox";
 import {
 	Dialog,
-	DialogCancel,
-	DialogConfirm,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -23,6 +21,7 @@ import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copyToClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
+import { DialogCancel, DialogConfirm } from "@/ui/primitives/dialog-buttons";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { Notice } from "@/ui/primitives/notice";
 
