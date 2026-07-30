@@ -13,7 +13,8 @@ type PaneCommand =
 	| "zoomOut"
 	| "resetZoom"
 	| "zoomIn"
-	| "copySource";
+	| "copySource"
+	| "copyFormattedTable";
 
 const appCommandLabels: Record<AppCommand, string> = {
 	undo: copy.actions.undo,
@@ -29,6 +30,7 @@ const paneCommandLabels: Record<PaneCommand, string> = {
 	resetZoom: copy.workspace.resetZoom,
 	zoomIn: copy.workspace.zoomIn,
 	copySource: copy.actions.copySource,
+	copyFormattedTable: copy.actions.copyFormattedTable,
 };
 
 function requirePositiveIndex(value: number, name: string): void {
