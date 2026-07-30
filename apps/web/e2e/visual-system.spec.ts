@@ -657,3 +657,67 @@ for (const viewport of [
 		expect(headingSizes.size).toBe(1);
 	});
 }
+
+test("empty state actions share an alignment, avoid unpredictable wrapping, and preserve visual tab order across widths", async ({
+	page,
+}) => {
+	await page.goto("/");
+
+	const buttons = [
+		page.getByRole("button", { name: copy.empty.emptyAction }),
+		page.getByRole("button", { name: copy.empty.pasteHint }),
+		page.getByRole("button", { name: copy.actions.importFile }),
+	];
+
+	for (const button of buttons) {
+		await expect(button).toBeVisible();
+	}
+
+	const assertGeometryAndFocus = async (orientation: "row" | "column") => {
+		const boxes = await Promise.all(buttons.map((b) => b.boundingBox()));
+
+		for (let i = 1; i < boxes.length; i++) {
+			const prev = boxes[i - 1];
+			const curr = boxes[i];
+			expect(prev).toBeTruthy();
+			expect(curr).toBeTruthy();
+			if (!prev || !curr) return;
+
+			if (orientation === "column") {
+				// Same left edge
+				expect(curr.x).toBeCloseTo(prev.x, 1);
+				// One below another
+				expect(curr.y).toBeGreaterThan(prev.y + prev.height - 1);
+			} else {
+				// Same top edge
+				expect(curr.y).toBeCloseTo(prev.y, 1);
+				// One to the right of another
+				expect(curr.x).toBeGreaterThan(prev.x + prev.width - 1);
+			}
+		}
+
+		// Check Tab order matches visual order
+		await page.keyboard.press("Shift+Tab"); // reset focus out of the group just in case
+		await page.keyboard.press("Shift+Tab");
+		await page.keyboard.press("Shift+Tab");
+		await page.keyboard.press("Shift+Tab");
+		await buttons[0].focus(); // Focus first button manually to start sequence predictably
+		await expect(buttons[0]).toBeFocused();
+		await page.keyboard.press("Tab");
+		await expect(buttons[1]).toBeFocused();
+		await page.keyboard.press("Tab");
+		await expect(buttons[2]).toBeFocused();
+	};
+
+	// Test at narrow width (should be column)
+	await page.setViewportSize({ width: 320, height: 568 });
+	await assertGeometryAndFocus("column");
+
+	// Test at medium width (should be row)
+	await page.setViewportSize({ width: 800, height: 600 });
+	await assertGeometryAndFocus("row");
+
+	// Test at wide width (should be row)
+	await page.setViewportSize({ width: 1200, height: 800 });
+	await assertGeometryAndFocus("row");
+});
