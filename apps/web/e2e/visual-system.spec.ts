@@ -398,6 +398,14 @@ test("light and dark text and focus tokens meet their contrast floors", async ({
 		expect(
 			await contrastBetween(page, "--selection-edge", "--surface-panel"),
 		).toBeGreaterThanOrEqual(3);
+		// The filled dialog confirm sits on --popover, not on the welcome
+		// surface, so its contrast is not inherited from that use.
+		expect(
+			await contrastBetween(page, "--primary-foreground", "--primary"),
+		).toBeGreaterThanOrEqual(4.5);
+		expect(
+			await contrastBetween(page, "--primary", "--popover"),
+		).toBeGreaterThanOrEqual(3);
 
 		const selectionFills = await page.evaluate(() => {
 			const styles = getComputedStyle(document.documentElement);
