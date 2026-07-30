@@ -1,8 +1,18 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
+    # These paths cannot affect the built site or its pipeline. Keep the list
+    # here as the single owner for both push and pull request filtering.
+    paths-ignore: &non_build_paths
+      - "*.md"
+      - "docs/**"
+      - LICENSE
+      - ".scratch/**"
   pull_request:
-  workflow_call:
+    paths-ignore: *non_build_paths
+  workflow_dispatch:
 
 permissions:
   contents: read

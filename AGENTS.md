@@ -213,6 +213,11 @@ Prefer the smallest relevant check.
   `pnpm test:e2e:install`. Narrow it with `--project=chromium`, a spec name, or
   `-g "<title>"` while iterating, and run it whole before reporting
 
+CI and Pages deployment are skipped only when every changed path is known not
+to affect the built site or its pipeline: root Markdown files, `docs/**`,
+`LICENSE`, and `.scratch/**`. Any other path runs the full pipeline;
+`apps/web/src/product.ts` is a build input even though it contains product copy.
+
 Never claim a check passed unless it ran successfully.
 
 A behaviour that crosses a UI boundary belongs in the browser suite, not only
