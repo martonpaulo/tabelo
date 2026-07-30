@@ -160,11 +160,13 @@ function diagnosticExtension(diagnostics: readonly SourceDiagnostic[]) {
 }
 
 function headerLineExtension(language: HighlightLanguage) {
+	// JSON keys the header into every row object instead of writing it as a
+	// first line, so it has no header line to mark. Every other highlighted
+	// format opens with one.
 	if (
 		language !== "markdown" &&
 		language !== "delimited" &&
-		language !== "jira" &&
-		language !== "json"
+		language !== "jira"
 	) {
 		return [];
 	}
@@ -190,12 +192,6 @@ function headerLineExtension(language: HighlightLanguage) {
 					// trimming would have discarded the header of every unnamed table,
 					// which is what a new table now starts as.
 					if (line.text === "") continue;
-					if (
-						language === "json" &&
-						(line.text.trim() === "[" || line.text.trim() === "]")
-					) {
-						continue;
-					}
 					return Decoration.set([
 						Decoration.line({ class: "cm-tableHeaderLine" }).range(line.from),
 					]);

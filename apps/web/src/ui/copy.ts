@@ -40,7 +40,7 @@ const views = {
 	json: {
 		label: "JSON",
 		shortLabel: "JSON",
-		description: "A JSON array of rows, with headers first.",
+		description: "An array of rows, each one keyed by the headers.",
 	},
 	"html-preview": {
 		label: "Rendered preview",
@@ -204,11 +204,11 @@ export const copy = {
 				case "json-rows-required":
 					message = "JSON must be a non-empty array of rows.";
 					break;
-				case "json-row-array-required":
-					message = "Each JSON row must be an array.";
+				case "json-row-object-required":
+					message = "Each JSON row must be an object of column values.";
 					break;
 				case "json-header-required":
-					message = "The first JSON row must contain at least one header.";
+					message = "At least one JSON row must name a column.";
 					break;
 				case "json-string-cells-required":
 					message = "Every JSON cell must be a string.";

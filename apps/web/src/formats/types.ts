@@ -29,7 +29,7 @@ export type ParseIssue =
 	| ({ readonly code: "html-table-required" } & LocatedParseIssue)
 	| ({ readonly code: "json-invalid" } & LocatedParseIssue)
 	| ({ readonly code: "json-rows-required" } & LocatedParseIssue)
-	| ({ readonly code: "json-row-array-required" } & LocatedParseIssue)
+	| ({ readonly code: "json-row-object-required" } & LocatedParseIssue)
 	| ({ readonly code: "json-header-required" } & LocatedParseIssue)
 	| ({ readonly code: "json-string-cells-required" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-unclosed-quote" } & LocatedParseIssue)

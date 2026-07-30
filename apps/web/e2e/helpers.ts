@@ -284,11 +284,13 @@ export class TabeloPage {
 	}
 
 	// The header cell edits exactly like a data cell: double click, type, Enter.
-	async editHeader(column: number, value: string): Promise<void> {
+	// The editor is named after the header it is renaming, so renaming an
+	// already-named column has to say what it is called now.
+	async editHeader(column: number, value: string, current = ""): Promise<void> {
 		const header = this.header(column);
 		await header.dblclick();
 		const editor = this.grid().getByRole("textbox", {
-			name: copy.a11y.headerEditor("", column - 1),
+			name: copy.a11y.headerEditor(current, column - 1),
 		});
 		await editor.fill(value);
 		await editor.press("Enter");
