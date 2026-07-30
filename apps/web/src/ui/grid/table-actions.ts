@@ -13,7 +13,7 @@ import {
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import {
 	rectColumns,
-	rectRows,
+	rectDataRows,
 	selectionRect,
 	structureDeletionGuard,
 } from "@/core/selection";
@@ -70,8 +70,16 @@ export function buildTableActions(
 
 	const showRows = context.axis !== "column";
 	const showColumns = context.axis !== "row";
-	const rowCount = rectRows(rect).length;
+	// Row actions count data rows only. A selection may cover the header row,
+	// which is structurally required and so is never one of the rows an action
+	// inserts beside, duplicates, moves, or removes.
+	const dataRows = rectDataRows(rect);
+	const rowCount = dataRows.length;
 	const columnCount = rectColumns(rect).length;
+	const firstDataRow = dataRows[0];
+	const lastDataRow = dataRows.at(-1);
+	// Nothing to act on when the selection sits on the header row alone.
+	const noDataRows = rowCount === 0;
 	const deletionGuard = structureDeletionGuard(
 		[selection],
 		document.rows.length,
@@ -80,16 +88,19 @@ export function buildTableActions(
 
 	const insert: TableAction[] = [];
 	if (showRows) {
+		// Inserting beside the header row still adds one data row, so the label
+		// never reads as a count of zero.
+		const insertCount = Math.max(1, rowCount);
 		insert.push(
 			{
 				id: "row-above",
-				label: copy.actions.insertRowsAbove(rowCount),
+				label: copy.actions.insertRowsAbove(insertCount),
 				icon: ArrowUp,
 				run: () => store.addRowAbove(),
 			},
 			{
 				id: "row-below",
-				label: copy.actions.insertRowsBelow(rowCount),
+				label: copy.actions.insertRowsBelow(insertCount),
 				icon: ArrowDown,
 				run: () => store.addRowBelow(),
 			},
@@ -140,16 +151,20 @@ export function buildTableActions(
 		},
 	];
 
+	const duplicatesColumns = showColumns && !showRows;
 	const edit: TableAction[] = [
 		{
 			id: "duplicate",
-			label:
-				showColumns && !showRows
-					? copy.actions.duplicateColumns(columnCount)
-					: copy.actions.duplicateRows(rowCount),
+			label: duplicatesColumns
+				? copy.actions.duplicateColumns(columnCount)
+				: copy.actions.duplicateRows(rowCount),
 			icon: Copy,
+			// Duplicating the header row is not a thing a table can do: it would
+			// give the document a second one.
+			disabled: !duplicatesColumns && noDataRows,
+			disabledReason: copy.disabled.headerRowRequired,
 			run: () =>
-				showColumns && !showRows
+				duplicatesColumns
 					? store.duplicateSelectedColumns()
 					: store.duplicateSelectedRows(),
 		},
@@ -169,7 +184,7 @@ export function buildTableActions(
 				id: "move-up",
 				label: copy.actions.moveUp,
 				icon: ArrowUp,
-				disabled: rect.top === 0,
+				disabled: noDataRows || firstDataRow === 0,
 				disabledReason: copy.disabled.firstRow,
 				run: () => store.moveSelectedRow(-1),
 			},
@@ -177,7 +192,10 @@ export function buildTableActions(
 				id: "move-down",
 				label: copy.actions.moveDown,
 				icon: ArrowDown,
-				disabled: rect.bottom >= document.rows.length - 1,
+				disabled:
+					noDataRows ||
+					lastDataRow === undefined ||
+					lastDataRow >= document.rows.length - 1,
 				disabledReason: copy.disabled.lastRow,
 				run: () => store.moveSelectedRow(1),
 			},
@@ -212,8 +230,10 @@ export function buildTableActions(
 			icon: Trash2,
 			shortcut: copy.shortcuts.deleteStructure,
 			danger: true,
-			disabled: deletionGuard.wouldRemoveAllRows,
-			disabledReason: copy.disabled.lastRemainingRow,
+			disabled: noDataRows || deletionGuard.wouldRemoveAllRows,
+			disabledReason: noDataRows
+				? copy.disabled.headerRowRequired
+				: copy.disabled.lastRemainingRow,
 			run: () => store.removeSelectedRows(),
 		});
 	}

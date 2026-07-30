@@ -185,7 +185,7 @@ describe("header correction", () => {
 		const state = useTabeloStore.getState();
 		expect(state.headerCorrection).toBeNull();
 		expect(documentToMatrix(state.document)).toEqual([
-			["Column 1", "Column 2"],
+			["", ""],
 			["1", "2"],
 			["3", "4"],
 		]);
@@ -196,10 +196,7 @@ describe("header correction", () => {
 
 		const state = useTabeloStore.getState();
 		expect(state.headerCorrection).toBeNull();
-		expect(documentToMatrix(state.document)[0]).toEqual([
-			"Column 1",
-			"Column 2",
-		]);
+		expect(documentToMatrix(state.document)[0]).toEqual(["", ""]);
 	});
 
 	it("binds text-header correction to the imported document", () => {
@@ -272,7 +269,7 @@ describe("header correction", () => {
 		useTabeloStore.getState().demoteHeader();
 
 		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
-			["Column 1", "Column 2"],
+			["", ""],
 			["Name", "Role"],
 			["Inez", "Designer"],
 		]);

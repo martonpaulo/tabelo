@@ -185,7 +185,11 @@ function headerLineExtension(language: HighlightLanguage) {
 			build(view: EditorView): DecorationSet {
 				for (let number = 1; number <= view.state.doc.lines; number += 1) {
 					const line = view.state.doc.line(number);
-					if (line.text.trim() === "") continue;
+					// Only a line with no characters at all is skipped. A header row of
+					// empty cells still has its delimiters, and in TSV those are tabs:
+					// trimming would have discarded the header of every unnamed table,
+					// which is what a new table now starts as.
+					if (line.text === "") continue;
 					if (
 						language === "json" &&
 						(line.text.trim() === "[" || line.text.trim() === "]")

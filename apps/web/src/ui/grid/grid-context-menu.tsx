@@ -7,6 +7,7 @@ import {
 	ContextMenuTrigger,
 } from "@tabelo/ui/components/context-menu";
 import { Fragment, type ReactNode, useState } from "react";
+import { HEADER_ROW, rectContains, selectionRect } from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { buildTableActions, type TableActionContext } from "./table-actions";
@@ -43,7 +44,7 @@ export function GridContextMenu({
 					if (columnHeader) {
 						const column = Number(columnHeader.dataset.columnHeader);
 						setAxis("column");
-						store.selectCell({ row: 0, column }, "column");
+						store.selectCell({ row: HEADER_ROW, column }, "column");
 						return;
 					}
 					if (rowHeader) {
@@ -57,30 +58,19 @@ export function GridContextMenu({
 							.split(":")
 							.map(Number);
 						setAxis("cell");
-						const rect = {
-							top: Math.min(
-								store.selection.anchor.row,
-								store.selection.focus.row,
-							),
-							bottom: Math.max(
-								store.selection.anchor.row,
-								store.selection.focus.row,
-							),
-							left: Math.min(
-								store.selection.anchor.column,
-								store.selection.focus.column,
-							),
-							right: Math.max(
-								store.selection.anchor.column,
-								store.selection.focus.column,
-							),
-						};
-						const inside =
-							row >= rect.top &&
-							row <= rect.bottom &&
-							column >= rect.left &&
-							column <= rect.right;
-						if (!inside) store.selectCell({ row, column });
+						// Asked of the selection itself rather than recomputed from its
+						// anchor and focus: only selectionRect knows that a row or column
+						// selection spans the whole other axis, and that a column reaches
+						// the header row. Recomputing it here collapsed a select-all the
+						// moment the user right-clicked inside it.
+						const rect = selectionRect(
+							store.selection,
+							store.document.rows.length,
+							store.document.columns.length,
+						);
+						if (!rectContains(rect, row, column)) {
+							store.selectCell({ row, column });
+						}
 						return;
 					}
 					setAxis("cell");

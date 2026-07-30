@@ -1,5 +1,4 @@
 import type { Page } from "@playwright/test";
-import { defaultHeader } from "@/core/document";
 import { listCodecs } from "@/formats";
 import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
@@ -96,6 +95,7 @@ test("only CSV offers the header row choice", async ({ page, tabelo }) => {
 });
 
 test("CSV includes the header row by default", async ({ page, tabelo }) => {
+	await tabelo.editHeader(1, "Name");
 	await tabelo.editCell(1, 1, "Inez");
 
 	const file = await savedFile(page, async () => {
@@ -110,7 +110,7 @@ test("CSV includes the header row by default", async ({ page, tabelo }) => {
 	});
 
 	expect(file.name).toBe("table.csv");
-	expect(file.body.split("\n")[0]).toBe([0, 1, 2].map(defaultHeader).join(","));
+	expect(file.body.split("\n")[0]).toBe("Name,,");
 	expect(file.body).toContain("Inez");
 });
 
@@ -118,6 +118,7 @@ test("unchecking the option omits the header row from the file only", async ({
 	page,
 	tabelo,
 }) => {
+	await tabelo.editHeader(1, "Name");
 	await tabelo.editCell(1, 1, "Inez");
 
 	const file = await savedFile(page, async () => {
@@ -133,11 +134,11 @@ test("unchecking the option omits the header row from the file only", async ({
 	});
 
 	expect(file.body.split("\n")[0]).toBe("Inez,,");
-	expect(file.body).not.toContain(defaultHeader(0));
+	expect(file.body).not.toContain("Name");
 
 	// The table itself still has its header, and so does every other view.
-	await expect(tabelo.header(1)).toHaveText(defaultHeader(0));
-	await expect(tabelo.source("markdown")).toContainText(defaultHeader(0));
+	await expect(tabelo.header(1)).toHaveText("Name");
+	await expect(tabelo.source("markdown")).toContainText("Name");
 });
 
 // TSV shares CSV's serializer, so it is the format that would actually leak.
@@ -145,6 +146,7 @@ test("the option does not leak into other formats", async ({
 	page,
 	tabelo,
 }) => {
+	await tabelo.editHeader(1, "Name");
 	await tabelo.editCell(1, 1, "Inez");
 
 	await openChooser(page);
@@ -167,9 +169,7 @@ test("the option does not leak into other formats", async ({
 	});
 
 	expect(file.name).toBe("table.tsv");
-	expect(file.body.split("\n")[0]).toBe(
-		[0, 1, 2].map(defaultHeader).join("\t"),
-	);
+	expect(file.body.split("\n")[0]).toBe("Name\t\t");
 });
 
 test("the chooser is keyboard operable and Escape returns focus", async ({

@@ -652,3 +652,38 @@ contrasting surface and each column header carries a discreet, non-colour-only
 alignment indicator for default, left, centre, or right. An
 `aria-label` on a gridcell is a defect: it replaces the content with
 coordinates and repeats them on every arrow key.
+
+**A header cell holds editable text and nothing else.** It is a cell for every
+purpose the user can observe: it is selectable, it answers Enter, F2, and
+typing, and `Backspace` clears it. The one thing it is not is a row that can be
+deleted, because every table keeps exactly one header row. Everything that acts
+on the column as a whole (selecting it, its menu, its resize handle) belongs to
+the column index strip, not to the header cell.
+
+**An empty header stays empty.** Nothing generates a name for a column the user
+has not named. An unnamed column is identified by its letter on the index strip,
+and that letter is what its accessible name falls back to, so the announcement
+is never silent and no invented text ever reaches the document or a downloaded
+file.
+
+### The column index strip
+
+A row of column letters (`A`, `B`, ... `Z`, `AA`) sits above the header row and
+mirrors the row-number gutter on the other axis. Both are chrome:
+
+- It is **not a table row.** It carries `role="presentation"` so it never counts
+  toward `aria-rowcount` or shifts `aria-rowindex`; the header row is still row
+  1. Presentation rather than `aria-hidden`, because the controls it holds must
+  stay reachable.
+- Like the gutter, it **keeps its size at every zoom level** (`--grid-strip-h`).
+- **It owns the column.** Clicking a letter selects the whole column, header
+  included. The column menu and the resize handle live here, revealed by the
+  same rule as the row affordances (§6).
+- Its leftmost cell, where the letters meet the row numbers, is a dead corner:
+  an empty presentational cell, never a control.
+
+Four sticky layers now overlap, and their order is deliberate rather than
+accidental: body cells paint under the row gutter (`z-10`), which paints under
+the strip and header cells (`z-20`), which paint under the two corners that
+stick on both axes (`z-30`). A sticky cell must not also be `relative`: the
+later rule wins and turns the sticky offset into a static shift.

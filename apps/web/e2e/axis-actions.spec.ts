@@ -73,9 +73,13 @@ test("the row and column being worked in reveal their own actions", async ({
 
 	// Exactly the row and column the selection is in, and no others.
 	await expect.poll(() => opacity(rowTrigger(2))).toBe("1");
-	await expect.poll(() => opacity(columnTrigger("Column 2"))).toBe("1");
+	await expect
+		.poll(() => opacity(columnTrigger(copy.a11y.columnLetter(1))))
+		.toBe("1");
 	await expect.poll(() => opacity(rowTrigger(1))).toBe("0");
-	await expect.poll(() => opacity(columnTrigger("Column 1"))).toBe("0");
+	await expect
+		.poll(() => opacity(columnTrigger(copy.a11y.columnLetter(0))))
+		.toBe("0");
 });
 
 test("moving by keyboard moves the revealed affordance with it", async ({
@@ -105,8 +109,8 @@ test("tabbing into a header reveals its actions without a pointer", async ({
 	});
 	expect(await opacity(trigger)).toBe("0");
 
-	// focus-within on the header, not focus on the icon itself.
-	await tabelo.header(3).getByRole("button").first().focus();
+	// focus-within on the strip cell, not focus on the icon itself.
+	await tabelo.columnIndex(3).getByRole("button").first().focus();
 
 	await expect.poll(() => opacity(trigger)).toBe("1");
 });
@@ -244,12 +248,12 @@ test("column headers extend selection by drag, Shift, and the platform modifier"
 		(await tabelo.header(column).getAttribute("aria-selected")) === "true";
 
 	const first = await tabelo
-		.header(1)
+		.columnIndex(1)
 		.getByRole("button")
 		.first()
 		.boundingBox();
 	const third = await tabelo
-		.header(3)
+		.columnIndex(3)
 		.getByRole("button")
 		.first()
 		.boundingBox();
@@ -263,9 +267,9 @@ test("column headers extend selection by drag, Shift, and the platform modifier"
 	expect(await selected(2)).toBe(true);
 	expect(await selected(3)).toBe(true);
 
-	await tabelo.header(1).getByRole("button").first().click();
+	await tabelo.columnIndex(1).getByRole("button").first().click();
 	await tabelo
-		.header(2)
+		.columnIndex(2)
 		.getByRole("button")
 		.first()
 		.click({ modifiers: ["Shift"] });
@@ -274,9 +278,9 @@ test("column headers extend selection by drag, Shift, and the platform modifier"
 	expect(await selected(3)).toBe(false);
 
 	const modifier = process.platform === "darwin" ? "Meta" : "Control";
-	await tabelo.header(1).getByRole("button").first().click();
+	await tabelo.columnIndex(1).getByRole("button").first().click();
 	await tabelo
-		.header(3)
+		.columnIndex(3)
 		.getByRole("button")
 		.first()
 		.click({ modifiers: [modifier] });

@@ -31,6 +31,7 @@
 	--spacing-control-md: var(--control-h-md);
 	--spacing-panel-header: var(--panel-header-h);
 	--spacing-grid-gutter: var(--grid-gutter-w);
+	--spacing-grid-strip: var(--grid-strip-h);
 	--spacing-grid-row: var(--grid-row-h);
 	--spacing-grid-col: var(--grid-col-w);
 	--spacing-grid-col-min: var(--grid-col-w-min);
@@ -76,6 +77,9 @@
 	--control-h-md: 2rem;
 	--panel-header-h: 2.75rem;
 	--grid-gutter-w: 2.75rem;
+	/* The column index strip. Chrome that mirrors the row-number gutter on the
+	   other axis, so like the gutter it keeps its size at every zoom level. */
+	--grid-strip-h: 1.25rem;
 	--grid-row-h: 2rem;
 	--grid-col-w: 10.5rem;
 	--grid-col-w-min: 4.5rem;

@@ -21,6 +21,7 @@ import {
 	MoreVertical,
 	RotateCcw,
 } from "lucide-react";
+import { HEADER_ROW } from "@/core/selection";
 import type { Alignment } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
@@ -69,14 +70,16 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 			.getState()
 			.selectCell(
 				axis === "column"
-					? { row: 0, column: index }
+					? { row: HEADER_ROW, column: index }
 					: { row: index, column: 0 },
 				axis,
 			);
 
+	// A column names itself by its header, falling back to its index-strip letter
+	// when it has none, so the menu of an unnamed column is still identifiable.
 	const label =
 		axis === "column"
-			? `${copy.actions.columnActions}: ${column?.header ?? ""}`
+			? `${copy.actions.columnActions}: ${copy.a11y.columnHeader(column?.header ?? "", index)}`
 			: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(index)}`;
 
 	const Icon = axis === "column" ? ChevronDown : MoreVertical;

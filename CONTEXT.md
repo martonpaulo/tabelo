@@ -203,7 +203,15 @@ Related to: Table document, Import
 ## Rules and relationships
 
 - A table document has exactly one header row and zero or more data rows.
-- Row numbering includes that header row as row 1; data rows begin at row 2.
+- Row numbering includes that header row as row 1; data rows begin at row 2. The
+  header row's selection coordinate is therefore below the first data row's, so
+  that adding it addressed no renumbering of the data rows.
+- A header cell is an ordinary cell for selection, editing, and clearing. It
+  differs from a data cell in exactly one way: the header row can never be
+  deleted as a row.
+- A header may be empty, and an empty header stays empty. No `Column N` name is
+  ever generated. An unnamed column is identified positionally by its letter on
+  the column index strip, which is chrome and not part of the table.
 - A workspace holds two to four panes, and its panes tile all four slots exactly
   once. Every pane is rectangular; an L-shape is not representable.
 - A registered view appears in at most one pane in the workspace.

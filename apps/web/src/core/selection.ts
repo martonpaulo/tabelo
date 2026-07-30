@@ -1,4 +1,20 @@
-import type { CellRect } from "./operations";
+// A rectangle of grid coordinates. It lives here rather than beside the
+// operations that consume it because its coordinate space, including the header
+// row below zero, is the selection's to define.
+export interface CellRect {
+	readonly top: number;
+	readonly left: number;
+	readonly bottom: number;
+	readonly right: number;
+}
+
+// The header row's coordinate. Every table has exactly one header row, and it
+// sits above `document.rows[0]`, so it needs an index of its own to be
+// addressable at all. A sentinel below zero was chosen over renumbering the
+// data rows to 1-based: renumbering would touch every operation, every test,
+// and the aria-rowindex arithmetic, while this is one value the primitives
+// clamp against.
+export const HEADER_ROW = -1;
 
 export interface CellPosition {
 	readonly row: number;
@@ -35,10 +51,24 @@ export function selectionRect(
 	if (selection.mode === "row") {
 		return { top, bottom, left: 0, right: Math.max(0, columnCount - 1) };
 	}
+	// A column is its header plus its cells, so selecting one reaches the header
+	// row. That is what makes Mod+A, which selects every column, cover the whole
+	// table rather than only its body.
 	if (selection.mode === "column") {
-		return { top: 0, bottom: Math.max(0, rowCount - 1), left, right };
+		return { top: HEADER_ROW, bottom: Math.max(0, rowCount - 1), left, right };
 	}
 	return { top, bottom, left, right };
+}
+
+// The data rows a rect covers, with the header row dropped. Operations that act
+// on rows as structure use this, because the header row is structurally
+// required and is never one of the rows they may remove or duplicate.
+export function rectDataRows(rect: CellRect): number[] {
+	return rectRows(rect).filter((row) => row !== HEADER_ROW);
+}
+
+export function rectCoversHeader(rect: CellRect): boolean {
+	return rect.top === HEADER_ROW;
 }
 
 export function rectContains(
@@ -85,7 +115,9 @@ export function structureDeletionGuard(
 
 	for (const selection of selections) {
 		const rect = selectionRect(selection, rowCount, columnCount);
-		for (const row of rectRows(rect)) rows.add(row);
+		// Only data rows count: the header row is never a candidate for removal,
+		// so covering it must not make a selection look like it covers everything.
+		for (const row of rectDataRows(rect)) rows.add(row);
 		for (const column of rectColumns(rect)) columns.add(column);
 	}
 
@@ -100,8 +132,10 @@ export function clampSelection(
 	rowCount: number,
 	columnCount: number,
 ): GridSelection {
+	// The floor is the header row, not row 0: a selection sitting on the header
+	// survives a document change that shrank the rows underneath it.
 	const clamp = (position: CellPosition): CellPosition => ({
-		row: Math.max(0, Math.min(position.row, rowCount - 1)),
+		row: Math.max(HEADER_ROW, Math.min(position.row, rowCount - 1)),
 		column: Math.max(0, Math.min(position.column, columnCount - 1)),
 	});
 	return {

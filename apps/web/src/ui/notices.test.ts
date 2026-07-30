@@ -205,9 +205,11 @@ describe("actions", () => {
 
 		notice.actions[0]?.run();
 
-		expect(useTabeloStore.getState().document.columns[0]?.header).toBe(
-			copy.a11y.columnLetter(0),
-		);
+		// The guessed header row moves down into the data it always was, and the
+		// header row it leaves behind is empty rather than generated.
+		const document = useTabeloStore.getState().document;
+		expect(document.columns[0]?.header).toBe("");
+		expect(document.rows[0]?.cells[document.columns[0]?.id ?? ""]).toBe("Name");
 		expect(ids()).toEqual([]);
 	});
 });

@@ -4,11 +4,6 @@ import type { Alignment, Column, ColumnId, Row, TableDocument } from "./types";
 export const DEFAULT_COLUMN_COUNT = 3;
 export const DEFAULT_ROW_COUNT = 3;
 
-// Label given to a column that has no header of its own.
-export function defaultHeader(index: number): string {
-	return `Column ${index + 1}`;
-}
-
 export function createColumn(header: string): Column {
 	return { id: createColumnId(), header, align: "default" };
 }
@@ -28,9 +23,10 @@ export function createEmptyDocument(
 	columnCount = DEFAULT_COLUMN_COUNT,
 	rowCount = DEFAULT_ROW_COUNT,
 ): TableDocument {
-	const columns = Array.from({ length: columnCount }, (_, index) =>
-		createColumn(defaultHeader(index)),
-	);
+	// A new table starts unnamed. The column index strip gives each column its
+	// identity, so a seeded "Column 1" would only be content the user has to
+	// delete before typing their own.
+	const columns = Array.from({ length: columnCount }, () => createColumn(""));
 	const rows = Array.from({ length: rowCount }, () => createRow(columns));
 	return { columns, rows };
 }
@@ -43,12 +39,12 @@ export function getCell(
 	return document.rows.find((row) => row.id === rowId)?.cells[columnId] ?? "";
 }
 
-// True when the document holds no content at all: only blank cells.
+// True when the document holds no content at all: only blank cells. Nothing
+// generates header names any more, so a header that reads "Column 1" is text
+// the user typed and the document is not blank. That closes the trap where
+// typing it made your table count as untouched and clearable without warning.
 export function isDocumentBlank(document: TableDocument): boolean {
-	const headersBlank = document.columns.every(
-		(column, index) =>
-			column.header === "" || column.header === defaultHeader(index),
-	);
+	const headersBlank = document.columns.every((column) => column.header === "");
 	const cellsBlank = document.rows.every((row) =>
 		Object.values(row.cells).every((value) => value === ""),
 	);
@@ -89,7 +85,8 @@ export function detectHeaderRow(
 }
 
 export interface MatrixToDocumentOptions {
-	// When false, synthetic `Column N` headers are generated and row 1 stays data.
+	// When false, the header row is left empty and row 1 stays data. The table
+	// still has exactly one header row: it simply has no text in it yet.
 	readonly headerRow: boolean;
 	readonly alignments?: readonly Alignment[];
 }
@@ -101,13 +98,14 @@ export function documentFromMatrix(
 	const matrix = normalizeMatrix(input);
 	if (matrix.length === 0) return createEmptyDocument();
 
-	const headerValues = options.headerRow
-		? matrix[0]
-		: matrix[0].map((_, index) => defaultHeader(index));
+	const headerValues = options.headerRow ? matrix[0] : matrix[0].map(() => "");
 	const bodyRows = options.headerRow ? matrix.slice(1) : matrix;
 
+	// A blank header in the source stays blank. Coercing it to a generated name
+	// would turn it into content that then serializes out to every format,
+	// indistinguishable from a header the user typed.
 	const columns = headerValues.map((header, index) => ({
-		...createColumn(header.trim() === "" ? defaultHeader(index) : header),
+		...createColumn(header),
 		align: options.alignments?.[index] ?? "default",
 	}));
 	const rows = bodyRows.map((values) => createRow(columns, values));

@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef } from "react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import {
 	type CellPosition,
+	HEADER_ROW,
 	rectContains,
 	selectionRect,
 } from "@/core/selection";
 import type { Alignment } from "@/core/types";
-import { useTabeloStore } from "@/state/store";
+import { type StructureDeletionRefusal, useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { AxisMenu } from "./axis-menu";
 import { CellEditor } from "./cell-editor";
@@ -22,6 +23,14 @@ const alignClass: Record<Alignment, string> = {
 	right: "text-right",
 };
 
+// Why a structural delete was refused. Keyed by the store's refusal so a new
+// reason cannot be added without a message to show for it.
+const structureRefusalMessage: Record<StructureDeletionRefusal, string> = {
+	"last-row": copy.disabled.lastRemainingRow,
+	"last-column": copy.disabled.lastRemainingColumn,
+	"header-row": copy.disabled.headerRowRequired,
+};
+
 const alignmentIcon = {
 	default: AlignJustify,
 	left: AlignLeft,
@@ -31,15 +40,21 @@ const alignmentIcon = {
 
 // The next cell in reading order, or nothing when there is none. This is how
 // Tab knows it has reached an edge and should let focus leave the grid.
+//
+// Reading order starts at the header row, so the walk is offset by one row: a
+// grid of N data rows exposes N + 1 rows of cells.
 function adjacentCell(
 	from: CellPosition,
 	direction: 1 | -1,
 	rows: number,
 	columns: number,
 ): CellPosition | null {
-	const index = from.row * columns + from.column + direction;
-	if (index < 0 || index >= rows * columns) return null;
-	return { row: Math.floor(index / columns), column: index % columns };
+	const index = (from.row - HEADER_ROW) * columns + from.column + direction;
+	if (index < 0 || index >= (rows + 1) * columns) return null;
+	return {
+		row: Math.floor(index / columns) + HEADER_ROW,
+		column: index % columns,
+	};
 }
 
 export function TableGrid({ zoom }: { readonly zoom: number }) {
@@ -90,10 +105,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		return () => window.removeEventListener("pointerup", stop);
 	}, []);
 
+	// A column selection starts on the header row, because a column is its header
+	// plus its cells.
 	const selectColumn = useCallback((column: number, extend: boolean) => {
 		const store = useTabeloStore.getState();
 		if (!extend) {
-			store.selectCell({ row: 0, column }, "column");
+			store.selectCell({ row: HEADER_ROW, column }, "column");
 			return;
 		}
 
@@ -102,8 +119,8 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				? store.selection.anchor.column
 				: store.selection.focus.column;
 		store.setSelection({
-			anchor: { row: 0, column: anchorColumn },
-			focus: { row: 0, column },
+			anchor: { row: HEADER_ROW, column: anchorColumn },
+			focus: { row: HEADER_ROW, column },
 			mode: "column",
 		});
 	}, []);
@@ -112,8 +129,10 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		(rowDelta: number, columnDelta: number, extend: boolean) => {
 			const store = useTabeloStore.getState();
 			const next = {
+				// The floor is the header row: arrows and Shift+arrows reach it, and
+				// stop there rather than wrapping or escaping the grid.
 				row: Math.max(
-					0,
+					HEADER_ROW,
 					Math.min(
 						store.selection.focus.row + rowDelta,
 						store.document.rows.length - 1,
@@ -133,9 +152,26 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		[],
 	);
 
+	// Editing a header cell is editing the header, but from the keyboard's point
+	// of view it is the same gesture as editing any cell: Enter, F2, or just
+	// typing. One entry point keeps the two rows behaving alike.
+	const beginEditing = useCallback((at: CellPosition, seed?: string) => {
+		const store = useTabeloStore.getState();
+		if (at.row === HEADER_ROW) store.setEditingHeader(at.column, seed);
+		else store.setEditing(at, seed);
+	}, []);
+
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLTableElement>) => {
 		const store = useTabeloStore.getState();
 		if (store.editing || store.editingHeader !== null) return;
+
+		// The grid's keyboard model belongs to its cells. The chrome around them
+		// holds real controls: the row and column select handles and their menu
+		// triggers, and a key pressed on one of those is that control's own.
+		// Without this the printable-character branch below would swallow Space
+		// and the handles could never be activated from the keyboard.
+		const target = event.target as HTMLElement | null;
+		if (target && !target.closest("[data-cell]")) return;
 
 		const mod = event.metaKey || event.ctrlKey;
 
@@ -190,7 +226,10 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			}
 			case "Home":
 				event.preventDefault();
-				store.selectCell({ row: mod ? 0 : selection.focus.row, column: 0 });
+				store.selectCell({
+					row: mod ? HEADER_ROW : selection.focus.row,
+					column: 0,
+				});
 				return;
 			case "End":
 				event.preventDefault();
@@ -202,11 +241,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			case "Enter":
 				event.preventDefault();
 				if (mod) store.addRowBelow();
-				else store.setEditing(selection.focus);
+				else beginEditing(selection.focus);
 				return;
 			case "F2":
 				event.preventDefault();
-				store.setEditing(selection.focus);
+				beginEditing(selection.focus);
 				return;
 			case "Escape":
 				event.preventDefault();
@@ -223,10 +262,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					if (refusal) {
 						store.pushNotice({
 							severity: "warning",
-							message:
-								refusal === "last-column"
-									? copy.disabled.lastRemainingColumn
-									: copy.disabled.lastRemainingRow,
+							message: structureRefusalMessage[refusal],
 						});
 					}
 				} else store.clearSelection();
@@ -235,12 +271,14 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				break;
 		}
 
+		// Select-all covers every column, and a column includes its header, so the
+		// highlight and the next keystroke agree about the header row.
 		if (mod && event.key.toLowerCase() === "a") {
 			event.preventDefault();
 			store.setSelection({
-				anchor: { row: 0, column: 0 },
+				anchor: { row: HEADER_ROW, column: 0 },
 				focus: {
-					row: 0,
+					row: HEADER_ROW,
 					column: store.document.columns.length - 1,
 				},
 				mode: "column",
@@ -252,33 +290,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		// editor, the way a spreadsheet does: it is the fastest path to typing.
 		if (!mod && !event.altKey && event.key.length === 1) {
 			event.preventDefault();
-			store.setEditing(selection.focus, event.key);
+			beginEditing(selection.focus, event.key);
 		}
 	};
 
-	const selectedMatrix = () => {
-		const store = useTabeloStore.getState();
-		const current = selectionRect(
-			store.selection,
-			store.document.rows.length,
-			store.document.columns.length,
-		);
-		const body = store.document.rows
-			.slice(current.top, current.bottom + 1)
-			.map((row) =>
-				store.document.columns
-					.slice(current.left, current.right + 1)
-					.map((column) => row.cells[column.id] ?? ""),
-			);
-		return store.selection.mode === "column"
-			? [
-					store.document.columns
-						.slice(current.left, current.right + 1)
-						.map((c) => c.header),
-					...body,
-				]
-			: body;
-	};
+	const selectedMatrix = () => useTabeloStore.getState().selectedMatrix();
 
 	const writeClipboard = (event: React.ClipboardEvent) => {
 		const matrix = selectedMatrix();
@@ -346,26 +362,30 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				</colgroup>
 
 				<thead>
-					<tr>
-						<th
-							scope="row"
-							aria-label={copy.a11y.headerRow}
-							className="sticky top-0 left-0 z-30 border-line-strong border-r border-b bg-surface-header text-center font-semibold text-foreground text-xs tabular-nums"
-						>
-							1
-						</th>
+					{/* The column index strip. It is chrome, like the row-number gutter
+					    it mirrors, so role="presentation" keeps it out of the grid's row
+					    semantics: it must not count toward aria-rowcount or shift
+					    aria-rowindex. Presentation rather than aria-hidden, because the
+					    controls it holds have to stay reachable: aria-hidden would remove
+					    its descendants from the tree, taking column selection and the
+					    column menu with them. The lint rule reads a <tr> inside
+					    role="grid" as interactive; removing a chrome row from the row
+					    semantics is what role="presentation" is for. See §9. */}
+					{/* biome-ignore lint/a11y/noInteractiveElementToNoninteractiveRole: see above */}
+					<tr role="presentation">
+						{/* Where the letters meet the row numbers is a dead corner, not a
+						    control. */}
+						<td
+							role="presentation"
+							className="sticky top-0 left-0 z-30 h-grid-strip border-line-strong border-r border-b bg-surface-header"
+						/>
 						{document.columns.map((column, columnIndex) => (
-							<HeaderCell
+							<ColumnIndexCell
 								key={column.id}
 								columnIndex={columnIndex}
 								header={column.header}
-								align={column.align}
-								selected={
-									selection.mode === "column" &&
-									rectContains(rect, 0, columnIndex)
-								}
+								selected={rectContains(rect, HEADER_ROW, columnIndex)}
 								focused={selection.focus.column === columnIndex}
-								editing={editingHeader === columnIndex}
 								width={resolveColumnWidth(column.width)}
 								zoom={zoom}
 								onSelect={(extend) => selectColumn(columnIndex, extend)}
@@ -376,6 +396,51 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									if (draggingRef.current !== "column") return;
 									selectColumn(columnIndex, true);
 								}}
+							/>
+						))}
+					</tr>
+
+					<tr
+						// biome-ignore lint/a11y/noRedundantRoles: see the tbody rows
+						role="row"
+						aria-rowindex={1}
+						className="group/row"
+					>
+						<th
+							scope="row"
+							aria-label={copy.a11y.headerRow}
+							// Right-clicking row 1 offers row actions like any other row.
+							// Before the strip existed this lookup found nothing and the
+							// menu fell through to cell actions on a non-cell.
+							data-row-header={HEADER_ROW}
+							className={cn(
+								"sticky left-0 z-30 border-line-strong border-r border-b bg-surface-header",
+								"px-1 text-center font-semibold text-foreground text-xs tabular-nums",
+								"top-grid-strip",
+							)}
+						>
+							<div className="flex items-center justify-between gap-0.5">
+								<span>1</span>
+								<AxisMenu
+									axis="row"
+									index={HEADER_ROW}
+									revealed={selection.focus.row === HEADER_ROW}
+								/>
+							</div>
+						</th>
+						{document.columns.map((column, columnIndex) => (
+							<HeaderCell
+								key={column.id}
+								columnIndex={columnIndex}
+								header={column.header}
+								align={column.align}
+								selected={rectContains(rect, HEADER_ROW, columnIndex)}
+								focus={
+									selection.focus.row === HEADER_ROW &&
+									selection.focus.column === columnIndex
+								}
+								editing={editingHeader === columnIndex}
+								seed={editingSeed}
 							/>
 						))}
 					</tr>
@@ -550,14 +615,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	);
 }
 
-interface HeaderCellProps {
+// One cell of the column index strip. It carries the column's positional
+// letter, which for an unnamed column is the only identity it has, and it owns
+// every affordance that used to crowd the header text: selection, the column
+// menu, and the resize handle.
+interface ColumnIndexCellProps {
 	readonly columnIndex: number;
 	readonly header: string;
-	readonly align: Alignment;
 	readonly selected: boolean;
 	// The column the user is working in, which is where its actions appear.
 	readonly focused: boolean;
-	readonly editing: boolean;
 	// The stored width is in rem. Zoom scales what is rendered, so the drag
 	// gesture converts viewport pixels back before writing a width down.
 	readonly width: number;
@@ -567,97 +634,61 @@ interface HeaderCellProps {
 	readonly onDragEnter: () => void;
 }
 
-function HeaderCell({
+function ColumnIndexCell({
 	columnIndex,
 	header,
-	align,
 	selected,
 	focused,
-	editing,
 	width,
 	zoom,
 	onSelect,
 	onDragStart,
 	onDragEnter,
-}: HeaderCellProps) {
-	const AlignmentIcon = alignmentIcon[align];
+}: ColumnIndexCellProps) {
 	const resizeState = useRef<{
 		startX: number;
 		startWidth: number;
 		rootFontSize: number;
 	} | null>(null);
+	const letter = copy.a11y.columnLetter(columnIndex);
 
 	return (
-		<th
-			scope="col"
-			// The name a screen reader reads as the column context for every cell
-			// below, so it is the header's own text rather than a description of
-			// the two controls this cell contains.
-			aria-label={copy.a11y.columnHeader(header, columnIndex)}
-			aria-colindex={columnIndex + 1}
-			aria-selected={selected}
+		<td
+			role="presentation"
 			data-column-header={columnIndex}
+			data-column-letter={letter}
+			// `sticky` already establishes the containing block the resize handle
+			// positions against, so no `relative` here: it would win over `sticky`
+			// and turn the offset into a shift rather than a scroll threshold.
 			className={cn(
-				"group/col sticky top-0 z-20 overflow-hidden border-line-strong border-r border-b bg-surface-header",
-				"relative px-2 py-1.5 font-semibold",
-				alignClass[align],
-				selected && "bg-selection-fill",
+				"group/col sticky top-0 z-20 h-grid-strip border-line-strong border-r border-b",
+				"px-1 text-center font-normal text-muted-foreground text-xs",
+				selected ? "bg-selection-fill text-foreground" : "bg-surface-header",
 			)}
 			onPointerEnter={onDragEnter}
 		>
-			{editing ? (
-				<CellEditor
-					initialValue={header}
-					align={alignClass[align]}
-					ariaLabel={copy.a11y.headerEditor(header, columnIndex)}
-					onFinish={(next, exit) => {
-						const store = useTabeloStore.getState();
-						if (exit !== "cancel") store.editHeader(columnIndex, next);
-						store.setEditingHeader(null);
+			<div className="flex items-center justify-between gap-0.5">
+				{/* The handle for the whole column. It names itself after the column it
+				    selects, falling back to the letter when the header is empty, which
+				    is the same rule the header cell announces by. */}
+				<button
+					type="button"
+					aria-label={`${copy.actions.selectColumn}: ${copy.a11y.columnHeader(header, columnIndex)}`}
+					className="min-w-0 flex-1 cursor-pointer truncate rounded-interactive px-1 hover:text-foreground"
+					onPointerDown={(event) => {
+						if (event.button !== 0) return;
+						onDragStart();
+						onSelect(event.shiftKey || event.metaKey || event.ctrlKey);
 					}}
-				/>
-			) : (
-				<div className="flex items-center gap-1">
-					{/* Space selects the column, because that is what activating a
-					    button does; Enter and F2 rename it, matching the cells below.
-					    Both are the same pair the grid uses, so there is one thing to
-					    learn rather than two. */}
-					<button
-						type="button"
-						className={cn(
-							"min-w-0 flex-1 cursor-pointer truncate",
-							alignClass[align],
-						)}
-						title={`${copy.actions.editHeader} (${copy.shortcuts.editHeader})`}
-						onPointerDown={(event) => {
-							if (event.button !== 0) return;
-							onDragStart();
-							onSelect(event.shiftKey || event.metaKey || event.ctrlKey);
-						}}
-						onClick={(event) => {
-							// A keyboard-generated click has no pointer detail.
-							if (event.detail === 0) onSelect(event.shiftKey);
-						}}
-						onDoubleClick={() =>
-							useTabeloStore.getState().setEditingHeader(columnIndex)
-						}
-						onKeyDown={(event) => {
-							if (event.key !== "Enter" && event.key !== "F2") return;
-							// Without this the browser turns Enter into a click, which
-							// would select the column instead of renaming it.
-							event.preventDefault();
-							useTabeloStore.getState().setEditingHeader(columnIndex);
-						}}
-					>
-						{header}
-					</button>
-					<AlignmentIcon
-						aria-hidden
-						className="size-3.5 shrink-0 text-muted-foreground"
-					/>
-					<AxisMenu axis="column" index={columnIndex} revealed={focused} />
-				</div>
-			)}
+					onClick={(event) => {
+						// A keyboard-generated click has no pointer detail.
+						if (event.detail === 0) onSelect(event.shiftKey);
+					}}
+				>
+					{letter}
+				</button>
+				<AxisMenu axis="column" index={columnIndex} revealed={focused} />
+			</div>
 
 			{/* Pointer-only by design, and hidden from assistive technology because
 			    it duplicates a command: the column menu carries the same widen,
@@ -694,6 +725,98 @@ function HeaderCell({
 					resizeState.current = null;
 				}}
 			/>
+		</td>
+	);
+}
+
+// The header cell holds editable text and the alignment indicator, and nothing
+// else. Selecting the column and opening its menu belong to the index strip
+// above, so this behaves like the data cells below it: click to select, double
+// click or F2 to edit, Backspace to clear.
+interface HeaderCellProps {
+	readonly columnIndex: number;
+	readonly header: string;
+	readonly align: Alignment;
+	readonly selected: boolean;
+	readonly focus: boolean;
+	readonly editing: boolean;
+	// The character that opened the editor, when typing is what opened it.
+	readonly seed: string | null;
+}
+
+function HeaderCell({
+	columnIndex,
+	header,
+	align,
+	selected,
+	focus,
+	editing,
+	seed,
+}: HeaderCellProps) {
+	const AlignmentIcon = alignmentIcon[align];
+
+	return (
+		<th
+			scope="col"
+			// The name a screen reader reads as the column context for every cell
+			// below it. An empty header falls back to its letter from the strip, so
+			// the announcement is never silent and no content is invented.
+			aria-label={copy.a11y.columnHeader(header, columnIndex)}
+			aria-colindex={columnIndex + 1}
+			aria-selected={selected}
+			// Addressed as a cell, because it is one for selection purposes: this is
+			// what lets arrows, Shift+arrows, Tab, and the focus effect treat the
+			// header row like any other row.
+			data-cell={`${HEADER_ROW}:${columnIndex}`}
+			tabIndex={focus ? 0 : -1}
+			className={cn(
+				"sticky z-20 overflow-hidden border-line-strong border-r border-b",
+				"cursor-cell select-none px-2 py-1.5 font-semibold",
+				// Sticks below the index strip rather than at the very top, so the
+				// two chrome layers stack instead of covering one another.
+				"top-grid-strip",
+				alignClass[align],
+				selected ? "bg-selection-fill" : "bg-surface-header",
+				focus && "outline-2 outline-selection-edge -outline-offset-2",
+			)}
+			onPointerDown={(event) => {
+				if (event.button !== 0) return;
+				// A <th> is not focusable by default, so without this the browser's
+				// own mousedown handling moves focus to <body> after ours runs and
+				// the cell would look selected while ignoring every keystroke.
+				event.preventDefault();
+				const store = useTabeloStore.getState();
+				if (event.shiftKey) {
+					store.extendSelection({ row: HEADER_ROW, column: columnIndex });
+				} else {
+					store.selectCell({ row: HEADER_ROW, column: columnIndex });
+				}
+				event.currentTarget.focus();
+			}}
+			onDoubleClick={() =>
+				useTabeloStore.getState().setEditingHeader(columnIndex)
+			}
+		>
+			{editing ? (
+				<CellEditor
+					initialValue={seed ?? header}
+					align={alignClass[align]}
+					ariaLabel={copy.a11y.headerEditor(header, columnIndex)}
+					onFinish={(next, exit) => {
+						const store = useTabeloStore.getState();
+						if (exit !== "cancel") store.editHeader(columnIndex, next);
+						store.setEditingHeader(null);
+					}}
+				/>
+			) : (
+				<div className="flex items-center gap-1">
+					<span className="min-w-0 flex-1 truncate">{header}</span>
+					<AlignmentIcon
+						aria-hidden
+						className="size-3.5 shrink-0 text-muted-foreground"
+					/>
+				</div>
+			)}
 		</th>
 	);
 }
