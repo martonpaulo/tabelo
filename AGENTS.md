@@ -38,6 +38,14 @@ describes the migration and its downstream effects.
   version. No version in the UI, no tags, no `CHANGELOG.md`. The `0.0.0` in
   workspace manifests is a package-manager placeholder, not a product version.
   Never bump it as if it were a release
+- Branch naming: `type/agent/issue-number/short-description`. `type` is one of
+  `feature`, `hotfix`, `fix`, `chore`, `docs`, `refactor`, `test`. `agent` is
+  the acting coding agent (for example `claude`, `codex`), or `perso` for
+  branches created directly by the maintainer. `issue-number` is the GitHub
+  issue number as `issue-NNN`, zero-padded to three digits. `short-description`
+  is a kebab-case summary. Examples:
+  `hotfix/codex/issue-083/gutter-alignment-across-pane-zoom-levels`,
+  `feature/claude/issue-024/two-level-keyboard-navigation`
 - Delete branches after merge: enabled
 - Release, signing, and secret storage: **not applicable**. Nothing is
   downloaded, installed, or signed. Deployment is GitHub Pages via GitHub
@@ -401,6 +409,7 @@ here:
 ## Git
 
 - Follow the recorded commit and push policies above.
+- Name every new branch following the branch naming policy above.
 - Check status and branch before editing and before the final report.
 - Use Conventional Commits in English. One commit per concern.
 - Inspect the diff before committing. Never commit secrets, caches, generated
