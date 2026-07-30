@@ -156,6 +156,7 @@ jobs:
         env:
           # Pages serves this project from /tabelo/, not from the domain root.
           BASE_PATH: /tabelo/
+          SITE_ORIGIN: https://martonpaulo.github.io
 
       # Pages has no SPA rewrite rule. Serving index.html as 404.html lets deep
       # links reach the client router instead of GitHub's error page.

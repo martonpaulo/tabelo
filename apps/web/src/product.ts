@@ -6,4 +6,6 @@ export const product = {
 	documentTitle: "Tabelo: Edit one table in every view",
 	description:
 		"Edit one table visually or as Markdown, CSV, TSV, HTML, Jira, and JSON, always in sync, entirely in your browser.",
+	openGraphType: "website",
+	twitterCard: "summary",
 } as const;

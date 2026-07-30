@@ -4,10 +4,15 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { product } from "./src/product";
+import { createProductMetadata } from "./src/product-metadata";
 
 // GitHub Pages serves this project from a subpath. The deploy workflow sets
 // BASE_PATH; local dev and preview stay at the root.
 const base = process.env.BASE_PATH ?? "/";
+const productMetadata = createProductMetadata({
+	basePath: base,
+	siteOrigin: process.env.SITE_ORIGIN,
+});
 
 export default defineConfig({
 	base,
@@ -37,7 +42,8 @@ export default defineConfig({
 			transformIndexHtml: (html) =>
 				html
 					.replaceAll("__TABELO_DOCUMENT_TITLE__", product.documentTitle)
-					.replaceAll("__TABELO_DESCRIPTION__", product.description),
+					.replaceAll("__TABELO_DESCRIPTION__", product.description)
+					.replace("__TABELO_PRODUCT_METADATA__", productMetadata),
 		},
 		tailwindcss(),
 		tanstackRouter({
