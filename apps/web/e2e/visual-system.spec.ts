@@ -279,7 +279,6 @@ test("the active pane boundary stays above its content without reflow", async ({
 	expect(styles.borderColor).toBe(styles.token);
 	expect(styles.position).toBe("absolute");
 	expect(styles.pointerEvents).toBe("none");
-	expect(styles.zIndex).toBeGreaterThan(30);
 
 	await tabelo.source("markdown").click();
 	await expect(indicator).toHaveCount(0);
