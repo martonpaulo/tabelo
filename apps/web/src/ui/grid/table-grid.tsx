@@ -527,6 +527,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
 										role="gridcell"
 										data-cell={`${rowIndex}:${columnIndex}`}
+										data-grid-active={isFocus ? "true" : undefined}
 										tabIndex={isFocus && entered ? 0 : -1}
 										aria-selected={inSelection}
 										aria-colindex={columnIndex + 1}
@@ -782,10 +783,11 @@ function HeaderCell({
 			aria-label={copy.a11y.columnHeader(header, columnIndex)}
 			aria-colindex={columnIndex + 1}
 			aria-selected={selected}
-			// Addressed as a cell, because it is one for selection purposes: this is
+			// Address as a cell, because it is one for selection purposes: this is
 			// what lets arrows, Shift+arrows, Tab, and the focus effect treat the
 			// header row like any other row.
 			data-cell={`${HEADER_ROW}:${columnIndex}`}
+			data-grid-active={focus ? "true" : undefined}
 			tabIndex={focus && entered ? 0 : -1}
 			className={cn(
 				"sticky z-20 overflow-hidden border-line-strong border-r border-b",

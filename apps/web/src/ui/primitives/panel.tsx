@@ -21,10 +21,28 @@ const PanelRoot = forwardRef<HTMLElement, React.ComponentProps<"section">>(
 				onKeyDown={(event) => {
 					if (event.key === "Enter" && event.target === event.currentTarget) {
 						event.preventDefault();
-						const target = event.currentTarget.querySelector(
-							'[data-cell][tabindex="0"], [role="gridcell"][tabindex="0"], [role="textbox"], [data-pane-content] [tabindex]:not([tabindex="-1"]), button:not([disabled])',
-						) as HTMLElement | null;
-						target?.focus();
+						// Entry lands in the pane's content, never on the header's own
+						// triggers: those are chrome and sit beside the pane in the
+						// workspace ring, so a search over the whole pane would find
+						// one of them first and Enter would go nowhere useful.
+						const body = event.currentTarget.querySelector<HTMLElement>(
+							'[data-slot="panel-body"]',
+						);
+						if (body) {
+							// The grid's focused cell, a source editor, or a view that
+							// names its own entry target. Failing all three, the body:
+							// a preview has nothing to focus but still has to be
+							// scrollable once entered.
+							const target =
+								body.querySelector<HTMLElement>(
+									'[data-grid-active="true"], [role="textbox"], [data-pane-entry]',
+								) ??
+								body.querySelector<HTMLElement>(
+									'[tabindex]:not([tabindex="-1"]), button:not([disabled])',
+								) ??
+								body;
+							target.focus();
+						}
 					}
 					if (event.key === "Escape" && !event.defaultPrevented) {
 						event.preventDefault();
@@ -75,6 +93,12 @@ function PanelBody({
 	return (
 		<div
 			data-slot="panel-body"
+			// A scrollable container is put in the tab order by the browser itself
+			// once its content overflows, which would let Tab fall into the pane
+			// from the workspace ring and, by entering it, hand every per-row and
+			// per-column control inside back to that ring. An explicit -1 keeps it
+			// focusable for entry without making it a tab stop.
+			tabIndex={-1}
 			className={cn(
 				"tabelo-scroll-boundary relative min-h-0 flex-1 overflow-auto",
 				className,
