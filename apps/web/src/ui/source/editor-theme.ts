@@ -42,7 +42,6 @@ export const editorTheme = EditorView.theme({
 	},
 	".cm-lineNumbers .cm-gutterElement": {
 		padding: "0 calc(var(--spacing) * 2)",
-		lineHeight: "1.6",
 		// Grows with the digits it holds, so a zoomed-in editor does not clip
 		// three-figure line numbers.
 		minWidth: "calc(var(--pane-zoom, 1) * 2.5rem)",
