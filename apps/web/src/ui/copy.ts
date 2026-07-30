@@ -386,6 +386,7 @@ export const copy = {
 	a11y: {
 		grid: "Table editor",
 		workspace: "Workspace",
+		notices: "Notices",
 		headerRow: "Row 1",
 		pane: (label: string) => `${label} pane`,
 		rowNumber: (index: number) => `Row ${index + 2}`,

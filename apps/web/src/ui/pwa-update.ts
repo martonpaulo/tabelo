@@ -11,7 +11,10 @@ export interface PwaUpdate {
 }
 
 function reportRegistrationFailure(): void {
-	useTabeloStore.getState().setNotice(copy.notices.updateCheckFailed);
+	useTabeloStore.getState().pushNotice({
+		severity: "error",
+		message: copy.notices.updateCheckFailed,
+	});
 }
 
 export function usePwaUpdate(): PwaUpdate {
@@ -33,7 +36,10 @@ export function usePwaUpdate(): PwaUpdate {
 				})
 				.catch(() => {
 					setUpdating(false);
-					useTabeloStore.getState().setNotice(copy.notices.updateFailed);
+					useTabeloStore.getState().pushNotice({
+						severity: "error",
+						message: copy.notices.updateFailed,
+					});
 				});
 		},
 	};

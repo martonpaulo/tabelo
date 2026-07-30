@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
 import { createSelection } from "@/core/selection";
+import { conditionNoticeIds } from "./notice-queue";
 import { useTabeloStore } from "./store";
 
 const initialState = useTabeloStore.getInitialState();
@@ -291,7 +292,9 @@ describe("header correction", () => {
 			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
 		const before = useTabeloStore.getState().document;
 
-		useTabeloStore.getState().dismissNotice();
+		useTabeloStore
+			.getState()
+			.dismissNotice(conditionNoticeIds.headerCorrection);
 
 		expect(useTabeloStore.getState().document).toBe(before);
 		expect(useTabeloStore.getState().headerCorrection).toBeNull();

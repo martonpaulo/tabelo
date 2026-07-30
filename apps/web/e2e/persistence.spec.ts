@@ -44,7 +44,7 @@ test("unreadable storage stays byte-exact until explicit replacement", async ({
 	await tabelo.page.reload();
 
 	await expect(
-		tabelo.page.getByText(copy.notices.savedTableUnreadable),
+		tabelo.notices.getByText(copy.notices.savedTableUnreadable),
 	).toBeVisible();
 	expect(
 		await tabelo.page.evaluate(() =>
@@ -57,7 +57,7 @@ test("unreadable storage stays byte-exact until explicit replacement", async ({
 		.click();
 
 	await expect(
-		tabelo.page.getByText(copy.notices.replacedSavedData),
+		tabelo.notices.getByText(copy.notices.replacedSavedData),
 	).toBeVisible();
 	expect(
 		await tabelo.page.evaluate(() =>
@@ -91,7 +91,9 @@ test("quota notice clears after a later successful write", async ({
 	});
 
 	await tabelo.editCell(1, 1, "First");
-	await expect(tabelo.page.getByText(copy.notices.storageQuota)).toBeVisible();
+	await expect(
+		tabelo.notices.getByText(copy.notices.storageQuota),
+	).toBeVisible();
 
 	await tabelo.page.evaluate(() => {
 		const target = window as typeof window & {
@@ -101,5 +103,7 @@ test("quota notice clears after a later successful write", async ({
 	});
 	await tabelo.editCell(1, 2, "Second");
 
-	await expect(tabelo.page.getByText(copy.notices.storageQuota)).toHaveCount(0);
+	await expect(tabelo.notices.getByText(copy.notices.storageQuota)).toHaveCount(
+		0,
+	);
 });

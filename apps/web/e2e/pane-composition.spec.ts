@@ -114,7 +114,7 @@ test("closing a pane that owns an invalid draft asks before discarding it", asyn
 	// Nothing is lost yet: the pane, and the text in it, are still there.
 	await expect(tabelo.pane("markdown")).toBeVisible();
 	await expect(
-		tabelo.status.filter({ hasText: "before closing this view" }),
+		tabelo.notice().filter({ hasText: "before closing this view" }),
 	).toBeVisible();
 
 	await tabelo.page

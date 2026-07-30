@@ -92,7 +92,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 				</DialogHeader>
 
 				{pendingDraft ? (
-					<Notice tone="warning">
+					<Notice severity="warning">
 						<span className="flex-1">{copy.download.invalidDraft}</span>
 						<Button
 							variant="outline"
