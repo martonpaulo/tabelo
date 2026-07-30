@@ -20,7 +20,7 @@ test("every scroll boundary prevents scroll chaining on both axes", async ({
 		"contain",
 	);
 
-	const paneMenu = await tabelo.openPaneMenu("markdown");
+	const paneMenu = await tabelo.openPaneViewMenu("markdown");
 	await expect(paneMenu).toHaveCSS("overscroll-behavior", "contain");
 	await paneMenu
 		.getByRole("menuitemradio", { name: copy.views["html-preview"].label })

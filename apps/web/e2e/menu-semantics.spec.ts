@@ -33,7 +33,7 @@ test("the layout menu reports the current preset", async ({ tabelo }) => {
 });
 
 test("the view list reports what the pane is showing", async ({ tabelo }) => {
-	const menu = await tabelo.openPaneMenu("markdown");
+	const menu = await tabelo.openPaneViewMenu("markdown");
 	await expect(menu.getByRole("menuitemradio")).toHaveCount(8);
 	await expect(menu.getByRole("menuitemradio", { checked: true })).toHaveCount(
 		1,
@@ -44,7 +44,7 @@ test("the view list reports what the pane is showing", async ({ tabelo }) => {
 
 	await menu.getByRole("menuitemradio", { name: copy.views.csv.label }).click();
 
-	const reopened = await tabelo.openPaneMenu("csv");
+	const reopened = await tabelo.openPaneViewMenu("csv");
 	await expect(
 		reopened.getByRole("menuitemradio", { name: copy.views.csv.label }),
 	).toBeChecked();
@@ -57,7 +57,7 @@ test("a view already open elsewhere is disabled and explains why", async ({
 	page,
 	tabelo,
 }) => {
-	const menu = await tabelo.openPaneMenu("markdown");
+	const menu = await tabelo.openPaneViewMenu("markdown");
 	const blocked = menu.getByRole("menuitemradio", {
 		name: copy.views.grid.label,
 	});
@@ -84,10 +84,10 @@ test("a refused view change leaves the checked option truthful", async ({
 		"true",
 	);
 
-	const menu = await tabelo.openPaneMenu("markdown");
+	const menu = await tabelo.openPaneViewMenu("markdown");
 	await menu.getByRole("menuitemradio", { name: copy.views.csv.label }).click();
 
-	const reopened = await tabelo.openPaneMenu("markdown");
+	const reopened = await tabelo.openPaneViewMenu("markdown");
 	await expect(
 		reopened.getByRole("menuitemradio", { name: copy.views.markdown.label }),
 	).toBeChecked();

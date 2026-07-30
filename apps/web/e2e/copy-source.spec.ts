@@ -78,7 +78,7 @@ test("copies a pending invalid draft byte for byte", async ({
 
 test("a second pane cannot duplicate a format", async ({ tabelo }) => {
 	await tabelo.runPaneCommand("grid", "addView");
-	const menu = await tabelo.openPaneMenu("csv");
+	const menu = await tabelo.openPaneViewMenu("csv");
 	await expect(
 		menu.getByRole("menuitemradio", { name: copy.views.markdown.label }),
 	).toBeDisabled();

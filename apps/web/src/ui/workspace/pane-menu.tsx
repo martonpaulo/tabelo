@@ -14,7 +14,6 @@ import {
 import {
 	ChevronDown,
 	ClipboardCopy,
-	MoreHorizontal,
 	Plus,
 	RotateCcw,
 	X,
@@ -45,16 +44,95 @@ interface PaneIdentityProps {
 	readonly compact: boolean;
 }
 
-export function PaneIdentity({
-	view,
-	compact,
-}: Omit<PaneIdentityProps, "paneId">) {
+// The view name is the control that changes the view. The heading stays as the
+// wrapper rather than becoming the button itself: a button inside a heading is
+// valid, a heading that is a button is not, and the pane has to keep
+// contributing to the document outline. The Read only badge sits beside the
+// trigger, outside it, because it reports state rather than doing anything.
+export function PaneIdentity({ paneId, view, compact }: PaneIdentityProps) {
 	const Icon = view.icon;
+	const views = listViews();
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const openPanes = useTabeloStore((state) => state.workspace.panes);
+	const document = useTabeloStore((state) => state.document);
+
+	// A pane the user just added hands this trigger the focus, so the view it
+	// should show is one keystroke away rather than something to go looking for.
+	const wantsFocus = useTabeloStore((state) => state.paneMenuFocus === paneId);
+	useEffect(() => {
+		if (!wantsFocus) return;
+		triggerRef.current?.focus();
+		useTabeloStore.getState().clearPaneMenuFocus();
+	}, [wantsFocus]);
 
 	return (
 		<h2 className="flex min-w-0 items-center gap-1.5 font-medium text-sm">
-			<Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-			<span className="truncate">{compact ? view.shortLabel : view.label}</span>
+			<DropdownMenu>
+				<DropdownMenuTrigger
+					render={
+						<Button
+							ref={triggerRef}
+							variant="ghost"
+							size="sm"
+							// Says what it does and which view is current. A bare "Markdown"
+							// would read as a label rather than as a control.
+							aria-label={`${copy.workspace.changeView}: ${view.label}`}
+							className="min-w-0 font-medium"
+						/>
+					}
+				>
+					<Icon aria-hidden className="shrink-0 text-muted-foreground" />
+					<span className="truncate">
+						{compact ? view.shortLabel : view.label}
+					</span>
+					<ChevronDown aria-hidden className="shrink-0 opacity-60" />
+				</DropdownMenuTrigger>
+
+				{/* The pane shows exactly one view, so the list is a radio group.
+				    The checked value follows the store rather than the click, which
+				    is what keeps a refused change: an invalid draft: from leaving
+				    the menu claiming something the pane is not showing. */}
+				<DropdownMenuContent align="start" className="w-auto min-w-64">
+					<DropdownMenuRadioGroup
+						value={view.id}
+						onValueChange={(next) =>
+							useTabeloStore.getState().setPaneView(paneId, next as ViewId)
+						}
+					>
+						<DropdownMenuLabel>{copy.workspace.changeView}</DropdownMenuLabel>
+						{views.map((candidate) => {
+							const alreadyOpen = openPanes.some(
+								(pane) => pane.id !== paneId && pane.view === candidate.id,
+							);
+							const failure =
+								candidate.id !== view.id && candidate.codec
+									? canSerialize(candidate.codec, document)
+									: null;
+							const disabledReason = alreadyOpen
+								? copy.disabled.viewAlreadyOpen(candidate.label)
+								: failure
+									? copy.disabled.codecPrecondition(failure)
+									: undefined;
+							return (
+								<DisabledTooltip key={candidate.id} reason={disabledReason}>
+									<DropdownMenuRadioItem
+										value={candidate.id}
+										disabled={disabledReason !== undefined}
+										closeOnClick
+									>
+										<candidate.icon aria-hidden />
+										<MenuOption
+											label={candidate.label}
+											description={candidate.description}
+										/>
+									</DropdownMenuRadioItem>
+								</DisabledTooltip>
+							);
+						})}
+					</DropdownMenuRadioGroup>
+				</DropdownMenuContent>
+			</DropdownMenu>
+
 			{view.capabilities.editable ? null : (
 				<span className="shrink-0 rounded-interactive bg-surface-panel px-1.5 py-0.5 font-normal text-muted-foreground text-xs ring-1 ring-line-subtle">
 					{copy.workspace.readOnly}
@@ -68,8 +146,6 @@ export function PaneMenu({
 	paneId,
 	view,
 }: Pick<PaneIdentityProps, "paneId" | "view">) {
-	const views = listViews();
-	const triggerRef = useRef<HTMLButtonElement>(null);
 	const zoom = useTabeloStore(
 		(state) =>
 			state.workspace.panes.find((pane) => pane.id === paneId)?.zoom ??
@@ -83,86 +159,34 @@ export function PaneMenu({
 	const canClose = useTabeloStore(
 		(state) => smallerLayout(state.workspace.layout) !== undefined,
 	);
-	const openPanes = useTabeloStore((state) => state.workspace.panes);
 	const document = useTabeloStore((state) => state.document);
 	const currentViewFailure = view.codec
 		? canSerialize(view.codec, document)
 		: null;
-
-	// A pane the user just added hands its menu the focus, so the view it should
-	// show is one keystroke away rather than something to go looking for.
-	const wantsFocus = useTabeloStore((state) => state.paneMenuFocus === paneId);
-	useEffect(() => {
-		if (!wantsFocus) return;
-		triggerRef.current?.focus();
-		useTabeloStore.getState().clearPaneMenuFocus();
-	}, [wantsFocus]);
 
 	const setZoom = (next: number) =>
 		useTabeloStore.getState().setPaneZoom(paneId, next);
 
 	return (
 		<DropdownMenu>
+			{/* A chevron and nothing else, matching the column affordance. With the
+			    view name now carrying the pane's identity beside it, a second
+			    labelled button repeated the word "Pane" on every pane at once. The
+			    accessible name is the only signal left, so it names the view: with
+			    four panes open, "Pane actions" alone would not say which. */}
 			<DropdownMenuTrigger
 				render={
 					<Button
-						ref={triggerRef}
 						variant="ghost"
-						size="sm"
+						size="icon-sm"
 						aria-label={`${copy.workspace.paneActions}: ${view.label}`}
 					/>
 				}
 			>
-				<MoreHorizontal aria-hidden />
-				<span className="font-medium">{copy.workspace.pane}</span>
 				<ChevronDown aria-hidden className="opacity-60" />
 			</DropdownMenuTrigger>
 
 			<DropdownMenuContent align="end" className="w-auto min-w-64">
-				{/* The pane shows exactly one view, so the list is a radio group.
-				    The checked value follows the store rather than the click, which
-				    is what keeps a refused change: an invalid draft: from leaving
-				    the menu claiming something the pane is not showing. */}
-				<DropdownMenuRadioGroup
-					value={view.id}
-					onValueChange={(next) =>
-						useTabeloStore.getState().setPaneView(paneId, next as ViewId)
-					}
-				>
-					<DropdownMenuLabel>{copy.workspace.changeView}</DropdownMenuLabel>
-					{views.map((candidate) => {
-						const alreadyOpen = openPanes.some(
-							(pane) => pane.id !== paneId && pane.view === candidate.id,
-						);
-						const failure =
-							candidate.id !== view.id && candidate.codec
-								? canSerialize(candidate.codec, document)
-								: null;
-						const disabledReason = alreadyOpen
-							? copy.disabled.viewAlreadyOpen(candidate.label)
-							: failure
-								? copy.disabled.codecPrecondition(failure)
-								: undefined;
-						return (
-							<DisabledTooltip key={candidate.id} reason={disabledReason}>
-								<DropdownMenuRadioItem
-									value={candidate.id}
-									disabled={disabledReason !== undefined}
-									closeOnClick
-								>
-									<candidate.icon aria-hidden />
-									<MenuOption
-										label={candidate.label}
-										description={candidate.description}
-									/>
-								</DropdownMenuRadioItem>
-							</DisabledTooltip>
-						);
-					})}
-				</DropdownMenuRadioGroup>
-
-				<DropdownMenuSeparator />
-
 				<DropdownMenuGroup>
 					{/* The group's label carries the current value, so a screen reader
 					    reports the percentage on entering the group and again after each

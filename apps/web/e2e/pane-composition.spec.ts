@@ -19,7 +19,7 @@ test("a view is added from the pane and its picker takes the focus", async ({
 	// The new pane shows something the workspace was not already showing, and
 	// changing that choice is the next keystroke rather than a hunt.
 	await expect(tabelo.pane("csv")).toBeVisible();
-	await expect(tabelo.paneMenuTrigger("csv")).toBeFocused();
+	await expect(tabelo.paneViewTrigger("csv")).toBeFocused();
 });
 
 test("the added pane's view is chosen without touching the layout menu", async ({
@@ -27,13 +27,13 @@ test("the added pane's view is chosen without touching the layout menu", async (
 	tabelo,
 }) => {
 	await tabelo.runPaneCommand("markdown", "addView");
-	await expect(tabelo.paneMenuTrigger("csv")).toBeFocused();
+	await expect(tabelo.paneViewTrigger("csv")).toBeFocused();
 
-	// Enter opens the focused picker; the view list is the first thing in it.
+	// Enter opens the focused picker, which is the view list itself.
 	await page.keyboard.press("Enter");
 	await page
 		.getByRole("menu", {
-			name: `${copy.workspace.paneActions}: ${copy.views.csv.label}`,
+			name: `${copy.workspace.changeView}: ${copy.views.csv.label}`,
 		})
 		.getByRole("menuitemradio", { name: copy.views.jira.label })
 		.click();
@@ -253,4 +253,109 @@ test("the zoom level is reported to assistive technology", async ({
 	await expect(
 		menu.getByRole("menuitem", { name: copy.workspace.resetZoom }),
 	).toBeEnabled();
+});
+
+// The pane header carries two triggers, one per job. Both name the view they
+// belong to, because with four panes open the name is the only thing that says
+// which pane a trigger acts on.
+test("the pane header splits identity from actions", async ({ tabelo }) => {
+	const viewTrigger = tabelo.paneViewTrigger("markdown");
+	const actionsTrigger = tabelo.paneMenuTrigger("markdown");
+
+	await expect(viewTrigger).toBeVisible();
+	await expect(actionsTrigger).toBeVisible();
+
+	// The view name still contributes the pane's heading to the outline, and the
+	// trigger sits inside it rather than replacing it.
+	const heading = tabelo.pane("markdown").getByRole("heading");
+	await expect(heading).toHaveCount(1);
+	await expect(heading.getByRole("button")).toHaveCount(1);
+
+	// Neither name regresses to a bare "Pane" or a bare view label.
+	await expect(actionsTrigger).toHaveAccessibleName(
+		`${copy.workspace.paneActions}: ${copy.views.markdown.label}`,
+	);
+	await expect(viewTrigger).toHaveAccessibleName(
+		`${copy.workspace.changeView}: ${copy.views.markdown.label}`,
+	);
+
+	// The actions trigger is the trailing control, and the view name leads.
+	const viewBox = await viewTrigger.boundingBox();
+	const actionsBox = await actionsTrigger.boundingBox();
+	expect(viewBox?.x ?? 0).toBeLessThan(actionsBox?.x ?? 0);
+});
+
+test("each pane header trigger opens only its own menu", async ({
+	page,
+	tabelo,
+}) => {
+	const viewMenu = await tabelo.openPaneViewMenu("markdown");
+	await expect(viewMenu.getByRole("menuitemradio")).toHaveCount(8);
+	await expect(
+		viewMenu.getByRole("menuitem", { name: copy.workspace.zoomIn }),
+	).toHaveCount(0);
+	await page.keyboard.press("Escape");
+	await expect(viewMenu).toBeHidden();
+
+	const actionsMenu = await tabelo.openPaneMenu("markdown");
+	await expect(actionsMenu.getByRole("menuitemradio")).toHaveCount(0);
+	await expect(
+		actionsMenu.getByRole("menuitem", { name: copy.workspace.zoomIn }),
+	).toBeVisible();
+});
+
+test("changing the view from the view name keeps the pane working", async ({
+	tabelo,
+}) => {
+	await tabelo.choosePaneView("markdown", "jira");
+
+	await expect(tabelo.pane("jira")).toBeVisible();
+	await expect(tabelo.pane("markdown")).toHaveCount(0);
+	await expect(tabelo.paneViewTrigger("jira")).toHaveAccessibleName(
+		`${copy.workspace.changeView}: ${copy.views.jira.label}`,
+	);
+});
+
+// §5 requires a pane header to be one row that never wraps, shortening labels
+// instead. Two triggers plus the Read only badge is the tightest case today.
+test("the pane header stays one row at the narrowest four-pane width", async ({
+	page,
+	tabelo,
+}) => {
+	const headerHeight = () =>
+		tabelo
+			.pane("markdown")
+			.locator("header")
+			.evaluate((element) => element.getBoundingClientRect().height);
+
+	const roomy = await headerHeight();
+
+	await tabelo.chooseLayout("quad");
+	// Just above the breakpoint where the workspace stacks instead of tiling.
+	await page.setViewportSize({ width: 900, height: 700 });
+
+	for (const pane of await tabelo.workspace.getByRole("region").all()) {
+		const header = pane.locator("header");
+		expect(await header.evaluate((e) => e.getBoundingClientRect().height)).toBe(
+			roomy,
+		);
+		// Both triggers survive the squeeze; the label shortens instead.
+		await expect(
+			pane.getByRole("button", {
+				name: new RegExp(`^${copy.workspace.changeView}:`),
+			}),
+		).toBeVisible();
+		await expect(
+			pane.getByRole("button", {
+				name: new RegExp(`^${copy.workspace.paneActions}:`),
+			}),
+		).toBeVisible();
+	}
+
+	// And the workspace never grows a horizontal scrollbar to fit them.
+	expect(
+		await page.evaluate(
+			() => document.documentElement.scrollWidth <= window.innerWidth,
+		),
+	).toBe(true);
 });

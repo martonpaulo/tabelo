@@ -26,7 +26,12 @@ export const editorTheme = EditorView.theme({
 		overscrollBehavior: "contain",
 	},
 	".cm-content": {
-		padding: "calc(var(--spacing) * 3) 0",
+		// No top padding: the first line is the table's header row, and it paints
+		// the same surface as the pane header above it. A gap there read as two
+		// header-coloured bands with a panel-coloured strip between them. The
+		// bottom padding stays, because it is the target for clicking below the
+		// last line to focus the editor.
+		padding: "0 0 calc(var(--spacing) * 3)",
 		outline: "none",
 		userSelect: "text",
 	},

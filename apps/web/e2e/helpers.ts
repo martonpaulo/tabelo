@@ -216,7 +216,7 @@ export class TabeloPage {
 		nextView: ViewId,
 		index = 0,
 	): Promise<void> {
-		const menu = await this.openPaneMenu(currentView, index);
+		const menu = await this.openPaneViewMenu(currentView, index);
 		await menu
 			.getByRole("menuitemradio")
 			.filter({ hasText: getView(nextView).label })
@@ -227,10 +227,26 @@ export class TabeloPage {
 		await menu.waitFor({ state: "hidden" });
 	}
 
+	// The pane header carries two triggers. The view name on the left changes
+	// the view; the trailing chevron opens everything else this pane can do.
+	paneViewTrigger(view: ViewId, index = 0): Locator {
+		const label = getView(view).label;
+		return this.paneAt(view, index).getByRole("button", {
+			name: `${copy.workspace.changeView}: ${label}`,
+		});
+	}
+
 	paneMenuTrigger(view: ViewId, index = 0): Locator {
 		const label = getView(view).label;
 		return this.paneAt(view, index).getByRole("button", {
 			name: `${copy.workspace.paneActions}: ${label}`,
+		});
+	}
+
+	async openPaneViewMenu(view: ViewId, index = 0): Promise<Locator> {
+		await this.paneViewTrigger(view, index).click();
+		return this.page.getByRole("menu", {
+			name: `${copy.workspace.changeView}: ${getView(view).label}`,
 		});
 	}
 

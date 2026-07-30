@@ -174,10 +174,14 @@ test("single-line menu labels keep their compact shared treatment", async ({
 	await expect(layoutMenu).toBeHidden();
 	await page.keyboard.press("Escape");
 
-	const paneMenu = await tabelo.openPaneMenu("markdown");
+	const viewMenu = await tabelo.openPaneViewMenu("markdown");
 	await expectCompactLabel(
-		paneMenu.getByText(copy.workspace.changeView, { exact: true }),
+		viewMenu.getByText(copy.workspace.changeView, { exact: true }),
 	);
+	await page.keyboard.press("Escape");
+	await expect(viewMenu).toBeHidden();
+
+	const paneMenu = await tabelo.openPaneMenu("markdown");
 	const zoomLabel = paneMenu.getByText(copy.workspace.zoom(100), {
 		exact: true,
 	});
