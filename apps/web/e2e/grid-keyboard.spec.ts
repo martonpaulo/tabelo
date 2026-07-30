@@ -395,3 +395,48 @@ test("typing in a cell never reaches the grid's structural shortcuts", async ({
 	await editor.press("Escape");
 	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 });
+
+test("the header row is a row, and every row counted is a row exposed", async ({
+	tabelo,
+}) => {
+	const grid = tabelo.grid();
+	const rows = grid.getByRole("row");
+
+	// aria-rowcount and the exposed rows have to agree, or every row position a
+	// screen reader reads out is wrong by one. This is also what catches the
+	// index strip being counted: it is chrome, not a row.
+	const exposed = await rows.count();
+	await expect(grid).toHaveAttribute("aria-rowcount", String(exposed));
+
+	// The header row is row 1, so the first data row is row 2.
+	const headerRow = rows.first();
+	await expect(headerRow).toHaveAttribute("aria-rowindex", "1");
+	await expect(
+		headerRow.getByRole("rowheader", { name: copy.a11y.headerRow }),
+	).toBeVisible();
+	await expect(
+		headerRow.getByRole("columnheader", { name: copy.a11y.columnLetter(0) }),
+	).toBeVisible();
+	await expect(rows.nth(1)).toHaveAttribute("aria-rowindex", "2");
+});
+
+test("the selection extent is announced only when it changes", async ({
+	page,
+	tabelo,
+}) => {
+	// Silent on arrival, and silent while the extent stays one cell: the cell
+	// announces its own value as focus lands, and an extent over that would
+	// double-speak.
+	await expect(tabelo.announcements).toBeEmpty();
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("ArrowDown");
+	await expect(tabelo.announcements).toBeEmpty();
+
+	// Extending it is a change, and a held extension settles into one utterance
+	// carrying where the user stopped rather than one per keystroke.
+	await page.keyboard.press("Shift+ArrowRight");
+	await page.keyboard.press("Shift+ArrowDown");
+	await expect(tabelo.announcements).toHaveText(
+		copy.a11y.selectionSummary(2, 2),
+	);
+});

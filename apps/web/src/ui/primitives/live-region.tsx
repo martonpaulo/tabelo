@@ -19,8 +19,14 @@ export interface Announcement {
 
 export function LiveRegions({
 	announcements,
+	status = "",
 }: {
 	readonly announcements: readonly Announcement[];
+	// Polite text that is not a notice, currently the grid's selection extent.
+	// It shares this region rather than adding a third: the most recent polite
+	// thing is what the user needs to hear, and a second status region would
+	// compete with this one for the same moment of speech.
+	readonly status?: string;
 }) {
 	const [polite, setPolite] = useState("");
 	const [assertive, setAssertive] = useState("");
@@ -49,6 +55,14 @@ export function LiveRegions({
 		setPolite(textFor(fresh, "polite"));
 		setAssertive(textFor(fresh, "assertive"));
 	}, [announcements]);
+
+	// Last polite writer wins. A notice arriving mid-selection is the more
+	// urgent of the two, and a settled extent arriving after one is what the
+	// user asked for by moving the selection.
+	useEffect(() => {
+		if (!status) return;
+		setPolite(status);
+	}, [status]);
 
 	return (
 		<>

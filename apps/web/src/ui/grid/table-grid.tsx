@@ -416,6 +416,8 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					>
 						<th
 							scope="row"
+							// biome-ignore lint/a11y/noRedundantRoles: see the tbody rows
+							role="rowheader"
 							aria-label={copy.a11y.headerRow}
 							// Right-clicking row 1 offers row actions like any other row.
 							// Before the strip existed this lookup found nothing and the
@@ -470,6 +472,8 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 						>
 							<th
 								scope="row"
+								// biome-ignore lint/a11y/noRedundantRoles: see above
+								role="rowheader"
 								// The heading a screen reader reads as the row context for
 								// every cell beside it, so it names the row rather than
 								// concatenating the two controls it contains.
@@ -770,6 +774,8 @@ function HeaderCell({
 	return (
 		<th
 			scope="col"
+			// biome-ignore lint/a11y/noRedundantRoles: see the tbody rows
+			role="columnheader"
 			// The name a screen reader reads as the column context for every cell
 			// below it. An empty header falls back to its letter from the strip, so
 			// the announcement is never silent and no content is invented.
