@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getLayout } from "@/workspace/layout";
 import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
 // Browser storage accepts only the current schema. During this pre-user phase,
@@ -79,6 +80,34 @@ export const persistedStateSchema = z
 		draft: persistedDraftSchema.nullable(),
 	})
 	.superRefine((state, context) => {
+		// The preset is the only description of a valid tiling, so the count comes
+		// from it too rather than from a second lookup.
+		const preset = getLayout(state.workspace.layout);
+		// Matching each shape the preset declares against some stored pane proves
+		// an exact tiling once the counts agree, because no preset repeats a shape:
+		// two distinct shapes can never be satisfied by the same pane, so equal
+		// counts make the matching a bijection. Deliberately not indexed by
+		// position, because the order a payload happened to store its panes in is
+		// not part of the invariant, and rejecting a workspace that does tile its
+		// layout would cost the user their session for nothing.
+		const panesTileLayout =
+			state.workspace.panes.length === preset.panes.length &&
+			preset.panes.every((expectedSlots) =>
+				state.workspace.panes.some(
+					(pane) =>
+						pane.slots.length === expectedSlots.length &&
+						expectedSlots.every((slot) => pane.slots.includes(slot)),
+				),
+			);
+
+		if (!panesTileLayout) {
+			context.addIssue({
+				code: "custom",
+				path: ["workspace", "panes"],
+				message: "Workspace panes must tile the selected layout.",
+			});
+		}
+
 		const views = state.workspace.panes.map((pane) => pane.view);
 		if (new Set(views).size !== views.length) {
 			context.addIssue({
