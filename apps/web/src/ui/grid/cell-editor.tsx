@@ -79,7 +79,7 @@ export function CellEditor({
 				// while editing, arrows move the caret, not the selection.
 			}}
 			className={cn(
-				"absolute inset-0 z-10 size-full cursor-text resize-none bg-background px-2 py-1.5 text-content",
+				"absolute inset-0 z-10 size-full cursor-text resize-none bg-background px-2 text-content leading-content-line-box",
 				"outline-2 outline-selection-edge -outline-offset-2",
 				align,
 			)}

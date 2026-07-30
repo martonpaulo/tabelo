@@ -52,6 +52,7 @@
 	--text-content: calc(var(--pane-zoom, 1) * 0.875rem);
 	--text-content--line-height: calc(var(--pane-zoom, 1) * 1.25rem);
 	--spacing-content-line: calc(var(--pane-zoom, 1) * 1.25rem);
+	--spacing-content-line-box: calc(var(--pane-zoom, 1) * 2rem);
 }
 
 :root {
@@ -81,7 +82,7 @@
 	/* The column index strip. Chrome that mirrors the row-number gutter on the
 	   other axis, so like the gutter it keeps its size at every zoom level. */
 	--grid-strip-h: 1.25rem;
-	--grid-row-h: 2rem;
+	--grid-row-h: calc(var(--pane-zoom, 1) * 2rem);
 	--grid-col-w: 10.5rem;
 	--grid-col-w-min: 4.5rem;
 	/* How tall a pane stays once the workspace stacks. Enough of the table to
