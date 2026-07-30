@@ -221,3 +221,5 @@ including with us.
 ## License
 
 [MIT](LICENSE) © 2026 Marton Paulo
+
+<!-- Issue #67 docs-only path-filter validation. -->
