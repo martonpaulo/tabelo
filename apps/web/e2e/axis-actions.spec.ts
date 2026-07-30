@@ -163,10 +163,77 @@ test("the axis and context menus describe the same actions", async ({
 		expect(fromContext.some((label) => label?.startsWith(action))).toBe(true);
 	}
 	expect(
-		fromRow.some((label) => label?.startsWith(copy.actions.insertRowAbove)),
+		fromRow.some((label) => label?.startsWith(copy.actions.insertRowsAbove(1))),
 	).toBe(true);
 	// A row menu offers nothing about columns.
 	expect(fromRow.some((label) => label?.includes("column"))).toBe(false);
+});
+
+test("context menu refuses to delete every selected column", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("ControlOrMeta+a");
+	await tabelo.cell(1, 2).click({ button: "right" });
+
+	const action = page
+		.getByRole("menu")
+		.getByRole("menuitem", { name: copy.actions.deleteColumns(3) });
+	await expect(
+		page
+			.getByRole("menu")
+			.getByRole("menuitem", { name: copy.actions.insertColumnsLeft(3) }),
+	).toBeVisible();
+	await expect(action).toBeDisabled();
+	await action.hover();
+	await expect(page.getByText(copy.disabled.lastRemainingColumn)).toBeVisible();
+	await page.keyboard.press("Escape");
+	await page.keyboard.press("Escape");
+
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("ControlOrMeta+a");
+	await page.keyboard.press("ControlOrMeta+Backspace");
+	await expect(tabelo.notice("warning")).toContainText(
+		copy.disabled.lastRemainingColumn,
+	);
+	await expect(tabelo.header(1)).toHaveAccessibleName(
+		copy.a11y.columnLetter(0),
+	);
+	await expect(tabelo.header(3)).toHaveAccessibleName(
+		copy.a11y.columnLetter(2),
+	);
+});
+
+test("context menu refuses to delete every selected row", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.cell(1, 2).click();
+	await page.keyboard.press("Shift+ArrowDown");
+	await page.keyboard.press("Shift+ArrowDown");
+	await tabelo.cell(2, 2).click({ button: "right" });
+
+	const action = page
+		.getByRole("menu")
+		.getByRole("menuitem", { name: copy.actions.deleteRows(3) });
+	await expect(
+		page
+			.getByRole("menu")
+			.getByRole("menuitem", { name: copy.actions.insertRowsAbove(3) }),
+	).toBeVisible();
+	await expect(action).toBeDisabled();
+	await action.hover();
+	await expect(page.getByText(copy.disabled.lastRemainingRow)).toBeVisible();
+	await page.keyboard.press("Escape");
+	await page.keyboard.press("Escape");
+
+	await tabelo.cell(2, 2).focus();
+	await page.keyboard.press("ControlOrMeta+Backspace");
+	await expect(tabelo.notice("warning")).toContainText(
+		copy.disabled.lastRemainingRow,
+	);
+	await expect(tabelo.cell(3, 1)).toBeVisible();
 });
 
 test("column headers extend selection by drag, Shift, and the platform modifier", async ({

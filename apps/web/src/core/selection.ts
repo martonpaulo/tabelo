@@ -68,6 +68,33 @@ export function rectColumns(rect: CellRect): number[] {
 	);
 }
 
+export interface StructureDeletionGuard {
+	readonly wouldRemoveAllRows: boolean;
+	readonly wouldRemoveAllColumns: boolean;
+}
+
+// Accept a list now so the deletion contract remains correct when selections
+// gain multiple ranges. Sets count coverage, not overlap between ranges.
+export function structureDeletionGuard(
+	selections: readonly GridSelection[],
+	rowCount: number,
+	columnCount: number,
+): StructureDeletionGuard {
+	const rows = new Set<number>();
+	const columns = new Set<number>();
+
+	for (const selection of selections) {
+		const rect = selectionRect(selection, rowCount, columnCount);
+		for (const row of rectRows(rect)) rows.add(row);
+		for (const column of rectColumns(rect)) columns.add(column);
+	}
+
+	return {
+		wouldRemoveAllRows: rows.size >= rowCount,
+		wouldRemoveAllColumns: columns.size >= columnCount,
+	};
+}
+
 export function clampSelection(
 	selection: GridSelection,
 	rowCount: number,

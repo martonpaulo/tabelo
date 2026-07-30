@@ -21,6 +21,7 @@ import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copyToClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
+import { DialogCancel, DialogConfirm } from "@/ui/primitives/dialog-buttons";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { Notice } from "@/ui/primitives/notice";
 
@@ -92,7 +93,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 				</DialogHeader>
 
 				{pendingDraft ? (
-					<Notice tone="warning">
+					<Notice severity="warning">
 						<span className="flex-1">{copy.download.invalidDraft}</span>
 						<Button
 							variant="outline"
@@ -127,12 +128,10 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 				</RadioGroup>
 
 				<DialogFooter>
-					<Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-						{copy.actions.cancel}
-					</Button>
-					<Button variant="outline" size="sm" onClick={download}>
+					<DialogCancel>{copy.actions.cancel}</DialogCancel>
+					<DialogConfirm onClick={download}>
 						{copy.actions.download}
-					</Button>
+					</DialogConfirm>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

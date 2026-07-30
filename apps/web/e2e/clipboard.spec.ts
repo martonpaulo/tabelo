@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
+import { faultyClipboard } from "./helpers";
 
 // A refused clipboard is the case that used to look like a broken button.
 // Permission cannot be denied through Playwright, so the boundary itself is
@@ -12,41 +13,6 @@ const readRecovery =
 	"Clipboard access was blocked. Use ⌘V/Ctrl+V or allow clipboard access, then try again.";
 const writeRecovery =
 	"The selection could not be copied. Select it and use ⌘C/Ctrl+C.";
-
-type ClipboardFault = "blocked" | "absent" | "empty";
-
-async function faultyClipboard(
-	page: Page,
-	fault: ClipboardFault,
-): Promise<void> {
-	await page.addInitScript((mode: ClipboardFault) => {
-		const refuse = () => {
-			const error = new Error("denied");
-			error.name = "NotAllowedError";
-			return Promise.reject(error);
-		};
-		const value =
-			mode === "absent"
-				? undefined
-				: mode === "empty"
-					? {
-							read: () => Promise.resolve([]),
-							readText: () => Promise.resolve(""),
-							write: () => Promise.resolve(),
-							writeText: () => Promise.resolve(),
-						}
-					: {
-							read: refuse,
-							readText: refuse,
-							write: refuse,
-							writeText: refuse,
-						};
-		Object.defineProperty(navigator, "clipboard", {
-			value,
-			configurable: true,
-		});
-	}, fault);
-}
 
 async function openTableActions(page: Page): Promise<void> {
 	await page.getByRole("gridcell").first().click({ button: "right" });
@@ -65,7 +31,9 @@ test("a refused copy explains itself instead of doing nothing", async ({
 	await openTableActions(page);
 	await page.getByRole("menuitem", { name: copy.actions.copy }).click();
 
-	await expect(tabelo.status.filter({ hasText: writeRecovery })).toBeVisible();
+	await expect(
+		tabelo.notice().filter({ hasText: writeRecovery }),
+	).toBeVisible();
 });
 
 test("a refused cut keeps the data it could not copy", async ({
@@ -81,7 +49,9 @@ test("a refused cut keeps the data it could not copy", async ({
 	await openTableActions(page);
 	await page.getByRole("menuitem", { name: copy.actions.cut }).click();
 
-	await expect(tabelo.status.filter({ hasText: writeRecovery })).toBeVisible();
+	await expect(
+		tabelo.notice().filter({ hasText: writeRecovery }),
+	).toBeVisible();
 	// The only copy of the value was in the table, and it is still there.
 	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 });
@@ -99,7 +69,7 @@ test("a refused paste explains itself and leaves the table alone", async ({
 	await openTableActions(page);
 	await page.getByRole("menuitem", { name: copy.actions.paste }).click();
 
-	await expect(tabelo.status.filter({ hasText: readRecovery })).toBeVisible();
+	await expect(tabelo.notice().filter({ hasText: readRecovery })).toBeVisible();
 	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 });
 
@@ -113,7 +83,7 @@ test("a browser without the clipboard API still explains the failure", async ({
 
 	await page.getByRole("button", { name: copy.empty.pasteHint }).click();
 
-	await expect(tabelo.status.filter({ hasText: readRecovery })).toBeVisible();
+	await expect(tabelo.notice().filter({ hasText: readRecovery })).toBeVisible();
 });
 
 test("an empty clipboard says so rather than claiming it was blocked", async ({
@@ -127,9 +97,11 @@ test("an empty clipboard says so rather than claiming it was blocked", async ({
 	await page.getByRole("button", { name: copy.empty.pasteHint }).click();
 
 	await expect(
-		tabelo.status.filter({ hasText: "There is nothing on the clipboard" }),
+		tabelo.notice().filter({ hasText: "There is nothing on the clipboard" }),
 	).toBeVisible();
-	await expect(tabelo.status.filter({ hasText: readRecovery })).toHaveCount(0);
+	await expect(tabelo.notice().filter({ hasText: readRecovery })).toHaveCount(
+		0,
+	);
 });
 
 // The button path needs a permission the keyboard does not, so a blocked
@@ -183,7 +155,7 @@ test("a granted copy confirms what it did and keeps the rich flavour", async ({
 	await page.getByRole("menuitem", { name: copy.actions.copy }).click();
 
 	await expect(
-		tabelo.status.filter({ hasText: "Copied to the clipboard." }),
+		tabelo.notice().filter({ hasText: "Copied to the clipboard." }),
 	).toBeVisible();
 	expect(
 		await page.evaluate(

@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import type { NoticeSeverity } from "@/state/notice-queue";
 import { copy } from "@/ui/copy";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
@@ -35,13 +36,75 @@ function requirePositiveIndex(value: number, name: string): void {
 	}
 }
 
+// Playwright cannot deny the clipboard permission, so the browser boundary
+// itself is replaced. This is what the page sees when the user declines, when
+// the context is restricted, or when the half of the API being called is
+// absent. Serialized into the page, so it closes over nothing.
+export type ClipboardFault = "blocked" | "absent" | "empty";
+
+function installClipboard(mode: ClipboardFault | "granted"): void {
+	const refuse = () => {
+		const error = new Error("denied");
+		error.name = "NotAllowedError";
+		return Promise.reject(error);
+	};
+	const silent = {
+		read: () => Promise.resolve([]),
+		readText: () => Promise.resolve(""),
+		write: () => Promise.resolve(),
+		writeText: () => Promise.resolve(),
+	};
+	const value =
+		mode === "absent"
+			? undefined
+			: mode === "blocked"
+				? {
+						read: refuse,
+						readText: refuse,
+						write: refuse,
+						writeText: refuse,
+					}
+				: silent;
+	Object.defineProperty(navigator, "clipboard", { value, configurable: true });
+}
+
+// Installed before the next navigation. The app reads navigator.clipboard at
+// call time, so the live variant below can also change the answer mid-test.
+export async function faultyClipboard(
+	page: Page,
+	fault: ClipboardFault,
+): Promise<void> {
+	await page.addInitScript(installClipboard, fault);
+}
+
+export async function setClipboard(
+	page: Page,
+	mode: ClipboardFault | "granted",
+): Promise<void> {
+	await page.evaluate(installClipboard, mode);
+}
+
 export class TabeloPage {
 	readonly workspace: Locator;
-	readonly status: Locator;
+	readonly notices: Locator;
+	// The two permanent announcement regions. They exist whether or not there
+	// is anything to say, which is the contract they are here to prove.
+	readonly announcements: Locator;
+	readonly alerts: Locator;
 
 	constructor(readonly page: Page) {
 		this.workspace = page.getByRole("main", { name: copy.a11y.workspace });
-		this.status = page.getByRole("status");
+		this.notices = page.getByRole("region", { name: copy.a11y.notices });
+		this.announcements = page.getByRole("status");
+		this.alerts = page.getByRole("alert");
+	}
+
+	// One notice bar, addressed by what its message means rather than by the
+	// colour that meaning is drawn in.
+	notice(severity?: NoticeSeverity): Locator {
+		return this.notices.locator(
+			severity ? `[data-severity="${severity}"]` : "[data-severity]",
+		);
 	}
 
 	async open(): Promise<void> {

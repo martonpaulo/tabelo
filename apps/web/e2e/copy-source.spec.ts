@@ -48,7 +48,7 @@ test("copies the visible source of a valid view", async ({ page, tabelo }) => {
 	await tabelo.runPaneCommand("markdown", "copySource");
 
 	await expect(
-		tabelo.status.filter({ hasText: "Source copied to the clipboard." }),
+		tabelo.notice().filter({ hasText: "Source copied to the clipboard." }),
 	).toBeVisible();
 	const copied = await lastCopied(page);
 	expect(copied).toContain("Inez");
@@ -138,7 +138,9 @@ test("a refused copy explains itself with source-specific advice", async ({
 
 	await tabelo.runPaneCommand("markdown", "copySource");
 
-	await expect(tabelo.status.filter({ hasText: writeRecovery })).toBeVisible();
+	await expect(
+		tabelo.notice().filter({ hasText: writeRecovery }),
+	).toBeVisible();
 });
 
 test("copying returns focus to the pane menu without disturbing the grid", async ({

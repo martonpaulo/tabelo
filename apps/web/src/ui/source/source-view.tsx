@@ -51,16 +51,17 @@ export default function SourceView({ paneId, viewId, zoom }: SourceViewProps) {
 	const editable = view.capabilities.editable;
 	const feedbackIds = sourceFeedbackIds(paneId);
 
+	// The editor description exists for the pane's lifetime, so diagnostics
+	// update an element assistive technology already knows. It is not a live
+	// region because aria-describedby is the sole announcement channel here.
 	const description = diagnostics.map(({ message }) => message).join(" ");
 	if (!projected.ok) return <BlockedState failure={projected.failure} />;
 
 	return (
 		<>
-			{description ? (
-				<p id={feedbackIds.description} className="sr-only" aria-live="polite">
-					{description}
-				</p>
-			) : null}
+			<p id={feedbackIds.description} className="sr-only">
+				{description}
+			</p>
 			<SourceEditor
 				paneId={paneId}
 				zoom={zoom}

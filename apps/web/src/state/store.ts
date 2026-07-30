@@ -32,6 +32,7 @@ import {
 	rectRows,
 	type SelectionMode,
 	selectionRect,
+	structureDeletionGuard,
 } from "@/core/selection";
 import type { Alignment, TableDocument } from "@/core/types";
 import { canSerialize } from "@/formats";
@@ -55,6 +56,13 @@ import {
 	type SavePayload,
 	saveState,
 } from "@/persistence/storage";
+import {
+	conditionNoticeIds,
+	type NoticeRequest,
+	queueNotice,
+	removeNotice,
+	type TransientNotice,
+} from "@/state/notice-queue";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import {
@@ -76,6 +84,7 @@ const HISTORY_LIMIT = 200;
 const INVALID_GRACE_MS = 300;
 
 export type DraftStatus = "clean" | "invalid-grace" | "invalid";
+export type StructureDeletionRefusal = "last-row" | "last-column";
 
 // The exact pane and format holding an editor buffer. A clean buffer has
 // already committed its meaning to the document but stays here so
@@ -133,7 +142,9 @@ export interface TabeloState {
 	editingHeader: number | null;
 
 	storageIssue: StorageIssue | null;
-	notice: string | null;
+	// Messages waiting to be read, oldest first. A queue rather than one slot:
+	// nothing a producer says may be destroyed by whatever comes after it.
+	notices: readonly TransientNotice[];
 	inputError: ImportError | null;
 	headerCorrection: HeaderCorrection | null;
 	pendingPaneAction: PendingPaneAction | null;
@@ -193,15 +204,15 @@ export interface TabeloState {
 	moveSelectedColumn: (offset: number) => void;
 
 	clearSelection: () => void;
-	deleteSelectedStructure: () => void;
+	deleteSelectedStructure: () => StructureDeletionRefusal | null;
 	selectedMatrix: () => string[][];
 	pasteClipboard: (payload: ClipboardPayload) => void;
 	importText: (text: string, format?: CodecId) => void;
 
 	demoteHeader: () => void;
 	resetDocument: () => void;
-	dismissNotice: () => void;
-	setNotice: (notice: string | null) => void;
+	dismissNotice: (id: string) => void;
+	pushNotice: (request: NoticeRequest) => void;
 }
 
 let invalidTimer: ReturnType<typeof setTimeout> | null = null;
@@ -351,7 +362,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editingHeader: null,
 
 	storageIssue: null,
-	notice: null,
+	notices: [],
 	inputError: null,
 	headerCorrection: null,
 	pendingPaneAction: null,
@@ -807,14 +818,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	addRowAbove: () => {
 		const state = get();
 		const rect = currentRect(state);
-		state.applyDocument(insertRows(state.document, rect.top));
+		state.applyDocument(
+			insertRows(state.document, rect.top, rectRows(rect).length),
+		);
 		set({ selection: createSelection({ row: rect.top, column: rect.left }) });
 	},
 
 	addRowBelow: () => {
 		const state = get();
 		const rect = currentRect(state);
-		state.applyDocument(insertRows(state.document, rect.bottom + 1));
+		state.applyDocument(
+			insertRows(state.document, rect.bottom + 1, rectRows(rect).length),
+		);
 		set({
 			selection: createSelection({ row: rect.bottom + 1, column: rect.left }),
 		});
@@ -852,14 +867,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	addColumnLeft: () => {
 		const state = get();
 		const rect = currentRect(state);
-		state.applyDocument(insertColumns(state.document, rect.left));
+		state.applyDocument(
+			insertColumns(state.document, rect.left, rectColumns(rect).length),
+		);
 		set({ selection: createSelection({ row: rect.top, column: rect.left }) });
 	},
 
 	addColumnRight: () => {
 		const state = get();
 		const rect = currentRect(state);
-		state.applyDocument(insertColumns(state.document, rect.right + 1));
+		state.applyDocument(
+			insertColumns(state.document, rect.right + 1, rectColumns(rect).length),
+		);
 		set({
 			selection: createSelection({ row: rect.top, column: rect.right + 1 }),
 		});
@@ -903,8 +922,19 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// selection mode decides whether that means rows or columns.
 	deleteSelectedStructure: () => {
 		const state = get();
-		if (state.selection.mode === "column") state.removeSelectedColumns();
-		else state.removeSelectedRows();
+		const guard = structureDeletionGuard(
+			[state.selection],
+			state.document.rows.length,
+			state.document.columns.length,
+		);
+		if (state.selection.mode === "column") {
+			if (guard.wouldRemoveAllColumns) return "last-column";
+			state.removeSelectedColumns();
+			return null;
+		}
+		if (guard.wouldRemoveAllRows) return "last-row";
+		state.removeSelectedRows();
+		return null;
 	},
 
 	selectedMatrix: () => {
@@ -997,14 +1027,25 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set({ selection: createSelection({ row: 0, column: 0 }) });
 	},
 
-	dismissNotice: () =>
+	// One dismissal for every notice, whichever channel it came from. A queued
+	// message is removed; a projected condition is cleared at its source. The
+	// identifier is what makes that possible: without it, dismissal could only
+	// ever clear whichever notice happened to rank highest.
+	dismissNotice: (id) =>
 		set((state) => {
-			if (state.inputError) return { inputError: null };
-			if (state.headerCorrection) return { headerCorrection: null };
-			if (state.pendingPaneAction) return { pendingPaneAction: null };
-			return { notice: null };
+			switch (id) {
+				case conditionNoticeIds.inputError:
+					return { inputError: null };
+				case conditionNoticeIds.headerCorrection:
+					return { headerCorrection: null };
+				case conditionNoticeIds.pendingPaneAction:
+					return { pendingPaneAction: null };
+				default:
+					return { notices: removeNotice(state.notices, id) };
+			}
 		}),
-	setNotice: (notice) => set({ notice }),
+	pushNotice: (request) =>
+		set((state) => ({ notices: queueNotice(state.notices, request) })),
 }));
 
 function currentRect(state: TabeloState) {

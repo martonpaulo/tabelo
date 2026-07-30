@@ -341,6 +341,7 @@ which sits in the layout instead of covering the table.
 | Title | `DialogTitle`, `text-sm font-medium` |
 | Supporting copy | `DialogDescription`, one sentence saying what to choose |
 | Dismissal | Escape and an explicit Cancel; focus returns to what opened it |
+| Button hierarchy | Confirm uses the default filled accent; destructive confirm uses `destructive`; Cancel uses the borderless `ghost`; all use the default size |
 | Confirmation | One primary verb naming the operation: "Download", not "OK" |
 
 Compose `packages/ui`'s `Dialog`; do not build a second modal. Prefer the
@@ -410,6 +411,48 @@ editor's accessible description. There is no separate Details control and no
 automatic cursor movement. Underline shape and written text ensure colour is
 not the only signal.
 
+The description element the editor points at exists whether or not there is a
+diagnostic; only its text changes. It carries no `aria-live`: the accessible
+description is the channel, and a live region on the same node reads the
+diagnostic twice.
+
+### Notice severity
+
+A notice's appearance, its announcement, and whether it may expire are all
+derived from one declared severity. None of them may be derived from which
+part of the app produced the message.
+
+| Severity | Surface | Announced | Expires |
+| :--- | :--- | :--- | :--- |
+| `info` | `bg-surface-header` | Polite | After 4s, and only when it carries no action |
+| `warning` | `bg-destructive/10` | Polite | Never |
+| `error` | `bg-destructive/10` | Polite, or assertive when the table is at risk | Never |
+
+Warning and error share the one status surface this design line has. They
+differ in how they are announced and in whether they may clear themselves, not
+in how loud they look. A failure never renders as `info`.
+
+Only a plain confirmation may expire unattended. A failure, or anything
+carrying an action, stays until it is dismissed: a recovery instruction that
+disappears after four seconds is not a recovery path. The timer belongs to the
+notice on screen, never to the notice area, so nothing can expire unseen.
+
+### Announcing
+
+Two live regions, one `role="status"` and one `role="alert"`, are mounted for
+the lifetime of the app and start empty. Notice text is written into them.
+A live region inserted at the same moment as its text is not reliably
+announced, so a region that appears with a message in it is a defect.
+
+Assertive interrupts whatever is being said and is reserved for a storage
+failure or a refused import: the cases where the user's table is at risk.
+Everything else, including "Copied to the clipboard.", is polite.
+
+Only what has not been announced yet is written, so dismissing one notice never
+reads the remaining ones out again, and a batch arriving together becomes one
+utterance rather than a burst. The visible notice bar carries no live
+semantics of its own.
+
 ---
 
 ## 5. Layout
@@ -432,6 +475,12 @@ not the only signal.
   narrow pane shortens its labels rather than wrapping them.
 - A pane's height must not change with its state: source diagnostics decorate
   the text and use tooltips rather than inserting a feedback row.
+- The notice area sits above the workspace, in the layout rather than over it,
+  as one labelled region. It holds every notice the app currently has, oldest
+  first, with conditions ahead of one-off messages. Notices are never ranked
+  against each other and never replace each other: something worth saying is
+  worth showing, and a message that loses a contest is a message the user
+  never gets. Each carries its own dismissal where dismissal makes sense.
 - There is no app header. One floating action button is the document-level
   command surface at every viewport width. Its menu contains the Tabelo identity
   and description, Undo, Redo, New table, Import, Download, Layout, and a link to

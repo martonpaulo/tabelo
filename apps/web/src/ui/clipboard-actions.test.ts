@@ -3,6 +3,7 @@ import type {
 	ClipboardReadOutcome,
 	ClipboardWriteOutcome,
 } from "@/platform/clipboard";
+import type { NoticeSeverity, TransientNotice } from "@/state/notice-queue";
 
 // A refused clipboard must never look like a click that did nothing, and a cut
 // must never clear a selection it failed to copy. Both are verified against the
@@ -40,8 +41,16 @@ beforeEach(() => {
 	writeClipboardTable.mockResolvedValue(granted);
 });
 
+function latest(): TransientNotice | null {
+	return useTabeloStore.getState().notices.at(-1) ?? null;
+}
+
 function notice(): string | null {
-	return useTabeloStore.getState().notice;
+	return latest()?.message ?? null;
+}
+
+function severity(): NoticeSeverity | null {
+	return latest()?.severity ?? null;
 }
 
 describe("copying", () => {
@@ -50,6 +59,7 @@ describe("copying", () => {
 			await copyToClipboard({ text: "a", html: "<b/>" }, "selection"),
 		).toBe(true);
 		expect(notice()).toBe(copy.notices.copied("selection"));
+		expect(severity()).toBe("info");
 	});
 
 	it("confirms copied source in its own words", async () => {
@@ -78,6 +88,23 @@ describe("copying", () => {
 		).toBe(false);
 		expect(notice()).toBe(copy.notices.clipboardWriteFailed("selection"));
 		expect(notice()).toContain("⌘C/Ctrl+C");
+		// A failure is a failure wherever it was produced. This one used to
+		// arrive in the informational tone, in the lowest-ranked slot.
+		expect(severity()).toBe("error");
+	});
+
+	it("keeps an earlier message rather than replacing it", async () => {
+		writeClipboardTable.mockResolvedValue(refused);
+		await copyToClipboard({ text: "a", html: "<b/>" }, "selection");
+		writeClipboardText.mockResolvedValue({ ok: true, richness: "text" });
+		await copyToClipboard({ text: "| A |" }, "source");
+
+		expect(
+			useTabeloStore.getState().notices.map((entry) => entry.message),
+		).toEqual([
+			copy.notices.clipboardWriteFailed("selection"),
+			copy.notices.copied("source"),
+		]);
 	});
 
 	it("scopes the refusal advice to what was being copied", async () => {
@@ -114,6 +141,7 @@ describe("reading", () => {
 			expect(await readTableFromClipboard()).toBeNull();
 			expect(notice()).toBe(copy.notices.clipboardReadFailed);
 			expect(notice()).toContain("⌘V/Ctrl+V");
+			expect(severity()).toBe("error");
 		},
 	);
 
@@ -122,6 +150,7 @@ describe("reading", () => {
 
 		expect(await readTableFromClipboard()).toBeNull();
 		expect(notice()).toBe(copy.notices.clipboardEmpty);
+		expect(severity()).toBe("info");
 	});
 
 	it("leaves the table untouched when the clipboard cannot be read", async () => {
