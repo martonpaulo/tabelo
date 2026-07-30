@@ -192,7 +192,10 @@ function headerLineExtension(language: HighlightLanguage) {
 					if (line.text === "") continue;
 					if (
 						language === "json" &&
-						(line.text.trim() === "[" || line.text.trim() === "]")
+						(line.text.trim() === "[" ||
+							line.text.trim() === "]" ||
+							line.text.trim() === "{" ||
+							line.text.trim() === "}")
 					) {
 						continue;
 					}

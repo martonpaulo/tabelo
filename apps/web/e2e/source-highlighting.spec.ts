@@ -11,6 +11,10 @@ test("every source format highlights its table structure", async ({
 		await expect(pane.locator(".cm-line span").first()).toBeVisible();
 	};
 
+	await tabelo.editHeader(1, "Header 1");
+	await tabelo.editHeader(2, "Header 2");
+	await tabelo.editHeader(3, "Header 3");
+
 	await expectHeaderLine("markdown");
 
 	await tabelo.choosePaneView("markdown", "csv");
