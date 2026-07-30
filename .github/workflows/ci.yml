@@ -12,6 +12,7 @@ on:
       - "LICENSE"
       - ".agents/**"
       - ".claude/**"
+      - ".gemini/**"
       - ".github/copilot-instructions.md"
       - ".github/instructions/**"
       - ".scratch/**"
