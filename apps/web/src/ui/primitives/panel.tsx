@@ -110,29 +110,9 @@ function PanelBody({
 	);
 }
 
-function PanelFooter({
-	children,
-	className,
-}: {
-	children: ReactNode;
-	className?: string;
-}) {
-	return (
-		<footer
-			className={cn(
-				"flex min-h-control-md shrink-0 items-center gap-1.5 bg-surface-header px-3 py-1.5",
-				className,
-			)}
-		>
-			{children}
-		</footer>
-	);
-}
-
 export const Panel = Object.assign(PanelRoot, {
 	Header: PanelHeader,
 	Spacer: PanelSpacer,
 	Body: PanelBody,
-	Footer: PanelFooter,
 	Overlay: PanelOverlay,
 });
