@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
@@ -40,6 +40,16 @@ async function contrastBetween(
 		},
 		{ foreground, background },
 	);
+}
+
+async function typographyOf(locator: Locator) {
+	return locator.evaluate((element) => {
+		const style = getComputedStyle(element);
+		return {
+			fontSize: Number.parseFloat(style.fontSize),
+			lineHeight: Number.parseFloat(style.lineHeight),
+		};
+	});
 }
 
 test("controls, surfaces, and menus share their semantic visual hierarchy", async ({
@@ -107,22 +117,20 @@ test("the app menu identity uses readable multi-line typography", async ({
 	const name = menu.getByText(copy.app.name, { exact: true });
 	const tagline = menu.getByText(copy.app.tagline, { exact: true });
 
-	await expect(name).toHaveCSS("font-size", "14px");
 	const geometry = await Promise.all([
 		name.boundingBox(),
 		tagline.boundingBox(),
-		tagline.evaluate((element) => {
-			const style = getComputedStyle(element);
-			return {
-				fontSize: Number.parseFloat(style.fontSize),
-				lineHeight: Number.parseFloat(style.lineHeight),
-			};
-		}),
+		typographyOf(name),
+		typographyOf(tagline),
+		page.evaluate(() =>
+			Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+		),
 	]);
-	const [nameBox, taglineBox, taglineType] = geometry;
+	const [nameBox, taglineBox, nameType, taglineType, rootFontSize] = geometry;
 
 	expect(nameBox).not.toBeNull();
 	expect(taglineBox).not.toBeNull();
+	expect(nameType.fontSize).toBeGreaterThanOrEqual(rootFontSize * 0.875);
 	expect(taglineBox?.y).toBeGreaterThanOrEqual(
 		(nameBox?.y ?? 0) + (nameBox?.height ?? 0),
 	);
@@ -130,6 +138,69 @@ test("the app menu identity uses readable multi-line typography", async ({
 	expect(
 		page.getByRole("menuitem").filter({ hasText: copy.app.name }),
 	).toHaveCount(0);
+
+	await page.keyboard.press("Escape");
+	await expect(menu).toBeHidden();
+	const trigger = page.getByRole("button", {
+		name: copy.actions.openAppMenu,
+	});
+	await trigger.focus();
+	await trigger.press("Enter");
+	await expect(menu).toBeVisible();
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.newTable }),
+	).toBeFocused();
+});
+
+test("single-line menu labels keep their compact shared treatment", async ({
+	page,
+	tabelo,
+}) => {
+	const rootFontSize = await page.evaluate(() =>
+		Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+	);
+	const expectCompactLabel = async (label: Locator) => {
+		const type = await typographyOf(label);
+		expect(type.fontSize).toBeCloseTo(rootFontSize * 0.75, 5);
+		expect(type.lineHeight).toBeCloseTo(type.fontSize, 5);
+	};
+
+	const layoutMenu = await tabelo.openLayoutMenu();
+	await expectCompactLabel(
+		layoutMenu.getByText(copy.workspace.layoutHint, { exact: true }),
+	);
+	await page.keyboard.press("Escape");
+	await expect(layoutMenu).toBeHidden();
+	await page.keyboard.press("Escape");
+
+	const paneMenu = await tabelo.openPaneMenu("markdown");
+	await expectCompactLabel(
+		paneMenu.getByText(copy.workspace.changeView, { exact: true }),
+	);
+	const zoomLabel = paneMenu.getByText(copy.workspace.zoom(100), {
+		exact: true,
+	});
+	await expectCompactLabel(zoomLabel);
+	await expect(zoomLabel).toHaveAttribute("aria-live", "polite");
+	await page.keyboard.press("Escape");
+	await expect(paneMenu).toBeHidden();
+
+	await tabelo
+		.grid()
+		.getByRole("button", {
+			name: new RegExp(`^${copy.actions.columnActions}:`),
+		})
+		.first()
+		.click();
+	const columnMenu = page.getByRole("menu", {
+		name: new RegExp(`^${copy.actions.columnActions}:`),
+	});
+	await expectCompactLabel(
+		columnMenu.locator('[data-slot="dropdown-menu-label"]').first(),
+	);
+	await expectCompactLabel(
+		columnMenu.getByText(copy.actions.alignment, { exact: true }),
+	);
 });
 
 test("only view content participates in native text selection", async ({
