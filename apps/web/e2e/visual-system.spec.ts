@@ -99,6 +99,39 @@ test("controls, surfaces, and menus share their semantic visual hierarchy", asyn
 	).toContain("blur");
 });
 
+test("the app menu identity uses readable multi-line typography", async ({
+	page,
+	tabelo,
+}) => {
+	const menu = await tabelo.openAppMenu();
+	const name = menu.getByText(copy.app.name, { exact: true });
+	const tagline = menu.getByText(copy.app.tagline, { exact: true });
+
+	await expect(name).toHaveCSS("font-size", "14px");
+	const geometry = await Promise.all([
+		name.boundingBox(),
+		tagline.boundingBox(),
+		tagline.evaluate((element) => {
+			const style = getComputedStyle(element);
+			return {
+				fontSize: Number.parseFloat(style.fontSize),
+				lineHeight: Number.parseFloat(style.lineHeight),
+			};
+		}),
+	]);
+	const [nameBox, taglineBox, taglineType] = geometry;
+
+	expect(nameBox).not.toBeNull();
+	expect(taglineBox).not.toBeNull();
+	expect(taglineBox?.y).toBeGreaterThanOrEqual(
+		(nameBox?.y ?? 0) + (nameBox?.height ?? 0),
+	);
+	expect(taglineType.lineHeight).toBeGreaterThan(taglineType.fontSize);
+	expect(
+		page.getByRole("menuitem").filter({ hasText: copy.app.name }),
+	).toHaveCount(0);
+});
+
 test("only view content participates in native text selection", async ({
 	tabelo,
 }) => {
