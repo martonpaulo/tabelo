@@ -113,8 +113,9 @@ describe("structure deletion", () => {
 			},
 		});
 
-		useTabeloStore.getState().deleteSelectedStructure();
+		const refusal = useTabeloStore.getState().deleteSelectedStructure();
 
+		expect(refusal).toBe("last-column");
 		expect(useTabeloStore.getState().document).toBe(document);
 		expect(useTabeloStore.getState().past).toHaveLength(0);
 	});
@@ -128,12 +129,51 @@ describe("structure deletion", () => {
 			selection: createSelection({ row: 0, column: 0 }, "row"),
 		});
 
-		useTabeloStore.getState().deleteSelectedStructure();
+		const refusal = useTabeloStore.getState().deleteSelectedStructure();
 
+		expect(refusal).toBeNull();
 		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
 			["Name"],
 			["Marton"],
 		]);
+	});
+});
+
+describe("structure insertion", () => {
+	it("inserts as many rows or columns as the selection covers", () => {
+		const document = documentFromMatrix(
+			[
+				["Name", "Role"],
+				["Inez", "Designer"],
+				["Marton", "Developer"],
+			],
+			{ headerRow: true },
+		);
+		useTabeloStore.setState({
+			document,
+			selection: {
+				anchor: { row: 0, column: 0 },
+				focus: { row: 1, column: 0 },
+				mode: "row",
+			},
+		});
+
+		useTabeloStore.getState().addRowAbove();
+
+		expect(useTabeloStore.getState().document.rows).toHaveLength(4);
+
+		useTabeloStore.setState({
+			document,
+			selection: {
+				anchor: { row: 0, column: 0 },
+				focus: { row: 0, column: 1 },
+				mode: "column",
+			},
+		});
+
+		useTabeloStore.getState().addColumnLeft();
+
+		expect(useTabeloStore.getState().document.columns).toHaveLength(4);
 	});
 });
 

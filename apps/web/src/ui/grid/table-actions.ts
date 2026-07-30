@@ -83,13 +83,13 @@ export function buildTableActions(
 		insert.push(
 			{
 				id: "row-above",
-				label: copy.actions.insertRowAbove,
+				label: copy.actions.insertRowsAbove(rowCount),
 				icon: ArrowUp,
 				run: () => store.addRowAbove(),
 			},
 			{
 				id: "row-below",
-				label: copy.actions.insertRowBelow,
+				label: copy.actions.insertRowsBelow(rowCount),
 				icon: ArrowDown,
 				run: () => store.addRowBelow(),
 			},
@@ -99,13 +99,13 @@ export function buildTableActions(
 		insert.push(
 			{
 				id: "column-left",
-				label: copy.actions.insertColumnLeft,
+				label: copy.actions.insertColumnsLeft(columnCount),
 				icon: ArrowLeft,
 				run: () => store.addColumnLeft(),
 			},
 			{
 				id: "column-right",
-				label: copy.actions.insertColumnRight,
+				label: copy.actions.insertColumnsRight(columnCount),
 				icon: ArrowRight,
 				run: () => store.addColumnRight(),
 			},

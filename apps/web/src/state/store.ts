@@ -77,6 +77,7 @@ const HISTORY_LIMIT = 200;
 const INVALID_GRACE_MS = 300;
 
 export type DraftStatus = "clean" | "invalid-grace" | "invalid";
+export type StructureDeletionRefusal = "last-row" | "last-column";
 
 // The exact pane and format holding an editor buffer. A clean buffer has
 // already committed its meaning to the document but stays here so
@@ -194,7 +195,7 @@ export interface TabeloState {
 	moveSelectedColumn: (offset: number) => void;
 
 	clearSelection: () => void;
-	deleteSelectedStructure: () => void;
+	deleteSelectedStructure: () => StructureDeletionRefusal | null;
 	selectedMatrix: () => string[][];
 	pasteClipboard: (payload: ClipboardPayload) => void;
 	importText: (text: string, format?: CodecId) => void;
@@ -808,14 +809,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	addRowAbove: () => {
 		const state = get();
 		const rect = currentRect(state);
-		state.applyDocument(insertRows(state.document, rect.top));
+		state.applyDocument(
+			insertRows(state.document, rect.top, rectRows(rect).length),
+		);
 		set({ selection: createSelection({ row: rect.top, column: rect.left }) });
 	},
 
 	addRowBelow: () => {
 		const state = get();
 		const rect = currentRect(state);
-		state.applyDocument(insertRows(state.document, rect.bottom + 1));
+		state.applyDocument(
+			insertRows(state.document, rect.bottom + 1, rectRows(rect).length),
+		);
 		set({
 			selection: createSelection({ row: rect.bottom + 1, column: rect.left }),
 		});
@@ -853,14 +858,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	addColumnLeft: () => {
 		const state = get();
 		const rect = currentRect(state);
-		state.applyDocument(insertColumns(state.document, rect.left));
+		state.applyDocument(
+			insertColumns(state.document, rect.left, rectColumns(rect).length),
+		);
 		set({ selection: createSelection({ row: rect.top, column: rect.left }) });
 	},
 
 	addColumnRight: () => {
 		const state = get();
 		const rect = currentRect(state);
-		state.applyDocument(insertColumns(state.document, rect.right + 1));
+		state.applyDocument(
+			insertColumns(state.document, rect.right + 1, rectColumns(rect).length),
+		);
 		set({
 			selection: createSelection({ row: rect.top, column: rect.right + 1 }),
 		});
@@ -910,8 +919,13 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			state.document.columns.length,
 		);
 		if (state.selection.mode === "column") {
-			if (!guard.wouldRemoveAllColumns) state.removeSelectedColumns();
-		} else if (!guard.wouldRemoveAllRows) state.removeSelectedRows();
+			if (guard.wouldRemoveAllColumns) return "last-column";
+			state.removeSelectedColumns();
+			return null;
+		}
+		if (guard.wouldRemoveAllRows) return "last-row";
+		state.removeSelectedRows();
+		return null;
 	},
 
 	selectedMatrix: () => {

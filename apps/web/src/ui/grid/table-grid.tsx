@@ -218,8 +218,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				// rows or columns themselves. Both are prevented from reaching the
 				// browser, which historically treated Backspace as "go back".
 				event.preventDefault();
-				if (mod) store.deleteSelectedStructure();
-				else store.clearSelection();
+				if (mod) {
+					const refusal = store.deleteSelectedStructure();
+					if (refusal) {
+						store.setNotice(
+							refusal === "last-column"
+								? copy.disabled.lastRemainingColumn
+								: copy.disabled.lastRemainingRow,
+						);
+					}
+				} else store.clearSelection();
 				return;
 			default:
 				break;
