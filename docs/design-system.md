@@ -239,6 +239,7 @@ BlinkMacSystemFont, sans-serif`. The source editor keeps the existing
 | Control label | `text-sm font-medium` |
 | Table cell | `text-sm` |
 | Source editor | `text-sm font-source` |
+| Index chrome | `font-index` |
 | Helper / status | `text-xs text-muted-foreground` |
 
 Critical control, pane, menu, notice, onboarding, and error labels never fall

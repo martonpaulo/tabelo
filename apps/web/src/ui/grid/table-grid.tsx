@@ -425,7 +425,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							data-row-header={HEADER_ROW}
 							className={cn(
 								"sticky left-0 z-30 border-line-strong border-r border-b bg-surface-header",
-								"px-1 text-center font-semibold text-foreground text-xs tabular-nums",
+								"px-1 text-center font-index font-semibold text-foreground text-xs tabular-nums",
 								"top-grid-strip",
 							)}
 						>
@@ -481,7 +481,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								data-row-header={rowIndex}
 								className={cn(
 									"sticky left-0 z-10 border-line-subtle border-r border-b bg-surface-gutter",
-									"px-1 text-center font-normal text-muted-foreground text-xs tabular-nums",
+									"px-1 text-center font-index font-normal text-muted-foreground text-xs tabular-nums",
 									selection.mode === "row" &&
 										rectContains(rect, rowIndex, 0) &&
 										"bg-selection-fill text-foreground",
@@ -677,7 +677,7 @@ function ColumnIndexCell({
 			// and turn the offset into a shift rather than a scroll threshold.
 			className={cn(
 				"group/col sticky top-0 z-20 h-grid-strip border-line-strong border-r border-b",
-				"px-1 text-center font-normal text-muted-foreground text-xs",
+				"px-1 text-center font-index font-normal text-muted-foreground text-xs",
 				selected ? "bg-selection-fill text-foreground" : "bg-surface-header",
 			)}
 			onPointerEnter={onDragEnter}

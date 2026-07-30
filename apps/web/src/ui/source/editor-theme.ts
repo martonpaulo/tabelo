@@ -39,7 +39,7 @@ export const editorTheme = EditorView.theme({
 	".cm-gutters": {
 		backgroundColor: "var(--surface-gutter)",
 		color: "var(--muted-foreground)",
-		fontFamily: "var(--font-family-source)",
+		fontFamily: "var(--font-family-index)",
 		fontSize: contentFontSize,
 		lineHeight: "1.6",
 		border: "none",
