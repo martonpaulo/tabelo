@@ -341,6 +341,7 @@ which sits in the layout instead of covering the table.
 | Title | `DialogTitle`, `text-sm font-medium` |
 | Supporting copy | `DialogDescription`, one sentence saying what to choose |
 | Dismissal | Escape and an explicit Cancel; focus returns to what opened it |
+| Button hierarchy | Confirm uses the default filled accent; destructive confirm uses `destructive`; Cancel uses the borderless `ghost`; all use the default size |
 | Confirmation | One primary verb naming the operation: "Download", not "OK" |
 
 Compose `packages/ui`'s `Dialog`; do not build a second modal. Prefer the
