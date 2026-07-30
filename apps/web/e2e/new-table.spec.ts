@@ -11,8 +11,17 @@ test("a new table confirms before clearing document content", async ({
 		name: copy.newTable.title,
 	});
 	await expect(dialog).toContainText(copy.newTable.description);
+	await expect(
+		dialog.getByRole("button", { name: copy.actions.cancel }),
+	).toHaveAttribute("data-variant", "ghost");
+	await expect(
+		dialog.getByRole("button", { name: copy.newTable.confirm }),
+	).toHaveAttribute("data-variant", "destructive");
 	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
 	await expect(tabelo.cell(1, 1)).toHaveText("Keep me");
+	await expect(
+		tabelo.page.getByRole("button", { name: copy.actions.openAppMenu }),
+	).toBeFocused();
 
 	await tabelo.runAppCommand("newTable");
 	await dialog.getByRole("button", { name: copy.newTable.confirm }).click();

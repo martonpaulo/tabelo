@@ -1,7 +1,7 @@
-import { Button } from "@tabelo/ui/components/button";
 import {
 	Dialog,
-	DialogClose,
+	DialogCancel,
+	DialogConfirm,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -29,18 +29,16 @@ export function NewTableDialog({
 					<DialogDescription>{copy.newTable.description}</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
-					<DialogClose render={<Button variant="outline" />}>
-						{copy.actions.cancel}
-					</DialogClose>
-					<Button
-						variant="destructive"
+					<DialogCancel>{copy.actions.cancel}</DialogCancel>
+					<DialogConfirm
+						destructive
 						onClick={() => {
 							onConfirm();
 							onOpenChange(false);
 						}}
 					>
 						{copy.newTable.confirm}
-					</Button>
+					</DialogConfirm>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

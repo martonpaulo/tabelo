@@ -2,6 +2,8 @@ import { Button } from "@tabelo/ui/components/button";
 import { Checkbox } from "@tabelo/ui/components/checkbox";
 import {
 	Dialog,
+	DialogCancel,
+	DialogConfirm,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -127,12 +129,10 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 				</RadioGroup>
 
 				<DialogFooter>
-					<Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-						{copy.actions.cancel}
-					</Button>
-					<Button variant="outline" size="sm" onClick={download}>
+					<DialogCancel>{copy.actions.cancel}</DialogCancel>
+					<DialogConfirm onClick={download}>
 						{copy.actions.download}
-					</Button>
+					</DialogConfirm>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

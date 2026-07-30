@@ -34,6 +34,27 @@ async function openChooser(page: Page): Promise<void> {
 	await expect(page.getByRole("dialog")).toBeVisible();
 }
 
+test("the chooser uses the shared dialog button hierarchy", async ({
+	page,
+	tabelo,
+}) => {
+	await expect(tabelo.workspace).toBeVisible();
+	await openChooser(page);
+	const dialog = page.getByRole("dialog");
+
+	await expect(
+		dialog.getByRole("button", { name: copy.actions.cancel }),
+	).toHaveAttribute("data-variant", "ghost");
+	await expect(
+		dialog.getByRole("button", { name: copy.actions.download, exact: true }),
+	).toHaveAttribute("data-variant", "default");
+
+	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
+	await expect(
+		page.getByRole("button", { name: copy.actions.openAppMenu }),
+	).toBeFocused();
+});
+
 test("the chooser lists every registered format", async ({ page, tabelo }) => {
 	await expect(tabelo.workspace).toBeVisible();
 	await openChooser(page);
