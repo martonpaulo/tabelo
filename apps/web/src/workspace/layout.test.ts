@@ -95,8 +95,11 @@ describe("applying a layout", () => {
 
 		const after = applyLayout("columns", before, preferred?.id);
 
-		expect(after.some((pane) => pane.id === preferred?.id)).toBe(true);
-		expect(after.some((pane) => pane.view === preferred?.view)).toBe(true);
+		// The preferred pane replaces the last carried one, and it has to arrive
+		// whole: the same pane still showing the same view.
+		expect(after).toHaveLength(2);
+		expect(after.at(-1)?.id).toBe(preferred?.id);
+		expect(after.at(-1)?.view).toBe(preferred?.view);
 	});
 
 	it("fills panes a smaller layout did not have", () => {
@@ -209,21 +212,39 @@ describe("pane count transitions", () => {
 		expect(smallerLayout("top-split")).toBe("rows");
 	});
 
-	it("shrinks without losing any surviving pane", () => {
+	it("shrinks without losing a surviving pane or moving one it can keep", () => {
 		for (const id of layoutIds) {
 			const target = smallerLayout(id);
 			if (!target) continue;
 			const before = applyLayout(id);
 			// Closing the last pane is the case where nothing else has to move.
-			const after = applyLayout(target, before.slice(0, -1));
+			const survivors = before.slice(0, -1);
+			const after = applyLayout(target, survivors);
 
-			expect(after.map((pane) => pane.id).sort()).toEqual(
-				before
-					.slice(0, -1)
-					.map((pane) => pane.id)
-					.sort(),
+			expect([...after].map((pane) => pane.id).sort()).toEqual(
+				[...survivors].map((pane) => pane.id).sort(),
 			);
+
+			// A survivor stays in its corner whenever the smaller preset still has
+			// a position starting there. Only "top-split" drops a corner it was
+			// using, so only its pane in slot b is allowed to move.
+			const keptCorners = new Set(applyLayout(target).map(cornerOf));
+			for (const pane of survivors) {
+				if (!keptCorners.has(cornerOf(pane))) continue;
+				const moved = after.find((candidate) => candidate.id === pane.id);
+				expect(moved).toBeDefined();
+				expect(cornerOf(moved as WorkspacePane)).toBe(cornerOf(pane));
+			}
 		}
+	});
+
+	it("moves only the corner a top split cannot keep when it shrinks", () => {
+		const before = applyLayout("top-split");
+		const after = applyLayout("rows", before.slice(0, -1));
+
+		expect(after.map((pane) => pane.id)).toEqual([before[0].id, before[1].id]);
+		expect(cornerOf(after[0])).toBe(cornerOf(before[0]));
+		expect(cornerOf(after[1])).not.toBe(cornerOf(before[1]));
 	});
 
 	it("adds the new pane where no surviving pane already sits", () => {

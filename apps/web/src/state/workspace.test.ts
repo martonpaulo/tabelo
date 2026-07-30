@@ -134,8 +134,12 @@ describe("closing a view", () => {
 		}
 	});
 
-	it("does nothing at two panes", () => {
+	// Both two-pane presets are the floor, so neither depends on which one the
+	// default workspace happens to use.
+	it.each(["columns", "rows"] as const)("does nothing at %s", (layout) => {
+		useTabeloStore.getState().setLayout(layout);
 		const twoPanes = workspace();
+		expect(twoPanes.panes).toHaveLength(2);
 
 		useTabeloStore.getState().closePane(twoPanes.panes[0].id);
 

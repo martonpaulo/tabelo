@@ -13,6 +13,11 @@ particular merge is not allowed. That is a layout editor, and a layout editor
 inside a table utility is precisely the "complex IDE" the product is supposed
 not to become.
 
+An eighth preset, `single`, once spanned all four slots so the grid could take
+the whole window. It was dropped: the workspace exists to show one document
+through several views at once, and a one-pane workspace is that product with
+its point removed. The floor is two panes.
+
 ## Decision
 
 Seven named presets, each drawing its own shape in the picker: two columns, two
@@ -46,13 +51,17 @@ Pane count is also changed directly, from the pane the user is working in:
 **Add view** and **Close view** in that pane's menu. Both are expressed as moves
 between these same presets: `columns → left-split → quad` growing, and the
 reverse shrinking, with `rows → bottom-split` covering the horizontal branch.
-Closing `top-split` also returns to `rows`. A direct action can never reach a
-shape the picker cannot, and both routes share one implementation. The targets
-are chosen to be the preset that leaves the most surviving panes in the slot
-they already had.
-Closing removes the chosen pane rather than the last one; the smaller preset
-then absorbs the freed space into whichever neighbour already occupied part of
-it. Two panes is the floor, so Close view is disabled in both two-pane presets.
+A direct action can never reach a shape the picker cannot, and both routes
+share one implementation. The targets are chosen to be the preset that leaves
+the most surviving panes in the slot they already had. Closing removes the
+chosen pane rather than the last one; the smaller preset then absorbs the freed
+space into whichever neighbour already occupied part of it.
+
+Two panes is the floor, so `columns` and `rows` have no smaller target and
+Close view is disabled in both, with a written reason rather than hidden. The
+one preset the picker can reach that growing cannot, `top-split`, shrinks to
+`rows`: a top split reads as a horizontal division, and keeping that division
+on the way down matters more than keeping one pane's corner.
 
 Growing never displaces a pane, so **Add view** needs no confirmation. Closing
 can destroy a source draft the document has not read back, so a pane owning
@@ -71,10 +80,14 @@ so a new preset needs no edit there.
 - Invalid layouts are unrepresentable, so there is no validation to write and
   no error state to design: including for the direct commands, which can only
   move between presets.
-- Two of the eight three-pane presets, `right-split` and `bottom-split`, have
+- Two of the four three-pane presets, `right-split` and `bottom-split`, have
   no four-pane preset that preserves every corner, because `quad` is the only
-  one. Growing from those moves one surviving pane. Shrinking is always
-  corner-stable.
+  one. Growing from those moves one surviving pane. Shrinking is
+  corner-stable everywhere except `top-split → rows`, which moves the pane in
+  the top-right slot.
+- A stored one-pane workspace, legal before the floor existed, no longer
+  validates. Under the no-migration policy it takes the unreadable path and the
+  user sees the recovery notice once.
 - The cost is expressiveness: a user cannot invent an arrangement that is not
   in the list. With a 2×2 grid the presets cover every rectangular tiling that
   respects the constraint, so this costs nothing today. A 3×3 workspace

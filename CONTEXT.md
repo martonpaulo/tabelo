@@ -26,7 +26,7 @@ Related to: Table document, Pane, Codec, Workspace
 ### Pane
 
 One region of the workspace, showing exactly one view. A pane occupies one
-slot, two adjacent slots, or the whole workspace.
+slot or two adjacent slots.
 
 Related to: View, Slot, Workspace
 
