@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
+import { useSelectionAnnouncement } from "@/ui/grid/use-selection-announcement";
 import {
 	type AppNotice,
 	announcementText,
@@ -22,6 +23,10 @@ import { Notice } from "@/ui/primitives/notice";
 
 export function NoticeBar() {
 	const notices = useAppNotices();
+	// The grid's selection extent is polite text with no visible counterpart, so
+	// it joins the notices at the one place that owns the live regions rather
+	// than mounting a region of its own next to the grid.
+	const selectionExtent = useSelectionAnnouncement();
 	const announcements = useMemo(
 		() =>
 			notices.map((notice) => ({
@@ -44,7 +49,7 @@ export function NoticeBar() {
 					))}
 				</section>
 			) : null}
-			<LiveRegions announcements={announcements} />
+			<LiveRegions announcements={announcements} status={selectionExtent} />
 		</>
 	);
 }

@@ -453,6 +453,18 @@ reads the remaining ones out again, and a batch arriving together becomes one
 utterance rather than a burst. The visible notice bar carries no live
 semantics of its own.
 
+The polite region also carries text that has no visible counterpart, currently
+the grid's selection extent. It shares that one region rather than getting a
+third: two status regions would compete for the same moment of speech. The most
+recent polite writer wins.
+
+**Announce a change, not a state.** The extent is written only when it changes,
+never when the focused cell moves inside an unchanged selection: the cell
+announces its own value as focus lands on it, and repeating the extent over
+that would double-speak. It is also written only once the extent settles, so
+holding `Shift`+`Down` says where the user stopped rather than one utterance
+per keystroke.
+
 ---
 
 ## 5. Layout
