@@ -34,11 +34,8 @@ export const Pane = memo(function Pane({
 
 	return (
 		<Panel
-			aria-label={
-				active
-					? `${copy.a11y.pane(view.label)}, ${copy.workspace.activePane}`
-					: copy.a11y.pane(view.label)
-			}
+			aria-current={active ? "true" : undefined}
+			aria-label={copy.a11y.pane(view.label)}
 			style={stacked ? undefined : { gridArea: gridAreaStyle(pane.slots) }}
 			className={cn(
 				"min-w-0",

@@ -7,6 +7,12 @@ test("opens a clean workspace through accessible product labels", async ({
 	tabelo,
 }) => {
 	await expect(page).toHaveTitle(product.documentTitle);
+	await expect(page.locator("head > title")).toHaveCount(1);
+	await expect(page.locator('head > meta[name="description"]')).toHaveCount(1);
+	await expect(page.locator('head > meta[property="og:title"]')).toHaveCount(1);
+	await expect(
+		page.locator('head > meta[property="og:description"]'),
+	).toHaveCount(1);
 	await expect(tabelo.pane("grid")).toBeVisible();
 	await expect(tabelo.pane("markdown")).toBeVisible();
 	await expect(tabelo.grid()).toHaveAttribute("aria-rowcount", "4");
