@@ -161,9 +161,12 @@ body {
 	user-select: none;
 }
 
-.tabelo-active-pane {
-	outline: var(--pane-active-edge) solid var(--selection-edge);
-	outline-offset: calc(-1 * var(--pane-active-edge));
+.tabelo-active-pane-indicator {
+	position: absolute;
+	inset: 0;
+	z-index: 40;
+	border: var(--pane-active-edge) solid var(--selection-edge);
+	border-radius: inherit;
 }
 
 ::selection {

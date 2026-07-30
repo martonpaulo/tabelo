@@ -34,14 +34,17 @@ export const Pane = memo(function Pane({
 
 	return (
 		<Panel
-			aria-label={copy.a11y.pane(view.label)}
+			aria-label={
+				active
+					? `${copy.a11y.pane(view.label)}, ${copy.workspace.activePane}`
+					: copy.a11y.pane(view.label)
+			}
 			style={stacked ? undefined : { gridArea: gridAreaStyle(pane.slots) }}
 			className={cn(
 				"min-w-0",
 				// Tall enough to be worth scrolling to, and still allowed to grow
 				// when it is the only pane on screen.
 				stacked && "min-h-pane-stack flex-1",
-				active && "tabelo-active-pane",
 			)}
 			onPointerDownCapture={() => {
 				if (!active) useTabeloStore.getState().setActivePane(pane.id);
@@ -69,6 +72,8 @@ export const Pane = memo(function Pane({
 			>
 				<PaneContent paneId={pane.id} view={view} zoom={pane.zoom} />
 			</Panel.Body>
+
+			{active && <Panel.Overlay className="tabelo-active-pane-indicator" />}
 		</Panel>
 	);
 });

@@ -14,7 +14,7 @@ function PanelRoot({
 	return (
 		<section
 			className={cn(
-				"flex min-h-0 min-w-0 flex-col overflow-hidden rounded-surface bg-surface-panel ring-1 ring-line-subtle",
+				"relative isolate flex min-h-0 min-w-0 flex-col overflow-hidden rounded-surface bg-surface-panel ring-1 ring-line-subtle",
 				className,
 			)}
 			{...props}
@@ -22,6 +22,10 @@ function PanelRoot({
 			{children}
 		</section>
 	);
+}
+
+function PanelOverlay({ className }: { readonly className?: string }) {
+	return <div aria-hidden className={cn("pointer-events-none", className)} />;
 }
 
 function PanelHeader({
@@ -86,4 +90,5 @@ export const Panel = Object.assign(PanelRoot, {
 	Spacer: PanelSpacer,
 	Body: PanelBody,
 	Footer: PanelFooter,
+	Overlay: PanelOverlay,
 });
