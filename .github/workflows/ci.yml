@@ -6,9 +6,14 @@ on:
     # These paths cannot affect the built site or its pipeline. Keep the list
     # here as the single owner for both push and pull request filtering.
     paths-ignore: &non_build_paths
-      - "*.md"
+      # Documentation anywhere in the repository
+      - "**/*.md"
       - "docs/**"
-      - LICENSE
+      - "LICENSE"
+      - ".agents/**"
+      - ".claude/**"
+      - ".github/copilot-instructions.md"
+      - ".github/instructions/**"
       - ".scratch/**"
   pull_request:
     paths-ignore: *non_build_paths
