@@ -240,17 +240,23 @@ export const copy = {
 		dismiss: "Dismiss",
 		undo: "Undo",
 		redo: "Redo",
-		insertRowAbove: "Insert row above",
-		insertRowBelow: "Insert row below",
-		insertColumnLeft: "Insert column left",
-		insertColumnRight: "Insert column right",
+		insertRowsAbove: (count: number) =>
+			`Insert ${count === 1 ? "row" : "rows"} above`,
+		insertRowsBelow: (count: number) =>
+			`Insert ${count === 1 ? "row" : "rows"} below`,
+		insertColumnsLeft: (count: number) =>
+			`Insert ${count === 1 ? "column" : "columns"} left`,
+		insertColumnsRight: (count: number) =>
+			`Insert ${count === 1 ? "column" : "columns"} right`,
 		addRow: "Add row",
 		addColumn: "Add column",
-		duplicate: "Duplicate",
-		duplicateRows: "Duplicate rows",
-		duplicateColumns: "Duplicate columns",
-		deleteRows: "Delete rows",
-		deleteColumns: "Delete columns",
+		duplicateRows: (count: number) =>
+			`Duplicate ${count === 1 ? "row" : "rows"}`,
+		duplicateColumns: (count: number) =>
+			`Duplicate ${count === 1 ? "column" : "columns"}`,
+		deleteRows: (count: number) => `Delete ${count === 1 ? "row" : "rows"}`,
+		deleteColumns: (count: number) =>
+			`Delete ${count === 1 ? "column" : "columns"}`,
 		clear: "Clear contents",
 		moveUp: "Move up",
 		moveDown: "Move down",

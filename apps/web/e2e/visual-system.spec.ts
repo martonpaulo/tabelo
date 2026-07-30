@@ -1,5 +1,6 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/ui/copy";
+import { layoutPresets } from "@/workspace/layout";
 import { expect, test } from "./fixtures";
 
 async function contrastBetween(
@@ -40,6 +41,16 @@ async function contrastBetween(
 		},
 		{ foreground, background },
 	);
+}
+
+async function typographyOf(locator: Locator) {
+	return locator.evaluate((element) => {
+		const style = getComputedStyle(element);
+		return {
+			fontSize: Number.parseFloat(style.fontSize),
+			lineHeight: Number.parseFloat(style.lineHeight),
+		};
+	});
 }
 
 test("controls, surfaces, and menus share their semantic visual hierarchy", async ({
@@ -99,6 +110,100 @@ test("controls, surfaces, and menus share their semantic visual hierarchy", asyn
 	).toContain("blur");
 });
 
+test("the app menu identity uses readable multi-line typography", async ({
+	page,
+	tabelo,
+}) => {
+	const menu = await tabelo.openAppMenu();
+	const name = menu.getByText(copy.app.name, { exact: true });
+	const tagline = menu.getByText(copy.app.tagline, { exact: true });
+
+	const geometry = await Promise.all([
+		name.boundingBox(),
+		tagline.boundingBox(),
+		typographyOf(name),
+		typographyOf(tagline),
+		page.evaluate(() =>
+			Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+		),
+	]);
+	const [nameBox, taglineBox, nameType, taglineType, rootFontSize] = geometry;
+
+	expect(nameBox).not.toBeNull();
+	expect(taglineBox).not.toBeNull();
+	expect(nameType.fontSize).toBeGreaterThanOrEqual(rootFontSize * 0.875);
+	expect(taglineBox?.y).toBeGreaterThanOrEqual(
+		(nameBox?.y ?? 0) + (nameBox?.height ?? 0),
+	);
+	expect(taglineType.lineHeight).toBeGreaterThan(taglineType.fontSize);
+	expect(
+		page.getByRole("menuitem").filter({ hasText: copy.app.name }),
+	).toHaveCount(0);
+
+	await page.keyboard.press("Escape");
+	await expect(menu).toBeHidden();
+	const trigger = page.getByRole("button", {
+		name: copy.actions.openAppMenu,
+	});
+	await trigger.focus();
+	await trigger.press("Enter");
+	await expect(menu).toBeVisible();
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.newTable }),
+	).toBeFocused();
+});
+
+test("single-line menu labels keep their compact shared treatment", async ({
+	page,
+	tabelo,
+}) => {
+	const rootFontSize = await page.evaluate(() =>
+		Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+	);
+	const expectCompactLabel = async (label: Locator) => {
+		const type = await typographyOf(label);
+		expect(type.fontSize).toBeCloseTo(rootFontSize * 0.75, 5);
+		expect(type.lineHeight).toBeCloseTo(type.fontSize, 5);
+	};
+
+	const layoutMenu = await tabelo.openLayoutMenu();
+	await expectCompactLabel(
+		layoutMenu.getByText(copy.workspace.layoutHint, { exact: true }),
+	);
+	await page.keyboard.press("Escape");
+	await expect(layoutMenu).toBeHidden();
+	await page.keyboard.press("Escape");
+
+	const paneMenu = await tabelo.openPaneMenu("markdown");
+	await expectCompactLabel(
+		paneMenu.getByText(copy.workspace.changeView, { exact: true }),
+	);
+	const zoomLabel = paneMenu.getByText(copy.workspace.zoom(100), {
+		exact: true,
+	});
+	await expectCompactLabel(zoomLabel);
+	await expect(zoomLabel).toHaveAttribute("aria-live", "polite");
+	await page.keyboard.press("Escape");
+	await expect(paneMenu).toBeHidden();
+
+	await tabelo
+		.grid()
+		.getByRole("button", {
+			name: new RegExp(`^${copy.actions.columnActions}:`),
+		})
+		.first()
+		.click();
+	const columnMenu = page.getByRole("menu", {
+		name: new RegExp(`^${copy.actions.columnActions}:`),
+	});
+	await expectCompactLabel(
+		columnMenu.locator('[data-slot="dropdown-menu-label"]').first(),
+	);
+	await expectCompactLabel(
+		columnMenu.getByText(copy.actions.alignment, { exact: true }),
+	);
+});
+
 test("only view content participates in native text selection", async ({
 	tabelo,
 }) => {
@@ -123,24 +228,114 @@ test("only view content participates in native text selection", async ({
 	);
 });
 
-test("the active pane has a stronger blue boundary", async ({ tabelo }) => {
+test("the active pane boundary stays above its content without reflow", async ({
+	page,
+	tabelo,
+}) => {
 	await tabelo.cell(1, 1).click();
 	const active = tabelo.pane("grid");
 	const inactive = tabelo.pane("markdown");
-	await expect(active).toHaveCSS("outline-style", "solid");
-	const colours = await active.evaluate((element) => {
+	const indicator = active.locator(".tabelo-active-pane-indicator");
+	await expect(indicator).toHaveCount(1);
+	await expect(active).toHaveAttribute("aria-current", "true");
+	await expect(active).toHaveAccessibleName(
+		copy.a11y.pane(copy.views.grid.label),
+	);
+	await expect(inactive.locator(".tabelo-active-pane-indicator")).toHaveCount(
+		0,
+	);
+	await expect(inactive).not.toHaveAttribute("aria-current");
+	await expect(inactive).toHaveAccessibleName(
+		copy.a11y.pane(copy.views.markdown.label),
+	);
+
+	const activeBox = await active.boundingBox();
+	const indicatorBox = await indicator.boundingBox();
+	expect(indicatorBox).toEqual(activeBox);
+
+	const styles = await indicator.evaluate((element) => {
 		const probe = document.createElement("span");
 		probe.style.color = "var(--selection-edge)";
+		probe.style.borderTop = "var(--pane-active-edge) solid";
 		element.append(probe);
 		const result = {
-			outline: getComputedStyle(element).outlineColor,
+			borderWidths: [
+				getComputedStyle(element).borderTopWidth,
+				getComputedStyle(element).borderRightWidth,
+				getComputedStyle(element).borderBottomWidth,
+				getComputedStyle(element).borderLeftWidth,
+			],
+			borderColor: getComputedStyle(element).borderTopColor,
+			position: getComputedStyle(element).position,
+			pointerEvents: getComputedStyle(element).pointerEvents,
+			zIndex: Number(getComputedStyle(element).zIndex),
+			edgeToken: getComputedStyle(probe).borderTopWidth,
 			token: getComputedStyle(probe).color,
 		};
 		probe.remove();
 		return result;
 	});
-	expect(colours.outline).toBe(colours.token);
-	await expect(inactive).toHaveCSS("outline-style", "none");
+	expect(new Set(styles.borderWidths)).toEqual(new Set([styles.edgeToken]));
+	expect(styles.borderColor).toBe(styles.token);
+	expect(styles.position).toBe("absolute");
+	expect(styles.pointerEvents).toBe("none");
+
+	await tabelo.source("markdown").click();
+	await expect(indicator).toHaveCount(0);
+	await expect(inactive.locator(".tabelo-active-pane-indicator")).toHaveCount(
+		1,
+	);
+	await expect(active).not.toHaveAttribute("aria-current");
+	await expect(inactive).toHaveAttribute("aria-current", "true");
+	expect(await active.boundingBox()).toEqual(activeBox);
+
+	// The sticky grid corner is the pane's highest content layer. Scrolling it
+	// under the overlay must not let it overtake the active boundary.
+	await tabelo.cell(1, 1).click();
+	await tabelo.grid().evaluate((grid) => {
+		grid.scrollTo({ top: grid.scrollHeight, left: grid.scrollWidth });
+	});
+	const stickyCornerZIndex = await tabelo
+		.grid()
+		.locator("thead tr > th")
+		.first()
+		.evaluate((element) => Number(getComputedStyle(element).zIndex));
+	expect(styles.zIndex).toBeGreaterThan(stickyCornerZIndex);
+
+	await page.emulateMedia({ colorScheme: "dark" });
+	await expect(indicator).toHaveCSS("border-top-color", "rgb(77, 166, 255)");
+});
+
+test("every layout and theme keeps the active boundary on all four edges", async ({
+	page,
+	tabelo,
+}) => {
+	test.setTimeout(60_000);
+	await tabelo.cell(1, 1).click();
+	for (const colorScheme of ["light", "dark"] as const) {
+		await page.emulateMedia({ colorScheme });
+		for (const preset of layoutPresets) {
+			await tabelo.chooseLayout(preset.id);
+			const pane = tabelo.pane("grid");
+			const indicator = pane.locator(".tabelo-active-pane-indicator");
+			const [paneBox, indicatorBox] = await Promise.all([
+				pane.boundingBox(),
+				indicator.boundingBox(),
+			]);
+			expect(indicatorBox).toEqual(paneBox);
+			const widths = await indicator.evaluate((element) => {
+				const style = getComputedStyle(element);
+				return [
+					style.borderTopWidth,
+					style.borderRightWidth,
+					style.borderBottomWidth,
+					style.borderLeftWidth,
+				];
+			});
+			expect(new Set(widths).size).toBe(1);
+			expect(widths[0]).not.toBe("0px");
+		}
+	}
 });
 
 test("the initial surface accepts the standard paste event directly", async ({
@@ -209,7 +404,7 @@ test("source focus belongs to the pane while caret and line numbers share its me
 		"border-left-style",
 		"solid",
 	);
-	await expect(pane).toHaveCSS("outline-style", "solid");
+	await expect(pane.locator(".tabelo-active-pane-indicator")).toHaveCount(1);
 
 	const assertEditorGeometry = async () => {
 		await pane.evaluate(

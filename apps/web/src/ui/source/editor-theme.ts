@@ -23,6 +23,7 @@ export const editorTheme = EditorView.theme({
 	".cm-scroller": {
 		fontFamily: "var(--font-family-source)",
 		lineHeight: "1.6",
+		overscrollBehavior: "contain",
 	},
 	".cm-content": {
 		padding: "calc(var(--spacing) * 3) 0",

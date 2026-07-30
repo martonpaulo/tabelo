@@ -13,6 +13,7 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	const pane = tabelo.pane("markdown");
 	const editor = tabelo.source("markdown");
 	const cursorLayer = pane.locator(".cm-cursorLayer");
+	const paneIndicator = pane.locator(".tabelo-active-pane-indicator");
 	await editor.focus();
 	const normalCursorAnimation = await cursorLayer.evaluate((element) => {
 		const style = getComputedStyle(element);
@@ -21,12 +22,12 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	expect(normalCursorAnimation.name).not.toBe("none");
 	expect(normalCursorAnimation.duration).not.toBe("0.00001s");
 
-	const lightFocus = await pane.evaluate((element) => {
+	const lightFocus = await paneIndicator.evaluate((element) => {
 		const style = getComputedStyle(element);
 		return {
-			color: style.outlineColor,
-			style: style.outlineStyle,
-			width: Number.parseFloat(style.outlineWidth),
+			color: style.borderTopColor,
+			style: style.borderTopStyle,
+			width: Number.parseFloat(style.borderTopWidth),
 		};
 	});
 	expect(lightFocus.style).toBe("solid");
@@ -53,11 +54,11 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 
 	await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
 	await editor.focus();
-	const darkFocus = await pane.evaluate((element) => {
+	const darkFocus = await paneIndicator.evaluate((element) => {
 		const style = getComputedStyle(element);
 		return {
-			style: style.outlineStyle,
-			width: Number.parseFloat(style.outlineWidth),
+			style: style.borderTopStyle,
+			width: Number.parseFloat(style.borderTopWidth),
 		};
 	});
 	expect(darkFocus.width).toBe(lightFocus.width);
