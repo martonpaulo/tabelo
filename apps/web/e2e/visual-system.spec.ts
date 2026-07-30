@@ -440,7 +440,9 @@ test("source focus belongs to the pane while caret and line numbers share its me
 		).toBeLessThan(0.1);
 		expect((number?.height ?? 0) / logicalLineHeight).toBeGreaterThan(0.95);
 		expect((number?.height ?? 0) / logicalLineHeight).toBeLessThan(1.05);
-		expect((cursor?.height ?? 0) / visualLineHeight).toBeGreaterThan(0.75);
+		// Caret remains font-sized (1.25rem) while the line box (2rem) is looser,
+		// so it covers ~62.5% of the visual line and sits vertically centered.
+		expect((cursor?.height ?? 0) / visualLineHeight).toBeGreaterThan(0.5);
 		expect((cursor?.height ?? 0) / visualLineHeight).toBeLessThanOrEqual(1.05);
 		const cursorLineOffset =
 			((cursor?.y ?? 0) - (activeLine?.y ?? 0)) % visualLineHeight;
@@ -449,7 +451,7 @@ test("source focus belongs to the pane while caret and line numbers share its me
 				Math.abs(cursorLineOffset),
 				Math.abs(visualLineHeight - cursorLineOffset),
 			) / visualLineHeight,
-		).toBeLessThan(0.2);
+		).toBeLessThan(0.35);
 	};
 
 	await assertEditorGeometry();

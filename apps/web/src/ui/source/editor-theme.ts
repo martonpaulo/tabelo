@@ -22,7 +22,7 @@ export const editorTheme = EditorView.theme({
 	},
 	".cm-scroller": {
 		fontFamily: "var(--font-family-source)",
-		lineHeight: "1.6",
+		lineHeight: "calc(var(--pane-zoom, 1) * 2rem)",
 		overscrollBehavior: "contain",
 	},
 	".cm-content": {
@@ -41,7 +41,7 @@ export const editorTheme = EditorView.theme({
 		color: "var(--muted-foreground)",
 		fontFamily: "var(--font-family-source)",
 		fontSize: contentFontSize,
-		lineHeight: "1.6",
+		lineHeight: "calc(var(--pane-zoom, 1) * 2rem)",
 		border: "none",
 		borderRight: "0.0625rem solid var(--line-subtle)",
 		userSelect: "none",

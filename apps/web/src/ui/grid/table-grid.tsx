@@ -537,7 +537,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										// coordinates and repeat them on every arrow key.
 										title={value || undefined}
 										className={cn(
-											"relative overflow-hidden border-line-subtle border-r border-b px-2 py-1.5 align-top",
+											"relative overflow-hidden border-line-subtle border-r border-b px-2 align-top",
 											"cursor-cell select-none",
 											alignClass[column.align],
 											inSelection ? "bg-selection-fill" : "bg-background",
@@ -614,7 +614,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 												}}
 											/>
 										) : (
-											<span className="block h-content-line overflow-hidden whitespace-pre">
+											<span className="block h-content-line-box overflow-hidden whitespace-pre leading-content-line-box">
 												{value}
 											</span>
 										)}
@@ -791,7 +791,7 @@ function HeaderCell({
 			tabIndex={focus && entered ? 0 : -1}
 			className={cn(
 				"sticky z-20 overflow-hidden border-line-strong border-r border-b",
-				"cursor-cell select-none px-2 py-1.5 font-semibold",
+				"cursor-cell select-none px-2 font-semibold",
 				// Sticks below the index strip rather than at the very top, so the
 				// two chrome layers stack instead of covering one another.
 				"top-grid-strip",
