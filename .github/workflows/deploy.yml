@@ -14,8 +14,12 @@ env:
   GIT_CONFIG_KEY_0: init.defaultBranch
   GIT_CONFIG_VALUE_0: main
 
+# Cancel superseded CI runs on the same ref (branch or PR) so redundant lint,
+# test, and build work stops as soon as a newer commit arrives. The Pages
+# deployment job below uses its own non-cancelling group so an in-progress
+# deployment is never interrupted mid-flight; see that job for why.
 concurrency:
-  group: pages
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -169,6 +173,13 @@ jobs:
     needs: [check, e2e, build-pages]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    # Deployments queue instead of racing: a queued deployment superseded by a
+    # newer one is skipped automatically, but cancel-in-progress stays false
+    # so a deployment that already started is always allowed to finish rather
+    # than leaving the Pages environment in a partially deployed state.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     permissions:
       contents: read
       pages: write
