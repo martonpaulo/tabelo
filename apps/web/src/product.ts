@@ -1,4 +1,4 @@
-// Product identity is build-time and runtime copy. Keeping it framework-free
+// Product identity supplies build-time and runtime copy. Keeping it framework-free
 // lets the HTML shell, router metadata, manifest, and interface share one owner.
 export const product = {
 	name: "Tabelo",
