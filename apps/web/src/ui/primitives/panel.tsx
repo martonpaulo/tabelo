@@ -54,7 +54,11 @@ function PanelBody({
 }: React.ComponentProps<"div">) {
 	return (
 		<div
-			className={cn("relative min-h-0 flex-1 overflow-auto", className)}
+			data-slot="panel-body"
+			className={cn(
+				"tabelo-scroll-boundary relative min-h-0 flex-1 overflow-auto",
+				className,
+			)}
 			{...props}
 		>
 			{children}

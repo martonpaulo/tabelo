@@ -124,7 +124,7 @@ export function Workspace() {
 			ref={containerRef}
 			aria-label={copy.a11y.workspace}
 			className={cn(
-				"relative min-h-0 min-w-0 flex-1 gap-2 bg-surface-app p-2",
+				"tabelo-scroll-boundary relative min-h-0 min-w-0 flex-1 gap-2 bg-surface-app p-2",
 				// Stacked, the workspace itself scrolls between panes; tiled, it
 				// never does and each pane scrolls its own content.
 				stacked ? "flex flex-col overflow-y-auto" : "grid",

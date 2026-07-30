@@ -19,7 +19,10 @@ export default function HtmlPreview() {
 	const document = useTabeloStore((state) => state.document);
 
 	return (
-		<div className="h-full select-text overflow-auto p-4">
+		<div
+			data-slot="preview-scroller"
+			className="tabelo-scroll-boundary h-full select-text overflow-auto p-4"
+		>
 			<div className="overflow-hidden rounded-surface bg-surface-panel ring-1 ring-line-subtle">
 				<table
 					aria-label={copy.a11y.preview}
