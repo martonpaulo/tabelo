@@ -21,6 +21,13 @@ export default function HtmlPreview() {
 	return (
 		<div
 			data-slot="preview-scroller"
+			// The preview holds no controls, so this scroller is what entering the
+			// pane has to land on: arrows scroll a focused scrollable element, and
+			// that is the whole keyboard model this view needs. Explicitly -1 for
+			// the same reason as the pane body, since the browser would otherwise
+			// make an overflowing scroller a tab stop in the workspace ring.
+			data-pane-entry
+			tabIndex={-1}
 			className="tabelo-scroll-boundary h-full select-text overflow-auto p-4"
 		>
 			<div className="overflow-hidden rounded-surface bg-surface-panel ring-1 ring-line-subtle">

@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
 import { textForView, useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
+import { PaneEntryContext } from "@/ui/workspace/use-pane-entry";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import { BlockedState } from "./blocked-state";
@@ -20,6 +21,7 @@ interface SourceViewProps {
 export default function SourceView({ paneId, viewId, zoom }: SourceViewProps) {
 	const view = getView(viewId);
 	const document = useTabeloStore((state) => state.document);
+	const entered = useContext(PaneEntryContext);
 
 	// The projection recomputes only when the document changes, not when some
 	// other pane is being typed into.
@@ -69,6 +71,7 @@ export default function SourceView({ paneId, viewId, zoom }: SourceViewProps) {
 				language={view.highlight}
 				diagnostics={diagnostics}
 				invalid={invalid}
+				entered={entered}
 				describedBy={description ? feedbackIds.description : undefined}
 				editable={editable}
 				ariaLabel={copy.a11y.sourceEditor(view.label)}

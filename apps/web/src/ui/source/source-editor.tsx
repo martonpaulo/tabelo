@@ -207,9 +207,11 @@ function contentAttributes(
 	ariaLabel: string,
 	invalid: boolean,
 	describedBy: string | undefined,
+	entered: boolean,
 ) {
 	return {
 		"aria-label": ariaLabel,
+		tabindex: entered ? "0" : "-1",
 		...(invalid ? { "aria-invalid": "true" } : {}),
 		...(describedBy ? { "aria-describedby": describedBy } : {}),
 	};
@@ -264,6 +266,7 @@ interface SourceEditorProps {
 	readonly language: HighlightLanguage;
 	readonly diagnostics: readonly SourceDiagnostic[];
 	readonly invalid: boolean;
+	readonly entered: boolean;
 	readonly describedBy?: string;
 	// Read-only views still get selection and copy, just no typing.
 	readonly editable: boolean;
@@ -282,6 +285,7 @@ export function SourceEditor({
 	language,
 	diagnostics,
 	invalid,
+	entered,
 	describedBy,
 	editable,
 	ariaLabel,
@@ -324,7 +328,7 @@ export function SourceEditor({
 					syntaxTheme,
 					attributesCompartment.of(
 						EditorView.contentAttributes.of(
-							contentAttributes(ariaLabel, invalid, describedBy),
+							contentAttributes(ariaLabel, invalid, describedBy, entered),
 						),
 					),
 					zoomCompartment.of(zoomExtension(zoom)),
@@ -469,11 +473,11 @@ export function SourceEditor({
 		view.dispatch({
 			effects: attributesCompartment.reconfigure(
 				EditorView.contentAttributes.of(
-					contentAttributes(ariaLabel, invalid, describedBy),
+					contentAttributes(ariaLabel, invalid, describedBy, entered),
 				),
 			),
 		});
-	}, [ariaLabel, invalid, describedBy]);
+	}, [ariaLabel, invalid, describedBy, entered]);
 
 	return <div ref={hostRef} className="h-full min-h-0 [&_.cm-editor]:h-full" />;
 }

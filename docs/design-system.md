@@ -636,6 +636,24 @@ These are requirements, not aspirations:
 
 One rule shapes the rest: **the workspace is a two-level ring. `Tab` walks between panes; `Enter` enters a pane, and `Escape` exits it.** A widget that answers every key is a trap, so the escape hatch is unconditional.
 
+**What is at the workspace level is fixed per pane, never per row or per
+column.** The ring holds the pane frame and the two triggers in its header, and
+that is all: the header is chrome that belongs beside the pane, not content
+inside it. Everything the view itself contains, including every select handle
+and axis menu the grid grows, is reachable only after entering. So the number
+of stops the ring holds is a property of the layout and never of the table.
+
+A pane counts as entered when focus is in its **body**. Two consequences that
+are easy to get wrong and both cost the whole model: focus reaching a header
+trigger is not entry, and a scrolling body is not a tab stop. A browser puts an
+overflowing scroll container into the tab order on its own, so every scrollable
+surface in a pane states `tabindex="-1"` and is focused deliberately or not at
+all.
+
+`Enter` lands on what the view says is its content: the grid's focused cell,
+the source editor, or, for a view with nothing focusable in it, its scroll
+container, so the arrow keys still work.
+
 | Key | Effect |
 | :--- | :--- |
 | Arrows | Move the focused cell. They stop at the edges and never leave the grid |
