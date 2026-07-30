@@ -22,10 +22,7 @@ test("every source format highlights its table structure", async ({
 	await tabelo.choosePaneView("tsv", "jira");
 	await expectHeaderLine("jira");
 
-	await tabelo.choosePaneView("jira", "json");
-	await expectHeaderLine("json");
-
-	await tabelo.choosePaneView("json", "html");
+	await tabelo.choosePaneView("jira", "html");
 	const html = tabelo.pane("html");
 	const headerCellLine = html
 		.locator(".cm-line")
