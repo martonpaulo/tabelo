@@ -4,6 +4,7 @@ import {
 	detectHeaderRow,
 	documentFromMatrix,
 	documentToMatrix,
+	isDocumentBlank,
 } from "./document";
 import {
 	clearCells,
@@ -19,6 +20,7 @@ import {
 	pasteMatrix,
 	setCell,
 } from "./operations";
+import { HEADER_ROW } from "./selection";
 
 function docOf(matrix: string[][]) {
 	return documentFromMatrix(matrix, { headerRow: true });
@@ -153,6 +155,60 @@ describe("cell operations", () => {
 			["3", "4"],
 		]);
 	});
+
+	// The selection can cover the header row, so the operation behind Backspace
+	// has to reach it. Clearing a header leaves it empty; nothing renames it.
+	it("clears header text and cells together across the boundary", () => {
+		const next = clearCells(sample(), {
+			top: HEADER_ROW,
+			bottom: 0,
+			left: 0,
+			right: 0,
+		});
+		expect(documentToMatrix(next)).toEqual([
+			["", "B"],
+			["", "2"],
+			["3", "4"],
+		]);
+	});
+
+	it("clears the header row alone", () => {
+		const next = clearCells(sample(), {
+			top: HEADER_ROW,
+			bottom: HEADER_ROW,
+			left: 0,
+			right: 1,
+		});
+		expect(documentToMatrix(next)).toEqual([
+			["", ""],
+			["1", "2"],
+			["3", "4"],
+		]);
+	});
+
+	it("leaves the header alone when the rect starts below it", () => {
+		const next = clearCells(sample(), { top: 0, bottom: 1, left: 0, right: 1 });
+		expect(documentToMatrix(next)).toEqual([
+			["A", "B"],
+			["", ""],
+			["", ""],
+		]);
+	});
+
+	it("returns the same document when the header is already empty", () => {
+		const before = docOf([
+			["", ""],
+			["1", "2"],
+		]);
+		expect(
+			clearCells(before, {
+				top: HEADER_ROW,
+				bottom: HEADER_ROW,
+				left: 0,
+				right: 1,
+			}),
+		).toBe(before);
+	});
 });
 
 describe("paste", () => {
@@ -162,7 +218,7 @@ describe("paste", () => {
 			["z", "w"],
 		]);
 		expect(documentToMatrix(next)).toEqual([
-			["A", "B", "Column 3"],
+			["A", "B", ""],
 			["1", "2", ""],
 			["3", "x", "y"],
 			["", "z", "w"],
@@ -209,7 +265,10 @@ describe("header handling", () => {
 		).toBe(false);
 	});
 
-	it("generates placeholder headers when row 1 is data", () => {
+	// The table still has exactly one header row; it simply has no text yet.
+	// Inventing "Column 1" here would write content the user never typed and
+	// then serialize it into every format.
+	it("leaves the header row empty when row 1 is data", () => {
 		const document = documentFromMatrix(
 			[
 				["Inez", "31"],
@@ -217,17 +276,28 @@ describe("header handling", () => {
 			],
 			{ headerRow: false },
 		);
-		expect(document.columns.map((column) => column.header)).toEqual([
-			"Column 1",
-			"Column 2",
-		]);
+		expect(document.columns.map((column) => column.header)).toEqual(["", ""]);
 		expect(document.rows).toHaveLength(2);
 	});
 
-	it("demotes the header row into data and regenerates headers", () => {
+	it("keeps a blank header from the source blank", () => {
+		const document = documentFromMatrix(
+			[
+				["Name", ""],
+				["Inez", "Designer"],
+			],
+			{ headerRow: true },
+		);
+		expect(document.columns.map((column) => column.header)).toEqual([
+			"Name",
+			"",
+		]);
+	});
+
+	it("demotes the header row into data and leaves the header empty", () => {
 		const next = demoteHeaderToRow(sample());
 		expect(documentToMatrix(next)).toEqual([
-			["Column 1", "Column 2"],
+			["", ""],
 			["A", "B"],
 			["1", "2"],
 			["3", "4"],
@@ -240,5 +310,80 @@ describe("empty document", () => {
 		const document = createEmptyDocument();
 		expect(document.columns.length).toBeGreaterThan(0);
 		expect(document.rows.length).toBeGreaterThan(0);
+	});
+
+	it("starts with unnamed columns rather than seeded names", () => {
+		expect(
+			createEmptyDocument().columns.map((column) => column.header),
+		).toEqual(["", "", ""]);
+	});
+
+	it("is blank when nothing has been typed", () => {
+		expect(isDocumentBlank(createEmptyDocument())).toBe(true);
+	});
+
+	// The trap this closes: while "Column 1" was a generated name, a user who
+	// deliberately typed it had a document Tabelo considered untouched and would
+	// clear without confirming.
+	it("is not blank when a header literally reads Column 1", () => {
+		const document = documentFromMatrix(
+			[
+				["Column 1", ""],
+				["", ""],
+			],
+			{
+				headerRow: true,
+			},
+		);
+		expect(isDocumentBlank(document)).toBe(false);
+	});
+
+	it("is not blank when only a cell holds content", () => {
+		expect(
+			isDocumentBlank(
+				docOf([
+					["", ""],
+					["x", ""],
+				]),
+			),
+		).toBe(false);
+	});
+});
+
+describe("blank headers survive structural edits", () => {
+	const unnamed = () =>
+		documentFromMatrix(
+			[
+				["", ""],
+				["1", "2"],
+			],
+			{
+				headerRow: true,
+			},
+		);
+
+	it("does not rename a blank header when a column is inserted", () => {
+		const next = insertColumns(unnamed(), 0);
+		expect(next.columns.map((column) => column.header)).toEqual(["", "", ""]);
+	});
+
+	it("does not rename a blank header when a column is deleted", () => {
+		const next = deleteColumns(unnamed(), [0]);
+		expect(next.columns.map((column) => column.header)).toEqual([""]);
+	});
+
+	it("keeps a named neighbour named when a column is inserted", () => {
+		const next = insertColumns(
+			docOf([
+				["Name", ""],
+				["Inez", ""],
+			]),
+			1,
+		);
+		expect(next.columns.map((column) => column.header)).toEqual([
+			"Name",
+			"",
+			"",
+		]);
 	});
 });

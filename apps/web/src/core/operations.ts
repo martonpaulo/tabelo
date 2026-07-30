@@ -1,5 +1,6 @@
-import { createColumn, createRow, defaultHeader } from "./document";
+import { createColumn, createRow } from "./document";
 import { createRowId } from "./ids";
+import { type CellRect, rectCoversHeader } from "./selection";
 import type { Alignment, Column, ColumnId, Row, TableDocument } from "./types";
 
 // Pure operations over a table document. Every grid interaction goes through
@@ -16,14 +17,6 @@ function withRows(
 		columns: document.columns,
 		rows: rows.length > 0 ? rows : [createRow(document.columns)],
 	};
-}
-
-function reindexBlankHeaders(columns: readonly Column[]): Column[] {
-	return columns.map((column, index) =>
-		column.header.trim() === ""
-			? { ...column, header: defaultHeader(index) }
-			: column,
-	);
 }
 
 function sortedDesc(indices: readonly number[]): number[] {
@@ -156,14 +149,14 @@ export function insertColumns(
 	count = 1,
 ): TableDocument {
 	const index = Math.max(0, Math.min(atIndex, document.columns.length));
-	const created = Array.from({ length: count }, (_, offset) =>
-		createColumn(defaultHeader(index + offset)),
-	);
-	const columns = reindexBlankHeaders([
+	// A new column has no name until the user gives it one. Its identity comes
+	// from the column index strip, so there is nothing to invent here.
+	const created = Array.from({ length: count }, () => createColumn(""));
+	const columns = [
 		...document.columns.slice(0, index),
 		...created,
 		...document.columns.slice(index),
-	]);
+	];
 	const rows = document.rows.map((row) => {
 		const cells = { ...row.cells };
 		for (const column of created) cells[column.id] = "";
@@ -180,7 +173,7 @@ export function deleteColumns(
 	if (remove.size === 0) return document;
 
 	const kept = document.columns.filter((_, index) => !remove.has(index));
-	const columns = kept.length > 0 ? kept : [createColumn(defaultHeader(0))];
+	const columns = kept.length > 0 ? kept : [createColumn("")];
 	const removedIds = document.columns
 		.filter((_, index) => remove.has(index))
 		.map((c) => c.id);
@@ -236,18 +229,24 @@ export function moveColumn(
 	return { ...document, columns };
 }
 
-export interface CellRect {
-	readonly top: number;
-	readonly left: number;
-	readonly bottom: number;
-	readonly right: number;
-}
-
+// Clears whatever the rect covers, header text included. A header cell is an
+// ordinary cell for this purpose, so one Backspace over a selection that spans
+// the boundary is one operation and therefore one undo step. An emptied header
+// stays empty: nothing regenerates a name for it.
 export function clearCells(
 	document: TableDocument,
 	rect: CellRect,
 ): TableDocument {
 	let changed = false;
+	const columns = rectCoversHeader(rect)
+		? document.columns.map((column, index) => {
+				if (index < rect.left || index > rect.right) return column;
+				if (column.header === "") return column;
+				changed = true;
+				return { ...column, header: "" };
+			})
+		: document.columns;
+
 	const rows = document.rows.map((row, rowIndex) => {
 		if (rowIndex < rect.top || rowIndex > rect.bottom) return row;
 		const selectedColumns = document.columns.slice(rect.left, rect.right + 1);
@@ -261,7 +260,7 @@ export function clearCells(
 		for (const column of selectedColumns) cells[column.id] = "";
 		return { ...row, cells };
 	});
-	return changed ? { ...document, rows } : document;
+	return changed ? { columns, rows } : document;
 }
 
 // Writes a matrix starting at the given cell, growing the table when the
@@ -311,15 +310,17 @@ export function setHeaders(
 	const columns = document.columns.map((column, index) =>
 		values[index] === undefined ? column : { ...column, header: values[index] },
 	);
-	return { ...document, columns: reindexBlankHeaders(columns) };
+	return { ...document, columns };
 }
 
-// Turns the current header row into a data row and generates fresh headers.
+// Turns the current header row into a data row, leaving the header row empty.
 // This is the undoable correction offered when header detection guesses wrong.
+// The new header row is blank rather than generated: the row that moved down
+// keeps the only names the user actually wrote.
 export function demoteHeaderToRow(document: TableDocument): TableDocument {
-	const columns = document.columns.map((column, index) => ({
+	const columns = document.columns.map((column) => ({
 		...column,
-		header: defaultHeader(index),
+		header: "",
 	}));
 	const promoted: Row = {
 		id: createRowId(),

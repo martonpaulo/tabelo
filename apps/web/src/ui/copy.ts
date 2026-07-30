@@ -1,4 +1,3 @@
-import { defaultHeader } from "@/core/document";
 import type { ParseIssue, PreconditionFailure } from "@/formats/types";
 import type { ImportError } from "@/import/prepare";
 import { product } from "@/product";
@@ -50,6 +49,9 @@ const views = {
 	},
 } as const;
 
+// A column's positional name, in the spreadsheet sequence A..Z, AA, AB, and so
+// on. This is the only identity an unnamed column has, so it is what the index
+// strip displays and what an empty header announces.
 function columnLetter(index: number): string {
 	let value = index + 1;
 	let result = "";
@@ -159,6 +161,7 @@ export const copy = {
 		lastColumn: "The selected column is already last.",
 		lastRemainingRow: "A table must keep at least one row.",
 		lastRemainingColumn: "A table must keep at least one column.",
+		headerRowRequired: "Every table keeps its header row.",
 		updateInProgress: "The update is already being applied.",
 		codecPrecondition: (failure: PreconditionFailure) =>
 			preconditionMessage(failure),
@@ -390,19 +393,20 @@ export const copy = {
 		headerRow: "Row 1",
 		pane: (label: string) => `${label} pane`,
 		rowNumber: (index: number) => `Row ${index + 2}`,
-		columnLetter: defaultHeader,
+		columnLetter,
 		// Header cells name themselves after what they contain, because that name
 		// is what a screen reader reads out as the context for every cell beneath
-		// or beside them. A column with an empty header falls back to its
-		// position so the announcement is never silent.
+		// or beside them. A column with an empty header falls back to its letter
+		// from the index strip, so the announcement is never silent without
+		// inventing content that would serialize into the document.
 		columnHeader: (header: string, column: number) =>
-			header.trim() === "" ? defaultHeader(column) : header,
+			header.trim() === "" ? columnLetter(column) : header,
 		// The editor that opens inside a cell is a control, not a cell, so it
 		// names itself by position rather than borrowing the cell's value.
 		cellEditor: (row: number, column: number) =>
 			`Row ${row + 2}, column ${column + 1}`,
 		headerEditor: (header: string, column: number) =>
-			`Rename ${header.trim() === "" ? `column ${column + 1}` : header}`,
+			`Rename ${header.trim() === "" ? `column ${columnLetter(column)}` : header}`,
 		sourceEditor: (format: string) => `${format} source`,
 		preview: "Rendered table preview",
 		blockedView: "Blocked view reason",

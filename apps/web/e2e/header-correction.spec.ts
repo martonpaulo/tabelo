@@ -1,4 +1,3 @@
-import { defaultHeader } from "@/core/document";
 import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
@@ -7,7 +6,7 @@ test("a numeric first row does not offer header correction", async ({
 }) => {
 	await tabelo.paste("1\t2\n3\t4");
 
-	await expect(tabelo.header(1)).toContainText(defaultHeader(0));
+	await expect(tabelo.header(1)).toHaveText("");
 	await expect(tabelo.cell(1, 1)).toHaveText("1");
 	await expect(
 		tabelo.page.getByRole("button", { name: copy.notices.headerGuessAction }),
@@ -32,7 +31,7 @@ test("numeric and blank named files do not offer correction", async ({
 }) => {
 	await tabelo.importFile("numbers.csv", "1,2\n3,4", "text/csv");
 
-	await expect(tabelo.header(1)).toContainText(defaultHeader(0));
+	await expect(tabelo.header(1)).toHaveText("");
 	await expect(tabelo.cell(1, 1)).toHaveText("1");
 	await expect(
 		tabelo.page.getByRole("button", { name: copy.notices.headerGuessAction }),
@@ -40,7 +39,7 @@ test("numeric and blank named files do not offer correction", async ({
 
 	await tabelo.importFile("blank.csv", "Name,\nInez,Designer", "text/csv");
 
-	await expect(tabelo.header(1)).toContainText(defaultHeader(0));
+	await expect(tabelo.header(1)).toHaveText("");
 	await expect(tabelo.cell(1, 1)).toHaveText("Name");
 	await expect(
 		tabelo.page.getByRole("button", { name: copy.notices.headerGuessAction }),
@@ -68,7 +67,7 @@ test("header correction and undo are atomic", async ({ tabelo }) => {
 		.getByRole("button", { name: copy.notices.headerGuessAction })
 		.click();
 
-	await expect(tabelo.header(1)).toContainText(defaultHeader(0));
+	await expect(tabelo.header(1)).toHaveText("");
 	await expect(tabelo.cell(1, 1)).toHaveText("Name");
 
 	await tabelo.runAppCommand("undo");

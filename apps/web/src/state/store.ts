@@ -29,7 +29,8 @@ import {
 	createSelection,
 	type GridSelection,
 	rectColumns,
-	rectRows,
+	rectCoversHeader,
+	rectDataRows,
 	type SelectionMode,
 	selectionRect,
 	structureDeletionGuard,
@@ -84,7 +85,10 @@ const HISTORY_LIMIT = 200;
 const INVALID_GRACE_MS = 300;
 
 export type DraftStatus = "clean" | "invalid-grace" | "invalid";
-export type StructureDeletionRefusal = "last-row" | "last-column";
+export type StructureDeletionRefusal =
+	| "last-row"
+	| "last-column"
+	| "header-row";
 
 // The exact pane and format holding an editor buffer. A clean buffer has
 // already committed its meaning to the document but stays here so
@@ -184,7 +188,7 @@ export interface TabeloState {
 	selectCell: (position: CellPosition, mode?: SelectionMode) => void;
 	extendSelection: (position: CellPosition) => void;
 	setEditing: (position: CellPosition | null, seed?: string) => void;
-	setEditingHeader: (index: number | null) => void;
+	setEditingHeader: (index: number | null, seed?: string) => void;
 
 	editCell: (row: number, column: number, value: string) => void;
 	editHeader: (column: number, value: string) => void;
@@ -793,8 +797,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			editingSeed: position ? (seed ?? null) : null,
 			editingHeader: null,
 		}),
-	setEditingHeader: (index) =>
-		set({ editingHeader: index, editing: null, editingSeed: null }),
+	// The seed is the character that opened the editor, so typing over a selected
+	// header replaces it exactly as typing over a selected cell does.
+	setEditingHeader: (index, seed) =>
+		set({
+			editingHeader: index,
+			editingSeed: index === null ? null : (seed ?? null),
+			editing: null,
+		}),
 
 	editCell: (row, column, value) =>
 		get().applyDocument(setCell(get().document, row, column, value)),
@@ -815,46 +825,51 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				: { document: next, headerCorrection: null, inputError: null };
 		}),
 
+	// Every row operation below counts data rows only. A selection may cover the
+	// header row, and the header row is structurally required: it is never
+	// inserted beside as a count, removed, duplicated, or moved.
 	addRowAbove: () => {
 		const state = get();
 		const rect = currentRect(state);
-		state.applyDocument(
-			insertRows(state.document, rect.top, rectRows(rect).length),
-		);
-		set({ selection: createSelection({ row: rect.top, column: rect.left }) });
+		const count = Math.max(1, rectDataRows(rect).length);
+		const at = Math.max(0, rect.top);
+		state.applyDocument(insertRows(state.document, at, count));
+		set({ selection: createSelection({ row: at, column: rect.left }) });
 	},
 
 	addRowBelow: () => {
 		const state = get();
 		const rect = currentRect(state);
-		state.applyDocument(
-			insertRows(state.document, rect.bottom + 1, rectRows(rect).length),
-		);
+		const count = Math.max(1, rectDataRows(rect).length);
+		const at = Math.max(0, rect.bottom + 1);
+		state.applyDocument(insertRows(state.document, at, count));
 		set({
-			selection: createSelection({ row: rect.bottom + 1, column: rect.left }),
+			selection: createSelection({ row: at, column: rect.left }),
 		});
 	},
 
 	removeSelectedRows: () => {
 		const state = get();
-		state.applyDocument(
-			deleteRows(state.document, rectRows(currentRect(state))),
-		);
+		const rows = rectDataRows(currentRect(state));
+		if (rows.length === 0) return;
+		state.applyDocument(deleteRows(state.document, rows));
 	},
 
 	duplicateSelectedRows: () => {
 		const state = get();
-		state.applyDocument(
-			duplicateRows(state.document, rectRows(currentRect(state))),
-		);
+		const rows = rectDataRows(currentRect(state));
+		if (rows.length === 0) return;
+		state.applyDocument(duplicateRows(state.document, rows));
 	},
 
 	moveSelectedRow: (offset) => {
 		const state = get();
 		const rect = currentRect(state);
-		const to = rect.top + offset;
+		const from = rectDataRows(rect)[0];
+		if (from === undefined) return;
+		const to = from + offset;
 		if (to < 0 || to >= state.document.rows.length) return;
-		state.applyDocument(moveRow(state.document, rect.top, to));
+		state.applyDocument(moveRow(state.document, from, to));
 		set({
 			selection: {
 				...state.selection,
@@ -932,6 +947,10 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			state.removeSelectedColumns();
 			return null;
 		}
+		// The header row is reachable by the selection now, so it is reachable by
+		// a structural delete for the first time. It stays: every table has
+		// exactly one header row, and emptying it is what Backspace is for.
+		if (rectDataRows(currentRect(state)).length === 0) return "header-row";
 		if (guard.wouldRemoveAllRows) return "last-row";
 		state.removeSelectedRows();
 		return null;
@@ -941,16 +960,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const state = get();
 		const rect = currentRect(state);
 		const body = state.document.rows
-			.slice(rect.top, rect.bottom + 1)
+			// Clamped because the header row's index is below zero, and a negative
+			// argument would make slice count back from the end of the rows.
+			.slice(Math.max(0, rect.top), rect.bottom + 1)
 			.map((row) =>
 				state.document.columns
 					.slice(rect.left, rect.right + 1)
 					.map((column) => row.cells[column.id] ?? ""),
 			);
 
-		// Copying whole columns carries their headers, which is what makes the
-		// result useful when pasted somewhere else.
-		return state.selection.mode === "column"
+		// A selection that covers the header carries it, which is what makes the
+		// result useful when pasted somewhere else. Whole columns always do.
+		return rectCoversHeader(rect)
 			? [
 					state.document.columns
 						.slice(rect.left, rect.right + 1)

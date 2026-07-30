@@ -46,9 +46,12 @@ test("the first grid row is the numbered header row", async ({ tabelo }) => {
 
 test("grid headers show the current alignment", async ({ page, tabelo }) => {
 	const header = tabelo.header(1);
-	await expect(header.locator("svg")).toHaveCount(2);
+	// The alignment indicator is the only icon left in the header cell: the
+	// column's menu chevron moved to the index strip.
+	await expect(header.locator("svg")).toHaveCount(1);
 
-	await header
+	await tabelo
+		.columnIndex(1)
 		.getByRole("button", {
 			name: new RegExp(`^${copy.actions.columnActions}:`),
 		})
@@ -57,10 +60,5 @@ test("grid headers show the current alignment", async ({ page, tabelo }) => {
 		.getByRole("menuitemradio", { name: copy.actions.alignRight })
 		.click();
 
-	await expect(
-		header.getByRole("button", {
-			name: copy.a11y.columnLetter(0),
-			exact: true,
-		}),
-	).toHaveCSS("text-align", "right");
+	await expect(header).toHaveCSS("text-align", "right");
 });

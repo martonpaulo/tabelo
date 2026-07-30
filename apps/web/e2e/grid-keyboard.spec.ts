@@ -70,30 +70,38 @@ test("arrow navigation stays inside the grid at every edge", async ({
 }) => {
 	await tabelo.cell(1, 1).click();
 
+	// Up from the first data row reaches the header row, which is part of the
+	// table, and stops there rather than leaving the grid.
 	await page.keyboard.press("ArrowUp");
 	await page.keyboard.press("ArrowLeft");
-	expect(await focusedCell(page)).toBe("0:0");
+	expect(await focusedCell(page)).toBe("-1:0");
+	expect(await insideGrid(page)).toBe(true);
+
+	await page.keyboard.press("ArrowUp");
+	expect(await focusedCell(page)).toBe("-1:0");
 	expect(await insideGrid(page)).toBe(true);
 
 	await page.keyboard.press("ArrowDown");
-	expect(await focusedCell(page)).toBe("1:0");
+	expect(await focusedCell(page)).toBe("0:0");
 	await page.keyboard.press("ArrowRight");
-	expect(await focusedCell(page)).toBe("1:1");
+	expect(await focusedCell(page)).toBe("0:1");
 });
 
-test("a column header is renamed with Enter or F2 and selected with Space", async ({
+// The header cell is edited the way any cell is: it is one, for every purpose
+// except being deletable as a row. Selecting the column moved to the index
+// strip, so the header no longer answers Space.
+test("a header cell is renamed with Enter or F2 like any cell", async ({
 	page,
 	tabelo,
 }) => {
-	const headerButton = tabelo.header(1).getByRole("button").first();
-	await headerButton.focus();
+	await tabelo.header(1).click();
 
 	await page.keyboard.press("F2");
 	let editor = tabelo.grid().getByRole("textbox");
 	await expect(editor).toBeVisible();
 	await page.keyboard.press("Escape");
 
-	await headerButton.focus();
+	await tabelo.header(1).click();
 	await page.keyboard.press("Enter");
 	editor = tabelo.grid().getByRole("textbox");
 	await expect(editor).toBeVisible();
@@ -101,10 +109,28 @@ test("a column header is renamed with Enter or F2 and selected with Space", asyn
 	await editor.press("Enter");
 	await expect(tabelo.header(1)).toHaveText("Name");
 
-	// Activating the button still does what activating a button does.
-	await tabelo.header(1).getByRole("button").first().focus();
+	// Typing over it replaces it, which is what a data cell does too.
+	await tabelo.header(1).click();
+	await page.keyboard.press("R");
+	await expect(tabelo.grid().getByRole("textbox")).toHaveValue("R");
+	await page.keyboard.press("Enter");
+	await expect(tabelo.header(1)).toHaveText("R");
+});
+
+test("the column is selected from the index strip", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo
+		.columnIndex(1)
+		.getByRole("button", {
+			name: new RegExp(`^${copy.actions.selectColumn}:`),
+		})
+		.focus();
 	await page.keyboard.press(" ");
+
 	await expect(tabelo.cell(1, 1)).toHaveAttribute("aria-selected", "true");
+	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "true");
 });
 
 test("column width controls constrain a column with long content", async ({
@@ -195,11 +221,12 @@ test("column width controls constrain a column with long content", async ({
 	);
 	await close(open);
 
-	// The whole resize handle stays inside the clipped header so its complete hit
-	// target remains available.
-	const resizeHandle = header.locator("div.cursor-col-resize");
+	// The handle lives on the index strip, which owns everything about the
+	// column's shape. It stays inside its clipped cell so its complete hit target
+	// remains available.
+	const resizeHandle = tabelo.columnIndex(1).locator("div.cursor-col-resize");
 	const handleBox = await resizeHandle.boundingBox();
-	const resizedHeaderBox = await header.boundingBox();
+	const resizedHeaderBox = await tabelo.columnIndex(1).boundingBox();
 	expect(handleBox).not.toBeNull();
 	expect((handleBox?.x ?? 0) + (handleBox?.width ?? 0)).toBeLessThanOrEqual(
 		(resizedHeaderBox?.x ?? 0) + (resizedHeaderBox?.width ?? 0),
@@ -295,10 +322,13 @@ test("the documented grid commands still work", async ({ page, tabelo }) => {
 	expect(await focusedCell(page)).toBe("0:0");
 	await page.keyboard.press("Control+End");
 	expect(await focusedCell(page)).toBe("2:2");
+	// The far corner the other way is the header row, which is the table's first
+	// row and now reachable like any other.
 	await page.keyboard.press("Control+Home");
-	expect(await focusedCell(page)).toBe("0:0");
+	expect(await focusedCell(page)).toBe("-1:0");
 
 	// Alt+Arrow reorders rather than navigating.
+	await tabelo.cell(1, 1).click();
 	await page.keyboard.press("Alt+ArrowDown");
 	await expect(tabelo.cell(1, 1)).toHaveText("Bo");
 	await expect(tabelo.cell(2, 1)).toHaveText("Inez");
@@ -341,7 +371,9 @@ test("Mod+A selects the header row and every body cell", async ({
 		grid.dispatchEvent(event);
 		return clipboardData.getData("text/plain");
 	});
-	expect(copied.split("\n")[0]).toBe("Column 1\tColumn 2\tColumn 3");
+	// A new table has no header text, so the copied header row is empty tabs.
+	// What matters is that the header row is carried at all.
+	expect(copied.split("\n")[0]).toBe("\t\t");
 });
 
 test("typing in a cell never reaches the grid's structural shortcuts", async ({

@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import { HEADER_ROW } from "@/core/selection";
 import type { NoticeSeverity } from "@/state/notice-queue";
 import { copy } from "@/ui/copy";
 import { getView } from "@/views/registry";
@@ -142,7 +143,17 @@ export class TabeloPage {
 	// Cells and headers are addressed by position rather than by accessible
 	// name: their names are now their contents, which is the point: a cell is
 	// named after its value, not after its coordinates.
+	//
+	// The header cell holds editable text only. It is addressed as a cell,
+	// because for selection purposes it is one: its row is the header sentinel.
 	header(column: number): Locator {
+		requirePositiveIndex(column, "column");
+		return this.grid().locator(`[data-cell="${HEADER_ROW}:${column - 1}"]`);
+	}
+
+	// One cell of the column index strip, which owns the column's letter, its
+	// select handle, and its menu.
+	columnIndex(column: number): Locator {
 		requirePositiveIndex(column, "column");
 		return this.grid().locator(`[data-column-header="${column - 1}"]`);
 	}
@@ -252,6 +263,18 @@ export class TabeloPage {
 		await editor.fill(value);
 		await editor.press("Enter");
 		await cell.filter({ hasText: value }).waitFor();
+	}
+
+	// The header cell edits exactly like a data cell: double click, type, Enter.
+	async editHeader(column: number, value: string): Promise<void> {
+		const header = this.header(column);
+		await header.dblclick();
+		const editor = this.grid().getByRole("textbox", {
+			name: copy.a11y.headerEditor("", column - 1),
+		});
+		await editor.fill(value);
+		await editor.press("Enter");
+		await header.filter({ hasText: value }).waitFor();
 	}
 
 	async paste(text: string, html?: string): Promise<void> {
