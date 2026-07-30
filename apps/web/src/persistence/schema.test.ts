@@ -96,6 +96,36 @@ describe("loading a stored payload", () => {
 		}
 	});
 
+	// A payload Tabelo did not write may list the same tiling in any order. The
+	// order is not part of the invariant, so rejecting it would send a workspace
+	// that does tile its layout down the recovery path for nothing.
+	it("accepts a valid tiling stored in any pane order", () => {
+		const views = ["grid", "markdown", "csv", "html-preview"] as const;
+
+		for (const preset of layoutPresets) {
+			const workspace = payload().workspace;
+			const outcome = validatePersistedState(
+				payload({
+					workspace: {
+						...workspace,
+						layout: preset.id,
+						panes: preset.panes
+							.map((slots, index) => ({
+								id: `pane-${index + 1}`,
+								view: views[index],
+								slots,
+								zoom: 1,
+							}))
+							.reverse(),
+						activePaneId: "pane-1",
+					},
+				}),
+			);
+
+			expect(outcome.status, preset.id).toBe("ok");
+		}
+	});
+
 	it("refuses a pane count that does not match the layout", () => {
 		const workspace = payload().workspace;
 		expect(
