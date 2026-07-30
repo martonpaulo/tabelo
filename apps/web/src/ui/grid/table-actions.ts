@@ -11,7 +11,12 @@ import {
 	Trash2,
 } from "lucide-react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
-import { selectionRect } from "@/core/selection";
+import {
+	rectColumns,
+	rectRows,
+	selectionRect,
+	structureDeletionGuard,
+} from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
 import { copyToClipboard, pasteFromClipboard } from "@/ui/clipboard-actions";
 import { copy } from "@/ui/copy";
@@ -65,21 +70,26 @@ export function buildTableActions(
 
 	const showRows = context.axis !== "column";
 	const showColumns = context.axis !== "row";
-	const lastRow = document.rows.length <= 1;
-	const lastColumn = document.columns.length <= 1;
+	const rowCount = rectRows(rect).length;
+	const columnCount = rectColumns(rect).length;
+	const deletionGuard = structureDeletionGuard(
+		[selection],
+		document.rows.length,
+		document.columns.length,
+	);
 
 	const insert: TableAction[] = [];
 	if (showRows) {
 		insert.push(
 			{
 				id: "row-above",
-				label: copy.actions.insertRowAbove,
+				label: copy.actions.insertRowsAbove(rowCount),
 				icon: ArrowUp,
 				run: () => store.addRowAbove(),
 			},
 			{
 				id: "row-below",
-				label: copy.actions.insertRowBelow,
+				label: copy.actions.insertRowsBelow(rowCount),
 				icon: ArrowDown,
 				run: () => store.addRowBelow(),
 			},
@@ -89,13 +99,13 @@ export function buildTableActions(
 		insert.push(
 			{
 				id: "column-left",
-				label: copy.actions.insertColumnLeft,
+				label: copy.actions.insertColumnsLeft(columnCount),
 				icon: ArrowLeft,
 				run: () => store.addColumnLeft(),
 			},
 			{
 				id: "column-right",
-				label: copy.actions.insertColumnRight,
+				label: copy.actions.insertColumnsRight(columnCount),
 				icon: ArrowRight,
 				run: () => store.addColumnRight(),
 			},
@@ -135,8 +145,8 @@ export function buildTableActions(
 			id: "duplicate",
 			label:
 				showColumns && !showRows
-					? copy.actions.duplicateColumns
-					: copy.actions.duplicateRows,
+					? copy.actions.duplicateColumns(columnCount)
+					: copy.actions.duplicateRows(rowCount),
 			icon: Copy,
 			run: () =>
 				showColumns && !showRows
@@ -198,11 +208,11 @@ export function buildTableActions(
 	if (showRows) {
 		remove.push({
 			id: "delete-rows",
-			label: copy.actions.deleteRows,
+			label: copy.actions.deleteRows(rowCount),
 			icon: Trash2,
 			shortcut: copy.shortcuts.deleteStructure,
 			danger: true,
-			disabled: lastRow,
+			disabled: deletionGuard.wouldRemoveAllRows,
 			disabledReason: copy.disabled.lastRemainingRow,
 			run: () => store.removeSelectedRows(),
 		});
@@ -210,10 +220,10 @@ export function buildTableActions(
 	if (showColumns) {
 		remove.push({
 			id: "delete-columns",
-			label: copy.actions.deleteColumns,
+			label: copy.actions.deleteColumns(columnCount),
 			icon: Trash2,
 			danger: true,
-			disabled: lastColumn,
+			disabled: deletionGuard.wouldRemoveAllColumns,
 			disabledReason: copy.disabled.lastRemainingColumn,
 			run: () => store.removeSelectedColumns(),
 		});

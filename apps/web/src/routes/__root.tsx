@@ -4,20 +4,12 @@ import {
 	Outlet,
 } from "@tanstack/react-router";
 import "@/index.css";
-import { product } from "@/product";
 
 export type RouterAppContext = Record<string, never>;
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
 	component: RootComponent,
 	head: () => ({
-		meta: [
-			{ title: product.documentTitle },
-			{
-				name: "description",
-				content: product.description,
-			},
-		],
 		links: [
 			{
 				rel: "icon",
