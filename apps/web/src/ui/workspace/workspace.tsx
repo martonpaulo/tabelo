@@ -1,12 +1,15 @@
 import { cn } from "@tabelo/ui/lib/utils";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import {
 	gridAreaOf,
 	layoutSplitsColumns,
 	layoutSplitsRows,
+	type SplitOption,
+	splitOptions,
 } from "@/workspace/layout";
+import { AddViewDialog } from "./add-view-dialog";
 import { Pane } from "./pane";
 import { useStackedWorkspace } from "./stacking";
 
@@ -114,10 +117,30 @@ export function Workspace() {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const stacked = useStackedWorkspace();
 
+	// The split a picker is currently open for, and the pane the last one
+	// created. Both are local: neither outlives the interaction, so neither
+	// belongs in the store, in history, or in what is persisted.
+	const [pendingSplit, setPendingSplit] = useState<SplitOption | null>(null);
+	const [addedPaneId, setAddedPaneId] = useState<string | null>(null);
+
+	// The workspace changed shape under the user, so focus is placed rather than
+	// left on a control that has since moved or gone. The pane frame is a
+	// labelled region, so landing on it says which pane arrived.
+	useEffect(() => {
+		if (!addedPaneId) return;
+		containerRef.current
+			?.querySelector<HTMLElement>(`[data-pane-id="${addedPaneId}"]`)
+			?.focus();
+	}, [addedPaneId]);
+
 	// A resizer is only meaningful where its axis actually splits, and stacking
 	// splits neither: there is one column and the panes size themselves.
 	const splitsColumns = !stacked && layoutSplitsColumns(workspace.layout);
 	const splitsRows = !stacked && layoutSplitsRows(workspace.layout);
+
+	// Where the workspace can still grow. Empty at four panes, which is what
+	// removes every control rather than disabling one.
+	const options = splitOptions(workspace);
 
 	return (
 		<main
@@ -146,6 +169,7 @@ export function Workspace() {
 				const area = gridAreaOf(pane.slots);
 				// Stacked panes have the whole width, so nothing needs shortening.
 				const compact = !stacked && area.columnEnd - area.columnStart === 1;
+				const split = options.find((option) => option.paneId === pane.id);
 				return (
 					<Pane
 						key={pane.id}
@@ -153,6 +177,10 @@ export function Workspace() {
 						active={pane.id === workspace.activePaneId}
 						compact={compact}
 						stacked={stacked}
+						splitEdge={split?.edge}
+						splitLayout={split?.layout}
+						onSplit={setPendingSplit}
+						justAdded={pane.id === addedPaneId}
 					/>
 				);
 			})}
@@ -171,6 +199,12 @@ export function Workspace() {
 					containerRef={containerRef}
 				/>
 			) : null}
+
+			<AddViewDialog
+				option={pendingSplit}
+				onClose={() => setPendingSplit(null)}
+				onAdded={setAddedPaneId}
+			/>
 		</main>
 	);
 }

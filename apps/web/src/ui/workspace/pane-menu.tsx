@@ -14,13 +14,11 @@ import {
 import {
 	ChevronDown,
 	ClipboardCopy,
-	Plus,
 	RotateCcw,
 	X,
 	ZoomIn,
 	ZoomOut,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
 import { canSerialize } from "@/formats";
 import { useTabeloStore, visibleTextForPane } from "@/state/store";
 import {
@@ -32,7 +30,7 @@ import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
 import { listViews } from "@/views/registry";
 import type { ViewDefinition, ViewId } from "@/views/types";
-import { largerLayout, smallerLayout } from "@/workspace/layout";
+import { smallerLayout } from "@/workspace/layout";
 import {
 	DEFAULT_PANE_ZOOM,
 	MAX_PANE_ZOOM,
@@ -55,18 +53,8 @@ interface PaneIdentityProps {
 export function PaneIdentity({ paneId, view, compact }: PaneIdentityProps) {
 	const Icon = view.icon;
 	const views = listViews();
-	const triggerRef = useRef<HTMLButtonElement>(null);
 	const openPanes = useTabeloStore((state) => state.workspace.panes);
 	const document = useTabeloStore((state) => state.document);
-
-	// A pane the user just added hands this trigger the focus, so the view it
-	// should show is one keystroke away rather than something to go looking for.
-	const wantsFocus = useTabeloStore((state) => state.paneMenuFocus === paneId);
-	useEffect(() => {
-		if (!wantsFocus) return;
-		triggerRef.current?.focus();
-		useTabeloStore.getState().clearPaneMenuFocus();
-	}, [wantsFocus]);
 
 	return (
 		<h2 className="flex min-w-0 items-center gap-1.5 font-medium text-sm">
@@ -74,7 +62,6 @@ export function PaneIdentity({ paneId, view, compact }: PaneIdentityProps) {
 				<DropdownMenuTrigger
 					render={
 						<Button
-							ref={triggerRef}
 							variant="ghost"
 							size="sm"
 							// Says what it does and which view is current. A bare "Markdown"
@@ -153,11 +140,6 @@ export function PaneMenu({
 		(state) =>
 			state.workspace.panes.find((pane) => pane.id === paneId)?.zoom ??
 			DEFAULT_PANE_ZOOM,
-	);
-	// Pane count changes move between presets, so what is possible here is
-	// exactly what the layout gallery can express: see docs/adr/0006.
-	const canAdd = useTabeloStore(
-		(state) => largerLayout(state.workspace.layout) !== undefined,
 	);
 	const canClose = useTabeloStore(
 		(state) => smallerLayout(state.workspace.layout) !== undefined,
@@ -255,21 +237,10 @@ export function PaneMenu({
 
 				<DropdownMenuSeparator />
 
-				{/* Flat rather than a submenu of formats: the workspace grows, and the
-				    new pane's own menu opens on its view list with focus already
-				    there. See docs/design-system.md §5 on nested menus. */}
-				<DisabledTooltip
-					reason={canAdd ? undefined : copy.disabled.addViewLimit}
-				>
-					<DropdownMenuItem
-						disabled={!canAdd}
-						onClick={() => useTabeloStore.getState().addPane()}
-					>
-						<Plus aria-hidden />
-						{copy.workspace.addView}
-					</DropdownMenuItem>
-				</DisabledTooltip>
-
+				{/* Adding a view is not here. It belongs to the edge a pane would be
+				    split along, because that edge is what decides where the new pane
+				    lands, and a menu item cannot say which edge it means.
+				    See docs/adr/0006. */}
 				<DisabledTooltip
 					reason={canClose ? undefined : copy.disabled.closeOnlyView}
 				>

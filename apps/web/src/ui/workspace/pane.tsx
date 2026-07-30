@@ -1,10 +1,17 @@
 import { cn } from "@tabelo/ui/lib/utils";
+import { Plus } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 import { useTabeloStore } from "@/state/store";
 import { copy } from "@/ui/copy";
 import { Panel } from "@/ui/primitives/panel";
 import { getView } from "@/views/registry";
-import { gridAreaStyle, type WorkspacePane } from "@/workspace/layout";
+import {
+	gridAreaStyle,
+	type LayoutId,
+	type SplitEdge,
+	type SplitOption,
+	type WorkspacePane,
+} from "@/workspace/layout";
 import { PaneContent } from "./pane-content";
 import { PaneIdentity, PaneMenu } from "./pane-menu";
 import { PaneEntryContext, usePaneEntry } from "./use-pane-entry";
@@ -23,6 +30,18 @@ interface PaneProps {
 	// a slot: an inline grid area pointing at column two would conjure that
 	// column back into existence.
 	readonly stacked: boolean;
+	// The split this pane offers, when it has one. Absent means this pane cannot
+	// be cut in half, which is what makes the control disappear at four panes.
+	//
+	// Passed apart rather than as the option object, because this component is
+	// memoized: a freshly derived object every render would defeat that and
+	// re-render every pane on any workspace change, which is enough to unsettle
+	// a menu that is open inside one.
+	readonly splitEdge: SplitEdge | undefined;
+	readonly splitLayout: LayoutId | undefined;
+	readonly onSplit: (option: SplitOption) => void;
+	// Set for the pane a split just created, so it says so once.
+	readonly justAdded: boolean;
 }
 
 export const Pane = memo(function Pane({
@@ -30,6 +49,10 @@ export const Pane = memo(function Pane({
 	active,
 	compact,
 	stacked,
+	splitEdge,
+	splitLayout,
+	onSplit,
+	justAdded,
 }: PaneProps) {
 	const view = getView(pane.view);
 	const ref = useRef<HTMLElement>(null);
@@ -37,20 +60,22 @@ export const Pane = memo(function Pane({
 
 	const [announcement, setAnnouncement] = useState("");
 	useEffect(() => {
-		if (entered) setAnnouncement(copy.a11y.enteredPane);
+		if (justAdded) setAnnouncement(copy.a11y.paneAdded(view.label));
+		else if (entered) setAnnouncement(copy.a11y.enteredPane);
 		else setAnnouncement("");
-	}, [entered]);
+	}, [entered, justAdded, view.label]);
 
 	return (
 		<PaneEntryContext.Provider value={entered}>
 			<Panel
 				ref={ref}
+				data-pane-id={pane.id}
 				aria-current={active ? "true" : undefined}
 				aria-label={copy.a11y.pane(view.label)}
 				aria-description={entered ? undefined : copy.a11y.paneInteractHint}
 				style={stacked ? undefined : { gridArea: gridAreaStyle(pane.slots) }}
 				className={cn(
-					"min-w-0",
+					"group/pane min-w-0",
 					// Tall enough to be worth scrolling to, and still allowed to grow
 					// when it is the only pane on screen.
 					stacked && "min-h-pane-stack flex-1",
@@ -85,6 +110,16 @@ export const Pane = memo(function Pane({
 					<PaneContent paneId={pane.id} view={view} zoom={pane.zoom} />
 				</Panel.Body>
 
+				{splitEdge && splitLayout ? (
+					<SplitControl
+						edge={splitEdge}
+						onSplit={() =>
+							onSplit({ paneId: pane.id, edge: splitEdge, layout: splitLayout })
+						}
+						view={view.label}
+					/>
+				) : null}
+
 				{active && <Panel.Overlay className="tabelo-active-pane-indicator" />}
 				<div role="status" className="sr-only">
 					{announcement}
@@ -93,3 +128,47 @@ export const Pane = memo(function Pane({
 		</PaneEntryContext.Provider>
 	);
 });
+
+// The control that grows the workspace, sitting on the edge the new pane will
+// appear along. Because a two-slot pane can only be cut across its long axis,
+// that edge is always an outer edge of the workspace: no control ever lands on
+// the divider between two panes, so which pane is splitting is never in doubt.
+//
+// Absolutely positioned so that appearing and disappearing moves nothing
+// (§5, §7), and revealed by the same rule as the row and column affordances:
+// hover anywhere on the pane, or focus, since nothing may depend on hover
+// alone (§9). It stays outside the pane body, so reaching it is not entering
+// the pane: it belongs to the workspace ring beside the pane frame (§9).
+function SplitControl({
+	edge,
+	onSplit,
+	view,
+}: {
+	readonly edge: SplitEdge;
+	readonly onSplit: () => void;
+	readonly view: string;
+}) {
+	return (
+		<button
+			type="button"
+			data-split-control={edge}
+			aria-label={copy.a11y.addViewAt(edge, copy.a11y.pane(view))}
+			onClick={onSplit}
+			className={cn(
+				"absolute z-20 inline-flex size-5 items-center justify-center rounded-interactive",
+				"cursor-pointer bg-surface-floating text-muted-foreground ring-1 ring-line-subtle",
+				"opacity-0 transition-opacity hover:text-foreground",
+				// Plain focus, not focus-visible: a control that has the focus while
+				// staying invisible is the failure this reveal rule exists to
+				// prevent, and focus-visible would not match a programmatic focus.
+				"focus:opacity-100 group-hover/pane:opacity-100",
+				"focus-visible:outline-2 focus-visible:outline-selection-edge",
+				edge === "bottom"
+					? "bottom-1 left-1/2 -translate-x-1/2"
+					: "top-1/2 right-1 -translate-y-1/2",
+			)}
+		>
+			<Plus aria-hidden className="size-3.5" />
+		</button>
+	);
+}

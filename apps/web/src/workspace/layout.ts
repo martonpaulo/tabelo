@@ -131,20 +131,6 @@ export function paneCount(id: LayoutId): number {
 	return getLayout(id).panes.length;
 }
 
-// Adding and closing a view are moves between the same presets the gallery
-// offers, so the workspace has one transition model rather than two: a direct
-// action can never reach a shape the picker cannot. Each target is the preset
-// that leaves the most surviving panes in the slot they already started in,
-// which is what makes the change read as local rather than as a re-tiling.
-const LARGER_LAYOUT: Partial<Record<LayoutId, LayoutId>> = {
-	columns: "left-split",
-	rows: "bottom-split",
-	"left-split": "quad",
-	"right-split": "quad",
-	"top-split": "quad",
-	"bottom-split": "quad",
-};
-
 // Missing entries for both two-pane presets are the floor: the workspace never
 // drops below two panes, so Close view has nowhere to go and stays disabled.
 const SMALLER_LAYOUT: Partial<Record<LayoutId, LayoutId>> = {
@@ -160,10 +146,6 @@ const SMALLER_LAYOUT: Partial<Record<LayoutId, LayoutId>> = {
 
 // Undefined at the ends of the range, which is what disables the action rather
 // than hiding it.
-export function largerLayout(id: LayoutId): LayoutId | undefined {
-	return LARGER_LAYOUT[id];
-}
-
 export function smallerLayout(id: LayoutId): LayoutId | undefined {
 	return SMALLER_LAYOUT[id];
 }
@@ -174,6 +156,19 @@ export interface WorkspacePane {
 	readonly slots: readonly SlotId[];
 	// Local content scale. Presentation only: see workspace/zoom.ts.
 	readonly zoom: number;
+}
+
+// Which edge of a pane carries its split control, and therefore which side the
+// pane it creates appears on. A two-slot pane can only be cut across its long
+// axis, so a tall one gains a pane below and a wide one gains a pane beside it.
+// Both edges are outer edges of the workspace: no control ever sits on the
+// divider between two panes, so there is never a question of which is splitting.
+export type SplitEdge = "bottom" | "right";
+
+export interface SplitOption {
+	readonly paneId: string;
+	readonly edge: SplitEdge;
+	readonly layout: LayoutId;
 }
 
 export interface Workspace {
@@ -268,6 +263,49 @@ export function applyLayout(
 			slots,
 			zoom: existing?.zoom ?? DEFAULT_PANE_ZOOM,
 		};
+	});
+}
+
+// A layout identified by the shapes it holds rather than by its name, so two
+// presets can be compared without either being named here.
+function shapeSignature(panes: readonly (readonly SlotId[])[]): string {
+	return panes
+		.map((slots) => [...slots].sort().join(""))
+		.sort()
+		.join("|");
+}
+
+// Where the workspace can grow from here, one option per pane that can be cut
+// in half. Derived rather than tabulated: splitting a pane means replacing its
+// shape with its two single slots, and the target preset is whichever one holds
+// the shapes that leaves. A preset gains an entry the moment it exists, and a
+// pane that already owns one slot has nothing to give.
+//
+// This replaced a single target per layout. Two columns reaches both Split left
+// and Split right, depending on which of its two panes is the one being cut, so
+// one answer per layout could not express it.
+export function splitOptions(workspace: Workspace): readonly SplitOption[] {
+	return workspace.panes.flatMap<SplitOption>((pane) => {
+		if (pane.slots.length !== 2) return [];
+
+		const area = gridAreaOf(pane.slots);
+		const shapes = workspace.panes.flatMap((candidate) =>
+			candidate.id === pane.id
+				? candidate.slots.map((slot) => [slot])
+				: [candidate.slots],
+		);
+		const target = layoutPresets.find(
+			(preset) => shapeSignature(preset.panes) === shapeSignature(shapes),
+		);
+		if (!target) return [];
+
+		return [
+			{
+				paneId: pane.id,
+				edge: area.rowEnd - area.rowStart === 2 ? "bottom" : "right",
+				layout: target.id,
+			},
+		];
 	});
 }
 

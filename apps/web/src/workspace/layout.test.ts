@@ -5,7 +5,6 @@ import {
 	getLayout,
 	gridAreaOf,
 	type LayoutId,
-	largerLayout,
 	layoutPresets,
 	layoutSplitsColumns,
 	layoutSplitsRows,
@@ -13,6 +12,8 @@ import {
 	SLOT_ORDER,
 	type SlotId,
 	smallerLayout,
+	splitOptions,
+	type Workspace,
 	type WorkspacePane,
 } from "./layout";
 
@@ -154,15 +155,115 @@ function cornerOf(pane: WorkspacePane): string {
 	return `${area.rowStart}:${area.columnStart}`;
 }
 
+function workspaceFor(id: LayoutId): Workspace {
+	const panes = applyLayout(id);
+	return {
+		layout: id,
+		panes,
+		columnRatio: 0.5,
+		rowRatio: 0.5,
+		activePaneId: panes[0].id,
+	};
+}
+
 describe("pane count transitions", () => {
-	it.each(layoutIds)("grows from %s by exactly one pane", (id) => {
-		const target = largerLayout(id);
+	it.each(layoutIds)("splits from %s grow by exactly one pane", (id) => {
+		const options = splitOptions(workspaceFor(id));
 		if (paneCount(id) === 4) {
-			expect(target).toBeUndefined();
+			expect(options).toEqual([]);
 			return;
 		}
-		expect(target).toBeDefined();
-		expect(paneCount(target as LayoutId)).toBe(paneCount(id) + 1);
+		expect(options.length).toBeGreaterThan(0);
+		for (const option of options) {
+			expect(paneCount(option.layout)).toBe(paneCount(id) + 1);
+		}
+	});
+
+	// The mapping the issue confirmed, asserted as a whole rather than derived
+	// again here: a test that recomputes the implementation proves nothing.
+	it.each([
+		["columns", ["left-split", "right-split"]],
+		["rows", ["top-split", "bottom-split"]],
+		["left-split", ["quad"]],
+		["right-split", ["quad"]],
+		["top-split", ["quad"]],
+		["bottom-split", ["quad"]],
+		["quad", []],
+	] as const)("%s offers exactly the splits %s", (id, expected) => {
+		expect(
+			splitOptions(workspaceFor(id)).map((option) => option.layout),
+		).toEqual(expected);
+	});
+
+	it("offers one split per two-slot pane, and none for a single-slot pane", () => {
+		for (const id of layoutIds) {
+			const workspace = workspaceFor(id);
+			const splittable = workspace.panes.filter(
+				(pane) => pane.slots.length === 2,
+			);
+			const options = splitOptions(workspace);
+			expect(options).toHaveLength(splittable.length);
+			expect(options.map((option) => option.paneId).sort()).toEqual(
+				splittable.map((pane) => pane.id).sort(),
+			);
+		}
+	});
+
+	it("names the edge across the pane's long axis", () => {
+		for (const id of layoutIds) {
+			const workspace = workspaceFor(id);
+			for (const option of splitOptions(workspace)) {
+				const pane = workspace.panes.find(
+					(candidate) => candidate.id === option.paneId,
+				) as WorkspacePane;
+				const area = gridAreaOf(pane.slots);
+				const tall = area.rowEnd - area.rowStart === 2;
+				expect(option.edge).toBe(tall ? "bottom" : "right");
+			}
+		}
+	});
+
+	// The edge is a promise about where the pane will turn up, so it has to
+	// agree with where applyLayout actually puts it.
+	it("puts the new pane on the side its edge names", () => {
+		for (const id of layoutIds) {
+			const workspace = workspaceFor(id);
+			for (const option of splitOptions(workspace)) {
+				const before = workspace.panes;
+				const after = applyLayout(option.layout, before);
+				const existing = new Set(before.map((pane) => pane.id));
+				const added = after.find((pane) => !existing.has(pane.id));
+				const kept = after.find((pane) => pane.id === option.paneId);
+				expect(added).toBeDefined();
+				expect(kept).toBeDefined();
+
+				const addedArea = gridAreaOf((added as WorkspacePane).slots);
+				const keptArea = gridAreaOf((kept as WorkspacePane).slots);
+				if (option.edge === "bottom") {
+					expect(addedArea.rowStart).toBe(keptArea.rowEnd);
+					expect(addedArea.columnStart).toBe(keptArea.columnStart);
+				} else {
+					expect(addedArea.columnStart).toBe(keptArea.columnEnd);
+					expect(addedArea.rowStart).toBe(keptArea.rowStart);
+				}
+			}
+		}
+	});
+
+	// Every control sits on an outer edge of the workspace, which is what makes
+	// the pane being split unambiguous without a label on the divider.
+	it("never places a control on a divider between two panes", () => {
+		for (const id of layoutIds) {
+			const workspace = workspaceFor(id);
+			for (const option of splitOptions(workspace)) {
+				const pane = workspace.panes.find(
+					(candidate) => candidate.id === option.paneId,
+				) as WorkspacePane;
+				const area = gridAreaOf(pane.slots);
+				// The 2x2 grid ends at line 3 on both axes.
+				expect(option.edge === "bottom" ? area.rowEnd : area.columnEnd).toBe(3);
+			}
+		}
 	});
 
 	it.each(layoutIds)("shrinks from %s by exactly one pane", (id) => {
@@ -177,12 +278,13 @@ describe("pane count transitions", () => {
 
 	it("reaches every pane count from two to four and back", () => {
 		const counts: number[] = [];
-		let id: LayoutId = "columns";
+		// Annotated because the loop below reassigns it from its own successor.
+		let id: LayoutId = "columns" as LayoutId;
 		counts.push(paneCount(id));
 		for (let step = 0; step < 2; step += 1) {
-			const next = largerLayout(id);
+			const next = splitOptions(workspaceFor(id))[0];
 			expect(next).toBeDefined();
-			id = next as LayoutId;
+			id = next.layout;
 			counts.push(paneCount(id));
 		}
 		expect(counts).toEqual([2, 3, 4]);
@@ -202,9 +304,9 @@ describe("pane count transitions", () => {
 	it.each(["columns", "rows", "left-split"] as const)(
 		"closes back to %s after expanding it",
 		(id) => {
-			const larger = largerLayout(id);
+			const larger = splitOptions(workspaceFor(id))[0];
 			expect(larger).toBeDefined();
-			expect(smallerLayout(larger as LayoutId)).toBe(id);
+			expect(smallerLayout(larger.layout)).toBe(id);
 		},
 	);
 
@@ -249,20 +351,21 @@ describe("pane count transitions", () => {
 
 	it("adds the new pane where no surviving pane already sits", () => {
 		for (const id of layoutIds) {
-			const target = largerLayout(id);
-			if (!target) continue;
-			const before = applyLayout(id);
-			const after = applyLayout(target, before);
+			for (const option of splitOptions(workspaceFor(id))) {
+				const target = option.layout;
+				const before = applyLayout(id);
+				const after = applyLayout(target, before);
 
-			const carried = after.filter((pane) =>
-				before.some((candidate) => candidate.id === pane.id),
-			);
-			expect(carried).toHaveLength(before.length);
-			for (const pane of carried) {
-				const original = before.find((candidate) => candidate.id === pane.id);
-				expect(cornerOf(pane)).toBe(cornerOf(original as WorkspacePane));
+				const carried = after.filter((pane) =>
+					before.some((candidate) => candidate.id === pane.id),
+				);
+				expect(carried).toHaveLength(before.length);
+				for (const pane of carried) {
+					const original = before.find((candidate) => candidate.id === pane.id);
+					expect(cornerOf(pane)).toBe(cornerOf(original as WorkspacePane));
+				}
+				expect(after).toHaveLength(before.length + 1);
 			}
-			expect(after).toHaveLength(before.length + 1);
 		}
 	});
 
