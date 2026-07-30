@@ -26,7 +26,7 @@ export function EmptyState({
 				<p className="mt-1 text-muted-foreground text-sm leading-relaxed">
 					{copy.empty.body}
 				</p>
-				<div className="mt-3 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap">
+				<div className="mt-3 flex flex-col items-start gap-1.5 sm:flex-row">
 					<Button variant="default" size="sm" onClick={onStartEmpty}>
 						<Table2 aria-hidden />
 						{copy.empty.emptyAction}
