@@ -26,7 +26,6 @@ import type { ViewDefinition, ViewId } from "./types";
 const gridCapabilities = {
 	editable: true,
 	syntaxHighlighting: false,
-	downloadable: false,
 	structuredClipboard: true,
 	textClipboard: false,
 	tableOperations: true,
@@ -35,7 +34,6 @@ const gridCapabilities = {
 const sourceCapabilities = {
 	editable: true,
 	syntaxHighlighting: true,
-	downloadable: true,
 	structuredClipboard: false,
 	textClipboard: true,
 	tableOperations: false,

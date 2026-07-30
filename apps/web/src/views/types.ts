@@ -23,8 +23,6 @@ export interface ViewCapabilities {
 	readonly editable: boolean;
 	// Does the view offer syntax highlighting?
 	readonly syntaxHighlighting: boolean;
-	// Can the table be downloaded in this view's format?
-	readonly downloadable: boolean;
 	// Cell, row, and column clipboard operations over a selection.
 	readonly structuredClipboard: boolean;
 	// Ordinary text-editor clipboard behaviour, left to the editor.

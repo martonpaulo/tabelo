@@ -201,14 +201,14 @@ export const copy = {
 				case "json-invalid":
 					message = "This is not valid JSON yet.";
 					break;
-				case "json-rows-required":
-					message = "JSON must be a non-empty array of rows.";
+				case "json-object-shape-required":
+					message = 'JSON must be an object containing "columns" and "rows".';
 					break;
-				case "json-row-array-required":
-					message = "Each JSON row must be an array.";
+				case "json-columns-array-required":
+					message = 'The "columns" property must be an array of headers.';
 					break;
-				case "json-header-required":
-					message = "The first JSON row must contain at least one header.";
+				case "json-rows-array-required":
+					message = 'The "rows" property must be an array of objects.';
 					break;
 				case "json-string-cells-required":
 					message = "Every JSON cell must be a string.";
