@@ -212,7 +212,8 @@ export class TabeloPage {
 	}
 
 	// Every split control currently on screen. The count is the contract at the
-	// ends of the range: two panes offer two, four panes offer none.
+	// ends of the range: one pane offers two, since it can be cut either way,
+	// and four panes offer none.
 	addControls(): Locator {
 		return this.workspace.locator("[data-split-control]");
 	}

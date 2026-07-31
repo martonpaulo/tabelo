@@ -52,6 +52,7 @@ const paneSchema = z.object({
 
 const workspaceSchema = z.object({
 	layout: z.enum([
+		"single",
 		"columns",
 		"rows",
 		"left-split",
@@ -60,7 +61,7 @@ const workspaceSchema = z.object({
 		"bottom-split",
 		"quad",
 	]),
-	panes: z.array(paneSchema).min(2).max(4),
+	panes: z.array(paneSchema).min(1).max(4),
 	columnRatio: z.number().min(0.1).max(0.9),
 	rowRatio: z.number().min(0.1).max(0.9),
 	activePaneId: z.string().min(1),

@@ -30,15 +30,17 @@ interface PaneProps {
 	// a slot: an inline grid area pointing at column two would conjure that
 	// column back into existence.
 	readonly stacked: boolean;
-	// The split this pane offers, when it has one. Absent means this pane cannot
-	// be cut in half, which is what makes the control disappear at four panes.
+	// The layout each of this pane's splits would reach, one per edge it can be
+	// cut along. Both absent means this pane cannot be cut in half, which is
+	// what makes the control disappear at four panes; both present is the
+	// whole-grid pane of "single", which can be cut either way.
 	//
-	// Passed apart rather than as the option object, because this component is
+	// Passed apart rather than as option objects, because this component is
 	// memoized: a freshly derived object every render would defeat that and
 	// re-render every pane on any workspace change, which is enough to unsettle
 	// a menu that is open inside one.
-	readonly splitEdge: SplitEdge | undefined;
-	readonly splitLayout: LayoutId | undefined;
+	readonly splitBottom: LayoutId | undefined;
+	readonly splitRight: LayoutId | undefined;
 	readonly onSplit: (option: SplitOption) => void;
 	// Set for the pane a split just created, so it says so once.
 	readonly justAdded: boolean;
@@ -49,8 +51,8 @@ export const Pane = memo(function Pane({
 	active,
 	compact,
 	stacked,
-	splitEdge,
-	splitLayout,
+	splitBottom,
+	splitRight,
 	onSplit,
 	justAdded,
 }: PaneProps) {
@@ -110,11 +112,23 @@ export const Pane = memo(function Pane({
 					<PaneContent paneId={pane.id} view={view} zoom={pane.zoom} />
 				</Panel.Body>
 
-				{splitEdge && splitLayout ? (
+				{/* Listed rather than mapped so each control keeps its own literal
+			    edge: the pair is fixed by SplitEdge, and a map over it would add
+			    an array only to take it apart again. */}
+				{splitRight ? (
 					<SplitControl
-						edge={splitEdge}
+						edge="right"
 						onSplit={() =>
-							onSplit({ paneId: pane.id, edge: splitEdge, layout: splitLayout })
+							onSplit({ paneId: pane.id, edge: "right", layout: splitRight })
+						}
+						view={view.label}
+					/>
+				) : null}
+				{splitBottom ? (
+					<SplitControl
+						edge="bottom"
+						onSplit={() =>
+							onSplit({ paneId: pane.id, edge: "bottom", layout: splitBottom })
 						}
 						view={view.label}
 					/>
@@ -130,7 +144,7 @@ export const Pane = memo(function Pane({
 });
 
 // The control that grows the workspace, sitting on the edge the new pane will
-// appear along. Because a two-slot pane can only be cut across its long axis,
+// appear along. Because a pane is only ever cut across an axis it spans whole,
 // that edge is always an outer edge of the workspace: no control ever lands on
 // the divider between two panes, so which pane is splitting is never in doubt.
 //

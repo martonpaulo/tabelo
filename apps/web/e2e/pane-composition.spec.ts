@@ -117,7 +117,7 @@ test("closing a view keeps the other panes and their views", async ({
 	await expect(tabelo.pane("csv")).toHaveCount(0);
 });
 
-test("every pane count from two to four is reachable and reversible", async ({
+test("every pane count from one to four is reachable and reversible", async ({
 	tabelo,
 }) => {
 	const panes = tabelo.workspace.getByRole("region");
@@ -131,6 +131,13 @@ test("every pane count from two to four is reachable and reversible", async ({
 	await expect(panes).toHaveCount(3);
 	await tabelo.runPaneCommand("grid", "closeView");
 	await expect(panes).toHaveCount(2);
+	await tabelo.runPaneCommand("csv", "closeView");
+	await expect(panes).toHaveCount(1);
+
+	// One pane is reachable but not a dead end: it splits either way, so the
+	// count climbs back out of the floor the same way it arrived.
+	await tabelo.addViewBySplit("jira", "right", "markdown");
+	await expect(panes).toHaveCount(2);
 });
 
 // The two ends of the range say so differently, and deliberately. Close view is
@@ -140,6 +147,7 @@ test("every pane count from two to four is reachable and reversible", async ({
 test("the range ends stop the commands that would leave it", async ({
 	tabelo,
 }) => {
+	await tabelo.chooseLayout("single");
 	const menu = await tabelo.openPaneMenu("grid");
 	await expect(
 		menu.getByRole("menuitem", { name: copy.workspace.closeView }),
@@ -150,7 +158,7 @@ test("the range ends stop the commands that would leave it", async ({
 	).toBeVisible();
 	await tabelo.page.keyboard.press("Escape");
 
-	// Two panes: one splittable edge each.
+	// One pane spans both axes, so it is the only pane offering both edges.
 	await expect(tabelo.addControls()).toHaveCount(2);
 
 	await tabelo.chooseLayout("quad");
@@ -165,7 +173,8 @@ test("the range ends stop the commands that would leave it", async ({
 test("closing a pane that owns an invalid draft asks before discarding it", async ({
 	tabelo,
 }) => {
-	// Two panes is the floor, so a third has to exist before anything can close.
+	// A third pane, so that closing the one holding the draft is not also the
+	// step that changes how many columns the workspace has.
 	await tabelo.addViewBySplit("grid", "bottom", "csv");
 	await tabelo.source("markdown").fill(invalidMarkdown);
 	await expect(tabelo.source("markdown")).toHaveAttribute(

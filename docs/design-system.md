@@ -482,8 +482,9 @@ per keystroke.
 
 ## 5. Layout
 
-- The workspace is a 2×2 slot grid holding two to four panes, arranged by
-  preset: see `docs/adr/0006`. Never build a free slot editor.
+- The workspace is a 2×2 slot grid holding one to four panes, arranged by
+  preset: see `docs/adr/0006`. One pane is the floor and two is what a fresh
+  visit opens. Never build a free slot editor.
 - The app surface remains visible as a 0.5rem inset and a 0.5rem gap between panes.
   Each pane is a 0.5rem-radius surface with a subtle outline; the active pane adds
   a thicker blue focus edge. This framing applies at every supported width.
