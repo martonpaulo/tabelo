@@ -109,7 +109,7 @@
 	--muted-foreground: #616161;
 	--accent: #eff6fc;
 	--accent-foreground: #0f6cbd;
-	--destructive: #dc2626;
+	--destructive: #b91c1c;
 	--border: var(--line-subtle);
 	--input: var(--line-subtle);
 	--ring: var(--selection-edge);
@@ -147,7 +147,7 @@
 		--muted-foreground: #d6d6d6;
 		--accent: #17324a;
 		--accent-foreground: #75b6e7;
-		--destructive: #f87171;
+		--destructive: #fca5a5;
 	}
 }
 
