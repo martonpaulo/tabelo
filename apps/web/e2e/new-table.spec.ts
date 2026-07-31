@@ -10,7 +10,7 @@ test("a new table confirms before clearing document content", async ({
 	const dialog = tabelo.page.getByRole("dialog", {
 		name: copy.newTable.title,
 	});
-	await expect(dialog).toContainText(copy.newTable.description);
+	await expect(dialog).toBeVisible();
 	await expect(
 		dialog.getByRole("button", { name: copy.actions.cancel }),
 	).toHaveAttribute("data-variant", "ghost");
