@@ -1,4 +1,4 @@
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
 test("a numeric first row does not offer header correction", async ({

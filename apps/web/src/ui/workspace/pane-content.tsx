@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
+import { copy } from "@/copy/copy";
 import { canSerialize } from "@/formats";
 import { useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 import { TableGrid } from "@/ui/grid/table-grid";
 import { BlockedState } from "@/ui/source/blocked-state";
 import type { ViewDefinition } from "@/views/types";

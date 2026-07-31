@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
 // The workspace is a two-level ring: Tab walks between panes, Enter goes into

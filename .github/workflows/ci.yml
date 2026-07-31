@@ -35,6 +35,74 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  classify:
+    name: Classify changes
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      run_e2e: ${{ steps.check.outputs.run_e2e }}
+      e2e_matrix: ${{ steps.check.outputs.e2e_matrix }}
+    steps:
+      - name: Check changes and determine matrix
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "run_e2e=true" >> "$GITHUB_OUTPUT"
+            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":2,"test_args":""},{"project":"chromium","shard":2,"shard_total":2,"test_args":""},{"project":"firefox","shard":1,"shard_total":2,"test_args":""},{"project":"firefox","shard":2,"shard_total":2,"test_args":""}]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate -q '.[].filename' > changed_files.txt
+
+          if [ ! -s changed_files.txt ]; then
+            echo "run_e2e=true" >> "$GITHUB_OUTPUT"
+            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":1,"test_args":""}]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          LEVEL=2
+          
+          while IFS= read -r file; do
+            if [[ "$file" == ".github/workflows/ci.yml" || "$file" == "apps/web/playwright.config.ts" ]]; then
+              LEVEL=5
+              break
+            fi
+            
+            if [[ "$file" =~ \.test\.tsx?$ ]] || \
+               [[ "$file" == "biome.json" ]] || \
+               [[ "$file" =~ ^vitest\..*\.ts$ ]] || \
+               [[ "$file" =~ /fixtures/ ]] || \
+               [[ "$file" =~ \.md$ ]]; then
+              continue
+            fi
+            
+            if [[ "$file" == apps/web/src/copy/* ]] || \
+               [[ "$file" == "apps/web/src/index.css" ]] || \
+               [[ "$file" == apps/web/public/* ]]; then
+              if [ $LEVEL -lt 3 ]; then LEVEL=3; fi
+              continue
+            fi
+            
+            if [ $LEVEL -lt 4 ]; then LEVEL=4; fi
+          done < changed_files.txt
+
+          if [ $LEVEL -eq 5 ]; then
+            echo "run_e2e=true" >> "$GITHUB_OUTPUT"
+            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":2,"test_args":""},{"project":"chromium","shard":2,"shard_total":2,"test_args":""},{"project":"firefox","shard":1,"shard_total":2,"test_args":""},{"project":"firefox","shard":2,"shard_total":2,"test_args":""}]}' >> "$GITHUB_OUTPUT"
+          elif [ $LEVEL -eq 4 ]; then
+            echo "run_e2e=true" >> "$GITHUB_OUTPUT"
+            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":1,"test_args":""}]}' >> "$GITHUB_OUTPUT"
+          elif [ $LEVEL -eq 3 ]; then
+            echo "run_e2e=true" >> "$GITHUB_OUTPUT"
+            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":1,"test_args":"smoke.spec.ts"}]}' >> "$GITHUB_OUTPUT"
+          else
+            echo "run_e2e=false" >> "$GITHUB_OUTPUT"
+            echo 'e2e_matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+          fi
+
   check:
     name: Check
     runs-on: ubuntu-latest
@@ -61,23 +129,12 @@ jobs:
 
   e2e:
     name: E2E (${{ matrix.project }}, shard ${{ matrix.shard }}/${{ matrix.shard_total }})
+    needs: classify
+    if: ${{ needs.classify.outputs.run_e2e == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - project: chromium
-            shard: 1
-            shard_total: 2
-          - project: chromium
-            shard: 2
-            shard_total: 2
-          - project: firefox
-            shard: 1
-            shard_total: 2
-          - project: firefox
-            shard: 2
-            shard_total: 2
+      matrix: ${{ fromJSON(needs.classify.outputs.e2e_matrix) }}
     steps:
       - uses: actions/checkout@v7
 
@@ -97,7 +154,7 @@ jobs:
 
       - name: Browser tests
         run: >-
-          pnpm --filter web exec playwright test
+          pnpm --filter web exec playwright test ${{ matrix.test_args }}
           --project=${{ matrix.project }}
           --shard=${{ matrix.shard }}/${{ matrix.shard_total }}
 
@@ -111,8 +168,8 @@ jobs:
 
   merge-reports:
     name: Merge Playwright reports
-    if: ${{ !cancelled() }}
-    needs: e2e
+    if: ${{ !cancelled() && needs.e2e.result != 'skipped' }}
+    needs: [classify, e2e]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

@@ -11,6 +11,7 @@ import {
 	Trash2,
 } from "lucide-react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
+import { copy } from "@/copy/copy";
 import {
 	rectColumns,
 	rectDataRows,
@@ -19,7 +20,6 @@ import {
 } from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
 import { copyToClipboard, pasteFromClipboard } from "@/ui/clipboard-actions";
-import { copy } from "@/ui/copy";
 
 // One description of every table action, consumed by the toolbar and by the
 // context menus alike. Two renderers over one list is what stops the menu and

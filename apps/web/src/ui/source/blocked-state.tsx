@@ -1,5 +1,5 @@
+import { copy } from "@/copy/copy";
 import type { PreconditionFailure } from "@/formats/types";
-import { copy } from "@/ui/copy";
 
 export function BlockedState({
 	failure,

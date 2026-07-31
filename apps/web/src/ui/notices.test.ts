@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { copy } from "@/copy/copy";
 import { documentFromMatrix } from "@/core/document";
 import { conditionNoticeIds } from "@/state/notice-queue";
 import { useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 import {
 	type AppNotice,
 	appNotices,

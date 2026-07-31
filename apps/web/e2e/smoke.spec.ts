@@ -1,5 +1,5 @@
-import { product } from "@/product";
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
+import { product } from "@/copy/product";
 import { expect, test } from "./fixtures";
 
 test("opens a clean workspace through accessible product labels", async ({

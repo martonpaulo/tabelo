@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
+import { copy } from "@/copy/copy";
 import { listCodecs } from "@/formats";
-import { copy } from "@/ui/copy";
 import { expect, test } from "./fixtures";
 
 // Downloading is a choice, so it is a chooser. The user chooses the format and,

@@ -1,4 +1,4 @@
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
 // A tinted background and an aria-hidden tick tell a sighted user which option

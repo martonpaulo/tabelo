@@ -1,4 +1,4 @@
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
 // The header row is part of the table the user edits, not chrome around it: it

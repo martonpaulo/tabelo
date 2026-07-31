@@ -1,5 +1,6 @@
 import type { ClipboardPayload } from "@/clipboard/parse";
 import { matrixToTsv } from "@/clipboard/serialize";
+import { copy } from "@/copy/copy";
 import { documentToMatrix } from "@/core/document";
 import type { TableDocument } from "@/core/types";
 import { htmlCodec } from "@/formats";
@@ -11,7 +12,6 @@ import {
 } from "@/platform/clipboard";
 import type { NoticeRequest } from "@/state/notice-queue";
 import { useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 
 // Every clipboard action the user can click goes through here, so the grid and
 // the source panes never disagree about what a refusal looks like. Tabelo

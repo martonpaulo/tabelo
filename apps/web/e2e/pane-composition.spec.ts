@@ -1,4 +1,4 @@
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
 // Composing the workspace by splitting the pane edge the new view should appear

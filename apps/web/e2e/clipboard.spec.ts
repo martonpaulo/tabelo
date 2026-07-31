@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 import { faultyClipboard } from "./helpers";
 

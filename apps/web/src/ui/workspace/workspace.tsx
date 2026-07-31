@@ -1,7 +1,7 @@
 import { cn } from "@tabelo/ui/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 import {
 	gridAreaOf,
 	layoutSplitsColumns,

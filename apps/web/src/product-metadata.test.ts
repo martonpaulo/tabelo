@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { product } from "./product";
+import { product } from "./copy/product";
 import { createProductMetadata } from "./product-metadata";
 
 describe("createProductMetadata", () => {

@@ -1,4 +1,4 @@
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
 test("source focus stays visible and reduced motion keeps the cursor solid", async ({

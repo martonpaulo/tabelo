@@ -1,7 +1,7 @@
 import { cn } from "@tabelo/ui/lib/utils";
+import { copy } from "@/copy/copy";
 import type { Alignment } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 
 // The rendered view shows the table as a reader would meet it, not as markup.
 // It is built from the document directly rather than by injecting the HTML

@@ -1,4 +1,4 @@
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import type { ViewId } from "@/views/types";
 import { expect, test } from "./fixtures";
 

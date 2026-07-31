@@ -1,5 +1,5 @@
 import type { Locator } from "@playwright/test";
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
 // Row and column actions were a small icon that only existed while the pointer

@@ -11,6 +11,7 @@ import {
 import { Label } from "@tabelo/ui/components/label";
 import { RadioGroup, RadioGroupItem } from "@tabelo/ui/components/radio-group";
 import { useId, useState } from "react";
+import { copy } from "@/copy/copy";
 import { canSerialize, listCodecs, outputOptionsFor } from "@/formats";
 import type {
 	CodecId,
@@ -20,7 +21,6 @@ import type {
 import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copyToClipboard } from "@/ui/clipboard-actions";
-import { copy } from "@/ui/copy";
 import { DialogCancel, DialogConfirm } from "@/ui/primitives/dialog-buttons";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { Notice } from "@/ui/primitives/notice";

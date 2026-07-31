@@ -1,8 +1,8 @@
 import { cn } from "@tabelo/ui/lib/utils";
 import { Plus } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
+import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 import { Panel } from "@/ui/primitives/panel";
 import { getView } from "@/views/registry";
 import {

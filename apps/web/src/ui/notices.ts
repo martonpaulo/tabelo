@@ -1,3 +1,4 @@
+import { copy } from "@/copy/copy";
 import { getCodec } from "@/formats";
 import type { ImportError } from "@/import/prepare";
 import { downloadText } from "@/platform/files";
@@ -13,7 +14,6 @@ import type {
 	StorageIssue,
 } from "@/state/store";
 import { useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 
 // Everything the notice area has to say, in one list. Two kinds of thing end
 // up here and they behave differently:

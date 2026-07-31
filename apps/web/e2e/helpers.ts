@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
+import { copy } from "@/copy/copy";
 import { HEADER_ROW } from "@/core/selection";
 import type { NoticeSeverity } from "@/state/notice-queue";
-import { copy } from "@/ui/copy";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import type { LayoutId } from "@/workspace/layout";

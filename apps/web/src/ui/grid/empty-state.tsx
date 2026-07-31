@@ -1,7 +1,7 @@
 import { Button } from "@tabelo/ui/components/button";
 import { ClipboardPaste, Table2, Upload } from "lucide-react";
+import { copy } from "@/copy/copy";
 import { pasteFromClipboard } from "@/ui/clipboard-actions";
-import { copy } from "@/ui/copy";
 import { importTableFile } from "@/ui/import";
 
 // The first-visit choice is one product-owned surface over the normal workspace.

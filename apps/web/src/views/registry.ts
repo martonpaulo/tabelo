@@ -7,6 +7,7 @@ import {
 	Table2,
 	Tags,
 } from "lucide-react";
+import { copy } from "@/copy/copy";
 import {
 	csvCodec,
 	htmlCodec,
@@ -15,7 +16,6 @@ import {
 	markdownCodec,
 	tsvCodec,
 } from "@/formats";
-import { copy } from "@/ui/copy";
 import type { ViewDefinition, ViewId } from "./types";
 
 // Every view the workspace can show, described by capability rather than by

@@ -24,7 +24,7 @@ const { documentFromMatrix, documentToMatrix } = await import(
 );
 const { createSelection } = await import("@/core/selection");
 const { useTabeloStore } = await import("@/state/store");
-const { copy } = await import("./copy");
+const { copy } = await import("@/copy/copy");
 const { copyToClipboard, pasteFromClipboard, readTableFromClipboard } =
 	await import("./clipboard-actions");
 const { buildTableActions } = await import("./grid/table-actions");
