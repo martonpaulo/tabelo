@@ -5,7 +5,7 @@ export const product = {
 	tagline: "Edit one table in every view, always in sync.",
 	documentTitle: "Tabelo: Edit one table in every view",
 	description:
-		"Edit one table visually or as Markdown, CSV, TSV, HTML, Jira, and JSON, always in sync, entirely in your browser.",
+		"Edit one table visually or through synchronized text formats, entirely in your browser.",
 	openGraphType: "website",
 	twitterCard: "summary",
 } as const;
