@@ -60,7 +60,7 @@ describes the migration and its downstream effects.
 Tabelo is a browser-based table editor. One table document is shown through
 several synchronized views: a visual grid, Markdown, CSV, TSV, HTML source,
 Jira syntax, JSON, and a rendered preview, arranged in a configurable workspace
-of two to four panes.
+of one to four panes.
 
 **Simple by design.** No accounts, no backend, no cloud sync, no collaboration,
 no analytics, no telemetry. No formulas, calculations, multiple sheets, charts,
