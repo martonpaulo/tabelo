@@ -380,8 +380,12 @@ here:
   highest-value test surface.
 - Test observable contracts at stable seams; avoid tests that only mirror
   implementation details or framework behavior.
-- Resolve product copy from its canonical owner or through semantic IDs in
-  tests. Do not repeat literal UI wording in selectors or assertions.
+- Do not add tests that assert exact user-facing copy.
+- Copy changes, additions, and removals do not require new tests by themselves.
+- A pull request containing only copy changes may correctly contain no new or modified tests.
+- Tests should validate behavior, semantics, state, accessibility, or technical contracts, not editorial wording.
+- Do not add meaningless tests merely to claim that a pull request has test coverage.
+- When copy is used to locate an element in a test, prefer stable semantic queries or another appropriate selector rather than asserting the copy itself.
 - Do not assert exact rendered dimensions. Test token ownership, shared values,
   relative changes, supported ranges, and minimum interaction targets instead.
 - Run the complete browser suite in Chromium. Reserve Firefox for flows that
