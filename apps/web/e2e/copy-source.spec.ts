@@ -89,7 +89,7 @@ test("copies the visible source of a valid view", async ({ page, tabelo }) => {
 	await tabelo.runPaneCommand("markdown", "copySource");
 
 	await expect(
-		tabelo.notice().filter({ hasText: "Source copied to the clipboard." }),
+		tabelo.notice().filter({ hasText: "Source copied to the clipboard" }),
 	).toBeVisible();
 	const copied = await lastCopied(page);
 	expect(copied?.text).toContain("Inez");
@@ -175,7 +175,7 @@ test("copies both HTML and TSV from the preview pane", async ({
 	await expect(
 		tabelo
 			.notice()
-			.filter({ hasText: "Formatted table copied to the clipboard." }),
+			.filter({ hasText: "Formatted table copied to the clipboard" }),
 	).toBeVisible();
 
 	const copied = await lastCopied(page);

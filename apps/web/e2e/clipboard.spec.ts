@@ -155,7 +155,7 @@ test("a granted copy confirms what it did and keeps the rich flavour", async ({
 	await page.getByRole("menuitem", { name: copy.actions.copy }).click();
 
 	await expect(
-		tabelo.notice().filter({ hasText: "Copied to the clipboard." }),
+		tabelo.notice().filter({ hasText: "Copied to the clipboard" }),
 	).toBeVisible();
 	expect(
 		await page.evaluate(

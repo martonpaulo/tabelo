@@ -614,6 +614,11 @@ does not parse yet" to "Oops! Something went wrong".
 
 Labels are sentence case. Actions are verbs: "Add row", not "New row".
 
+Terminal punctuation follows a structural split:
+
+- **No full stop** on labels, fragments, and single noun phrases: view descriptions, layout descriptions, menu option descriptions, hints, and short confirmations.
+- **Full stop** on complete sentences, and on any string of more than one sentence: multi-sentence error and recovery copy. Disabled reasons keep their stop because they are read aloud from tooltips and require a prosodic pause.
+
 Never use the Unicode em dash character (U+2014) in product copy, metadata,
 comments, or documentation. Choose punctuation that states the relationship
 clearly instead.
