@@ -605,6 +605,9 @@ test("light and dark text and focus tokens meet their contrast floors", async ({
 		expect(
 			await contrastBetween(page, "--primary", "--popover"),
 		).toBeGreaterThanOrEqual(3);
+		expect(
+			await contrastBetween(page, "--destructive", "--popover"),
+		).toBeGreaterThanOrEqual(4.5);
 
 		const selectionFills = await page.evaluate(() => {
 			const styles = getComputedStyle(document.documentElement);
