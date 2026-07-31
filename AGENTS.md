@@ -16,8 +16,7 @@ landing-page contract, or release policy only through an explicit task that
 describes the migration and its downstream effects.
 
 - Project and public name: `Tabelo`
-- Description: edit one table visually or as Markdown, CSV, TSV, HTML, Jira,
-  and JSON, always in sync, entirely in your browser
+- Description: edit one table visually or through synchronized text formats, entirely in your browser
 - Repository: `martonpaulo/tabelo` (public)
 - Public identifiers: workspace app `web`; internal packages `@tabelo/ui`,
   `@tabelo/env`, `@tabelo/config`. All workspace packages are private and are
