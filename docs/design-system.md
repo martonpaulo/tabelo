@@ -144,6 +144,7 @@ links do not become blue merely for decoration.
 | Token | Utility | Meaning |
 | :--- | :--- | :--- |
 | `--status-warning` | `bg-status-warning` | Source parses with a non-blocking warning |
+| `--destructive` | `text-destructive` | Destructive action confirmation |
 
 **Colour never carries meaning alone.** A source diagnostic combines underline
 shape with written tooltip text. This is not optional.
@@ -167,7 +168,7 @@ paint.
 | `--control-h-md` | `h-control-md` | 2rem: default control height |
 | `--panel-header-h` | `h-panel-header` | 2.75rem: every pane header |
 | `--grid-gutter-w` | `w-grid-gutter` | 2.75rem: row-number column |
-| `--grid-row-h` | `h-grid-row` | 2rem: one table row |
+| `--grid-row-h` | `h-grid-row` | calc(var(--pane-zoom, 1) * 2rem): one table row |
 | `--grid-col-w` | `w-grid-col` | 10.5rem: default column width |
 | `--grid-col-w-min` | `w-grid-col-min` | 4.5rem: resize floor |
 | `--control-radius` | `rounded-interactive` | 0.25rem: buttons, fields, menu items, badges |
@@ -186,6 +187,7 @@ One pane can scale what it displays without touching the rest of the app.
 | `--pane-zoom` | inline on the pane body | The pane's scale factor, 0.5–2 |
 | `--text-content` | `text-content` | Any text that is pane *content* |
 | `--spacing-content-line` | `h-content-line` | A one-line clip box that scales with it |
+| `--spacing-content-line-box` | `h-content-line-box` | A line rhythm token shared by grid and source |
 
 `--pane-zoom` is set on the pane body and nowhere else. At 100% both utilities
 resolve to exactly `text-sm`, so the default rendering is unchanged.

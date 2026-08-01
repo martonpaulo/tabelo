@@ -16,8 +16,9 @@ Treat `docs/design-system.md` as normative and read it before editing UI. An acc
 5. Define the complete affected state set: rest, hover, focus, selected, disabled with reason, loading, empty, invalid, warning, destructive, narrow layout, system theme, pane zoom, and reduced motion as applicable.
 6. Preserve interaction ownership and keyboard equality. A pointer-only affordance needs a keyboard path. Focus must remain visible, escape routes must work, and screen-reader state must be perceivable without color.
 7. Use shared tokens and `rem` for authored geometry. Treat browser pixel measurements as boundary data and test relationships or supported ranges rather than exact dimensions.
-8. Keep visible strings in `ui/copy.ts` or `product.ts` as required. Tests resolve wording through the canonical owner or semantic IDs.
-9. Add behavior-focused Playwright coverage with accessible roles and labels, isolated storage, no arbitrary waits, and no pixel snapshots.
+8. Keep visible strings in `ui/copy.ts` or `product.ts` as required.
+9. Do not assert exact user-facing copy in tests. When copy is used to locate an element, prefer stable semantic queries or another appropriate selector. tests should validate behavior, semantics, state, accessibility, or technical contracts.
+10. Add behavior-focused Playwright coverage with accessible roles and labels, isolated storage, no arbitrary waits, and no pixel snapshots.
 
 ## Tabelo-specific checks
 

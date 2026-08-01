@@ -189,7 +189,11 @@ export class TabeloPage {
 		await this.page
 			.getByRole("button", { name: copy.actions.openAppMenu })
 			.click();
-		return this.page.getByRole("menu", { name: copy.actions.openAppMenu });
+		const menu = this.page.getByRole("menu", {
+			name: copy.actions.openAppMenu,
+		});
+		await menu.waitFor({ state: "visible" });
+		return menu;
 	}
 
 	async openLayoutMenu(): Promise<Locator> {
