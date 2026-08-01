@@ -173,6 +173,7 @@ export interface TabeloState {
 	setActivePane: (paneId: string) => void;
 	setOutputOption: (id: OutputOptionId, value: boolean) => void;
 	setPaneZoom: (paneId: string, zoom: number) => void;
+	toggleColumnWrap: (columnId: string) => void;
 	setColumnRatio: (ratio: number) => void;
 	setRowRatio: (ratio: number) => void;
 
@@ -228,6 +229,17 @@ function clearInvalidTimer(): void {
 	if (!invalidTimer) return;
 	clearTimeout(invalidTimer);
 	invalidTimer = null;
+}
+
+function reconcileWrappedColumns(
+	workspace: Workspace,
+	document: TableDocument,
+): Workspace {
+	const valid = new Set(document.columns.map((column) => column.id));
+	const wrappedColumns = workspace.wrappedColumns.filter((id) => valid.has(id));
+	return wrappedColumns.length === workspace.wrappedColumns.length
+		? workspace
+		: { ...workspace, wrappedColumns };
 }
 
 function pushHistory(
@@ -370,11 +382,15 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	hydrate: () => {
 		const outcome = loadState();
 		if (outcome.status === "ok") {
+			const workspace = reconcileWrappedColumns(
+				outcome.state.workspace,
+				outcome.state.document,
+			);
 			set({
 				document: outcome.state.document,
-				workspace: outcome.state.workspace,
+				workspace,
 				draft: outcome.state.draft
-					? deriveDraft(outcome.state.draft, outcome.state.workspace)
+					? deriveDraft(outcome.state.draft, workspace)
 					: null,
 				past: [],
 				future: [],
@@ -430,6 +446,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			past: pushHistory(state.past, snapshotOf(state)),
 			future: [],
 			document: next,
+			workspace: reconcileWrappedColumns(state.workspace, next),
 			draft: null,
 			inputError: null,
 			headerCorrection: null,
@@ -514,6 +531,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 					}
 				: {}),
 			document,
+			workspace: reconcileWrappedColumns(current.workspace, document),
 			draft: {
 				paneId,
 				viewId,
@@ -720,6 +738,25 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		});
 	},
 
+	// Wrapping is a persisted grid preference, not a document edit. The stable
+	// id survives column reordering, and refusing unknown ids keeps persistence
+	// free of state no current document can render.
+	toggleColumnWrap: (columnId) =>
+		set((state) => {
+			if (!state.document.columns.some((column) => column.id === columnId)) {
+				return state;
+			}
+			const wrapped = state.workspace.wrappedColumns.includes(columnId);
+			return {
+				workspace: {
+					...state.workspace,
+					wrappedColumns: wrapped
+						? state.workspace.wrappedColumns.filter((id) => id !== columnId)
+						: [...state.workspace.wrappedColumns, columnId],
+				},
+			};
+		}),
+
 	setColumnRatio: (ratio) =>
 		set((state) => ({
 			workspace: {
@@ -745,6 +782,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				past: state.past.slice(0, -1),
 				future: [snapshotOf(state), ...state.future],
 				document: entry.document,
+				workspace: reconcileWrappedColumns(state.workspace, entry.document),
 				draft: restoreDraft(entry.draft, state.workspace),
 				headerCorrection: null,
 				inputError: null,
@@ -767,6 +805,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				past: pushHistory(state.past, snapshotOf(state)),
 				future: state.future.slice(1),
 				document: entry.document,
+				workspace: reconcileWrappedColumns(state.workspace, entry.document),
 				draft: restoreDraft(entry.draft, state.workspace),
 				headerCorrection: null,
 				inputError: null,

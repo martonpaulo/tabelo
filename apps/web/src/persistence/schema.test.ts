@@ -47,9 +47,20 @@ describe("loading a stored payload", () => {
 		expect(outcome.status).toBe("ok");
 		if (outcome.status !== "ok") return;
 		expect(outcome.state.draft?.text).toContain("not valid");
+		expect(outcome.state.workspace.wrappedColumns).toEqual([]);
 		expect(outcome.state.workspace.panes.map((pane) => pane.zoom)).toEqual([
 			1, 1.2,
 		]);
+	});
+
+	it("preserves per-column wrapping in the current workspace schema", () => {
+		const workspace = payload().workspace;
+		const outcome = validatePersistedState(
+			payload({ workspace: { ...workspace, wrappedColumns: ["c1"] } }),
+		);
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.workspace.wrappedColumns).toEqual(["c1"]);
 	});
 
 	it("refuses every non-current version", () => {

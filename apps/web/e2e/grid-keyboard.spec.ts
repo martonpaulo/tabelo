@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
+import { STORAGE_KEY } from "@/persistence/schema";
 import { expect, test } from "./fixtures";
 
 // The grid is a hand-built widget, so every keyboard contract it advertises is
@@ -179,6 +180,68 @@ test("column width commands change the selected column", async ({
 	await expect(
 		open.getByRole("menuitem", { name: copy.actions.resetColumnWidth }),
 	).toBeDisabled();
+});
+
+test("column wrapping grows rows, persists, and keeps cell navigation", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(
+		1,
+		1,
+		"A deliberately long cell value that wraps across several visual lines while remaining one keyboard cell",
+	);
+
+	const cellHeight = async () =>
+		(await tabelo.cell(1, 1).boundingBox())?.height ?? 0;
+	const compactHeight = await cellHeight();
+	const openColumnMenu = async () => {
+		await tabelo
+			.grid()
+			.getByRole("button", {
+				name: new RegExp(`^${copy.actions.columnActions}:`),
+			})
+			.first()
+			.click();
+		return page.getByRole("menu", {
+			name: new RegExp(`^${copy.actions.columnActions}:`),
+		});
+	};
+
+	let menu = await openColumnMenu();
+	let wrap = menu.getByRole("menuitemcheckbox", {
+		name: copy.actions.wrapColumnText,
+	});
+	await expect(wrap).not.toBeChecked();
+	await wrap.click();
+	await expect(wrap).toBeChecked();
+	await expect.poll(cellHeight).toBeGreaterThan(compactHeight);
+	const wrappedHeight = await cellHeight();
+
+	await page.keyboard.press("Escape");
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("ArrowDown");
+	expect(await focusedCell(page)).toBe("1:0");
+
+	await expect
+		.poll(() =>
+			page.evaluate((key) => {
+				const raw = localStorage.getItem(key);
+				if (!raw) return [];
+				return JSON.parse(raw).workspace?.wrappedColumns ?? [];
+			}, STORAGE_KEY),
+		)
+		.toHaveLength(1);
+	await page.reload();
+	await tabelo.workspace.waitFor({ state: "visible" });
+
+	menu = await openColumnMenu();
+	wrap = menu.getByRole("menuitemcheckbox", {
+		name: copy.actions.wrapColumnText,
+	});
+	await expect(wrap).toBeChecked();
+	await wrap.click();
+	await expect.poll(cellHeight).toBeLessThan(wrappedHeight);
 });
 
 test("a cell is named by its value, not by its coordinates", async ({

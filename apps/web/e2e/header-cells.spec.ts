@@ -60,17 +60,24 @@ test("the strip selects the column and the header cell selects itself", async ({
 	expect(selectedFill).not.toBe(unselectedFill);
 });
 
-test("row 1 is selectable from its aligned number without an actions menu", async ({
+test("row 1 uses the same selectable number and actions anatomy", async ({
 	tabelo,
 }) => {
 	const gutter = tabelo.grid().locator('[data-row-header="-1"]');
 	const select = gutter.getByRole("button", {
 		name: `${copy.actions.selectRow}: ${copy.a11y.headerRow}`,
 	});
-	await expect(gutter.getByRole("button")).toHaveCount(1);
+	await expect(gutter.getByRole("button")).toHaveCount(2);
+	await expect(
+		gutter.getByRole("button", {
+			name: new RegExp(`^${copy.actions.rowActions}:`),
+		}),
+	).toBeVisible();
+	await expect(select).toHaveCSS("text-align", "right");
+	await expect(select).toHaveCSS("font-weight", "400");
 
 	await select.click();
-	await expect(gutter).toHaveAttribute("aria-selected", "true");
+	await expect(gutter).not.toHaveAttribute("aria-selected");
 	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "true");
 	await expect(tabelo.header(2)).toHaveAttribute("aria-selected", "true");
 });
@@ -114,6 +121,12 @@ test("Mod+A then Backspace clears the headers along with the cells", async ({
 	const stripFill = await tabelo
 		.columnIndex(1)
 		.evaluate((element) => getComputedStyle(element).backgroundColor);
+	const gutterFills = await tabelo
+		.grid()
+		.locator("[data-row-header]")
+		.evaluateAll((gutters) =>
+			gutters.map((gutter) => getComputedStyle(gutter).backgroundColor),
+		);
 	await tabelo.page.keyboard.press(`${modifier}+a`);
 
 	// The selection says it covers the header row, and this is the assertion the
@@ -127,6 +140,14 @@ test("Mod+A then Backspace clears the headers along with the cells", async ({
 				.evaluate((element) => getComputedStyle(element).backgroundColor),
 		)
 		.toBe(stripFill);
+	expect(
+		await tabelo
+			.grid()
+			.locator("[data-row-header]")
+			.evaluateAll((gutters) =>
+				gutters.map((gutter) => getComputedStyle(gutter).backgroundColor),
+			),
+	).toEqual(gutterFills);
 
 	await tabelo.page.keyboard.press("Backspace");
 
@@ -210,13 +231,12 @@ test("a new table starts unnamed and stays clearable without confirmation", asyn
 // corners that stick on both axes. Positions are compared rather than pinned, so
 // this asserts the relationships instead of a pixel layout.
 test("the strip stays sticky and layered after scrolling both axes", async ({
-	page,
 	tabelo,
 }) => {
 	await tabelo.paste(
-		Array.from({ length: 40 }, (_, row) => `r${row}a\tr${row}b\tr${row}c`).join(
-			"\n",
-		),
+		Array.from({ length: 40 }, (_, row) =>
+			Array.from({ length: 10 }, (_, column) => `r${row}c${column}`).join("\t"),
+		).join("\n"),
 	);
 
 	const body = tabelo.pane("grid").locator('[data-slot="panel-body"]');
@@ -224,7 +244,14 @@ test("the strip stays sticky and layered after scrolling both axes", async ({
 		element.scrollTop = 300;
 		element.scrollLeft = 60;
 	});
-	await page.waitForTimeout(100);
+	await expect
+		.poll(() =>
+			body.evaluate((element) => ({
+				left: element.scrollLeft,
+				top: element.scrollTop,
+			})),
+		)
+		.toEqual({ left: 60, top: 300 });
 
 	const geometry = await tabelo.grid().evaluate((grid) => {
 		const read = (selector: string) => {

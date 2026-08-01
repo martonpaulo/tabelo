@@ -62,6 +62,9 @@ const workspaceSchema = z.object({
 		"quad",
 	]),
 	panes: z.array(paneSchema).min(1).max(4),
+	// Defaulting keeps version-4 payloads written before per-column wrapping
+	// valid while making the in-memory workspace contract required.
+	wrappedColumns: z.array(z.string().min(1)).default([]),
 	columnRatio: z.number().min(0.1).max(0.9),
 	rowRatio: z.number().min(0.1).max(0.9),
 	activePaneId: z.string().min(1),

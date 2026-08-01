@@ -217,6 +217,38 @@ describe("closing a view", () => {
 	});
 });
 
+describe("column wrapping preference", () => {
+	it("uses stable ids, stays outside history, and prunes deleted columns", () => {
+		const before = useTabeloStore.getState();
+		const target = before.document.columns[0];
+		expect(target).toBeDefined();
+		if (!target) return;
+
+		before.toggleColumnWrap(target.id);
+		let current = useTabeloStore.getState();
+		expect(current.workspace.wrappedColumns).toEqual([target.id]);
+		expect(current.document).toBe(before.document);
+		expect(current.past).toBe(before.past);
+
+		current.applyDocument({
+			...current.document,
+			columns: [...current.document.columns].reverse(),
+		});
+		current = useTabeloStore.getState();
+		expect(current.workspace.wrappedColumns).toContain(target.id);
+
+		current.applyDocument({
+			...current.document,
+			columns: current.document.columns.filter(
+				(column) => column.id !== target.id,
+			),
+		});
+		expect(useTabeloStore.getState().workspace.wrappedColumns).not.toContain(
+			target.id,
+		);
+	});
+});
+
 describe("closing a view that owns a draft", () => {
 	it("asks before discarding text the document has not read back", () => {
 		addFirstSplit();

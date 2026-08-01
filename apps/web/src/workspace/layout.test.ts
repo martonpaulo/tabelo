@@ -166,6 +166,7 @@ function workspaceFor(id: LayoutId): Workspace {
 	return {
 		layout: id,
 		panes,
+		wrappedColumns: [],
 		columnRatio: 0.5,
 		rowRatio: 0.5,
 		activePaneId: panes[0].id,

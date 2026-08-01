@@ -1,14 +1,15 @@
 import {
 	DropdownMenu,
+	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
+import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
 	AlignCenter,
@@ -20,12 +21,14 @@ import {
 	ChevronsRightLeft,
 	MoreVertical,
 	RotateCcw,
+	WrapText,
 } from "lucide-react";
 import { copy } from "@/copy/copy";
 import { HEADER_ROW } from "@/core/selection";
 import type { Alignment } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
+import { MenuSelectionOption } from "@/ui/primitives/menu-selection-option";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import {
 	atMinimumColumnWidth,
@@ -64,6 +67,10 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 	const document = useTabeloStore((state) => state.document);
 	const entered = usePaneEntered();
 	const column = axis === "column" ? document.columns[index] : undefined;
+	const wrappedColumns = useTabeloStore(
+		(state) => state.workspace.wrappedColumns,
+	);
+	const wrapped = column ? wrappedColumns.includes(column.id) : false;
 	const atMinimumWidth = atMinimumColumnWidth(column?.width);
 	const atDefaultWidth = isDefaultColumnWidth(column?.width);
 
@@ -104,7 +111,8 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 				className={cn(
 					"relative inline-flex size-5 shrink-0 items-center justify-center rounded",
 					"after:absolute after:-inset-1 after:content-['']",
-					"text-muted-foreground transition-opacity hover:bg-accent hover:text-accent-foreground",
+					"text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+					controlStateTransitionStyles,
 					"focus-visible:opacity-100 data-popup-open:opacity-100",
 					revealed ? "opacity-100" : "opacity-0",
 					groupClass,
@@ -172,6 +180,18 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 								<ChevronsLeftRight aria-hidden />
 								{copy.actions.widenColumn}
 							</DropdownMenuItem>
+							<DropdownMenuCheckboxItem
+								checked={wrapped}
+								closeOnClick={false}
+								onCheckedChange={() => {
+									if (column) {
+										useTabeloStore.getState().toggleColumnWrap(column.id);
+									}
+								}}
+							>
+								<WrapText aria-hidden />
+								{copy.actions.wrapColumnText}
+							</DropdownMenuCheckboxItem>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 
@@ -187,14 +207,12 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 						>
 							<DropdownMenuLabel>{copy.actions.alignment}</DropdownMenuLabel>
 							{alignments.map((option) => (
-								<DropdownMenuRadioItem
+								<MenuSelectionOption
 									key={option.value}
 									value={option.value}
-									closeOnClick
-								>
-									<option.icon aria-hidden />
-									{option.label}
-								</DropdownMenuRadioItem>
+									icon={<option.icon />}
+									label={option.label}
+								/>
 							))}
 						</DropdownMenuRadioGroup>
 						<DropdownMenuSeparator />

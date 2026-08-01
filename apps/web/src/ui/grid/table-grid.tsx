@@ -58,6 +58,9 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const editing = useTabeloStore((state) => state.editing);
 	const editingSeed = useTabeloStore((state) => state.editingSeed);
 	const editingHeader = useTabeloStore((state) => state.editingHeader);
+	const wrappedColumns = useTabeloStore(
+		(state) => state.workspace.wrappedColumns,
+	);
 	const entered = usePaneEntered();
 
 	const gridRef = useRef<HTMLTableElement>(null);
@@ -68,12 +71,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		document.rows.length,
 		document.columns.length,
 	);
-	const headerRowSelected =
-		(selection.mode === "row" && rectContains(rect, HEADER_ROW, 0)) ||
-		(rect.top === HEADER_ROW &&
-			rect.left === 0 &&
-			rect.right === document.columns.length - 1);
-
 	// Tracks the edit that just ended, so focus can be handed back to the grid
 	// when the cell editor unmounts and drops it on <body>.
 	const wasEditingRef = useRef(false);
@@ -415,26 +412,18 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							// biome-ignore lint/a11y/noRedundantRoles: see the tbody rows
 							role="rowheader"
 							aria-label={copy.a11y.headerRow}
-							aria-selected={headerRowSelected}
 							// Right-clicking row 1 offers row actions like any other row.
 							// Before the strip existed this lookup found nothing and the
 							// menu fell through to cell actions on a non-cell.
 							data-row-header={HEADER_ROW}
-							className={cn(
-								"sticky left-0 z-30 border-line-strong border-r border-b",
-								"px-1 text-center font-index font-semibold text-foreground text-xs tabular-nums",
-								"top-grid-strip",
-								headerRowSelected
-									? "bg-selection-fill"
-									: "bg-surface-table-header",
-							)}
+							className="sticky top-grid-strip left-0 z-30 border-line-strong border-r border-b bg-surface-gutter px-1 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums"
 						>
-							<div className="flex h-content-line-box items-center justify-center">
+							<div className="grid h-content-line-box grid-cols-[minmax(0,1fr)_1.25rem] items-center gap-1">
 								<button
 									type="button"
 									tabIndex={entered ? 0 : -1}
 									aria-label={`${copy.actions.selectRow}: ${copy.a11y.headerRow}`}
-									className="cursor-pointer rounded-interactive px-1 hover:text-foreground"
+									className="min-w-0 cursor-pointer justify-self-end rounded-interactive px-1 text-right hover:text-foreground"
 									onClick={() =>
 										useTabeloStore
 											.getState()
@@ -443,6 +432,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								>
 									1
 								</button>
+								<AxisMenu
+									axis="row"
+									index={HEADER_ROW}
+									revealed={selection.focus.row === HEADER_ROW}
+								/>
 							</div>
 						</th>
 						{document.columns.map((column, columnIndex) => (
@@ -451,6 +445,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								columnIndex={columnIndex}
 								header={column.header}
 								align={column.align}
+								wrapped={wrappedColumns.includes(column.id)}
 								selected={rectContains(rect, HEADER_ROW, columnIndex)}
 								focus={
 									selection.focus.row === HEADER_ROW &&
@@ -487,19 +482,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								aria-label={copy.a11y.rowNumber(rowIndex)}
 								data-row-header={rowIndex}
 								className={cn(
-									"sticky left-0 z-10 border-line-subtle border-r border-b bg-surface-gutter",
-									"px-1 text-center font-index font-normal text-muted-foreground text-xs tabular-nums",
-									selection.mode === "row" &&
-										rectContains(rect, rowIndex, 0) &&
-										"bg-selection-fill text-foreground",
+									"sticky left-0 z-10 border-line-subtle border-r border-b bg-surface-gutter align-top",
+									"px-1 text-right font-index font-normal text-muted-foreground text-xs tabular-nums",
 								)}
 							>
-								<div className="relative flex h-content-line-box items-center justify-center">
+								<div className="grid h-content-line-box grid-cols-[minmax(0,1fr)_1.25rem] items-center gap-1">
 									<button
 										type="button"
 										tabIndex={entered ? 0 : -1}
 										aria-label={`${copy.actions.selectRow}: ${copy.a11y.rowNumber(rowIndex)}`}
-										className="cursor-pointer rounded-interactive px-1 hover:text-foreground"
+										className="min-w-0 cursor-pointer justify-self-end rounded-interactive px-1 text-right hover:text-foreground"
 										onClick={() =>
 											useTabeloStore
 												.getState()
@@ -508,7 +500,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									>
 										{rowIndex + 2}
 									</button>
-									<span className="absolute right-0 inline-flex">
+									<span className="inline-flex">
 										<AxisMenu
 											axis="row"
 											index={rowIndex}
@@ -526,6 +518,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								const value = row.cells[column.id] ?? "";
 								const isEditing =
 									editing?.row === rowIndex && editing?.column === columnIndex;
+								const wrapped = wrappedColumns.includes(column.id);
 
 								return (
 									// gridcell is stated rather than left implicit, for the same
@@ -623,7 +616,14 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 												}}
 											/>
 										) : (
-											<span className="block h-content-line-box overflow-hidden whitespace-pre leading-content-line-box">
+											<span
+												className={cn(
+													"block leading-content-line-box",
+													wrapped
+														? "min-h-grid-row whitespace-pre-wrap break-words"
+														: "h-content-line-box overflow-hidden whitespace-pre",
+												)}
+											>
 												{value}
 											</span>
 										)}
@@ -759,6 +759,7 @@ interface HeaderCellProps {
 	readonly columnIndex: number;
 	readonly header: string;
 	readonly align: Alignment;
+	readonly wrapped: boolean;
 	readonly selected: boolean;
 	readonly focus: boolean;
 	readonly editing: boolean;
@@ -770,6 +771,7 @@ function HeaderCell({
 	columnIndex,
 	header,
 	align,
+	wrapped,
 	selected,
 	focus,
 	editing,
@@ -795,7 +797,7 @@ function HeaderCell({
 			data-grid-active={focus ? "true" : undefined}
 			tabIndex={focus && entered ? 0 : -1}
 			className={cn(
-				"sticky z-20 overflow-hidden border-line-strong border-r border-b",
+				"sticky z-20 overflow-hidden border-line-strong border-r border-b align-top",
 				"cursor-cell select-none px-2 font-semibold",
 				// Sticks below the index strip rather than at the very top, so the
 				// two chrome layers stack instead of covering one another.
@@ -834,7 +836,16 @@ function HeaderCell({
 					}}
 				/>
 			) : (
-				<span className="block truncate">{header}</span>
+				<span
+					className={cn(
+						"block leading-content-line-box",
+						wrapped
+							? "min-h-grid-row whitespace-pre-wrap break-words"
+							: "h-content-line-box overflow-hidden whitespace-pre",
+					)}
+				>
+					{header}
+				</span>
 			)}
 		</th>
 	);

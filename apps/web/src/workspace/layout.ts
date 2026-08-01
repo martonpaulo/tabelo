@@ -187,6 +187,9 @@ export interface SplitOption {
 export interface Workspace {
 	readonly layout: LayoutId;
 	readonly panes: readonly WorkspacePane[];
+	// Grid presentation keyed by stable column id. It follows the workspace
+	// rather than the document timeline, codecs, or clipboard projections.
+	readonly wrappedColumns: readonly string[];
 	// Fractions of the workspace given to the first column and the first row.
 	readonly columnRatio: number;
 	readonly rowRatio: number;
@@ -349,6 +352,7 @@ export function createDefaultWorkspace(): Workspace {
 	return {
 		layout: "columns",
 		panes,
+		wrappedColumns: [],
 		columnRatio: 0.5,
 		rowRatio: 0.5,
 		activePaneId: panes[0].id,
