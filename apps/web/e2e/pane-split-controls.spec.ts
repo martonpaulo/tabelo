@@ -94,3 +94,21 @@ test("only the pane that can still be split offers a control", async ({
 	// Exactly one pane spans two slots, so exactly one control exists.
 	await expect(tabelo.addControls()).toHaveCount(1);
 });
+
+test("one pane offers both directions, because it spans both axes", async ({
+	tabelo,
+}) => {
+	await tabelo.chooseLayout("single");
+
+	await expect(tabelo.addControls()).toHaveCount(2);
+	await expect(tabelo.splitControl("grid", "right")).toHaveCount(1);
+	await expect(tabelo.splitControl("grid", "bottom")).toHaveCount(1);
+
+	// The edge is a promise about where the pane lands, and it holds in the one
+	// case where the same pane could have gone either way.
+	await tabelo.addViewBySplit("grid", "bottom", "markdown");
+	const grid = await tabelo.paneArea("grid");
+	const markdown = await tabelo.paneArea("markdown");
+	expect(markdown.rowStart).toBe(grid.rowEnd);
+	expect(markdown.columnStart).toBe(grid.columnStart);
+});

@@ -169,7 +169,7 @@ export function Workspace() {
 				const area = gridAreaOf(pane.slots);
 				// Stacked panes have the whole width, so nothing needs shortening.
 				const compact = !stacked && area.columnEnd - area.columnStart === 1;
-				const split = options.find((option) => option.paneId === pane.id);
+				const splits = options.filter((option) => option.paneId === pane.id);
 				return (
 					<Pane
 						key={pane.id}
@@ -177,8 +177,12 @@ export function Workspace() {
 						active={pane.id === workspace.activePaneId}
 						compact={compact}
 						stacked={stacked}
-						splitEdge={split?.edge}
-						splitLayout={split?.layout}
+						splitBottom={
+							splits.find((option) => option.edge === "bottom")?.layout
+						}
+						splitRight={
+							splits.find((option) => option.edge === "right")?.layout
+						}
 						onSplit={setPendingSplit}
 						justAdded={pane.id === addedPaneId}
 					/>
