@@ -112,9 +112,6 @@ export const Pane = memo(function Pane({
 					<PaneContent paneId={pane.id} view={view} zoom={pane.zoom} />
 				</Panel.Body>
 
-				{/* Listed rather than mapped so each control keeps its own literal
-			    edge: the pair is fixed by SplitEdge, and a map over it would add
-			    an array only to take it apart again. */}
 				{splitRight ? (
 					<SplitControl
 						edge="right"
