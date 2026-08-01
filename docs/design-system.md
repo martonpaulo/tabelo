@@ -130,6 +130,7 @@ tones to group related content before adding a line. Editable pane bodies use
 | :--- | :--- | :--- |
 | `--line-subtle` | `border-line-subtle` | Grid cell borders, control separators |
 | `--line-strong` | `border-line-strong` | Boundaries between panes |
+| `--control-outline` | `border-control-outline` | Unfilled small controls that must remain identifiable against their surface |
 
 Borders are always 0.0625rem. Use them for the table grid, pane boundaries, or an
 explicit state. Prefer tonal separation for buttons,
@@ -179,8 +180,8 @@ paint.
 | `--control-h-sm` | `h-control-sm` | 1.75rem: dense toolbars, menu triggers |
 | `--control-h-md` | `h-control-md` | 2rem: default control height |
 | `--panel-header-h` | `h-panel-header` | 2.75rem: every pane header |
-| `--grid-gutter-w` | `w-grid-gutter` | 2.75rem: row-number column |
-| `--grid-row-h` | `h-grid-row` | calc(var(--pane-zoom, 1) * 2rem): one table row |
+| `--grid-gutter-w` | `w-grid-gutter` | 4rem: row number and its options control |
+| `--grid-row-h` | `min-h-grid-row` | calc(var(--pane-zoom, 1) * 2rem): minimum table row height |
 | `--grid-col-w` | `w-grid-col` | 10.5rem: default column width |
 | `--grid-col-w-min` | `w-grid-col-min` | 4.5rem: resize floor |
 | `--control-radius` | `rounded-interactive` | 0.25rem: buttons, fields, menu items, badges |
@@ -310,7 +311,26 @@ A menu option that is one of several **mutually exclusive current states**
 (the layout, a pane's view, or a column's alignment) is a `DropdownMenuRadioItem`
 inside a `DropdownMenuRadioGroup`, never a plain item wearing a tick or a tint.
 The primitive supplies `menuitemradio`, `aria-checked`, and the arrow-key
-behaviour; the visible check stays as redundant confirmation.
+behaviour. The selected row background is the only visible selection mark.
+
+Every option in a single-selection list uses the same anatomy: one meaningful
+leading icon, primary text with an optional description, optional trailing
+metadata. Icons identify the choice rather than decorate it, so they come from
+the registry or domain owner when one exists and use the shared icon size and
+alignment. Do not omit an icon from one list or add a radio circle, tick, or
+second selection mark because a different primitive renders that list.
+Descriptions remain optional: views, layouts, and download formats use
+supporting copy when it helps distinguish the choices, while alignment stays
+single-line instead of repeating what its icon and label already say.
+
+Radio semantics remain in the accessibility tree even though no radio glyph is
+drawn. A checked option uses the shared `--selection-fill` row background, which
+is already an unambiguous state cue. Pointer hover and keyboard highlight use
+the shared neutral interaction background and update the icon, label, and
+description together. A checked row keeps its selection background while
+hovered or focused, so menus and dialogs never display two competing selected
+treatments. A disabled row never gains an interaction background or active text
+colour on hover, regardless of whether it is a command or a selection option.
 
 The checked value is read from the state that owns it, not from the last click,
 so a change the product refuses leaves the menu telling the truth. Pass
@@ -320,6 +340,12 @@ is right for a stepper and wrong for a choice that is finished once made.
 A group whose items are *actions* rather than states, such as zoom, add, and
 close, stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
 
+Tabelo does not use cascading menus. A menu item either performs its command or
+opens one dialog for a choice that cannot live in the current menu. In
+particular, the global Layout command opens the layout chooser dialog; it never
+opens a submenu. Keep submenu primitives unused in product code even when the
+component library provides them.
+
 Every dropdown and context menu uses the shared primitive's one spacing rhythm:
 0.25rem outer padding, 2rem minimum item height, 0.5rem horizontal padding, and
 0.5rem vertical padding. Icon-to-label gaps are 0.75rem. Primary option labels
@@ -328,6 +354,20 @@ description or shortcut may use 0.75rem. Floating menus are translucent over a
 backdrop blur when the browser supports it, with the opaque popover colour as
 the fallback. Their floating surface, strong boundary, and shadow must remain
 visibly distinct from the pane beneath.
+
+Shortcut hints use the shared normal sans-serif typeface, never the source
+editor's monospace face. Each physical key is one compact, quiet tonal rectangle
+and adjacent keys use the smallest spacing token. Platform modifiers use their
+familiar label or symbol, so zoom in appears as separate `Command` and `+` keys
+instead of the ambiguous string `Mod++`. Smaller text and normal letter spacing
+distinguish the shortcut from its action label without making it look like
+another button. Dropdown and context menus share this treatment through the
+menu primitive.
+
+Special keys use their standard compact symbols where one exists: `⌘`, `⌃`,
+`⌥`, `⇧`, `⌫`, `↵`, `⎋`, `⇥`, and arrow glyphs. The accessible name keeps the
+full key name, so saving horizontal space never makes the shortcut cryptic to a
+screen-reader user.
 
 ### Empty workspace
 
@@ -340,11 +380,18 @@ saved content, an unfinished draft, or a table the user emptied during the
 current visit. A trusted `Mod`+`V` paste event starts the table directly while
 this surface is open.
 
+Its three entry actions use the shared decision-action group: right-aligned in
+one horizontal row at every supported width. Ordinary alternatives come first
+and the primary starting action comes last, at the far right. Their DOM and
+focus order follows that same semantic priority. The surface grows to the row's
+intrinsic width and the action row never becomes a scroll container.
+
 ### Dialog
 
 A dialog is allowed **only as the direct result of a command the user issued**,
-and only when the command has a choice to make that a menu cannot hold: a
-choice with its own options, or one that needs stating before it happens. The
+and only when the command has a choice to make that the current menu cannot
+hold without cascading: a choice with its own options, one that needs stating
+before it happens, or the layout gallery opened from the global menu. The
 download chooser holds format-specific output choices. New table also uses a
 dialog when the current document or a pending draft would be lost; an already
 empty document with no draft clears without interruption.
@@ -364,6 +411,13 @@ changed, which is the shape of a decision rather than of a command.
 A dialog is never used to announce something. Notices belong in the notice bar,
 which sits in the layout instead of covering the table.
 
+Only one dialog may be open at a time. A modal flow that needs another decision
+closes or replaces its current step before opening the next one; it never stacks
+one backdrop and popup over another. Global shortcuts do not open a second
+dialog while one is active, and a portalled dialog closes when the surface that
+owns it becomes inert. Model mutually exclusive dialog flows as one state rather
+than independent booleans. Raising `z-index` is not a hierarchy fix.
+
 | Rule | Treatment |
 | :--- | :--- |
 | Surface | `rounded-surface`, `bg-popover`, one shadow: a floating layer |
@@ -371,7 +425,7 @@ which sits in the layout instead of covering the table.
 | Title | `DialogTitle`, `text-sm font-medium` |
 | Supporting copy | `DialogDescription`, one sentence saying what to choose |
 | Dismissal | Escape and an explicit Cancel; focus returns to what opened it |
-| Button hierarchy | Confirm uses the default filled accent; destructive confirm uses `destructive`; Cancel uses the borderless `ghost`; all use the default size |
+| Button hierarchy | One right-aligned, non-wrapping action row. Cancel or another neutral dismissal comes first, ordinary alternatives follow, and exactly one emphasized decision comes last. That decision is destructive red or primary blue, never both |
 | Confirmation | One primary verb naming the operation: "Download", not "OK" |
 
 Compose `packages/ui`'s `Dialog`; do not build a second modal. Prefer the
@@ -380,11 +434,38 @@ the two ways out are both visible and both labelled.
 
 A dialog that asks for one value uses the shared `SingleSelectionList` and
 `SingleSelectionOption` treatment. Every option is one full-width labelled row
-with the native Base UI radio, 0.75rem between radio and content, 0.5rem padding,
-and 0.375rem between rows. Hover uses the muted surface, the checked row uses
-`--selection-fill`, keyboard focus outlines the whole row, and disabled rows
-stay visible with their reason. A title and optional description use the shared
-`MenuOption` rhythm. Do not recreate this structure inside a feature dialog.
+with native Base UI radio semantics behind the shared visual anatomy: icon on
+the left, content in the middle, and optional metadata. Rows use 0.5rem padding
+and 0.375rem separation. Hover and keyboard highlight use the shared interaction
+surface, the checked row uses `--selection-fill`, keyboard focus outlines the
+whole row, and disabled rows stay visible with their reason. No radio circle or
+other redundant selected glyph is visible. A title and optional description
+use the shared `MenuOption` rhythm. Do not recreate this structure inside a
+feature dialog. If an option has both status and metadata, its trailing area
+stacks them vertically, status first, instead of widening the row with two
+adjacent labels. A missing status or metadata child reserves no space.
+
+Dialog action buttons use the shared action group and shared button wrappers.
+They stay right-aligned in one non-wrapping row without changing DOM or focus
+order, and the action group itself never scrolls. One shared, deliberately
+generous top spacing separates the footer from the dialog content in every
+dialog. A neutral dismissal comes first, ordinary reversible alternatives
+follow, and exactly one decisive action comes last at the far right. That last
+action is primary blue for the normal path or destructive red for an
+irreversible path. One group never presents both emphasized colours.
+
+Single-selection dialogs grow to show their complete option list. The option
+list, dialog surface, and action row never own horizontal or vertical scrolling
+and never show incidental scrollbars. The footer remains after the complete
+list with the shared content separation.
+Neutral dismissal and ordinary alternative actions both use the borderless
+ghost treatment. An alternative never introduces an outline that makes it look
+more important than Cancel or compete with the decisive action.
+
+A menu command that opens a dialog uses the shared sequential-layer helper. It
+closes its menu through the menu primitive first, including the close animation,
+and only then opens the dialog. The menu must not remain visibly blurred beneath
+the modal overlay.
 
 ### Layer ownership
 
@@ -416,10 +497,10 @@ not a polish item.
 | State | Treatment |
 | :--- | :--- |
 | Rest | No background |
-| Hover | `hover:bg-muted` |
+| Hover or keyboard highlight | Shared `bg-accent` interaction background |
 | Focus | 0.125rem `--selection-edge` outline, inset. Never remove it |
 | Selected | `bg-selection-fill`, plus outline when it is the focused cell |
-| Disabled | `opacity-50`, blocked cursor, and a tooltip explaining why. Never hide a disabled action |
+| Disabled | `opacity-50`, no hover or highlight state, `not-allowed` on the actual hit layer, and a tooltip explaining why. Never hide a disabled action |
 | Invalid | Red wavy underline; written diagnostic on hover and in the editor description |
 | Warning | Yellow dotted underline; written diagnostic on hover and in the editor description |
 
@@ -427,8 +508,39 @@ Disabled actions stay visible so the interface does not reflow as the selection
 changes. Every disabled control must expose a concise reason through the shared
 disabled-tooltip pattern. Layout stability outranks tidiness.
 
+A dialog confirm is disabled when it would produce no state change. The shared
+confirm wrapper owns its required disabled tooltip, so feature dialogs cannot
+create an unexplained inactive primary button. This applies to the current
+layout in Layout and the current pane view in Change view. Download remains
+enabled because producing a file is an action even when its format choice did
+not change; destructive New table and first-visit creation also still perform
+real actions.
+
+Destructive menu actions use one shared state treatment. Their label, icon, and
+any secondary anatomy inherit the same destructive foreground at rest, on
+hover, and on keyboard focus; the generic accent foreground never leaks into a
+destructive row.
+
+An unchecked checkbox remains visibly identifiable as a control. Its shared
+primitive owns a contrasting outline and transparent interior in both colour
+schemes; the absence of a checkmark must never make the control disappear into
+its parent surface or turn it into a heavy filled square.
+
+Unavailable selection options distinguish two causes. An option already used
+elsewhere is an informative `in-use` state with a neutral status label and an
+eye icon. An option blocked by the current document or another precondition is
+an `unavailable` state with an alert icon and the concise `Blocked` status. Both
+are actually disabled, both keep their identity icon, and both expose the full
+reason in a tooltip. The written status and different icon shapes keep the
+distinction from depending on colour alone. `Blocked` uses an attenuated
+destructive tone so it communicates a precondition without competing with the
+selected option.
+
 A view or download format whose codec cannot represent the current document
-stays listed and disabled with that reason. An already-open pane that becomes
+stays listed and disabled with the format rule that causes the block, why that
+rule exists, and the corrective action. For example, JSON explains that headers
+become unique object keys rather than merely saying that a column is invalid.
+An already-open pane that becomes
 blocked replaces its content with one keyboard-focusable written status. The
 status is announced to assistive technology and identifies affected rows or
 columns without relying on the grid being visible.
@@ -438,6 +550,11 @@ inner rectangle: its caret and selection remain visible, while the pane's 0.125r
 inset edge supplies all four focus sides. The source caret is a 0.125rem accent line
 aligned to the editor's line metrics; native text editors use the same accent
 through `caret-color`.
+
+A source pane measures its wrapped lines and number gutter when it first becomes
+visible, before the user can see or focus it. Opening, replacing, or rearranging
+a view must not leave line numbers on stale geometry and rely on a click to
+repair them. Focus changes interaction state; it is never a layout trigger.
 
 Healthy source panes are silent: do not render repeated "In sync" or "Editing"
 labels. A transient parse failure also stays silent during its short grace
@@ -536,9 +653,14 @@ per keystroke.
   never gets. Each carries its own dismissal where dismissal makes sense.
 - There is no app header. One floating action button is the document-level
   command surface at every viewport width. Its menu contains the Tabelo identity
-  and description, Undo, Redo, New table, Import, Download, Layout, and a link to
-  the GitHub repository. The trigger has a stable accessible name and never
-  replaces visible menu labels with unexplained icons.
+  and description, Undo, Redo, New table, Import, Download, Add view, Layout,
+  and a link to the GitHub repository. The trigger has a stable accessible name
+  and never replaces visible menu labels with unexplained icons. Global Add
+  view chooses the first valid split in workspace reading order and opens the
+  same view chooser as the pane-edge command. It does not ask for placement or
+  maintain a second placement policy. The trigger keeps a panel surface and
+  elevation without a visible resting border; keyboard focus still uses the
+  shared focus treatment.
 - A ready service-worker update adds one static accent dot to the FAB and a
   written "Reload to update" action to its menu. The trigger's accessible name
   also states that an update is available, so colour is never the only signal.
@@ -548,32 +670,30 @@ per keystroke.
 - Pane-level actions live in that pane's header. Row and column actions live on
   the row or column and in the context menu. The grid has no redundant Table
   actions menu in its pane header.
-- Each pane header carries two triggers and nothing else that acts. The **view
-  name**, with its icon and a chevron, is the control that changes the view: it
-  opens the view selector and only that. A **trailing chevron**, right-aligned,
-  opens that pane's other actions. Splitting them puts the most frequent pane
-  command on the thing it names, and stops a menu that changes what you are
-  looking at from also holding the ways to close it.
-- The view name stays wrapped in the pane's heading rather than replacing it: a
-  button inside a heading is valid, a heading that is a button is not, and the
-  pane has to keep contributing to the document outline. The `Read only` badge
-  sits beside the trigger, outside it, because it reports state.
-- Both triggers name the view they belong to, because with four panes open the
-  view is the only thing that says which pane a trigger acts on. "Change view:
-  Markdown" and "Pane actions: Markdown", never a bare "Pane".
+- Each pane header carries one trigger and nothing else that acts. The view name
+  and icon are static identity inside the pane heading, with no chevron or
+  hidden click behavior. The trailing chevron, right-aligned, opens the pane
+  actions menu. `Change view` is one entry in that menu and opens the shared
+  choice dialog; it never opens a selector from the title.
+- The `Read only` badge sits beside the view identity because it reports state.
+  The actions trigger names the view it belongs to, because with four panes open
+  the view is what says which pane the command affects: "Pane actions:
+  Markdown", never a bare "Pane".
 - Editable pane bodies use the main panel surface. A non-editable pane uses the
   read-only surface and the written "Read only" label. Never rely on a muted
   background alone to communicate editability.
-- Both pane menus are flat. The view selector is one radio group and never a
-  submenu of formats; adding a view, closing the view, and zooming are plain
-  items in the actions menu. Add view grows the workspace and hands the new
-  pane's **view** trigger the focus, so choosing what it should show is one
-  keystroke rather than a hunt.
+- The pane actions menu is flat. Changing a view opens one dialog; closing and
+  zooming remain plain menu items. Add view grows the workspace and hands the
+  new pane frame focus, so the result is announced without relying on a title
+  control that no longer exists.
 - A view already open in another pane remains listed but disabled, with a
   tooltip explaining that it is already open. The current
   pane's own view remains selected and enabled. No workspace may show two
   instances of the same registered view.
 - Add view and Close view are disabled, not hidden, at four panes and at two.
+- The global Add view command remains visible and disabled at four panes, with
+  a tooltip explaining the limit. Pane-edge controls exist only where a split
+  is possible.
 - Nothing may reflow because of a selection change or a status change.
 - Two-pane layouts may breathe, but do not enlarge controls or introduce an
   otherwise absent card. Four-pane layouts keep the same 0.875rem critical labels,
@@ -588,7 +708,8 @@ per keystroke.
 ## 6. Icons
 
 Lucide only, `size-4` inside `control-md` and `size-3.5` inside `control-sm`.
-Always `aria-hidden`, because the accessible name comes from the button.
+All Lucide icons use the shared 1.5 stroke weight. Always `aria-hidden`, because
+the accessible name comes from the button.
 
 Icon-only buttons are limited to the globally stable floating action trigger,
 the grid's per-row and per-column affordances, and the pane header's actions
@@ -597,15 +718,20 @@ because the view name beside it already carries the pane's identity: a second
 labelled button there repeated the word "Pane" once per open pane. Its
 accessible name is then the only signal it has, so that name states both the
 action and the view.
+Tooltip pointers use the shared Base UI arrow with one clipped triangular
+shape. Do not reintroduce a rotated square or build feature-specific pointers.
 Those axis affordances stay visually quiet with a small icon at rest, but their
 target is grown to the 1.75rem control minimum with an `::after`
 box rather than by taking layout the row gutter does not have. They appear on
 hover, on `focus-within` of the row or column, while the menu is open, and for
 whichever row and column the selection is currently in: the last of those is
 what teaches the relationship without putting an icon on every row at once.
-The header row's numbered gutter is the exception: it selects row 1 directly
-and has no row-actions icon, because the header is structurally required and
-the icon added noise beside its number.
+Every numbered gutter cell, including row 1, uses the same right-aligned,
+normal-weight number and row-actions icon. The gutter token reserves separate
+space for both, so revealing the action never covers a number.
+The pane-edge Add view control uses the full default control target and a larger
+plus than row or column affordances. It remains centred on the edge band and is
+revealed by edge hover or keyboard focus, never by hovering the pane body.
 The floating trigger has a stable accessible name, and every command inside its
 menu keeps a visible label. It displays the project mark rather than a generic
 menu glyph. The mark is a small table grid whose blue header row and two active
@@ -618,9 +744,36 @@ legible at 1rem, use only product tokens, and keep the grid silhouette intact.
 
 ## 7. Motion
 
-Transitions are limited to `colors` and `opacity`, at 100ms. Nothing moves
-position, flashes, pulses, or animates in on mount. `prefers-reduced-motion` is
-honoured globally in `index.css` and must not be re-enabled locally.
+Motion explains feedback, continuity, or progress. It is never decoration and
+never delays a command. Shared motion strings in `packages/ui` own four useful
+categories:
+
+- interactive control state transitions name only background, border, colour,
+  shadow, and opacity;
+- pressable controls add transform for the subtle active press response;
+- pane-edge disclosure changes only colour and opacity;
+- transient layers transition opacity and a subtle 0.98 scale from the Base UI
+  transform origin.
+
+Every shared transition is 100ms with an ease-out curve. Never use
+`transition-all`: a component may later add a layout property that must stay
+instant. Grid geometry, cell selection, editing, focus ownership, document
+synchronization, line numbers, and counters do not animate. Functional loading
+spinners, real loading skeletons, and notification entry or exit may animate;
+static status never pulses or bounces.
+
+Menus, context menus, tooltips, dialogs, and their backdrop use Base UI's
+`data-starting-style` and `data-ending-style` attributes with cancellable CSS
+transitions. This lets a reversed interaction continue from its current visual
+state and lets Base UI finish unmounting the layer correctly. Do not reintroduce
+keyframe-based popup entry or side-dependent travel. See the
+[Base UI animation guidance](https://base-ui.com/react/handbook/animation).
+
+`prefers-reduced-motion` is honoured globally in `index.css` and must not be
+re-enabled locally. Under reduced motion, popup scale becomes 1, transition
+durations become effectively immediate, and spinner, pulse, and CodeMirror
+cursor animations stop. The written state and progress label remain. This
+implements the [W3C reduced-motion technique](https://www.w3.org/WAI/WCAG21/Techniques/css/C39.html).
 
 ---
 
@@ -767,6 +920,22 @@ typing, and `Backspace` clears it. The one thing it is not is a row that can be
 deleted, because every table keeps exactly one header row. Everything that acts
 on the column as a whole (selecting it, its menu, its resize handle) belongs to
 the column index strip, not to the header cell.
+
+The numbered row gutter is interface chrome, not selected data. It never takes
+`--selection-fill`, even when its row or the whole table is selected. Every
+number is right-aligned and normal weight, including row 1, matching source and
+read-only view line gutters. Row 1 keeps the same row-actions control as every
+data row; actions that cannot apply to the required header remain disabled and
+explain why.
+
+Cell wrapping is a persisted workspace preference per column, keyed by the
+column's stable id and off by default. It never changes the document, codecs,
+clipboard output, or undo timeline. A wrapped column preserves spaces and line
+breaks, wraps long text inside the authoritative column width, and lets each
+row grow to its tallest cell while `--grid-row-h` remains the floor. Row numbers
+stay on the first visual line of that variable-height row, and arrow keys still
+move one cell rather than one visual line. The semantic checked item in the
+column menu is the sole control for this preference.
 
 **An empty header stays empty.** Nothing generates a name for a column the user
 has not named. An unnamed column is identified by its letter on the index strip,
