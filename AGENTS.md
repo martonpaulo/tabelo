@@ -212,10 +212,17 @@ Prefer the smallest relevant check.
   `pnpm test:e2e:install`. Narrow it with `--project=chromium`, a spec name, or
   `-g "<title>"` while iterating, and run it whole before reporting
 
-CI and Pages deployment are skipped only when every changed path is known not
-to affect the built site or its pipeline: root Markdown files, `docs/**`,
-`LICENSE`, and `.scratch/**`. Any other path runs the full pipeline;
-`apps/web/src/product.ts` is a build input even though it contains product copy.
+CI and Pages deployment are skipped only when every changed path matches the
+non-build path list owned by their workflows. For pull requests that run CI,
+the Check job always runs and browser coverage is selected by the highest-risk
+changed path: unit tests, fixtures, and unit-test tooling need no browser run;
+product identity and interface copy run the Chromium smoke suite; the global
+stylesheet runs the smoke and visual-system suites; all other application
+changes and unknown paths run the full Chromium suite; workflow or Playwright
+configuration runs the sharded Chromium and Firefox matrix. Pushes to `main`
+and manual runs also use that full matrix. Renames classify both the old and
+new path, so moving a file cannot reduce coverage. Mixed changes always use the
+highest applicable level.
 
 Never claim a check passed unless it ran successfully.
 

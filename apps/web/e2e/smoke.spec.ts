@@ -1,4 +1,4 @@
-import { product } from "@/product";
+import { product } from "@/copy/product";
 
 import { expect, test } from "./fixtures";
 
