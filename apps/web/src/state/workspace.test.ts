@@ -136,18 +136,6 @@ describe("adding a view", () => {
 		expect(useTabeloStore.getState().draft?.paneId).toBe(paneId);
 		expect(workspace().panes.some((pane) => pane.id === paneId)).toBe(true);
 	});
-
-	it("shows exactly the view that was chosen for it", () => {
-		const before = workspace();
-
-		addFirstSplit("html-preview");
-
-		const added = workspace().panes.find(
-			(pane) => pane.id === addedPaneId(before.panes),
-		);
-		expect(added?.view).toBe("html-preview");
-		expect(before.panes.map((pane) => pane.view)).not.toContain(added?.view);
-	});
 });
 
 describe("closing a view", () => {

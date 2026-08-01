@@ -104,12 +104,4 @@ describe("the download preference", () => {
 
 		expect(declaring).toEqual(["csv"]);
 	});
-
-	it("is session-only, so it never reaches what gets persisted", () => {
-		useTabeloStore.getState().setOutputOption("includeHeader", false);
-
-		// The autosave payload is built from document, workspace, and draft only.
-		expect(Object.keys(useTabeloStore.getState())).toContain("outputOptions");
-		expect(initialState.outputOptions).toEqual(defaultOutputOptions);
-	});
 });

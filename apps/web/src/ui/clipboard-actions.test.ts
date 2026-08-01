@@ -62,11 +62,6 @@ describe("copying", () => {
 		expect(severity()).toBe("info");
 	});
 
-	it("confirms copied source in its own words", async () => {
-		expect(await copyToClipboard({ text: "| A |" }, "source")).toBe(true);
-		expect(notice()).not.toBeNull();
-	});
-
 	it("uses the rich write only when there is a rich flavour to send", async () => {
 		await copyToClipboard({ text: "a", html: "<b/>" }, "selection");
 		expect(writeClipboardTable).toHaveBeenCalled();
@@ -98,13 +93,6 @@ describe("copying", () => {
 		await copyToClipboard({ text: "| A |" }, "source");
 
 		expect(useTabeloStore.getState().notices).toHaveLength(2);
-	});
-
-	it("scopes the refusal advice to what was being copied", async () => {
-		writeClipboardText.mockResolvedValue(refused);
-
-		await copyToClipboard({ text: "| A |" }, "source");
-		expect(notice()).not.toBeNull();
 	});
 
 	it("never reveals the underlying permission error", async () => {

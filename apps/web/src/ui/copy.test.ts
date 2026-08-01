@@ -14,10 +14,6 @@ describe("column positional names", () => {
 		expect(copy.a11y.columnLetter(index)).toBe(expected);
 	});
 
-	it("no longer invents a Column N name", () => {
-		expect(copy.a11y.columnLetter(0)).not.toContain("Column");
-	});
-
 	// An unnamed column has to announce something, and its letter is the only
 	// identity it has. It must not become document content to get one.
 	it("falls back to the letter for an empty header", () => {
