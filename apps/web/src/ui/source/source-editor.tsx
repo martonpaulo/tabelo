@@ -306,7 +306,7 @@ export function SourceEditor({
 	// and caret with it; the values it closes over are applied by the effects
 	// below instead.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: see above
-	useEffect(() => {
+	useLayoutEffect(() => {
 		const host = hostRef.current;
 		if (!host) return;
 
@@ -396,6 +396,18 @@ export function SourceEditor({
 		});
 
 		viewRef.current = view;
+		// Mount before paint and measure once the editor is attached. Source panes
+		// can appear as a dialog closes or a layout changes, and waiting for focus
+		// would leave wrapped line numbers positioned from stale geometry.
+		view.requestMeasure();
+		// CodeMirror deliberately ignores resize notifications that arrive very
+		// close to its own document update. A pane can change size in that exact
+		// window when a view or layout dialog closes, leaving the gutter stale until
+		// focus. The pane owns that resize, so observe its two real layout boxes and
+		// request a measure for every settled browser size notification.
+		const geometryObserver = new ResizeObserver(() => view.requestMeasure());
+		geometryObserver.observe(host);
+		geometryObserver.observe(view.scrollDOM);
 		const unregisterHistory = registerLocalHistory(paneId, {
 			undo: () => undo(view),
 			redo: () => redo(view),
@@ -403,6 +415,7 @@ export function SourceEditor({
 			canRedo: () => redoDepth(view.state) > 0,
 		});
 		return () => {
+			geometryObserver.disconnect();
 			unregisterHistory();
 			view.destroy();
 			viewRef.current = null;
