@@ -494,7 +494,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										"bg-selection-fill text-foreground",
 								)}
 							>
-								<div className="flex h-content-line-box items-center justify-between gap-0.5">
+								<div className="relative flex h-content-line-box items-center justify-center">
 									<button
 										type="button"
 										tabIndex={entered ? 0 : -1}
@@ -508,11 +508,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									>
 										{rowIndex + 2}
 									</button>
-									<AxisMenu
-										axis="row"
-										index={rowIndex}
-										revealed={selection.focus.row === rowIndex}
-									/>
+									<span className="absolute right-0 inline-flex">
+										<AxisMenu
+											axis="row"
+											index={rowIndex}
+											revealed={selection.focus.row === rowIndex}
+										/>
+									</span>
 								</div>
 							</th>
 
