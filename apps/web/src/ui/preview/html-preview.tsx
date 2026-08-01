@@ -36,7 +36,7 @@ export default function HtmlPreview() {
 					className="w-full border-collapse text-content"
 				>
 					<thead>
-						<tr className="bg-surface-header">
+						<tr className="bg-surface-table-header">
 							{document.columns.map((column) => (
 								<th
 									key={column.id}

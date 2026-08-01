@@ -23,6 +23,9 @@ import { PaneEntryContext, usePaneEntry } from "./use-pane-entry";
 interface PaneProps {
 	readonly pane: WorkspacePane;
 	readonly active: boolean;
+	// With one pane there is no competing selection to identify. The pane still
+	// owns focus and aria-current, but the persistent active edge would be noise.
+	readonly showActiveIndicator: boolean;
 	// A pane occupying a single slot has half the width, so its header labels
 	// shorten rather than wrap.
 	readonly compact: boolean;
@@ -49,6 +52,7 @@ interface PaneProps {
 export const Pane = memo(function Pane({
 	pane,
 	active,
+	showActiveIndicator,
 	compact,
 	stacked,
 	splitBottom,
@@ -131,7 +135,9 @@ export const Pane = memo(function Pane({
 					/>
 				) : null}
 
-				{active && <Panel.Overlay className="tabelo-active-pane-indicator" />}
+				{active && showActiveIndicator ? (
+					<Panel.Overlay className="tabelo-active-pane-indicator" />
+				) : null}
 				<div role="status" className="sr-only">
 					{announcement}
 				</div>
@@ -146,8 +152,8 @@ export const Pane = memo(function Pane({
 // the divider between two panes, so which pane is splitting is never in doubt.
 //
 // Absolutely positioned so that appearing and disappearing moves nothing
-// (§5, §7), and revealed by the same rule as the row and column affordances:
-// hover anywhere on the pane, or focus, since nothing may depend on hover
+// (§5, §7), and revealed only when the pointer reaches its narrow edge band.
+// Keyboard focus reveals the same button, since nothing may depend on hover
 // alone (§9). It stays outside the pane body, so reaching it is not entering
 // the pane: it belongs to the workspace ring beside the pane frame (§9).
 function SplitControl({
@@ -160,26 +166,35 @@ function SplitControl({
 	readonly view: string;
 }) {
 	return (
-		<button
-			type="button"
+		<div
 			data-split-control={edge}
-			aria-label={copy.a11y.addViewAt(edge, copy.a11y.pane(view))}
-			onClick={onSplit}
 			className={cn(
-				"absolute z-20 inline-flex size-5 items-center justify-center rounded-interactive",
-				"cursor-pointer bg-surface-floating text-muted-foreground ring-1 ring-line-subtle",
-				"opacity-0 transition-opacity hover:text-foreground",
-				// Plain focus, not focus-visible: a control that has the focus while
-				// staying invisible is the failure this reveal rule exists to
-				// prevent, and focus-visible would not match a programmatic focus.
-				"focus:opacity-100 group-hover/pane:opacity-100",
-				"focus-visible:outline-2 focus-visible:outline-selection-edge",
+				"group/split-edge",
 				edge === "bottom"
-					? "bottom-1 left-1/2 -translate-x-1/2"
-					: "top-1/2 right-1 -translate-y-1/2",
+					? "absolute bottom-0 left-0 z-20 h-2 w-full"
+					: "absolute top-0 right-0 z-20 h-full w-2",
 			)}
 		>
-			<Plus aria-hidden className="size-3.5" />
-		</button>
+			<button
+				type="button"
+				aria-label={copy.a11y.addViewAt(edge, copy.a11y.pane(view))}
+				onClick={onSplit}
+				className={cn(
+					"absolute inline-flex size-5 items-center justify-center rounded-interactive",
+					"cursor-pointer bg-surface-floating text-muted-foreground ring-1 ring-line-subtle",
+					"opacity-0 transition-opacity hover:text-foreground",
+					// Plain focus, not focus-visible: a control that has the focus while
+					// staying invisible is the failure this reveal rule exists to
+					// prevent, and focus-visible would not match a programmatic focus.
+					"focus:opacity-100 group-hover/split-edge:opacity-100",
+					"focus-visible:outline-2 focus-visible:outline-selection-edge",
+					edge === "bottom"
+						? "bottom-1 left-1/2 -translate-x-1/2"
+						: "top-1/2 right-1 -translate-y-1/2",
+				)}
+			>
+				<Plus aria-hidden className="size-3.5" />
+			</button>
+		</div>
 	);
 }

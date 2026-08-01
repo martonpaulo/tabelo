@@ -7,6 +7,7 @@ import {
 	menuLabelStyles,
 	menuPopupStyles,
 	menuSeparatorStyles,
+	menuSingleSelectionItemStateStyles,
 	menuSubTriggerLayoutStyles,
 } from "@tabelo/ui/components/menu-styles";
 import { cn } from "@tabelo/ui/lib/utils";
@@ -215,6 +216,7 @@ function DropdownMenuRadioItem({
 			data-inset={inset}
 			className={cn(
 				menuChoiceItemLayoutStyles,
+				menuSingleSelectionItemStateStyles,
 				"focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground",
 				className,
 			)}

@@ -6,15 +6,16 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
-import { Label } from "@tabelo/ui/components/label";
-import { RadioGroup, RadioGroupItem } from "@tabelo/ui/components/radio-group";
 import { useId, useState } from "react";
 import { copy } from "@/copy/copy";
 import { canSerialize } from "@/formats";
 import { useTabeloStore } from "@/state/store";
 import { DialogCancel, DialogConfirm } from "@/ui/primitives/dialog-buttons";
-import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
+import {
+	SingleSelectionList,
+	SingleSelectionOption,
+} from "@/ui/primitives/single-selection-list";
 import { getView, listViews } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import type { SplitOption } from "@/workspace/layout";
@@ -99,11 +100,10 @@ export function AddViewDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<RadioGroup
+				<SingleSelectionList
 					aria-label={copy.addView.view}
 					value={selected ?? ""}
 					onValueChange={(value) => setChosen(value as ViewId)}
-					className="gap-1"
 				>
 					{views.map((candidate) => (
 						<ViewChoice
@@ -112,9 +112,10 @@ export function AddViewDialog({
 							label={candidate.label}
 							description={candidate.description}
 							reason={reasonFor(candidate.id)}
+							selected={selected === candidate.id}
 						/>
 					))}
-				</RadioGroup>
+				</SingleSelectionList>
 
 				<DialogFooter>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>
@@ -131,26 +132,26 @@ interface ViewChoiceProps {
 	readonly id: ViewId;
 	readonly label: string;
 	readonly description: string;
+	readonly selected: boolean;
 	// Why this view cannot be added. Disabled and explained rather than hidden,
 	// so a view the user is looking for never simply vanishes from the list.
 	readonly reason: string | undefined;
 }
 
-function ViewChoice({ id, label, description, reason }: ViewChoiceProps) {
-	const radioId = useId();
-
+function ViewChoice({
+	id,
+	label,
+	description,
+	selected,
+	reason,
+}: ViewChoiceProps) {
 	return (
-		<DisabledTooltip reason={reason}>
-			<div className="flex min-h-control-md items-center gap-2">
-				<RadioGroupItem
-					id={radioId}
-					value={id}
-					disabled={reason !== undefined}
-				/>
-				<Label htmlFor={radioId} className="flex-1 font-medium text-sm">
-					<MenuOption label={label} description={description} />
-				</Label>
-			</div>
-		</DisabledTooltip>
+		<SingleSelectionOption
+			value={id}
+			selected={selected}
+			disabledReason={reason}
+		>
+			<MenuOption label={label} description={description} />
+		</SingleSelectionOption>
 	);
 }

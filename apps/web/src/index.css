@@ -11,6 +11,7 @@
 	--color-surface-app: var(--surface-app);
 	--color-surface-panel: var(--surface-panel);
 	--color-surface-header: var(--surface-header);
+	--color-surface-table-header: var(--surface-table-header);
 	--color-surface-gutter: var(--surface-gutter);
 	--color-surface-readonly: var(--surface-readonly);
 	--color-surface-floating: var(--surface-floating);
@@ -61,6 +62,7 @@
 	--surface-app: #f0f0f0;
 	--surface-panel: #ffffff;
 	--surface-header: #f5f5f5;
+	--surface-table-header: rgb(15 108 189 / 6%);
 	--surface-gutter: #f5f5f5;
 	--surface-readonly: #f5f5f5;
 	--surface-floating: #fafafa;
@@ -79,9 +81,9 @@
 	--control-h-md: 2rem;
 	--panel-header-h: 2.75rem;
 	--grid-gutter-w: 2.75rem;
-	/* The column index strip. Chrome that mirrors the row-number gutter on the
-	   other axis, so like the gutter it keeps its size at every zoom level. */
-	--grid-strip-h: 1.25rem;
+	/* The column index strip is chrome, but it keeps the same baseline height as
+	   a table row so the table starts on one coherent vertical rhythm. */
+	--grid-strip-h: 2rem;
 	--grid-row-h: calc(var(--pane-zoom, 1) * 2rem);
 	--grid-col-w: 10.5rem;
 	--grid-col-w-min: 4.5rem;
@@ -124,6 +126,7 @@
 		--surface-app: #1f1f1f;
 		--surface-panel: #292929;
 		--surface-header: #333333;
+		--surface-table-header: rgb(77 166 255 / 10%);
 		--surface-gutter: #333333;
 		--surface-readonly: #242424;
 		--surface-floating: #3a3a3a;
@@ -166,9 +169,6 @@ body {
 
 body {
 	background-color: var(--surface-app);
-}
-
-#app {
 	user-select: none;
 }
 

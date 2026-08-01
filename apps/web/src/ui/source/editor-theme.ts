@@ -26,11 +26,10 @@ export const editorTheme = EditorView.theme({
 		overscrollBehavior: "contain",
 	},
 	".cm-content": {
-		// No top padding: the first line is the table's header row, and it paints
-		// the same surface as the pane header above it. A gap there read as two
-		// header-coloured bands with a panel-coloured strip between them. The
-		// bottom padding stays, because it is the target for clicking below the
-		// last line to focus the editor.
+		// No top padding: the first line is the table's header row, so a gap above
+		// it would separate table data from its pane. The bottom padding stays,
+		// because it is the target for clicking below the last line to focus the
+		// editor.
 		padding: "0 0 calc(var(--spacing) * 3)",
 		outline: "none",
 		userSelect: "text",
@@ -74,7 +73,7 @@ export const editorTheme = EditorView.theme({
 	},
 	".cm-selectionMatch": { backgroundColor: "var(--text-selection-fill)" },
 	".cm-tableHeaderLine": {
-		backgroundColor: "var(--surface-header)",
+		backgroundColor: "var(--surface-table-header)",
 		boxShadow: "inset 0 -0.0625rem 0 var(--line-strong)",
 	},
 	".cm-tableDelimiter": { color: "var(--muted-foreground)" },

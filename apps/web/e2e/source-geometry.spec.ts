@@ -117,9 +117,8 @@ test("every line number stays aligned with its line across pane zoom levels", as
 	await assertAlignment();
 });
 
-// The first source line is the table's header row and paints the same surface
-// as the pane header above it. A gap between them read as two header-coloured
-// bands separated by a panel-coloured strip, which is what this measures away.
+// The first source line is the table's header row. A gap above it would
+// separate table data from the pane, which is what this measures away.
 // Positions are compared rather than pinned, so the assertion survives a change
 // of scale.
 test("the first source line meets the pane header without a gap", async ({
@@ -154,7 +153,9 @@ test("the first source line meets the pane header without a gap", async ({
 	const content = await pane.locator(".cm-content").boundingBox();
 	await tabelo.page.mouse.click(
 		(content?.x ?? 0) + 20,
-		(content?.y ?? 0) + (content?.height ?? 0) - 4,
+		// Stay clear of the pane's bottom-edge add control while still clicking
+		// well below the final source line.
+		(content?.y ?? 0) + (content?.height ?? 0) - 32,
 	);
 	await expect(tabelo.source("markdown")).toBeFocused();
 });

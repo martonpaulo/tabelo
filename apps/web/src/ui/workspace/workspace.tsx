@@ -175,6 +175,7 @@ export function Workspace() {
 						key={pane.id}
 						pane={pane}
 						active={pane.id === workspace.activePaneId}
+						showActiveIndicator={workspace.panes.length > 1}
 						compact={compact}
 						stacked={stacked}
 						splitBottom={

@@ -64,7 +64,8 @@ split, because the edge is what decides where the new pane lands and a menu
 item cannot say which edge it means.
 
 A control appears at the centre of every pane edge whose split produces another
-valid preset:
+valid preset. Pointer hover reveals it only inside that narrow edge band, never
+from hovering the pane content:
 
 | From | Split | To |
 | :--- | :--- | :--- |
@@ -127,8 +128,8 @@ so a new preset needs no edit there.
   changed completely. Growing is now a direct manipulation of the edge that
   will be split, so the arrangement is a result of where the user pointed
   rather than a name they had to recognise first.
-- The edge controls are hover-revealed, which §9 forbids depending on alone, so
-  each is an ordinary tab stop at the **workspace** level of the two-level
+- The edge controls are revealed by edge hover, which §9 forbids depending on
+  alone, so each is an ordinary tab stop at the **workspace** level of the two-level
   keyboard ring, named after both the pane and the direction: a bare "Add view"
   repeated on every pane would name nothing.
 - Growing can no longer reach `top-split` or `bottom-split` from `columns`, nor

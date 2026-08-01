@@ -9,7 +9,6 @@ import {
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { Label } from "@tabelo/ui/components/label";
-import { RadioGroup, RadioGroupItem } from "@tabelo/ui/components/radio-group";
 import { useId, useState } from "react";
 import { copy } from "@/copy/copy";
 import { canSerialize, listCodecs, outputOptionsFor } from "@/formats";
@@ -22,8 +21,11 @@ import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copyToClipboard } from "@/ui/clipboard-actions";
 import { DialogCancel, DialogConfirm } from "@/ui/primitives/dialog-buttons";
-import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { Notice } from "@/ui/primitives/notice";
+import {
+	SingleSelectionList,
+	SingleSelectionOption,
+} from "@/ui/primitives/single-selection-list";
 
 // Downloading is a choice, not a click. The user chooses the format and, where
 // the format offers options, how the file should be written. Both the File menu and
@@ -107,11 +109,10 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 					</Notice>
 				) : null}
 
-				<RadioGroup
+				<SingleSelectionList
 					aria-label={copy.download.format}
 					value={codec.id}
 					onValueChange={(value) => setSelected(value as CodecId)}
-					className="gap-1"
 				>
 					{codecs.map((candidate) => (
 						<FormatChoice
@@ -119,13 +120,14 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 							id={candidate.id}
 							label={copy.views[candidate.id].shortLabel}
 							extension={candidate.extension}
+							selected={candidate.id === codec.id}
 							options={
 								candidate.id === codec.id ? options : ([] as OutputOptionId[])
 							}
 							failure={canSerialize(candidate, document)}
 						/>
 					))}
-				</RadioGroup>
+				</SingleSelectionList>
 
 				<DialogFooter>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>
@@ -142,6 +144,7 @@ interface FormatChoiceProps {
 	readonly id: CodecId;
 	readonly label: string;
 	readonly extension: string;
+	readonly selected: boolean;
 	readonly options: readonly OutputOptionId[];
 	readonly failure: PreconditionFailure | null;
 }
@@ -152,27 +155,33 @@ function FormatChoice({
 	id,
 	label,
 	extension,
+	selected,
 	options,
 	failure,
 }: FormatChoiceProps) {
-	const radioId = useId();
-
 	return (
 		<div>
-			<DisabledTooltip
-				reason={failure ? copy.disabled.codecPrecondition(failure) : undefined}
+			<SingleSelectionOption
+				value={id}
+				selected={selected}
+				disabledReason={
+					failure ? copy.disabled.codecPrecondition(failure) : undefined
+				}
+				accessory={
+					<span className="shrink-0 text-muted-foreground text-xs">
+						.{extension}
+					</span>
+				}
 			>
-				<div className="flex min-h-control-md items-center gap-2">
-					<RadioGroupItem id={radioId} value={id} disabled={failure !== null} />
-					<Label htmlFor={radioId} className="flex-1 font-medium text-sm">
-						{label}
-					</Label>
-					<span className="text-muted-foreground text-xs">.{extension}</span>
+				<span className="font-medium">{label}</span>
+			</SingleSelectionOption>
+			{options.length > 0 ? (
+				<div className="mt-1.5 pl-6">
+					{options.map((option) => (
+						<OutputOption key={option} option={option} />
+					))}
 				</div>
-			</DisabledTooltip>
-			{options.map((option) => (
-				<OutputOption key={option} option={option} />
-			))}
+			) : null}
 		</div>
 	);
 }
@@ -182,7 +191,7 @@ function OutputOption({ option }: { readonly option: OutputOptionId }) {
 	const value = useTabeloStore((state) => state.outputOptions[option]);
 
 	return (
-		<div className="flex items-start gap-2 py-1 pl-6">
+		<div className="flex items-start gap-2 py-1">
 			<Checkbox
 				id={checkboxId}
 				checked={value}

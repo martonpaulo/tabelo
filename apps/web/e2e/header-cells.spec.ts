@@ -21,6 +21,25 @@ test("the index strip names every column and is not a table row", async ({
 	await expect(tabelo.grid().locator('thead [role="row"]')).toHaveCount(1);
 });
 
+test("the index strip and header row follow the table row rhythm", async ({
+	tabelo,
+}) => {
+	const geometry = await tabelo.grid().evaluate((grid) => {
+		const height = (selector: string) =>
+			grid.querySelector(selector)?.getBoundingClientRect().height ?? 0;
+		return {
+			strip: height('[data-column-header="0"]'),
+			header: height('[data-cell="-1:0"]'),
+			body: height('[data-cell="0:0"]'),
+		};
+	});
+
+	expect(geometry.strip / geometry.body).toBeGreaterThan(0.95);
+	expect(geometry.strip / geometry.body).toBeLessThan(1.05);
+	expect(geometry.header / geometry.body).toBeGreaterThan(0.95);
+	expect(geometry.header / geometry.body).toBeLessThan(1.05);
+});
+
 test("an empty header announces its column letter", async ({ tabelo }) => {
 	await expect(tabelo.header(1)).toHaveText("");
 
@@ -45,11 +64,34 @@ test("the strip selects the column and the header cell selects itself", async ({
 	await expect(tabelo.cell(1, 1)).toHaveAttribute("aria-selected", "true");
 	await expect(tabelo.cell(1, 2)).toHaveAttribute("aria-selected", "false");
 
+	const unselectedFill = await tabelo
+		.header(2)
+		.evaluate((element) => getComputedStyle(element).backgroundColor);
+
 	// Clicking the header text selects that one cell rather than the column,
 	// because the header cell is no longer the column's handle.
 	await tabelo.header(2).click();
 	await expect(tabelo.header(2)).toHaveAttribute("aria-selected", "true");
 	await expect(tabelo.cell(1, 2)).toHaveAttribute("aria-selected", "false");
+	const selectedFill = await tabelo
+		.header(2)
+		.evaluate((element) => getComputedStyle(element).backgroundColor);
+	expect(selectedFill).not.toBe(unselectedFill);
+});
+
+test("row 1 is selectable from its aligned number without an actions menu", async ({
+	tabelo,
+}) => {
+	const gutter = tabelo.grid().locator('[data-row-header="-1"]');
+	const select = gutter.getByRole("button", {
+		name: `${copy.actions.selectRow}: ${copy.a11y.headerRow}`,
+	});
+	await expect(gutter.getByRole("button")).toHaveCount(1);
+
+	await select.click();
+	await expect(gutter).toHaveAttribute("aria-selected", "true");
+	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "true");
+	await expect(tabelo.header(2)).toHaveAttribute("aria-selected", "true");
 });
 
 // #29, absorbed here: the header button announced "Rename column" while
@@ -88,12 +130,22 @@ test("Mod+A then Backspace clears the headers along with the cells", async ({
 	await expect(tabelo.header(1)).toHaveText("Name");
 
 	await tabelo.cell(1, 1).click();
+	const stripFill = await tabelo
+		.columnIndex(1)
+		.evaluate((element) => getComputedStyle(element).backgroundColor);
 	await tabelo.page.keyboard.press(`${modifier}+a`);
 
 	// The selection says it covers the header row, and this is the assertion the
 	// defect inverted: the next keystroke has to honour it.
 	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "true");
 	await expect(tabelo.header(2)).toHaveAttribute("aria-selected", "true");
+	await expect
+		.poll(() =>
+			tabelo
+				.columnIndex(1)
+				.evaluate((element) => getComputedStyle(element).backgroundColor),
+		)
+		.toBe(stripFill);
 
 	await tabelo.page.keyboard.press("Backspace");
 

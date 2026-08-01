@@ -7,7 +7,7 @@ interface MenuOptionProps {
 // copy. The menu primitive owns interaction; this component owns text rhythm.
 export function MenuOption({ label, description }: MenuOptionProps) {
 	return (
-		<span className="flex-1">
+		<span className="grid flex-1 gap-0.5">
 			<span className="block font-medium">{label}</span>
 			<span className="block text-muted-foreground text-xs">{description}</span>
 		</span>

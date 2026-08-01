@@ -246,6 +246,17 @@ test("only view content participates in native text selection", async ({
 		"text",
 	);
 
+	const appMenu = await tabelo.openAppMenu();
+	await expect(appMenu.getByText(copy.app.name, { exact: true })).toHaveCSS(
+		"user-select",
+		"none",
+	);
+	await expect(appMenu.getByText(copy.app.tagline, { exact: true })).toHaveCSS(
+		"user-select",
+		"none",
+	);
+	await tabelo.page.keyboard.press("Escape");
+
 	await tabelo.choosePaneView("markdown", "html-preview");
 	await expect(tabelo.pane("html-preview").locator("table")).toHaveCSS(
 		"user-select",
@@ -269,6 +280,7 @@ test("the active pane boundary stays above its content without reflow", async ({
 	await expect(inactive.locator(".tabelo-active-pane-indicator")).toHaveCount(
 		0,
 	);
+
 	await expect(inactive).not.toHaveAttribute("aria-current");
 	await expect(inactive).toHaveAccessibleName(
 		copy.a11y.pane(copy.views.markdown.label),
@@ -331,7 +343,7 @@ test("the active pane boundary stays above its content without reflow", async ({
 	await expect(indicator).toHaveCSS("border-top-color", "rgb(77, 166, 255)");
 });
 
-test("every layout and theme keeps the active boundary on all four edges", async ({
+test("multi-pane layouts and themes keep the active boundary on all four edges", async ({
 	page,
 	tabelo,
 }) => {
@@ -343,6 +355,10 @@ test("every layout and theme keeps the active boundary on all four edges", async
 			await tabelo.chooseLayout(preset.id);
 			const pane = tabelo.pane("grid");
 			const indicator = pane.locator(".tabelo-active-pane-indicator");
+			if (preset.id === "single") {
+				await expect(indicator).toHaveCount(0);
+				continue;
+			}
 			const [paneBox, indicatorBox] = await Promise.all([
 				pane.boundingBox(),
 				indicator.boundingBox(),
@@ -654,7 +670,18 @@ test("unchecked menu choices keep a visible outline and clear label spacing", as
 		const option = menu.getByRole("menuitemradio", {
 			name: copy.layouts.single.label,
 		});
+		const checked = menu.getByRole("menuitemradio", { checked: true });
 		await expect(option).not.toBeChecked();
+		await option.hover();
+		expect(
+			await checked.evaluate(
+				(element) => getComputedStyle(element).backgroundColor,
+			),
+		).not.toBe(
+			await option.evaluate(
+				(element) => getComputedStyle(element).backgroundColor,
+			),
+		);
 		const indicator = option.locator(
 			'[data-slot="dropdown-menu-radio-item-indicator"]',
 		);

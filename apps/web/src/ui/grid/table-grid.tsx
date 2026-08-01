@@ -1,5 +1,4 @@
 import { cn } from "@tabelo/ui/lib/utils";
-import { AlignCenter, AlignJustify, AlignLeft, AlignRight } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
@@ -31,13 +30,6 @@ const structureRefusalMessage: Record<StructureDeletionRefusal, string> = {
 	"last-column": copy.disabled.lastRemainingColumn,
 	"header-row": copy.disabled.headerRowRequired,
 };
-
-const alignmentIcon = {
-	default: AlignJustify,
-	left: AlignLeft,
-	center: AlignCenter,
-	right: AlignRight,
-} satisfies Record<Alignment, typeof AlignLeft>;
 
 // The next cell in reading order, or nothing when there is none. This is how
 // Tab knows it has reached an edge and should let focus leave the grid.
@@ -76,6 +68,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		document.rows.length,
 		document.columns.length,
 	);
+	const headerRowSelected =
+		(selection.mode === "row" && rectContains(rect, HEADER_ROW, 0)) ||
+		(rect.top === HEADER_ROW &&
+			rect.left === 0 &&
+			rect.right === document.columns.length - 1);
 
 	// Tracks the edit that just ended, so focus can be handed back to the grid
 	// when the cell editor unmounts and drops it on <body>.
@@ -392,7 +389,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								key={column.id}
 								columnIndex={columnIndex}
 								header={column.header}
-								selected={rectContains(rect, HEADER_ROW, columnIndex)}
 								focused={selection.focus.column === columnIndex}
 								width={resolveColumnWidth(column.width)}
 								zoom={zoom}
@@ -412,30 +408,41 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 						// biome-ignore lint/a11y/noRedundantRoles: see the tbody rows
 						role="row"
 						aria-rowindex={1}
-						className="group/row"
+						className="group/row h-content-line-box"
 					>
 						<th
 							scope="row"
 							// biome-ignore lint/a11y/noRedundantRoles: see the tbody rows
 							role="rowheader"
 							aria-label={copy.a11y.headerRow}
+							aria-selected={headerRowSelected}
 							// Right-clicking row 1 offers row actions like any other row.
 							// Before the strip existed this lookup found nothing and the
 							// menu fell through to cell actions on a non-cell.
 							data-row-header={HEADER_ROW}
 							className={cn(
-								"sticky left-0 z-30 border-line-strong border-r border-b bg-surface-header",
+								"sticky left-0 z-30 border-line-strong border-r border-b",
 								"px-1 text-center font-index font-semibold text-foreground text-xs tabular-nums",
 								"top-grid-strip",
+								headerRowSelected
+									? "bg-selection-fill"
+									: "bg-surface-table-header",
 							)}
 						>
-							<div className="flex items-center justify-between gap-0.5">
-								<span>1</span>
-								<AxisMenu
-									axis="row"
-									index={HEADER_ROW}
-									revealed={selection.focus.row === HEADER_ROW}
-								/>
+							<div className="flex h-content-line-box items-center justify-center">
+								<button
+									type="button"
+									tabIndex={entered ? 0 : -1}
+									aria-label={`${copy.actions.selectRow}: ${copy.a11y.headerRow}`}
+									className="cursor-pointer rounded-interactive px-1 hover:text-foreground"
+									onClick={() =>
+										useTabeloStore
+											.getState()
+											.selectCell({ row: HEADER_ROW, column: 0 }, "row")
+									}
+								>
+									1
+								</button>
 							</div>
 						</th>
 						{document.columns.map((column, columnIndex) => (
@@ -487,7 +494,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										"bg-selection-fill text-foreground",
 								)}
 							>
-								<div className="flex items-center justify-between gap-0.5">
+								<div className="flex h-content-line-box items-center justify-between gap-0.5">
 									<button
 										type="button"
 										tabIndex={entered ? 0 : -1}
@@ -636,7 +643,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 interface ColumnIndexCellProps {
 	readonly columnIndex: number;
 	readonly header: string;
-	readonly selected: boolean;
 	// The column the user is working in, which is where its actions appear.
 	readonly focused: boolean;
 	// The stored width is in rem. Zoom scales what is rendered, so the drag
@@ -651,7 +657,6 @@ interface ColumnIndexCellProps {
 function ColumnIndexCell({
 	columnIndex,
 	header,
-	selected,
 	focused,
 	width,
 	zoom,
@@ -677,12 +682,11 @@ function ColumnIndexCell({
 			// and turn the offset into a shift rather than a scroll threshold.
 			className={cn(
 				"group/col sticky top-0 z-20 h-grid-strip border-line-strong border-r border-b",
-				"px-1 text-center font-index font-normal text-muted-foreground text-xs",
-				selected ? "bg-selection-fill text-foreground" : "bg-surface-header",
+				"bg-surface-header px-1 text-center font-index font-normal text-muted-foreground text-xs",
 			)}
 			onPointerEnter={onDragEnter}
 		>
-			<div className="flex items-center justify-between gap-0.5">
+			<div className="flex h-full items-center justify-between gap-0.5">
 				{/* The handle for the whole column. It names itself after the column it
 				    selects, falling back to the letter when the header is empty, which
 				    is the same rule the header cell announces by. */}
@@ -745,10 +749,10 @@ function ColumnIndexCell({
 	);
 }
 
-// The header cell holds editable text and the alignment indicator, and nothing
-// else. Selecting the column and opening its menu belong to the index strip
-// above, so this behaves like the data cells below it: click to select, double
-// click or F2 to edit, Backspace to clear.
+// The header cell holds editable text and nothing else. Selecting the column
+// and opening its menu belong to the index strip above, so this behaves like
+// the data cells below it: click to select, double click or F2 to edit,
+// Backspace to clear.
 interface HeaderCellProps {
 	readonly columnIndex: number;
 	readonly header: string;
@@ -769,7 +773,6 @@ function HeaderCell({
 	editing,
 	seed,
 }: HeaderCellProps) {
-	const AlignmentIcon = alignmentIcon[align];
 	const entered = usePaneEntered();
 
 	return (
@@ -796,7 +799,7 @@ function HeaderCell({
 				// two chrome layers stack instead of covering one another.
 				"top-grid-strip",
 				alignClass[align],
-				selected ? "bg-selection-fill" : "bg-surface-header",
+				selected ? "bg-selection-fill" : "bg-surface-table-header",
 				focus && "outline-2 outline-selection-edge -outline-offset-2",
 			)}
 			onPointerDown={(event) => {
@@ -829,13 +832,7 @@ function HeaderCell({
 					}}
 				/>
 			) : (
-				<div className="flex items-center gap-1">
-					<span className="min-w-0 flex-1 truncate">{header}</span>
-					<AlignmentIcon
-						aria-hidden
-						className="size-3.5 shrink-0 text-muted-foreground"
-					/>
-				</div>
+				<span className="block truncate">{header}</span>
 			)}
 		</th>
 	);

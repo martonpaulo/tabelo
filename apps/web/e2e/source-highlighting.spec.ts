@@ -41,11 +41,12 @@ test("the first grid row is the numbered header row", async ({ tabelo }) => {
 	).toContainText("2");
 });
 
-test("grid headers show the current alignment", async ({ page, tabelo }) => {
+test("grid headers show alignment without an extra icon", async ({
+	page,
+	tabelo,
+}) => {
 	const header = tabelo.header(1);
-	// The alignment indicator is the only icon left in the header cell: the
-	// column's menu chevron moved to the index strip.
-	await expect(header.locator("svg")).toHaveCount(1);
+	await expect(header.locator("svg")).toHaveCount(0);
 
 	await tabelo
 		.columnIndex(1)

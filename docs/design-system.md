@@ -102,14 +102,17 @@ pinning in a test.
 | :--- | :--- | :--- |
 | `--surface-app` | `bg-surface-app` | The page behind the panes |
 | `--surface-panel` | `bg-surface-panel` | A pane's content area |
-| `--surface-header` | `bg-surface-header` | Pane headers, grid column headers |
+| `--surface-header` | `bg-surface-header` | Pane headers and interface chrome |
+| `--surface-table-header` | `bg-surface-table-header` | The editable table header row in grid, source, and preview views |
 | `--surface-gutter` | `bg-surface-gutter` | The grid's row-number gutter |
 | `--surface-readonly` | `bg-surface-readonly` | A pane body that cannot be edited |
 | `--surface-floating` | `bg-surface-floating` | Menus, tooltips, and dialogs above panes |
 
-Order matters: app is furthest back, gutter and header sit above panel. Use
-these neutral tones to group related content before adding a line. Editable
-pane bodies use `--surface-panel`; a read-only pane uses
+Order matters: app is furthest back, gutter and interface chrome sit above the
+panel. The table-header surface is a quiet accent tint, so headers remain
+recognizable as mutable table data instead of reading as disabled chrome. Use
+tones to group related content before adding a line. Editable pane bodies use
+`--surface-panel`; a read-only pane uses
 `--surface-readonly` and a written "Read only" cue in its header.
 
 ### Lines
@@ -213,14 +216,16 @@ the existing delimiter-aware tokenizer; HTML keeps its existing table-focused
 tokenizer; Jira uses the same small project-owned `StreamLanguage` approach
 because its grammar is narrow and domain-specific; JSON uses CodeMirror's
 official JSON language package. The first row is visually distinct as the table
-header in Markdown, CSV, TSV, Jira, and JSON, while HTML receives element,
+header in Markdown, CSV, TSV, and Jira, while HTML receives element,
 attribute, and text treatment. Highlighting must preserve source text
 exactly and must not become another parser or source of truth.
 
 The visual table mirrors structure rather than source punctuation: its header
-row has a contrasting surface and a discreet alignment indicator, while body
-cells keep the normal content treatment. Do not colour-code columns or infer
-cell types.
+row and the rendered preview use the shared editable table-header surface,
+while body cells keep the normal content treatment. Header text position shows
+alignment without an extra icon inside the editable cell. A native source
+selection must paint over the header treatment just as it does over any other
+line. Do not colour-code columns or infer cell types.
 
 ### Spacing rhythm
 
@@ -308,7 +313,8 @@ close, stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
 
 Every dropdown and context menu uses the shared primitive's one spacing rhythm:
 0.25rem outer padding, 2rem minimum item height, 0.5rem horizontal padding, and
-0.375rem vertical padding. Primary option labels are 0.875rem; a genuine
+0.5rem vertical padding. Icon-to-label gaps are 0.75rem. Primary option labels
+are 0.875rem; a genuine
 description or shortcut may use 0.75rem. Floating menus are translucent over a
 backdrop blur when the browser supports it, with the opaque popover colour as
 the fallback. Their floating surface, strong boundary, and shadow must remain
@@ -362,6 +368,14 @@ which sits in the layout instead of covering the table.
 Compose `packages/ui`'s `Dialog`; do not build a second modal. Prefer the
 explicit Cancel and Confirm pair over the primitive's corner close button, so
 the two ways out are both visible and both labelled.
+
+A dialog that asks for one value uses the shared `SingleSelectionList` and
+`SingleSelectionOption` treatment. Every option is one full-width labelled row
+with the native Base UI radio, 0.75rem between radio and content, 0.5rem padding,
+and 0.375rem between rows. Hover uses the muted surface, the checked row uses
+`--selection-fill`, keyboard focus outlines the whole row, and disabled rows
+stay visible with their reason. A title and optional description use the shared
+`MenuOption` rhythm. Do not recreate this structure inside a feature dialog.
 
 ### Layer ownership
 
@@ -488,8 +502,10 @@ per keystroke.
   preset: see `docs/adr/0006`. One pane is the floor and two is what a fresh
   visit opens. Never build a free slot editor.
 - The app surface remains visible as a 0.5rem inset and a 0.5rem gap between panes.
-  Each pane is a 0.5rem-radius surface with a subtle outline; the active pane adds
-  a thicker blue focus edge. This framing applies at every supported width.
+  Each pane is a 0.5rem-radius surface with a subtle outline. With two or more
+  panes, the active pane adds a thicker blue edge. A one-pane workspace has no
+  persistent active edge because there is no competing pane to distinguish;
+  keyboard focus remains visible. This framing applies at every supported width.
 - The page never scrolls. Panes scroll independently.
 - Below 56.25rem panes stack; the chosen layout is remembered, not discarded.
   Stacking **abandons** the tiling rather than narrowing it: the grid becomes a
@@ -578,6 +594,9 @@ box rather than by taking layout the row gutter does not have. They appear on
 hover, on `focus-within` of the row or column, while the menu is open, and for
 whichever row and column the selection is currently in: the last of those is
 what teaches the relationship without putting an icon on every row at once.
+The header row's numbered gutter is the exception: it selects row 1 directly
+and has no row-actions icon, because the header is structurally required and
+the icon added noise beside its number.
 The floating trigger has a stable accessible name, and every command inside its
 menu keeps a visible label. It displays the project mark rather than a generic
 menu glyph. The mark is a small table grid whose blue header row and two active
@@ -637,8 +656,9 @@ These are requirements, not aspirations:
 - Every control has an accessible name; icon-only controls use `aria-label`.
 - Focus is always visible and never trapped.
 - Interface chrome is not text-selectable. Source text and rendered view
-  content remain selectable; line numbers, pane titles, controls, and menu copy
-  do not.
+  content remain selectable; the visual grid uses structural cell selection
+  instead of native text selection. Line numbers, pane titles, controls, dialog
+  copy, menu copy, and portalled floating layers do not become selectable.
 - Status is conveyed by text as well as colour.
 - Contrast meets WCAG AA against the surface the element actually sits on.
 - Nothing depends on hover alone: hover-revealed affordances also appear on
@@ -648,6 +668,11 @@ These are requirements, not aspirations:
   icons or remember hidden locations.
 - Keep visible copy short, literal, and stable. Do not move controls or resize
   panes when selection or status changes.
+- Accessibility validation must be executable in the CLI pipeline: inspect the
+  browser accessibility tree and automate roles, names, states, relationships,
+  keyboard paths, focus, and contrast. NVDA, JAWS, VoiceOver, and other GUI-only
+  assistive applications are never acceptance or closure criteria. A separately
+  arranged manual session can inform research, but it does not block delivery.
 - The design may reduce common cognitive barriers, but Tabelo must not claim
   suitability for dyslexia, ADHD, or another condition without task-based
   sessions with representative participants. Record participants, tasks,
@@ -715,9 +740,10 @@ user moves along a row.
 That means header cells name themselves after what they contain, not after the
 controls they hold: the header row is visibly numbered 1, the first data row is
 "Row 2", and each column header is its own text. The header row uses its own
-contrasting surface and each column header carries a discreet, non-colour-only
-alignment indicator for default, left, centre, or right. An
-`aria-label` on a gridcell is a defect: it replaces the content with
+editable table-header surface, matches the body row height, and paints the
+selection fill whenever selected. Its text position reflects left, centre, or
+right alignment; the editable cell carries no separate alignment or menu icon.
+An `aria-label` on a gridcell is a defect: it replaces the content with
 coordinates and repeats them on every arrow key.
 
 **A header cell holds editable text and nothing else.** It is a cell for every
@@ -743,9 +769,14 @@ mirrors the row-number gutter on the other axis. Both are chrome:
   1. Presentation rather than `aria-hidden`, because the controls it holds must
   stay reachable.
 - Like the gutter, it **keeps its size at every zoom level** (`--grid-strip-h`).
+  At 100% it is exactly one table-row baseline tall, so the strip, header row,
+  and body begin on one vertical rhythm.
 - **It owns the column.** Clicking a letter selects the whole column, header
   included. The column menu and the resize handle live here, revealed by the
   same rule as the row affordances (§6).
+- It is never itself selected and never takes `--selection-fill`. Selecting a
+  column paints the header and body cells it represents, while this metadata
+  strip remains chrome.
 - Its leftmost cell, where the letters meet the row numbers, is a dead corner:
   an empty presentational cell, never a control.
 
