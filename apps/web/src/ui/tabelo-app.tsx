@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { isDocumentBlank } from "@/core/document";
 import { runHistory } from "@/history/coordinator";
 import { startAutosave, useTabeloStore } from "@/state/store";
@@ -9,16 +9,36 @@ import { importTableFile } from "@/ui/import";
 import { NewTableDialog } from "@/ui/new-table-dialog";
 import { NoticeBar } from "@/ui/notice-bar";
 import { usePwaUpdate } from "@/ui/pwa-update";
+import { LayoutDialog } from "@/ui/workspace/layout-dialog";
 import { Workspace } from "@/ui/workspace/workspace";
 import { DEFAULT_PANE_ZOOM, stepPaneZoom } from "@/workspace/zoom";
 
+type RootDialog = "download" | "layout" | "new-table" | null;
+
 export function TabeloApp() {
 	const pwaUpdate = usePwaUpdate();
-	const [downloading, setDownloading] = useState(false);
-	const [confirmingNewTable, setConfirmingNewTable] = useState(false);
+	const [rootDialog, setRootDialog] = useState<RootDialog>(null);
+	const dialogOpenerRef = useRef<HTMLElement | null>(null);
+	const appMenuTriggerRef = useRef<HTMLButtonElement>(null);
 	const [hydrated, setHydrated] = useState(false);
 	const [welcomeOpen, setWelcomeOpen] = useState(false);
+	const [addViewRequest, setAddViewRequest] = useState(0);
 	const showWelcome = hydrated && welcomeOpen;
+
+	const openRootDialog = (dialog: Exclude<RootDialog, null>) => {
+		if (rootDialog !== null || document.querySelector('[role="dialog"]'))
+			return;
+		dialogOpenerRef.current = appMenuTriggerRef.current;
+		setRootDialog(dialog);
+	};
+
+	const closeRootDialog = (open: boolean) => {
+		if (open) return;
+		const opener = dialogOpenerRef.current;
+		dialogOpenerRef.current = null;
+		setRootDialog(null);
+		if (opener?.isConnected) requestAnimationFrame(() => opener.focus());
+	};
 
 	const requestNewTable = () => {
 		const state = useTabeloStore.getState();
@@ -27,7 +47,7 @@ export function TabeloApp() {
 			setWelcomeOpen(false);
 			return;
 		}
-		setConfirmingNewTable(true);
+		openRootDialog("new-table");
 	};
 
 	// Hydrate before the first paint so saved content never flashes the empty
@@ -98,7 +118,12 @@ export function TabeloApp() {
 			// would otherwise still act on it there.
 			if (key === "s") {
 				event.preventDefault();
-				setDownloading(true);
+				// A shortcut must not stack Download over an existing modal flow.
+				if (rootDialog !== null || document.querySelector('[role="dialog"]')) {
+					return;
+				}
+				dialogOpenerRef.current = document.activeElement as HTMLElement | null;
+				setRootDialog("download");
 				return;
 			}
 
@@ -113,7 +138,7 @@ export function TabeloApp() {
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, []);
+	}, [rootDialog]);
 
 	return (
 		<div className="flex h-full min-h-0 flex-col bg-surface-app">
@@ -124,7 +149,11 @@ export function TabeloApp() {
 					aria-hidden={showWelcome || undefined}
 					inert={showWelcome || undefined}
 				>
-					<Workspace />
+					<Workspace
+						interactive={!showWelcome && rootDialog === null}
+						addViewRequest={addViewRequest}
+						addViewOpenerRef={appMenuTriggerRef}
+					/>
 				</div>
 				{showWelcome ? (
 					<EmptyState
@@ -136,15 +165,25 @@ export function TabeloApp() {
 			{showWelcome ? null : (
 				<AppMenu
 					onImport={() => void importTableFile()}
-					onDownload={() => setDownloading(true)}
+					onDownload={() => openRootDialog("download")}
+					onLayout={() => openRootDialog("layout")}
+					onAddView={() => setAddViewRequest((request) => request + 1)}
 					onNewTable={requestNewTable}
 					pwaUpdate={pwaUpdate}
+					triggerRef={appMenuTriggerRef}
 				/>
 			)}
-			<DownloadDialog open={downloading} onOpenChange={setDownloading} />
+			<DownloadDialog
+				open={rootDialog === "download"}
+				onOpenChange={closeRootDialog}
+			/>
+			<LayoutDialog
+				open={rootDialog === "layout"}
+				onOpenChange={closeRootDialog}
+			/>
 			<NewTableDialog
-				open={confirmingNewTable}
-				onOpenChange={setConfirmingNewTable}
+				open={rootDialog === "new-table"}
+				onOpenChange={closeRootDialog}
 				onConfirm={() => useTabeloStore.getState().resetDocument()}
 			/>
 		</div>

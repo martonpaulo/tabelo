@@ -1,6 +1,7 @@
 "use client";
 
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
+import { popupTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 
 function TooltipProvider({
@@ -50,13 +51,14 @@ function TooltipContent({
 					data-slot="tooltip-content"
 					role="tooltip"
 					className={cn(
-						"data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95 data-open:fade-in-0 data-open:zoom-in-95 data-closed:fade-out-0 data-closed:zoom-out-95 z-50 inline-flex w-fit max-w-xs origin-(--transform-origin) items-center gap-1.5 rounded-interactive bg-popover px-3 py-1.5 text-popover-foreground text-xs shadow-xl ring-1 ring-line-strong has-data-[slot=kbd]:pr-1.5 data-[state=delayed-open]:animate-in data-closed:animate-out data-open:animate-in",
+						"z-50 inline-flex w-fit max-w-xs items-center gap-1.5 rounded-interactive bg-popover px-3 py-1.5 text-popover-foreground text-xs shadow-xl ring-1 ring-line-strong has-data-[slot=kbd]:pr-1.5",
+						popupTransitionStyles,
 						className,
 					)}
 					{...props}
 				>
 					{children}
-					<TooltipPrimitive.Arrow className="z-50 size-2.5 translate-y-[calc(-50%-0.125rem)] rotate-45 rounded-none bg-popover fill-popover ring-1 ring-line-strong data-[side=bottom]:top-1 data-[side=inline-end]:top-1/2! data-[side=inline-start]:top-1/2! data-[side=left]:top-1/2! data-[side=right]:top-1/2! data-[side=inline-start]:-right-1 data-[side=left]:-right-1 data-[side=top]:-bottom-2.5 data-[side=inline-end]:-left-1 data-[side=right]:-left-1 data-[side=inline-end]:-translate-y-1/2 data-[side=inline-start]:-translate-y-1/2 data-[side=left]:-translate-y-1/2 data-[side=right]:-translate-y-1/2" />
+					<TooltipPrimitive.Arrow className="relative z-50 block h-1.5 w-3 overflow-clip before:absolute before:bottom-0 before:left-1/2 before:size-2 before:-translate-x-1/2 before:translate-y-1/2 before:rotate-45 before:border before:border-line-strong before:bg-popover before:content-[''] data-[side=bottom]:-top-1.5 data-[side=left]:-right-[0.5625rem] data-[side=top]:-bottom-1.5 data-[side=right]:-left-[0.5625rem] data-[side=left]:rotate-90 data-[side=right]:-rotate-90 data-[side=top]:rotate-180" />
 				</TooltipPrimitive.Popup>
 			</TooltipPrimitive.Positioner>
 		</TooltipPrimitive.Portal>

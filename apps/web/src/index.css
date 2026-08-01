@@ -19,6 +19,7 @@
 	/* Separators. Subtle is the default; strong marks a panel boundary. */
 	--color-line-subtle: var(--line-subtle);
 	--color-line-strong: var(--line-strong);
+	--color-control-outline: var(--control-outline);
 
 	/* The one accent in the product: what the user has selected. */
 	--color-selection-fill: var(--selection-fill);
@@ -69,6 +70,7 @@
 
 	--line-subtle: #e0e0e0;
 	--line-strong: #d1d1d1;
+	--control-outline: #8a8a8a;
 
 	--selection-fill: rgb(15 108 189 / 14%);
 	--text-selection-fill: rgb(15 108 189 / 24%);
@@ -80,7 +82,7 @@
 	--control-h-sm: 1.75rem;
 	--control-h-md: 2rem;
 	--panel-header-h: 2.75rem;
-	--grid-gutter-w: 2.75rem;
+	--grid-gutter-w: 4rem;
 	/* The column index strip is chrome, but it keeps the same baseline height as
 	   a table row so the table starts on one coherent vertical rhythm. */
 	--grid-strip-h: 2rem;
@@ -94,6 +96,7 @@
 	--pane-active-edge: 0.0625rem; /* 1 px */
 	--control-radius: 0.25rem;
 	--surface-radius: 0.5rem;
+	--icon-stroke-width: 1.5;
 	--radius: var(--control-radius);
 
 	/* Keep shadcn primitives on the same neutral product surfaces. */
@@ -172,6 +175,10 @@ body {
 	user-select: none;
 }
 
+.lucide {
+	stroke-width: var(--icon-stroke-width);
+}
+
 /* Stop every product-owned scroll container from passing either axis to its
    parent. Inner scrollers retain their own native end-of-scroll feedback. */
 .tabelo-scroll-boundary,
@@ -224,6 +231,15 @@ textarea,
 	.cm-cursorLayer {
 		/* biome-ignore lint/complexity/noImportantStyles: this must override
 		   CodeMirror's component stylesheet inside the global media query. */
+		animation: none !important;
+	}
+
+	/* Functional loading indicators keep their written status while decorative
+	   rotation and pulsing stop for the user's motion preference. */
+	.animate-spin,
+	.animate-pulse {
+		/* biome-ignore lint/complexity/noImportantStyles: utility animation must
+		   yield to the global accessibility preference. */
 		animation: none !important;
 	}
 }

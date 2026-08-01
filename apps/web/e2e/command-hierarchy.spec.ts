@@ -26,6 +26,9 @@ test("document actions live in one compact floating menu", async ({
 		menu.getByRole("menuitem", { name: copy.workspace.layout }),
 	).toBeVisible();
 	await expect(
+		menu.getByRole("menuitem", { name: copy.workspace.addView }),
+	).toBeVisible();
+	await expect(
 		menu.getByRole("menuitem", { name: copy.actions.github }),
 	).toBeVisible();
 	await expect(
@@ -36,38 +39,89 @@ test("document actions live in one compact floating menu", async ({
 	).toHaveCount(0);
 });
 
-// The pane header splits its two jobs: the view name changes the view, the
-// trailing chevron carries everything else. Each trigger opens only its own
-// menu, so neither leaks the other's commands.
-test("each pane names itself and separates changing the view from its actions", async ({
+test("global Add view reuses the chooser and picks placement automatically", async ({
 	page,
 	tabelo,
 }) => {
-	const pane = tabelo.pane("markdown");
-	await expect(
-		pane.getByRole("heading", { name: copy.views.markdown.label }),
-	).toBeVisible();
+	const menu = await tabelo.openAppMenu();
+	await menu.getByRole("menuitem", { name: copy.workspace.addView }).click();
 
-	const viewMenu = await tabelo.openPaneViewMenu("markdown");
-	await expect(viewMenu).toBeVisible();
-	await expect(
-		viewMenu.getByRole("menuitemradio", { name: copy.views.csv.label }),
-	).toBeVisible();
-	// Changing the view is all this menu does.
-	await expect(
-		viewMenu.getByRole("menuitem", { name: copy.actions.copySource }),
-	).toHaveCount(0);
-	await page.keyboard.press("Escape");
-	await expect(viewMenu).toBeHidden();
+	const dialog = page.getByRole("dialog", { name: copy.addView.title });
+	await expect(dialog).toBeVisible();
+	await dialog.getByRole("button", { name: copy.addView.confirm }).click();
+	await expect(dialog).toBeHidden();
+	await expect(tabelo.workspace.getByRole("region")).toHaveCount(3);
+	const grid = await tabelo.paneArea("grid");
+	const added = await tabelo.paneArea("csv");
+	expect(added.rowStart).toBe(grid.rowEnd);
+	expect(added.columnStart).toBe(grid.columnStart);
+});
+
+test("global Add view stays explained at the workspace maximum", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.chooseLayout("quad");
+	const menu = await tabelo.openAppMenu();
+	const command = menu.getByRole("menuitem", {
+		name: copy.workspace.addView,
+	});
+	await expect(command).toBeDisabled();
+	await command.hover();
+	await expect(page.getByRole("tooltip")).toBeVisible();
+});
+
+// The pane heading identifies the view. Its one trailing menu owns commands,
+// and Change view promotes the longer choice into a dialog rather than nesting.
+test("each pane names itself and opens Change view from its actions", async ({
+	tabelo,
+}) => {
+	const pane = tabelo.pane("markdown");
+	const heading = pane.getByRole("heading", {
+		name: copy.views.markdown.label,
+	});
+	await expect(heading).toBeVisible();
+	await expect(heading.getByRole("button")).toHaveCount(0);
 
 	const actionsMenu = await tabelo.openPaneMenu("markdown");
+	await expect(
+		actionsMenu.getByRole("menuitem", { name: copy.workspace.changeView }),
+	).toBeVisible();
 	await expect(
 		actionsMenu.getByRole("menuitem", { name: copy.actions.copySource }),
 	).toBeVisible();
 	await expect(
 		actionsMenu.getByRole("menuitem", { name: copy.workspace.closeView }),
 	).toBeVisible();
-	// Adding a view is not here at all: it belongs to the edge it would split.
-	// And the view list is not repeated here.
+	// Adding a view belongs to the split edge, and the view list is not nested.
 	await expect(actionsMenu.getByRole("menuitemradio")).toHaveCount(0);
+});
+
+test("a global shortcut never stacks a second dialog", async ({
+	page,
+	tabelo,
+}) => {
+	const layout = await tabelo.openLayoutDialog();
+	await page.keyboard.press("ControlOrMeta+s");
+
+	await expect(page.getByRole("dialog")).toHaveCount(1);
+	await expect(layout).toBeVisible();
+	await expect(
+		page.getByRole("dialog", { name: copy.download.title }),
+	).toHaveCount(0);
+});
+
+test("a dialog command fully replaces the app menu", async ({
+	page,
+	tabelo,
+}) => {
+	const menu = await tabelo.openAppMenu();
+	await menu
+		.getByRole("menuitem", { name: copy.actions.downloadTable })
+		.click();
+
+	await expect(
+		page.getByRole("dialog", { name: copy.download.title }),
+	).toBeVisible();
+	await expect(menu).toBeHidden();
 });

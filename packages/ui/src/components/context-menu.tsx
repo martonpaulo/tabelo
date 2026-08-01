@@ -1,13 +1,19 @@
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
 import {
 	menuChoiceItemLayoutStyles,
+	menuDestructiveItemStateStyles,
+	menuInteractiveItemStateStyles,
 	menuItemLayoutStyles,
 	menuLabelStyles,
 	menuPopupStyles,
 	menuSeparatorStyles,
+	menuShortcutStyles,
 	menuSingleSelectionItemStateStyles,
 	menuSubTriggerLayoutStyles,
+	singleSelectionIndicatorFillStyles,
+	singleSelectionIndicatorShapeStyles,
 } from "@tabelo/ui/components/menu-styles";
+import { ShortcutKeys } from "@tabelo/ui/components/shortcut-keys";
 import { cn } from "@tabelo/ui/lib/utils";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
@@ -59,7 +65,7 @@ function ContextMenuContent({
 				<ContextMenuPrimitive.Popup
 					data-slot="context-menu-content"
 					className={cn(
-						"data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:fade-in-0 data-open:zoom-in-95 data-closed:fade-out-0 data-closed:zoom-out-95 z-50 max-h-(--available-height) min-w-36 origin-(--transform-origin) overflow-y-auto overflow-x-hidden duration-100 data-closed:animate-out data-open:animate-in",
+						"z-50 max-h-(--available-height) min-w-36 overflow-y-auto overflow-x-hidden data-ending-style:overflow-hidden",
 						menuPopupStyles,
 						className,
 					)}
@@ -109,7 +115,8 @@ function ContextMenuItem({
 			data-variant={variant}
 			className={cn(
 				menuItemLayoutStyles,
-				"group/context-menu-item focus:bg-accent focus:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 focus:*:[svg]:text-accent-foreground data-[variant=destructive]:*:[svg]:text-destructive",
+				menuInteractiveItemStateStyles,
+				menuDestructiveItemStateStyles,
 				className,
 			)}
 			{...props}
@@ -176,7 +183,7 @@ function ContextMenuCheckboxItem({
 			data-inset={inset}
 			className={cn(
 				menuChoiceItemLayoutStyles,
-				"focus:bg-accent focus:text-accent-foreground",
+				menuInteractiveItemStateStyles,
 				className,
 			)}
 			checked={checked}
@@ -217,16 +224,22 @@ function ContextMenuRadioItem({
 			data-inset={inset}
 			className={cn(
 				menuChoiceItemLayoutStyles,
+				menuInteractiveItemStateStyles,
 				menuSingleSelectionItemStateStyles,
-				"focus:bg-accent focus:text-accent-foreground",
 				className,
 			)}
 			{...props}
 		>
-			<span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center rounded-full border border-foreground/50">
-				<ContextMenuPrimitive.RadioItemIndicator>
-					<CheckIcon />
-				</ContextMenuPrimitive.RadioItemIndicator>
+			<span
+				className={cn(
+					singleSelectionIndicatorShapeStyles,
+					"pointer-events-none absolute right-2",
+				)}
+				data-slot="context-menu-radio-item-indicator"
+			>
+				<ContextMenuPrimitive.RadioItemIndicator
+					className={singleSelectionIndicatorFillStyles}
+				/>
 			</span>
 			{children}
 		</ContextMenuPrimitive.RadioItem>
@@ -248,17 +261,19 @@ function ContextMenuSeparator({
 
 function ContextMenuShortcut({
 	className,
+	children,
 	...props
-}: React.ComponentProps<"span">) {
+}: Omit<React.ComponentProps<"span">, "children"> & {
+	readonly children: string;
+}) {
 	return (
 		<span
 			data-slot="context-menu-shortcut"
-			className={cn(
-				"ml-auto text-muted-foreground text-xs tracking-widest group-focus/context-menu-item:text-accent-foreground",
-				className,
-			)}
+			className={cn(menuShortcutStyles, className)}
 			{...props}
-		/>
+		>
+			<ShortcutKeys shortcut={children} />
+		</span>
 	);
 }
 

@@ -1,9 +1,10 @@
 import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
+import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 
 const toggleVariants = cva(
-	"group/toggle inline-flex cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-interactive font-medium text-xs outline-none transition-all hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[0.1875rem] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:bg-muted aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=on]:bg-muted dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+	`group/toggle inline-flex cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-interactive font-medium text-xs outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[0.1875rem] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:bg-muted aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=on]:bg-muted dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`,
 	{
 		variants: {
 			variant: {

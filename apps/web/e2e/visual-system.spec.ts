@@ -108,6 +108,49 @@ test("controls, surfaces, and menus share their semantic visual hierarchy", asyn
 	).toContain("blur");
 });
 
+test("shared motion stays brief, cancellable, and reduced-motion safe", async ({
+	page,
+	tabelo: _tabelo,
+}) => {
+	await page.emulateMedia({ reducedMotion: "no-preference" });
+	const trigger = page.getByRole("button", {
+		name: copy.actions.openAppMenu,
+	});
+	const controlMotion = await trigger.evaluate((element) => {
+		const style = getComputedStyle(element);
+		return {
+			properties: style.transitionProperty.split(", "),
+			durations: style.transitionDuration
+				.split(", ")
+				.map((duration) => Number.parseFloat(duration)),
+		};
+	});
+	expect(controlMotion.properties).not.toContain("all");
+	expect(controlMotion.durations.every((duration) => duration > 0)).toBe(true);
+
+	await trigger.click();
+	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
+	const popupMotion = await menu.evaluate((element) => {
+		const style = getComputedStyle(element);
+		return {
+			animation: style.animationName,
+			properties: style.transitionProperty.split(", "),
+		};
+	});
+	expect(popupMotion.animation).toBe("none");
+	expect(popupMotion.properties).toContain("opacity");
+	expect(popupMotion.properties).toContain("transform");
+	await page.keyboard.press("Escape");
+
+	await page.emulateMedia({ reducedMotion: "reduce" });
+	const reducedDurations = await trigger.evaluate((element) =>
+		getComputedStyle(element)
+			.transitionDuration.split(", ")
+			.map((duration) => Number.parseFloat(duration)),
+	);
+	expect(reducedDurations.every((duration) => duration <= 0.001)).toBe(true);
+});
+
 test("the pane zoom label is announced", async ({ tabelo }) => {
 	const paneMenu = await tabelo.openPaneMenu("markdown");
 	const zoomLabel = paneMenu.getByText(copy.workspace.zoom(100), {
@@ -451,6 +494,9 @@ test("light and dark text and focus tokens meet their contrast floors", async ({
 		expect(
 			await contrastBetween(page, "--selection-edge", "--surface-panel"),
 		).toBeGreaterThanOrEqual(3);
+		expect(
+			await contrastBetween(page, "--control-outline", "--popover"),
+		).toBeGreaterThanOrEqual(3);
 		// The filled dialog confirm sits on --popover, not on the welcome
 		// surface, so its contrast is not inherited from that use.
 		expect(
@@ -474,51 +520,6 @@ test("light and dark text and focus tokens meet their contrast floors", async ({
 		expect(new Set(selectionFills).size).toBe(3);
 	}
 	expect(new Set(backgrounds).size).toBe(2);
-});
-
-test("unchecked menu choices keep a visible contrasting outline", async ({
-	page,
-	tabelo,
-}) => {
-	await expect(tabelo.workspace).toBeVisible();
-	for (const dark of [false, true]) {
-		await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
-		const menu = await tabelo.openLayoutMenu();
-		const option = menu.getByRole("menuitemradio", {
-			name: copy.layouts.single.label,
-		});
-		const checked = menu.getByRole("menuitemradio", { checked: true });
-		await expect(option).not.toBeChecked();
-		await option.hover();
-		expect(
-			await checked.evaluate(
-				(element) => getComputedStyle(element).backgroundColor,
-			),
-		).not.toBe(
-			await option.evaluate(
-				(element) => getComputedStyle(element).backgroundColor,
-			),
-		);
-		const indicator = option.locator(
-			'[data-slot="dropdown-menu-radio-item-indicator"]',
-		);
-		await expect(indicator).toBeVisible();
-
-		const colors = await indicator.evaluate((element) => {
-			const styles = getComputedStyle(document.documentElement);
-			return {
-				foreground: getComputedStyle(element).borderTopColor,
-				background: styles.getPropertyValue("--popover").trim(),
-			};
-		});
-		expect(
-			await contrastBetweenColors(page, colors.foreground, colors.background),
-		).toBeGreaterThanOrEqual(3);
-
-		await page.keyboard.press("Escape");
-		await page.keyboard.press("Escape");
-		await expect(menu).toHaveCount(0);
-	}
 });
 
 for (const viewport of [
@@ -560,28 +561,35 @@ for (const viewport of [
 	});
 }
 
-test("empty state actions preserve tab order across widths", async ({
+test("start actions keep the shared one-row priority order across widths", async ({
 	page,
 }) => {
 	await page.goto("/");
 
 	const buttons = [
-		page.getByRole("button", { name: copy.empty.emptyAction }),
 		page.getByRole("button", { name: copy.empty.pasteHint }),
 		page.getByRole("button", { name: copy.actions.importFile }),
+		page.getByRole("button", { name: copy.empty.emptyAction }),
 	];
 
 	for (const button of buttons) {
 		await expect(button).toBeVisible();
 	}
+	await expect(buttons[0]).toHaveAttribute("data-variant", "ghost");
+	await expect(buttons[1]).toHaveAttribute("data-variant", "ghost");
+	await expect(buttons[2]).toHaveAttribute("data-variant", "default");
 
-	const assertFocusOrder = async () => {
-		// Check Tab order matches visual order
-		await page.keyboard.press("Shift+Tab"); // reset focus out of the group just in case
-		await page.keyboard.press("Shift+Tab");
-		await page.keyboard.press("Shift+Tab");
-		await page.keyboard.press("Shift+Tab");
-		await buttons[0].focus(); // Focus first button manually to start sequence predictably
+	const group = buttons[0].locator("..");
+	const assertActionPriority = async () => {
+		await expect(group).toHaveCSS("flex-direction", "row");
+		await expect(group).toHaveCSS("flex-wrap", "nowrap");
+		await expect(group).toHaveCSS("justify-content", "flex-end");
+		expect(
+			await group.evaluate(
+				(element) => Number.parseFloat(getComputedStyle(element).marginTop) > 0,
+			),
+		).toBe(true);
+		await buttons[0].focus();
 		await expect(buttons[0]).toBeFocused();
 		await page.keyboard.press("Tab");
 		await expect(buttons[1]).toBeFocused();
@@ -589,15 +597,12 @@ test("empty state actions preserve tab order across widths", async ({
 		await expect(buttons[2]).toBeFocused();
 	};
 
-	// Test at narrow width (should be column)
 	await page.setViewportSize({ width: 320, height: 568 });
-	await assertFocusOrder();
+	await assertActionPriority();
 
-	// Test at medium width (should be row)
 	await page.setViewportSize({ width: 800, height: 600 });
-	await assertFocusOrder();
+	await assertActionPriority();
 
-	// Test at wide width (should be row)
 	await page.setViewportSize({ width: 1200, height: 800 });
-	await assertFocusOrder();
+	await assertActionPriority();
 });

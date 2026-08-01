@@ -79,10 +79,10 @@ test("Enter moves into the grid's focused cell, not the pane header", async ({
 
 	await page.keyboard.press("Enter");
 
-	// The pane header's own triggers are inside the pane but are not its
+	// The pane header's own trigger is inside the pane but is not its
 	// content, so entering must step over them.
 	await expect(tabelo.cell(1, 1)).toBeFocused();
-	await expect(tabelo.paneViewTrigger("grid")).not.toBeFocused();
+	await expect(tabelo.paneMenuTrigger("grid")).not.toBeFocused();
 
 	await page.keyboard.press("Escape");
 	await expect(gridPane).toBeFocused();

@@ -3,13 +3,19 @@
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import {
 	menuChoiceItemLayoutStyles,
+	menuDestructiveItemStateStyles,
+	menuInteractiveItemStateStyles,
 	menuItemLayoutStyles,
 	menuLabelStyles,
 	menuPopupStyles,
 	menuSeparatorStyles,
+	menuShortcutStyles,
 	menuSingleSelectionItemStateStyles,
 	menuSubTriggerLayoutStyles,
+	singleSelectionIndicatorFillStyles,
+	singleSelectionIndicatorShapeStyles,
 } from "@tabelo/ui/components/menu-styles";
+import { ShortcutKeys } from "@tabelo/ui/components/shortcut-keys";
 import { cn } from "@tabelo/ui/lib/utils";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
@@ -50,7 +56,7 @@ function DropdownMenuContent({
 				<MenuPrimitive.Popup
 					data-slot="dropdown-menu-content"
 					className={cn(
-						"cn-menu-target cn-menu-translucent data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:fade-in-0 data-open:zoom-in-95 data-closed:fade-out-0 data-closed:zoom-out-95 z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-y-auto overflow-x-hidden duration-100 data-closed:animate-out data-open:animate-in data-closed:overflow-hidden",
+						"cn-menu-target cn-menu-translucent z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 overflow-y-auto overflow-x-hidden data-ending-style:overflow-hidden",
 						menuPopupStyles,
 						className,
 					)}
@@ -98,7 +104,8 @@ function DropdownMenuItem({
 			data-variant={variant}
 			className={cn(
 				menuItemLayoutStyles,
-				"group/dropdown-menu-item focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:*:[svg]:text-destructive",
+				menuInteractiveItemStateStyles,
+				menuDestructiveItemStateStyles,
 				className,
 			)}
 			{...props}
@@ -147,7 +154,7 @@ function DropdownMenuSubContent({
 		<DropdownMenuContent
 			data-slot="dropdown-menu-sub-content"
 			className={cn(
-				"cn-menu-target cn-menu-translucent data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:fade-in-0 data-open:zoom-in-95 data-closed:fade-out-0 data-closed:zoom-out-95 w-auto min-w-24 shadow-lg duration-100 data-closed:animate-out data-open:animate-in",
+				"cn-menu-target cn-menu-translucent w-auto min-w-24 shadow-lg",
 				className,
 			)}
 			align={align}
@@ -174,7 +181,7 @@ function DropdownMenuCheckboxItem({
 			data-inset={inset}
 			className={cn(
 				menuChoiceItemLayoutStyles,
-				"focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground",
+				menuInteractiveItemStateStyles,
 				className,
 			)}
 			checked={checked}
@@ -206,30 +213,37 @@ function DropdownMenuRadioItem({
 	className,
 	children,
 	inset,
+	hideIndicator = false,
 	...props
 }: MenuPrimitive.RadioItem.Props & {
 	inset?: boolean;
+	hideIndicator?: boolean;
 }) {
 	return (
 		<MenuPrimitive.RadioItem
 			data-slot="dropdown-menu-radio-item"
 			data-inset={inset}
 			className={cn(
-				menuChoiceItemLayoutStyles,
+				hideIndicator ? menuItemLayoutStyles : menuChoiceItemLayoutStyles,
+				menuInteractiveItemStateStyles,
 				menuSingleSelectionItemStateStyles,
-				"focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground",
 				className,
 			)}
 			{...props}
 		>
-			<span
-				className="pointer-events-none absolute right-2 flex size-4 items-center justify-center rounded-full border border-foreground/50"
-				data-slot="dropdown-menu-radio-item-indicator"
-			>
-				<MenuPrimitive.RadioItemIndicator>
-					<CheckIcon />
-				</MenuPrimitive.RadioItemIndicator>
-			</span>
+			{hideIndicator ? null : (
+				<span
+					className={cn(
+						singleSelectionIndicatorShapeStyles,
+						"pointer-events-none absolute right-2",
+					)}
+					data-slot="dropdown-menu-radio-item-indicator"
+				>
+					<MenuPrimitive.RadioItemIndicator
+						className={singleSelectionIndicatorFillStyles}
+					/>
+				</span>
+			)}
 			{children}
 		</MenuPrimitive.RadioItem>
 	);
@@ -250,17 +264,19 @@ function DropdownMenuSeparator({
 
 function DropdownMenuShortcut({
 	className,
+	children,
 	...props
-}: React.ComponentProps<"span">) {
+}: Omit<React.ComponentProps<"span">, "children"> & {
+	readonly children: string;
+}) {
 	return (
 		<span
 			data-slot="dropdown-menu-shortcut"
-			className={cn(
-				"ml-auto text-muted-foreground text-xs tracking-widest group-focus/dropdown-menu-item:text-accent-foreground",
-				className,
-			)}
+			className={cn(menuShortcutStyles, className)}
 			{...props}
-		/>
+		>
+			<ShortcutKeys shortcut={children} />
+		</span>
 	);
 }
 

@@ -71,9 +71,24 @@ function joinedPositions(values: readonly string[]): string {
 }
 
 function preconditionMessage(failure: PreconditionFailure): string {
+	const columns = failure.columns?.map(columnLetter) ?? [];
+	const columnSubject = columns.length
+		? `${columns.length === 1 ? "column" : "columns"} ${joinedPositions(columns)}`
+		: "the affected columns";
+
+	switch (failure.code) {
+		case "json-empty-header":
+			return `JSON uses every header as an object key. Name ${columnSubject} to use this view.`;
+		case "json-duplicate-header":
+			return `JSON uses every header as a unique object key. Rename ${columnSubject} so no keys repeat.`;
+		case "json-numeric-header":
+			return `JSON reorders object keys written as whole numbers before other keys. Rename ${columnSubject} to preserve the table's column order.`;
+		default:
+			break;
+	}
+
 	const locations: string[] = [];
-	if (failure.columns?.length) {
-		const columns = failure.columns.map(columnLetter);
+	if (columns.length) {
 		locations.push(
 			`${columns.length === 1 ? "column" : "columns"} ${joinedPositions(columns)}`,
 		);
@@ -131,7 +146,10 @@ export const copy = {
 	workspace: {
 		layout: "Layout",
 		layoutHint: "Choose how the workspace is divided",
+		applyLayout: "Apply layout",
 		changeView: "Change view",
+		changeViewHint: (label: string) =>
+			`Choose the view shown in the ${label} pane.`,
 		addView: "Add view",
 		closeView: "Close view",
 		paneActions: "Pane actions",
@@ -146,11 +164,17 @@ export const copy = {
 	},
 
 	disabled: {
+		inUseStatus: "In use",
+		unavailableStatus: "Blocked",
 		viewAlreadyOpen: (label: string) => `${label} is already open.`,
+		chooseAvailableView: "Choose an available view first.",
+		layoutAlreadyApplied: "This layout is already applied.",
+		viewAlreadyShown: "This view is already shown in this pane.",
 		zoomMinimum: "Zoom is already at 50%.",
 		zoomDefault: "Zoom is already at 100%.",
 		zoomMaximum: "Zoom is already at 200%.",
 		closeOnlyView: "At least one view must stay open.",
+		addViewMaximum: "The maximum is four views.",
 		undo: "There is nothing to undo.",
 		redo: "There is nothing to redo.",
 		minimumColumnWidth: "This column is already at its minimum width.",
@@ -287,6 +311,7 @@ export const copy = {
 		widenColumn: "Widen column",
 		narrowColumn: "Narrow column",
 		resetColumnWidth: "Reset column width",
+		wrapColumnText: "Wrap text",
 		editHeader: "Rename column",
 	},
 
@@ -321,7 +346,7 @@ export const copy = {
 
 	empty: {
 		title: "Start with a table",
-		body: "Use an empty table, paste from the clipboard, or import Markdown, CSV, TSV, HTML, Jira, or JSON.",
+		body: "Use an empty table, paste from the clipboard, or import a table file.",
 		emptyAction: "Use an empty table",
 		pasteHint: "Paste a table",
 		sourceTitle: "Nothing here yet",

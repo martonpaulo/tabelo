@@ -13,11 +13,16 @@ test("the control is reachable by Tab without entering a pane", async ({
 	const control = tabelo.splitControl("grid", "bottom");
 	await tabelo.pane("grid").focus();
 
-	// Frame, the header's two triggers, then the split control: all workspace
-	// level, none of them inside the pane body.
-	await page.keyboard.press("Tab");
-	await page.keyboard.press("Tab");
-	await page.keyboard.press("Tab");
+	// The exact number of pane-header commands may change, but the split control
+	// remains in the bounded workspace-level ring before pane content.
+	for (let attempt = 0; attempt < 8; attempt += 1) {
+		if (
+			await control.evaluate((element) => element === document.activeElement)
+		) {
+			break;
+		}
+		await page.keyboard.press("Tab");
+	}
 	await expect(control).toBeFocused();
 
 	// Reaching it must not count as entering the pane, or every per-row and

@@ -1,3 +1,4 @@
+import { disclosureTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import { Plus } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
@@ -45,6 +46,10 @@ interface PaneProps {
 	readonly splitBottom: LayoutId | undefined;
 	readonly splitRight: LayoutId | undefined;
 	readonly onSplit: (option: SplitOption) => void;
+	readonly onChangeView: (
+		paneId: string,
+		opener: HTMLButtonElement | null,
+	) => void;
 	// Set for the pane a split just created, so it says so once.
 	readonly justAdded: boolean;
 }
@@ -58,6 +63,7 @@ export const Pane = memo(function Pane({
 	splitBottom,
 	splitRight,
 	onSplit,
+	onChangeView,
 	justAdded,
 }: PaneProps) {
 	const view = getView(pane.view);
@@ -93,13 +99,16 @@ export const Pane = memo(function Pane({
 					if (!active) useTabeloStore.getState().setActivePane(pane.id);
 				}}
 			>
-				{/* Two triggers, one row: the view name changes the view, the trailing
-			    chevron opens this pane's actions. The spacer between them is what
-			    keeps the actions button right-aligned as the name shortens. */}
+				{/* Static identity and one command trigger share the row. The spacer
+				    keeps the actions button right-aligned as the name shortens. */}
 				<Panel.Header className="overflow-hidden">
-					<PaneIdentity paneId={pane.id} view={view} compact={compact} />
+					<PaneIdentity view={view} compact={compact} />
 					<Panel.Spacer />
-					<PaneMenu paneId={pane.id} view={view} />
+					<PaneMenu
+						paneId={pane.id}
+						view={view}
+						onChangeView={(opener) => onChangeView(pane.id, opener)}
+					/>
 				</Panel.Header>
 
 				{/* Content scale is published to the body and nowhere else, so a zoomed
@@ -180,9 +189,10 @@ function SplitControl({
 				aria-label={copy.a11y.addViewAt(edge, copy.a11y.pane(view))}
 				onClick={onSplit}
 				className={cn(
-					"absolute inline-flex size-5 items-center justify-center rounded-interactive",
+					"absolute inline-flex size-8 items-center justify-center rounded-interactive",
 					"cursor-pointer bg-surface-floating text-muted-foreground ring-1 ring-line-subtle",
-					"opacity-0 transition-opacity hover:text-foreground",
+					"opacity-0 hover:text-foreground",
+					disclosureTransitionStyles,
 					// Plain focus, not focus-visible: a control that has the focus while
 					// staying invisible is the failure this reveal rule exists to
 					// prevent, and focus-visible would not match a programmatic focus.
@@ -193,7 +203,7 @@ function SplitControl({
 						: "top-1/2 right-1 -translate-y-1/2",
 				)}
 			>
-				<Plus aria-hidden className="size-3.5" />
+				<Plus aria-hidden className="size-5" />
 			</button>
 		</div>
 	);

@@ -2,6 +2,7 @@
 
 import { Button } from "@tabelo/ui/components/button";
 import { Input } from "@tabelo/ui/components/input";
+import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { Textarea } from "@tabelo/ui/components/textarea";
 import { cn } from "@tabelo/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -13,7 +14,8 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
 			data-slot="input-group"
 			role="group"
 			className={cn(
-				"group/input-group relative flex h-8 w-full min-w-0 items-center rounded-interactive border border-input bg-background shadow-xs outline-none transition-[color,box-shadow] has-[>textarea]:h-auto dark:bg-input/30",
+				"group/input-group relative flex h-8 w-full min-w-0 items-center rounded-interactive border border-input bg-background shadow-xs outline-none has-[>textarea]:h-auto dark:bg-input/30",
+				controlStateTransitionStyles,
 				"has-[>[data-align=inline-end]]:[&>input]:pr-2 has-[>[data-align=inline-start]]:[&>input]:pl-2",
 				"has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>[data-align=block-start]]:[&>input]:pb-3",
 				"has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-end]]:[&>input]:pt-3",

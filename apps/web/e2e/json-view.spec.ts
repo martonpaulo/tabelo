@@ -50,12 +50,12 @@ test("an unnamed table cannot be converted to the view at all", async ({
 }) => {
 	// A new table starts with no header text, which is exactly what JSON cannot
 	// key on, so the choice is refused before the pane ever shows it.
-	const menu = await tabelo.openPaneViewMenu("markdown");
+	const dialog = await tabelo.openChangeViewDialog("markdown");
 	await expect(
-		menu.getByRole("menuitemradio").filter({ hasText: copy.views.json.label }),
+		dialog.getByRole("radio", { name: copy.views.json.label }),
 	).toBeDisabled();
 	await expect(
-		menu.getByRole("menuitemradio").filter({ hasText: copy.views.csv.label }),
+		dialog.getByRole("radio", { name: copy.views.csv.label }),
 	).toBeEnabled();
 });
 

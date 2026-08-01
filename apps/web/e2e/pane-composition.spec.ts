@@ -256,48 +256,42 @@ test("the zoom level is reported to assistive technology", async ({
 	).toBeEnabled();
 });
 
-// The pane header carries two triggers, one per job. Both name the view they
-// belong to, because with four panes open the name is the only thing that says
-// which pane a trigger acts on.
-test("the pane header splits identity from actions", async ({ tabelo }) => {
-	const viewTrigger = tabelo.paneViewTrigger("markdown");
+// The pane title is identity, while the one trailing trigger owns pane commands.
+test("the pane header keeps identity static beside its actions", async ({
+	tabelo,
+}) => {
 	const actionsTrigger = tabelo.paneMenuTrigger("markdown");
 
-	await expect(viewTrigger).toBeVisible();
 	await expect(actionsTrigger).toBeVisible();
 
-	// The view name still contributes the pane's heading to the outline, and the
-	// trigger sits inside it rather than replacing it.
-	const heading = tabelo.pane("markdown").getByRole("heading");
+	const pane = tabelo.pane("markdown");
+	const heading = pane.getByRole("heading");
 	await expect(heading).toHaveCount(1);
-	await expect(heading.getByRole("button")).toHaveCount(1);
-
-	// The actions trigger is the trailing control, and the view name leads.
-	const viewBox = await viewTrigger.boundingBox();
-	const actionsBox = await actionsTrigger.boundingBox();
-	expect(viewBox?.x ?? 0).toBeLessThan(actionsBox?.x ?? 0);
+	await expect(heading.getByRole("button")).toHaveCount(0);
 });
 
-test("each pane header trigger opens only its own menu", async ({
+test("Change view leaves the flat pane menu for one dialog", async ({
 	page,
 	tabelo,
 }) => {
-	const viewMenu = await tabelo.openPaneViewMenu("markdown");
-	await expect(viewMenu.getByRole("menuitemradio")).toHaveCount(8);
-	await expect(
-		viewMenu.getByRole("menuitem", { name: copy.workspace.zoomIn }),
-	).toHaveCount(0);
-	await page.keyboard.press("Escape");
-	await expect(viewMenu).toBeHidden();
-
 	const actionsMenu = await tabelo.openPaneMenu("markdown");
+	await expect(
+		actionsMenu.getByRole("menuitem", { name: copy.workspace.changeView }),
+	).toBeVisible();
 	await expect(actionsMenu.getByRole("menuitemradio")).toHaveCount(0);
 	await expect(
 		actionsMenu.getByRole("menuitem", { name: copy.workspace.zoomIn }),
 	).toBeVisible();
+	await page.keyboard.press("Escape");
+
+	const dialog = await tabelo.openChangeViewDialog("markdown");
+	await expect(dialog.getByRole("radio")).toHaveCount(8);
+	await expect(
+		dialog.getByRole("menuitem", { name: copy.workspace.zoomIn }),
+	).toHaveCount(0);
 });
 
-test("changing the view from the view name keeps the pane working", async ({
+test("changing the view from pane actions keeps the pane working", async ({
 	tabelo,
 }) => {
 	await tabelo.choosePaneView("markdown", "jira");
@@ -307,7 +301,7 @@ test("changing the view from the view name keeps the pane working", async ({
 });
 
 // §5 requires a pane header to be one row that never wraps, shortening labels
-// instead. Two triggers plus the Read only badge is the tightest case today.
+// instead. The action trigger and Read only badge are the tightest case today.
 test("the pane header keeps its controls at the narrowest four-pane width", async ({
 	page,
 	tabelo,
@@ -319,12 +313,7 @@ test("the pane header keeps its controls at the narrowest four-pane width", asyn
 	for (const pane of await tabelo.workspace.getByRole("region").all()) {
 		const header = pane.locator("header");
 		await expect(header).toHaveCSS("flex-wrap", "nowrap");
-		// Both triggers survive the squeeze; the label shortens instead.
-		await expect(
-			pane.getByRole("button", {
-				name: new RegExp(`^${copy.workspace.changeView}:`),
-			}),
-		).toBeVisible();
+		// The one command trigger survives the squeeze; the label shortens instead.
 		await expect(
 			pane.getByRole("button", {
 				name: new RegExp(`^${copy.workspace.paneActions}:`),

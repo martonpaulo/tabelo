@@ -4,12 +4,11 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { Label } from "@tabelo/ui/components/label";
-import { useId, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { copy } from "@/copy/copy";
 import { canSerialize, listCodecs, outputOptionsFor } from "@/formats";
 import type {
@@ -20,12 +19,18 @@ import type {
 import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copyToClipboard } from "@/ui/clipboard-actions";
-import { DialogCancel, DialogConfirm } from "@/ui/primitives/dialog-buttons";
+import {
+	DialogActions,
+	DialogCancel,
+	DialogConfirm,
+} from "@/ui/primitives/dialog-buttons";
 import { Notice } from "@/ui/primitives/notice";
 import {
 	SingleSelectionList,
 	SingleSelectionOption,
+	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
+import { getView } from "@/views/registry";
 
 // Downloading is a choice, not a click. The user chooses the format and, where
 // the format offers options, how the file should be written. Both the File menu and
@@ -85,7 +90,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 				showCloseButton={false}
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
-				className="text-sm"
+				className={singleSelectionDialogContentStyles}
 			>
 				<DialogHeader>
 					<DialogTitle id={titleId}>{copy.download.title}</DialogTitle>
@@ -114,27 +119,32 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 					value={codec.id}
 					onValueChange={(value) => setSelected(value as CodecId)}
 				>
-					{codecs.map((candidate) => (
-						<FormatChoice
-							key={candidate.id}
-							id={candidate.id}
-							label={copy.views[candidate.id].shortLabel}
-							extension={candidate.extension}
-							selected={candidate.id === codec.id}
-							options={
-								candidate.id === codec.id ? options : ([] as OutputOptionId[])
-							}
-							failure={canSerialize(candidate, document)}
-						/>
-					))}
+					{codecs.map((candidate) => {
+						const view = getView(candidate.id);
+						return (
+							<FormatChoice
+								key={candidate.id}
+								id={candidate.id}
+								icon={<view.icon />}
+								label={view.label}
+								description={view.description}
+								extension={candidate.extension}
+								selected={candidate.id === codec.id}
+								options={
+									candidate.id === codec.id ? options : ([] as OutputOptionId[])
+								}
+								failure={canSerialize(candidate, document)}
+							/>
+						);
+					})}
 				</SingleSelectionList>
 
-				<DialogFooter>
+				<DialogActions>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>
 					<DialogConfirm onClick={download}>
 						{copy.actions.download}
 					</DialogConfirm>
-				</DialogFooter>
+				</DialogActions>
 			</DialogContent>
 		</Dialog>
 	);
@@ -142,7 +152,9 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 
 interface FormatChoiceProps {
 	readonly id: CodecId;
+	readonly icon: ReactNode;
 	readonly label: string;
+	readonly description: string;
 	readonly extension: string;
 	readonly selected: boolean;
 	readonly options: readonly OutputOptionId[];
@@ -153,7 +165,9 @@ interface FormatChoiceProps {
 // than in a separate block that would have to name the format again.
 function FormatChoice({
 	id,
+	icon,
 	label,
+	description,
 	extension,
 	selected,
 	options,
@@ -164,19 +178,21 @@ function FormatChoice({
 			<SingleSelectionOption
 				value={id}
 				selected={selected}
-				disabledReason={
-					failure ? copy.disabled.codecPrecondition(failure) : undefined
+				availability={
+					failure
+						? {
+								kind: "unavailable",
+								reason: copy.disabled.codecPrecondition(failure),
+							}
+						: undefined
 				}
-				accessory={
-					<span className="shrink-0 text-muted-foreground text-xs">
-						.{extension}
-					</span>
-				}
-			>
-				<span className="font-medium">{label}</span>
-			</SingleSelectionOption>
+				icon={icon}
+				label={label}
+				description={description}
+				metadata={`.${extension}`}
+			/>
 			{options.length > 0 ? (
-				<div className="mt-1.5 pl-6">
+				<div className="mt-1.5 pl-9">
 					{options.map((option) => (
 						<OutputOption key={option} option={option} />
 					))}

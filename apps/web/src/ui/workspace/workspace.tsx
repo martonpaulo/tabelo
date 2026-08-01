@@ -10,6 +10,7 @@ import {
 	splitOptions,
 } from "@/workspace/layout";
 import { AddViewDialog } from "./add-view-dialog";
+import { ChangeViewDialog } from "./change-view-dialog";
 import { Pane } from "./pane";
 import { useStackedWorkspace } from "./stacking";
 
@@ -23,6 +24,11 @@ import { useStackedWorkspace } from "./stacking";
 // restores exactly what the user chose.
 
 type Axis = "columns" | "rows";
+
+type WorkspaceDialog =
+	| { readonly kind: "add-view"; readonly option: SplitOption }
+	| { readonly kind: "change-view"; readonly paneId: string }
+	| null;
 
 interface ResizerProps {
 	readonly axis: Axis;
@@ -112,16 +118,53 @@ function Resizer({ axis, ratio, containerRef }: ResizerProps) {
 	);
 }
 
-export function Workspace() {
+export function Workspace({
+	interactive,
+	addViewRequest,
+	addViewOpenerRef,
+}: {
+	readonly interactive: boolean;
+	readonly addViewRequest: number;
+	readonly addViewOpenerRef: React.RefObject<HTMLButtonElement | null>;
+}) {
 	const workspace = useTabeloStore((state) => state.workspace);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const dialogOpenerRef = useRef<HTMLElement | null>(null);
 	const stacked = useStackedWorkspace();
+	const handledAddViewRequest = useRef(addViewRequest);
 
-	// The split a picker is currently open for, and the pane the last one
-	// created. Both are local: neither outlives the interaction, so neither
-	// belongs in the store, in history, or in what is persisted.
-	const [pendingSplit, setPendingSplit] = useState<SplitOption | null>(null);
+	// Add and Change view are mutually exclusive workspace decisions. One
+	// discriminated state prevents their portalled dialogs from ever stacking.
+	const [dialog, setDialog] = useState<WorkspaceDialog>(null);
 	const [addedPaneId, setAddedPaneId] = useState<string | null>(null);
+
+	const openAddView = useCallback((option: SplitOption) => {
+		dialogOpenerRef.current = document.activeElement as HTMLElement | null;
+		setDialog({ kind: "add-view", option });
+	}, []);
+
+	const openChangeView = useCallback(
+		(paneId: string, opener: HTMLButtonElement | null) => {
+			dialogOpenerRef.current = opener;
+			setDialog({ kind: "change-view", paneId });
+		},
+		[],
+	);
+
+	const closeDialog = useCallback(() => {
+		const opener = dialogOpenerRef.current;
+		dialogOpenerRef.current = null;
+		setDialog(null);
+		if (opener?.isConnected) requestAnimationFrame(() => opener.focus());
+	}, []);
+
+	// The first-visit surface and root dialogs make the workspace inert. A
+	// portal must not escape that inactive owner and remain interactive above it.
+	useEffect(() => {
+		if (interactive) return;
+		dialogOpenerRef.current = null;
+		setDialog(null);
+	}, [interactive]);
 
 	// The workspace changed shape under the user, so focus is placed rather than
 	// left on a control that has since moved or gone. The pane frame is a
@@ -141,6 +184,19 @@ export function Workspace() {
 	// Where the workspace can still grow. Empty at four panes, which is what
 	// removes every control rather than disabling one.
 	const options = splitOptions(workspace);
+
+	// The global command deliberately chooses the first valid split in workspace
+	// reading order. It reuses the same derived options as the edge controls, so
+	// there is no second placement policy to keep synchronized.
+	useEffect(() => {
+		if (handledAddViewRequest.current === addViewRequest) return;
+		handledAddViewRequest.current = addViewRequest;
+		if (!interactive) return;
+		const option = splitOptions(useTabeloStore.getState().workspace)[0];
+		if (!option) return;
+		dialogOpenerRef.current = addViewOpenerRef.current;
+		setDialog({ kind: "add-view", option });
+	}, [addViewOpenerRef, addViewRequest, interactive]);
 
 	return (
 		<main
@@ -184,7 +240,8 @@ export function Workspace() {
 						splitRight={
 							splits.find((option) => option.edge === "right")?.layout
 						}
-						onSplit={setPendingSplit}
+						onSplit={openAddView}
+						onChangeView={openChangeView}
 						justAdded={pane.id === addedPaneId}
 					/>
 				);
@@ -206,9 +263,20 @@ export function Workspace() {
 			) : null}
 
 			<AddViewDialog
-				option={pendingSplit}
-				onClose={() => setPendingSplit(null)}
-				onAdded={setAddedPaneId}
+				option={
+					interactive && dialog?.kind === "add-view" ? dialog.option : null
+				}
+				onClose={closeDialog}
+				onAdded={(paneId) => {
+					dialogOpenerRef.current = null;
+					setAddedPaneId(paneId);
+				}}
+			/>
+			<ChangeViewDialog
+				paneId={
+					interactive && dialog?.kind === "change-view" ? dialog.paneId : null
+				}
+				onClose={closeDialog}
 			/>
 		</main>
 	);

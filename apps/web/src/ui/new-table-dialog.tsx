@@ -2,12 +2,15 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { copy } from "@/copy/copy";
-import { DialogCancel, DialogConfirm } from "@/ui/primitives/dialog-buttons";
+import {
+	DialogActions,
+	DialogCancel,
+	DialogConfirm,
+} from "@/ui/primitives/dialog-buttons";
 
 interface NewTableDialogProps {
 	readonly open: boolean;
@@ -27,7 +30,7 @@ export function NewTableDialog({
 					<DialogTitle>{copy.newTable.title}</DialogTitle>
 					<DialogDescription>{copy.newTable.description}</DialogDescription>
 				</DialogHeader>
-				<DialogFooter>
+				<DialogActions>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>
 					<DialogConfirm
 						destructive
@@ -38,7 +41,7 @@ export function NewTableDialog({
 					>
 						{copy.newTable.confirm}
 					</DialogConfirm>
-				</DialogFooter>
+				</DialogActions>
 			</DialogContent>
 		</Dialog>
 	);

@@ -178,11 +178,12 @@ export class TabeloPage {
 	// Layout presets, pane views, and column alignments are radio items: they
 	// are current states rather than one-off actions.
 	async chooseLayout(id: LayoutId): Promise<void> {
-		const menu = await this.openLayoutMenu();
-		await menu
-			.getByRole("menuitemradio")
-			.filter({ hasText: copy.layouts[id].label })
+		const dialog = await this.openLayoutDialog();
+		await dialog.getByRole("radio", { name: copy.layouts[id].label }).click();
+		await dialog
+			.getByRole("button", { name: copy.workspace.applyLayout })
 			.click();
+		await dialog.waitFor({ state: "hidden" });
 	}
 
 	async openAppMenu(): Promise<Locator> {
@@ -197,16 +198,17 @@ export class TabeloPage {
 		return menu;
 	}
 
-	async openLayoutMenu(): Promise<Locator> {
-		await this.openAppMenu();
+	async openLayoutDialog(): Promise<Locator> {
+		const menu = await this.openAppMenu();
 		await this.page
 			.getByRole("menuitem", { name: copy.workspace.layout })
 			.click();
-		const menu = this.page.getByRole("menu", {
+		await menu.waitFor({ state: "hidden" });
+		const dialog = this.page.getByRole("dialog", {
 			name: copy.workspace.layout,
 		});
-		await menu.waitFor({ state: "visible" });
-		return menu;
+		await dialog.waitFor({ state: "visible" });
+		return dialog;
 	}
 
 	async runAppCommand(command: AppCommand): Promise<void> {
@@ -269,24 +271,12 @@ export class TabeloPage {
 		nextView: ViewId,
 		index = 0,
 	): Promise<void> {
-		const menu = await this.openPaneViewMenu(currentView, index);
-		await menu
-			.getByRole("menuitemradio")
-			.filter({ hasText: getView(nextView).label })
+		const dialog = await this.openChangeViewDialog(currentView, index);
+		await dialog.getByRole("radio", { name: getView(nextView).label }).click();
+		await dialog
+			.getByRole("button", { name: copy.workspace.changeView })
 			.click();
-		// Selecting a view closes this menu as a side effect. A caller that
-		// immediately reopens the same pane's menu needs that close to be
-		// finished first, not merely under way.
-		await menu.waitFor({ state: "hidden" });
-	}
-
-	// The pane header carries two triggers. The view name on the left changes
-	// the view; the trailing chevron opens everything else this pane can do.
-	paneViewTrigger(view: ViewId, index = 0): Locator {
-		const label = getView(view).label;
-		return this.paneAt(view, index).getByRole("button", {
-			name: `${copy.workspace.changeView}: ${label}`,
-		});
+		await dialog.waitFor({ state: "hidden" });
 	}
 
 	paneMenuTrigger(view: ViewId, index = 0): Locator {
@@ -296,11 +286,17 @@ export class TabeloPage {
 		});
 	}
 
-	async openPaneViewMenu(view: ViewId, index = 0): Promise<Locator> {
-		await this.paneViewTrigger(view, index).click();
-		return this.page.getByRole("menu", {
-			name: `${copy.workspace.changeView}: ${getView(view).label}`,
+	async openChangeViewDialog(view: ViewId, index = 0): Promise<Locator> {
+		const menu = await this.openPaneMenu(view, index);
+		await menu
+			.getByRole("menuitem", { name: copy.workspace.changeView })
+			.click();
+		await menu.waitFor({ state: "hidden" });
+		const dialog = this.page.getByRole("dialog", {
+			name: copy.workspace.changeView,
 		});
+		await dialog.waitFor({ state: "visible" });
+		return dialog;
 	}
 
 	async openPaneMenu(view: ViewId, index = 0): Promise<Locator> {

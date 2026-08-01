@@ -2,23 +2,26 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
-import { useId, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { copy } from "@/copy/copy";
-import { canSerialize } from "@/formats";
 import { useTabeloStore } from "@/state/store";
-import { DialogCancel, DialogConfirm } from "@/ui/primitives/dialog-buttons";
-import { MenuOption } from "@/ui/primitives/menu-option";
+import {
+	DialogActions,
+	DialogCancel,
+	DialogConfirm,
+} from "@/ui/primitives/dialog-buttons";
 import {
 	SingleSelectionList,
 	SingleSelectionOption,
+	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
 import { getView, listViews } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import type { SplitOption } from "@/workspace/layout";
+import { availabilityForView } from "./view-availability";
 
 // Adding a view is one question asked once: which view goes in the pane the
 // split is about to create. Asking up front is what lets the split and the view
@@ -48,22 +51,16 @@ export function AddViewDialog({
 	const views = listViews();
 	const splitPane = panes.find((pane) => pane.id === option?.paneId);
 
-	const reasonFor = (id: ViewId): string | undefined => {
-		// One view per workspace is an invariant the persisted schema validates,
-		// so the picker states it rather than discovering it after the fact.
-		if (panes.some((pane) => pane.view === id)) {
-			return copy.disabled.viewAlreadyOpen(getView(id).label);
-		}
-		const codec = getView(id).codec;
-		const failure = codec ? canSerialize(codec, document) : null;
-		return failure ? copy.disabled.codecPrecondition(failure) : undefined;
-	};
+	const availabilityFor = (id: ViewId) =>
+		availabilityForView({ view: getView(id), panes, document });
 
-	const offered = views.filter((view) => reasonFor(view.id) === undefined);
+	const offered = views.filter(
+		(view) => availabilityFor(view.id) === undefined,
+	);
 	// Falls back rather than staying null, so the confirm button always has a
 	// meaning while any view at all can be added.
 	const selected =
-		chosen && reasonFor(chosen) === undefined ? chosen : offered[0]?.id;
+		chosen && availabilityFor(chosen) === undefined ? chosen : offered[0]?.id;
 
 	const add = () => {
 		if (!option || !selected) return;
@@ -86,7 +83,7 @@ export function AddViewDialog({
 				showCloseButton={false}
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
-				className="text-sm"
+				className={singleSelectionDialogContentStyles}
 			>
 				<DialogHeader>
 					<DialogTitle id={titleId}>{copy.addView.title}</DialogTitle>
@@ -111,18 +108,24 @@ export function AddViewDialog({
 							id={candidate.id}
 							label={candidate.label}
 							description={candidate.description}
-							reason={reasonFor(candidate.id)}
+							icon={<candidate.icon />}
+							availability={availabilityFor(candidate.id)}
 							selected={selected === candidate.id}
 						/>
 					))}
 				</SingleSelectionList>
 
-				<DialogFooter>
+				<DialogActions>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>
-					<DialogConfirm disabled={!selected} onClick={add}>
+					<DialogConfirm
+						disabledReason={
+							selected ? undefined : copy.disabled.chooseAvailableView
+						}
+						onClick={add}
+					>
 						{copy.addView.confirm}
 					</DialogConfirm>
-				</DialogFooter>
+				</DialogActions>
 			</DialogContent>
 		</Dialog>
 	);
@@ -132,26 +135,27 @@ interface ViewChoiceProps {
 	readonly id: ViewId;
 	readonly label: string;
 	readonly description: string;
+	readonly icon: ReactNode;
 	readonly selected: boolean;
-	// Why this view cannot be added. Disabled and explained rather than hidden,
-	// so a view the user is looking for never simply vanishes from the list.
-	readonly reason: string | undefined;
+	readonly availability: ReturnType<typeof availabilityForView>;
 }
 
 function ViewChoice({
 	id,
 	label,
 	description,
+	icon,
 	selected,
-	reason,
+	availability,
 }: ViewChoiceProps) {
 	return (
 		<SingleSelectionOption
 			value={id}
 			selected={selected}
-			disabledReason={reason}
-		>
-			<MenuOption label={label} description={description} />
-		</SingleSelectionOption>
+			availability={availability}
+			icon={icon}
+			label={label}
+			description={description}
+		/>
 	);
 }

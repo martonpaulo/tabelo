@@ -4,28 +4,22 @@ import {
 	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
-	DropdownMenuSub,
-	DropdownMenuSubContent,
-	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
-import { cn } from "@tabelo/ui/lib/utils";
 import {
 	Download,
 	ExternalLink,
 	FilePlus2,
 	LayoutGrid,
+	PanelRightOpen,
 	Redo2,
 	RefreshCw,
 	Undo2,
 	Upload,
 } from "lucide-react";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { type RefObject, useSyncExternalStore } from "react";
 import { copy } from "@/copy/copy";
 import {
 	canRunHistory,
@@ -36,64 +30,36 @@ import {
 import { useTabeloStore } from "@/state/store";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
+import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import type { PwaUpdate } from "@/ui/pwa-update";
-import {
-	gridAreaOf,
-	type LayoutId,
-	type LayoutPreset,
-	layoutPresets,
-} from "@/workspace/layout";
-
-function LayoutGlyph({
-	preset,
-	active,
-}: {
-	readonly preset: LayoutPreset;
-	readonly active: boolean;
-}) {
-	return (
-		<span
-			aria-hidden
-			className={cn(
-				"grid size-6 shrink-0 grid-cols-2 grid-rows-2 gap-[0.0625rem] border p-[0.0625rem]",
-				active ? "border-selection-edge" : "border-muted-foreground/50",
-			)}
-		>
-			{preset.panes.map((slots) => {
-				const area = gridAreaOf(slots);
-				return (
-					<span
-						key={slots.join("")}
-						className={active ? "bg-selection-edge" : "bg-muted-foreground/50"}
-						style={{
-							gridArea: `${area.rowStart} / ${area.columnStart} / ${area.rowEnd} / ${area.columnEnd}`,
-						}}
-					/>
-				);
-			})}
-		</span>
-	);
-}
+import { splitOptions } from "@/workspace/layout";
 
 interface AppMenuProps {
 	readonly onImport: () => void;
 	readonly onDownload: () => void;
+	readonly onLayout: () => void;
+	readonly onAddView: () => void;
 	readonly onNewTable: () => void;
 	readonly pwaUpdate: PwaUpdate;
+	readonly triggerRef: RefObject<HTMLButtonElement | null>;
 }
 
 export function AppMenu({
 	onImport,
 	onDownload,
+	onLayout,
+	onAddView,
 	onNewTable,
 	pwaUpdate,
+	triggerRef,
 }: AppMenuProps) {
-	const [open, setOpen] = useState(false);
-	const triggerRef = useRef<HTMLButtonElement>(null);
+	const menuDialog = useMenuDialogCommand();
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
 	const canRedoDocument = useTabeloStore((state) => state.future.length > 0);
 	const activePaneId = useTabeloStore((state) => state.workspace.activePaneId);
-	const layout = useTabeloStore((state) => state.workspace.layout);
+	const canAddView = useTabeloStore(
+		(state) => splitOptions(state.workspace).length > 0,
+	);
 	useSyncExternalStore(
 		subscribeHistory,
 		getHistoryRevision,
@@ -108,9 +74,12 @@ export function AppMenu({
 			if (direction === "undo") state.undo();
 			else state.redo();
 		});
-
 	return (
-		<DropdownMenu open={open} onOpenChange={setOpen}>
+		<DropdownMenu
+			open={menuDialog.open}
+			onOpenChange={menuDialog.onOpenChange}
+			onOpenChangeComplete={menuDialog.onOpenChangeComplete}
+		>
 			<DropdownMenuTrigger
 				render={
 					<Button
@@ -122,7 +91,7 @@ export function AppMenu({
 						}
 						variant="outline"
 						size="icon-lg"
-						className="fixed right-3 bottom-3 z-40 size-fab border-line-strong bg-surface-panel shadow-lg"
+						className="fixed right-3 bottom-3 z-40 size-fab border-transparent bg-surface-panel shadow-lg"
 					/>
 				}
 			>
@@ -194,56 +163,42 @@ export function AppMenu({
 
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
-					<DropdownMenuItem onClick={onNewTable}>
+					<DropdownMenuItem
+						onClick={() => menuDialog.runAfterClose(onNewTable)}
+					>
 						<FilePlus2 aria-hidden />
 						{copy.actions.newTable}
 					</DropdownMenuItem>
-					<DropdownMenuItem onClick={onImport}>
+					<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onImport)}>
 						<Upload aria-hidden />
 						{copy.actions.importFile}
 					</DropdownMenuItem>
-					<DropdownMenuItem onClick={onDownload}>
+					<DropdownMenuItem
+						onClick={() => menuDialog.runAfterClose(onDownload)}
+					>
 						<Download aria-hidden />
 						{copy.actions.downloadTable}
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 
-				<DropdownMenuSub>
-					<DropdownMenuSubTrigger>
+				<DropdownMenuSeparator />
+				<DropdownMenuGroup>
+					<DisabledTooltip
+						reason={canAddView ? undefined : copy.disabled.addViewMaximum}
+					>
+						<DropdownMenuItem
+							disabled={!canAddView}
+							onClick={() => menuDialog.runAfterClose(onAddView)}
+						>
+							<PanelRightOpen aria-hidden />
+							{copy.workspace.addView}
+						</DropdownMenuItem>
+					</DisabledTooltip>
+					<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onLayout)}>
 						<LayoutGrid aria-hidden />
 						{copy.workspace.layout}
-					</DropdownMenuSubTrigger>
-					<DropdownMenuSubContent
-						aria-label={copy.workspace.layout}
-						className="w-auto min-w-64"
-					>
-						<DropdownMenuRadioGroup
-							value={layout}
-							onValueChange={(next) => {
-								useTabeloStore.getState().setLayout(next as LayoutId);
-								// The radio item lives in a submenu, so Base UI closes only
-								// that level. Close the root after its event finishes, then
-								// restore the command surface as the keyboard destination.
-								queueMicrotask(() => {
-									setOpen(false);
-									requestAnimationFrame(() => triggerRef.current?.focus());
-								});
-							}}
-						>
-							<DropdownMenuLabel>{copy.workspace.layoutHint}</DropdownMenuLabel>
-							{layoutPresets.map((preset) => (
-								<DropdownMenuRadioItem
-									key={preset.id}
-									value={preset.id}
-									closeOnClick
-								>
-									<LayoutGlyph preset={preset} active={preset.id === layout} />
-									<MenuOption {...copy.layouts[preset.id]} />
-								</DropdownMenuRadioItem>
-							))}
-						</DropdownMenuRadioGroup>
-					</DropdownMenuSubContent>
-				</DropdownMenuSub>
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
 
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
