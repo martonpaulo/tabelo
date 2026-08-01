@@ -405,3 +405,39 @@ describe("per-pane zoom", () => {
 		expect(after.document).toBe(before.document);
 	});
 });
+
+describe("per-pane source wrapping", () => {
+	it("stays with its pane, outside history, and defaults off for new panes", () => {
+		const before = useTabeloStore.getState();
+		const paneId = markdownPaneId();
+		const otherPaneId = before.workspace.panes.find(
+			(pane) => pane.id !== paneId,
+		)?.id;
+
+		before.setPaneWrap(paneId, true);
+		let current = useTabeloStore.getState();
+		expect(
+			current.workspace.panes.find((pane) => pane.id === paneId)?.wrap,
+		).toBe(true);
+		expect(
+			current.workspace.panes.find((pane) => pane.id === otherPaneId)?.wrap,
+		).toBe(false);
+		expect(current.document).toBe(before.document);
+		expect(current.past).toBe(before.past);
+
+		current.setPaneView(paneId, "jira");
+		current.setLayout("rows");
+		current = useTabeloStore.getState();
+		expect(
+			current.workspace.panes.find((pane) => pane.id === paneId)?.wrap,
+		).toBe(true);
+
+		addFirstSplit();
+		current = useTabeloStore.getState();
+		expect(
+			current.workspace.panes.find(
+				(pane) => pane.id !== paneId && pane.id !== otherPaneId,
+			)?.wrap,
+		).toBe(false);
+	});
+});

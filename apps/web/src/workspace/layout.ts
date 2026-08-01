@@ -168,6 +168,10 @@ export interface WorkspacePane {
 	readonly slots: readonly SlotId[];
 	// Local content scale. Presentation only: see workspace/zoom.ts.
 	readonly zoom: number;
+	// Source soft wrapping belongs to the pane, not the format or document. A
+	// non-source view carries the dormant preference so changing the view back
+	// restores the pane exactly as the user left it.
+	readonly wrap: boolean;
 }
 
 // Which edge of a pane carries its split control, and therefore which side the
@@ -278,6 +282,7 @@ export function applyLayout(
 			view: existing?.view ?? nextView(),
 			slots,
 			zoom: existing?.zoom ?? DEFAULT_PANE_ZOOM,
+			wrap: existing?.wrap ?? false,
 		};
 	});
 }

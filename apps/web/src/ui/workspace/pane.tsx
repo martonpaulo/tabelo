@@ -122,7 +122,12 @@ export const Pane = memo(function Pane({
 							: "bg-surface-readonly",
 					)}
 				>
-					<PaneContent paneId={pane.id} view={view} zoom={pane.zoom} />
+					<PaneContent
+						paneId={pane.id}
+						view={view}
+						zoom={pane.zoom}
+						wrap={pane.wrap}
+					/>
 				</Panel.Body>
 
 				{splitRight ? (

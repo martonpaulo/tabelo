@@ -16,9 +16,15 @@ interface SourceViewProps {
 	readonly paneId: string;
 	readonly viewId: ViewId;
 	readonly zoom: number;
+	readonly wrap: boolean;
 }
 
-export default function SourceView({ paneId, viewId, zoom }: SourceViewProps) {
+export default function SourceView({
+	paneId,
+	viewId,
+	zoom,
+	wrap,
+}: SourceViewProps) {
 	const view = getView(viewId);
 	const document = useTabeloStore((state) => state.document);
 	const entered = useContext(PaneEntryContext);
@@ -67,6 +73,7 @@ export default function SourceView({ paneId, viewId, zoom }: SourceViewProps) {
 			<SourceEditor
 				paneId={paneId}
 				zoom={zoom}
+				wrap={wrap}
 				value={draft?.text ?? projected.text}
 				language={view.highlight}
 				diagnostics={diagnostics}

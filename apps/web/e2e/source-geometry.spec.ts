@@ -1,3 +1,4 @@
+import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
 const longValue = Array.from(
@@ -7,11 +8,16 @@ const longValue = Array.from(
 ).join(" ");
 const wideRows = ["Column1", longValue, longValue].join("\n");
 
-test("source line numbers belong to the first visual line before focus", async ({
+test("wrapped source line numbers belong to the first visual line before focus", async ({
 	tabelo,
 }) => {
 	await tabelo.paste(wideRows);
 	await tabelo.choosePaneView("markdown", "tsv");
+	const menu = await tabelo.openPaneMenu("tsv");
+	await menu
+		.getByRole("menuitemcheckbox", { name: copy.workspace.wrapSource })
+		.click();
+	await tabelo.paneMenuTrigger("tsv").click();
 	await tabelo.chooseLayout("quad");
 	const source = tabelo.source("tsv");
 	await expect(source).toBeVisible();

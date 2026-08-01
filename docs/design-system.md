@@ -230,6 +230,14 @@ header in Markdown, CSV, TSV, and Jira, while HTML receives element,
 attribute, and text treatment. Highlighting must preserve source text
 exactly and must not become another parser or source of truth.
 
+Source panes scroll horizontally and vertically by default. Soft wrapping is
+an opt-in presentation preference owned and persisted by each pane, never by a
+format, the document, a draft, or the history timeline. The pane actions menu
+exposes one checked `Wrap lines` command for source views. Reconfigure the live
+CodeMirror instance through its wrapping compartment so the caret, selection,
+draft, and local undo history survive the change. A newly created pane starts
+unwrapped; changing or rearranging a view retains the preference of the pane.
+
 The visual table mirrors structure rather than source punctuation: its header
 row and the rendered preview use the shared editable table-header surface,
 while body cells keep the normal content treatment. Header text position shows
@@ -551,10 +559,12 @@ inset edge supplies all four focus sides. The source caret is a 0.125rem accent 
 aligned to the editor's line metrics; native text editors use the same accent
 through `caret-color`.
 
-A source pane measures its wrapped lines and number gutter when it first becomes
-visible, before the user can see or focus it. Opening, replacing, or rearranging
-a view must not leave line numbers on stale geometry and rely on a click to
-repair them. Focus changes interaction state; it is never a layout trigger.
+A source pane measures its logical lines and number gutter when it first becomes
+visible and whenever wrapping or pane geometry changes, before the user can see
+or focus it. Opening, replacing, or rearranging a view must not leave line
+numbers on stale geometry and rely on a click to repair them. In wrapped mode,
+each number stays on the first visual line of the logical line it identifies.
+Focus changes interaction state; it is never a layout trigger.
 
 Healthy source panes are silent: do not render repeated "In sync" or "Editing"
 labels. A transient parse failure also stays silent during its short grace

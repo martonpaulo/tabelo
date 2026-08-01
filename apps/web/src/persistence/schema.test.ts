@@ -51,6 +51,10 @@ describe("loading a stored payload", () => {
 		expect(outcome.state.workspace.panes.map((pane) => pane.zoom)).toEqual([
 			1, 1.2,
 		]);
+		expect(outcome.state.workspace.panes.map((pane) => pane.wrap)).toEqual([
+			false,
+			false,
+		]);
 	});
 
 	it("preserves per-column wrapping in the current workspace schema", () => {
@@ -61,6 +65,26 @@ describe("loading a stored payload", () => {
 		expect(outcome.status).toBe("ok");
 		if (outcome.status !== "ok") return;
 		expect(outcome.state.workspace.wrappedColumns).toEqual(["c1"]);
+	});
+
+	it("preserves pane wrapping while defaulting older version-4 panes", () => {
+		const workspace = payload().workspace;
+		const outcome = validatePersistedState(
+			payload({
+				workspace: {
+					...workspace,
+					panes: workspace.panes.map((pane, index) =>
+						index === 1 ? { ...pane, wrap: true } : pane,
+					),
+				},
+			}),
+		);
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.workspace.panes.map((pane) => pane.wrap)).toEqual([
+			false,
+			true,
+		]);
 	});
 
 	it("refuses every non-current version", () => {

@@ -48,6 +48,9 @@ const paneSchema = z.object({
 	// Bounded like the split ratios: a value outside the ladder means the
 	// payload was not written by Tabelo, so it is reported rather than coerced.
 	zoom: z.number().min(MIN_PANE_ZOOM).max(MAX_PANE_ZOOM),
+	// Version-4 payloads predate pane-owned source wrapping. Keep the current
+	// version readable while making the runtime contract explicit.
+	wrap: z.boolean().default(false),
 });
 
 const workspaceSchema = z.object({

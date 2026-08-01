@@ -111,7 +111,13 @@ describe("applying a layout", () => {
 
 	it("fills panes a smaller layout did not have", () => {
 		const after = applyLayout("quad", [
-			{ id: "abcd", view: "grid", slots: ["a", "b", "c", "d"], zoom: 1 },
+			{
+				id: "abcd",
+				view: "grid",
+				slots: ["a", "b", "c", "d"],
+				zoom: 1,
+				wrap: false,
+			},
 		]);
 		expect(after).toHaveLength(4);
 		expect(after[0].view).toBe("grid");

@@ -173,6 +173,7 @@ export interface TabeloState {
 	setActivePane: (paneId: string) => void;
 	setOutputOption: (id: OutputOptionId, value: boolean) => void;
 	setPaneZoom: (paneId: string, zoom: number) => void;
+	setPaneWrap: (paneId: string, wrap: boolean) => void;
 	toggleColumnWrap: (columnId: string) => void;
 	setColumnRatio: (ratio: number) => void;
 	setRowRatio: (ratio: number) => void;
@@ -737,6 +738,22 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			},
 		});
 	},
+
+	// Source wrapping is pane presentation. It is persisted with the pane but
+	// never changes the document or consumes a document-history step.
+	setPaneWrap: (paneId, wrap) =>
+		set((state) => {
+			const target = state.workspace.panes.find((pane) => pane.id === paneId);
+			if (!target || target.wrap === wrap) return state;
+			return {
+				workspace: {
+					...state.workspace,
+					panes: state.workspace.panes.map((pane) =>
+						pane.id === paneId ? { ...pane, wrap } : pane,
+					),
+				},
+			};
+		}),
 
 	// Wrapping is a persisted grid preference, not a document edit. The stable
 	// id survives column reordering, and refusing unknown ids keeps persistence

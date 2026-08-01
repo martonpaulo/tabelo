@@ -34,9 +34,10 @@ interface PaneContentProps {
 	// Content scale. Text-only views read it from `--pane-zoom` in the cascade;
 	// the grid needs the number because column widths are measured, not styled.
 	readonly zoom: number;
+	readonly wrap: boolean;
 }
 
-export function PaneContent({ paneId, view, zoom }: PaneContentProps) {
+export function PaneContent({ paneId, view, zoom, wrap }: PaneContentProps) {
 	const document = useTabeloStore((state) => state.document);
 	if (view.kind === "grid") return <GridPane zoom={zoom} />;
 	const failure = view.codec ? canSerialize(view.codec, document) : null;
@@ -52,6 +53,7 @@ export function PaneContent({ paneId, view, zoom }: PaneContentProps) {
 					paneId={paneId}
 					viewId={view.id}
 					zoom={zoom}
+					wrap={wrap}
 				/>
 			)}
 		</Suspense>

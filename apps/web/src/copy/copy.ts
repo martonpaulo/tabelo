@@ -161,6 +161,7 @@ export const copy = {
 		zoomOut: "Zoom out",
 		zoomIn: "Zoom in",
 		resetZoom: "Reset zoom",
+		wrapSource: "Wrap lines",
 	},
 
 	disabled: {

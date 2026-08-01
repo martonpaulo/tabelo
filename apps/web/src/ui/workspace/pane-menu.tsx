@@ -1,6 +1,7 @@
 import { Button } from "@tabelo/ui/components/button";
 import {
 	DropdownMenu,
+	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
@@ -14,6 +15,7 @@ import {
 	ClipboardCopy,
 	Replace,
 	RotateCcw,
+	WrapText,
 	X,
 	ZoomIn,
 	ZoomOut,
@@ -78,6 +80,10 @@ export function PaneMenu({
 		(state) =>
 			state.workspace.panes.find((pane) => pane.id === paneId)?.zoom ??
 			DEFAULT_PANE_ZOOM,
+	);
+	const wrap = useTabeloStore(
+		(state) =>
+			state.workspace.panes.find((pane) => pane.id === paneId)?.wrap ?? false,
 	);
 	const canClose = useTabeloStore(
 		(state) => smallerLayout(state.workspace.layout) !== undefined,
@@ -177,6 +183,22 @@ export function PaneMenu({
 						</DropdownMenuItem>
 					</DisabledTooltip>
 				</DropdownMenuGroup>
+
+				{view.kind === "source" ? (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuCheckboxItem
+							checked={wrap}
+							closeOnClick={false}
+							onCheckedChange={(checked) =>
+								useTabeloStore.getState().setPaneWrap(paneId, checked)
+							}
+						>
+							<WrapText aria-hidden />
+							{copy.workspace.wrapSource}
+						</DropdownMenuCheckboxItem>
+					</>
+				) : null}
 
 				<DropdownMenuSeparator />
 

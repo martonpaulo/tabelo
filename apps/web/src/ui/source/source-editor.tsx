@@ -53,11 +53,16 @@ const diagnosticsCompartment = new Compartment();
 const headerLineCompartment = new Compartment();
 const attributesCompartment = new Compartment();
 const zoomCompartment = new Compartment();
+const wrapCompartment = new Compartment();
 
 function zoomExtension(zoom: number) {
 	return EditorView.theme({
 		"&": { "--pane-zoom": String(zoom) },
 	});
+}
+
+function wrapExtension(wrap: boolean) {
+	return wrap ? EditorView.lineWrapping : [];
 }
 
 const markdownTableStructureMatcher = new MatchDecorator({
@@ -262,6 +267,7 @@ function minimalChange(current: string, next: string) {
 interface SourceEditorProps {
 	readonly paneId: string;
 	readonly zoom: number;
+	readonly wrap: boolean;
 	readonly value: string;
 	readonly language: HighlightLanguage;
 	readonly diagnostics: readonly SourceDiagnostic[];
@@ -281,6 +287,7 @@ interface SourceEditorProps {
 export function SourceEditor({
 	paneId,
 	zoom,
+	wrap,
 	value,
 	language,
 	diagnostics,
@@ -320,7 +327,7 @@ export function SourceEditor({
 					drawSelection(),
 					highlightActiveLine(),
 					highlightActiveLineGutter(),
-					EditorView.lineWrapping,
+					wrapCompartment.of(wrapExtension(wrap)),
 					languageCompartment.of(languageFor(language)),
 					diagnosticsCompartment.of(diagnosticExtension(diagnostics)),
 					headerLineCompartment.of(headerLineExtension(language)),
@@ -448,6 +455,17 @@ export function SourceEditor({
 		});
 		view.requestMeasure();
 	}, [zoom]);
+
+	// Reconfigure the existing editor rather than remounting it. This keeps the
+	// caret, selection, draft, and CodeMirror-local undo history intact.
+	useLayoutEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: wrapCompartment.reconfigure(wrapExtension(wrap)),
+		});
+		view.requestMeasure();
+	}, [wrap]);
 
 	useEffect(() => {
 		const view = viewRef.current;
