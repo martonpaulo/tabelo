@@ -100,7 +100,7 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 			: "group-hover/row:opacity-100 group-focus-within/row:opacity-100";
 
 	return (
-		<DropdownMenu>
+		<DropdownMenu onOpenChange={(open) => open && select()}>
 			<DropdownMenuTrigger
 				aria-label={label}
 				tabIndex={entered ? 0 : -1}
@@ -117,7 +117,6 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 					revealed ? "opacity-100" : "opacity-0",
 					groupClass,
 				)}
-				onClick={select}
 			>
 				<Icon aria-hidden className="size-3.5" />
 			</DropdownMenuTrigger>
