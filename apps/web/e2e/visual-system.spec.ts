@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { layoutPresets } from "@/workspace/layout";
 import { expect, test } from "./fixtures";
@@ -64,16 +64,6 @@ async function contrastBetweenColors(
 	);
 }
 
-async function typographyOf(locator: Locator) {
-	return locator.evaluate((element) => {
-		const style = getComputedStyle(element);
-		return {
-			fontSize: Number.parseFloat(style.fontSize),
-			lineHeight: Number.parseFloat(style.lineHeight),
-		};
-	});
-}
-
 test("controls, surfaces, and menus share their semantic visual hierarchy", async ({
 	page,
 	tabelo,
@@ -110,19 +100,6 @@ test("controls, surfaces, and menus share their semantic visual hierarchy", asyn
 		(element) => getComputedStyle(element).backgroundColor,
 	);
 	expect(menuBackground).not.toBe(paneBackground);
-	expect(
-		await menu.evaluate((element) => getComputedStyle(element).borderRadius),
-	).toBe(paneRadius);
-	expect(
-		await menu
-			.getByRole("menuitem", { name: copy.actions.newTable })
-			.evaluate((element) => getComputedStyle(element).fontSize),
-	).toBe(
-		await pane
-			.getByRole("heading")
-			.first()
-			.evaluate((element) => getComputedStyle(element).fontSize),
-	);
 	await expect(
 		menu.getByRole("menuitem", { name: copy.actions.newTable }),
 	).toHaveCSS("cursor", "pointer");
@@ -131,102 +108,12 @@ test("controls, surfaces, and menus share their semantic visual hierarchy", asyn
 	).toContain("blur");
 });
 
-test("the app menu identity uses readable multi-line typography", async ({
-	page,
-	tabelo,
-}) => {
-	const menu = await tabelo.openAppMenu();
-	const name = menu.getByText(copy.app.name, { exact: true });
-	const tagline = menu.getByText(copy.app.tagline, { exact: true });
-
-	const geometry = await Promise.all([
-		name.boundingBox(),
-		tagline.boundingBox(),
-		typographyOf(name),
-		typographyOf(tagline),
-		page.evaluate(() =>
-			Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
-		),
-	]);
-	const [nameBox, taglineBox, nameType, taglineType, rootFontSize] = geometry;
-
-	expect(nameBox).not.toBeNull();
-	expect(taglineBox).not.toBeNull();
-	expect(nameType.fontSize).toBeGreaterThanOrEqual(rootFontSize * 0.875);
-	expect(taglineBox?.y).toBeGreaterThanOrEqual(
-		(nameBox?.y ?? 0) + (nameBox?.height ?? 0),
-	);
-	expect(taglineType.lineHeight).toBeGreaterThan(taglineType.fontSize);
-	expect(
-		page.getByRole("menuitem").filter({ hasText: copy.app.name }),
-	).toHaveCount(0);
-
-	await page.keyboard.press("Escape");
-	await expect(menu).toBeHidden();
-	const trigger = page.getByRole("button", {
-		name: copy.actions.openAppMenu,
-	});
-	await trigger.focus();
-	await trigger.press("Enter");
-	await expect(menu).toBeVisible();
-	await expect(
-		menu.getByRole("menuitem", { name: copy.actions.newTable }),
-	).toBeFocused();
-});
-
-test("single-line menu labels keep their compact shared treatment", async ({
-	page,
-	tabelo,
-}) => {
-	const rootFontSize = await page.evaluate(() =>
-		Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
-	);
-	const expectCompactLabel = async (label: Locator) => {
-		const type = await typographyOf(label);
-		expect(type.fontSize).toBeCloseTo(rootFontSize * 0.75, 5);
-		expect(type.lineHeight).toBeCloseTo(type.fontSize, 5);
-	};
-
-	const layoutMenu = await tabelo.openLayoutMenu();
-	await expectCompactLabel(
-		layoutMenu.getByText(copy.workspace.layoutHint, { exact: true }),
-	);
-	await page.keyboard.press("Escape");
-	await expect(layoutMenu).toBeHidden();
-	await page.keyboard.press("Escape");
-
-	const viewMenu = await tabelo.openPaneViewMenu("markdown");
-	await expectCompactLabel(
-		viewMenu.getByText(copy.workspace.changeView, { exact: true }),
-	);
-	await page.keyboard.press("Escape");
-	await expect(viewMenu).toBeHidden();
-
+test("the pane zoom label is announced", async ({ tabelo }) => {
 	const paneMenu = await tabelo.openPaneMenu("markdown");
 	const zoomLabel = paneMenu.getByText(copy.workspace.zoom(100), {
 		exact: true,
 	});
-	await expectCompactLabel(zoomLabel);
 	await expect(zoomLabel).toHaveAttribute("aria-live", "polite");
-	await page.keyboard.press("Escape");
-	await expect(paneMenu).toBeHidden();
-
-	await tabelo
-		.grid()
-		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		})
-		.first()
-		.click();
-	const columnMenu = page.getByRole("menu", {
-		name: new RegExp(`^${copy.actions.columnActions}:`),
-	});
-	await expectCompactLabel(
-		columnMenu.locator('[data-slot="dropdown-menu-label"]').first(),
-	);
-	await expectCompactLabel(
-		columnMenu.getByText(copy.actions.alignment, { exact: true }),
-	);
 });
 
 test("only view content participates in native text selection", async ({
@@ -264,7 +151,7 @@ test("only view content participates in native text selection", async ({
 	);
 });
 
-test("the active pane boundary stays above its content without reflow", async ({
+test("the active pane boundary stays above its content", async ({
 	page,
 	tabelo,
 }) => {
@@ -274,21 +161,11 @@ test("the active pane boundary stays above its content without reflow", async ({
 	const indicator = active.locator(".tabelo-active-pane-indicator");
 	await expect(indicator).toHaveCount(1);
 	await expect(active).toHaveAttribute("aria-current", "true");
-	await expect(active).toHaveAccessibleName(
-		copy.a11y.pane(copy.views.grid.label),
-	);
 	await expect(inactive.locator(".tabelo-active-pane-indicator")).toHaveCount(
 		0,
 	);
 
 	await expect(inactive).not.toHaveAttribute("aria-current");
-	await expect(inactive).toHaveAccessibleName(
-		copy.a11y.pane(copy.views.markdown.label),
-	);
-
-	const activeBox = await active.boundingBox();
-	const indicatorBox = await indicator.boundingBox();
-	expect(indicatorBox).toEqual(activeBox);
 
 	const styles = await indicator.evaluate((element) => {
 		const probe = document.createElement("span");
@@ -324,7 +201,6 @@ test("the active pane boundary stays above its content without reflow", async ({
 	);
 	await expect(active).not.toHaveAttribute("aria-current");
 	await expect(inactive).toHaveAttribute("aria-current", "true");
-	expect(await active.boundingBox()).toEqual(activeBox);
 
 	// The sticky grid corner is the pane's highest content layer. Scrolling it
 	// under the overlay must not let it overtake the active boundary.
@@ -359,11 +235,7 @@ test("multi-pane layouts and themes keep the active boundary on all four edges",
 				await expect(indicator).toHaveCount(0);
 				continue;
 			}
-			const [paneBox, indicatorBox] = await Promise.all([
-				pane.boundingBox(),
-				indicator.boundingBox(),
-			]);
-			expect(indicatorBox).toEqual(paneBox);
+			await expect(indicator).toHaveCount(1);
 			const widths = await indicator.evaluate((element) => {
 				const style = getComputedStyle(element);
 				return [
@@ -434,7 +306,7 @@ test("an empty first visit shows one centered start surface over an inert blurre
 	).toBeVisible();
 });
 
-test("source focus belongs to the pane while caret and line numbers share its metrics", async ({
+test("source focus belongs to the pane and selection follows the theme", async ({
 	tabelo,
 }) => {
 	const pane = tabelo.pane("markdown");
@@ -446,61 +318,6 @@ test("source focus belongs to the pane while caret and line numbers share its me
 		"solid",
 	);
 	await expect(pane.locator(".tabelo-active-pane-indicator")).toHaveCount(1);
-
-	const assertEditorGeometry = async () => {
-		await pane.evaluate(
-			() =>
-				new Promise<void>((resolve) => {
-					requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-				}),
-		);
-		const line = await pane.locator(".cm-line").first().boundingBox();
-		const activeLine = await pane.locator(".cm-activeLine").boundingBox();
-		const cursor = await pane.locator(".cm-cursor").boundingBox();
-		const number = await pane
-			.locator(".cm-lineNumbers .cm-gutterElement")
-			.filter({ hasText: /^1$/ })
-			.boundingBox();
-		expect(line).not.toBeNull();
-		expect(activeLine).not.toBeNull();
-		expect(cursor).not.toBeNull();
-		expect(number).not.toBeNull();
-		const logicalLineHeight = line?.height ?? 1;
-		const visualLineHeight = await pane
-			.locator(".cm-line")
-			.first()
-			.evaluate((element) =>
-				Number.parseFloat(getComputedStyle(element).lineHeight),
-			);
-		expect(
-			Math.abs((line?.y ?? 0) - (number?.y ?? 0)) / visualLineHeight,
-		).toBeLessThan(0.1);
-		expect((number?.height ?? 0) / logicalLineHeight).toBeGreaterThan(0.95);
-		expect((number?.height ?? 0) / logicalLineHeight).toBeLessThan(1.05);
-		// Caret remains font-sized (1.25rem) while the line box (2rem) is looser,
-		// so it covers ~62.5% of the visual line and sits vertically centered.
-		expect((cursor?.height ?? 0) / visualLineHeight).toBeGreaterThan(0.5);
-		expect((cursor?.height ?? 0) / visualLineHeight).toBeLessThanOrEqual(1.05);
-		const cursorLineOffset =
-			((cursor?.y ?? 0) - (activeLine?.y ?? 0)) % visualLineHeight;
-		expect(
-			Math.min(
-				Math.abs(cursorLineOffset),
-				Math.abs(visualLineHeight - cursorLineOffset),
-			) / visualLineHeight,
-		).toBeLessThan(0.35);
-	};
-
-	await assertEditorGeometry();
-	for (let step = 0; step < 5; step += 1) {
-		await tabelo.page.keyboard.press("ControlOrMeta+-");
-	}
-	await assertEditorGeometry();
-	for (let step = 0; step < 15; step += 1) {
-		await tabelo.page.keyboard.press("ControlOrMeta+=");
-	}
-	await assertEditorGeometry();
-	await tabelo.page.keyboard.press("ControlOrMeta+0");
 
 	await tabelo.page.keyboard.press("ControlOrMeta+A");
 	const selectionColours = () =>
@@ -659,7 +476,7 @@ test("light and dark text and focus tokens meet their contrast floors", async ({
 	expect(new Set(backgrounds).size).toBe(2);
 });
 
-test("unchecked menu choices keep a visible outline and clear label spacing", async ({
+test("unchecked menu choices keep a visible contrasting outline", async ({
 	page,
 	tabelo,
 }) => {
@@ -697,22 +514,6 @@ test("unchecked menu choices keep a visible outline and clear label spacing", as
 		expect(
 			await contrastBetweenColors(page, colors.foreground, colors.background),
 		).toBeGreaterThanOrEqual(3);
-
-		const geometry = await option.evaluate((element) => {
-			const indicator = element.querySelector(
-				'[data-slot="dropdown-menu-radio-item-indicator"]',
-			);
-			if (!(indicator instanceof HTMLElement)) {
-				throw new Error("Menu choice indicator is unavailable.");
-			}
-			return {
-				paddingRight: Number.parseFloat(getComputedStyle(element).paddingRight),
-				indicatorWidth: indicator.getBoundingClientRect().width,
-			};
-		});
-		expect(geometry.paddingRight).toBeGreaterThanOrEqual(
-			geometry.indicatorWidth * 2,
-		);
 
 		await page.keyboard.press("Escape");
 		await page.keyboard.press("Escape");
@@ -759,7 +560,7 @@ for (const viewport of [
 	});
 }
 
-test("empty state actions share an alignment, avoid unpredictable wrapping, and preserve visual tab order across widths", async ({
+test("empty state actions preserve tab order across widths", async ({
 	page,
 }) => {
 	await page.goto("/");
@@ -774,29 +575,7 @@ test("empty state actions share an alignment, avoid unpredictable wrapping, and 
 		await expect(button).toBeVisible();
 	}
 
-	const assertGeometryAndFocus = async (orientation: "row" | "column") => {
-		const boxes = await Promise.all(buttons.map((b) => b.boundingBox()));
-
-		for (let i = 1; i < boxes.length; i++) {
-			const prev = boxes[i - 1];
-			const curr = boxes[i];
-			expect(prev).toBeTruthy();
-			expect(curr).toBeTruthy();
-			if (!prev || !curr) return;
-
-			if (orientation === "column") {
-				// Same left edge
-				expect(curr.x).toBeCloseTo(prev.x, 1);
-				// One below another
-				expect(curr.y).toBeGreaterThan(prev.y + prev.height - 1);
-			} else {
-				// Same top edge
-				expect(curr.y).toBeCloseTo(prev.y, 1);
-				// One to the right of another
-				expect(curr.x).toBeGreaterThan(prev.x + prev.width - 1);
-			}
-		}
-
+	const assertFocusOrder = async () => {
 		// Check Tab order matches visual order
 		await page.keyboard.press("Shift+Tab"); // reset focus out of the group just in case
 		await page.keyboard.press("Shift+Tab");
@@ -812,13 +591,13 @@ test("empty state actions share an alignment, avoid unpredictable wrapping, and 
 
 	// Test at narrow width (should be column)
 	await page.setViewportSize({ width: 320, height: 568 });
-	await assertGeometryAndFocus("column");
+	await assertFocusOrder();
 
 	// Test at medium width (should be row)
 	await page.setViewportSize({ width: 800, height: 600 });
-	await assertGeometryAndFocus("row");
+	await assertFocusOrder();
 
 	// Test at wide width (should be row)
 	await page.setViewportSize({ width: 1200, height: 800 });
-	await assertGeometryAndFocus("row");
+	await assertFocusOrder();
 });

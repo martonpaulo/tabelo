@@ -96,6 +96,15 @@ APIs. Convert pointer measurements to `rem` before storing presentation state,
 and never treat an API's pixel result as the authored unit or a value worth
 pinning in a test.
 
+Tests never turn a visual equality into two bounds around the same target, a
+ratio near `1`, `toBeCloseTo`, or matching bounding boxes. Those checks pin the
+rendered dimension just as surely as an exact number and provide false
+confidence when the visible result is still wrong. Equal geometry has one code
+owner through a shared token or component and is inspected in the running app.
+Automation is reserved for meaningful thresholds and changes in direction,
+including interaction-target minimums, overflow, breakpoints, contrast, and
+user-issued resizing.
+
 ### Surfaces
 
 | Token | Utility | Use |
@@ -629,6 +638,12 @@ product string just to locate or assert its UI. This keeps accessibility under
 test without turning wording into a second source of truth. A deliberately
 forbidden third-party error string may remain literal when the behavior under
 test is precisely that it must not leak to the interface.
+
+A test also never uses the same canonical copy or product constant as both the
+production input and expected output. That proves only that a value equals
+itself. Canonical copy may be used as a locator when the subsequent assertion is
+about behavior, semantics, or state. Data-derived identifiers such as column
+letters remain technical contracts rather than editorial wording.
 
 Voice: plain, calm, present tense. Say what happened and what the user can do.
 Never blame, never exclaim, never use humour in an error. Prefer "The source

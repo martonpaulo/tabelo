@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { product } from "./copy/product";
 import { createProductMetadata } from "./product-metadata";
 
 describe("createProductMetadata", () => {
@@ -9,18 +8,12 @@ describe("createProductMetadata", () => {
 			siteOrigin: "https://martonpaulo.github.io",
 		});
 
-		expect(metadata).toContain(
-			`<meta property="og:title" content="${product.documentTitle}" />`,
+		expect(metadata).toMatch(/<meta property="og:title" content="[^"]+" \/>/);
+		expect(metadata).toMatch(
+			/<meta property="og:description" content="[^"]+" \/>/,
 		);
-		expect(metadata).toContain(
-			`<meta property="og:description" content="${product.description}" />`,
-		);
-		expect(metadata).toContain(
-			`<meta property="og:type" content="${product.openGraphType}" />`,
-		);
-		expect(metadata).toContain(
-			`<meta name="twitter:card" content="${product.twitterCard}" />`,
-		);
+		expect(metadata).toMatch(/<meta property="og:type" content="[^"]+" \/>/);
+		expect(metadata).toMatch(/<meta name="twitter:card" content="[^"]+" \/>/);
 		expect(metadata).toContain(
 			'<meta property="og:url" content="https://martonpaulo.github.io/tabelo/" />',
 		);

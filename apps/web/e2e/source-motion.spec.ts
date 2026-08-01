@@ -58,9 +58,7 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 		const style = getComputedStyle(element);
 		return {
 			style: style.borderTopStyle,
-			width: Number.parseFloat(style.borderTopWidth),
 		};
 	});
-	expect(darkFocus.width).toBe(lightFocus.width);
 	expect(darkFocus.style).toBe("solid");
 });

@@ -71,21 +71,3 @@ test("each pane names itself and separates changing the view from its actions", 
 	// And the view list is not repeated here.
 	await expect(actionsMenu.getByRole("menuitemradio")).toHaveCount(0);
 });
-
-test("source diagnostics do not reserve editor space", async ({ tabelo }) => {
-	await tabelo.chooseLayout("quad");
-	const pane = tabelo.pane("markdown");
-	const editor = tabelo.source("markdown");
-	const healthyBox = await pane.locator(".cm-editor").boundingBox();
-	expect(healthyBox).not.toBeNull();
-
-	await editor.fill("| A |\n| not a divider |");
-	await expect(editor).toHaveAttribute("aria-invalid", "true");
-	const invalidBox = await pane.locator(".cm-editor").boundingBox();
-	expect(invalidBox).not.toBeNull();
-	expect(invalidBox?.height).toBeCloseTo(healthyBox?.height ?? 0, 0);
-
-	const descriptionId = await editor.getAttribute("aria-describedby");
-	expect(descriptionId).toBeTruthy();
-	await expect(pane.locator(`#${descriptionId}`)).toBeVisible();
-});

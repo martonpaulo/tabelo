@@ -57,7 +57,7 @@ for (const key of ["Enter", "Space"] as const) {
 	});
 }
 
-test("only hovering the pane edge reveals the control and moves nothing", async ({
+test("only hovering the pane edge reveals the overlay control", async ({
 	page,
 	tabelo,
 }) => {
@@ -65,8 +65,6 @@ test("only hovering the pane edge reveals the control and moves nothing", async 
 	const pane = tabelo.pane("grid");
 	const edge = pane.locator('[data-split-control="bottom"]');
 	const control = tabelo.splitControl("grid", "bottom");
-	const before = await pane.boundingBox();
-	const editorBefore = await tabelo.source("markdown").boundingBox();
 
 	await pane.hover();
 	await expect(control).toHaveCSS("opacity", "0");
@@ -74,9 +72,7 @@ test("only hovering the pane edge reveals the control and moves nothing", async 
 	await edge.hover();
 	await expect(control).toHaveCSS("opacity", "1");
 
-	// Absolutely positioned, so appearing costs no layout anywhere.
-	expect(await pane.boundingBox()).toEqual(before);
-	expect(await tabelo.source("markdown").boundingBox()).toEqual(editorBefore);
+	await expect(edge).toHaveCSS("position", "absolute");
 	await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 

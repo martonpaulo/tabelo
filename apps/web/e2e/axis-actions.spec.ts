@@ -199,12 +199,8 @@ test("context menu refuses to delete every selected column", async ({
 	await page.keyboard.press("ControlOrMeta+a");
 	await page.keyboard.press("ControlOrMeta+Backspace");
 	await expect(tabelo.notice("warning")).toBeVisible();
-	await expect(tabelo.header(1)).toHaveAccessibleName(
-		copy.a11y.columnLetter(0),
-	);
-	await expect(tabelo.header(3)).toHaveAccessibleName(
-		copy.a11y.columnLetter(2),
-	);
+	await expect(tabelo.header(1)).toHaveAccessibleName("A");
+	await expect(tabelo.header(3)).toHaveAccessibleName("C");
 });
 
 test("context menu refuses to delete every selected row", async ({

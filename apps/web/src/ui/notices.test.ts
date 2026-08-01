@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { copy } from "@/copy/copy";
 import { documentFromMatrix } from "@/core/document";
 import { conditionNoticeIds } from "@/state/notice-queue";
 import { useTabeloStore } from "@/state/store";
@@ -50,13 +49,12 @@ describe("what is shown", () => {
 		pasteWithHeaderGuess();
 		useTabeloStore.getState().pushNotice({
 			severity: "error",
-			message: copy.notices.clipboardWriteFailed("selection"),
+			message: "It failed.",
 		});
 
-		expect(current().map((notice) => notice.message)).toEqual([
-			copy.notices.headerGuess,
-			copy.notices.clipboardWriteFailed("selection"),
-		]);
+		expect(ids()).toContain(conditionNoticeIds.headerCorrection);
+		expect(current()).toHaveLength(2);
+		expect(current().at(-1)?.severity).toBe("error");
 	});
 
 	it("puts conditions before the messages that arrived later", () => {
@@ -93,9 +91,7 @@ describe("conditions are state, not messages", () => {
 			},
 		});
 
-		expect(find(conditionNoticeIds.storage)?.detail).toBe(
-			copy.notices.storageRecoveryQuota,
-		);
+		expect(find(conditionNoticeIds.storage)?.detail).toBeDefined();
 	});
 
 	it("dismisses one notice without touching the others", () => {
@@ -137,17 +133,16 @@ describe("severity and urgency", () => {
 		expect(notice?.urgency).toBe("assertive");
 	});
 
-	it.each([
-		["unavailable", copy.notices.storageUnavailable],
-		["quota", copy.notices.storageQuota],
-	] as const)("reports a %s storage failure as an error", (kind, message) => {
-		useTabeloStore.setState({ storageIssue: { kind } });
+	it.each(["unavailable", "quota"] as const)(
+		"reports a %s storage failure as an error",
+		(kind) => {
+			useTabeloStore.setState({ storageIssue: { kind } });
 
-		const notice = find(conditionNoticeIds.storage);
-		expect(notice?.message).toBe(message);
-		expect(notice?.severity).toBe("error");
-		expect(notice?.urgency).toBe("assertive");
-	});
+			const notice = find(conditionNoticeIds.storage);
+			expect(notice?.severity).toBe("error");
+			expect(notice?.urgency).toBe("assertive");
+		},
+	);
 
 	it("keeps the header guess informational and polite", () => {
 		pasteWithHeaderGuess();
@@ -170,7 +165,7 @@ describe("what may expire on its own", () => {
 	it("lets a plain confirmation clear itself", () => {
 		useTabeloStore.getState().pushNotice({
 			severity: "info",
-			message: copy.notices.copied("selection"),
+			message: "Done.",
 		});
 
 		expect(autoDismissDelay(current()[0] as AppNotice)).toBe(

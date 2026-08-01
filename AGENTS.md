@@ -387,6 +387,11 @@ here:
 - Test observable contracts at stable seams; avoid tests that only mirror
   implementation details or framework behavior.
 - Do not add tests that assert exact user-facing copy.
+- Do not compare rendered or generated interface text with the same canonical
+  copy or product constant used to produce it. That only proves that a value
+  equals itself. Canonical copy may locate a control when the test then asserts
+  behavior, semantics, or state; data-derived identifiers remain technical
+  contracts rather than editorial copy.
 - Copy changes, additions, and removals do not require new tests by themselves.
 - A pull request containing only copy changes may correctly contain no new or modified tests.
 - Tests should validate behavior, semantics, state, accessibility, or technical contracts, not editorial wording.
@@ -398,8 +403,13 @@ here:
   states, relationships, keyboard paths, focus behavior, and contrast through
   browser automation. A separately arranged manual session may inform product
   research, but it never blocks delivery.
-- Do not assert exact rendered dimensions. Test token ownership, shared values,
-  relative changes, supported ranges, and minimum interaction targets instead.
+- Do not assert rendered dimensions or visual equality. A narrow tolerance,
+  ratio around one target, `toBeCloseTo`, or paired bounding-box equality is an
+  exact geometry assertion in disguise and is equally forbidden. Own visual
+  equality through one shared token or component and inspect the rendered result
+  during implementation. Automated geometry checks are limited to meaningful
+  thresholds and direction changes, such as minimum interaction targets,
+  overflow, breakpoints, contrast, and a resize action making a column wider.
 - Run the complete browser suite in Chromium. Reserve Firefox for flows that
   are genuinely sensitive to browser-engine differences, such as clipboard and
   download APIs, keyboard focus, persistence, responsive layout, and source

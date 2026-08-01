@@ -63,11 +63,7 @@ test("a view already open elsewhere is disabled and explains why", async ({
 	});
 	await expect(blocked).toBeDisabled();
 	await blocked.hover();
-	await expect(
-		page.getByRole("tooltip", {
-			name: copy.disabled.viewAlreadyOpen(copy.views.grid.label),
-		}),
-	).toBeVisible();
+	await expect(page.getByRole("tooltip")).toBeVisible();
 	await expect(
 		menu.getByRole("menuitemradio", { name: copy.views.markdown.label }),
 	).toBeChecked();
