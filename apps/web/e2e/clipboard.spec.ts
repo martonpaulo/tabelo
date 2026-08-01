@@ -9,10 +9,8 @@ import { faultyClipboard } from "./helpers";
 // the user declines, when the context is restricted, or when the half of the
 // API being called does not exist.
 
-const readRecovery =
-	"Clipboard access was blocked. Use ⌘V/Ctrl+V or allow clipboard access, then try again.";
-const writeRecovery =
-	"The selection could not be copied. Select it and use ⌘C/Ctrl+C.";
+const readRecovery = copy.notices.clipboardReadFailed;
+const writeRecovery = copy.notices.clipboardWriteFailed("selection");
 
 async function openTableActions(page: Page): Promise<void> {
 	await page.getByRole("gridcell").first().click({ button: "right" });
@@ -97,7 +95,7 @@ test("an empty clipboard says so rather than claiming it was blocked", async ({
 	await page.getByRole("button", { name: copy.empty.pasteHint }).click();
 
 	await expect(
-		tabelo.notice().filter({ hasText: "There is nothing on the clipboard" }),
+		tabelo.notice().filter({ hasText: copy.notices.clipboardEmpty }),
 	).toBeVisible();
 	await expect(tabelo.notice().filter({ hasText: readRecovery })).toHaveCount(
 		0,
@@ -155,7 +153,7 @@ test("a granted copy confirms what it did and keeps the rich flavour", async ({
 	await page.getByRole("menuitem", { name: copy.actions.copy }).click();
 
 	await expect(
-		tabelo.notice().filter({ hasText: "Copied to the clipboard." }),
+		tabelo.notice().filter({ hasText: copy.notices.copied("selection") }),
 	).toBeVisible();
 	expect(
 		await page.evaluate(
