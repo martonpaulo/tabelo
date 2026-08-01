@@ -700,7 +700,8 @@ per keystroke.
   tooltip explaining that it is already open. The current
   pane's own view remains selected and enabled. No workspace may show two
   instances of the same registered view.
-- Add view and Close view are disabled, not hidden, at four panes and at two.
+- Add view is disabled, not hidden, at four panes. Close view is disabled, not
+  hidden, at one pane. Both expose the shared written disabled reason.
 - The global Add view command remains visible and disabled at four panes, with
   a tooltip explaining the limit. Pane-edge controls exist only where a split
   is possible.
