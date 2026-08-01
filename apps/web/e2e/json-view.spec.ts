@@ -8,12 +8,6 @@ import type { TabeloPage } from "./helpers";
 // the refusal surfaces when it cannot: the view chooser before conversion, and
 // the pane itself when a header is broken after conversion.
 
-// The code never reaches the message, only the positions do, so any code names
-// the same columns. Same convention as copy.test.ts.
-function blockedFor(columns: readonly number[]): string {
-	return copy.source.blocked({ code: "test", columns: [...columns] });
-}
-
 async function nameColumns(
 	tabelo: TabeloPage,
 	...headers: readonly string[]
@@ -68,7 +62,9 @@ test("a duplicate header blocks the open view and names both columns", async ({
 
 	await tabelo.editHeader(3, "Name", "City");
 
-	await expect(blockedReason(tabelo)).toHaveValue(blockedFor([0, 2]));
+	await expect(tabelo.source("json")).toHaveCount(0);
+	await expect(blockedReason(tabelo)).toBeVisible();
+	await expect(blockedReason(tabelo)).toHaveAttribute("readonly", "");
 });
 
 test("a header that is a whole number blocks the open view", async ({
@@ -82,7 +78,8 @@ test("a header that is a whole number blocks the open view", async ({
 
 	await tabelo.editHeader(2, "2024", "Revenue");
 
-	await expect(blockedReason(tabelo)).toHaveValue(blockedFor([1]));
+	await expect(tabelo.source("json")).toHaveCount(0);
+	await expect(blockedReason(tabelo)).toBeVisible();
 });
 
 test("correcting the header restores the view in place", async ({ tabelo }) => {

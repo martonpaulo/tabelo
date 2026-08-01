@@ -154,9 +154,11 @@ test("column width commands change the selected column", async ({
 			})
 			.first()
 			.click();
-		return page.getByRole("menu", {
+		const menu = page.getByRole("menu", {
 			name: new RegExp(`^${copy.actions.columnActions}:`),
 		});
+		await menu.waitFor({ state: "visible" });
+		return menu;
 	};
 	const activate = async (item: Locator) => {
 		await item.focus();

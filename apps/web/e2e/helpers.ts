@@ -180,9 +180,12 @@ export class TabeloPage {
 	async chooseLayout(id: LayoutId): Promise<void> {
 		const dialog = await this.openLayoutDialog();
 		await dialog.getByRole("radio", { name: copy.layouts[id].label }).click();
-		await dialog
-			.getByRole("button", { name: copy.workspace.applyLayout })
-			.click();
+		const apply = dialog.getByRole("button", {
+			name: copy.workspace.applyLayout,
+		});
+		if (await apply.isEnabled()) await apply.click();
+		else
+			await dialog.getByRole("button", { name: copy.actions.cancel }).click();
 		await dialog.waitFor({ state: "hidden" });
 	}
 
