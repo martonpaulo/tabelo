@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { copy } from "@/copy/copy";
 import { rectColumns, rectRows, selectionRect } from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 
 // Holding Shift+Down should say the extent the user stopped at, not one
 // utterance per keystroke, so the summary is written only once it settles.

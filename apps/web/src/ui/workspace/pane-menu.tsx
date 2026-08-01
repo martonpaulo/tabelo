@@ -19,13 +19,13 @@ import {
 	ZoomIn,
 	ZoomOut,
 } from "lucide-react";
+import { copy } from "@/copy/copy";
 import { canSerialize } from "@/formats";
 import { useTabeloStore, visibleTextForPane } from "@/state/store";
 import {
 	copyFormattedTableToClipboard,
 	copyToClipboard,
 } from "@/ui/clipboard-actions";
-import { copy } from "@/ui/copy";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
 import { listViews } from "@/views/registry";

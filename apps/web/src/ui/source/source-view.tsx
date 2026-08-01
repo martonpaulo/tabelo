@@ -1,6 +1,6 @@
 import { useContext, useMemo } from "react";
+import { copy } from "@/copy/copy";
 import { textForView, useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 import { PaneEntryContext } from "@/ui/workspace/use-pane-entry";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";

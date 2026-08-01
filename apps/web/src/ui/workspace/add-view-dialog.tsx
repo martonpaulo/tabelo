@@ -9,9 +9,9 @@ import {
 import { Label } from "@tabelo/ui/components/label";
 import { RadioGroup, RadioGroupItem } from "@tabelo/ui/components/radio-group";
 import { useId, useState } from "react";
+import { copy } from "@/copy/copy";
 import { canSerialize } from "@/formats";
 import { useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 import { DialogCancel, DialogConfirm } from "@/ui/primitives/dialog-buttons";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";

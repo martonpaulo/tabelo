@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
 // Below the stacking width the 2x2 tiling is abandoned rather than squeezed.

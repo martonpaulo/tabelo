@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import { sourceFeedbackIds } from "./source-feedback";
 
 describe("source feedback copy", () => {

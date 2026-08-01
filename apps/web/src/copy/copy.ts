@@ -1,6 +1,6 @@
+import { product } from "@/copy/product";
 import type { ParseIssue, PreconditionFailure } from "@/formats/types";
 import type { ImportError } from "@/import/prepare";
-import { product } from "@/product";
 import type { SplitEdge } from "@/workspace/layout";
 
 // Every user-visible string lives here. One place to keep the voice

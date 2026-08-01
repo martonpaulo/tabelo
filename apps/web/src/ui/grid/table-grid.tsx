@@ -2,6 +2,7 @@ import { cn } from "@tabelo/ui/lib/utils";
 import { AlignCenter, AlignJustify, AlignLeft, AlignRight } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
+import { copy } from "@/copy/copy";
 import {
 	type CellPosition,
 	HEADER_ROW,
@@ -10,7 +11,6 @@ import {
 } from "@/core/selection";
 import type { Alignment } from "@/core/types";
 import { type StructureDeletionRefusal, useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import { AxisMenu } from "./axis-menu";
 import { CellEditor } from "./cell-editor";

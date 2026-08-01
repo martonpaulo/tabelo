@@ -1,8 +1,8 @@
 import { Button } from "@tabelo/ui/components/button";
 import { X } from "lucide-react";
 import { useEffect, useMemo } from "react";
+import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 import { useSelectionAnnouncement } from "@/ui/grid/use-selection-announcement";
 import {
 	type AppNotice,

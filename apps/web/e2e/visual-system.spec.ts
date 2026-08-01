@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import { layoutPresets } from "@/workspace/layout";
 import { expect, test } from "./fixtures";
 

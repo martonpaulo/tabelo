@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 
 describe("column positional names", () => {
 	// The boundaries are where a letter sequence goes wrong: 26 to 27 rolls over

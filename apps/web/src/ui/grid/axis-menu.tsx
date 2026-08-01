@@ -21,10 +21,10 @@ import {
 	MoreVertical,
 	RotateCcw,
 } from "lucide-react";
+import { copy } from "@/copy/copy";
 import { HEADER_ROW } from "@/core/selection";
 import type { Alignment } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import {

@@ -26,6 +26,7 @@ import {
 	Upload,
 } from "lucide-react";
 import { useRef, useState, useSyncExternalStore } from "react";
+import { copy } from "@/copy/copy";
 import {
 	canRunHistory,
 	getHistoryRevision,
@@ -33,7 +34,6 @@ import {
 	subscribeHistory,
 } from "@/history/coordinator";
 import { useTabeloStore } from "@/state/store";
-import { copy } from "@/ui/copy";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
 import type { PwaUpdate } from "@/ui/pwa-update";

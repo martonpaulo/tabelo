@@ -1,4 +1,4 @@
-import { product } from "./product";
+import { product } from "./copy/product";
 
 type ProductMetadataOptions = {
 	basePath: string;

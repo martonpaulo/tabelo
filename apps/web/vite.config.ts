@@ -3,7 +3,7 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
-import { product } from "./src/product";
+import { product } from "./src/copy/product";
 import { createProductMetadata } from "./src/product-metadata";
 
 // GitHub Pages serves this project from a subpath. The deploy workflow sets

@@ -6,7 +6,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
-import { copy } from "@/ui/copy";
+import { copy } from "@/copy/copy";
 import { DialogCancel, DialogConfirm } from "@/ui/primitives/dialog-buttons";
 
 interface NewTableDialogProps {
