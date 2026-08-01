@@ -392,6 +392,12 @@ here:
 - Tests should validate behavior, semantics, state, accessibility, or technical contracts, not editorial wording.
 - Do not add meaningless tests merely to claim that a pull request has test coverage.
 - When copy is used to locate an element in a test, prefer stable semantic queries or another appropriate selector rather than asserting the copy itself.
+- Do not require NVDA, JAWS, VoiceOver, or another GUI-only assistive application
+  as an acceptance, issue-closure, or pipeline criterion. Those tools are not
+  available in the CLI pipeline. Validate the accessibility tree, roles, names,
+  states, relationships, keyboard paths, focus behavior, and contrast through
+  browser automation. A separately arranged manual session may inform product
+  research, but it never blocks delivery.
 - Do not assert exact rendered dimensions. Test token ownership, shared values,
   relative changes, supported ranges, and minimum interaction targets instead.
 - Run the complete browser suite in Chromium. Reserve Firefox for flows that
