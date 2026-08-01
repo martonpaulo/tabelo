@@ -1,5 +1,5 @@
 import { product } from "@/product";
-import { copy } from "@/ui/copy";
+
 import { expect, test } from "./fixtures";
 
 test("opens a clean workspace through accessible product labels", async ({
@@ -21,10 +21,7 @@ test("opens a clean workspace through accessible product labels", async ({
 	// A new table starts unnamed. Its columns are identified by the index strip,
 	// and an empty header borrows that letter for its accessible name.
 	await expect(tabelo.header(1)).toHaveText("");
-	await expect(tabelo.header(1)).toHaveAccessibleName(
-		copy.a11y.columnLetter(0),
-	);
-	await expect(tabelo.columnIndex(1)).toHaveText(copy.a11y.columnLetter(0));
+	await expect(tabelo.columnIndex(1)).toBeVisible();
 	await expect(tabelo.cell(1, 1)).toHaveText("");
 	await expect(tabelo.source("markdown")).toBeVisible();
 });

@@ -7,16 +7,17 @@ import { DEFAULT_PANE_ZOOM } from "./zoom";
 //   --+--
 //   c | d
 //
-// A pane occupies one slot or two adjacent slots, and a workspace holds two to
-// four of them. Free-form slot assignment was deliberately not built: presets
-// keep the choice to one obvious picker instead of a layout editor, which is
-// the difference between a utility and an IDE.
+// A pane occupies one slot, two adjacent slots, or the whole grid, and a
+// workspace holds one to four of them. Free-form slot assignment was
+// deliberately not built: presets keep the choice to one obvious picker instead
+// of a layout editor, which is the difference between a utility and an IDE.
 
 export type SlotId = "a" | "b" | "c" | "d";
 
 export const SLOT_ORDER: readonly SlotId[] = ["a", "b", "c", "d"];
 
 export type LayoutId =
+	| "single"
 	| "columns"
 	| "rows"
 	| "left-split"
@@ -42,6 +43,13 @@ const DEFAULT_LAYOUT: LayoutPreset = {
 };
 
 export const layoutPresets: readonly LayoutPreset[] = [
+	// One pane is a preset spanning all four slots rather than the absence of a
+	// preset, so splitting, shrinking, and the persisted schema all keep working
+	// from the shapes a layout declares instead of gaining a pane-count branch.
+	{
+		id: "single",
+		panes: [["a", "b", "c", "d"]],
+	},
 	DEFAULT_LAYOUT,
 	{
 		id: "rows",
@@ -131,9 +139,13 @@ export function paneCount(id: LayoutId): number {
 	return getLayout(id).panes.length;
 }
 
-// Missing entries for both two-pane presets are the floor: the workspace never
-// drops below two panes, so Close view has nowhere to go and stays disabled.
+// The missing entry for "single" is the floor: a workspace always shows at
+// least one view, so Close view has nowhere to go there and stays disabled.
+// Both two-pane presets shrink to it, because either divider disappearing
+// leaves the same whole-grid shape.
 const SMALLER_LAYOUT: Partial<Record<LayoutId, LayoutId>> = {
+	columns: "single",
+	rows: "single",
 	"left-split": "columns",
 	"right-split": "columns",
 	// A top split keeps its horizontal divider on the way down, so it shrinks to
@@ -159,10 +171,11 @@ export interface WorkspacePane {
 }
 
 // Which edge of a pane carries its split control, and therefore which side the
-// pane it creates appears on. A two-slot pane can only be cut across its long
-// axis, so a tall one gains a pane below and a wide one gains a pane beside it.
-// Both edges are outer edges of the workspace: no control ever sits on the
-// divider between two panes, so there is never a question of which is splitting.
+// pane it creates appears on. A pane is cut across each axis it spans two
+// tracks on, so a tall one gains a pane below, a wide one gains a pane beside
+// it, and the whole-grid pane of "single" offers both. Every such edge is an
+// outer edge of the workspace: no control ever sits on the divider between two
+// panes, so there is never a question of which is splitting.
 export type SplitEdge = "bottom" | "right";
 
 export interface SplitOption {
@@ -275,38 +288,60 @@ function shapeSignature(panes: readonly (readonly SlotId[])[]): string {
 		.join("|");
 }
 
-// Where the workspace can grow from here, one option per pane that can be cut
-// in half. Derived rather than tabulated: splitting a pane means replacing its
-// shape with its two single slots, and the target preset is whichever one holds
-// the shapes that leaves. A preset gains an entry the moment it exists, and a
-// pane that already owns one slot has nothing to give.
+interface Halving {
+	readonly edge: SplitEdge;
+	readonly halves: readonly (readonly SlotId[])[];
+}
+
+// The two halves a cut along one axis produces. The grid is 2x2, so a track
+// number is only ever 1 or 2 and the split is a partition on that value.
+function halfAlong(
+	slots: readonly SlotId[],
+	axis: "row" | "column",
+): readonly (readonly SlotId[])[] {
+	return [
+		slots.filter((slot) => SLOT_POSITION[slot][axis] === 1),
+		slots.filter((slot) => SLOT_POSITION[slot][axis] === 2),
+	];
+}
+
+// Every way a pane can be cut into two equal rectangles. A pane spanning two
+// columns can be cut down the middle, which puts the new pane to its right; one
+// spanning two rows can be cut across, which puts it below. Only the whole-grid
+// pane spans both, so it is the only pane offering a choice of direction, and a
+// pane already down to one slot has nothing to give.
+function halvings(slots: readonly SlotId[]): readonly Halving[] {
+	const area = gridAreaOf(slots);
+	const options: Halving[] = [];
+	if (area.columnEnd - area.columnStart === 2) {
+		options.push({ edge: "right", halves: halfAlong(slots, "column") });
+	}
+	if (area.rowEnd - area.rowStart === 2) {
+		options.push({ edge: "bottom", halves: halfAlong(slots, "row") });
+	}
+	return options;
+}
+
+// Where the workspace can grow from here, one option per way a pane can be cut
+// in half. Derived rather than tabulated: halving a pane means replacing its
+// shape with the two halves, and the target preset is whichever one holds the
+// shapes that leaves. A preset gains an entry the moment it exists.
 //
 // This replaced a single target per layout. Two columns reaches both Split left
 // and Split right, depending on which of its two panes is the one being cut, so
 // one answer per layout could not express it.
 export function splitOptions(workspace: Workspace): readonly SplitOption[] {
-	return workspace.panes.flatMap<SplitOption>((pane) => {
-		if (pane.slots.length !== 2) return [];
-
-		const area = gridAreaOf(pane.slots);
-		const shapes = workspace.panes.flatMap((candidate) =>
-			candidate.id === pane.id
-				? candidate.slots.map((slot) => [slot])
-				: [candidate.slots],
-		);
-		const target = layoutPresets.find(
-			(preset) => shapeSignature(preset.panes) === shapeSignature(shapes),
-		);
-		if (!target) return [];
-
-		return [
-			{
-				paneId: pane.id,
-				edge: area.rowEnd - area.rowStart === 2 ? "bottom" : "right",
-				layout: target.id,
-			},
-		];
-	});
+	return workspace.panes.flatMap<SplitOption>((pane) =>
+		halvings(pane.slots).flatMap<SplitOption>(({ edge, halves }) => {
+			const shapes = workspace.panes.flatMap((candidate) =>
+				candidate.id === pane.id ? halves : [candidate.slots],
+			);
+			const target = layoutPresets.find(
+				(preset) => shapeSignature(preset.panes) === shapeSignature(shapes),
+			);
+			return target ? [{ paneId: pane.id, edge, layout: target.id }] : [];
+		}),
+	);
 }
 
 export function createDefaultWorkspace(): Workspace {

@@ -16,8 +16,7 @@ landing-page contract, or release policy only through an explicit task that
 describes the migration and its downstream effects.
 
 - Project and public name: `Tabelo`
-- Description: edit one table visually or as Markdown, CSV, TSV, HTML, Jira,
-  and JSON, always in sync, entirely in your browser
+- Description: edit one table visually or through synchronized text formats, entirely in your browser
 - Repository: `martonpaulo/tabelo` (public)
 - Public identifiers: workspace app `web`; internal packages `@tabelo/ui`,
   `@tabelo/env`, `@tabelo/config`. All workspace packages are private and are
@@ -60,7 +59,7 @@ describes the migration and its downstream effects.
 Tabelo is a browser-based table editor. One table document is shown through
 several synchronized views: a visual grid, Markdown, CSV, TSV, HTML source,
 Jira syntax, JSON, and a rendered preview, arranged in a configurable workspace
-of up to four panes.
+of one to four panes.
 
 **Simple by design.** No accounts, no backend, no cloud sync, no collaboration,
 no analytics, no telemetry. No formulas, calculations, multiple sheets, charts,
@@ -380,8 +379,12 @@ here:
   highest-value test surface.
 - Test observable contracts at stable seams; avoid tests that only mirror
   implementation details or framework behavior.
-- Resolve product copy from its canonical owner or through semantic IDs in
-  tests. Do not repeat literal UI wording in selectors or assertions.
+- Do not add tests that assert exact user-facing copy.
+- Copy changes, additions, and removals do not require new tests by themselves.
+- A pull request containing only copy changes may correctly contain no new or modified tests.
+- Tests should validate behavior, semantics, state, accessibility, or technical contracts, not editorial wording.
+- Do not add meaningless tests merely to claim that a pull request has test coverage.
+- When copy is used to locate an element in a test, prefer stable semantic queries or another appropriate selector rather than asserting the copy itself.
 - Do not assert exact rendered dimensions. Test token ownership, shared values,
   relative changes, supported ranges, and minimum interaction targets instead.
 - Run the complete browser suite in Chromium. Reserve Firefox for flows that

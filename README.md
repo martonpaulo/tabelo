@@ -4,7 +4,7 @@
   <img src="apps/web/public/logo.svg" width="96" height="96" alt="Tabelo logo" />
 </p>
 
-**One table, eight views, zero copy-and-paste between them.**
+**One table, multiple views, zero copy-and-paste between them.**
 
 Tabelo is a small table editor for the moments when a spreadsheet is too much,
 but hand-editing pipes and commas is no fun either. Change a cell in the visual

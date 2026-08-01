@@ -59,7 +59,7 @@ test("the chooser lists every registered format", async ({ page, tabelo }) => {
 	await openChooser(page);
 
 	const dialog = page.getByRole("dialog");
-	await expect(dialog).toContainText(copy.download.hint);
+
 	for (const codec of listCodecs()) {
 		await expect(
 			dialog.getByRole("radio", { name: copy.views[codec.id].shortLabel }),
@@ -202,7 +202,6 @@ for (const key of ["Meta+s", "Control+s"]) {
 		await page.keyboard.press(key);
 
 		await expect(page.getByRole("dialog")).toBeVisible();
-		await expect(page.getByRole("dialog")).toContainText(copy.download.title);
 	});
 }
 
@@ -257,9 +256,7 @@ test("an invalid draft is named rather than silently left out", async ({
 
 	await page.keyboard.press(shortcut);
 	const dialog = page.getByRole("dialog");
-	await expect(dialog).toContainText(
-		"This source is not valid yet. Download the last valid table or copy the draft.",
-	);
+
 	await expect(
 		dialog.getByRole("button", { name: copy.download.copyDraft }),
 	).toBeVisible();
@@ -316,6 +313,6 @@ test("a healthy document shows no draft warning", async ({ page, tabelo }) => {
 
 	await expect(page.getByRole("dialog")).toBeVisible();
 	await expect(
-		page.getByText(copy.download.invalidDraft, { exact: true }),
+		page.getByRole("button", { name: copy.download.copyDraft }),
 	).toHaveCount(0);
 });

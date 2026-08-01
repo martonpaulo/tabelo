@@ -13,16 +13,27 @@ particular merge is not allowed. That is a layout editor, and a layout editor
 inside a table utility is precisely the "complex IDE" the product is supposed
 not to become.
 
-An eighth preset, `single`, once spanned all four slots so the grid could take
-the whole window. It was dropped: the workspace exists to show one document
-through several views at once, and a one-pane workspace is that product with
-its point removed. The floor is two panes.
+The floor has moved twice, and the second move is worth recording rather than
+hiding. `single`, an eighth preset spanning all four slots, was first dropped on
+the argument that the workspace exists to show one document through several
+views at once, so a one-pane workspace is that product with its point removed.
+That confused the product's **default** with its **range**: a user reading a
+wide table wants the whole window for it, and denying that does not make the
+synchronization more visible, it just makes the app smaller than the screen.
+#91 restored the preset. One pane is the floor, two panes is what a fresh visit
+opens, and the difference between those two sentences is the whole decision.
 
 ## Decision
 
-Seven named presets, each drawing its own shape in the picker: two columns, two
-rows, split left, split right, split top, split bottom, and four panes. Choosing
-one is a single click, and the glyph shows the result before it is applied.
+Eight named presets, each drawing its own shape in the picker: one pane, two
+columns, two rows, split left, split right, split top, split bottom, and four
+panes. Choosing one is a single click, and the glyph shows the result before it
+is applied.
+
+One pane is expressed as a preset spanning all four slots, not as a pane count
+with no preset. Splitting, shrinking, and the persisted schema all read the
+shapes a layout declares, so a preset keeps every one of them working unchanged,
+where a count would need its own branch in each.
 
 Every preset is a valid tiling by construction, so no rule needs enforcing at
 runtime and no invalid intermediate state exists. Tests assert the invariant
@@ -57,6 +68,8 @@ valid preset:
 
 | From | Split | To |
 | :--- | :--- | :--- |
+| One pane | its right edge | Two columns |
+| One pane | its bottom edge | Two rows |
 | Two columns | left pane | Split left |
 | Two columns | right pane | Split right |
 | Two rows | top pane | Split top |
@@ -64,16 +77,18 @@ valid preset:
 | Split left, right, top, or bottom | the large pane | Four panes |
 | Four panes | none | no control shown |
 
-The set is **derived, not tabulated**: splitting a pane replaces its shape with
-its two single slots, and the target is whichever preset holds the shapes that
+The set is **derived, not tabulated**: halving a pane replaces its shape with
+the two halves, and the target is whichever preset holds the shapes that
 leaves. A preset gains its entries the moment it exists. This replaced a single
 larger target per layout, which could not express two columns reaching both
 split left and split right depending on which pane is cut.
 
-A two-slot pane can only be cut across its long axis, so every control lands on
-an **outer** edge of the workspace. None sits on the divider between two panes,
-so which pane is being split is never ambiguous, and the edge doubles as the
-promise of where the new pane appears.
+A pane is cut across each axis it spans whole, so every control lands on an
+**outer** edge of the workspace. None sits on the divider between two panes, so
+which pane is being split is never ambiguous, and the edge doubles as the
+promise of where the new pane appears. The one-pane preset is the only one whose
+pane spans both axes, so it is the only pane carrying two controls, and the edge
+is what says which of its two splits the user asked for.
 
 The view the new pane shows is chosen **before** anything moves, so the split
 and the view are one update and no workspace holding a pane with an unchosen
@@ -86,11 +101,13 @@ Closing removes the chosen pane rather than the last one; the smaller preset
 then absorbs the freed space into whichever neighbour already occupied part of
 it.
 
-Two panes is the floor, so `columns` and `rows` have no smaller target and
-Close view is disabled in both, with a written reason rather than hidden. The
-one preset the picker can reach that growing cannot, `top-split`, shrinks to
-`rows`: a top split reads as a horizontal division, and keeping that division
-on the way down matters more than keeping one pane's corner.
+One pane is the floor, so only `single` has no smaller target, and Close view is
+disabled there alone, with a written reason rather than hidden. Both two-pane
+presets shrink to it, because either divider disappearing leaves the same
+whole-grid shape. The one preset the picker can reach that growing cannot,
+`top-split`, shrinks to `rows`: a top split reads as a horizontal division, and
+keeping that division on the way down matters more than keeping one pane's
+corner.
 
 Growing never displaces a pane, so adding one needs no confirmation. Closing
 can destroy a source draft the document has not read back, so a pane owning
@@ -126,9 +143,15 @@ so a new preset needs no edit there.
   one. Growing from those moves one surviving pane. Shrinking is
   corner-stable everywhere except `top-split → rows`, which moves the pane in
   the top-right slot.
-- A stored one-pane workspace, legal before the floor existed, no longer
-  validates. Under the no-migration policy it takes the unreadable path and the
-  user sees the recovery notice once.
+- A one-pane workspace is reachable but is not where anyone starts: a fresh
+  visit still opens two columns, so the default keeps showing the
+  synchronization that is the product, and the user closes down to one when
+  they want the window to themselves.
+- At one pane there is no divider, so no resize handle renders on either axis,
+  and the stored ratios are kept rather than reset: widening back out restores
+  the split the user had.
+- Below the stacking width one pane is the degenerate case of a single column
+  rather than a new branch, so stacking needed no change at all.
 - The cost is expressiveness: a user cannot invent an arrangement that is not
   in the list. With a 2×2 grid the presets cover every rectangular tiling that
   respects the constraint, so this costs nothing today. A 3×3 workspace

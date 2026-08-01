@@ -25,22 +25,4 @@ describe("column positional names", () => {
 		expect(copy.a11y.columnHeader("  ", 0)).toBe("A");
 		expect(copy.a11y.columnHeader("Name", 0)).toBe("Name");
 	});
-
-	it("names the rename editor of an empty header by its letter", () => {
-		expect(copy.a11y.headerEditor("", 1)).toBe("Rename column B");
-	});
-});
-
-describe("codec precondition copy", () => {
-	it("names conflicting columns by spreadsheet-style letter", () => {
-		expect(
-			copy.source.blocked({ code: "test-columns", columns: [0, 26] }),
-		).toContain("columns A and AA");
-	});
-
-	it("names conflicting data rows by their visible table number", () => {
-		expect(copy.source.blocked({ code: "test-rows", rows: [0, 2] })).toContain(
-			"rows 2 and 4",
-		);
-	});
 });

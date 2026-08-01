@@ -9,7 +9,7 @@ import { expect, test } from "./fixtures";
 // the draft is what has to reach the clipboard.
 
 const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
-const writeRecovery = "The source could not be copied";
+const writeRecovery = copy.notices.clipboardWriteFailed("source");
 
 // A clipboard that accepts everything and remembers it, so the copied bytes can
 // be asserted without the permission plumbing Playwright cannot grant in every
@@ -89,7 +89,7 @@ test("copies the visible source of a valid view", async ({ page, tabelo }) => {
 	await tabelo.runPaneCommand("markdown", "copySource");
 
 	await expect(
-		tabelo.notice().filter({ hasText: "Source copied to the clipboard" }),
+		tabelo.notice().filter({ hasText: copy.notices.copied("source") }),
 	).toBeVisible();
 	const copied = await lastCopied(page);
 	expect(copied?.text).toContain("Inez");
@@ -173,9 +173,7 @@ test("copies both HTML and TSV from the preview pane", async ({
 	await tabelo.runPaneCommand("html-preview", "copyFormattedTable");
 
 	await expect(
-		tabelo
-			.notice()
-			.filter({ hasText: "Formatted table copied to the clipboard" }),
+		tabelo.notice().filter({ hasText: copy.notices.copied("preview") }),
 	).toBeVisible();
 
 	const copied = await lastCopied(page);
@@ -247,7 +245,7 @@ test("a refused copy explains itself with preview-specific advice", async ({
 
 	await expect(
 		tabelo.notice().filter({
-			hasText: "The table could not be copied. Select it and use ⌘C/Ctrl+C.",
+			hasText: copy.notices.clipboardWriteFailed("preview"),
 		}),
 	).toBeVisible();
 });
