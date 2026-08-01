@@ -32,7 +32,7 @@ Related to: View, Slot, Workspace
 
 ### Workspace
 
-The 2×2 arrangement of slots that holds two to four panes. Its shape comes from
+The 2×2 arrangement of slots that holds one to four panes. Its shape comes from
 a named layout preset; free slot assignment does not exist. A registered view
 may appear in at most one pane at a time.
 
@@ -212,7 +212,7 @@ Related to: Table document, Import
 - A header may be empty, and an empty header stays empty. No `Column N` name is
   ever generated. An unnamed column is identified positionally by its letter on
   the column index strip, which is chrome and not part of the table.
-- A workspace holds two to four panes, and its panes tile all four slots exactly
+- A workspace holds one to four panes, and its panes tile all four slots exactly
   once. Every pane is rectangular; an L-shape is not representable.
 - A registered view appears in at most one pane in the workspace.
 - At most one draft exists at any moment.

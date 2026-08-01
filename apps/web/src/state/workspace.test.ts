@@ -169,16 +169,34 @@ describe("closing a view", () => {
 		}
 	});
 
-	// Both two-pane presets are the floor, so neither depends on which one the
-	// default workspace happens to use.
-	it.each(["columns", "rows"] as const)("does nothing at %s", (layout) => {
-		useTabeloStore.getState().setLayout(layout);
-		const twoPanes = workspace();
-		expect(twoPanes.panes).toHaveLength(2);
+	// Both two-pane presets shrink to the same one-pane preset, so neither
+	// depends on which one the default workspace happens to use.
+	it.each(["columns", "rows"] as const)(
+		"leaves the surviving view alone at %s",
+		(layout) => {
+			useTabeloStore.getState().setLayout(layout);
+			const twoPanes = workspace();
+			expect(twoPanes.panes).toHaveLength(2);
 
-		useTabeloStore.getState().closePane(twoPanes.panes[0].id);
+			useTabeloStore.getState().closePane(twoPanes.panes[0].id);
 
-		expect(workspace()).toBe(twoPanes);
+			const after = workspace();
+			expect(after.layout).toBe("single");
+			expect(after.panes).toHaveLength(1);
+			expect(after.panes[0].id).toBe(twoPanes.panes[1].id);
+			expect(after.panes[0].view).toBe(twoPanes.panes[1].view);
+			expect(after.activePaneId).toBe(after.panes[0].id);
+		},
+	);
+
+	it("does nothing at one pane, which is the floor", () => {
+		useTabeloStore.getState().setLayout("single");
+		const onePane = workspace();
+		expect(onePane.panes).toHaveLength(1);
+
+		useTabeloStore.getState().closePane(onePane.panes[0].id);
+
+		expect(workspace()).toBe(onePane);
 	});
 
 	it("moves the active pane when the active one is closed", () => {
@@ -195,18 +213,19 @@ describe("closing a view", () => {
 		);
 	});
 
-	it("is reversible: every pane count from two to four is reachable again", () => {
+	it("is reversible: every pane count from one to four is reachable again", () => {
 		const store = useTabeloStore.getState();
+		store.setLayout("single");
 		const counts: number[] = [workspace().panes.length];
 		while (workspace().panes.length < 4) {
 			addFirstSplit();
 			counts.push(workspace().panes.length);
 		}
-		while (workspace().panes.length > 2) {
+		while (workspace().panes.length > 1) {
 			store.closePane(workspace().panes.at(-1)?.id ?? "");
 			counts.push(workspace().panes.length);
 		}
-		expect(counts).toEqual([2, 3, 4, 3, 2]);
+		expect(counts).toEqual([1, 2, 3, 4, 3, 2, 1]);
 	});
 });
 

@@ -11,42 +11,42 @@ const views = {
 	grid: {
 		label: "Visual table",
 		shortLabel: "Table",
-		description: "Edit cells, rows, and columns directly.",
+		description: "Edit cells, rows, and columns directly",
 	},
 	markdown: {
 		label: "Markdown",
 		shortLabel: "Markdown",
-		description: "A Markdown table, alignment included.",
+		description: "A Markdown table, alignment included",
 	},
 	csv: {
 		label: "CSV",
 		shortLabel: "CSV",
-		description: "Comma-separated values.",
+		description: "Comma-separated values",
 	},
 	tsv: {
 		label: "TSV",
 		shortLabel: "TSV",
-		description: "Tab-separated values, what spreadsheets paste.",
+		description: "Tab-separated values, what spreadsheets paste",
 	},
 	html: {
 		label: "HTML source",
 		shortLabel: "HTML",
-		description: "A table element you can paste into a page.",
+		description: "A table element you can paste into a page",
 	},
 	jira: {
 		label: "Jira",
 		shortLabel: "Jira",
-		description: "Jira wiki table syntax.",
+		description: "Jira wiki table syntax",
 	},
 	json: {
 		label: "JSON",
 		shortLabel: "JSON",
-		description: "An array of rows, each one keyed by the headers.",
+		description: "An array of rows, each one keyed by the headers",
 	},
 	"html-preview": {
 		label: "Rendered preview",
 		shortLabel: "Preview",
-		description: "The table as a reader would see it.",
+		description: "The table as a reader would see it",
 	},
 } as const;
 
@@ -94,25 +94,26 @@ export const copy = {
 	views,
 
 	layouts: {
-		columns: { label: "Two columns", description: "Side by side." },
-		rows: { label: "Two rows", description: "Stacked." },
+		single: { label: "One pane", description: "One view at a time" },
+		columns: { label: "Two columns", description: "Side by side" },
+		rows: { label: "Two rows", description: "Stacked" },
 		"left-split": {
 			label: "Split left",
-			description: "Two stacked on the left, one tall on the right.",
+			description: "Two stacked on the left, one tall on the right",
 		},
 		"right-split": {
 			label: "Split right",
-			description: "One tall on the left, two stacked on the right.",
+			description: "One tall on the left, two stacked on the right",
 		},
 		"top-split": {
 			label: "Split top",
-			description: "Two across the top, one wide below.",
+			description: "Two across the top, one wide below",
 		},
 		"bottom-split": {
 			label: "Split bottom",
-			description: "One wide on top, two across the bottom.",
+			description: "One wide on top, two across the bottom",
 		},
-		quad: { label: "Four panes", description: "All four views at once." },
+		quad: { label: "Four panes", description: "All four views at once" },
 	},
 
 	newTable: {
@@ -124,12 +125,12 @@ export const copy = {
 
 	appUpdate: {
 		label: "Reload to update",
-		description: "A new version of Tabelo is ready.",
+		description: "A new version of Tabelo is ready",
 	},
 
 	workspace: {
 		layout: "Layout",
-		layoutHint: "Choose how the workspace is divided.",
+		layoutHint: "Choose how the workspace is divided",
 		changeView: "Change view",
 		addView: "Add view",
 		closeView: "Close view",
@@ -149,7 +150,7 @@ export const copy = {
 		zoomMinimum: "Zoom is already at 50%.",
 		zoomDefault: "Zoom is already at 100%.",
 		zoomMaximum: "Zoom is already at 200%.",
-		closeOnlyView: "At least two views must stay open.",
+		closeOnlyView: "At least one view must stay open.",
 		undo: "There is nothing to undo.",
 		redo: "There is nothing to redo.",
 		minimumColumnWidth: "This column is already at its minimum width.",
@@ -303,7 +304,7 @@ export const copy = {
 
 	download: {
 		title: "Download table",
-		hint: "Choose a file format.",
+		hint: "Choose a file format",
 		format: "File format",
 		options: "Options",
 		// Output-only choices, listed by the id the codec declares.
@@ -338,7 +339,7 @@ export const copy = {
 				: "This source is not valid yet. Keep editing or discard it before changing views.",
 		discardPaneAction: (kind: "view" | "close") =>
 			kind === "close" ? "Discard and close view" : "Discard and change view",
-		headerGuess: "First row used as headers.",
+		headerGuess: "First row used as headers",
 		headerGuessAction: "Use it as data instead",
 		importError: (error: ImportError) => {
 			switch (error.code) {
@@ -358,10 +359,10 @@ export const copy = {
 		},
 		copied: (scope: "selection" | "source" | "preview") =>
 			scope === "source"
-				? "Source copied to the clipboard."
+				? "Source copied to the clipboard"
 				: scope === "preview"
-					? "Formatted table copied to the clipboard."
-					: "Copied to the clipboard.",
+					? "Formatted table copied to the clipboard"
+					: "Copied to the clipboard",
 		// Tabelo cannot grant itself clipboard permission, so the recovery is
 		// always the keyboard. It stays available because a trusted key press
 		// never needs the permission the button does.
@@ -374,7 +375,7 @@ export const copy = {
 					? "The table could not be copied. Select it and use ⌘C/Ctrl+C."
 					: "The selection could not be copied. Select it and use ⌘C/Ctrl+C.",
 		clipboardEmpty: "There is nothing on the clipboard to paste.",
-		imported: "Table imported.",
+		imported: "Table imported",
 		storageUnavailable:
 			"Changes are only in this tab. Browser storage is unavailable. Download a copy before closing.",
 		storageQuota:
@@ -404,7 +405,7 @@ export const copy = {
 		pane: (label: string) => `${label} pane`,
 		paneInteractHint: "Press Enter to interact, Escape to exit.",
 		enteredPane: "Entered pane. Press Escape to exit.",
-		paneAdded: (label: string) => `${label} pane added.`,
+		paneAdded: (label: string) => `${label} pane added`,
 		// Which pane, and which way. Four controls all called "Add view" would
 		// name nothing: the direction is the whole content of the choice.
 		addViewAt: (edge: SplitEdge, paneLabel: string) =>

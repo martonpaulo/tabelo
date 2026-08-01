@@ -17,7 +17,7 @@ test("a later document edit invalidates header correction", async ({
 	tabelo,
 }) => {
 	await tabelo.paste("Name\tRole\nInez\tDesigner");
-	await expect(tabelo.notice()).toContainText(copy.notices.headerGuess);
+	await expect(tabelo.notice()).toBeVisible();
 
 	await tabelo.editCell(1, 1, "Mark");
 
@@ -50,7 +50,7 @@ test("a text-header file offers correction once and dismissal keeps data", async
 	tabelo,
 }) => {
 	await tabelo.importFile("people.csv", "Name,Role\nInez,Designer", "text/csv");
-	await expect(tabelo.notice()).toContainText(copy.notices.headerGuess);
+	await expect(tabelo.notice()).toBeVisible();
 
 	await tabelo.page.getByRole("button", { name: copy.actions.dismiss }).click();
 

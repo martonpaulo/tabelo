@@ -484,8 +484,9 @@ per keystroke.
 
 ## 5. Layout
 
-- The workspace is a 2×2 slot grid holding two to four panes, arranged by
-  preset: see `docs/adr/0006`. Never build a free slot editor.
+- The workspace is a 2×2 slot grid holding one to four panes, arranged by
+  preset: see `docs/adr/0006`. One pane is the floor and two is what a fresh
+  visit opens. Never build a free slot editor.
 - The app surface remains visible as a 0.5rem inset and a 0.5rem gap between panes.
   Each pane is a 0.5rem-radius surface with a subtle outline; the active pane adds
   a thicker blue focus edge. This framing applies at every supported width.
@@ -615,6 +616,11 @@ Never blame, never exclaim, never use humour in an error. Prefer "The source
 does not parse yet" to "Oops! Something went wrong".
 
 Labels are sentence case. Actions are verbs: "Add row", not "New row".
+
+Terminal punctuation follows a structural split:
+
+- **No full stop** on labels, fragments, and single noun phrases: view descriptions, layout descriptions, menu option descriptions, hints, and short confirmations.
+- **Full stop** on complete sentences, and on any string of more than one sentence: multi-sentence error and recovery copy. Disabled reasons keep their stop because they are read aloud from tooltips and require a prosodic pause.
 
 Never use the Unicode em dash character (U+2014) in product copy, metadata,
 comments, or documentation. Choose punctuation that states the relationship

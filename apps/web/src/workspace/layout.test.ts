@@ -22,12 +22,14 @@ import {
 // top of each other.
 
 describe("layout presets", () => {
-	it("contains only layouts with two to four panes", () => {
-		expect(layoutPresets).toHaveLength(7);
-		expect(layoutPresets.map((preset) => preset.id)).not.toContain("single");
-		expect(layoutPresets.every((preset) => preset.panes.length >= 2)).toBe(
-			true,
-		);
+	it("contains only layouts with one to four panes", () => {
+		expect(layoutPresets).toHaveLength(8);
+		expect(layoutPresets.map((preset) => preset.id)).toContain("single");
+		expect(
+			layoutPresets.every(
+				(preset) => preset.panes.length >= 1 && preset.panes.length <= 4,
+			),
+		).toBe(true);
 	});
 
 	it("falls back to the named default layout", () => {
@@ -63,6 +65,10 @@ describe("layout presets", () => {
 		expect(layoutSplitsRows("rows")).toBe(true);
 		expect(layoutSplitsColumns("quad")).toBe(true);
 		expect(layoutSplitsRows("quad")).toBe(true);
+		// One pane spans both axes whole, so neither resize handle means
+		// anything and neither is rendered.
+		expect(layoutSplitsColumns("single")).toBe(false);
+		expect(layoutSplitsRows("single")).toBe(false);
 	});
 });
 
@@ -182,6 +188,7 @@ describe("pane count transitions", () => {
 	// The mapping the issue confirmed, asserted as a whole rather than derived
 	// again here: a test that recomputes the implementation proves nothing.
 	it.each([
+		["single", ["columns", "rows"]],
 		["columns", ["left-split", "right-split"]],
 		["rows", ["top-split", "bottom-split"]],
 		["left-split", ["quad"]],
@@ -195,21 +202,26 @@ describe("pane count transitions", () => {
 		).toEqual(expected);
 	});
 
-	it("offers one split per two-slot pane, and none for a single-slot pane", () => {
+	// One option per axis the pane spans whole: none for a single slot, one for
+	// a two-slot pane, and two for the pane that owns the entire grid.
+	it("offers one split per axis a pane spans whole", () => {
 		for (const id of layoutIds) {
 			const workspace = workspaceFor(id);
-			const splittable = workspace.panes.filter(
-				(pane) => pane.slots.length === 2,
-			);
+			const expected = workspace.panes.flatMap((pane) => {
+				const area = gridAreaOf(pane.slots);
+				const spans =
+					Number(area.columnEnd - area.columnStart === 2) +
+					Number(area.rowEnd - area.rowStart === 2);
+				return Array.from({ length: spans }, () => pane.id);
+			});
 			const options = splitOptions(workspace);
-			expect(options).toHaveLength(splittable.length);
 			expect(options.map((option) => option.paneId).sort()).toEqual(
-				splittable.map((pane) => pane.id).sort(),
+				[...expected].sort(),
 			);
 		}
 	});
 
-	it("names the edge across the pane's long axis", () => {
+	it("names an edge only across an axis the pane spans whole", () => {
 		for (const id of layoutIds) {
 			const workspace = workspaceFor(id);
 			for (const option of splitOptions(workspace)) {
@@ -217,8 +229,11 @@ describe("pane count transitions", () => {
 					(candidate) => candidate.id === option.paneId,
 				) as WorkspacePane;
 				const area = gridAreaOf(pane.slots);
-				const tall = area.rowEnd - area.rowStart === 2;
-				expect(option.edge).toBe(tall ? "bottom" : "right");
+				const span =
+					option.edge === "bottom"
+						? area.rowEnd - area.rowStart
+						: area.columnEnd - area.columnStart;
+				expect(span).toBe(2);
 			}
 		}
 	});
@@ -268,7 +283,7 @@ describe("pane count transitions", () => {
 
 	it.each(layoutIds)("shrinks from %s by exactly one pane", (id) => {
 		const target = smallerLayout(id);
-		if (paneCount(id) === 2) {
+		if (paneCount(id) === 1) {
 			expect(target).toBeUndefined();
 			return;
 		}
@@ -276,32 +291,35 @@ describe("pane count transitions", () => {
 		expect(paneCount(target as LayoutId)).toBe(paneCount(id) - 1);
 	});
 
-	it("reaches every pane count from two to four and back", () => {
+	it("reaches every pane count from one to four and back", () => {
 		const counts: number[] = [];
 		// Annotated because the loop below reassigns it from its own successor.
-		let id: LayoutId = "columns" as LayoutId;
+		let id: LayoutId = "single" as LayoutId;
 		counts.push(paneCount(id));
-		for (let step = 0; step < 2; step += 1) {
+		for (let step = 0; step < 3; step += 1) {
 			const next = splitOptions(workspaceFor(id))[0];
 			expect(next).toBeDefined();
 			id = next.layout;
 			counts.push(paneCount(id));
 		}
-		expect(counts).toEqual([2, 3, 4]);
+		expect(counts).toEqual([1, 2, 3, 4]);
 
 		while (smallerLayout(id)) {
 			id = smallerLayout(id) as LayoutId;
 			counts.push(paneCount(id));
 		}
-		expect(counts).toEqual([2, 3, 4, 3, 2]);
+		expect(counts).toEqual([1, 2, 3, 4, 3, 2, 1]);
 	});
 
-	it("keeps both two-pane presets at the floor", () => {
-		expect(smallerLayout("columns")).toBeUndefined();
-		expect(smallerLayout("rows")).toBeUndefined();
+	it("keeps the one-pane preset at the floor", () => {
+		expect(smallerLayout("single")).toBeUndefined();
+		// Both two-pane presets now have somewhere to go: either divider
+		// disappearing leaves the same whole-grid shape.
+		expect(smallerLayout("columns")).toBe("single");
+		expect(smallerLayout("rows")).toBe("single");
 	});
 
-	it.each(["columns", "rows", "left-split"] as const)(
+	it.each(["single", "columns", "rows", "left-split"] as const)(
 		"closes back to %s after expanding it",
 		(id) => {
 			const larger = splitOptions(workspaceFor(id))[0];
