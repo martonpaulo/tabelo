@@ -8,18 +8,39 @@ async function contrastBetween(
 	foreground: string,
 	background: string,
 ): Promise<number> {
-	return page.evaluate(
+	const colors = await page.evaluate(
 		({ foreground, background }) => {
 			const styles = getComputedStyle(document.documentElement);
+			return {
+				foreground: styles.getPropertyValue(foreground).trim(),
+				background: styles.getPropertyValue(background).trim(),
+			};
+		},
+		{ foreground, background },
+	);
+	return contrastBetweenColors(page, colors.foreground, colors.background);
+}
+
+async function contrastBetweenColors(
+	page: Page,
+	foreground: string,
+	background: string,
+): Promise<number> {
+	return page.evaluate(
+		({ foreground, background }) => {
 			const canvas = document.createElement("canvas");
 			canvas.width = 1;
 			canvas.height = 1;
 			const context = canvas.getContext("2d", { willReadFrequently: true });
 			if (!context) throw new Error("Canvas colour conversion is unavailable.");
 
-			const rgb = (token: string) => {
+			const rgb = (color: string, backdrop?: string) => {
 				context.clearRect(0, 0, 1, 1);
-				context.fillStyle = styles.getPropertyValue(token).trim();
+				if (backdrop) {
+					context.fillStyle = backdrop;
+					context.fillRect(0, 0, 1, 1);
+				}
+				context.fillStyle = color;
 				context.fillRect(0, 0, 1, 1);
 				return [...context.getImageData(0, 0, 1, 1).data.slice(0, 3)];
 			};
@@ -33,7 +54,7 @@ async function contrastBetween(
 				return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 			};
 
-			const foregroundLuminance = luminance(rgb(foreground));
+			const foregroundLuminance = luminance(rgb(foreground, background));
 			const backgroundLuminance = luminance(rgb(background));
 			const lighter = Math.max(foregroundLuminance, backgroundLuminance);
 			const darker = Math.min(foregroundLuminance, backgroundLuminance);
@@ -620,6 +641,56 @@ test("light and dark text and focus tokens meet their contrast floors", async ({
 		expect(new Set(selectionFills).size).toBe(3);
 	}
 	expect(new Set(backgrounds).size).toBe(2);
+});
+
+test("unchecked menu choices keep a visible outline and clear label spacing", async ({
+	page,
+	tabelo,
+}) => {
+	await expect(tabelo.workspace).toBeVisible();
+	for (const dark of [false, true]) {
+		await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
+		const menu = await tabelo.openLayoutMenu();
+		const option = menu.getByRole("menuitemradio", {
+			name: copy.layouts.single.label,
+		});
+		await expect(option).not.toBeChecked();
+		const indicator = option.locator(
+			'[data-slot="dropdown-menu-radio-item-indicator"]',
+		);
+		await expect(indicator).toBeVisible();
+
+		const colors = await indicator.evaluate((element) => {
+			const styles = getComputedStyle(document.documentElement);
+			return {
+				foreground: getComputedStyle(element).borderTopColor,
+				background: styles.getPropertyValue("--popover").trim(),
+			};
+		});
+		expect(
+			await contrastBetweenColors(page, colors.foreground, colors.background),
+		).toBeGreaterThanOrEqual(3);
+
+		const geometry = await option.evaluate((element) => {
+			const indicator = element.querySelector(
+				'[data-slot="dropdown-menu-radio-item-indicator"]',
+			);
+			if (!(indicator instanceof HTMLElement)) {
+				throw new Error("Menu choice indicator is unavailable.");
+			}
+			return {
+				paddingRight: Number.parseFloat(getComputedStyle(element).paddingRight),
+				indicatorWidth: indicator.getBoundingClientRect().width,
+			};
+		});
+		expect(geometry.paddingRight).toBeGreaterThanOrEqual(
+			geometry.indicatorWidth * 2,
+		);
+
+		await page.keyboard.press("Escape");
+		await page.keyboard.press("Escape");
+		await expect(menu).toHaveCount(0);
+	}
 });
 
 for (const viewport of [
