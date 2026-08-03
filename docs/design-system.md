@@ -668,17 +668,20 @@ per keystroke.
   no space, so showing or dismissing a notice moves nothing: the earlier
   in-layout band was itself the reflow this section forbids, because an idle
   notice area renders nothing and the first notice pushed every pane down. The
-  top trailing corner is the one the floating action button does not own, and
-  the region keeps the same 0.5rem inset as the panes: no gutter is reserved
-  for what lies underneath, because a permanent hole in that corner costs more
-  than a temporary overlap the user can dismiss. It stays put while a stacked
+  top trailing corner is the one the floating action button does not own. The
+  region keeps the panes' 0.5rem inset, widened on the trailing side by exactly
+  the pane header's own actions trigger and nothing more: flush in the corner,
+  a notice's dismissal lands on that trigger and swallows the click, which
+  leaves a pane unreachable by pointer for as long as a notice that cannot be
+  dismissed is on screen. It stays put while a stacked
   workspace scrolls under it, and its layer is `--z-notice` in `index.css`,
   above the floating action button and below menus, tooltips, and dialogs.
 - A notice is not a dialog: no modal semantics, no focus trap, nothing blocked.
   Only the notices themselves take pointer events, so everything beside them
-  stays operable. While one is on screen it covers the pane header band under
-  it, including that pane's actions trigger; below the stacking width a
-  wrapping notice reaches the column index strip. Both end with dismissal.
+  stays operable, and no notice ever covers a pane's actions trigger. While one
+  is on screen it does cover the rest of the pane header band under it, and
+  below the stacking width a wrapping notice reaches the column index strip.
+  Both end with dismissal.
 - Each notice is only as wide as its content needs, up to a cap. The cap is a
   ceiling, not a width: a one-line message never draws a band across the table.
 - A notice's anatomy is fixed. Dismissal holds the top trailing corner. The

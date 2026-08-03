@@ -49,12 +49,13 @@ export function NoticeBar() {
 					// must not move when a notice appears, and a stacked workspace
 					// scrolls underneath instead of carrying the notice off screen.
 					// Pinned to the top trailing corner, the one the floating action
-					// button does not own, on the same 0.5rem inset as the panes. A
-					// notice sits over the pane header band while it is on screen,
-					// including that pane's actions trigger: it is dismissible, and
-					// reserving a gutter for the trigger left a permanent hole in the
-					// corner that was worse than the temporary overlap.
-					className="pointer-events-none fixed inset-x-0 top-0 z-(--z-notice) flex flex-col items-end gap-2 p-2"
+					// button does not own. The trailing inset clears exactly the pane
+					// header's own actions trigger, 0.75rem of header padding plus the
+					// 1.75rem control, and nothing more: flush in the corner, the
+					// notice's dismissal lands on that trigger and swallows the click,
+					// which would leave a pane unreachable by pointer for as long as a
+					// notice that cannot be dismissed is on screen.
+					className="pointer-events-none fixed inset-x-0 top-0 z-(--z-notice) flex flex-col items-end gap-2 p-2 pr-10"
 				>
 					{notices.map((notice) => (
 						<NoticeRow key={notice.id} notice={notice} />

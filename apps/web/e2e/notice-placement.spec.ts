@@ -144,10 +144,26 @@ test("a dialog covers the notice layer rather than opening beneath it", async ({
 	expect(onNotice).toBe(false);
 });
 
-// A notice takes the top trailing corner, so at stacked widths it sits over
-// the only pane's actions trigger while it is on screen. What must hold is the
-// other direction: a menu already open is never covered by a notice arriving
-// over it.
+// The notice takes the top trailing corner, where every pane header keeps its
+// actions trigger. A notice that is on screen, including one that cannot be
+// dismissed, must not take that trigger away from the pane underneath it.
+for (const [shape, viewport] of [
+	["tiled", TILED],
+	["stacked", STACKED],
+] as const) {
+	test(`a ${shape} pane keeps its actions trigger under a notice`, async ({
+		page,
+		tabelo,
+	}) => {
+		await page.setViewportSize(viewport);
+		await raiseNotice(tabelo);
+
+		const menu = await tabelo.openPaneMenu("markdown");
+		await expect(menu).toBeVisible();
+	});
+}
+
+// And a menu already open is never covered by a notice arriving over it.
 test("an open menu is not covered by a notice", async ({ page, tabelo }) => {
 	await page.setViewportSize(STACKED);
 	const menu = await tabelo.openPaneMenu("grid");
@@ -161,19 +177,6 @@ test("an open menu is not covered by a notice", async ({ page, tabelo }) => {
 		menuBox.y + menuBox.height / 2,
 	);
 	expect(onNotice).toBe(false);
-});
-
-// Tiled, the notice is over the trailing pane's header, so a leading pane
-// keeps its own commands while a notice is on screen.
-test("a pane away from the notice keeps its actions menu", async ({
-	page,
-	tabelo,
-}) => {
-	await page.setViewportSize(TILED);
-	await raiseNotice(tabelo);
-
-	const menu = await tabelo.openPaneMenu("grid");
-	await expect(menu).toBeVisible();
 });
 
 test("the notice layer does not swallow pointer events over the table", async ({
