@@ -1,4 +1,5 @@
 import { menuShortcutKeyStyles } from "@tabelo/ui/components/menu-styles";
+import { isApplePlatform } from "@tabelo/ui/lib/platform";
 
 interface ShortcutKey {
 	readonly display: string;
@@ -6,9 +7,10 @@ interface ShortcutKey {
 }
 
 function shortcutKeys(shortcut: string): readonly ShortcutKey[] {
-	const apple =
-		typeof navigator !== "undefined" &&
-		/(Mac|iPhone|iPad|iPod)/.test(navigator.platform);
+	// Apple keyboards print the modifiers as glyphs. Windows and Linux
+	// keyboards print them as words, and a ⌃ there reads as a stray caret
+	// rather than as the Ctrl key the user is looking at.
+	const apple = isApplePlatform();
 	const rawKeys =
 		shortcut === "+"
 			? ["+"]
@@ -22,28 +24,32 @@ function shortcutKeys(shortcut: string): readonly ShortcutKey[] {
 				return [
 					apple
 						? { display: "⌘", label: "Command" }
-						: { display: "⌃", label: "Control" },
+						: { display: "Ctrl", label: "Control" },
 				];
 			case "Control":
 			case "Ctrl":
-				return [{ display: "⌃", label: "Control" }];
+				return [{ display: apple ? "⌃" : "Ctrl", label: "Control" }];
 			case "Alt":
 			case "Option":
-				return [{ display: "⌥", label: "Option" }];
+				return [
+					apple
+						? { display: "⌥", label: "Option" }
+						: { display: "Alt", label: "Alt" },
+				];
 			case "Shift":
-				return [{ display: "⇧", label: "Shift" }];
+				return [{ display: apple ? "⇧" : "Shift", label: "Shift" }];
 			case "Backspace":
-				return [{ display: "⌫", label: "Backspace" }];
+				return [{ display: apple ? "⌫" : "Backspace", label: "Backspace" }];
 			case "Enter":
 			case "Return":
-				return [{ display: "↵", label: "Enter" }];
+				return [{ display: apple ? "↵" : "Enter", label: "Enter" }];
 			case "Escape":
 			case "Esc":
-				return [{ display: "⎋", label: "Escape" }];
+				return [{ display: apple ? "⎋" : "Esc", label: "Escape" }];
 			case "Tab":
-				return [{ display: "⇥", label: "Tab" }];
+				return [{ display: apple ? "⇥" : "Tab", label: "Tab" }];
 			case "Space":
-				return [{ display: "␠", label: "Space" }];
+				return [{ display: apple ? "␠" : "Space", label: "Space" }];
 			case "ArrowUp":
 				return [{ display: "↑", label: "Up arrow" }];
 			case "ArrowDown":

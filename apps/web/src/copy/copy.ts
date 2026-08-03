@@ -1,3 +1,4 @@
+import { modShortcut } from "@tabelo/ui/lib/platform";
 import { product } from "@/copy/product";
 import type { ParseIssue, PreconditionFailure } from "@/formats/types";
 import type { ImportError } from "@/import/prepare";
@@ -392,13 +393,15 @@ export const copy = {
 		// Tabelo cannot grant itself clipboard permission, so the recovery is
 		// always the keyboard. It stays available because a trusted key press
 		// never needs the permission the button does.
-		clipboardReadFailed: "Paste was blocked. Use ⌘V or Ctrl+V instead.",
+		// The app knows which keyboard the user has, so it names one key rather
+		// than offering both spellings of the same shortcut.
+		clipboardReadFailed: `Paste was blocked. Use ${modShortcut("V")} instead.`,
 		clipboardWriteFailed: (scope: "selection" | "source" | "preview") =>
 			scope === "source"
-				? "Copy was blocked. Select the text and use ⌘C or Ctrl+C."
+				? `Copy was blocked. Select the text and use ${modShortcut("C")}.`
 				: scope === "preview"
-					? "Copy was blocked. Select the table and use ⌘C or Ctrl+C."
-					: "Copy was blocked. Select the cells and use ⌘C or Ctrl+C.",
+					? `Copy was blocked. Select the table and use ${modShortcut("C")}.`
+					: `Copy was blocked. Select the cells and use ${modShortcut("C")}.`,
 		clipboardEmpty: "Nothing on the clipboard",
 		imported: "Table imported",
 		storageUnavailable:

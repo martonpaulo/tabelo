@@ -372,10 +372,17 @@ distinguish the shortcut from its action label without making it look like
 another button. Dropdown and context menus share this treatment through the
 menu primitive.
 
-Special keys use their standard compact symbols where one exists: `⌘`, `⌃`,
-`⌥`, `⇧`, `⌫`, `↵`, `⎋`, `⇥`, and arrow glyphs. The accessible name keeps the
+Key legends follow the user's platform, which the app already knows. Apple
+keyboards get the glyphs their keys are printed with: `⌘`, `⌃`, `⌥`, `⇧`, `⌫`,
+`↵`, `⎋`, `⇥`. Every other platform gets the words its keys are printed with:
+`Ctrl`, `Alt`, `Shift`, `Backspace`, `Enter`, `Esc`, `Tab`. Arrows and the
+plus and minus signs are glyphs everywhere. `@tabelo/ui/lib/platform` owns that
+decision; nothing else may detect the platform. The accessible name keeps the
 full key name, so saving horizontal space never makes the shortcut cryptic to a
 screen-reader user.
+
+Copy naming a shortcut in prose names the one key the user has, never both
+spellings: "Use ⌘C" or "Use Ctrl+C", never "Use ⌘C or Ctrl+C".
 
 ### Empty workspace
 
@@ -857,10 +864,10 @@ one. Its action label is one short verb phrase, "Use as data" rather than "Use
 it as data instead". Do not restate in the message what the interface already
 shows, and do not name the product inside its own notice.
 
-Prose names an alternative with the word "or", never a slash: "Use ⌘C or
-Ctrl+C". A slash between two spellings of the same key reads as a fraction and
-is spoken as one by a screen reader. Menu shortcut chips keep their own
-treatment above.
+Prose names an alternative with the word "or", never a slash: a slash between
+two options reads as a fraction and is spoken as one by a screen reader. A
+keyboard shortcut is not an alternative at all: name the one key the user's
+platform has, as §3 requires.
 
 Terminal punctuation follows a structural split:
 
