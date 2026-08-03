@@ -19,7 +19,10 @@ export function DisabledTooltip({
 			<TooltipTrigger render={<span className="block" />}>
 				{children}
 			</TooltipTrigger>
-			<TooltipContent side="right">{reason}</TooltipContent>
+			{/* No side of its own: a disabled reason is an ordinary tooltip and
+			    uses the shared placement, which flips itself when the preferred
+			    side does not fit. */}
+			<TooltipContent>{reason}</TooltipContent>
 		</Tooltip>
 	);
 }

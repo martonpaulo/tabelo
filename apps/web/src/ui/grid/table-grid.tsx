@@ -537,6 +537,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										// and the row and column headers supply the rest. An
 										// aria-label here would replace the content with
 										// coordinates and repeat them on every arrow key.
+										//
+										// The one native tooltip the product keeps. A cell shows
+										// a clipped value, and the browser's own tooltip reveals
+										// the rest without mounting a floating layer per cell
+										// across a 200-row table. See docs/design-system.md §3.
 										title={value || undefined}
 										className={cn(
 											"relative overflow-hidden border-line-subtle border-r border-b px-2 align-top",

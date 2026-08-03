@@ -92,14 +92,32 @@ export const editorTheme = EditorView.theme({
 		textDecorationThickness: "0.09375rem",
 		textUnderlineOffset: "0.1875rem",
 	},
+	// A diagnostic is a product message, not editor chrome, so it wears the
+	// product tooltip: same surface, boundary, radius, shadow, padding, type
+	// size, and pointer. The values are repeated here rather than shared,
+	// because CodeMirror is styled from a JavaScript theme that Tailwind never
+	// sees. Keep them in step with `packages/ui/src/components/tooltip.tsx`.
 	".cm-tooltip": {
 		border: "0.0625rem solid var(--line-strong)",
+		borderRadius: "var(--control-radius)",
 		backgroundColor: "var(--popover)",
 		color: "var(--popover-foreground)",
+		boxShadow: "0 1.25rem 1.5625rem -0.3125rem rgb(0 0 0 / 10%)",
+	},
+	// CodeMirror draws its pointer as two stacked triangles, one for the
+	// boundary and one for the surface. The product pointer is the same shape
+	// in the same two colours.
+	".cm-tooltip .cm-tooltip-arrow:before": {
+		borderTopColor: "var(--line-strong)",
+		borderBottomColor: "var(--line-strong)",
+	},
+	".cm-tooltip .cm-tooltip-arrow:after": {
+		borderTopColor: "var(--popover)",
+		borderBottomColor: "var(--popover)",
 	},
 	".cm-diagnosticTooltip": {
 		maxWidth: "20rem",
-		padding: "calc(var(--spacing) * 2)",
+		padding: "calc(var(--spacing) * 1.5) calc(var(--spacing) * 3)",
 		whiteSpace: "pre-line",
 		fontFamily: "var(--font-sans)",
 		fontSize: "0.75rem",

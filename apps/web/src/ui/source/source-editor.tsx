@@ -152,6 +152,9 @@ function diagnosticExtension(diagnostics: readonly SourceDiagnostic[]) {
 			pos: line.from,
 			end: line.to,
 			above: true,
+			// Every tooltip in the product points at what it explains. This one
+			// is drawn by CodeMirror and coloured in the editor theme.
+			arrow: true,
 			create: () => {
 				const dom = document.createElement("div");
 				dom.className = "cm-diagnosticTooltip";

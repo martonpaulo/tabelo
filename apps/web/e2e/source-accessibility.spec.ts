@@ -23,6 +23,9 @@ test("parse errors underline the source and describe the editor", async ({
 	await expect(underline).toHaveCount(1);
 	await underline.hover();
 	await expect(pane.locator(".cm-diagnosticTooltip")).toBeVisible();
+	// A diagnostic is a product message, so it points at what it explains the
+	// way every other tooltip in the product does.
+	await expect(pane.locator(".cm-tooltip-arrow")).toBeVisible();
 
 	await editor.fill(validMarkdown);
 	await expect(editor).not.toHaveAttribute("aria-invalid", "true");

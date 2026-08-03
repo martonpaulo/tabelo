@@ -111,6 +111,28 @@ test("disabled view choices distinguish in-use and unavailable states", async ({
 	await expect(page.getByRole("tooltip")).toBeVisible();
 });
 
+// A disabled reason that only hover can reach is a reason keyboard users never
+// get. See docs/design-system.md §9.
+test("a disabled menu item explains itself on keyboard highlight", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.chooseLayout("single");
+	const menu = await tabelo.openPaneMenu("grid");
+	await expect(menu).toBeVisible();
+
+	const disabled = menu.getByRole("menuitem", {
+		name: copy.workspace.closeView,
+	});
+	await expect(disabled).toBeDisabled();
+
+	for (let step = 0; step < 12; step += 1) {
+		if ((await page.getByRole("tooltip").count()) > 0) break;
+		await page.keyboard.press("ArrowDown");
+	}
+	await expect(page.getByRole("tooltip")).toBeVisible();
+});
+
 test("option highlights include descriptions and disabled rows stay inert", async ({
 	tabelo,
 }) => {

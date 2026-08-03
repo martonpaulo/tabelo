@@ -313,6 +313,33 @@ Add a missing primitive with the shadcn CLI rather than hand-writing it:
 pnpm dlx shadcn@latest add <name> -c packages/ui
 ```
 
+### Tooltip
+
+There is one tooltip appearance in the product, and `packages/ui`'s `Tooltip`
+owns it: the floating surface, one shadow, the `--line-strong` boundary, the
+0.25rem control radius, 0.75rem type, the shared padding, and the shared
+clipped triangular pointer (§6). A tooltip explains its trigger and never
+carries the only copy of something the user needs, because it is transient and
+because pointer-only affordances fail §9. Every tooltip opens on keyboard focus
+as well as hover.
+
+No tooltip picks its own side. The primitive's placement flips when the
+preferred side does not fit, and hard-coding a side is how one tooltip ends up
+opening away from the control it explains.
+
+Two systems render tooltips that `Tooltip` cannot reach, and both are bound by
+this entry:
+
+- **CodeMirror diagnostics.** The source editor draws its own tooltip from a
+  JavaScript theme, so the treatment is written twice: once in
+  `packages/ui/src/components/tooltip.tsx`, once in `ui/source/editor-theme.ts`.
+  That duplication is unavoidable and commented in both places; keep them in
+  step. A diagnostic is a product message, not editor chrome.
+- **The browser's own `title`.** The grid's cells keep one, because a cell
+  shows a clipped value and the OS tooltip reveals the rest without mounting a
+  floating layer per cell across a 200-row table. It is the single recorded
+  exception. Anywhere else, a native `title` is a pattern break.
+
 ### Menus that carry a choice
 
 A menu option that is one of several **mutually exclusive current states**
