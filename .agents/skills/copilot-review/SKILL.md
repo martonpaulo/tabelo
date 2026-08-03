@@ -1,5 +1,5 @@
 ---
-name: code-review
+name: copilot-review
 description: Validate exactly one GitHub pull request against its linked issue, acceptance criteria, repository instructions, documented contracts, tests, and existing behavior. Use automatically during Copilot code review and whenever reviewing a pull request number or URL.
 ---
 

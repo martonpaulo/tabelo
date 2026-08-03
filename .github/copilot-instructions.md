@@ -2,7 +2,7 @@
 
 When reviewing pull requests in this repository:
 
-- Apply the `code-review` skill from `.agents/skills/code-review/SKILL.md`.
+- Apply the `copilot-review` skill from `.agents/skills/copilot-review/SKILL.md`.
 - Treat the root `AGENTS.md` as normative repository policy.
 - Review the pull request against its linked issue, acceptance criteria, approved specification, documented contracts, tests, and existing behavior.
 - Use available GitHub and Playwright MCP context when it is needed to verify a concrete finding.

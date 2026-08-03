@@ -1,4 +1,0 @@
-interface:
-  display_name: "Code Review"
-  short_description: "Validate one pull request against its requirements"
-  default_prompt: "Use $code-review to validate this pull request and report only demonstrated, actionable findings."
