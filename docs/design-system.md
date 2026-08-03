@@ -416,8 +416,9 @@ disable it and explain, where a menu that did the same would be a menu whose
 items mostly do nothing. The choice is also unwound by Cancel with nothing
 changed, which is the shape of a decision rather than of a command.
 
-A dialog is never used to announce something. Notices belong in the notice bar,
-which sits in the layout instead of covering the table.
+A dialog is never used to announce something. Notices belong in the notice
+layer described in §5: it floats above the workspace without modal semantics,
+without a focus trap, and without blocking the work underneath.
 
 Only one dialog may be open at a time. A modal flow that needs another decision
 closes or replaces its current step before opening the next one; it never stacks
@@ -655,12 +656,29 @@ per keystroke.
   narrow pane shortens its labels rather than wrapping them.
 - A pane's height must not change with its state: source diagnostics decorate
   the text and use tooltips rather than inserting a feedback row.
-- The notice area sits above the workspace, in the layout rather than over it,
-  as one labelled region. It holds every notice the app currently has, oldest
-  first, with conditions ahead of one-off messages. Notices are never ranked
-  against each other and never replace each other: something worth saying is
-  worth showing, and a message that loses a contest is a message the user
-  never gets. Each carries its own dismissal where dismissal makes sense.
+- The notice area is one labelled region floating over the workspace, fixed to
+  the viewport's top edge rather than placed in the layout. It takes no space,
+  so showing or dismissing a notice moves nothing: the earlier in-layout band
+  was itself the reflow this section forbids, because an idle notice area
+  renders nothing and the first notice pushed every pane down. The top edge is
+  the one the floating action button does not own; the leading side is the one
+  with no controls under it, since a pane header's only control is its trailing
+  chevron. The region is width-limited and reserves its trailing edge, so no
+  notice ever covers the actions trigger of the pane it is talking about. Only
+  the notices themselves take pointer events, so the grid, the floating action
+  button, and everything else underneath stay operable while a notice is on
+  screen. One notice occupies the pane header band and no more; below the
+  stacking width a wrapping notice reaches the column index strip until it is
+  dismissed. It stays put while a stacked workspace scrolls under it. It is
+  not a dialog: no modal semantics, no focus trap, nothing blocked. Its layer
+  is `--z-notice` in `index.css`, above the floating action button and below
+  menus, tooltips, and dialogs. A floating notice adds the opaque surface,
+  outline, and single shadow that every floating layer here carries; the same
+  component inside a dialog stays flat. It holds every notice the app currently
+  has, oldest first, with conditions ahead of one-off messages. Notices are
+  never ranked against each other and never replace each other: something worth
+  saying is worth showing, and a message that loses a contest is a message the
+  user never gets. Each carries its own dismissal where dismissal makes sense.
 - There is no app header. One floating action button is the document-level
   command surface at every viewport width. Its menu contains the Tabelo identity
   and description, Undo, Redo, New table, Import, Download, Add view, Layout,

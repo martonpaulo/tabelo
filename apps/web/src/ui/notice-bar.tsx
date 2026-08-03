@@ -13,9 +13,12 @@ import {
 import { LiveRegions } from "@/ui/primitives/live-region";
 import { Notice } from "@/ui/primitives/notice";
 
-// Notices sit in the layout rather than floating over it. A toast that covered
-// the table would be exactly the kind of interruption this product avoids.
-// See docs/design-system.md §5.
+// Notices float over the workspace in their own layer. Standing in the layout
+// was the interruption: an idle notice area renders nothing, so the first
+// notice inserted a band and pushed every pane down, which is the reflow
+// docs/design-system.md §5 forbids. Floating is still not a dialog: nothing is
+// trapped, and only the notices themselves take pointer events, so the work
+// underneath stays reachable. See docs/design-system.md §5.
 //
 // Every notice the app has to give is rendered. Ranking them and showing only
 // the winner is what used to swallow a refused clipboard write whenever
@@ -42,7 +45,18 @@ export function NoticeBar() {
 			{notices.length > 0 ? (
 				<section
 					aria-label={copy.a11y.notices}
-					className="flex shrink-0 flex-col gap-2 px-3 py-2"
+					// Fixed to the viewport rather than to the workspace: the panes
+					// must not move when a notice appears, and a stacked workspace
+					// scrolls underneath instead of carrying the notice off screen.
+					// Pinned to the top edge, which is the one the floating action
+					// button does not own, and to the leading side, which is the one
+					// with no controls under it: a pane's only header control is its
+					// trailing chevron. A notice may sit over pane chrome, but it may
+					// not take a control away from the pane it is talking about, so
+					// the column is width-limited and the trailing 3rem is reserved
+					// for narrow widths: workspace inset, header padding, and the
+					// 1.75rem control.
+					className="pointer-events-none fixed inset-x-0 top-0 z-(--z-notice) flex flex-col items-start gap-2 p-2 pr-12"
 				>
 					{notices.map((notice) => (
 						<NoticeRow key={notice.id} notice={notice} />
@@ -91,7 +105,11 @@ function NoticeRow({ notice }: { readonly notice: AppNotice }) {
 	}, [id, delay]);
 
 	return (
-		<Notice severity={notice.severity} className="shrink-0">
+		<Notice
+			floating
+			severity={notice.severity}
+			className="pointer-events-auto w-full max-w-xl shrink-0"
+		>
 			<span>{notice.message}</span>
 			{notice.detail ? (
 				<span className="text-muted-foreground">{notice.detail}</span>

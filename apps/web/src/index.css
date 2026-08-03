@@ -94,6 +94,13 @@
 	--pane-stack-h: 60vh;
 	--fab-size: 3rem;
 	--pane-active-edge: 0.0625rem; /* 1 px */
+
+	/* The notice layer. Notices float over the workspace and over the floating
+	   action button, which owns z-index 40, but never over a menu, tooltip, or
+	   dialog, which own 50. Named here so the value is a decision rather than
+	   another number picked in a component. */
+	--z-notice: 45;
+
 	--control-radius: 0.25rem;
 	--surface-radius: 0.5rem;
 	--icon-stroke-width: 1.5;

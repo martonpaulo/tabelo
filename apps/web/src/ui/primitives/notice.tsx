@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import type { NoticeSeverity } from "@/state/notice-queue";
 
 // One shape for "here is something you should know, and here is what you can
-// do about it". It sits in the layout rather than floating over the table.
-// See docs/design-system.md §5. The download chooser reuses it so a
-// warning reads the same wherever it appears.
+// do about it". See docs/design-system.md §5. The download chooser reuses it
+// so a warning reads the same wherever it appears, inline inside a dialog or
+// floating over the workspace.
 //
 // Severity is what the message means, not where it came from: a failure looks
 // like a failure whichever producer raised it. Announcing is deliberately not
@@ -23,10 +23,15 @@ const severitySurface: Record<NoticeSeverity, string> = {
 
 export function Notice({
 	severity,
+	floating = false,
 	className,
 	children,
 }: {
 	readonly severity: NoticeSeverity;
+	// A notice that floats over the workspace instead of sitting inside a
+	// surface that already has one. It gets the opaque base the severity tint
+	// needs over a table, plus the shadow every floating layer here carries.
+	readonly floating?: boolean;
 	readonly className?: string;
 	readonly children: ReactNode;
 }) {
@@ -36,12 +41,19 @@ export function Notice({
 			// it can be verified without asserting a colour.
 			data-severity={severity}
 			className={cn(
-				"flex flex-wrap items-center gap-2 rounded-surface px-3 py-2 text-sm",
-				severitySurface[severity],
+				"rounded-surface",
+				floating && "bg-surface-panel shadow-lg ring-1 ring-line-strong",
 				className,
 			)}
 		>
-			{children}
+			<div
+				className={cn(
+					"flex flex-wrap items-center gap-2 rounded-surface px-3 py-2 text-sm",
+					severitySurface[severity],
+				)}
+			>
+				{children}
+			</div>
 		</div>
 	);
 }
