@@ -612,7 +612,7 @@ announced, so a region that appears with a message in it is a defect.
 
 Assertive interrupts whatever is being said and is reserved for a storage
 failure or a refused import: the cases where the user's table is at risk.
-Everything else, including "Copied to the clipboard.", is polite.
+Everything else, including a plain "Copied", is polite.
 
 Only what has not been announced yet is written, so dismissing one notice never
 reads the remaining ones out again, and a batch arriving together becomes one
@@ -657,28 +657,46 @@ per keystroke.
 - A pane's height must not change with its state: source diagnostics decorate
   the text and use tooltips rather than inserting a feedback row.
 - The notice area is one labelled region floating over the workspace, fixed to
-  the viewport's top edge rather than placed in the layout. It takes no space,
-  so showing or dismissing a notice moves nothing: the earlier in-layout band
-  was itself the reflow this section forbids, because an idle notice area
-  renders nothing and the first notice pushed every pane down. The top edge is
-  the one the floating action button does not own; the leading side is the one
-  with no controls under it, since a pane header's only control is its trailing
-  chevron. The region is width-limited and reserves its trailing edge, so no
-  notice ever covers the actions trigger of the pane it is talking about. Only
-  the notices themselves take pointer events, so the grid, the floating action
-  button, and everything else underneath stay operable while a notice is on
-  screen. One notice occupies the pane header band and no more; below the
-  stacking width a wrapping notice reaches the column index strip until it is
-  dismissed. It stays put while a stacked workspace scrolls under it. It is
-  not a dialog: no modal semantics, no focus trap, nothing blocked. Its layer
-  is `--z-notice` in `index.css`, above the floating action button and below
-  menus, tooltips, and dialogs. A floating notice adds the opaque surface,
-  outline, and single shadow that every floating layer here carries; the same
-  component inside a dialog stays flat. It holds every notice the app currently
-  has, oldest first, with conditions ahead of one-off messages. Notices are
-  never ranked against each other and never replace each other: something worth
-  saying is worth showing, and a message that loses a contest is a message the
-  user never gets. Each carries its own dismissal where dismissal makes sense.
+  the viewport's top trailing corner rather than placed in the layout. It takes
+  no space, so showing or dismissing a notice moves nothing: the earlier
+  in-layout band was itself the reflow this section forbids, because an idle
+  notice area renders nothing and the first notice pushed every pane down. The
+  top trailing corner is the one the floating action button does not own, and
+  the region keeps the same 0.5rem inset as the panes: no gutter is reserved
+  for what lies underneath, because a permanent hole in that corner costs more
+  than a temporary overlap the user can dismiss. It stays put while a stacked
+  workspace scrolls under it, and its layer is `--z-notice` in `index.css`,
+  above the floating action button and below menus, tooltips, and dialogs.
+- A notice is not a dialog: no modal semantics, no focus trap, nothing blocked.
+  Only the notices themselves take pointer events, so everything beside them
+  stays operable. While one is on screen it covers the pane header band under
+  it, including that pane's actions trigger; below the stacking width a
+  wrapping notice reaches the column index strip. Both end with dismissal.
+- Each notice is only as wide as its content needs, up to a cap. The cap is a
+  ceiling, not a width: a one-line message never draws a band across the table.
+- A notice's anatomy is fixed. Dismissal holds the top trailing corner. The
+  message and its actions share the column beside it, with the actions on their
+  own row below the message, aligned to the same trailing edge as the message
+  rather than running under the dismissal. Nothing in it moves with the message
+  length. A floating notice adds the opaque surface, outline, and single shadow
+  every floating layer here carries; the same component inside a dialog stays
+  flat.
+- A notice's actions carry no outline, because they are the quiet way out of a
+  condition rather than a decision the surface is asking for. Weight, not
+  colour, separates them from the message: the action is the body-strong style,
+  never blue, never capitalised, never italic. Blue belongs to focus and
+  selection, and capitals and italics cost legibility for the readers who can
+  least afford it.
+- The area holds every notice the app currently has, oldest first, with
+  conditions ahead of one-off messages. Notices are never ranked against each
+  other and never replace each other: something worth saying is worth showing,
+  and a message that loses a contest is a message the user never gets. Each
+  carries its own dismissal where dismissal makes sense.
+- Every notice is app-level. There is no per-pane or per-view notice area: a
+  failure belongs to the document the whole workspace is showing, and the same
+  message repeated in four panes would be four interruptions. A source pane's
+  own parse diagnostics are not notices; they decorate the text and use
+  tooltips, as above.
 - There is no app header. One floating action button is the document-level
   command surface at every viewport width. Its menu contains the Tabelo identity
   and description, Undo, Redo, New table, Import, Download, Add view, Layout,
@@ -832,6 +850,17 @@ Never blame, never exclaim, never use humour in an error. Prefer "The source
 does not parse yet" to "Oops! Something went wrong".
 
 Labels are sentence case. Actions are verbs: "Add row", not "New row".
+
+A notice is read at a glance while the user is doing something else, so it says
+the least that still helps: what happened, and the recovery only when there is
+one. Its action label is one short verb phrase, "Use as data" rather than "Use
+it as data instead". Do not restate in the message what the interface already
+shows, and do not name the product inside its own notice.
+
+Prose names an alternative with the word "or", never a slash: "Use ⌘C or
+Ctrl+C". A slash between two spellings of the same key reads as a fraction and
+is spoken as one by a screen reader. Menu shortcut chips keep their own
+treatment above.
 
 Terminal punctuation follows a structural split:
 

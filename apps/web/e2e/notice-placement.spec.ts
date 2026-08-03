@@ -60,6 +60,30 @@ for (const [shape, viewport] of [
 	});
 }
 
+// The cap is a ceiling, not a width. A one-line message must not draw a band
+// across the workspace merely because a longer one could.
+test("a short notice takes only the width it needs", async ({
+	page,
+	tabelo,
+}) => {
+	await page.setViewportSize(TILED);
+	await raiseNotice(tabelo);
+
+	const notice = await box(tabelo.notice().first());
+	const workspace = await box(tabelo.workspace);
+	expect(notice.width).toBeLessThan(workspace.width / 2);
+});
+
+// The recovery comes before the way out: a notice offering an action puts that
+// action in the tab order first, and dismissal last.
+test("a notice reaches its action before its dismissal", async ({ tabelo }) => {
+	await raiseNotice(tabelo);
+
+	const controls = tabelo.notice().first().getByRole("button");
+	await expect(controls).toHaveCount(2);
+	await expect(controls.last()).toHaveAccessibleName(copy.actions.dismiss);
+});
+
 test("a notice does not cover the floating action button", async ({
 	page,
 	tabelo,
@@ -120,32 +144,37 @@ test("a dialog covers the notice layer rather than opening beneath it", async ({
 	expect(onNotice).toBe(false);
 });
 
-// A notice talks about the table, and the pane it talks about must keep its
-// own commands: the trigger has to be clickable under the notice layer, and
-// the menu it opens has to come out above it.
-for (const [shape, viewport] of [
-	["tiled", TILED],
-	["stacked", STACKED],
-] as const) {
-	test(`the ${shape} pane keeps its actions menu while a notice is on screen`, async ({
+// A notice takes the top trailing corner, so at stacked widths it sits over
+// the only pane's actions trigger while it is on screen. What must hold is the
+// other direction: a menu already open is never covered by a notice arriving
+// over it.
+test("an open menu is not covered by a notice", async ({ page, tabelo }) => {
+	await page.setViewportSize(STACKED);
+	const menu = await tabelo.openPaneMenu("grid");
+	await raiseNotice(tabelo);
+	await expect(menu).toBeVisible();
+
+	const menuBox = await box(menu);
+	const onNotice = await noticeIsTopmostAt(
 		page,
-		tabelo,
-	}) => {
-		await page.setViewportSize(viewport);
-		await raiseNotice(tabelo);
+		menuBox.x + menuBox.width / 2,
+		menuBox.y + menuBox.height / 2,
+	);
+	expect(onNotice).toBe(false);
+});
 
-		const menu = await tabelo.openPaneMenu("grid");
-		await expect(menu).toBeVisible();
-		const menuBox = await box(menu);
+// Tiled, the notice is over the trailing pane's header, so a leading pane
+// keeps its own commands while a notice is on screen.
+test("a pane away from the notice keeps its actions menu", async ({
+	page,
+	tabelo,
+}) => {
+	await page.setViewportSize(TILED);
+	await raiseNotice(tabelo);
 
-		const onNotice = await noticeIsTopmostAt(
-			page,
-			menuBox.x + menuBox.width / 2,
-			menuBox.y + menuBox.height / 2,
-		);
-		expect(onNotice).toBe(false);
-	});
-}
+	const menu = await tabelo.openPaneMenu("grid");
+	await expect(menu).toBeVisible();
+});
 
 test("the notice layer does not swallow pointer events over the table", async ({
 	page,
@@ -157,10 +186,9 @@ test("the notice layer does not swallow pointer events over the table", async ({
 
 	// Beside the notice column, at the same height, the workspace is still what
 	// the pointer reaches: the layer is a place for notices, not a lid.
-	const beside = (notice.x + notice.width + TILED.width) / 2;
 	const onNotice = await noticeIsTopmostAt(
 		page,
-		beside,
+		notice.x / 2,
 		notice.y + notice.height / 2,
 	);
 	expect(onNotice).toBe(false);

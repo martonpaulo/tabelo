@@ -48,15 +48,13 @@ export function NoticeBar() {
 					// Fixed to the viewport rather than to the workspace: the panes
 					// must not move when a notice appears, and a stacked workspace
 					// scrolls underneath instead of carrying the notice off screen.
-					// Pinned to the top edge, which is the one the floating action
-					// button does not own, and to the leading side, which is the one
-					// with no controls under it: a pane's only header control is its
-					// trailing chevron. A notice may sit over pane chrome, but it may
-					// not take a control away from the pane it is talking about, so
-					// the column is width-limited and the trailing 3rem is reserved
-					// for narrow widths: workspace inset, header padding, and the
-					// 1.75rem control.
-					className="pointer-events-none fixed inset-x-0 top-0 z-(--z-notice) flex flex-col items-start gap-2 p-2 pr-12"
+					// Pinned to the top trailing corner, the one the floating action
+					// button does not own, on the same 0.5rem inset as the panes. A
+					// notice sits over the pane header band while it is on screen,
+					// including that pane's actions trigger: it is dismissible, and
+					// reserving a gutter for the trigger left a permanent hole in the
+					// corner that was worse than the temporary overlap.
+					className="pointer-events-none fixed inset-x-0 top-0 z-(--z-notice) flex flex-col items-end gap-2 p-2"
 				>
 					{notices.map((notice) => (
 						<NoticeRow key={notice.id} notice={notice} />
@@ -108,33 +106,58 @@ function NoticeRow({ notice }: { readonly notice: AppNotice }) {
 		<Notice
 			floating
 			severity={notice.severity}
-			className="pointer-events-auto w-full max-w-xl shrink-0"
+			// Only as wide as it needs to be, up to the cap: a short message must
+			// not draw a band across the table just because a long one could.
+			className="pointer-events-auto w-fit max-w-sm shrink-0"
 		>
-			<span>{notice.message}</span>
-			{notice.detail ? (
-				<span className="text-muted-foreground">{notice.detail}</span>
-			) : null}
-			{notice.actions.map((action) => (
-				<Button
-					key={action.id}
-					variant="outline"
-					size="xs"
-					onClick={action.run}
-				>
-					{action.label}
-				</Button>
-			))}
-			{notice.dismissible ? (
-				<Button
-					variant="ghost"
-					size="icon-xs"
-					aria-label={copy.actions.dismiss}
-					className="ml-auto"
-					onClick={() => useTabeloStore.getState().dismissNotice(id)}
-				>
-					<X aria-hidden />
-				</Button>
-			) : null}
+			{/* One anatomy for every notice: dismissal holds the top trailing
+			    corner, and the message and its actions share the column beside
+			    it, so an action never runs under the dismissal and nothing moves
+			    with the message length. */}
+			<div className="flex w-full items-start gap-2">
+				<div className="flex min-w-0 flex-1 flex-col gap-1">
+					<span>
+						{notice.message}
+						{notice.detail ? (
+							<span className="text-muted-foreground"> {notice.detail}</span>
+						) : null}
+					</span>
+					{notice.actions.length > 0 ? (
+						// A notice's action is the quiet way out of a condition, not a
+						// decision the surface is asking for, so it stays a tertiary
+						// control with no outline. Weight, not colour, is what separates
+						// it from the message: notification guidance puts the action in
+						// the body-strong style, and blue here would compete with the
+						// one accent this product spends on focus and selection. No
+						// capitals and no italics: both cost legibility for the readers
+						// who can least afford it.
+						<div className="flex flex-wrap justify-end gap-1">
+							{notice.actions.map((action) => (
+								<Button
+									key={action.id}
+									variant="ghost"
+									size="xs"
+									className="font-semibold"
+									onClick={action.run}
+								>
+									{action.label}
+								</Button>
+							))}
+						</div>
+					) : null}
+				</div>
+				{notice.dismissible ? (
+					<Button
+						variant="ghost"
+						size="icon-xs"
+						aria-label={copy.actions.dismiss}
+						className="shrink-0"
+						onClick={() => useTabeloStore.getState().dismissNotice(id)}
+					>
+						<X aria-hidden />
+					</Button>
+				) : null}
+			</div>
 		</Notice>
 	);
 }

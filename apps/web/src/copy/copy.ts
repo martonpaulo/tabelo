@@ -361,66 +361,59 @@ export const copy = {
 	notices: {
 		pendingPaneAction: (kind: "view" | "close") =>
 			kind === "close"
-				? "This source is not valid yet. Keep editing or discard it before closing this view."
-				: "This source is not valid yet. Keep editing or discard it before changing views.",
+				? "This source is not valid yet. Keep editing or discard it to close the view."
+				: "This source is not valid yet. Keep editing or discard it to change views.",
 		discardPaneAction: (kind: "view" | "close") =>
-			kind === "close" ? "Discard and close view" : "Discard and change view",
+			kind === "close" ? "Discard and close" : "Discard and change",
 		headerGuess: "First row used as headers",
-		headerGuessAction: "Use it as data instead",
+		headerGuessAction: "Use as data",
 		importError: (error: ImportError) => {
 			switch (error.code) {
 				case "invalid-format":
-					return `This file is not valid ${views[error.format].shortLabel}. The current table was not changed.`;
+					return `Not valid ${views[error.format].shortLabel}. Your table is unchanged.`;
 				case "too-many-rows":
-					return `This import has ${error.actual} rows, above Tabelo's supported limit of ${error.limit}. The current table was not changed.`;
+					return `${error.actual} rows, over the ${error.limit} limit. Your table is unchanged.`;
 				case "too-many-columns":
-					return `This import has ${error.actual} columns, above Tabelo's supported limit of ${error.limit}. The current table was not changed.`;
+					return `${error.actual} columns, over the ${error.limit} limit. Your table is unchanged.`;
 				case "too-many-cells":
-					return `This import has ${error.actual} cells, above Tabelo's supported limit of ${error.limit}. The current table was not changed.`;
+					return `${error.actual} cells, over the ${error.limit} limit. Your table is unchanged.`;
 				case "payload-too-large":
-					return "This import is larger than Tabelo's supported limit of 1 MB. The current table was not changed.";
+					return "Over the 1 MB limit. Your table is unchanged.";
 				case "empty":
-					return "There is no table to import. The current table was not changed.";
+					return "Nothing to import. Your table is unchanged.";
 			}
 		},
 		copied: (scope: "selection" | "source" | "preview") =>
 			scope === "source"
-				? "Source copied to the clipboard"
+				? "Source copied"
 				: scope === "preview"
-					? "Formatted table copied to the clipboard"
-					: "Copied to the clipboard",
+					? "Formatted table copied"
+					: "Copied",
 		// Tabelo cannot grant itself clipboard permission, so the recovery is
 		// always the keyboard. It stays available because a trusted key press
 		// never needs the permission the button does.
-		clipboardReadFailed:
-			"Clipboard access was blocked. Use ⌘V/Ctrl+V or allow clipboard access, then try again.",
+		clipboardReadFailed: "Paste was blocked. Use ⌘V or Ctrl+V instead.",
 		clipboardWriteFailed: (scope: "selection" | "source" | "preview") =>
 			scope === "source"
-				? "The source could not be copied. Select it in the editor and use ⌘C/Ctrl+C."
+				? "Copy was blocked. Select the text and use ⌘C or Ctrl+C."
 				: scope === "preview"
-					? "The table could not be copied. Select it and use ⌘C/Ctrl+C."
-					: "The selection could not be copied. Select it and use ⌘C/Ctrl+C.",
-		clipboardEmpty: "There is nothing on the clipboard to paste.",
+					? "Copy was blocked. Select the table and use ⌘C or Ctrl+C."
+					: "Copy was blocked. Select the cells and use ⌘C or Ctrl+C.",
+		clipboardEmpty: "Nothing on the clipboard",
 		imported: "Table imported",
 		storageUnavailable:
-			"Changes are only in this tab. Browser storage is unavailable. Download a copy before closing.",
-		storageQuota:
-			"This table does not fit in browser storage. Download a copy before closing.",
+			"Browser storage is unavailable. Download a copy before closing.",
+		storageQuota: "Browser storage is full. Download a copy before closing.",
 		savedTableUnreadable:
-			"The saved table could not be opened. Tabelo kept the original browser data unchanged.",
-		storageRecoveryUnavailable:
-			"A recovery copy could not be created because browser storage is unavailable.",
-		storageRecoveryQuota:
-			"A recovery copy could not be created because browser storage is full.",
+			"The saved table could not be opened. The original data was kept.",
+		storageRecoveryUnavailable: "No recovery copy: storage is unavailable.",
+		storageRecoveryQuota: "No recovery copy: storage is full.",
 		downloadCopy: "Download a copy",
-		downloadOriginal: "Download original data",
+		downloadOriginal: "Download original",
 		replaceSavedData: "Replace saved data",
-		replacedSavedData:
-			"Saved data replaced. The original was kept as a recovery copy.",
-		updateCheckFailed:
-			"Tabelo could not check for an update. Keep working and try again later.",
-		updateFailed:
-			"Tabelo could not apply the update. Your table is saved, so you can reload and try again.",
+		replacedSavedData: "Saved data replaced. The original was kept.",
+		updateCheckFailed: "Could not check for an update. Try again later.",
+		updateFailed: "Could not update. Reload and try again.",
 	},
 
 	a11y: {

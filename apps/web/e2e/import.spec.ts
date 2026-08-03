@@ -11,9 +11,9 @@ test("a malformed named file preserves the current table", async ({
 	);
 
 	await expect(tabelo.cell(1, 1)).toHaveText("keep me");
-	await expect(tabelo.notice()).toHaveText(
-		"This file is not valid CSV. The current table was not changed.",
-	);
+	// The refusal is reported as a failure. Its wording is editorial and is
+	// deliberately not asserted here.
+	await expect(tabelo.notice("error")).toBeVisible();
 });
 
 test("an oversized paste is rejected without changing the table", async ({
@@ -26,9 +26,7 @@ test("an oversized paste is rejected without changing the table", async ({
 	await tabelo.paste(oversized);
 
 	await expect(tabelo.cell(1, 1)).toHaveText("keep me");
-	await expect(tabelo.notice()).toHaveText(
-		"This import has 501 rows, above Tabelo's supported limit of 500. The current table was not changed.",
-	);
+	await expect(tabelo.notice("error")).toBeVisible();
 });
 
 test("an oversized named file uses the same rejection policy", async ({
@@ -42,9 +40,7 @@ test("an oversized named file uses the same rejection policy", async ({
 	await tabelo.importFile("oversized.csv", oversized, "text/csv");
 
 	await expect(tabelo.cell(1, 1)).toHaveText("keep me");
-	await expect(tabelo.notice()).toHaveText(
-		"This import has 501 rows, above Tabelo's supported limit of 500. The current table was not changed.",
-	);
+	await expect(tabelo.notice("error")).toBeVisible();
 });
 
 test("cancelling the file picker leaves the current table unchanged", async ({
