@@ -404,9 +404,10 @@ here:
   only. No real person's name, address, email, username, or account may appear,
   and least of all the maintainer's own: sample content is read, copied, and
   screenshotted far more often than it is reviewed. The person-shaped fixtures
-  are `Inez` and `Mark`. Public identifiers required for the repository link,
-  the licence attribution, or deployment configuration are not test data and
-  stay as they are.
+  are `Ingrid` and `Paulo`. Where a fixture pairs a person with a location,
+  `Ingrid` takes `Rio` and `Paulo` takes `Madrid`. Public identifiers required
+  for the repository link, the licence attribution, or deployment
+  configuration are not test data and stay as they are.
 - A test asserting a platform-dependent result derives its expectation from the
   host, never from a hard-coded guess about which machine runs it. A keyboard
   legend, path separator, or line ending that is correct on a maintainer's

@@ -16,7 +16,7 @@ beforeEach(() => {
 		document: documentFromMatrix(
 			[
 				["Name", "Role"],
-				["Inez", "Designer"],
+				["Ingrid", "Designer"],
 			],
 			{ headerRow: true },
 		),
@@ -43,10 +43,10 @@ describe("the download preference", () => {
 		const document = useTabeloStore.getState().document;
 
 		expect(csv().serialize(document, { includeHeader: true })).toBe(
-			"Name,Role\nInez,Designer",
+			"Name,Role\nIngrid,Designer",
 		);
 		expect(csv().serialize(document, { includeHeader: false })).toBe(
-			"Inez,Designer",
+			"Ingrid,Designer",
 		);
 	});
 

@@ -5,8 +5,8 @@ import { CURRENT_VERSION, STORAGE_KEY } from "@/persistence/schema";
 import { flushPersistence, startAutosave, useTabeloStore } from "./store";
 
 const initialState = useTabeloStore.getInitialState();
-const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
-const validMarkdown = "| Name |\n| --- |\n| Inez |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Ingrid |";
+const validMarkdown = "| Name |\n| --- |\n| Ingrid |";
 let stopAutosave: (() => void) | null = null;
 
 beforeEach(() => {
@@ -47,7 +47,7 @@ describe("autosave lifecycle", () => {
 		expect(restored.document.columns[0]?.header).toBe("Name");
 		expect(
 			restored.document.rows[0]?.cells[restored.document.columns[0].id],
-		).toBe("Inez");
+		).toBe("Ingrid");
 		expect(restored.draft).toMatchObject({
 			paneId,
 			viewId: "markdown",

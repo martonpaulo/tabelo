@@ -27,32 +27,32 @@ These are not separate files. They are the same table:
 
 | Name  | Role      | Active |
 | :---- | :-------: | -----: |
-| Inez  | Designer  | Yes    |
-| Mark  | Developer | No     |
+| Ingrid  | Designer  | Yes    |
+| Paulo  | Developer | No     |
 
 **Markdown**: alignment and all
 
 ```markdown
 | Name  | Role      | Active |
 | :---- | :-------: | -----: |
-| Inez  | Designer  | Yes    |
-| Mark  | Developer | No     |
+| Ingrid  | Designer  | Yes    |
+| Paulo  | Developer | No     |
 ```
 
 **CSV**
 
 ```csv
 Name,Role,Active
-Inez,Designer,Yes
-Mark,Developer,No
+Ingrid,Designer,Yes
+Paulo,Developer,No
 ```
 
 **Jira**
 
 ```jira
 ||Name||Role||Active||
-|Inez|Designer|Yes|
-|Mark|Developer|No|
+|Ingrid|Designer|Yes|
+|Paulo|Developer|No|
 ```
 
 **JSON**
@@ -60,8 +60,8 @@ Mark,Developer,No
 ```json
 [
   ["Name","Role","Active"],
-  ["Inez","Designer","Yes"],
-  ["Mark","Developer","No"]
+  ["Ingrid","Designer","Yes"],
+  ["Paulo","Developer","No"]
 ]
 ```
 

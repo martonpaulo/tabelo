@@ -7,7 +7,7 @@ import {
 } from "@/formats";
 import type { TableCodec } from "@/formats/types";
 
-const document = documentFromMatrix([["Name"], ["Inez"]], {
+const document = documentFromMatrix([["Name"], ["Ingrid"]], {
 	headerRow: true,
 });
 

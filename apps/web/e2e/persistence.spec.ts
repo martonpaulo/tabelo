@@ -1,21 +1,21 @@
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
-const validMarkdown = "| Name |\n| --- |\n| Inez |";
-const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
+const validMarkdown = "| Name |\n| --- |\n| Ingrid |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Ingrid |";
 
 test("reload within debounce restores an invalid draft and its last valid table", async ({
 	tabelo,
 }) => {
 	const source = tabelo.source("markdown");
 	await source.fill(validMarkdown);
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 	await source.fill(invalidMarkdown);
 
 	await tabelo.page.reload();
 
 	await expect(tabelo.workspace).toBeVisible();
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 	await expect(
 		tabelo.pane("markdown").locator(".cm-diagnosticError"),
 	).toHaveCount(1);

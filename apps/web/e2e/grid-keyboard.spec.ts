@@ -249,11 +249,11 @@ test("column wrapping grows rows, persists, and keeps cell navigation", async ({
 test("a cell is named by its value, not by its coordinates", async ({
 	tabelo,
 }) => {
-	await tabelo.editCell(1, 1, "Inez");
+	await tabelo.editCell(1, 1, "Ingrid");
 
 	// Cells carry their content, while row and column headers carry context.
 	await expect(
-		tabelo.grid().getByRole("gridcell", { name: "Inez" }),
+		tabelo.grid().getByRole("gridcell", { name: "Ingrid" }),
 	).toBeVisible();
 	await expect(
 		tabelo.grid().getByRole("rowheader", { name: copy.a11y.rowNumber(0) }),
@@ -279,7 +279,7 @@ test("selection state is exposed on the cells it covers", async ({
 });
 
 test("the documented grid commands still work", async ({ page, tabelo }) => {
-	await tabelo.editCell(1, 1, "Inez");
+	await tabelo.editCell(1, 1, "Ingrid");
 	await tabelo.editCell(2, 1, "Bo");
 
 	// Enter edits, F2 edits, Escape leaves the value alone.
@@ -289,7 +289,7 @@ test("the documented grid commands still work", async ({ page, tabelo }) => {
 		tabelo.grid().getByRole("textbox", { name: copy.a11y.cellEditor(0, 0) }),
 	).toBeVisible();
 	await page.keyboard.press("Escape");
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 
 	// Home and End move along the row; the modifier goes to the far corner.
 	await page.keyboard.press("End");
@@ -307,9 +307,9 @@ test("the documented grid commands still work", async ({ page, tabelo }) => {
 	await tabelo.cell(1, 1).click();
 	await page.keyboard.press("Alt+ArrowDown");
 	await expect(tabelo.cell(1, 1)).toHaveText("Bo");
-	await expect(tabelo.cell(2, 1)).toHaveText("Inez");
+	await expect(tabelo.cell(2, 1)).toHaveText("Ingrid");
 	await page.keyboard.press("Alt+ArrowUp");
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 
 	// Backspace clears contents; the modifier removes the structure.
 	await tabelo.cell(1, 1).click();
@@ -355,7 +355,7 @@ test("Mod+A selects the header row and every body cell", async ({
 test("typing in a cell never reaches the grid's structural shortcuts", async ({
 	tabelo,
 }) => {
-	await tabelo.editCell(1, 1, "Inez");
+	await tabelo.editCell(1, 1, "Ingrid");
 	const rowsBefore = await tabelo.grid().getByRole("row").count();
 
 	await tabelo.cell(1, 1).dblclick();
@@ -371,7 +371,7 @@ test("typing in a cell never reaches the grid's structural shortcuts", async ({
 	expect(await tabelo.grid().getByRole("row").count()).toBe(rowsBefore);
 
 	await editor.press("Escape");
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 });
 
 test("the header row is a row, and every row counted is a row exposed", async ({

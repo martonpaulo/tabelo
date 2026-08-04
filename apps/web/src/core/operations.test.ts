@@ -242,7 +242,7 @@ describe("header handling", () => {
 		expect(
 			detectHeaderRow([
 				["Name", "Role"],
-				["Inez", "Designer"],
+				["Ingrid", "Designer"],
 			]),
 		).toBe(true);
 	});
@@ -250,8 +250,8 @@ describe("header handling", () => {
 	it("treats a first row containing a number as data", () => {
 		expect(
 			detectHeaderRow([
-				["Inez", "31"],
-				["Mark", "24"],
+				["Ingrid", "31"],
+				["Paulo", "24"],
 			]),
 		).toBe(false);
 	});
@@ -259,8 +259,8 @@ describe("header handling", () => {
 	it("treats a first row with a blank cell as data", () => {
 		expect(
 			detectHeaderRow([
-				["Inez", ""],
-				["Mark", "x"],
+				["Ingrid", ""],
+				["Paulo", "x"],
 			]),
 		).toBe(false);
 	});
@@ -271,8 +271,8 @@ describe("header handling", () => {
 	it("leaves the header row empty when row 1 is data", () => {
 		const document = documentFromMatrix(
 			[
-				["Inez", "31"],
-				["Mark", "24"],
+				["Ingrid", "31"],
+				["Paulo", "24"],
 			],
 			{ headerRow: false },
 		);
@@ -284,7 +284,7 @@ describe("header handling", () => {
 		const document = documentFromMatrix(
 			[
 				["Name", ""],
-				["Inez", "Designer"],
+				["Ingrid", "Designer"],
 			],
 			{ headerRow: true },
 		);
@@ -376,7 +376,7 @@ describe("blank headers survive structural edits", () => {
 		const next = insertColumns(
 			docOf([
 				["Name", ""],
-				["Inez", ""],
+				["Ingrid", ""],
 			]),
 			1,
 		);

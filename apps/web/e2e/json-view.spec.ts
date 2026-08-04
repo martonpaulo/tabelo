@@ -27,13 +27,13 @@ test("serializes as an array of row objects keyed by the headers", async ({
 	tabelo,
 }) => {
 	await nameColumns(tabelo, "Name", "Role", "City");
-	await tabelo.editCell(1, 1, "Inez");
+	await tabelo.editCell(1, 1, "Ingrid");
 	await tabelo.editCell(1, 2, "Designer");
 
 	await tabelo.choosePaneView("markdown", "json");
 
 	const source = tabelo.source("json");
-	await expect(source).toContainText('"Name":"Inez"');
+	await expect(source).toContainText('"Name":"Ingrid"');
 	await expect(source).toContainText('"Role":"Designer"');
 	// The header is carried by the keys, never emitted as a record of its own.
 	await expect(source).not.toContainText('"Name":"Name"');

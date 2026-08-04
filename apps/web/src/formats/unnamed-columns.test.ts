@@ -15,8 +15,8 @@ import { canSerialize, listCodecs } from "@/formats";
 // Two headers blank, two sharing a name, and one ordinary one.
 const awkward = [
 	["", "Name", "", "Name", "City"],
-	["1", "Inez", "2", "Designer", "Lisbon"],
-	["3", "Mark", "4", "Developer", "Porto"],
+	["1", "Ingrid", "2", "Designer", "Rio"],
+	["3", "Paulo", "4", "Developer", "Madrid"],
 ];
 
 describe("unnamed and duplicate columns survive every codec", () => {

@@ -8,7 +8,7 @@ import { expect, test } from "./fixtures";
 // still showing the last valid table, but this pane is showing the draft, and
 // the draft is what has to reach the clipboard.
 
-const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Ingrid |";
 const writeRecovery = copy.notices.clipboardWriteFailed("source");
 
 // A clipboard that accepts everything and remembers it, so the copied bytes can
@@ -84,7 +84,7 @@ test("copies the visible source of a valid view", async ({ page, tabelo }) => {
 	await page.reload();
 	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
-	await tabelo.editCell(1, 1, "Inez");
+	await tabelo.editCell(1, 1, "Ingrid");
 
 	await tabelo.runPaneCommand("markdown", "copySource");
 
@@ -92,7 +92,7 @@ test("copies the visible source of a valid view", async ({ page, tabelo }) => {
 		tabelo.notice().filter({ hasText: copy.notices.copied("source") }),
 	).toBeVisible();
 	const copied = await lastCopied(page);
-	expect(copied?.text).toContain("Inez");
+	expect(copied?.text).toContain("Ingrid");
 	expect(copied?.text).toContain("---");
 });
 
@@ -167,7 +167,7 @@ test("copies both HTML and TSV from the preview pane", async ({
 	await expect(tabelo.workspace).toBeVisible();
 
 	// Create some content
-	await tabelo.editCell(1, 1, "Inez");
+	await tabelo.editCell(1, 1, "Ingrid");
 
 	await tabelo.choosePaneView("markdown", "html-preview");
 	await tabelo.runPaneCommand("html-preview", "copyFormattedTable");
@@ -177,9 +177,9 @@ test("copies both HTML and TSV from the preview pane", async ({
 	).toBeVisible();
 
 	const copied = await lastCopied(page);
-	expect(copied?.text).toContain("Inez");
+	expect(copied?.text).toContain("Ingrid");
 	expect(copied?.text).toContain("\t"); // TSV
-	expect(copied?.html).toContain("Inez");
+	expect(copied?.html).toContain("Ingrid");
 	expect(copied?.html).toContain("<table");
 });
 
@@ -262,7 +262,7 @@ test("copying returns focus to the pane menu without disturbing the grid", async
 					?.getAttribute("data-cell") ?? null,
 		);
 
-	await tabelo.editCell(2, 1, "Inez");
+	await tabelo.editCell(2, 1, "Ingrid");
 	const before = await selected();
 	expect(before).not.toBeNull();
 

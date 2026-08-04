@@ -1,8 +1,8 @@
 import { expect, test } from "./fixtures";
 
 const invalidMarkdown =
-	"| Name | Role |\n| not a divider |\n| Inez | Designer |";
-const validMarkdown = "| Name | Role |\n| --- | --- |\n| Inez | Designer |";
+	"| Name | Role |\n| not a divider |\n| Ingrid | Designer |";
+const validMarkdown = "| Name | Role |\n| --- | --- |\n| Ingrid | Designer |";
 
 test("parse errors underline the source and describe the editor", async ({
 	tabelo,

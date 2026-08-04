@@ -5,7 +5,7 @@ import { expect, test } from "./fixtures";
 // along, rather than by naming a tiling first. The presets still own every
 // shape, so splitting can never reach one the gallery cannot.
 
-const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Ingrid |";
 
 test("splitting a pane adds the view that was chosen for it", async ({
 	tabelo,

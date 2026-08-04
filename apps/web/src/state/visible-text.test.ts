@@ -12,7 +12,7 @@ import { type Draft, textForView, visibleTextForPane } from "./store";
 const document = documentFromMatrix(
 	[
 		["Name", "Role"],
-		["Inez", "Designer"],
+		["Ingrid", "Designer"],
 	],
 	{ headerRow: true },
 );
@@ -55,7 +55,7 @@ describe("the text a pane is showing", () => {
 	it("is a clean draft's own text, keeping the user's formatting", () => {
 		const pending = draft({
 			status: "clean",
-			text: "| Name  |  Role |\n| --- | --- |\n| Inez | Designer |",
+			text: "| Name  |  Role |\n| --- | --- |\n| Ingrid | Designer |",
 		});
 
 		expect(

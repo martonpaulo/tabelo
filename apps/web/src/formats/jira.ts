@@ -5,7 +5,7 @@ import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
 // Jira's wiki table syntax marks header cells with a doubled pipe:
 //
 //   ||Name||Role||Active||
-//   |Inez|Designer|Yes|
+//   |Ingrid|Designer|Yes|
 //
 // Like Markdown it is line-delimited and pipe-delimited, so pipes and newlines
 // inside a cell have to be escaped reversibly. Jira renders `\\` as a forced

@@ -16,8 +16,8 @@ import { useTabeloStore } from "./store";
 // and that neither loses work on the way.
 
 const initialState = useTabeloStore.getInitialState();
-const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
-const validMarkdown = "| Name |\n| --- |\n| Inez |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Ingrid |";
+const validMarkdown = "| Name |\n| --- |\n| Ingrid |";
 
 beforeEach(() => {
 	useTabeloStore.getState().discardDraft();
@@ -129,7 +129,7 @@ describe("adding a view", () => {
 
 	it("does not disturb a pending draft in another pane", () => {
 		const paneId = markdownPaneId();
-		useTabeloStore.getState().setDraft(paneId, "markdown", "Name\nInez");
+		useTabeloStore.getState().setDraft(paneId, "markdown", "Name\nIngrid");
 
 		addFirstSplit();
 

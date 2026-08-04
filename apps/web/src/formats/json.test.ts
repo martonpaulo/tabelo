@@ -4,19 +4,21 @@ import { jsonCodec } from "./json";
 
 describe("json parsing", () => {
 	it("reads an array of row objects without coercing cell values", () => {
-		const result = jsonCodec.parse('[ { "Name": "Inez", "Active": "true" } ]');
+		const result = jsonCodec.parse(
+			'[ { "Name": "Ingrid", "Active": "true" } ]',
+		);
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
 		expect(documentToMatrix(result.document)).toEqual([
 			["Name", "Active"],
-			["Inez", "true"],
+			["Ingrid", "true"],
 		]);
 	});
 
 	it("rejects malformed JSON, the positional shape, and non-string cells", () => {
 		expect(jsonCodec.parse("[").ok).toBe(false);
-		expect(jsonCodec.parse('{"Name":"Inez"}').ok).toBe(false);
-		expect(jsonCodec.parse('[["Name"], ["Inez"]]').ok).toBe(false);
+		expect(jsonCodec.parse('{"Name":"Ingrid"}').ok).toBe(false);
+		expect(jsonCodec.parse('[["Name"], ["Ingrid"]]').ok).toBe(false);
 		expect(jsonCodec.parse('[{"Name": 42}]').ok).toBe(false);
 		expect(jsonCodec.parse("[{}]").ok).toBe(false);
 	});
@@ -68,12 +70,12 @@ describe("json serialization", () => {
 		const document = documentFromMatrix(
 			[
 				["Name", "Role"],
-				["Inez", "Designer"],
+				["Ingrid", "Designer"],
 			],
 			{ headerRow: true },
 		);
 		expect(jsonCodec.serialize(document)).toBe(
-			'[\n  {"Name":"Inez","Role":"Designer"}\n]',
+			'[\n  {"Name":"Ingrid","Role":"Designer"}\n]',
 		);
 	});
 });

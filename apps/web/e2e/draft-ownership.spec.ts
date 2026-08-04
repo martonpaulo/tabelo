@@ -1,7 +1,7 @@
 import { expect, test } from "./fixtures";
 
 const invalidMarkdown =
-	"| Name | Role |\n| not a divider |\n| Inez | Designer |";
+	"| Name | Role |\n| not a divider |\n| Ingrid | Designer |";
 
 test("only the editing source pane owns an invalid draft", async ({
 	tabelo,

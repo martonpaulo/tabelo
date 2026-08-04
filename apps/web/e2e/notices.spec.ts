@@ -33,7 +33,7 @@ test("both announcement regions exist before there is anything to announce", asy
 test("a notice is written into the region that was already there", async ({
 	tabelo,
 }) => {
-	await tabelo.paste("Name\tRole\nInez\tDesigner");
+	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
 
 	await expect(tabelo.announcements).not.toHaveText("");
 	// The header guess is a suggestion, not an emergency: it must not interrupt.
@@ -47,7 +47,7 @@ test("a refused copy is not swallowed by the notice already on screen", async ({
 	await faultyClipboard(page, "blocked");
 	await page.reload();
 	await tabelo.dismissWelcome();
-	await tabelo.paste("Name\tRole\nInez\tDesigner");
+	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
 	await expect(tabelo.notice()).toHaveCount(1);
 
 	await copyCell(page);
@@ -67,7 +67,7 @@ test("dismissing one notice leaves the others alone", async ({
 	await faultyClipboard(page, "blocked");
 	await page.reload();
 	await tabelo.dismissWelcome();
-	await tabelo.paste("Name\tRole\nInez\tDesigner");
+	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
 	await copyCell(page);
 	await expect(tabelo.notice()).toHaveCount(2);
 
@@ -88,7 +88,7 @@ test("a confirmation clears itself and a failure does not", async ({
 	await faultyClipboard(page, "blocked");
 	await page.reload();
 	await tabelo.dismissWelcome();
-	await tabelo.editCell(1, 1, "Inez");
+	await tabelo.editCell(1, 1, "Ingrid");
 
 	await copyCell(page);
 	await expect(refusedCopy(tabelo)).toBeVisible();

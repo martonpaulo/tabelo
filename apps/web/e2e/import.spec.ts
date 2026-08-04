@@ -6,7 +6,7 @@ test("a malformed named file preserves the current table", async ({
 	await tabelo.editCell(1, 1, "keep me");
 	await tabelo.importFile(
 		"broken.csv",
-		'Name,Note\nInez,"unterminated',
+		'Name,Note\nIngrid,"unterminated',
 		"text/csv",
 	);
 

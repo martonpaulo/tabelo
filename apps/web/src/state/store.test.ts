@@ -17,7 +17,7 @@ describe("transactional input", () => {
 		});
 		const before = useTabeloStore.getState();
 
-		before.importText('Name,Note\nInez,"unterminated', "csv");
+		before.importText('Name,Note\nIngrid,"unterminated', "csv");
 
 		const after = useTabeloStore.getState();
 		expect(after.document).toBe(before.document);
@@ -45,7 +45,7 @@ describe("transactional input", () => {
 	it("keeps a successful import to one document-history operation", () => {
 		const before = documentToMatrix(useTabeloStore.getState().document);
 
-		useTabeloStore.getState().importText("Name,Role\nInez,Designer", "csv");
+		useTabeloStore.getState().importText("Name,Role\nIngrid,Designer", "csv");
 
 		expect(useTabeloStore.getState().past).toHaveLength(1);
 		useTabeloStore.getState().undo();
@@ -101,7 +101,7 @@ describe("structure deletion", () => {
 		const document = documentFromMatrix(
 			[
 				["Name", "Role", "City"],
-				["Inez", "Designer", "Porto"],
+				["Ingrid", "Designer", "Rio"],
 			],
 			{ headerRow: true },
 		);
@@ -122,7 +122,7 @@ describe("structure deletion", () => {
 	});
 
 	it("still deletes a proper subset of selected rows", () => {
-		const document = documentFromMatrix([["Name"], ["Inez"], ["Mark"]], {
+		const document = documentFromMatrix([["Name"], ["Ingrid"], ["Paulo"]], {
 			headerRow: true,
 		});
 		useTabeloStore.setState({
@@ -135,7 +135,7 @@ describe("structure deletion", () => {
 		expect(refusal).toBeNull();
 		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
 			["Name"],
-			["Mark"],
+			["Paulo"],
 		]);
 	});
 });
@@ -145,8 +145,8 @@ describe("structure insertion", () => {
 		const document = documentFromMatrix(
 			[
 				["Name", "Role"],
-				["Inez", "Designer"],
-				["Mark", "Developer"],
+				["Ingrid", "Designer"],
+				["Paulo", "Developer"],
 			],
 			{ headerRow: true },
 		);
@@ -192,7 +192,7 @@ describe("header correction", () => {
 	});
 
 	it("does not offer correction when a blank first-row cell stays data", () => {
-		useTabeloStore.getState().importText("Name,\nInez,Designer", "csv");
+		useTabeloStore.getState().importText("Name,\nIngrid,Designer", "csv");
 
 		const state = useTabeloStore.getState();
 		expect(state.headerCorrection).toBeNull();
@@ -202,7 +202,7 @@ describe("header correction", () => {
 	it("binds text-header correction to the imported document", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
+			.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
 
 		const state = useTabeloStore.getState();
 		expect(state.headerCorrection?.document).toBe(state.document);
@@ -211,9 +211,9 @@ describe("header correction", () => {
 	it("invalidates correction after a grid edit", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
+			.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
 
-		useTabeloStore.getState().editCell(0, 0, "Mark");
+		useTabeloStore.getState().editCell(0, 0, "Paulo");
 
 		expect(useTabeloStore.getState().headerCorrection).toBeNull();
 	});
@@ -221,7 +221,7 @@ describe("header correction", () => {
 	it("invalidates correction after a successful source commit", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
+			.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
 
 		const state = useTabeloStore.getState();
 		const paneId = state.workspace.panes.find(
@@ -231,7 +231,7 @@ describe("header correction", () => {
 		state.setDraft(
 			paneId ?? "",
 			"markdown",
-			"| Other | Role |\n| --- | --- |\n| Mark | Developer |",
+			"| Other | Role |\n| --- | --- |\n| Paulo | Developer |",
 		);
 
 		expect(useTabeloStore.getState().headerCorrection).toBeNull();
@@ -240,12 +240,12 @@ describe("header correction", () => {
 	it("refuses a correction whose imported revision is no longer current", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
+			.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
 		const imported = useTabeloStore.getState().document;
 		const replacement = documentFromMatrix(
 			[
 				["Other", "Role"],
-				["Mark", "Developer"],
+				["Paulo", "Developer"],
 			],
 			{ headerRow: true },
 		);
@@ -263,7 +263,7 @@ describe("header correction", () => {
 	it("makes correction and undo one atomic step each", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
+			.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
 		const imported = documentToMatrix(useTabeloStore.getState().document);
 
 		useTabeloStore.getState().demoteHeader();
@@ -271,7 +271,7 @@ describe("header correction", () => {
 		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
 			["", ""],
 			["Name", "Role"],
-			["Inez", "Designer"],
+			["Ingrid", "Designer"],
 		]);
 		expect(useTabeloStore.getState().headerCorrection).toBeNull();
 
@@ -286,7 +286,7 @@ describe("header correction", () => {
 	it("dismisses only the correction notice", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
+			.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
 		const before = useTabeloStore.getState().document;
 
 		useTabeloStore

@@ -11,8 +11,8 @@ import { layoutPresets } from "@/workspace/layout";
 import { textForView, useTabeloStore } from "./store";
 
 const initialState = useTabeloStore.getInitialState();
-const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
-const validMarkdown = "| Name |\n| --- |\n| Inez |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Ingrid |";
+const validMarkdown = "| Name |\n| --- |\n| Ingrid |";
 
 beforeEach(() => {
 	useTabeloStore.getState().discardDraft();
@@ -96,7 +96,7 @@ describe("draft ownership", () => {
 	});
 
 	it("refuses a blocked view before it can own a draft", () => {
-		const document = documentFromMatrix([["Name"], ["Inez"]], {
+		const document = documentFromMatrix([["Name"], ["Ingrid"]], {
 			headerRow: true,
 		});
 		const failure = { code: "test-conflict", columns: [0] } as const;
@@ -116,7 +116,7 @@ describe("draft ownership", () => {
 
 			const store = useTabeloStore.getState();
 			store.setPaneView(paneId, "json");
-			store.setDraft(paneId, "json", '[["Name"],["Inez"]]');
+			store.setDraft(paneId, "json", '[["Name"],["Ingrid"]]');
 
 			const state = useTabeloStore.getState();
 			expect(
@@ -245,7 +245,7 @@ describe("source synchronization", () => {
 	const parsedDocument = documentFromMatrix(
 		[
 			["Name", "Role"],
-			["Inez", "Designer"],
+			["Ingrid", "Designer"],
 		],
 		{ headerRow: true },
 	);
@@ -266,7 +266,7 @@ describe("source synchronization", () => {
 		const state = useTabeloStore.getState();
 		expect(documentToMatrix(state.document)).toEqual([
 			["Name", "Role"],
-			["Inez", "Designer"],
+			["Ingrid", "Designer"],
 		]);
 		expect(state.draft).toMatchObject({
 			paneId,

@@ -7,7 +7,7 @@ const document = {
 		{ id: "c1", header: "Name", align: "left" },
 		{ id: "c2", header: "Role", align: "default" },
 	],
-	rows: [{ id: "r1", cells: { c1: "Inez", c2: "Designer" } }],
+	rows: [{ id: "r1", cells: { c1: "Ingrid", c2: "Designer" } }],
 };
 
 function payload(overrides: Record<string, unknown> = {}) {

@@ -134,7 +134,7 @@ describe("reading", () => {
 
 	it("leaves the table untouched when the clipboard cannot be read", async () => {
 		useTabeloStore.setState({
-			document: documentFromMatrix([["Name"], ["Inez"]], { headerRow: true }),
+			document: documentFromMatrix([["Name"], ["Ingrid"]], { headerRow: true }),
 		});
 		const before = useTabeloStore.getState().document;
 		readClipboardTable.mockResolvedValue({ ok: false, reason: "blocked" });
@@ -159,7 +159,7 @@ describe("cutting", () => {
 			document: documentFromMatrix(
 				[
 					["Name", "Role"],
-					["Inez", "Designer"],
+					["Ingrid", "Designer"],
 				],
 				{ headerRow: true },
 			),
