@@ -23,6 +23,28 @@ const alignClass: Record<Alignment, string> = {
 export default function HtmlPreview() {
 	const document = useTabeloStore((state) => state.document);
 
+	// The preview is a reading copy, not an editing surface: a column or row
+	// with no value anywhere, alongside others that do have content, is
+	// structure the reader can't act on, so it is left out rather than shown as
+	// an empty band. Emptiness is judged against the full document,
+	// independently for rows and columns, so hiding one never changes whether
+	// the other counts as empty. A document with no content anywhere is a
+	// different case, not "every row and column is individually empty": a
+	// freshly started table still shows its blank shape rather than nothing.
+	const hasContent = document.rows.some((row) =>
+		document.columns.some((column) => (row.cells[column.id] ?? "") !== ""),
+	);
+	const visibleColumns = hasContent
+		? document.columns.filter((column) =>
+				document.rows.some((row) => (row.cells[column.id] ?? "") !== ""),
+			)
+		: document.columns;
+	const visibleRows = hasContent
+		? document.rows.filter((row) =>
+				document.columns.some((column) => (row.cells[column.id] ?? "") !== ""),
+			)
+		: document.rows;
+
 	return (
 		<div
 			data-slot="preview-scroller"
@@ -33,7 +55,13 @@ export default function HtmlPreview() {
 			// make an overflowing scroller a tab stop in the workspace ring.
 			data-pane-entry
 			tabIndex={-1}
-			className="tabelo-scroll-boundary h-full select-text overflow-auto p-4"
+			// The top offset is the grid's own index-strip height, not the pane's
+			// usual padding: the grid has no equivalent to a preview row, only a
+			// chrome strip above its first one, so lining the preview's first row
+			// up with the grid's first row means starting it one strip down
+			// instead of flush with the pane. Every later preview row then lands
+			// on a grid row line too, since both share the same row height.
+			className="tabelo-scroll-boundary h-full select-text overflow-auto px-4 pt-grid-strip pb-4"
 		>
 			{document.rows.length === 0 ? (
 				<div
@@ -56,12 +84,12 @@ export default function HtmlPreview() {
 				>
 					<thead>
 						<tr className="bg-surface-table-header">
-							{document.columns.map((column) => (
+							{visibleColumns.map((column) => (
 								<th
 									key={column.id}
 									scope="col"
 									className={cn(
-										"border border-line-subtle px-3 py-2 font-semibold",
+										"border border-line-subtle px-3 py-1.5 align-top font-semibold",
 										alignClass[column.align],
 									)}
 								>
@@ -71,13 +99,13 @@ export default function HtmlPreview() {
 						</tr>
 					</thead>
 					<tbody>
-						{document.rows.map((row) => (
+						{visibleRows.map((row) => (
 							<tr key={row.id}>
-								{document.columns.map((column) => (
+								{visibleColumns.map((column) => (
 									<td
 										key={column.id}
 										className={cn(
-											"border border-line-subtle px-3 py-2 align-top",
+											"border border-line-subtle px-3 py-1.5 align-top",
 											alignClass[column.align],
 										)}
 									>
