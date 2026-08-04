@@ -118,7 +118,10 @@ user-issued resizing.
 | `--surface-floating` | `bg-surface-floating` | Menus, tooltips, and dialogs above panes |
 
 Order matters: app is furthest back, gutter and interface chrome sit above the
-panel. The table-header surface is a quiet accent tint, so headers remain
+panel. Neighbouring surfaces are close in tone on purpose and are not held to a
+contrast ratio: they group content, they do not identify a component. What has
+to be seen is the boundary of anything floating, and that is `--line-floating`
+below. The table-header surface is a quiet accent tint, so headers remain
 recognizable as mutable table data instead of reading as disabled chrome. Use
 tones to group related content before adding a line. Editable pane bodies use
 `--surface-panel`; a read-only pane uses
