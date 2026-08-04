@@ -56,7 +56,7 @@ const views = {
 	"html-preview": {
 		label: "Rendered preview",
 		shortLabel: "Preview",
-		description: "The table as a reader would see it",
+		description: "A plain document table, as it reads outside Tabelo",
 	},
 } as const;
 
@@ -400,6 +400,8 @@ export const copy = {
 		pasteHint: "Paste a table",
 		sourceTitle: "Nothing here yet",
 		sourceBody: (label: string) => `Paste ${label} here to create the table.`,
+		previewTitle: "Nothing to read yet",
+		previewBody: "Add a row to the table to see it rendered here.",
 	},
 
 	status: {
