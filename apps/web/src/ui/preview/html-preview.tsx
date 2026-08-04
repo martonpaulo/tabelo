@@ -7,6 +7,11 @@ import { useTabeloStore } from "@/state/store";
 // It is built from the document directly rather than by injecting the HTML
 // codec's output into the page: same result, no dangerouslySetInnerHTML, and
 // no way for pasted content to become live markup.
+//
+// The reading model is a neutral document table, decided on #77: no card, no
+// striping, thin uniform rules including the header, square outer corners. The
+// preview answers "what will this look like once it leaves Tabelo", so it must
+// not acquire a treatment of its own. See `docs/design-system.md` section 3.
 
 const alignClass: Record<Alignment, string> = {
 	default: "text-left",
@@ -30,10 +35,24 @@ export default function HtmlPreview() {
 			tabIndex={-1}
 			className="tabelo-scroll-boundary h-full select-text overflow-auto p-4"
 		>
-			<div className="overflow-hidden rounded-surface bg-surface-panel ring-1 ring-line-subtle">
+			{document.rows.length === 0 ? (
+				<div
+					data-slot="preview-empty"
+					className="flex h-full flex-col items-center justify-center text-center"
+				>
+					<p className="font-medium text-sm">{copy.empty.previewTitle}</p>
+					<p className="mt-1 text-muted-foreground text-xs">
+						{copy.empty.previewBody}
+					</p>
+				</div>
+			) : (
 				<table
 					aria-label={copy.a11y.preview}
-					className="w-full border-collapse text-content"
+					// Sized to its content, capped at the pane: a two-column table is not
+					// stretched across a wide pane, and a wide one wraps rather than
+					// forcing the reader sideways. The scroller still shows the overflow
+					// that content which cannot wrap produces.
+					className="w-auto max-w-full border-collapse text-content"
 				>
 					<thead>
 						<tr className="bg-surface-table-header">
@@ -42,7 +61,7 @@ export default function HtmlPreview() {
 									key={column.id}
 									scope="col"
 									className={cn(
-										"border-line-strong border-b-2 px-3 py-2 font-semibold",
+										"border border-line-subtle px-3 py-2 font-semibold",
 										alignClass[column.align],
 									)}
 								>
@@ -53,12 +72,12 @@ export default function HtmlPreview() {
 					</thead>
 					<tbody>
 						{document.rows.map((row) => (
-							<tr key={row.id} className="even:bg-surface-header/60">
+							<tr key={row.id}>
 								{document.columns.map((column) => (
 									<td
 										key={column.id}
 										className={cn(
-											"border-line-subtle border-b px-3 py-2 align-top",
+											"border border-line-subtle px-3 py-2 align-top",
 											alignClass[column.align],
 										)}
 									>
@@ -73,7 +92,7 @@ export default function HtmlPreview() {
 						))}
 					</tbody>
 				</table>
-			</div>
+			)}
 		</div>
 	);
 }

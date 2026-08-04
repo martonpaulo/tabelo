@@ -478,6 +478,30 @@ screen-reader user.
 Copy naming a shortcut in prose names the one key the user has, never both
 spellings: "Use ⌘C" or "Use Ctrl+C", never "Use ⌘C or Ctrl+C".
 
+### Rendered preview
+
+The rendered preview reads as a **neutral document table**, not as a styled
+Tabelo surface. Its job is to answer "what will this table look like once it
+leaves Tabelo", so it stays close to what a plain document shows and to what the
+copy path produces. Decided on #77.
+
+- **No card.** The pane already supplies the surface, radius, and outline. Do not
+  wrap the table in a second one.
+- **No zebra striping.** An alternating tint encodes nothing about the row, so it
+  is decoration under §1, and it borrows the header surface for rows that are not
+  headers.
+- **Thin uniform rules.** `--line-subtle` at 0.0625rem on every cell including
+  the header, per §2. No heavier rule under the header row.
+- **Square outer corners.** Table structure is rectilinear, as in the grid.
+- **The header is bold text on `--surface-table-header`**, the same shared
+  editable table-header surface the grid and source views use.
+- **Tabelo's own type**, at `text-content` so the preview scales with the pane.
+- **Sized to its content, capped at the pane width.** A narrow table is not
+  stretched across a wide pane, and a wide one wraps instead of forcing the
+  reader sideways. Cells keep `whitespace-pre-wrap`, so the line breaks the
+  codecs escape survive. Alignment comes from the column's own alignment.
+- **A document with no rows shows a written empty state**, not a bare header row.
+
 ### Empty workspace
 
 After hydration, an initially empty document with no source draft presents the
