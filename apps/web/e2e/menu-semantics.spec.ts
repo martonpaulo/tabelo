@@ -198,11 +198,22 @@ test("option highlights include descriptions and disabled rows stay inert", asyn
 
 	await tabelo.page.keyboard.press("Escape");
 	const appMenu = await tabelo.openAppMenu();
-	const redoShortcut = appMenu
-		.getByRole("menuitem", { name: copy.actions.redo })
-		.locator("kbd");
-	await expect(redoShortcut.filter({ hasText: "⇧" })).toHaveCount(1);
-	await expect(redoShortcut.filter({ hasText: "Shift" })).toHaveCount(0);
+	const redoItem = appMenu.getByRole("menuitem", { name: copy.actions.redo });
+	const redoShortcut = redoItem.locator("kbd");
+	// The visible legend follows the keyboard the user actually has: glyphs on
+	// Apple platforms, the printed words everywhere else. The expectation comes
+	// from the OS running the browser rather than from the app's own detection,
+	// so the two have to agree independently.
+	const apple = process.platform === "darwin";
+	await expect(
+		redoShortcut.filter({ hasText: apple ? "⇧" : "Shift" }),
+	).toHaveCount(1);
+	await expect(
+		redoShortcut.filter({ hasText: apple ? "Shift" : "⇧" }),
+	).toHaveCount(0);
+	// Either way the accessible name keeps the full key name, so the compact
+	// legend never reaches a screen reader as a lone symbol.
+	await expect(redoItem).toHaveAccessibleName(/Shift/);
 });
 
 test("column alignment uses the shared one-line radio anatomy", async ({
