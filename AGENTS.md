@@ -397,6 +397,17 @@ here:
 - Tests should validate behavior, semantics, state, accessibility, or technical contracts, not editorial wording.
 - Do not add meaningless tests merely to claim that a pull request has test coverage.
 - When copy is used to locate an element in a test, prefer stable semantic queries or another appropriate selector rather than asserting the copy itself.
+- Every test, fixture, example, and default or demo table holds synthetic data
+  only. No real person's name, address, email, username, or account may appear,
+  and least of all the maintainer's own: sample content is read, copied, and
+  screenshotted far more often than it is reviewed. The person-shaped fixtures
+  are `Inez` and `Mark`. Public identifiers required for the repository link,
+  the licence attribution, or deployment configuration are not test data and
+  stay as they are.
+- A test asserting a platform-dependent result derives its expectation from the
+  host, never from a hard-coded guess about which machine runs it. A keyboard
+  legend, path separator, or line ending that is correct on a maintainer's
+  laptop and wrong on the pipeline is a broken test, not a broken pipeline.
 - Do not require NVDA, JAWS, VoiceOver, or another GUI-only assistive application
   as an acceptance, issue-closure, or pipeline criterion. Those tools are not
   available in the CLI pipeline. Validate the accessibility tree, roles, names,

@@ -122,7 +122,7 @@ describe("structure deletion", () => {
 	});
 
 	it("still deletes a proper subset of selected rows", () => {
-		const document = documentFromMatrix([["Name"], ["Inez"], ["Marton"]], {
+		const document = documentFromMatrix([["Name"], ["Inez"], ["Mark"]], {
 			headerRow: true,
 		});
 		useTabeloStore.setState({
@@ -135,7 +135,7 @@ describe("structure deletion", () => {
 		expect(refusal).toBeNull();
 		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
 			["Name"],
-			["Marton"],
+			["Mark"],
 		]);
 	});
 });
@@ -146,7 +146,7 @@ describe("structure insertion", () => {
 			[
 				["Name", "Role"],
 				["Inez", "Designer"],
-				["Marton", "Developer"],
+				["Mark", "Developer"],
 			],
 			{ headerRow: true },
 		);
