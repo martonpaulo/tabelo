@@ -1,5 +1,6 @@
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
 import {
+	menuCheckboxIndicatorStyles,
 	menuChoiceItemLayoutStyles,
 	menuDestructiveItemStateStyles,
 	menuInteractiveItemStateStyles,
@@ -182,6 +183,7 @@ function ContextMenuCheckboxItem({
 			data-slot="context-menu-checkbox-item"
 			data-inset={inset}
 			className={cn(
+				"group/menu-choice",
 				menuChoiceItemLayoutStyles,
 				menuInteractiveItemStateStyles,
 				className,
@@ -189,7 +191,10 @@ function ContextMenuCheckboxItem({
 			checked={checked}
 			{...props}
 		>
-			<span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center rounded-sm border border-foreground/50">
+			<span
+				className={menuCheckboxIndicatorStyles}
+				data-slot="context-menu-checkbox-item-indicator"
+			>
 				<ContextMenuPrimitive.CheckboxItemIndicator>
 					<CheckIcon />
 				</ContextMenuPrimitive.CheckboxItemIndicator>

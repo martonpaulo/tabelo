@@ -16,9 +16,11 @@
 	--color-surface-readonly: var(--surface-readonly);
 	--color-surface-floating: var(--surface-floating);
 
-	/* Separators. Subtle is the default; strong marks a panel boundary. */
+	/* Separators. Subtle is the default; strong marks a panel boundary;
+	   floating is the one that has to be seen, not felt. */
 	--color-line-subtle: var(--line-subtle);
 	--color-line-strong: var(--line-strong);
+	--color-line-floating: var(--line-floating);
 	--color-control-outline: var(--control-outline);
 
 	/* The one accent in the product: what the user has selected. */
@@ -68,8 +70,14 @@
 	--surface-readonly: #f5f5f5;
 	--surface-floating: #fafafa;
 
-	--line-subtle: #e0e0e0;
-	--line-strong: #d1d1d1;
+	--line-subtle: #d6d6d6;
+	--line-strong: #c4c4c4;
+	/* Structure lines separate content that is already there. This one has to
+	   prove a layer is floating above unrelated content, so it carries the
+	   3:1 that WCAG 1.4.11 asks of anything required to identify a component,
+	   against every surface a floating layer can cover.
+	   https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html */
+	--line-floating: #8a8a8a;
 	--control-outline: #8a8a8a;
 
 	--selection-fill: rgb(15 108 189 / 14%);
@@ -77,7 +85,10 @@
 	--active-line-fill: rgb(15 108 189 / 7%);
 	--selection-edge: #0f6cbd;
 
-	--status-warning: #f59e0b;
+	/* Amber at 4.5:1 on the panel. The lighter amber this replaced sat at
+	   2.15:1, below the floor for the underline it draws and far below the
+	   floor for the source tokens that use it as text. */
+	--status-warning: #b45309;
 
 	--control-h-sm: 1.75rem;
 	--control-h-md: 2rem;
@@ -141,8 +152,9 @@
 		--surface-readonly: #242424;
 		--surface-floating: #3a3a3a;
 
-		--line-subtle: #3d3d3d;
-		--line-strong: #484848;
+		--line-subtle: #464646;
+		--line-strong: #545454;
+		--line-floating: #949494;
 
 		--selection-fill: rgb(77 166 255 / 24%);
 		--text-selection-fill: rgb(77 166 255 / 32%);

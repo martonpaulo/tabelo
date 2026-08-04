@@ -130,11 +130,23 @@ tones to group related content before adding a line. Editable pane bodies use
 | :--- | :--- | :--- |
 | `--line-subtle` | `border-line-subtle` | Grid cell borders, control separators |
 | `--line-strong` | `border-line-strong` | Boundaries between panes |
+| `--line-floating` | `ring-line-floating` | The boundary of anything that floats: menus, tooltips, dialogs, notices |
 | `--control-outline` | `border-control-outline` | Unfilled small controls that must remain identifiable against their surface |
 
 Borders are always 0.0625rem. Use them for the table grid, pane boundaries, or an
 explicit state. Prefer tonal separation for buttons,
-notices, empty states, and pane headers; never use a border to decorate.
+empty states, and pane headers; never use a border to decorate.
+
+Two of these carry a contrast floor and are tested for it. `--line-floating`
+and `--control-outline` reach at least 3:1 against every surface they can
+appear over, because
+[WCAG 1.4.11](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)
+requires that much of anything needed to identify a component. A floating
+layer's own surface is deliberately close in tone to what it covers, so the
+boundary, not the fill, is what proves the layer is there. `--line-subtle` and
+`--line-strong` are structure inside content the user is already looking at and
+carry no such floor: raising them to 3:1 would turn the table into a wireframe
+and is not what the rule asks for.
 
 ### Accent
 
@@ -172,6 +184,7 @@ the system.
 Tabelo never reads a stored theme preference. System theme is the only current
 contract, so obsolete storage is ignored and never participates in startup or
 paint.
+
 
 ### Geometry
 
@@ -316,7 +329,7 @@ pnpm dlx shadcn@latest add <name> -c packages/ui
 ### Tooltip
 
 There is one tooltip appearance in the product, and `packages/ui`'s `Tooltip`
-owns it: the floating surface, one shadow, the `--line-strong` boundary, the
+owns it: the floating surface, one shadow, the `--line-floating` boundary, the
 0.25rem control radius, 0.75rem type, the shared padding, and the shared
 clipped triangular pointer (§6). A tooltip explains its trigger and never
 carries the only copy of something the user needs, because it is transient and
@@ -347,6 +360,12 @@ A menu option that is one of several **mutually exclusive current states**
 inside a `DropdownMenuRadioGroup`, never a plain item wearing a tick or a tint.
 The primitive supplies `menuitemradio`, `aria-checked`, and the arrow-key
 behaviour. The selected row background is the only visible selection mark.
+
+A menu's checkbox and radio indicators are the product's own checkbox and radio
+controls, not menu-specific drawings: the same 1rem box, the same control
+radius, the same `--control-outline` when unset, and the same primary fill once
+set. They are declared once in `menu-styles.ts` and shared by the dropdown and
+context menus.
 
 Every option in a single-selection list uses the same anatomy: one meaningful
 leading icon, primary text with an optional description, optional trailing
@@ -735,7 +754,8 @@ per keystroke.
   own parse diagnostics are not notices; they decorate the text and use
   tooltips, as above.
 - There is no app header. One floating action button is the document-level
-  command surface at every viewport width. Its menu contains the Tabelo identity
+  command surface at every viewport width. It is a floating layer and takes the
+  floating surface and elevation, with no resting border. Its menu contains the Tabelo identity
   and description, Undo, Redo, New table, Import, Download, Add view, Layout,
   and a link to the GitHub repository. The trigger has a stable accessible name
   and never replaces visible menu labels with unexplained icons. Global Add

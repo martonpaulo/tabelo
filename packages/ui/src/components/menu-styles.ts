@@ -5,7 +5,7 @@ import {
 
 // Dropdown and context menus are different interaction primitives with the
 // same visual contract. Shared strings keep geometry and states in one place.
-export const menuPopupStyles = `rounded-surface bg-popover p-1 text-popover-foreground shadow-xl outline-none ring-1 ring-line-strong supports-backdrop-filter:bg-popover/94 supports-backdrop-filter:backdrop-blur-md ${popupTransitionStyles}`;
+export const menuPopupStyles = `rounded-surface bg-popover p-1 text-popover-foreground shadow-xl outline-none ring-1 ring-line-floating supports-backdrop-filter:bg-popover/94 supports-backdrop-filter:backdrop-blur-md ${popupTransitionStyles}`;
 
 export const menuLabelStyles =
 	"px-2 py-1.5 text-muted-foreground text-xs leading-none data-inset:pl-7";
@@ -32,8 +32,15 @@ export const menuShortcutStyles =
 export const menuShortcutKeyStyles =
 	"min-w-5 rounded-interactive bg-muted px-1 py-0.5 text-center font-sans text-xs leading-none tracking-normal";
 
+// The two menu indicators wear the product's own checkbox and radio anatomy:
+// the same 1rem box, the same control radius, the same unfilled outline, and
+// the same primary fill once chosen. A menu is not the place to invent a third
+// way of drawing a choice. See docs/design-system.md §3.
+export const menuCheckboxIndicatorStyles =
+	"pointer-events-none absolute right-2 flex size-4 shrink-0 items-center justify-center rounded-interactive border border-control-outline text-primary-foreground group-data-checked/menu-choice:border-primary group-data-checked/menu-choice:bg-primary";
+
 export const singleSelectionIndicatorShapeStyles =
-	"relative flex size-4 shrink-0 items-center justify-center rounded-full border border-foreground/50";
+	"relative flex size-4 shrink-0 items-center justify-center rounded-full border border-control-outline";
 
 export const singleSelectionIndicatorFillStyles =
 	"absolute inset-0 rounded-full bg-primary";

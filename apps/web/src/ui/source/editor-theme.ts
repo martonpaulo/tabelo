@@ -98,7 +98,7 @@ export const editorTheme = EditorView.theme({
 	// because CodeMirror is styled from a JavaScript theme that Tailwind never
 	// sees. Keep them in step with `packages/ui/src/components/tooltip.tsx`.
 	".cm-tooltip": {
-		border: "0.0625rem solid var(--line-strong)",
+		border: "0.0625rem solid var(--line-floating)",
 		borderRadius: "var(--control-radius)",
 		backgroundColor: "var(--popover)",
 		color: "var(--popover-foreground)",
@@ -108,8 +108,8 @@ export const editorTheme = EditorView.theme({
 	// boundary and one for the surface. The product pointer is the same shape
 	// in the same two colours.
 	".cm-tooltip .cm-tooltip-arrow:before": {
-		borderTopColor: "var(--line-strong)",
-		borderBottomColor: "var(--line-strong)",
+		borderTopColor: "var(--line-floating)",
+		borderBottomColor: "var(--line-floating)",
 	},
 	".cm-tooltip .cm-tooltip-arrow:after": {
 		borderTopColor: "var(--popover)",

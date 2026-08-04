@@ -268,7 +268,7 @@ test("multi-pane layouts and themes keep the active boundary on all four edges",
 }) => {
 	test.setTimeout(60_000);
 	await tabelo.cell(1, 1).click();
-	for (const colorScheme of ["light", "dark"] as const) {
+	for (const colorScheme of ["dark", "light"] as const) {
 		await page.emulateMedia({ colorScheme });
 		for (const preset of layoutPresets) {
 			await tabelo.chooseLayout(preset.id);
@@ -473,13 +473,16 @@ test("critical document controls remain available at 200% text size", async ({
 	).toBe(true);
 });
 
-test("light and dark text and focus tokens meet their contrast floors", async ({
+// Dark first, because dark is the interface this product is used in and the
+// one a contrast regression has to be caught in soonest. Light follows in the
+// same run, since neither theme may regress.
+test("dark and light text and focus tokens meet their contrast floors", async ({
 	page,
 }) => {
 	await page.goto("/");
 	const backgrounds: string[] = [];
-	for (const dark of [false, true]) {
-		await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
+	for (const colorScheme of ["dark", "light"] as const) {
+		await page.emulateMedia({ colorScheme });
 		backgrounds.push(
 			await page
 				.locator("body")
@@ -507,6 +510,25 @@ test("light and dark text and focus tokens meet their contrast floors", async ({
 		).toBeGreaterThanOrEqual(3);
 		expect(
 			await contrastBetween(page, "--destructive", "--popover"),
+		).toBeGreaterThanOrEqual(4.5);
+		// A floating layer has to be identifiable against everything it can
+		// cover, which is WCAG 1.4.11's 3:1 for non-text. Its own surface is
+		// close in tone to the surfaces underneath by design, so the boundary is
+		// what carries that job.
+		for (const covered of [
+			"--surface-floating",
+			"--surface-panel",
+			"--surface-app",
+			"--surface-header",
+		]) {
+			expect(
+				await contrastBetween(page, "--line-floating", covered),
+			).toBeGreaterThanOrEqual(3);
+		}
+		// The warning colour is a graphical object: it draws the source
+		// underline and the syntax tokens that carry no second cue of their own.
+		expect(
+			await contrastBetween(page, "--status-warning", "--surface-panel"),
 		).toBeGreaterThanOrEqual(4.5);
 
 		const selectionFills = await page.evaluate(() => {

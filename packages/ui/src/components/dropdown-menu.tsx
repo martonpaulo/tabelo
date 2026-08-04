@@ -2,6 +2,7 @@
 
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import {
+	menuCheckboxIndicatorStyles,
 	menuChoiceItemLayoutStyles,
 	menuDestructiveItemStateStyles,
 	menuInteractiveItemStateStyles,
@@ -180,6 +181,7 @@ function DropdownMenuCheckboxItem({
 			data-slot="dropdown-menu-checkbox-item"
 			data-inset={inset}
 			className={cn(
+				"group/menu-choice",
 				menuChoiceItemLayoutStyles,
 				menuInteractiveItemStateStyles,
 				className,
@@ -188,7 +190,7 @@ function DropdownMenuCheckboxItem({
 			{...props}
 		>
 			<span
-				className="pointer-events-none absolute right-2 flex size-4 items-center justify-center rounded-sm border border-foreground/50"
+				className={menuCheckboxIndicatorStyles}
 				data-slot="dropdown-menu-checkbox-item-indicator"
 			>
 				<MenuPrimitive.CheckboxItemIndicator>

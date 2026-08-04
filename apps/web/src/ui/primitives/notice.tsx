@@ -42,7 +42,7 @@ export function Notice({
 			data-severity={severity}
 			className={cn(
 				"rounded-surface",
-				floating && "bg-surface-panel shadow-lg ring-1 ring-line-strong",
+				floating && "bg-surface-floating shadow-lg ring-1 ring-line-floating",
 				className,
 			)}
 		>
