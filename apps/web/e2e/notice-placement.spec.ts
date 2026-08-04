@@ -144,24 +144,40 @@ test("a dialog covers the notice layer rather than opening beneath it", async ({
 	expect(onNotice).toBe(false);
 });
 
-// The notice takes the top trailing corner, where every pane header keeps its
-// actions trigger. A notice that is on screen, including one that cannot be
-// dismissed, must not take that trigger away from the pane underneath it.
-for (const [shape, viewport] of [
-	["tiled", TILED],
-	["stacked", STACKED],
-] as const) {
-	test(`a ${shape} pane keeps its actions trigger under a notice`, async ({
-		page,
-		tabelo,
-	}) => {
-		await page.setViewportSize(viewport);
-		await raiseNotice(tabelo);
+// The notice takes the top trailing corner, so it covers the pane header it
+// lands on, that pane's actions trigger included. What must hold is that the
+// trigger stays reachable from the keyboard while it is covered, and that a
+// pointer user gets it back by dismissing.
+test("a covered pane keeps its actions trigger on the keyboard", async ({
+	page,
+	tabelo,
+}) => {
+	await page.setViewportSize(STACKED);
+	await raiseNotice(tabelo);
 
-		const menu = await tabelo.openPaneMenu("markdown");
-		await expect(menu).toBeVisible();
-	});
-}
+	const trigger = tabelo.paneMenuTrigger("grid");
+	await trigger.focus();
+	await page.keyboard.press("Enter");
+	await expect(page.getByRole("menu", { name: /^Pane actions/ })).toBeVisible();
+});
+
+test("dismissing a notice gives the pointer its pane back", async ({
+	page,
+	tabelo,
+}) => {
+	await page.setViewportSize(STACKED);
+	await raiseNotice(tabelo);
+
+	await tabelo
+		.notice()
+		.first()
+		.getByRole("button", { name: copy.actions.dismiss })
+		.click();
+	await expect(tabelo.notice()).toHaveCount(0);
+
+	const menu = await tabelo.openPaneMenu("grid");
+	await expect(menu).toBeVisible();
+});
 
 // And a menu already open is never covered by a notice arriving over it.
 test("an open menu is not covered by a notice", async ({ page, tabelo }) => {

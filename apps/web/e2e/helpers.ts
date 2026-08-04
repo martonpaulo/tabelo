@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { HEADER_ROW } from "@/core/selection";
 import type { NoticeSeverity } from "@/state/notice-queue";
@@ -300,6 +300,20 @@ export class TabeloPage {
 		});
 		await dialog.waitFor({ state: "visible" });
 		return dialog;
+	}
+
+	// Notices float over the top trailing corner, so they cover the pane header
+	// they land on. A test that is not about notices clears them first, the
+	// same way a user would, rather than reaching around them.
+	async dismissNotices(): Promise<void> {
+		const notices = this.page.getByRole("region", { name: copy.a11y.notices });
+		const dismiss = notices.getByRole("button", {
+			name: copy.actions.dismiss,
+		});
+		for (let count = await dismiss.count(); count > 0; count -= 1) {
+			await dismiss.first().click();
+		}
+		await expect(notices).toHaveCount(0);
 	}
 
 	async openPaneMenu(view: ViewId, index = 0): Promise<Locator> {

@@ -185,6 +185,13 @@ Tabelo never reads a stored theme preference. System theme is the only current
 contract, so obsolete storage is ignored and never participates in startup or
 paint.
 
+**Dark is the reference interface.** Both themes are supported and neither may
+regress, but when something has to be looked at, measured, or decided in one
+theme first, it is dark: it is what this product's users work in. Design a
+change in dark, verify it in dark, and screenshot it in dark; then confirm
+light before calling the change done. A contrast or colour decision that works
+in dark and fails in light is not finished, and the reverse is not finished
+either.
 
 ### Geometry
 
@@ -714,20 +721,19 @@ per keystroke.
   no space, so showing or dismissing a notice moves nothing: the earlier
   in-layout band was itself the reflow this section forbids, because an idle
   notice area renders nothing and the first notice pushed every pane down. The
-  top trailing corner is the one the floating action button does not own. The
-  region keeps the panes' 0.5rem inset, widened on the trailing side by exactly
-  the pane header's own actions trigger and nothing more: flush in the corner,
-  a notice's dismissal lands on that trigger and swallows the click, which
-  leaves a pane unreachable by pointer for as long as a notice that cannot be
-  dismissed is on screen. It stays put while a stacked
+  top trailing corner is the one the floating action button does not own, and
+  the region keeps the panes' own 0.5rem inset with no gutter reserved for what
+  lies under it. It stays put while a stacked
   workspace scrolls under it, and its layer is `--z-notice` in `index.css`,
   above the floating action button and below menus, tooltips, and dialogs.
 - A notice is not a dialog: no modal semantics, no focus trap, nothing blocked.
   Only the notices themselves take pointer events, so everything beside them
-  stays operable, and no notice ever covers a pane's actions trigger. While one
-  is on screen it does cover the rest of the pane header band under it, and
-  below the stacking width a wrapping notice reaches the column index strip.
-  Both end with dismissal.
+  stays operable. What is under a notice, though, is covered: the pane header
+  it lands on, that pane's actions trigger included, and below the stacking
+  width the column index strip as well. That is the accepted cost of a layer
+  flush in the corner. Dismissal frees it, the trigger stays reachable from the
+  keyboard while it is covered, and no notice that is on screen for long is
+  undismissable.
 - Each notice is only as wide as its content needs, up to a cap. The cap is a
   ceiling, not a width: a one-line message never draws a band across the table.
 - A notice's anatomy is fixed. Dismissal holds the top trailing corner. The

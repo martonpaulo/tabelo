@@ -12,6 +12,9 @@ test("wrapped source line numbers belong to the first visual line before focus",
 	tabelo,
 }) => {
 	await tabelo.paste(wideRows);
+	// The paste raises the header guess, which floats over the pane header the
+	// next step needs to reach.
+	await tabelo.dismissNotices();
 	await tabelo.choosePaneView("markdown", "tsv");
 	const menu = await tabelo.openPaneMenu("tsv");
 	await menu
