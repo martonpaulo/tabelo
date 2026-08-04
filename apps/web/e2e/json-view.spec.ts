@@ -20,7 +20,7 @@ async function nameColumns(
 function blockedReason(tabelo: TabeloPage) {
 	return tabelo
 		.pane("json")
-		.getByRole("textbox", { name: copy.a11y.blockedView });
+		.getByRole("status", { name: copy.a11y.blockedView });
 }
 
 test("serializes as an array of row objects keyed by the headers", async ({
@@ -64,7 +64,14 @@ test("a duplicate header blocks the open view and names both columns", async ({
 
 	await expect(tabelo.source("json")).toHaveCount(0);
 	await expect(blockedReason(tabelo)).toBeVisible();
-	await expect(blockedReason(tabelo)).toHaveAttribute("readonly", "");
+	// The reason is a message, not a field: it is read, never edited, and it
+	// shows all of itself rather than scrolling inside a box.
+	await expect(blockedReason(tabelo).getByRole("textbox")).toHaveCount(0);
+	expect(
+		await blockedReason(tabelo).evaluate(
+			(node) => node.scrollHeight <= node.clientHeight,
+		),
+	).toBe(true);
 });
 
 test("a header that is a whole number blocks the open view", async ({
