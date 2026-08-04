@@ -591,8 +591,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										// across a 200-row table. See docs/design-system.md §3.
 										title={value || undefined}
 										className={cn(
-											"relative overflow-hidden border-line-subtle border-r border-b px-2 align-top",
+											"relative border-line-subtle border-r border-b px-2 align-top",
 											"cursor-cell select-none",
+											// A cell being edited overrides the column's own clipping so
+											// its editor can grow and wrap over the rows below it while
+											// the value is too long for the column, without touching
+											// the wrap preference or any other row's height.
+											isEditing ? "z-20 overflow-visible" : "overflow-hidden",
 											alignClass[column.align],
 											inSelection ? "bg-selection-fill" : "bg-background",
 											isFocus &&
@@ -856,11 +861,15 @@ function HeaderCell({
 			data-grid-active={focus ? "true" : undefined}
 			tabIndex={focus && entered ? 0 : -1}
 			className={cn(
-				"sticky z-20 overflow-hidden border-line-strong border-r border-b align-top",
+				"sticky z-20 border-line-strong border-r border-b align-top",
 				"cursor-cell select-none px-2 font-semibold",
 				// Sticks below the index strip rather than at the very top, so the
 				// two chrome layers stack instead of covering one another.
 				"top-grid-strip",
+				// See the data cell's identical rule: editing overrides clipping so a
+				// header longer than its column can grow and wrap while it's being
+				// typed, without changing the column's wrap preference.
+				editing ? "overflow-visible" : "overflow-hidden",
 				alignClass[align],
 				selected ? "bg-selection-fill" : "bg-surface-table-header",
 				focus && "outline-2 outline-selection-edge -outline-offset-2",

@@ -37,6 +37,21 @@ export function CellEditor({
 		element.setSelectionRange(element.value.length, element.value.length);
 	}, []);
 
+	// A non-wrapped column normally clips a cell's text to one line. That
+	// truncation is a display choice for content the user isn't touching, not a
+	// limit on what they can see while editing it: growing the editor to fit
+	// its wrapped content, momentarily, is what lets the cell's own value stay
+	// legible without changing the column's wrap preference or the document.
+	// value drives the remeasure on every keystroke even though the effect body
+	// reads it through the DOM (scrollHeight), not as a variable.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: see above
+	useLayoutEffect(() => {
+		const element = ref.current;
+		if (!element) return;
+		element.style.height = "0px";
+		element.style.height = `${element.scrollHeight}px`;
+	}, [value]);
+
 	const finish = (exit: EditorExit) => {
 		if (finished.current) return;
 		finished.current = true;
@@ -79,7 +94,7 @@ export function CellEditor({
 				// while editing, arrows move the caret, not the selection.
 			}}
 			className={cn(
-				"absolute inset-0 z-10 size-full cursor-text resize-none bg-background px-2 text-content leading-content-line-box",
+				"absolute inset-0 z-10 h-full w-full cursor-text resize-none break-words bg-background px-2 text-content leading-content-line-box",
 				"outline-2 outline-selection-edge -outline-offset-2",
 				align,
 			)}
