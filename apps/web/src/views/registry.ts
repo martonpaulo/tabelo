@@ -3,6 +3,7 @@ import {
 	Code2,
 	Eye,
 	FileText,
+	List,
 	Sheet,
 	Table2,
 	Tags,
@@ -14,6 +15,7 @@ import {
 	jiraCodec,
 	jsonCodec,
 	markdownCodec,
+	recordsCodec,
 	tsvCodec,
 } from "@/formats";
 import type { ViewDefinition, ViewId } from "./types";
@@ -116,6 +118,16 @@ const registry: Record<ViewId, ViewDefinition> = {
 		capabilities: sourceCapabilities,
 	},
 
+	records: {
+		id: "records",
+		...copy.views.records,
+		icon: List,
+		kind: "source",
+		codec: recordsCodec,
+		highlight: "records",
+		capabilities: sourceCapabilities,
+	},
+
 	"html-preview": {
 		id: "html-preview",
 		...copy.views["html-preview"],
@@ -144,6 +156,7 @@ export const viewOrder: readonly ViewId[] = [
 	"html-preview",
 	"jira",
 	"json",
+	"records",
 ];
 
 export function getView(id: ViewId): ViewDefinition {

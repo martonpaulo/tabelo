@@ -81,7 +81,7 @@ describe("the download preference", () => {
 	// unchecking the box under CSV from quietly changing a TSV file too.
 	it("does not reach formats that never declared it", () => {
 		const document = useTabeloStore.getState().document;
-		const chosen = { includeHeader: false };
+		const chosen = { ...defaultOutputOptions, includeHeader: false };
 
 		for (const codec of listDownloadableCodecs(document)) {
 			const narrowed = outputOptionsFor(codec, chosen);
@@ -89,7 +89,9 @@ describe("the download preference", () => {
 				expect(narrowed).toEqual({ includeHeader: false });
 				continue;
 			}
-			expect(narrowed).toEqual({});
+			// A codec with its own declared options (records has two) still keeps
+			// them, all at their default; only includeHeader must never reach it.
+			expect(narrowed).not.toHaveProperty("includeHeader");
 			expect(codec.serialize(document, narrowed)).toBe(
 				codec.serialize(document),
 			);

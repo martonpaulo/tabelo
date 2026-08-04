@@ -285,7 +285,7 @@ test("Change view leaves the flat pane menu for one dialog", async ({
 	await page.keyboard.press("Escape");
 
 	const dialog = await tabelo.openChangeViewDialog("markdown");
-	await expect(dialog.getByRole("radio")).toHaveCount(8);
+	await expect(dialog.getByRole("radio")).toHaveCount(9);
 	await expect(
 		dialog.getByRole("menuitem", { name: copy.workspace.zoomIn }),
 	).toHaveCount(0);

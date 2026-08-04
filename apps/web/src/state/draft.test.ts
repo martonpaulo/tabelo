@@ -103,6 +103,7 @@ describe("draft ownership", () => {
 		const mutableCodec = jsonCodec as {
 			precondition?: TableCodec["precondition"];
 		};
+		const originalPrecondition = mutableCodec.precondition;
 		mutableCodec.precondition = () => failure;
 
 		try {
@@ -124,7 +125,10 @@ describe("draft ownership", () => {
 			).toBe("markdown");
 			expect(state.draft).toBeNull();
 		} finally {
-			delete mutableCodec.precondition;
+			// Restoring the original keeps json's real precondition intact for
+			// every test that runs after this one in the same file: deleting the
+			// property outright previously left json permanently unguarded.
+			mutableCodec.precondition = originalPrecondition;
 		}
 	});
 
@@ -258,6 +262,10 @@ describe("source synchronization", () => {
 		]),
 	)("parses a valid %s transaction immediately", (viewId, text) => {
 		const paneId = markdownPaneId();
+		// A codec with a precondition (json, records) refuses to become a pane's
+		// view against the blank default document. parsedDocument satisfies every
+		// codec's precondition, and it is what text was serialized from anyway.
+		useTabeloStore.setState({ document: parsedDocument });
 		const store = useTabeloStore.getState();
 		store.setPaneView(paneId, viewId);
 

@@ -41,6 +41,7 @@ import { csvLanguage } from "./csv-language";
 import { syntaxTheme } from "./editor-theme";
 import { htmlLanguage } from "./html-language";
 import { jiraLanguage } from "./jira-language";
+import { recordsLanguage } from "./records-language";
 
 // Marks a transaction as coming from synchronization rather than the user.
 // This is the loop guard required by docs/adr/0001: sync-originated changes
@@ -239,6 +240,8 @@ function languageFor(language: HighlightLanguage) {
 			return jiraLanguage;
 		case "json":
 			return json();
+		case "records":
+			return recordsLanguage;
 		default:
 			return [];
 	}

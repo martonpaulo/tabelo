@@ -25,18 +25,18 @@ These are not separate files. They are the same table:
 
 **Grid**
 
-| Name  | Role      | Active |
-| :---- | :-------: | -----: |
-| Ingrid  | Designer  | Yes    |
-| Paulo  | Developer | No     |
+| Name   |   Role    | Active |
+| :----- | :-------: | -----: |
+| Ingrid | Designer  |    Yes |
+| Paulo  | Developer |     No |
 
 **Markdown**: alignment and all
 
 ```markdown
-| Name  | Role      | Active |
-| :---- | :-------: | -----: |
-| Ingrid  | Designer  | Yes    |
-| Paulo  | Developer | No     |
+| Name   |   Role    | Active |
+| :----- | :-------: | -----: |
+| Ingrid | Designer  |    Yes |
+| Paulo  | Developer |     No |
 ```
 
 **CSV**
@@ -59,10 +59,22 @@ Paulo,Developer,No
 
 ```json
 [
-  ["Name","Role","Active"],
-  ["Ingrid","Designer","Yes"],
-  ["Paulo","Developer","No"]
+  ["Name", "Role", "Active"],
+  ["Ingrid", "Designer", "Yes"],
+  ["Paulo", "Developer", "No"]
 ]
+```
+
+**Records**: each row as a titled block of bullets
+
+```text
+Name: Ingrid
+- Role: Designer
+- Active: Yes
+
+Name: Paulo
+- Role: Developer
+- Active: No
 ```
 
 Go through CSV or Jira and back and those `:---:` alignment markers are still
@@ -75,14 +87,15 @@ there. Those formats cannot express alignment, so Tabelo quietly remembers it.
 - **Arrange the workspace.** One to four panes, with each view available only
   once. Open the floating Tabelo button for files, layouts, undo, redo, and the
   GitHub link.
-- **Eight views.** Visual grid, Markdown, CSV, TSV, HTML source, Jira table
-  syntax, JSON, and a rendered preview. Every one stays in sync with the others.
+- **Nine views.** Visual grid, Markdown, CSV, TSV, HTML source, Jira table
+  syntax, JSON, Records, and a rendered preview. Every one stays in sync with
+  the others.
 - **Edit visually.** Cells, headers, rows, columns. Insert above, below, left,
   right. Delete, duplicate, reorder, resize, select ranges, clear. Right-click
   anything for the actions that apply to it.
-- **Edit the source.** Markdown, CSV, TSV, HTML, Jira, and JSON all have syntax
-  highlighting. Errors get a red underline, warnings a yellow one; hover either
-  to see the explanation.
+- **Edit the source.** Markdown, CSV, TSV, HTML, Jira, JSON, and Records all
+  have syntax highlighting. Errors get a red underline, warnings a yellow one;
+  hover either to see the explanation.
 - **Never lose a cell.** A value with a line break in it survives
   CSV → Markdown → CSV byte-exact. Markdown can't hold a raw newline, so Tabelo
   escapes it and unescapes it back. Same for pipes.
@@ -91,8 +104,11 @@ there. Those formats cannot express alignment, so Tabelo quietly remembers it.
   tells you what needs fixing.
 - **Paste anything.** Spreadsheets, web tables, Markdown, CSV, TSV, Jira, JSON
   syntax, a plain column of text. Tabelo works out which it is.
-- **Download anything.** Markdown, CSV, TSV, HTML, Jira, or JSON, with the right
-  extension and MIME type.
+- **Download anything.** Markdown, CSV, TSV, HTML, Jira, JSON, or Records, with
+  the right extension and MIME type. Records also offers two file-only options:
+  dropping the first column's name from the title, and dropping bullets with no
+  value. Neither ever reaches the editable pane, since both throw away what the
+  parser needs to read the file back.
 - **Nothing to save.** Your table stays in browser storage and comes back when
   you return. Starting a new table asks before clearing real work.
 - **Works offline.** A service worker caches the app on your first visit. No
@@ -110,21 +126,21 @@ collaboration, or analytics. Tabelo is happiest staying small.
 
 Both hands stay where they are.
 
-| Keys | What happens |
-| :--- | :--- |
-| Arrows | Move between cells |
-| `Shift` + arrows | Extend the selection |
-| `Enter` / `F2` | Edit the focused cell |
-| Any character | Replace the cell and start typing |
-| `Enter` while editing | Commit, move down |
-| `Shift` `Enter` while editing | Line break inside the cell |
-| `Tab` / `Shift` `Tab` | Next / previous cell |
-| `Alt` + arrows | **Move the row or column itself** |
-| `Backspace` | Clear the selected cells |
-| `⌘` `Backspace` | Delete the selected rows or columns |
-| `⌘` `Enter` | Add a row below |
-| `⌘` `A` | Select everything |
-| `⌘` `Z` / `⌘` `⇧` `Z` | Undo / redo |
+| Keys                          | What happens                        |
+| :---------------------------- | :----------------------------------- |
+| Arrows                        | Move between cells                  |
+| `Shift` + arrows              | Extend the selection                |
+| `Enter` / `F2`                | Edit the focused cell               |
+| Any character                 | Replace the cell and start typing   |
+| `Enter` while editing         | Commit, move down                   |
+| `Shift` `Enter` while editing | Line break inside the cell          |
+| `Tab` / `Shift` `Tab`         | Next / previous cell                |
+| `Alt` + arrows                | **Move the row or column itself**   |
+| `Backspace`                   | Clear the selected cells            |
+| `⌘` `Backspace`               | Delete the selected rows or columns |
+| `⌘` `Enter`                   | Add a row below                     |
+| `⌘` `A`                       | Select everything                   |
+| `⌘` `Z` / `⌘` `⇧` `Z`         | Undo / redo                         |
 
 Undo is layered: inside a source view it undoes your keystrokes, and once that
 history runs out it keeps going through the table's own history. One timeline
@@ -148,16 +164,16 @@ pnpm dev
 
 Then open <http://localhost:3001>.
 
-| Command | What it does |
-| :--- | :--- |
-| `pnpm dev` | Dev server |
-| `pnpm build` | Production build |
-| `pnpm test` | Unit tests |
+| Command                 | What it does                                   |
+| :---------------------- | :---------------------------------------------- |
+| `pnpm dev`              | Dev server                                     |
+| `pnpm build`            | Production build                               |
+| `pnpm test`             | Unit tests                                     |
 | `pnpm test:e2e:install` | Install Chromium and Firefox for browser tests |
-| `pnpm test:e2e` | Browser tests in Chromium and Firefox |
-| `pnpm check-types` | TypeScript |
-| `pnpm lint` | Biome check |
-| `pnpm check` | Biome check, writing fixes |
+| `pnpm test:e2e`         | Browser tests in Chromium and Firefox          |
+| `pnpm check-types`      | TypeScript                                     |
+| `pnpm lint`             | Biome check                                    |
+| `pnpm check`            | Biome check, writing fixes                     |
 
 <br />
 

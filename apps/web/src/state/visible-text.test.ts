@@ -92,6 +92,7 @@ describe("which views offer Copy source", () => {
 			"html",
 			"jira",
 			"json",
+			"records",
 		]);
 		expect(copyable).not.toContain("grid");
 		expect(copyable).not.toContain("html-preview");

@@ -1,6 +1,10 @@
 import { modShortcut } from "@tabelo/ui/lib/platform";
 import { product } from "@/copy/product";
-import type { ParseIssue, PreconditionFailure } from "@/formats/types";
+import type {
+	OutputOptionId,
+	ParseIssue,
+	PreconditionFailure,
+} from "@/formats/types";
 import type { ImportError } from "@/import/prepare";
 import type { SplitEdge } from "@/workspace/layout";
 
@@ -44,6 +48,11 @@ const views = {
 		shortLabel: "JSON",
 		description: "An array of rows, each one keyed by the headers",
 	},
+	records: {
+		label: "Records",
+		shortLabel: "Records",
+		description: "Each row as a titled block of bullets",
+	},
 	"html-preview": {
 		label: "Rendered preview",
 		shortLabel: "Preview",
@@ -84,6 +93,21 @@ function preconditionMessage(failure: PreconditionFailure): string {
 			return `JSON uses every header as a unique object key. Rename ${columnSubject} so no keys repeat.`;
 		case "json-numeric-header":
 			return `JSON reorders object keys written as whole numbers before other keys. Rename ${columnSubject} to preserve the table's column order.`;
+		case "records-empty-first-header":
+			return `Records titles every record with the first column's header. Name ${columnSubject} to use this view.`;
+		default:
+			break;
+	}
+
+	const rowSubject = failure.rows?.length
+		? `${failure.rows.length === 1 ? "row" : "rows"} ${joinedPositions(failure.rows.map((index) => String(index + 2)))}`
+		: "the affected rows";
+
+	switch (failure.code) {
+		case "records-empty-first-column":
+			return `Records titles every record with the first column's value. Fill in ${rowSubject} to use this view.`;
+		case "records-duplicate-first-column":
+			return `Records titles every record with the first column's value. Make ${rowSubject} unique to use this view.`;
 		default:
 			break;
 	}
@@ -255,6 +279,21 @@ export const copy = {
 				case "delimited-parse-error":
 					message = "This source could not be read yet.";
 					break;
+				case "records-title-required":
+					message = "Each record starts with a title line like Header: Value.";
+					break;
+				case "records-title-mismatch":
+					message =
+						"Every record's title must use the same first column header.";
+					break;
+				case "records-bullet-required":
+					message =
+						"Each line after the title must be a bullet like - Header: Value.";
+					break;
+				case "records-unknown-column":
+					message =
+						"This bullet's header does not match a column from the first record.";
+					break;
 			}
 			return issue.line === undefined
 				? message
@@ -335,12 +374,18 @@ export const copy = {
 		format: "File format",
 		options: "Options",
 		// Output-only choices, listed by the id the codec declares.
-		option: (id: "includeHeader") =>
-			id === "includeHeader" ? "Include header row" : id,
-		optionHint: (id: "includeHeader") =>
+		option: (id: OutputOptionId) =>
+			id === "includeHeader"
+				? "Include header row"
+				: id === "includeFirstColumnName"
+					? "Include the first column name"
+					: "Include empty values",
+		optionHint: (id: OutputOptionId) =>
 			id === "includeHeader"
 				? "The table always has a header row. This decides whether the file prints it."
-				: "",
+				: id === "includeFirstColumnName"
+					? 'Each record title is prefixed with it, like "Product: Product A".'
+					: "A field with no value prints an empty bullet instead of being left out.",
 		invalidDraft:
 			"This source is not valid yet. Download the last valid table or copy the draft.",
 		copyDraft: "Copy the draft",
