@@ -91,7 +91,11 @@ export function AppMenu({
 						}
 						variant="outline"
 						size="icon-lg"
-						className="fixed right-3 bottom-3 z-40 size-fab border-transparent bg-surface-floating shadow-lg"
+						// Resting flush with the workspace behind it, so it reads as part
+						// of the canvas rather than a panel sitting on top; the surface,
+						// shadow, and border that make it read as a floating control only
+						// appear once a pointer actually reaches it.
+						className="fixed right-3 bottom-3 z-40 size-fab border-transparent bg-transparent hover:bg-surface-floating hover:shadow-lg"
 					/>
 				}
 			>
