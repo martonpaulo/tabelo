@@ -12,27 +12,13 @@ import { tags } from "@lezer/highlight";
 // styles come from a JS theme rather than a class, so the calc is repeated here
 // instead of being reached through Tailwind.
 const contentFontSize = "calc(var(--pane-zoom, 1) * 0.875rem)";
-// The same tight text line-height the grid's cells use, so font size and line
-// height match exactly everywhere and only the font family (and syntax colour)
-// tells one view's text from another. Setting the full row height directly as
-// line-height instead would centre the glyphs in an oversized line box, which
-// is what made source text read as loosely spaced next to the grid.
-const contentLineHeight = "calc(var(--pane-zoom, 1) * 1.25rem)";
-// One whole row: the shared `--spacing-content-line-box` rhythm the grid's
-// cells and the rendered preview's rows are also built from.
+// One whole row of the shared `--spacing-content-line-box` rhythm the grid's
+// cells and the rendered preview's rows are built from, carried as a line
+// height so the text centres inside it exactly as a table cell's text centres
+// in its own row. The content and the line-number gutter both use it, which is
+// what keeps a number level with its line without either side depending on a
+// measurement pass having already run.
 const contentLineBox = "calc(var(--pane-zoom, 1) * 2rem)";
-// Split evenly above and below every line, the same way the rendered preview
-// pads its rows, so each line's text keeps a normal, centred rhythm instead of
-// hugging the top of an oversized box. Half of the gap between this line
-// height and the shared `--spacing-content-line-box` row rhythm. This padding
-// stays off the line-number gutter on purpose: CodeMirror recycles pooled
-// line-number elements by collapsing them to zero height, and a nonzero
-// padding would give every pooled copy real height again, turning it into a
-// phantom row that pushes every real line number out of step with its own
-// line and further out of step the more lines scroll past. The gutter shares
-// only the tight line height below, which a pooled element's zero box ignores
-// either way.
-const contentLinePadding = "calc(var(--pane-zoom, 1) * 0.375rem)";
 
 export const editorTheme = EditorView.theme({
 	"&": {
@@ -43,7 +29,7 @@ export const editorTheme = EditorView.theme({
 	},
 	".cm-scroller": {
 		fontFamily: "var(--font-family-source)",
-		lineHeight: contentLineHeight,
+		lineHeight: contentLineBox,
 		overscrollBehavior: "contain",
 	},
 	".cm-content": {
@@ -55,22 +41,22 @@ export const editorTheme = EditorView.theme({
 		outline: "none",
 		userSelect: "text",
 	},
-	".cm-line": {
-		padding: `${contentLinePadding} calc(var(--spacing) * 3)`,
-	},
+	// Horizontal only. A source line's vertical rhythm has to come from the
+	// line height above, never from padding here: the app's base reset zeroes
+	// padding on this element with a precedence a theme rule does not beat, so
+	// a vertical value written here is silently dropped and the numbers beside
+	// it end up measuring a different row than the text does.
+	".cm-line": { padding: "0 calc(var(--spacing) * 3)" },
 	".cm-gutters": {
 		backgroundColor: "var(--surface-gutter)",
 		color: "var(--muted-foreground)",
 		fontFamily: "var(--font-family-index)",
 		fontSize: contentFontSize,
-		// The whole row's height, not the tight text line height the content
-		// uses. Two things depend on it. A line number then centres inside the
-		// same row box its line's padded text centres in, instead of sitting a
-		// half-gap high; and the element's natural height already equals a line
-		// block, so the numbers line up during the first paint rather than
-		// drifting upward until CodeMirror's own measurement pass replaces
-		// their heights, which is not guaranteed to have run before the editor
-		// is first shown.
+		// The same row box the content uses, so a number's natural height
+		// already equals the line block beside it. The numbers are then level
+		// from the first paint, rather than drifting until CodeMirror's own
+		// measurement pass replaces their heights, which is not guaranteed to
+		// have run before the editor is first shown.
 		lineHeight: contentLineBox,
 		border: "none",
 		borderRight: "0.0625rem solid var(--line-subtle)",
