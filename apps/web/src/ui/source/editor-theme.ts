@@ -12,6 +12,24 @@ import { tags } from "@lezer/highlight";
 // styles come from a JS theme rather than a class, so the calc is repeated here
 // instead of being reached through Tailwind.
 const contentFontSize = "calc(var(--pane-zoom, 1) * 0.875rem)";
+// The same tight text line-height the grid's cells use, so font size and line
+// height match exactly everywhere and only the font family (and syntax colour)
+// tells one view's text from another. Setting the full row height directly as
+// line-height instead would centre the glyphs in an oversized line box, which
+// is what made source text read as loosely spaced next to the grid.
+const contentLineHeight = "calc(var(--pane-zoom, 1) * 1.25rem)";
+// Split evenly above and below every line, the same way the rendered preview
+// pads its rows, so each line's text keeps a normal, centred rhythm instead of
+// hugging the top of an oversized box. Half of the gap between this line
+// height and the shared `--spacing-content-line-box` row rhythm. This padding
+// stays off the line-number gutter on purpose: CodeMirror recycles pooled
+// line-number elements by collapsing them to zero height, and a nonzero
+// padding would give every pooled copy real height again, turning it into a
+// phantom row that pushes every real line number out of step with its own
+// line and further out of step the more lines scroll past. The gutter shares
+// only the tight line height below, which a pooled element's zero box ignores
+// either way.
+const contentLinePadding = "calc(var(--pane-zoom, 1) * 0.375rem)";
 
 export const editorTheme = EditorView.theme({
 	"&": {
@@ -22,7 +40,7 @@ export const editorTheme = EditorView.theme({
 	},
 	".cm-scroller": {
 		fontFamily: "var(--font-family-source)",
-		lineHeight: "calc(var(--pane-zoom, 1) * 2rem)",
+		lineHeight: contentLineHeight,
 		overscrollBehavior: "contain",
 	},
 	".cm-content": {
@@ -34,13 +52,15 @@ export const editorTheme = EditorView.theme({
 		outline: "none",
 		userSelect: "text",
 	},
-	".cm-line": { padding: "0 calc(var(--spacing) * 3)" },
+	".cm-line": {
+		padding: `${contentLinePadding} calc(var(--spacing) * 3)`,
+	},
 	".cm-gutters": {
 		backgroundColor: "var(--surface-gutter)",
 		color: "var(--muted-foreground)",
 		fontFamily: "var(--font-family-index)",
 		fontSize: contentFontSize,
-		lineHeight: "calc(var(--pane-zoom, 1) * 2rem)",
+		lineHeight: contentLineHeight,
 		border: "none",
 		borderRight: "0.0625rem solid var(--line-subtle)",
 		userSelect: "none",
