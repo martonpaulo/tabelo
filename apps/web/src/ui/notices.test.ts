@@ -36,7 +36,7 @@ function find(id: string): AppNotice | undefined {
 function pasteWithHeaderGuess(): void {
 	useTabeloStore
 		.getState()
-		.pasteClipboard({ text: "Name\tRole\nInez\tDesigner" });
+		.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
 }
 
 describe("what is shown", () => {
@@ -72,7 +72,7 @@ describe("conditions are state, not messages", () => {
 		pasteWithHeaderGuess();
 		expect(ids()).toContain(conditionNoticeIds.headerCorrection);
 
-		useTabeloStore.getState().editCell(0, 0, "Mark");
+		useTabeloStore.getState().editCell(0, 0, "Paulo");
 
 		expect(ids()).not.toContain(conditionNoticeIds.headerCorrection);
 	});
@@ -122,11 +122,11 @@ describe("conditions are state, not messages", () => {
 describe("severity and urgency", () => {
 	it("reports a refused import as an error that interrupts", () => {
 		useTabeloStore.setState({
-			document: documentFromMatrix([["Name"], ["Inez"]], { headerRow: true }),
+			document: documentFromMatrix([["Name"], ["Ingrid"]], { headerRow: true }),
 		});
 		useTabeloStore
 			.getState()
-			.importText('Name,Note\nInez,"unterminated', "csv");
+			.importText('Name,Note\nIngrid,"unterminated', "csv");
 
 		const notice = find(conditionNoticeIds.inputError);
 		expect(notice?.severity).toBe("error");

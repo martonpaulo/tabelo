@@ -4,6 +4,7 @@ import { htmlCodec } from "./html";
 import { jiraCodec } from "./jira";
 import { jsonCodec } from "./json";
 import { markdownCodec } from "./markdown";
+import { recordsCodec } from "./records";
 import { tsvCodec } from "./tsv";
 import type {
 	CodecId,
@@ -22,6 +23,7 @@ const registry: Record<CodecId, TableCodec> = {
 	html: htmlCodec,
 	jira: jiraCodec,
 	json: jsonCodec,
+	records: recordsCodec,
 };
 
 // Order is the product's own preference, shown wherever formats are listed.
@@ -32,6 +34,7 @@ export const codecOrder: readonly CodecId[] = [
 	"html",
 	"jira",
 	"json",
+	"records",
 ];
 
 export function getCodec(id: CodecId): TableCodec {
@@ -114,4 +117,12 @@ export type {
 	TableCodec,
 } from "./types";
 export { defaultOutputOptions } from "./types";
-export { csvCodec, htmlCodec, jiraCodec, jsonCodec, markdownCodec, tsvCodec };
+export {
+	csvCodec,
+	htmlCodec,
+	jiraCodec,
+	jsonCodec,
+	markdownCodec,
+	recordsCodec,
+	tsvCodec,
+};

@@ -10,13 +10,13 @@ import { htmlCodec } from "./html";
 describe("html parsing", () => {
 	it("reads a table with a header row", () => {
 		const result = htmlCodec.parse(
-			"<table><thead><tr><th>Name</th><th>Role</th></tr></thead><tbody><tr><td>Inez</td><td>Designer</td></tr></tbody></table>",
+			"<table><thead><tr><th>Name</th><th>Role</th></tr></thead><tbody><tr><td>Ingrid</td><td>Designer</td></tr></tbody></table>",
 		);
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
 		expect(documentToMatrix(result.document)).toEqual([
 			["Name", "Role"],
-			["Inez", "Designer"],
+			["Ingrid", "Designer"],
 		]);
 	});
 
@@ -90,8 +90,8 @@ describe("html serialization", () => {
 	it("survives a full round trip including line breaks and entities", () => {
 		const original = [
 			["Name", "Note"],
-			["Inez", "line one\nline two"],
-			["Mark", "5 < 6 & 7 > 2"],
+			["Ingrid", "line one\nline two"],
+			["Paulo", "5 < 6 & 7 > 2"],
 		];
 		const document = documentFromMatrix(original, { headerRow: true });
 

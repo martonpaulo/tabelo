@@ -339,6 +339,12 @@ export function textForView(
 	const codec = getView(viewId).codec;
 	if (!codec) return { ok: true, text: "" };
 	const failure = canSerialize(codec, document);
+	// No output options reach this serialize call, and none ever should: a
+	// pane always shows a codec's lossless default, never a download's chosen
+	// options. A codec may declare output options that are lossy by design,
+	// existing purely so a download can offer them; only the download dialog
+	// narrows the user's choices in, through outputOptionsFor. Passing them
+	// here would make a pane show text its own codec cannot parse back.
 	return failure
 		? { ok: false, failure }
 		: { ok: true, text: codec.serialize(document) };

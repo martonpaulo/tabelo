@@ -15,11 +15,11 @@ function matrixText(rowCount: number, columnCount: number): string {
 
 describe("named format validation", () => {
 	it.each([
-		["csv", 'Name,Note\nInez,"unterminated'],
-		["tsv", 'Name\tNote\nInez\t"unterminated'],
+		["csv", 'Name,Note\nIngrid,"unterminated'],
+		["tsv", 'Name\tNote\nIngrid\t"unterminated'],
 		["markdown", "| Name | Role |\n| not-a-divider | --- |"],
 		["html", "<div>not a table</div>"],
-		["jira", "|Inez|Designer|"],
+		["jira", "|Ingrid|Designer|"],
 	] satisfies readonly (readonly [CodecId, string])[])(
 		"treats an invalid %s parse as final",
 		(format, text) => {
@@ -33,7 +33,7 @@ describe("named format validation", () => {
 
 	it("still sniffs generic text through registry-owned format hints", () => {
 		const result = prepareImport({
-			payload: { text: "Name\tRole\nInez\tDesigner" },
+			payload: { text: "Name\tRole\nIngrid\tDesigner" },
 		});
 
 		expect(result.ok).toBe(true);
@@ -103,7 +103,7 @@ describe("supported import limits", () => {
 describe("header decision metadata", () => {
 	it("records when row one is a header", () => {
 		const result = prepareImport({
-			payload: { text: "Name\tRole\nInez\tDesigner" },
+			payload: { text: "Name\tRole\nIngrid\tDesigner" },
 		});
 
 		expect(result.ok).toBe(true);

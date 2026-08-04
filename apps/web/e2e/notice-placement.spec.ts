@@ -14,7 +14,7 @@ const STACKED = { width: 390, height: 700 };
 // The header guess is raised by a paste, carries an action, and therefore
 // never expires on its own, so it stays on screen for the whole measurement.
 async function raiseNotice(tabelo: TabeloPage): Promise<void> {
-	await tabelo.paste("Name\tRole\nInez\tDesigner");
+	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
 	await expect(tabelo.notice()).toHaveCount(1);
 }
 

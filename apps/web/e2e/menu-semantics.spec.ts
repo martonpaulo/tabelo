@@ -67,7 +67,7 @@ test("pane identity is static and Change view is a dialog from pane actions", as
 	await expect(heading.getByRole("button")).toHaveCount(0);
 
 	const dialog = await tabelo.openChangeViewDialog("markdown");
-	await expectDialogOptionAnatomy(dialog, 8);
+	await expectDialogOptionAnatomy(dialog, 9);
 	await expect(
 		dialog.getByRole("radio", { name: copy.views.markdown.label }),
 	).toBeChecked();
@@ -95,19 +95,23 @@ test("disabled view choices distinguish in-use and unavailable states", async ({
 	);
 
 	await expect(inUseRow).toHaveCount(1);
-	await expect(unavailableRow).toHaveCount(1);
+	// A new table's blank headers and empty cells fail both json's and
+	// records' preconditions.
+	await expect(unavailableRow).toHaveCount(2);
 	await expect(inUseRow.getByRole("radio")).toBeDisabled();
-	await expect(unavailableRow.getByRole("radio")).toBeDisabled();
+	for (const row of await unavailableRow.all()) {
+		await expect(row.getByRole("radio")).toBeDisabled();
+		await expect(
+			row.locator('[data-slot="selection-option-status"] svg'),
+		).toBeVisible();
+	}
 	await expect(
 		inUseRow.locator('[data-slot="selection-option-status"] svg'),
-	).toBeVisible();
-	await expect(
-		unavailableRow.locator('[data-slot="selection-option-status"] svg'),
 	).toBeVisible();
 
 	await inUseRow.hover();
 	await expect(page.getByRole("tooltip")).toBeVisible();
-	await unavailableRow.hover();
+	await unavailableRow.first().hover();
 	await expect(page.getByRole("tooltip")).toBeVisible();
 });
 
@@ -291,17 +295,17 @@ test("Add view and Download reuse the dialog option anatomy", async ({
 }) => {
 	await tabelo.splitControl("grid", "bottom").click();
 	const addDialog = page.getByRole("dialog", { name: copy.addView.title });
-	await expectDialogOptionAnatomy(addDialog, 8);
+	await expectDialogOptionAnatomy(addDialog, 9);
 	await addDialog.getByRole("button", { name: copy.actions.cancel }).click();
 
 	await tabelo.runAppCommand("downloadTable");
 	const downloadDialog = page.getByRole("dialog", {
 		name: copy.download.title,
 	});
-	await expectDialogOptionAnatomy(downloadDialog, 6);
+	await expectDialogOptionAnatomy(downloadDialog, 7);
 	await expect(
 		downloadDialog.locator('[data-slot="selection-option-metadata"]'),
-	).toHaveCount(6);
+	).toHaveCount(7);
 });
 
 test("dialog radio choices support the keyboard and Cancel restores focus", async ({

@@ -176,7 +176,7 @@ test("every rounded boundary is drawn as one filled stroke", async ({
 	expect(await roundedOffenders(page)).toEqual([]);
 	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
 
-	await tabelo.paste("Name\tRole\nInez\tDesigner");
+	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
 	await expect(tabelo.notice().first()).toBeVisible();
 	expect(await roundedOffenders(page)).toEqual([]);
 });
@@ -369,7 +369,7 @@ test("the initial surface accepts the standard paste event directly", async ({
 	).toBeVisible();
 	await page.evaluate(() => {
 		const clipboardData = new DataTransfer();
-		clipboardData.setData("text/plain", "Name\tRole\nInez\tDesigner");
+		clipboardData.setData("text/plain", "Name\tRole\nIngrid\tDesigner");
 		const event = new Event("paste", { bubbles: true, cancelable: true });
 		Object.defineProperty(event, "clipboardData", { value: clipboardData });
 		window.dispatchEvent(event);
@@ -379,7 +379,7 @@ test("the initial surface accepts the standard paste event directly", async ({
 		page.getByRole("heading", { name: copy.empty.title }),
 	).toHaveCount(0);
 	await expect(page.getByRole("columnheader", { name: "Name" })).toBeVisible();
-	await expect(page.getByRole("gridcell").first()).toContainText("Inez");
+	await expect(page.getByRole("gridcell").first()).toContainText("Ingrid");
 });
 
 test("an empty first visit shows one centered start surface over an inert blurred workspace", async ({

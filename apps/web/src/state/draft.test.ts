@@ -11,8 +11,8 @@ import { layoutPresets } from "@/workspace/layout";
 import { textForView, useTabeloStore } from "./store";
 
 const initialState = useTabeloStore.getInitialState();
-const invalidMarkdown = "| Name |\n| not a divider |\n| Inez |";
-const validMarkdown = "| Name |\n| --- |\n| Inez |";
+const invalidMarkdown = "| Name |\n| not a divider |\n| Ingrid |";
+const validMarkdown = "| Name |\n| --- |\n| Ingrid |";
 
 beforeEach(() => {
 	useTabeloStore.getState().discardDraft();
@@ -96,13 +96,14 @@ describe("draft ownership", () => {
 	});
 
 	it("refuses a blocked view before it can own a draft", () => {
-		const document = documentFromMatrix([["Name"], ["Inez"]], {
+		const document = documentFromMatrix([["Name"], ["Ingrid"]], {
 			headerRow: true,
 		});
 		const failure = { code: "test-conflict", columns: [0] } as const;
 		const mutableCodec = jsonCodec as {
 			precondition?: TableCodec["precondition"];
 		};
+		const originalPrecondition = mutableCodec.precondition;
 		mutableCodec.precondition = () => failure;
 
 		try {
@@ -116,7 +117,7 @@ describe("draft ownership", () => {
 
 			const store = useTabeloStore.getState();
 			store.setPaneView(paneId, "json");
-			store.setDraft(paneId, "json", '[["Name"],["Inez"]]');
+			store.setDraft(paneId, "json", '[["Name"],["Ingrid"]]');
 
 			const state = useTabeloStore.getState();
 			expect(
@@ -124,7 +125,10 @@ describe("draft ownership", () => {
 			).toBe("markdown");
 			expect(state.draft).toBeNull();
 		} finally {
-			delete mutableCodec.precondition;
+			// Restoring the original keeps json's real precondition intact for
+			// every test that runs after this one in the same file: deleting the
+			// property outright previously left json permanently unguarded.
+			mutableCodec.precondition = originalPrecondition;
 		}
 	});
 
@@ -245,7 +249,7 @@ describe("source synchronization", () => {
 	const parsedDocument = documentFromMatrix(
 		[
 			["Name", "Role"],
-			["Inez", "Designer"],
+			["Ingrid", "Designer"],
 		],
 		{ headerRow: true },
 	);
@@ -258,6 +262,10 @@ describe("source synchronization", () => {
 		]),
 	)("parses a valid %s transaction immediately", (viewId, text) => {
 		const paneId = markdownPaneId();
+		// A codec with a precondition (json, records) refuses to become a pane's
+		// view against the blank default document. parsedDocument satisfies every
+		// codec's precondition, and it is what text was serialized from anyway.
+		useTabeloStore.setState({ document: parsedDocument });
 		const store = useTabeloStore.getState();
 		store.setPaneView(paneId, viewId);
 
@@ -266,7 +274,7 @@ describe("source synchronization", () => {
 		const state = useTabeloStore.getState();
 		expect(documentToMatrix(state.document)).toEqual([
 			["Name", "Role"],
-			["Inez", "Designer"],
+			["Ingrid", "Designer"],
 		]);
 		expect(state.draft).toMatchObject({
 			paneId,

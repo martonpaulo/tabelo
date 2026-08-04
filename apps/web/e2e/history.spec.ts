@@ -59,25 +59,25 @@ test("app menu undo and redo use the active source editor first", async ({
 	tabelo,
 }) => {
 	const source = tabelo.source("markdown");
-	await source.fill("| Name |\n| --- |\n| Inez |");
+	await source.fill("| Name |\n| --- |\n| Ingrid |");
 	await source.press("End");
 	await source.press("ArrowLeft");
 	await source.press("X");
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez X");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid X");
 
 	await tabelo.runAppCommand("undo");
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 
 	await tabelo.runAppCommand("redo");
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez X");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid X");
 });
 
 test("document undo restores an invalid draft with explicit feedback", async ({
 	tabelo,
 }) => {
 	const source = tabelo.source("markdown");
-	const invalid = "| Name |\n| not a divider |\n| Inez |";
-	await source.fill("| Name |\n| --- |\n| Inez |");
+	const invalid = "| Name |\n| not a divider |\n| Ingrid |";
+	await source.fill("| Name |\n| --- |\n| Ingrid |");
 	await source.fill(invalid);
 	await expect(
 		tabelo.pane("markdown").locator(".cm-diagnosticError"),
@@ -87,7 +87,7 @@ test("document undo restores an invalid draft with explicit feedback", async ({
 	await expect(tabelo.cell(1, 1)).toHaveText("Grid wins");
 	await tabelo.runAppCommand("undo");
 
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 	await expect(
 		tabelo.pane("markdown").locator(".cm-diagnosticError"),
 	).toHaveCount(1);

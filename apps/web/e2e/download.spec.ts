@@ -96,7 +96,7 @@ test("only CSV offers the header row choice", async ({ page, tabelo }) => {
 
 test("CSV includes the header row by default", async ({ page, tabelo }) => {
 	await tabelo.editHeader(1, "Name");
-	await tabelo.editCell(1, 1, "Inez");
+	await tabelo.editCell(1, 1, "Ingrid");
 
 	const file = await savedFile(page, async () => {
 		await openChooser(page);
@@ -111,7 +111,7 @@ test("CSV includes the header row by default", async ({ page, tabelo }) => {
 
 	expect(file.name).toBe("table.csv");
 	expect(file.body.split("\n")[0]).toBe("Name,,");
-	expect(file.body).toContain("Inez");
+	expect(file.body).toContain("Ingrid");
 });
 
 test("unchecking the option omits the header row from the file only", async ({
@@ -119,7 +119,7 @@ test("unchecking the option omits the header row from the file only", async ({
 	tabelo,
 }) => {
 	await tabelo.editHeader(1, "Name");
-	await tabelo.editCell(1, 1, "Inez");
+	await tabelo.editCell(1, 1, "Ingrid");
 
 	const file = await savedFile(page, async () => {
 		await openChooser(page);
@@ -133,7 +133,7 @@ test("unchecking the option omits the header row from the file only", async ({
 			.click();
 	});
 
-	expect(file.body.split("\n")[0]).toBe("Inez,,");
+	expect(file.body.split("\n")[0]).toBe("Ingrid,,");
 	expect(file.body).not.toContain("Name");
 
 	// The table itself still has its header, and so does every other view.
@@ -147,7 +147,7 @@ test("the option does not leak into other formats", async ({
 	tabelo,
 }) => {
 	await tabelo.editHeader(1, "Name");
-	await tabelo.editCell(1, 1, "Inez");
+	await tabelo.editCell(1, 1, "Ingrid");
 
 	await openChooser(page);
 	const dialog = page.getByRole("dialog");
@@ -227,8 +227,8 @@ test("valid source work is already in the file the shortcut downloads", async ({
 	page,
 	tabelo,
 }) => {
-	await tabelo.source("markdown").fill("| Name |\n| --- |\n| Inez |");
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await tabelo.source("markdown").fill("| Name |\n| --- |\n| Ingrid |");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 
 	const file = await savedFile(page, async () => {
 		await page.keyboard.press(shortcut);
@@ -239,15 +239,15 @@ test("valid source work is already in the file the shortcut downloads", async ({
 	});
 
 	expect(file.name).toBe("table.md");
-	expect(file.body).toContain("Inez");
+	expect(file.body).toContain("Ingrid");
 });
 
 test("an invalid draft is named rather than silently left out", async ({
 	page,
 	tabelo,
 }) => {
-	await tabelo.source("markdown").fill("| Name |\n| --- |\n| Inez |");
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await tabelo.source("markdown").fill("| Name |\n| --- |\n| Ingrid |");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 	await tabelo.source("markdown").fill("| Name |\n| not a divider |\n| Bo |");
 	await expect(tabelo.source("markdown")).toHaveAttribute(
 		"aria-invalid",
@@ -267,7 +267,7 @@ test("an invalid draft is named rather than silently left out", async ({
 			.getByRole("button", { name: copy.actions.download, exact: true })
 			.click();
 	});
-	expect(file.body).toContain("Inez");
+	expect(file.body).toContain("Ingrid");
 	expect(file.body).not.toContain("Bo");
 });
 

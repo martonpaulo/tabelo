@@ -37,6 +37,7 @@ const viewIdSchema = z.enum([
 	"html-preview",
 	"jira",
 	"json",
+	"records",
 ]);
 
 const slotSchema = z.enum(["a", "b", "c", "d"]);

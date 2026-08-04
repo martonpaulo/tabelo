@@ -2,7 +2,7 @@ import type { Locator } from "@playwright/test";
 import { expect, test } from "./fixtures";
 
 const invalidMarkdown =
-	"| Name | Role |\n| not a divider |\n| Inez | Designer |";
+	"| Name | Role |\n| not a divider |\n| Ingrid | Designer |";
 const validMarkdown =
 	"| Name | Role |\n| --- | --- |\n| Immediate | Designer |";
 

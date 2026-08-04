@@ -1,6 +1,13 @@
 import type { Alignment, TableDocument } from "@/core/types";
 
-export type CodecId = "markdown" | "csv" | "tsv" | "html" | "jira" | "json";
+export type CodecId =
+	| "markdown"
+	| "csv"
+	| "tsv"
+	| "html"
+	| "jira"
+	| "json"
+	| "records";
 
 interface LocatedParseIssue {
 	// 1-based line in the source text, when the problem can be located.
@@ -36,7 +43,11 @@ export type ParseIssue =
 	| ({ readonly code: "delimited-invalid-quote" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-delimiter-undetected" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-field-count" } & LocatedParseIssue)
-	| ({ readonly code: "delimited-parse-error" } & LocatedParseIssue);
+	| ({ readonly code: "delimited-parse-error" } & LocatedParseIssue)
+	| ({ readonly code: "records-title-required" } & LocatedParseIssue)
+	| ({ readonly code: "records-title-mismatch" } & LocatedParseIssue)
+	| ({ readonly code: "records-bullet-required" } & LocatedParseIssue)
+	| ({ readonly code: "records-unknown-column" } & LocatedParseIssue);
 
 // A successful parse can still carry warnings: a ragged row is recoverable by
 // padding, and saying so is better than silently reshaping the user's table.
@@ -65,10 +76,19 @@ export type MatrixParseResult =
 // the document, the history timeline, or any source projection: the table
 // always has exactly one header row, and whether a download prints it is a
 // property of that download. See AGENTS.md on header handling.
-export type OutputOptionId = "includeHeader";
+export type OutputOptionId =
+	| "includeHeader"
+	| "includeFirstColumnName"
+	| "includeEmptyValues";
 
 export interface OutputOptions {
 	readonly includeHeader?: boolean;
+	// Records only, both download-only: dropping the first column's name from
+	// the title line, or dropping bullets whose value is empty. Both produce
+	// output the codec cannot parse back, which is exactly why neither may ever
+	// reach an editable pane. See formats/records.ts.
+	readonly includeFirstColumnName?: boolean;
+	readonly includeEmptyValues?: boolean;
 }
 
 // A precondition failure means the document is valid, but this codec cannot
@@ -83,6 +103,8 @@ export interface PreconditionFailure {
 // One owner for what an unconfigured download produces.
 export const defaultOutputOptions: Required<OutputOptions> = {
 	includeHeader: true,
+	includeFirstColumnName: true,
+	includeEmptyValues: true,
 };
 
 // A codec is a parser/serializer pair over the table document, plus the file

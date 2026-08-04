@@ -45,7 +45,7 @@ describe("markdown parsing", () => {
 			[
 				"| Name | Role | Active |",
 				"| :--- | :---: | ---: |",
-				"| Inez | Designer | Yes |",
+				"| Ingrid | Designer | Yes |",
 			].join("\n"),
 		);
 
@@ -123,8 +123,8 @@ describe("markdown serialization", () => {
 		const document = documentFromMatrix(
 			[
 				["Name", "Note"],
-				["Inez", "line one\nline two"],
-				["Mark", "a | b"],
+				["Ingrid", "line one\nline two"],
+				["Paulo", "a | b"],
 			],
 			{ headerRow: true },
 		);
@@ -145,8 +145,8 @@ describe("cross-format round trip", () => {
 	it("keeps CSV values byte-exact through Markdown and back", () => {
 		const original = [
 			["Name", "Note", "Amount"],
-			["Inez", "line one\nline two", "1,5"],
-			["Mark", 'he said "hi"', ""],
+			["Ingrid", "line one\nline two", "1,5"],
+			["Paulo", 'he said "hi"', ""],
 			["Cleo", "a | b", "-3"],
 		];
 

@@ -114,7 +114,7 @@ test("the column menu lives on the strip and names an unnamed column", async ({
 test("Mod+A then Backspace clears the headers along with the cells", async ({
 	tabelo,
 }) => {
-	await tabelo.paste("Name\tRole\nInez\tDesigner");
+	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
 	await expect(tabelo.header(1)).toHaveText("Name");
 
 	await tabelo.cell(1, 1).click();
@@ -158,13 +158,13 @@ test("Mod+A then Backspace clears the headers along with the cells", async ({
 	// One operation, so one undo step brings all of it back.
 	await tabelo.runAppCommand("undo");
 	await expect(tabelo.header(1)).toHaveText("Name");
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 });
 
 test("Shift and arrows extend the selection into the header row", async ({
 	tabelo,
 }) => {
-	await tabelo.paste("Name\tRole\nInez\tDesigner");
+	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
 
 	await tabelo.cell(1, 1).click();
 	await tabelo.page.keyboard.press("Shift+ArrowUp");
@@ -189,7 +189,7 @@ test("arrows stop at the header row rather than leaving the grid", async ({
 });
 
 test("Mod+Backspace refuses to remove the header row", async ({ tabelo }) => {
-	await tabelo.paste("Name\tRole\nInez\tDesigner");
+	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
 
 	await tabelo.header(1).click();
 	await tabelo.page.keyboard.press("Shift+ArrowRight");
@@ -198,7 +198,7 @@ test("Mod+Backspace refuses to remove the header row", async ({ tabelo }) => {
 	await expect(tabelo.notice("warning")).toBeVisible();
 	// The header row is still there and still holds its text.
 	await expect(tabelo.header(1)).toHaveText("Name");
-	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 });
 
 test("right-clicking the header row's gutter offers row actions", async ({

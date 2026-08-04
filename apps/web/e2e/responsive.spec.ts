@@ -179,7 +179,7 @@ test("a pending draft survives the responsive change", async ({
 	page,
 	tabelo,
 }) => {
-	const invalid = "| Name |\n| not a divider |\n| Inez |";
+	const invalid = "| Name |\n| not a divider |\n| Ingrid |";
 	const source = tabelo.source("markdown");
 	const sourceText = () =>
 		source.evaluate((element) =>

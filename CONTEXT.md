@@ -17,7 +17,7 @@ Related to: Column, Row, Cell, View
 ### View
 
 One way of showing the table document: the grid, a source format (Markdown,
-CSV, TSV, HTML, Jira, JSON), or the rendered preview. A view is always derived from
+CSV, TSV, HTML, Jira, JSON, Records), or the rendered preview. A view is always derived from
 the table document: never an independent copy of it. Every view is described
 in the view registry by its capabilities rather than by its name.
 
@@ -188,7 +188,9 @@ Related to: Header detection, Format sniffing
 ### Format sniffing
 
 Inspecting pasted content to decide how to parse it, in priority order: HTML
-table, JSON matrix, TSV, Markdown table, Jira table, CSV, then plain text.
+table, JSON matrix, TSV, Markdown table, Records, Jira table, CSV, then plain
+text. Records sorts after Markdown on purpose, so a paste that could be read
+either way is always read as Markdown.
 
 Related to: Import, Parser
 
