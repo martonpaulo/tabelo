@@ -93,19 +93,92 @@ test("controls, surfaces, and menus share their semantic visual hierarchy", asyn
 
 	await appButton.click();
 	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
-	const menuBackground = await menu.evaluate(
-		(element) => getComputedStyle(element).backgroundColor,
-	);
-	const paneBackground = await pane.evaluate(
-		(element) => getComputedStyle(element).backgroundColor,
-	);
-	expect(menuBackground).not.toBe(paneBackground);
+	// Both surfaces are filled by the shared hairline treatment, so the fill is
+	// the custom property rather than a background colour.
+	const surfaceFill = (locator: typeof menu) =>
+		locator.evaluate((element) =>
+			getComputedStyle(element).getPropertyValue("--hairline-fill").trim(),
+		);
+	expect(await surfaceFill(menu)).not.toBe(await surfaceFill(pane));
 	await expect(
 		menu.getByRole("menuitem", { name: copy.actions.newTable }),
 	).toHaveCSS("cursor", "pointer");
 	expect(
 		await menu.evaluate((element) => getComputedStyle(element).backdropFilter),
 	).toContain("blur");
+});
+
+// Every rounded boundary in the product is drawn the same way, and the reasons
+// are geometric rather than stylistic: a ring is painted behind the element so
+// the background's antialiased corner eats it, a second stroke at a different
+// radius doubles the arc, and a translucent background under a border muddies
+// it. Walking the live DOM is the only way to catch a component that opts out.
+async function roundedOffenders(page: Page): Promise<string[]> {
+	return page.evaluate(() =>
+		[...document.querySelectorAll<HTMLElement>("*")]
+			.flatMap((element) => {
+				const style = getComputedStyle(element);
+				const radius = Number.parseFloat(style.borderTopLeftRadius) || 0;
+				const rect = element.getBoundingClientRect();
+				if (radius <= 0 || rect.width < 8 || rect.height < 8) return [];
+
+				const borders = [
+					style.borderTopWidth,
+					style.borderRightWidth,
+					style.borderBottomWidth,
+					style.borderLeftWidth,
+				].map((width) => Number.parseFloat(width) || 0);
+				const hasBorder = borders.some((width) => width > 0);
+				const shadow = style.boxShadow === "none" ? "" : style.boxShadow;
+				const ring = /^[^,]*\b0px 0px 0px [\d.]+px/.test(shadow);
+				const outlined =
+					style.outlineStyle !== "none" &&
+					(Number.parseFloat(style.outlineWidth) || 0) > 0;
+				const translucent = /rgba?\([^)]*,\s*0?\.\d+\)/.test(
+					style.backgroundColor,
+				);
+
+				const faults: string[] = [];
+				if (ring) faults.push("ring on a rounded surface");
+				if (ring && hasBorder) faults.push("two strokes on one edge");
+				if (outlined && hasBorder) faults.push("outline over a border");
+				if (
+					translucent &&
+					hasBorder &&
+					!style.backgroundClip.includes("padding")
+				)
+					faults.push("translucent background under a border");
+				if (faults.length === 0) return [];
+				const name =
+					element.getAttribute("data-slot") ??
+					element.getAttribute("role") ??
+					element.tagName.toLowerCase();
+				return [`${name}: ${faults.join(", ")}`];
+			})
+			.filter((value, index, all) => all.indexOf(value) === index),
+	);
+}
+
+test("every rounded boundary is drawn as one filled stroke", async ({
+	page,
+	tabelo,
+}) => {
+	await page.emulateMedia({ colorScheme: "dark" });
+	expect(await roundedOffenders(page)).toEqual([]);
+
+	const menu = await tabelo.openPaneMenu("markdown");
+	await expect(menu).toBeVisible();
+	expect(await roundedOffenders(page)).toEqual([]);
+	await page.keyboard.press("Escape");
+
+	const dialog = await tabelo.openLayoutDialog();
+	await expect(dialog).toBeVisible();
+	expect(await roundedOffenders(page)).toEqual([]);
+	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
+
+	await tabelo.paste("Name\tRole\nInez\tDesigner");
+	await expect(tabelo.notice().first()).toBeVisible();
+	expect(await roundedOffenders(page)).toEqual([]);
 });
 
 test("shared motion stays brief, cancellable, and reduced-motion safe", async ({
@@ -210,36 +283,30 @@ test("the active pane boundary replaces the resting one", async ({
 	await expect(inactive).not.toHaveAttribute("data-pane-active");
 	await expect(inactive).not.toHaveAttribute("aria-current");
 
+	// The stroke's colour is the hairline custom property: the border itself is
+	// transparent, because the stroke is painted as a filled ring so a curve
+	// keeps its colour on a low-density display.
 	const edges = async (pane: typeof active) =>
 		pane.evaluate((element) => {
-			const probe = document.createElement("span");
-			probe.style.color = "var(--selection-edge)";
-			element.append(probe);
 			const style = getComputedStyle(element);
-			const result = {
+			return {
 				widths: [
 					style.borderTopWidth,
 					style.borderRightWidth,
 					style.borderBottomWidth,
 					style.borderLeftWidth,
 				],
-				colors: [
-					style.borderTopColor,
-					style.borderRightColor,
-					style.borderBottomColor,
-					style.borderLeftColor,
-				],
-				accent: getComputedStyle(probe).color,
+				stroke: style.getPropertyValue("--hairline-color").trim(),
+				accent: style.getPropertyValue("--selection-edge").trim(),
+				subtle: style.getPropertyValue("--line-subtle").trim(),
 			};
-			probe.remove();
-			return result;
 		});
 
 	const activeEdges = await edges(active);
 	const inactiveEdges = await edges(inactive);
-	// All four edges carry the accent, and only the colour changed.
-	expect(new Set(activeEdges.colors)).toEqual(new Set([activeEdges.accent]));
-	expect(new Set(inactiveEdges.colors).has(activeEdges.accent)).toBe(false);
+	// One stroke, all four edges, and only its colour changed with the state.
+	expect(activeEdges.stroke).toBe(activeEdges.accent);
+	expect(inactiveEdges.stroke).toBe(inactiveEdges.subtle);
 	expect(activeEdges.widths).toEqual(inactiveEdges.widths);
 	expect(new Set(activeEdges.widths).size).toBe(1);
 
@@ -274,31 +341,21 @@ test("multi-pane layouts and themes keep the active boundary on all four edges",
 			}
 			await expect(pane).toHaveAttribute("data-pane-active", "true");
 			const edge = await pane.evaluate((element) => {
-				const probe = document.createElement("span");
-				probe.style.color = "var(--selection-edge)";
-				element.append(probe);
 				const style = getComputedStyle(element);
-				const result = {
+				return {
 					widths: [
 						style.borderTopWidth,
 						style.borderRightWidth,
 						style.borderBottomWidth,
 						style.borderLeftWidth,
 					],
-					colors: [
-						style.borderTopColor,
-						style.borderRightColor,
-						style.borderBottomColor,
-						style.borderLeftColor,
-					],
-					accent: getComputedStyle(probe).color,
+					stroke: style.getPropertyValue("--hairline-color").trim(),
+					accent: style.getPropertyValue("--selection-edge").trim(),
 				};
-				probe.remove();
-				return result;
 			});
 			expect(new Set(edge.widths).size).toBe(1);
 			expect(edge.widths[0]).not.toBe("0px");
-			expect(new Set(edge.colors)).toEqual(new Set([edge.accent]));
+			expect(edge.stroke).toBe(edge.accent);
 		}
 	}
 });

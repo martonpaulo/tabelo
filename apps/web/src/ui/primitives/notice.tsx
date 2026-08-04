@@ -43,7 +43,7 @@ export function Notice({
 			data-severity={severity}
 			className={cn(
 				"rounded-surface",
-				floating && `bg-surface-floating ${floatingSurfaceStyles}`,
+				floating && floatingSurfaceStyles,
 				className,
 			)}
 		>

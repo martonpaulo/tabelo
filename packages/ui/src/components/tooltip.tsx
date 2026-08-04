@@ -52,7 +52,7 @@ function TooltipContent({
 					data-slot="tooltip-content"
 					role="tooltip"
 					className={cn(
-						`z-50 inline-flex w-fit max-w-xs items-center gap-1.5 rounded-interactive bg-popover px-3 py-1.5 text-popover-foreground text-xs has-data-[slot=kbd]:pr-1.5 ${floatingSurfaceStyles}`,
+						`z-50 inline-flex w-fit max-w-xs items-center gap-1.5 rounded-interactive px-3 py-1.5 text-popover-foreground text-xs has-data-[slot=kbd]:pr-1.5 ${floatingSurfaceStyles}`,
 						popupTransitionStyles,
 						className,
 					)}

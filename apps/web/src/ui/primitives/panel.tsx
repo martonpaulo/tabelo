@@ -1,3 +1,4 @@
+import { panelSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import { forwardRef, type ReactNode } from "react";
 
@@ -15,7 +16,7 @@ const PanelRoot = forwardRef<HTMLElement, React.ComponentProps<"section">>(
 				// biome-ignore lint/a11y/noNoninteractiveTabindex: pane focus ring requires this
 				tabIndex={0}
 				className={cn(
-					"relative isolate flex min-h-0 min-w-0 flex-col overflow-hidden rounded-surface border border-line-subtle bg-surface-panel bg-clip-padding focus-visible:outline-2 focus-visible:outline-selection-edge focus-visible:-outline-offset-2",
+					`relative isolate flex min-h-0 min-w-0 flex-col overflow-hidden rounded-surface focus-visible:outline-2 focus-visible:outline-selection-edge focus-visible:-outline-offset-2 ${panelSurfaceStyles}`,
 					className,
 				)}
 				onKeyDown={(event) => {

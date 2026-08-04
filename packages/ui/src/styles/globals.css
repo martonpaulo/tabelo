@@ -128,3 +128,29 @@
 		@apply font-sans;
 	}
 }
+
+/* One stroke, drawn so a curve survives a low-density display.
+
+   A hairline border cannot cover a whole device pixel along a curve, so at one
+   device pixel per CSS pixel the browser antialiases the arc down to roughly
+   half the stroke's colour: the corners read thinner, dimmer, and cheap, while
+   the straight edges stay crisp. Measured on this product's menu at DPR 1: the
+   arc came out at 57% of the stroke.
+
+   Painting the stroke as the difference between two filled rounded rectangles
+   fixes that. The outer layer is clipped to the border box and the inner to
+   the padding box, so the ring between them is filled rather than stroked, and
+   the arc keeps 89% of its colour at DPR 1 and all of it above.
+
+   Consumers set the two colours. `--hairline-fill` is the surface, and may be
+   translucent; `--hairline-color` is the boundary. Radius and border width
+   stay the consumer's, so this composes with any rounded surface.
+   See docs/design-system.md section 2. */
+@utility tabelo-hairline {
+	border-color: transparent;
+	background-image:
+		linear-gradient(var(--hairline-fill), var(--hairline-fill)),
+		linear-gradient(var(--hairline-color), var(--hairline-color));
+	background-origin: border-box;
+	background-clip: padding-box, border-box;
+}

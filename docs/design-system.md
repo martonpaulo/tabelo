@@ -155,9 +155,28 @@ inside it, and it keeps the resting width so activating a pane moves nothing.
 Two strokes at slightly different radii is exactly how a corner ends up looking
 doubled, which is what the overlay this replaced did.
 
-`floatingSurfaceStyles` in `packages/ui/src/components/surface-styles.ts` is
-the one declaration of that boundary: menus, tooltips, dialogs, and notices all
-compose it rather than repeating the tokens.
+**A hairline stroke is filled, not stroked.** A 0.0625rem border cannot cover a
+whole device pixel along a curve, so on a one-device-pixel display the browser
+antialiases the arc down to roughly half the stroke's colour: measured on this
+product's menu, the corner came out at 57% of the straight edges, which is what
+a corner that looks thin, faded, and low-resolution actually is. Retina hides
+it completely, so it has to be measured rather than looked at.
+
+The `tabelo-hairline` utility paints the stroke as the difference between two
+filled rounded rectangles, one clipped to the border box and one to the padding
+box. The ring between them is filled rather than stroked, and the arc keeps 89%
+of its colour at one device pixel and all of it above. It takes two custom
+properties, `--hairline-fill` for the surface, which may be translucent, and
+`--hairline-color` for the boundary; radius and border width stay the
+consumer's.
+
+`surface-styles.ts` in `packages/ui/src/components/` holds the three
+compositions and nothing else does: `floatingSurfaceStyles` for menus,
+tooltips, dialogs, and notices; `panelSurfaceStyles` for a pane; and
+`activePanelSurfaceStyles`, which changes only the boundary colour. A rounded
+surface that needs a boundary composes one of them. Writing `ring-1`, a bare
+`border-<colour>`, or a second stroke on a rounded surface is a pattern break,
+and a browser test walks the live DOM to catch it.
 
 Two of these carry a contrast floor and are tested for it. `--line-floating`
 and `--control-outline` reach at least 3:1 against every surface they can

@@ -6,7 +6,7 @@ import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 
 // Dropdown and context menus are different interaction primitives with the
 // same visual contract. Shared strings keep geometry and states in one place.
-export const menuPopupStyles = `rounded-surface bg-popover p-1 text-popover-foreground outline-none supports-backdrop-filter:bg-popover/94 supports-backdrop-filter:backdrop-blur-md ${floatingSurfaceStyles} ${popupTransitionStyles}`;
+export const menuPopupStyles = `rounded-surface p-1 text-popover-foreground outline-none supports-backdrop-filter:[--hairline-fill:color-mix(in_oklab,var(--popover)_94%,transparent)] supports-backdrop-filter:backdrop-blur-md ${floatingSurfaceStyles} ${popupTransitionStyles}`;
 
 export const menuLabelStyles =
 	"px-2 py-1.5 text-muted-foreground text-xs leading-none data-inset:pl-7";

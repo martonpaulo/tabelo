@@ -1,4 +1,5 @@
 import { disclosureTransitionStyles } from "@tabelo/ui/components/motion-styles";
+import { activePanelSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import { Plus } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
@@ -93,7 +94,7 @@ export const Pane = memo(function Pane({
 					// drawn inside it: two strokes at slightly different radii is what
 					// made the rounded corners look doubled and chewed. Same width in
 					// both states, so activating a pane moves nothing.
-					active && showActiveIndicator && "border-selection-edge",
+					active && showActiveIndicator && activePanelSurfaceStyles,
 					// Tall enough to be worth scrolling to, and still allowed to grow
 					// when it is the only pane on screen.
 					stacked && "min-h-pane-stack flex-1",
