@@ -89,13 +89,16 @@ export function AppMenu({
 								? copy.actions.openAppMenuWithUpdate
 								: copy.actions.openAppMenu
 						}
-						variant="outline"
+						variant="ghost"
 						size="icon-lg"
 						// Resting flush with the workspace behind it, so it reads as part
-						// of the canvas rather than a panel sitting on top; the surface,
-						// shadow, and border that make it read as a floating control only
-						// appear once a pointer actually reaches it.
-						className="fixed right-3 bottom-3 z-40 size-fab border-transparent bg-transparent hover:bg-surface-floating hover:shadow-lg"
+						// of the canvas rather than a panel sitting on top; the surface
+						// and shadow that make it read as a floating control only appear
+						// once a pointer actually reaches it. Ghost rather than outline
+						// because outline carries a resting border and fill of its own in
+						// dark mode, which no transparent override on this element can
+						// win against.
+						className="fixed right-3 bottom-3 z-40 size-fab hover:bg-surface-floating hover:shadow-lg dark:hover:bg-surface-floating"
 					/>
 				}
 			>
