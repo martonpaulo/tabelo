@@ -281,6 +281,147 @@ test("column headers extend selection by drag, Shift, and the platform modifier"
 	expect(await selected(3)).toBe(true);
 });
 
+test("row numbers extend selection by drag, Shift, and the platform modifier", async ({
+	page,
+	tabelo,
+}) => {
+	const selected = async (row: number) =>
+		(await tabelo.cell(row, 1).getAttribute("aria-selected")) === "true";
+
+	const first = await tabelo
+		.rowIndex(2)
+		.getByRole("button")
+		.first()
+		.boundingBox();
+	const third = await tabelo
+		.rowIndex(4)
+		.getByRole("button")
+		.first()
+		.boundingBox();
+	expect(first).not.toBeNull();
+	expect(third).not.toBeNull();
+	await page.mouse.move((first?.x ?? 0) + 4, (first?.y ?? 0) + 4);
+	await page.mouse.down();
+	await page.mouse.move((third?.x ?? 0) + 4, (third?.y ?? 0) + 4);
+	await page.mouse.up();
+	expect(await selected(1)).toBe(true);
+	expect(await selected(2)).toBe(true);
+	expect(await selected(3)).toBe(true);
+
+	await tabelo.rowIndex(2).getByRole("button").first().click();
+	await tabelo
+		.rowIndex(3)
+		.getByRole("button")
+		.first()
+		.click({ modifiers: ["Shift"] });
+	expect(await selected(1)).toBe(true);
+	expect(await selected(2)).toBe(true);
+	expect(await selected(3)).toBe(false);
+
+	const modifier = process.platform === "darwin" ? "Meta" : "Control";
+	await tabelo.rowIndex(2).getByRole("button").first().click();
+	await tabelo
+		.rowIndex(4)
+		.getByRole("button")
+		.first()
+		.click({ modifiers: [modifier] });
+	expect(await selected(1)).toBe(true);
+	expect(await selected(2)).toBe(true);
+	expect(await selected(3)).toBe(true);
+});
+
+test("the header row's select handle extends into data rows", async ({
+	tabelo,
+}) => {
+	const selected = async (row: number) =>
+		(await tabelo.cell(row, 1).getAttribute("aria-selected")) === "true";
+	const headerSelected = async () =>
+		(await tabelo.header(1).getAttribute("aria-selected")) === "true";
+
+	await tabelo.rowIndex(1).getByRole("button").first().click();
+	await tabelo
+		.rowIndex(3)
+		.getByRole("button")
+		.first()
+		.click({ modifiers: ["Shift"] });
+
+	expect(await headerSelected()).toBe(true);
+	expect(await selected(1)).toBe(true);
+	expect(await selected(2)).toBe(true);
+	expect(await selected(3)).toBe(false);
+});
+
+test("Space on a focused row handle selects that row like a click", async ({
+	page,
+	tabelo,
+}) => {
+	const button = tabelo.rowIndex(3).getByRole("button").first();
+	await button.focus();
+	await page.keyboard.press("Space");
+
+	await expect(tabelo.cell(2, 1)).toHaveAttribute("aria-selected", "true");
+	await expect(tabelo.cell(1, 1)).toHaveAttribute("aria-selected", "false");
+});
+
+test("releasing a row drag stops it from continuing to extend the selection", async ({
+	page,
+	tabelo,
+}) => {
+	const selected = async (row: number) =>
+		(await tabelo.cell(row, 1).getAttribute("aria-selected")) === "true";
+
+	const first = await tabelo
+		.rowIndex(2)
+		.getByRole("button")
+		.first()
+		.boundingBox();
+	expect(first).not.toBeNull();
+	await page.mouse.move((first?.x ?? 0) + 4, (first?.y ?? 0) + 4);
+	await page.mouse.down();
+	await page.mouse.up();
+	expect(await selected(1)).toBe(true);
+	expect(await selected(2)).toBe(false);
+
+	// A drag that already ended must not resume extending on a later hover.
+	const third = await tabelo
+		.rowIndex(4)
+		.getByRole("button")
+		.first()
+		.boundingBox();
+	expect(third).not.toBeNull();
+	await page.mouse.move((third?.x ?? 0) + 4, (third?.y ?? 0) + 4);
+	expect(await selected(1)).toBe(true);
+	expect(await selected(3)).toBe(false);
+});
+
+test("Shift+click on row numbers extends the selection and Mod+Backspace removes exactly those rows", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(
+		"Name\tRole\nInez\tDesigner\nMark\tEngineer\nInez\tWriter\nMark\tAnalyst\nInez\tOwner",
+	);
+
+	await tabelo.rowIndex(2).getByRole("button").first().click();
+	await tabelo
+		.rowIndex(5)
+		.getByRole("button")
+		.first()
+		.click({ modifiers: ["Shift"] });
+
+	for (const row of [1, 2, 3, 4]) {
+		await expect(tabelo.cell(row, 1)).toHaveAttribute("aria-selected", "true");
+	}
+	await expect(tabelo.cell(5, 1)).toHaveAttribute("aria-selected", "false");
+
+	const modifier = process.platform === "darwin" ? "Meta" : "Control";
+	await tabelo.cell(2, 1).focus();
+	await page.keyboard.press(`${modifier}+Backspace`);
+
+	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
+	await expect(tabelo.cell(1, 2)).toHaveText("Owner");
+});
+
 test("four panes stay quiet: no action icons in the cells", async ({
 	tabelo,
 }) => {

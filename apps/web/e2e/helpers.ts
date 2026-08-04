@@ -158,6 +158,15 @@ export class TabeloPage {
 		return this.grid().locator(`[data-column-header="${column - 1}"]`);
 	}
 
+	// The row's own gutter cell, which owns the row number, its select handle,
+	// and its menu. Numbered as the gutter itself shows it: row 1 is the header
+	// row, row 2 is the first data row.
+	rowIndex(row: number): Locator {
+		requirePositiveIndex(row, "row");
+		const dataRowHeader = row === 1 ? HEADER_ROW : row - 2;
+		return this.grid().locator(`[data-row-header="${dataRowHeader}"]`);
+	}
+
 	cell(row: number, column: number): Locator {
 		requirePositiveIndex(row, "row");
 		requirePositiveIndex(column, "column");

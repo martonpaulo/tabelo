@@ -64,7 +64,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const entered = usePaneEntered();
 
 	const gridRef = useRef<HTMLTableElement>(null);
-	const draggingRef = useRef<"cell" | "column" | null>(null);
+	const draggingRef = useRef<"cell" | "column" | "row" | null>(null);
 
 	const rect = selectionRect(
 		selection,
@@ -120,6 +120,26 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			anchor: { row: HEADER_ROW, column: anchorColumn },
 			focus: { row: HEADER_ROW, column },
 			mode: "column",
+		});
+	}, []);
+
+	// Mirrors selectColumn's anchor rule verbatim: extend from the existing
+	// anchor when already in row mode, otherwise from the focus.
+	const selectRow = useCallback((row: number, extend: boolean) => {
+		const store = useTabeloStore.getState();
+		if (!extend) {
+			store.selectCell({ row, column: 0 }, "row");
+			return;
+		}
+
+		const anchorRow =
+			store.selection.mode === "row"
+				? store.selection.anchor.row
+				: store.selection.focus.row;
+		store.setSelection({
+			anchor: { row: anchorRow, column: 0 },
+			focus: { row, column: 0 },
+			mode: "row",
 		});
 	}, []);
 
@@ -417,6 +437,10 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							// menu fell through to cell actions on a non-cell.
 							data-row-header={HEADER_ROW}
 							className="sticky top-grid-strip left-0 z-30 border-line-strong border-r border-b bg-surface-gutter px-1 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums"
+							onPointerEnter={() => {
+								if (draggingRef.current !== "row") return;
+								selectRow(HEADER_ROW, true);
+							}}
 						>
 							<div className="grid h-content-line-box grid-cols-[minmax(0,1fr)_1.25rem] items-center gap-1">
 								<button
@@ -424,11 +448,19 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									tabIndex={entered ? 0 : -1}
 									aria-label={`${copy.actions.selectRow}: ${copy.a11y.headerRow}`}
 									className="min-w-0 cursor-pointer justify-self-end rounded-interactive px-1 text-right hover:text-foreground"
-									onClick={() =>
-										useTabeloStore
-											.getState()
-											.selectCell({ row: HEADER_ROW, column: 0 }, "row")
-									}
+									onPointerDown={(event) => {
+										if (event.button !== 0) return;
+										draggingRef.current = "row";
+										selectRow(
+											HEADER_ROW,
+											event.shiftKey || event.metaKey || event.ctrlKey,
+										);
+									}}
+									onClick={(event) => {
+										// A keyboard-generated click has no pointer detail.
+										if (event.detail === 0)
+											selectRow(HEADER_ROW, event.shiftKey);
+									}}
 								>
 									1
 								</button>
@@ -485,6 +517,10 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									"sticky left-0 z-10 border-line-subtle border-r border-b bg-surface-gutter align-top",
 									"px-1 text-right font-index font-normal text-muted-foreground text-xs tabular-nums",
 								)}
+								onPointerEnter={() => {
+									if (draggingRef.current !== "row") return;
+									selectRow(rowIndex, true);
+								}}
 							>
 								<div className="grid h-content-line-box grid-cols-[minmax(0,1fr)_1.25rem] items-center gap-1">
 									<button
@@ -492,11 +528,22 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										tabIndex={entered ? 0 : -1}
 										aria-label={`${copy.actions.selectRow}: ${copy.a11y.rowNumber(rowIndex)}`}
 										className="min-w-0 cursor-pointer justify-self-end rounded-interactive px-1 text-right hover:text-foreground"
-										onClick={() =>
-											useTabeloStore
-												.getState()
-												.selectCell({ row: rowIndex, column: 0 }, "row")
-										}
+										onPointerDown={(event) => {
+											if (event.button !== 0) return;
+											draggingRef.current = "row";
+											// Mod is aliased to Shift here, matching the column axis
+											// bug for bug: #40 owns fixing the alias, and fixing it in
+											// one place instead of two keeps the axes identical.
+											selectRow(
+												rowIndex,
+												event.shiftKey || event.metaKey || event.ctrlKey,
+											);
+										}}
+										onClick={(event) => {
+											// A keyboard-generated click has no pointer detail.
+											if (event.detail === 0)
+												selectRow(rowIndex, event.shiftKey);
+										}}
 									>
 										{rowIndex + 2}
 									</button>
