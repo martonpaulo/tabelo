@@ -91,7 +91,7 @@ export function AppMenu({
 						}
 						variant="outline"
 						size="icon-lg"
-						className="fixed right-3 bottom-3 z-40 size-fab border-transparent bg-surface-panel shadow-lg"
+						className="fixed right-3 bottom-3 z-40 size-fab border-transparent bg-surface-floating shadow-lg"
 					/>
 				}
 			>
@@ -169,7 +169,14 @@ export function AppMenu({
 						<FilePlus2 aria-hidden />
 						{copy.actions.newTable}
 					</DropdownMenuItem>
-					<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onImport)}>
+					{/* Import runs on the click itself, not after the menu's close
+					    animation. The file picker is the browser's own layer, so it
+					    never stacks over the menu, and asking for it needs the user
+					    activation that this click carries: deferred behind a
+					    transition, a slow frame can let that activation lapse and the
+					    browser then drops the request without a word. Every other
+					    command here opens an in-app dialog and still waits. */}
+					<DropdownMenuItem onClick={onImport}>
 						<Upload aria-hidden />
 						{copy.actions.importFile}
 					</DropdownMenuItem>
