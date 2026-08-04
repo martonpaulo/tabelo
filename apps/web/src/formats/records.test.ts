@@ -234,6 +234,37 @@ describe("records preconditions", () => {
 		});
 	});
 
+	it("blocks a header repeated among the remaining columns", () => {
+		// headers.indexOf(header) always resolves to the first matching column,
+		// so a second record's bullet for the repeated header would silently
+		// overwrite the first occurrence and leave the other column empty.
+		const document = documentFromMatrix(
+			[
+				["Product", "Age", "Age"],
+				["Product A", "10", "20"],
+			],
+			{ headerRow: true },
+		);
+		expect(canSerialize(recordsCodec, document)).toEqual({
+			code: "records-duplicate-header",
+			columns: [1, 2],
+		});
+	});
+
+	it("blocks the first column's header repeated on a later column", () => {
+		const document = documentFromMatrix(
+			[
+				["Product", "Price", "Product"],
+				["Product A", "€20", "Widget"],
+			],
+			{ headerRow: true },
+		);
+		expect(canSerialize(recordsCodec, document)).toEqual({
+			code: "records-duplicate-header",
+			columns: [0, 2],
+		});
+	});
+
 	it("blocks an empty first column value, naming the offending row", () => {
 		const document = documentFromMatrix(
 			[

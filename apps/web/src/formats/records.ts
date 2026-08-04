@@ -315,6 +315,27 @@ function recordsPrecondition(
 		return { code: "records-empty-first-header", columns: [0] };
 	}
 
+	// Every bullet after the first record is matched back to a column by
+	// `headers.indexOf(header)`, which always resolves to the first column
+	// carrying that header. A repeated header (including the first column's
+	// own, repeated on a later column) would silently overwrite one column's
+	// values with another's from the second record on, so every column name
+	// has to be unique, not only the first.
+	const headerPositions = new Map<string, number[]>();
+	document.columns.forEach((column, index) => {
+		headerPositions.set(column.header, [
+			...(headerPositions.get(column.header) ?? []),
+			index,
+		]);
+	});
+	const duplicateHeaders = [...headerPositions.values()]
+		.filter((indices) => indices.length > 1)
+		.flat()
+		.toSorted((left, right) => left - right);
+	if (duplicateHeaders.length > 0) {
+		return { code: "records-duplicate-header", columns: duplicateHeaders };
+	}
+
 	const emptyRows = document.rows.flatMap((row, index) =>
 		(row.cells[firstColumn.id] ?? "") === "" ? [index] : [],
 	);

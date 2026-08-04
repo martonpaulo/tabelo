@@ -95,6 +95,8 @@ function preconditionMessage(failure: PreconditionFailure): string {
 			return `JSON reorders object keys written as whole numbers before other keys. Rename ${columnSubject} to preserve the table's column order.`;
 		case "records-empty-first-header":
 			return `Records titles every record with the first column's header. Name ${columnSubject} to use this view.`;
+		case "records-duplicate-header":
+			return `Records matches each bullet back to a column by its header. Rename ${columnSubject} so no headers repeat.`;
 		default:
 			break;
 	}
