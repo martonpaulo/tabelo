@@ -18,6 +18,9 @@ const contentFontSize = "calc(var(--pane-zoom, 1) * 0.875rem)";
 // line-height instead would centre the glyphs in an oversized line box, which
 // is what made source text read as loosely spaced next to the grid.
 const contentLineHeight = "calc(var(--pane-zoom, 1) * 1.25rem)";
+// One whole row: the shared `--spacing-content-line-box` rhythm the grid's
+// cells and the rendered preview's rows are also built from.
+const contentLineBox = "calc(var(--pane-zoom, 1) * 2rem)";
 // Split evenly above and below every line, the same way the rendered preview
 // pads its rows, so each line's text keeps a normal, centred rhythm instead of
 // hugging the top of an oversized box. Half of the gap between this line
@@ -60,7 +63,15 @@ export const editorTheme = EditorView.theme({
 		color: "var(--muted-foreground)",
 		fontFamily: "var(--font-family-index)",
 		fontSize: contentFontSize,
-		lineHeight: contentLineHeight,
+		// The whole row's height, not the tight text line height the content
+		// uses. Two things depend on it. A line number then centres inside the
+		// same row box its line's padded text centres in, instead of sitting a
+		// half-gap high; and the element's natural height already equals a line
+		// block, so the numbers line up during the first paint rather than
+		// drifting upward until CodeMirror's own measurement pass replaces
+		// their heights, which is not guaranteed to have run before the editor
+		// is first shown.
+		lineHeight: contentLineBox,
 		border: "none",
 		borderRight: "0.0625rem solid var(--line-subtle)",
 		userSelect: "none",
