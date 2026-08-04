@@ -740,7 +740,14 @@ function ColumnIndexCell({
 			)}
 			onPointerEnter={onDragEnter}
 		>
-			<div className="flex h-full items-center justify-between gap-0.5">
+			{/* A fixed track on each side keeps the letter centred on the cell
+			    itself rather than on the space left over after the menu trigger,
+			    the same anchoring technique the row-number gutter uses below to
+			    keep its digits put regardless of the control beside them. The
+			    leading track has nothing in it: it exists only to balance the
+			    trigger's width on the other side. */}
+			<div className="grid h-full grid-cols-[1.25rem_minmax(0,1fr)_1.25rem] items-center gap-1">
+				<span aria-hidden="true" />
 				{/* The handle for the whole column. It names itself after the column it
 				    selects, falling back to the letter when the header is empty, which
 				    is the same rule the header cell announces by. */}
@@ -748,7 +755,7 @@ function ColumnIndexCell({
 					type="button"
 					tabIndex={entered ? 0 : -1}
 					aria-label={`${copy.actions.selectColumn}: ${copy.a11y.columnHeader(header, columnIndex)}`}
-					className="min-w-0 flex-1 cursor-pointer truncate rounded-interactive px-1 hover:text-foreground"
+					className="min-w-0 cursor-pointer truncate rounded-interactive px-1 text-center hover:text-foreground"
 					onPointerDown={(event) => {
 						if (event.button !== 0) return;
 						onDragStart();
