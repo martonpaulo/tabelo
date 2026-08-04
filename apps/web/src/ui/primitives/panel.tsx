@@ -15,7 +15,7 @@ const PanelRoot = forwardRef<HTMLElement, React.ComponentProps<"section">>(
 				// biome-ignore lint/a11y/noNoninteractiveTabindex: pane focus ring requires this
 				tabIndex={0}
 				className={cn(
-					"relative isolate flex min-h-0 min-w-0 flex-col overflow-hidden rounded-surface bg-surface-panel ring-1 ring-line-subtle focus-visible:outline-2 focus-visible:outline-selection-edge focus-visible:-outline-offset-2",
+					"relative isolate flex min-h-0 min-w-0 flex-col overflow-hidden rounded-surface border border-line-subtle bg-surface-panel bg-clip-padding focus-visible:outline-2 focus-visible:outline-selection-edge focus-visible:-outline-offset-2",
 					className,
 				)}
 				onKeyDown={(event) => {
@@ -57,10 +57,6 @@ const PanelRoot = forwardRef<HTMLElement, React.ComponentProps<"section">>(
 		);
 	},
 );
-
-function PanelOverlay({ className }: { readonly className?: string }) {
-	return <div aria-hidden className={cn("pointer-events-none", className)} />;
-}
 
 function PanelHeader({
 	children,
@@ -114,5 +110,4 @@ export const Panel = Object.assign(PanelRoot, {
 	Header: PanelHeader,
 	Spacer: PanelSpacer,
 	Body: PanelBody,
-	Overlay: PanelOverlay,
 });

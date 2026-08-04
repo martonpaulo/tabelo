@@ -13,7 +13,7 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	const pane = tabelo.pane("markdown");
 	const editor = tabelo.source("markdown");
 	const cursorLayer = pane.locator(".cm-cursorLayer");
-	const paneIndicator = pane.locator(".tabelo-active-pane-indicator");
+	const paneIndicator = pane;
 	await editor.focus();
 	const normalCursorAnimation = await cursorLayer.evaluate((element) => {
 		const style = getComputedStyle(element);

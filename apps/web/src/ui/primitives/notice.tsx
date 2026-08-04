@@ -1,3 +1,4 @@
+import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import type { ReactNode } from "react";
 import type { NoticeSeverity } from "@/state/notice-queue";
@@ -42,7 +43,7 @@ export function Notice({
 			data-severity={severity}
 			className={cn(
 				"rounded-surface",
-				floating && "bg-surface-floating shadow-lg ring-1 ring-line-floating",
+				floating && `bg-surface-floating ${floatingSurfaceStyles}`,
 				className,
 			)}
 		>

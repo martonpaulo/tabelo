@@ -137,6 +137,25 @@ Borders are always 0.0625rem. Use them for the table grid, pane boundaries, or a
 explicit state. Prefer tonal separation for buttons,
 empty states, and pane headers; never use a border to decorate.
 
+**One edge, one stroke.** A rounded surface draws its boundary with a
+`border`, never with a `ring`. A ring is a box-shadow painted behind the
+element, so the background's own antialiased corner eats into it and the arc
+comes out thinner and softer than the straight edges: that is what a badly
+drawn corner is. A border is part of the box, the browser computes the inner
+and outer radii together, and the corner stays one clean arc. A translucent
+surface adds `bg-clip-padding` so its background does not paint under that
+border and muddy it.
+
+**A state recolours that stroke; it never adds another.** The active pane's
+blue edge is the pane's own border wearing the accent, not a second border
+inside it, and it keeps the resting width so activating a pane moves nothing.
+Two strokes at slightly different radii is exactly how a corner ends up looking
+doubled, which is what the overlay this replaced did.
+
+`floatingSurfaceStyles` in `packages/ui/src/components/surface-styles.ts` is
+the one declaration of that boundary: menus, tooltips, dialogs, and notices all
+compose it rather than repeating the tokens.
+
 Two of these carry a contrast floor and are tested for it. `--line-floating`
 and `--control-outline` reach at least 3:1 against every surface they can
 appear over, because

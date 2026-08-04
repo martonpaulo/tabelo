@@ -7,6 +7,7 @@ import {
 	popupTransitionStyles,
 } from "@tabelo/ui/components/motion-styles";
 
+import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import { XIcon } from "lucide-react";
 import type * as React from "react";
@@ -58,7 +59,7 @@ function DialogContent({
 			<DialogPrimitive.Popup
 				data-slot="dialog-content"
 				className={cn(
-					"fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-surface bg-popover p-4 text-popover-foreground text-sm/relaxed outline-none ring-1 ring-line-floating sm:w-auto sm:min-w-sm sm:max-w-xl",
+					`fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-surface bg-popover p-4 text-popover-foreground text-sm/relaxed outline-none sm:w-auto sm:min-w-sm sm:max-w-xl ${floatingSurfaceStyles}`,
 					popupTransitionStyles,
 					className,
 				)}

@@ -194,72 +194,67 @@ test("only view content participates in native text selection", async ({
 	);
 });
 
-test("the active pane boundary stays above its content", async ({
+// The active edge is the pane's own border wearing the accent, not a second
+// stroke inside it: one stroke, so the rounded corners stay one arc, and the
+// same width in both states, so activating a pane moves nothing.
+test("the active pane boundary replaces the resting one", async ({
 	page,
 	tabelo,
 }) => {
+	await page.emulateMedia({ colorScheme: "dark" });
 	await tabelo.cell(1, 1).click();
 	const active = tabelo.pane("grid");
 	const inactive = tabelo.pane("markdown");
-	const indicator = active.locator(".tabelo-active-pane-indicator");
-	await expect(indicator).toHaveCount(1);
+	await expect(active).toHaveAttribute("data-pane-active", "true");
 	await expect(active).toHaveAttribute("aria-current", "true");
-	await expect(inactive.locator(".tabelo-active-pane-indicator")).toHaveCount(
-		0,
-	);
-
+	await expect(inactive).not.toHaveAttribute("data-pane-active");
 	await expect(inactive).not.toHaveAttribute("aria-current");
 
-	const styles = await indicator.evaluate((element) => {
-		const probe = document.createElement("span");
-		probe.style.color = "var(--selection-edge)";
-		probe.style.borderTop = "var(--pane-active-edge) solid";
-		element.append(probe);
-		const result = {
-			borderWidths: [
-				getComputedStyle(element).borderTopWidth,
-				getComputedStyle(element).borderRightWidth,
-				getComputedStyle(element).borderBottomWidth,
-				getComputedStyle(element).borderLeftWidth,
-			],
-			borderColor: getComputedStyle(element).borderTopColor,
-			position: getComputedStyle(element).position,
-			pointerEvents: getComputedStyle(element).pointerEvents,
-			zIndex: Number(getComputedStyle(element).zIndex),
-			edgeToken: getComputedStyle(probe).borderTopWidth,
-			token: getComputedStyle(probe).color,
-		};
-		probe.remove();
-		return result;
-	});
-	expect(new Set(styles.borderWidths)).toEqual(new Set([styles.edgeToken]));
-	expect(styles.borderColor).toBe(styles.token);
-	expect(styles.position).toBe("absolute");
-	expect(styles.pointerEvents).toBe("none");
+	const edges = async (pane: typeof active) =>
+		pane.evaluate((element) => {
+			const probe = document.createElement("span");
+			probe.style.color = "var(--selection-edge)";
+			element.append(probe);
+			const style = getComputedStyle(element);
+			const result = {
+				widths: [
+					style.borderTopWidth,
+					style.borderRightWidth,
+					style.borderBottomWidth,
+					style.borderLeftWidth,
+				],
+				colors: [
+					style.borderTopColor,
+					style.borderRightColor,
+					style.borderBottomColor,
+					style.borderLeftColor,
+				],
+				accent: getComputedStyle(probe).color,
+			};
+			probe.remove();
+			return result;
+		});
+
+	const activeEdges = await edges(active);
+	const inactiveEdges = await edges(inactive);
+	// All four edges carry the accent, and only the colour changed.
+	expect(new Set(activeEdges.colors)).toEqual(new Set([activeEdges.accent]));
+	expect(new Set(inactiveEdges.colors).has(activeEdges.accent)).toBe(false);
+	expect(activeEdges.widths).toEqual(inactiveEdges.widths);
+	expect(new Set(activeEdges.widths).size).toBe(1);
 
 	await tabelo.source("markdown").click();
-	await expect(indicator).toHaveCount(0);
-	await expect(inactive.locator(".tabelo-active-pane-indicator")).toHaveCount(
-		1,
-	);
-	await expect(active).not.toHaveAttribute("aria-current");
-	await expect(inactive).toHaveAttribute("aria-current", "true");
+	await expect(active).not.toHaveAttribute("data-pane-active");
+	await expect(inactive).toHaveAttribute("data-pane-active", "true");
 
-	// The sticky grid corner is the pane's highest content layer. Scrolling it
-	// under the overlay must not let it overtake the active boundary.
+	// The sticky grid corner is the pane's highest content layer. A pane clips
+	// its content to the padding box, so no content layer can reach the border
+	// the boundary is drawn on.
 	await tabelo.cell(1, 1).click();
 	await tabelo.grid().evaluate((grid) => {
 		grid.scrollTo({ top: grid.scrollHeight, left: grid.scrollWidth });
 	});
-	const stickyCornerZIndex = await tabelo
-		.grid()
-		.locator("thead tr > th")
-		.first()
-		.evaluate((element) => Number(getComputedStyle(element).zIndex));
-	expect(styles.zIndex).toBeGreaterThan(stickyCornerZIndex);
-
-	await page.emulateMedia({ colorScheme: "dark" });
-	await expect(indicator).toHaveCSS("border-top-color", "rgb(77, 166, 255)");
+	await expect(active).toHaveCSS("overflow", "hidden");
 });
 
 test("multi-pane layouts and themes keep the active boundary on all four edges", async ({
@@ -273,23 +268,37 @@ test("multi-pane layouts and themes keep the active boundary on all four edges",
 		for (const preset of layoutPresets) {
 			await tabelo.chooseLayout(preset.id);
 			const pane = tabelo.pane("grid");
-			const indicator = pane.locator(".tabelo-active-pane-indicator");
 			if (preset.id === "single") {
-				await expect(indicator).toHaveCount(0);
+				await expect(pane).not.toHaveAttribute("data-pane-active");
 				continue;
 			}
-			await expect(indicator).toHaveCount(1);
-			const widths = await indicator.evaluate((element) => {
+			await expect(pane).toHaveAttribute("data-pane-active", "true");
+			const edge = await pane.evaluate((element) => {
+				const probe = document.createElement("span");
+				probe.style.color = "var(--selection-edge)";
+				element.append(probe);
 				const style = getComputedStyle(element);
-				return [
-					style.borderTopWidth,
-					style.borderRightWidth,
-					style.borderBottomWidth,
-					style.borderLeftWidth,
-				];
+				const result = {
+					widths: [
+						style.borderTopWidth,
+						style.borderRightWidth,
+						style.borderBottomWidth,
+						style.borderLeftWidth,
+					],
+					colors: [
+						style.borderTopColor,
+						style.borderRightColor,
+						style.borderBottomColor,
+						style.borderLeftColor,
+					],
+					accent: getComputedStyle(probe).color,
+				};
+				probe.remove();
+				return result;
 			});
-			expect(new Set(widths).size).toBe(1);
-			expect(widths[0]).not.toBe("0px");
+			expect(new Set(edge.widths).size).toBe(1);
+			expect(edge.widths[0]).not.toBe("0px");
+			expect(new Set(edge.colors)).toEqual(new Set([edge.accent]));
 		}
 	}
 });
@@ -360,7 +369,7 @@ test("source focus belongs to the pane and selection follows the theme", async (
 		"border-left-style",
 		"solid",
 	);
-	await expect(pane.locator(".tabelo-active-pane-indicator")).toHaveCount(1);
+	await expect(pane).toHaveAttribute("data-pane-active", "true");
 
 	await tabelo.page.keyboard.press("ControlOrMeta+A");
 	const selectionColours = () =>

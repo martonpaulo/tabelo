@@ -104,7 +104,6 @@
 	   work in, accepting that reaching the next pane means scrolling. */
 	--pane-stack-h: 60vh;
 	--fab-size: 3rem;
-	--pane-active-edge: 0.0625rem; /* 1 px */
 
 	/* The notice layer. Notices float over the workspace and over the floating
 	   action button, which owns z-index 40, but never over a menu, tooltip, or
@@ -204,14 +203,6 @@ body {
 [data-slot="dropdown-menu-content"],
 [data-slot="context-menu-content"] {
 	overscroll-behavior: contain;
-}
-
-.tabelo-active-pane-indicator {
-	position: absolute;
-	inset: 0;
-	z-index: 40;
-	border: var(--pane-active-edge) solid var(--selection-edge);
-	border-radius: inherit;
 }
 
 ::selection {

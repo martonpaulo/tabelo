@@ -2,10 +2,11 @@ import {
 	controlStateTransitionStyles,
 	popupTransitionStyles,
 } from "@tabelo/ui/components/motion-styles";
+import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 
 // Dropdown and context menus are different interaction primitives with the
 // same visual contract. Shared strings keep geometry and states in one place.
-export const menuPopupStyles = `rounded-surface bg-popover p-1 text-popover-foreground shadow-xl outline-none ring-1 ring-line-floating supports-backdrop-filter:bg-popover/94 supports-backdrop-filter:backdrop-blur-md ${popupTransitionStyles}`;
+export const menuPopupStyles = `rounded-surface bg-popover p-1 text-popover-foreground outline-none supports-backdrop-filter:bg-popover/94 supports-backdrop-filter:backdrop-blur-md ${floatingSurfaceStyles} ${popupTransitionStyles}`;
 
 export const menuLabelStyles =
 	"px-2 py-1.5 text-muted-foreground text-xs leading-none data-inset:pl-7";

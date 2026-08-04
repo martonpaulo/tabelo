@@ -86,8 +86,14 @@ export const Pane = memo(function Pane({
 				aria-label={copy.a11y.pane(view.label)}
 				aria-description={entered ? undefined : copy.a11y.paneInteractHint}
 				style={stacked ? undefined : { gridArea: gridAreaStyle(pane.slots) }}
+				data-pane-active={active && showActiveIndicator ? "true" : undefined}
 				className={cn(
 					"group/pane min-w-0",
+					// The active edge replaces the resting border rather than being
+					// drawn inside it: two strokes at slightly different radii is what
+					// made the rounded corners look doubled and chewed. Same width in
+					// both states, so activating a pane moves nothing.
+					active && showActiveIndicator && "border-selection-edge",
 					// Tall enough to be worth scrolling to, and still allowed to grow
 					// when it is the only pane on screen.
 					stacked && "min-h-pane-stack flex-1",
@@ -149,9 +155,6 @@ export const Pane = memo(function Pane({
 					/>
 				) : null}
 
-				{active && showActiveIndicator ? (
-					<Panel.Overlay className="tabelo-active-pane-indicator" />
-				) : null}
 				<div role="status" className="sr-only">
 					{announcement}
 				</div>
