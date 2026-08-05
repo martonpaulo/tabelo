@@ -5,6 +5,7 @@ import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { product } from "./src/copy/product";
 import { createProductMetadata } from "./src/product-metadata";
+import { devServerPort, previewServerPort } from "./worktree-ports";
 
 // GitHub Pages serves this project from a subpath. The deploy workflow sets
 // BASE_PATH; local dev and preview stay at the root.
@@ -30,8 +31,17 @@ export default defineConfig({
 			},
 		},
 	},
+	// Both ports are derived per worktree. `strictPort` matters more than the
+	// numbers: without it Vite silently steps to the next free port while the
+	// preview configuration still points at the original one, so an agent
+	// verifies its change against another worktree's app.
 	server: {
-		port: 3001,
+		port: devServerPort,
+		strictPort: true,
+	},
+	preview: {
+		port: previewServerPort,
+		strictPort: true,
 	},
 	resolve: {
 		tsconfigPaths: true,

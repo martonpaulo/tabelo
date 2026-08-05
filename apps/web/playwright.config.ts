@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
+import { previewServerPort } from "./worktree-ports";
 
-const serverUrl = "http://127.0.0.1:4173";
+const serverUrl = `http://127.0.0.1:${previewServerPort}`;
 
 // Chromium owns the complete behavioural suite. Firefox repeats only contracts
 // where browser engines materially differ, so cross-browser confidence does not
@@ -43,8 +44,9 @@ export default defineConfig({
 		},
 	],
 	webServer: {
-		command:
-			"pnpm build && pnpm serve --host 127.0.0.1 --port 4173 --strictPort",
+		// The port lives in the Vite config, so the preview server binds the same
+		// value whether Playwright starts it or `pnpm test:e2e:serve` did.
+		command: "pnpm build && pnpm serve --host 127.0.0.1",
 		url: serverUrl,
 		reuseExistingServer: !process.env.CI,
 		timeout: 120_000,

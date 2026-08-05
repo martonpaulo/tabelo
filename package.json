@@ -16,7 +16,8 @@
 		"dev:web": "pnpm --filter web dev",
 		"check": "biome check --write .",
 		"lint": "biome check .",
-		"prepare": "husky"
+		"prepare": "husky",
+		"postinstall": "node apps/web/write-launch-config.js"
 	},
 	"dependencies": {
 		"@tabelo/env": "workspace:*",

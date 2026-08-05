@@ -53,6 +53,9 @@ test-results
 # PWA dev output
 dev-dist
 
+# Claude Code preview config: generated per worktree with that worktree's port
+.claude/launch.json
+
 # Scratch space (handoffs, prototypes): see AGENTS.md
 .scratch
 

@@ -71,7 +71,8 @@ jobs:
 
           while IFS= read -r file; do
             if [[ "$file" == .github/workflows/* ]] || \
-               [[ "$file" == "apps/web/playwright.config.ts" ]]; then
+               [[ "$file" == "apps/web/playwright.config.ts" ]] || \
+               [[ "$file" == "apps/web/worktree-ports.ts" ]]; then
               LEVEL=5
               break
             fi
