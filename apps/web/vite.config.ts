@@ -80,7 +80,11 @@ export default defineConfig({
 				config: true,
 				injectThemeColor: false,
 			},
-			devOptions: { enabled: true },
+			// A service worker in dev makes every agent verification session fight a
+			// cache and pay forced reloads. Opt in with TABELO_PWA_DEV when the
+			// service worker itself is what is being worked on; the built preview
+			// that the browser suite uses always carries the real one.
+			devOptions: { enabled: Boolean(process.env.TABELO_PWA_DEV) },
 		}),
 	],
 });
