@@ -29,7 +29,7 @@
 			"!**/wrangler.jsonc",
 			"!**/.source",
 			"!**/convex/_generated",
-			"!**/.claude"
+			"!.claude"
 		]
 	},
 	"formatter": {
