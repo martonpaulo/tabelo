@@ -202,15 +202,25 @@ reformat content.
 
 Prefer the smallest relevant check.
 
-- `pnpm dev`: run the app locally on port 3001
+- `pnpm dev`: run the app locally. The dev and preview ports are derived from
+  the worktree path so parallel checkouts cannot serve or test each other's
+  build; `TABELO_DEV_PORT` and `TABELO_PREVIEW_PORT` override them, and
+  `.claude/launch.json` is generated from the same value on install
 - `pnpm build`: production build for every workspace
 - `pnpm check-types`: TypeScript across the workspace
 - `pnpm check`: Biome format and lint with `--write`
-- `pnpm test`: unit tests
-- `pnpm test:e2e`: the Playwright suite in Chromium and Firefox. It builds and
-  serves the app itself, so it needs no running dev server. First run only:
-  `pnpm test:e2e:install`. Narrow it with `--project=chromium`, a spec name, or
-  `-g "<title>"` while iterating, and run it whole before reporting
+- `pnpm test`: unit tests, `pnpm test:watch` to re-run on change
+- `pnpm test:e2e`: the Playwright suite in Chromium. It builds and serves the
+  app itself, so it needs no running dev server. First run only:
+  `pnpm test:e2e:install`. Iterate with `pnpm test:e2e:changed` after an edit
+  and `pnpm test:e2e:failed` after a fix, or narrow with a spec name or
+  `-g "<title>"`; neither is a gate, so run the suite whole before reporting.
+  `pnpm test:e2e:serve` keeps a warm preview server across those rounds
+- `pnpm test:e2e:all`: adds Firefox. CI owns the cross-browser matrix, so this
+  is for changes to clipboard, download, focus, persistence, responsive layout,
+  or source editor synchronization
+- Several worktrees share one machine. Set `TABELO_E2E_WORKERS=1` when another
+  checkout is running its own suite
 
 CI and Pages deployment are skipped only when every changed path matches the
 non-build path list owned by their workflows. For pull requests that run CI,

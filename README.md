@@ -162,18 +162,35 @@ pnpm install
 pnpm dev
 ```
 
-Then open <http://localhost:3001>.
+Then open the URL it prints. The dev and preview ports are derived from the
+checkout's path, so several worktrees can run side by side without serving each
+other's build. `TABELO_DEV_PORT` and `TABELO_PREVIEW_PORT` override them.
 
-| Command                 | What it does                                   |
-| :---------------------- | :---------------------------------------------- |
-| `pnpm dev`              | Dev server                                     |
-| `pnpm build`            | Production build                               |
-| `pnpm test`             | Unit tests                                     |
-| `pnpm test:e2e:install` | Install Chromium and Firefox for browser tests |
-| `pnpm test:e2e`         | Browser tests in Chromium and Firefox          |
-| `pnpm check-types`      | TypeScript                                     |
-| `pnpm lint`             | Biome check                                    |
-| `pnpm check`            | Biome check, writing fixes                     |
+| Command                 | What it does                                       |
+| :---------------------- | :------------------------------------------------- |
+| `pnpm dev`              | Dev server                                         |
+| `pnpm build`            | Production build                                   |
+| `pnpm test`             | Unit tests                                         |
+| `pnpm test:watch`       | Unit tests, re-running on change                   |
+| `pnpm test:e2e:install` | Install Chromium and Firefox for browser tests     |
+| `pnpm test:e2e`         | Browser tests in Chromium                          |
+| `pnpm test:e2e:all`     | Browser tests in Chromium and Firefox              |
+| `pnpm test:e2e:failed`  | Only the tests that failed last time               |
+| `pnpm test:e2e:changed` | Only the specs affected by uncommitted changes     |
+| `pnpm test:e2e:ui`      | Playwright's watch and time-travel interface       |
+| `pnpm test:e2e:serve`   | Build once and keep the preview server warm        |
+| `pnpm check-types`      | TypeScript                                         |
+| `pnpm lint`             | Biome check                                        |
+| `pnpm check`            | Biome check, writing fixes                         |
+
+`pnpm test:e2e` builds and serves the app itself. `test:e2e:serve` is worth
+starting first when a fix needs several `test:e2e:failed` rounds: the suite
+reuses that server and skips the build and boot each time.
+
+Firefox repeats only the contracts where browser engines differ, and CI runs it
+on every push, so the local default stays on Chromium. Run `pnpm test:e2e:all`
+before opening a pull request that touches clipboard, download, focus,
+persistence, or responsive behaviour.
 
 <br />
 
