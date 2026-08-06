@@ -11,16 +11,23 @@ const QUERY = `(max-width: ${STACK_BELOW_REM - 0.0625}rem)`;
 // `grid-area` naming column 2 creates an implicit second column no matter what
 // the container's template says. The presentation has to stop being emitted,
 // not be overridden.
+// Matched once. `isStacked` is a `useSyncExternalStore` snapshot, so React
+// calls it on every render of every subscriber; allocating a fresh
+// MediaQueryList there put a live listener target on the heap per render for a
+// value that never changes. The browser keeps this one up to date by itself.
+const mediaQuery =
+	typeof window === "undefined" || !window.matchMedia
+		? null
+		: window.matchMedia(QUERY);
+
 function subscribe(onChange: () => void): () => void {
-	if (typeof window === "undefined" || !window.matchMedia) return () => {};
-	const query = window.matchMedia(QUERY);
-	query.addEventListener("change", onChange);
-	return () => query.removeEventListener("change", onChange);
+	if (!mediaQuery) return () => {};
+	mediaQuery.addEventListener("change", onChange);
+	return () => mediaQuery.removeEventListener("change", onChange);
 }
 
 function isStacked(): boolean {
-	if (typeof window === "undefined" || !window.matchMedia) return false;
-	return window.matchMedia(QUERY).matches;
+	return mediaQuery?.matches ?? false;
 }
 
 // Read synchronously on first render, so a narrow window never paints the wide
