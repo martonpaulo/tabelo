@@ -61,11 +61,12 @@ several synchronized views: a visual grid, Markdown, CSV, TSV, HTML source,
 Jira syntax, JSON, and a rendered preview, arranged in a configurable workspace
 of one to four panes.
 
-**Simple by design.** No accounts, no backend, no cloud sync, no collaboration,
-no analytics, no telemetry. No formulas, calculations, multiple sheets, charts,
-or macros. The product is a focused editor, not a spreadsheet: do not import
-spreadsheet density or spreadsheet features. New capability is a deliberate
-product change, not a default.
+**Simple by design.** `docs/product.md` is canonical for who the product
+serves, what it does, and what it will never do, each non-goal with the reason
+it was decided. Read it before proposing or accepting a feature: new capability
+is a deliberate product change, not a default. The product is a focused editor,
+not a spreadsheet, so do not import spreadsheet density or spreadsheet
+features.
 
 The product priority order is fixed:
 
