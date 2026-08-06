@@ -31,6 +31,9 @@ export default defineConfig({
 	fullyParallel: true,
 	forbidOnly: Boolean(process.env.CI),
 	retries: process.env.CI ? 1 : 0,
+	// A shard past ten red tests is reporting one broken thing many times, not
+	// ten findings. Stop there rather than paying for the rest of the suite.
+	maxFailures: process.env.CI ? 10 : 0,
 	workers: process.env.CI ? 1 : localWorkers,
 	reporter: process.env.CI ? [["line"], ["blob"]] : "list",
 	outputDir: "test-results",

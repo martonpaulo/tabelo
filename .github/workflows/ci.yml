@@ -158,7 +158,10 @@ jobs:
     if: ${{ needs.check.outputs.run_e2e == 'true' }}
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      # A pull request run is diagnostic, so every shard reports and the whole
+      # picture arrives at once. A push to main is a deploy gate: one red shard
+      # has already decided the outcome and the siblings have no reader.
+      fail-fast: ${{ github.event_name == 'push' }}
       matrix: ${{ fromJSON(needs.check.outputs.e2e_matrix) }}
     steps:
       - uses: actions/checkout@v7
