@@ -31,8 +31,16 @@ describes the migration and its downstream effects.
   configuration, developer docs)
 - Product copy: English only, single locale, no i18n framework. Dates and
   numbers inside table cells are opaque text and are never reformatted
-- Commit policy: commit automatically on task completion, one concern per commit
-- Push policy: push to `origin/main` automatically after committing
+- Branch workflow: **branch and pull request by default.** A task or issue gets
+  its own branch named under the scheme below; direct commits to `main` are
+  reserved for quick, low-risk fixes, most often made by the maintainer
+  directly. An agent may commit straight to `main` only for that kind of
+  fix, or when the user explicitly asks for the work to happen on `main`
+- Commit policy: commit automatically on task completion, one concern per
+  commit, on whichever branch the branch workflow above selects
+- Push policy: push automatically after committing. On a task branch, push the
+  branch and open the pull request automatically once validation passes; on
+  `main`, push `origin/main` directly
 - Product versioning: **unversioned**. The deployed site is always the current
   version. No version number, tag, or release name ever appears anywhere in
   the product. The `0.0.0` in workspace manifests is a package-manager
