@@ -1,8 +1,10 @@
 import {
+	createDropdownMenuHandle,
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuGroup,
+	type DropdownMenuHandle,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
@@ -23,6 +25,7 @@ import {
 	RotateCcw,
 	WrapText,
 } from "lucide-react";
+import { useEffect } from "react";
 import { copy } from "@/copy/copy";
 import { HEADER_ROW } from "@/core/selection";
 import type { Alignment } from "@/core/types";
@@ -42,6 +45,12 @@ import { DropdownTableActions } from "./dropdown-table-actions";
 // menus that were drifting apart. Everything it offers comes from the shared
 // action list; alignment is the single column-only addition, because it is the
 // one operation that belongs to a column rather than to a selection.
+//
+// The affordance is per row and per column, but the machinery behind it is not:
+// only one axis menu can be open at a time, so the grid mounts one root and
+// every gutter renders a detached trigger against it. Mounting a root per row
+// doubled the grid's mount and re-render cost for menus that were closed. This
+// is the same reasoning GridContextMenu already applies to right-click.
 
 const alignments: {
 	value: Alignment;
@@ -54,8 +63,44 @@ const alignments: {
 	{ value: "right", label: copy.actions.alignRight, icon: AlignRight },
 ];
 
-interface AxisMenuProps {
-	readonly axis: "row" | "column";
+type Axis = "row" | "column";
+
+// What a trigger tells the shared root about itself when it opens it.
+interface AxisMenuPayload {
+	readonly axis: Axis;
+	readonly index: number;
+}
+
+export type AxisMenuHandle = DropdownMenuHandle<AxisMenuPayload>;
+
+export function createAxisMenuHandle(): AxisMenuHandle {
+	return createDropdownMenuHandle<AxisMenuPayload>();
+}
+
+// Opening an axis menu selects what it acts on, so the actions and the
+// highlight can never disagree about their target.
+function selectAxis({ axis, index }: AxisMenuPayload) {
+	useTabeloStore
+		.getState()
+		.selectCell(
+			axis === "column"
+				? { row: HEADER_ROW, column: index }
+				: { row: index, column: 0 },
+			axis,
+		);
+}
+
+// A column names itself by its header, falling back to its index-strip letter
+// when it has none, so the menu of an unnamed column is still identifiable.
+function axisMenuLabel(axis: Axis, index: number, header: string): string {
+	return axis === "column"
+		? `${copy.actions.columnActions}: ${copy.a11y.columnHeader(header, index)}`
+		: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(index)}`;
+}
+
+interface AxisMenuTriggerProps {
+	readonly handle: AxisMenuHandle;
+	readonly axis: Axis;
 	readonly index: number;
 	// Whether this row or column is the one the user is working in. Revealing
 	// the affordance there is what teaches the relationship between a selection
@@ -63,33 +108,20 @@ interface AxisMenuProps {
 	readonly revealed?: boolean;
 }
 
-export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
-	const document = useTabeloStore((state) => state.document);
+export function AxisMenuTrigger({
+	handle,
+	axis,
+	index,
+	revealed = false,
+}: AxisMenuTriggerProps) {
 	const entered = usePaneEntered();
-	const column = axis === "column" ? document.columns[index] : undefined;
-	const wrappedColumns = useTabeloStore(
-		(state) => state.workspace.wrappedColumns,
+	// The only document state a trigger needs is the word in its own label, so
+	// it subscribes to that string rather than to the whole document. There is
+	// one of these per row and per column; a broad selector here woke every one
+	// of them on every keystroke.
+	const header = useTabeloStore((state) =>
+		axis === "column" ? (state.document.columns[index]?.header ?? "") : "",
 	);
-	const wrapped = column ? wrappedColumns.includes(column.id) : false;
-	const atMinimumWidth = atMinimumColumnWidth(column?.width);
-	const atDefaultWidth = isDefaultColumnWidth(column?.width);
-
-	const select = () =>
-		useTabeloStore
-			.getState()
-			.selectCell(
-				axis === "column"
-					? { row: HEADER_ROW, column: index }
-					: { row: index, column: 0 },
-				axis,
-			);
-
-	// A column names itself by its header, falling back to its index-strip letter
-	// when it has none, so the menu of an unnamed column is still identifiable.
-	const label =
-		axis === "column"
-			? `${copy.actions.columnActions}: ${copy.a11y.columnHeader(column?.header ?? "", index)}`
-			: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(index)}`;
 
 	const Icon = axis === "column" ? ChevronDown : MoreVertical;
 	// Anywhere in the row or column counts, not just the icon itself: hovering,
@@ -100,126 +132,176 @@ export function AxisMenu({ axis, index, revealed = false }: AxisMenuProps) {
 			: "group-hover/row:opacity-100 group-focus-within/row:opacity-100";
 
 	return (
-		<DropdownMenu onOpenChange={(open) => open && select()}>
-			<DropdownMenuTrigger
-				aria-label={label}
-				tabIndex={entered ? 0 : -1}
-				// The icon stays small so the grid stays quiet, while the ::after box
-				// grows the target to the control minimum without taking any
-				// layout: the row gutter has no room to spare. Same technique as the
-				// checkbox and radio primitives.
-				className={cn(
-					"relative inline-flex size-5 shrink-0 items-center justify-center rounded",
-					"after:absolute after:-inset-1 after:content-['']",
-					"text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-					controlStateTransitionStyles,
-					"focus-visible:opacity-100 data-popup-open:opacity-100",
-					revealed ? "opacity-100" : "opacity-0",
-					groupClass,
-				)}
-			>
-				<Icon aria-hidden className="size-3.5" />
-			</DropdownMenuTrigger>
+		<DropdownMenuTrigger
+			handle={handle}
+			payload={{ axis, index }}
+			aria-label={axisMenuLabel(axis, index, header)}
+			tabIndex={entered ? 0 : -1}
+			// The icon stays small so the grid stays quiet, while the ::after box
+			// grows the target to the control minimum without taking any
+			// layout: the row gutter has no room to spare. Same technique as the
+			// checkbox and radio primitives.
+			className={cn(
+				"relative inline-flex size-5 shrink-0 items-center justify-center rounded",
+				"after:absolute after:-inset-1 after:content-['']",
+				"text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+				controlStateTransitionStyles,
+				"focus-visible:opacity-100 data-popup-open:opacity-100",
+				revealed ? "opacity-100" : "opacity-0",
+				groupClass,
+			)}
+		>
+			<Icon aria-hidden className="size-3.5" />
+		</DropdownMenuTrigger>
+	);
+}
 
-			<DropdownMenuContent
-				align={axis === "column" ? "end" : "start"}
-				className="w-auto min-w-56"
-			>
-				{axis === "column" ? (
-					<>
-						<DropdownMenuGroup>
-							{/* The drag handle is a pointer affordance; this is the same
-							    change without one. The label carries the current width so
-							    stepping can be heard as well as seen. */}
-							<DropdownMenuLabel aria-live="polite">
-								{copy.actions.columnWidth(resolveColumnWidth(column?.width))}
-							</DropdownMenuLabel>
-							<DisabledTooltip
-								reason={
-									atMinimumWidth ? copy.disabled.minimumColumnWidth : undefined
-								}
-							>
-								<DropdownMenuItem
-									closeOnClick={false}
-									disabled={atMinimumWidth}
-									onClick={() =>
-										useTabeloStore
-											.getState()
-											.resizeColumn(index, stepColumnWidth(column?.width, -1))
-									}
-								>
-									<ChevronsRightLeft aria-hidden />
-									{copy.actions.narrowColumn}
-								</DropdownMenuItem>
-							</DisabledTooltip>
-							<DisabledTooltip
-								reason={
-									atDefaultWidth ? copy.disabled.defaultColumnWidth : undefined
-								}
-							>
-								<DropdownMenuItem
-									closeOnClick={false}
-									disabled={atDefaultWidth}
-									onClick={() =>
-										useTabeloStore.getState().resizeColumn(index, undefined)
-									}
-								>
-									<RotateCcw aria-hidden />
-									{copy.actions.resetColumnWidth}
-								</DropdownMenuItem>
-							</DisabledTooltip>
+// The one root every trigger opens. Mount it once anywhere inside the grid.
+export function AxisMenuPopupHost({
+	handle,
+}: {
+	readonly handle: AxisMenuHandle;
+}) {
+	return (
+		<DropdownMenu handle={handle}>
+			{({ payload }) =>
+				payload ? (
+					<DropdownMenuContent
+						align={payload.axis === "column" ? "end" : "start"}
+						className="w-auto min-w-56"
+					>
+						{/* Keyed by its target so moving from one row's menu straight to
+						    another remounts the body, and the selection follows. */}
+						<AxisMenuBody
+							key={`${payload.axis}:${payload.index}`}
+							axis={payload.axis}
+							index={payload.index}
+						/>
+					</DropdownMenuContent>
+				) : null
+			}
+		</DropdownMenu>
+	);
+}
+
+// Only ever rendered while its menu is open, so a broader store read here costs
+// nothing per keystroke the way one in the trigger would.
+function AxisMenuBody({ axis, index }: AxisMenuPayload) {
+	const column = useTabeloStore((state) =>
+		axis === "column" ? state.document.columns[index] : undefined,
+	);
+	const wrappedColumns = useTabeloStore(
+		(state) => state.workspace.wrappedColumns,
+	);
+	const wrapped = column ? wrappedColumns.includes(column.id) : false;
+	const atMinimumWidth = atMinimumColumnWidth(column?.width);
+	const atDefaultWidth = isDefaultColumnWidth(column?.width);
+
+	const select = () => selectAxis({ axis, index });
+
+	// Selecting on mount rather than on an open flag: with one shared root, the
+	// root's own open change carries no payload, and this body mounts exactly
+	// when the menu it belongs to opens.
+	useEffect(() => {
+		selectAxis({ axis, index });
+	}, [axis, index]);
+
+	return (
+		<>
+			{axis === "column" ? (
+				<>
+					<DropdownMenuGroup>
+						{/* The drag handle is a pointer affordance; this is the same
+						    change without one. The label carries the current width so
+						    stepping can be heard as well as seen. */}
+						<DropdownMenuLabel aria-live="polite">
+							{copy.actions.columnWidth(resolveColumnWidth(column?.width))}
+						</DropdownMenuLabel>
+						<DisabledTooltip
+							reason={
+								atMinimumWidth ? copy.disabled.minimumColumnWidth : undefined
+							}
+						>
 							<DropdownMenuItem
 								closeOnClick={false}
+								disabled={atMinimumWidth}
 								onClick={() =>
 									useTabeloStore
 										.getState()
-										.resizeColumn(index, stepColumnWidth(column?.width, 1))
+										.resizeColumn(index, stepColumnWidth(column?.width, -1))
 								}
 							>
-								<ChevronsLeftRight aria-hidden />
-								{copy.actions.widenColumn}
+								<ChevronsRightLeft aria-hidden />
+								{copy.actions.narrowColumn}
 							</DropdownMenuItem>
-							<DropdownMenuCheckboxItem
-								checked={wrapped}
-								closeOnClick={false}
-								onCheckedChange={() => {
-									if (column) {
-										useTabeloStore.getState().toggleColumnWrap(column.id);
-									}
-								}}
-							>
-								<WrapText aria-hidden />
-								{copy.actions.wrapColumnText}
-							</DropdownMenuCheckboxItem>
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-
-						{/* A column has one alignment, so these are radio items rather
-						    than a tinted background that only a sighted user can read. */}
-						<DropdownMenuRadioGroup
-							value={column?.align ?? "default"}
-							onValueChange={(next) =>
-								useTabeloStore
-									.getState()
-									.setColumnAlignment(index, next as Alignment)
+						</DisabledTooltip>
+						<DisabledTooltip
+							reason={
+								atDefaultWidth ? copy.disabled.defaultColumnWidth : undefined
 							}
 						>
-							<DropdownMenuLabel>{copy.actions.alignment}</DropdownMenuLabel>
-							{alignments.map((option) => (
-								<MenuSelectionOption
-									key={option.value}
-									value={option.value}
-									icon={<option.icon />}
-									label={option.label}
-								/>
-							))}
-						</DropdownMenuRadioGroup>
-						<DropdownMenuSeparator />
-					</>
-				) : null}
+							<DropdownMenuItem
+								closeOnClick={false}
+								disabled={atDefaultWidth}
+								onClick={() =>
+									useTabeloStore.getState().resizeColumn(index, undefined)
+								}
+							>
+								<RotateCcw aria-hidden />
+								{copy.actions.resetColumnWidth}
+							</DropdownMenuItem>
+						</DisabledTooltip>
+						<DropdownMenuItem
+							closeOnClick={false}
+							onClick={() =>
+								useTabeloStore
+									.getState()
+									.resizeColumn(index, stepColumnWidth(column?.width, 1))
+							}
+						>
+							<ChevronsLeftRight aria-hidden />
+							{copy.actions.widenColumn}
+						</DropdownMenuItem>
+						<DropdownMenuCheckboxItem
+							checked={wrapped}
+							closeOnClick={false}
+							onCheckedChange={() => {
+								if (column) {
+									useTabeloStore.getState().toggleColumnWrap(column.id);
+								}
+							}}
+						>
+							<WrapText aria-hidden />
+							{copy.actions.wrapColumnText}
+						</DropdownMenuCheckboxItem>
+					</DropdownMenuGroup>
+					<DropdownMenuSeparator />
 
-				<DropdownTableActions axis={axis} beforeRun={select} />
-			</DropdownMenuContent>
-		</DropdownMenu>
+					{/* A column has one alignment, so these are radio items rather
+					    than a tinted background that only a sighted user can read. */}
+					<DropdownMenuRadioGroup
+						value={column?.align ?? "default"}
+						onValueChange={(next) =>
+							useTabeloStore
+								.getState()
+								.setColumnAlignment(index, next as Alignment)
+						}
+					>
+						<DropdownMenuLabel>{copy.actions.alignment}</DropdownMenuLabel>
+						{alignments.map((option) => (
+							<MenuSelectionOption
+								key={option.value}
+								value={option.value}
+								icon={<option.icon />}
+								label={option.label}
+							/>
+						))}
+					</DropdownMenuRadioGroup>
+					<DropdownMenuSeparator />
+				</>
+			) : null}
+
+			<DropdownTableActions axis={axis} beforeRun={select} />
+		</>
 	);
 }

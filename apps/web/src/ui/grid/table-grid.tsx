@@ -1,5 +1,5 @@
 import { cn } from "@tabelo/ui/lib/utils";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import {
@@ -11,7 +11,12 @@ import {
 import type { Alignment } from "@/core/types";
 import { type StructureDeletionRefusal, useTabeloStore } from "@/state/store";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
-import { AxisMenu } from "./axis-menu";
+import {
+	type AxisMenuHandle,
+	AxisMenuPopupHost,
+	AxisMenuTrigger,
+	createAxisMenuHandle,
+} from "./axis-menu";
 import { CellEditor } from "./cell-editor";
 import { clampColumnWidth, resolveColumnWidth } from "./column-width";
 import { GridContextMenu } from "./grid-context-menu";
@@ -65,6 +70,9 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 	const gridRef = useRef<HTMLTableElement>(null);
 	const draggingRef = useRef<"cell" | "column" | "row" | null>(null);
+	// One handle for the whole grid: every gutter trigger opens the single root
+	// mounted below, because only one axis menu can be open at a time.
+	const [axisMenuHandle] = useState(createAxisMenuHandle);
 
 	const rect = selectionRect(
 		selection,
@@ -404,6 +412,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 						{document.columns.map((column, columnIndex) => (
 							<ColumnIndexCell
 								key={column.id}
+								axisMenuHandle={axisMenuHandle}
 								columnIndex={columnIndex}
 								header={column.header}
 								focused={selection.focus.column === columnIndex}
@@ -464,7 +473,8 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								>
 									1
 								</button>
-								<AxisMenu
+								<AxisMenuTrigger
+									handle={axisMenuHandle}
 									axis="row"
 									index={HEADER_ROW}
 									revealed={selection.focus.row === HEADER_ROW}
@@ -548,7 +558,8 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										{rowIndex + 2}
 									</button>
 									<span className="inline-flex">
-										<AxisMenu
+										<AxisMenuTrigger
+											handle={axisMenuHandle}
 											axis="row"
 											index={rowIndex}
 											revealed={selection.focus.row === rowIndex}
@@ -691,6 +702,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					))}
 				</tbody>
 			</table>
+
+			{/* The one root behind every gutter trigger above. It sits outside the
+			    table so it is never a child of a <tr>, and it portals its popup
+			    anyway, so its position in the tree carries no layout. */}
+			<AxisMenuPopupHost handle={axisMenuHandle} />
 		</GridContextMenu>
 	);
 }
@@ -700,6 +716,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 // every affordance that used to crowd the header text: selection, the column
 // menu, and the resize handle.
 interface ColumnIndexCellProps {
+	readonly axisMenuHandle: AxisMenuHandle;
 	readonly columnIndex: number;
 	readonly header: string;
 	// The column the user is working in, which is where its actions appear.
@@ -714,6 +731,7 @@ interface ColumnIndexCellProps {
 }
 
 function ColumnIndexCell({
+	axisMenuHandle,
 	columnIndex,
 	header,
 	focused,
@@ -773,7 +791,12 @@ function ColumnIndexCell({
 				>
 					{letter}
 				</button>
-				<AxisMenu axis="column" index={columnIndex} revealed={focused} />
+				<AxisMenuTrigger
+					handle={axisMenuHandle}
+					axis="column"
+					index={columnIndex}
+					revealed={focused}
+				/>
 			</div>
 
 			{/* Pointer-only by design, and hidden from assistive technology because
