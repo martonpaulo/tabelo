@@ -35,17 +35,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  classify:
-    name: Classify changes
+  # Classification is a shell script over the changed file list, so it shares
+  # this runner instead of claiming one of its own. A separate job spent a
+  # whole VM queueing for that script, and every extra queued job is another
+  # chance for the run to die before it reaches the deploy.
+  check:
+    name: Check
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: read
     outputs:
-      run_e2e: ${{ steps.check.outputs.run_e2e }}
-      e2e_matrix: ${{ steps.check.outputs.e2e_matrix }}
+      run_e2e: ${{ steps.classify.outputs.run_e2e }}
+      e2e_matrix: ${{ steps.classify.outputs.e2e_matrix }}
     steps:
-      - name: Check changes and determine matrix
-        id: check
+      - name: Classify changes and determine matrix
+        id: classify
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -58,9 +63,9 @@ jobs:
           gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
             --paginate \
             -q '.[] | .filename, (.previous_filename // empty)' \
-            > changed_files.txt
+            > "$RUNNER_TEMP/changed_files.txt"
 
-          if [ ! -s changed_files.txt ]; then
+          if [ ! -s "$RUNNER_TEMP/changed_files.txt" ]; then
             echo "run_e2e=true" >> "$GITHUB_OUTPUT"
             echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":1,"test_args":""}]}' >> "$GITHUB_OUTPUT"
             exit 0
@@ -108,7 +113,7 @@ jobs:
             fi
 
             if [ $LEVEL -lt 4 ]; then LEVEL=4; fi
-          done < changed_files.txt
+          done < "$RUNNER_TEMP/changed_files.txt"
 
           if [ $LEVEL -eq 5 ]; then
             echo "run_e2e=true" >> "$GITHUB_OUTPUT"
@@ -124,10 +129,6 @@ jobs:
             echo 'e2e_matrix={"include":[]}' >> "$GITHUB_OUTPUT"
           fi
 
-  check:
-    name: Check
-    runs-on: ubuntu-latest
-    steps:
       - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6
@@ -148,14 +149,17 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+  # Browser coverage now waits for lint, types, and unit tests. That costs a
+  # minute of latency and buys back four runners on a commit that was already
+  # broken before any browser started.
   e2e:
     name: E2E (${{ matrix.project }}, shard ${{ matrix.shard }}/${{ matrix.shard_total }})
-    needs: classify
-    if: ${{ needs.classify.outputs.run_e2e == 'true' }}
+    needs: check
+    if: ${{ needs.check.outputs.run_e2e == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.classify.outputs.e2e_matrix) }}
+      matrix: ${{ fromJSON(needs.check.outputs.e2e_matrix) }}
     steps:
       - uses: actions/checkout@v7
 
@@ -190,7 +194,7 @@ jobs:
   merge-reports:
     name: Merge Playwright reports
     if: ${{ !cancelled() && needs.e2e.result != 'skipped' }}
-    needs: [classify, e2e]
+    needs: [check, e2e]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

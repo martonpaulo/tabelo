@@ -5,6 +5,11 @@ on:
     workflows: [CI]
     types: [completed]
     branches: [main]
+  # Manual republish of whatever main currently points at, for when a CI run
+  # was lost to a cancellation or to a GitHub incident rather than to a real
+  # failure. It builds from main's head, so it can never publish a commit that
+  # is not already on main.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,10 +17,16 @@ permissions:
 jobs:
   build-pages:
     name: Build GitHub Pages
+    # A manually dispatched CI run has to be able to publish too. Requiring
+    # event == 'push' meant re-running CI by hand cancelled the push run (same
+    # concurrency ref) while being forbidden to deploy in its place, so main
+    # could sit undeployed with no way to recover except another commit.
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.event == 'push' ||
+      github.event.workflow_run.event == 'workflow_dispatch') &&
+      github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     concurrency:
       group: pages-build
@@ -23,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: pnpm/action-setup@v6
 
