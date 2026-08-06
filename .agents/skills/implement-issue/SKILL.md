@@ -23,7 +23,9 @@ Stop for user direction only when a blocking product choice remains unresolved a
 
 ## Inspect before editing
 
-1. Confirm the branch is `main`, inspect `git status`, and preserve unrelated changes.
+1. Create or switch to a branch named under `AGENTS.md`'s branch naming
+   scheme, `type/agent/issue-NNN/short-description`, from an up-to-date
+   `main`. Inspect `git status` and preserve unrelated changes.
 2. Search for the named behavior, symbols, callers, tests, copy, registry entries, persistence boundaries, and documentation statements.
 3. Read the smallest relevant source slice and its stable test seam. Do not implement from the issue's file list alone because paths and code may have changed.
 4. Identify the owner of every changed rule or state. Reject parallel sources of truth.
@@ -56,9 +58,15 @@ Keep issue ownership here when another skill supplies a method. Do not expand th
 1. Run the narrowest relevant check first. Inspect a failure before rerunning it.
 2. Expand to the broader checks required by risk and `AGENTS.md`. Run Chromium for the complete browser suite; use Firefox only for the centrally selected engine-sensitive flows.
 3. Inspect the diff, confirm requested issue numbers still control it, and verify no temporary output or unrelated file is included.
-4. Commit on `main` with one Conventional Commit concern and push `origin/main`, as required by repository policy.
+4. Commit on the task branch with one Conventional Commit concern per
+   commit, each subject ending `(#<issue number>)`, then push the branch and
+   open the pull request, per `AGENTS.md`'s branch workflow. Follow the
+   executing agent's own GitHub conventions, when it carries one, for the PR
+   body and signature; otherwise write a plain body describing the change and
+   linking the issue. Do not merge the pull request: merging is the user's or
+   the reviewer's call.
 5. Mutate, comment on, or close only the exact requested GitHub issues, and only when the task authorizes that issue action. Never target related issues implicitly.
 
 ## Completion
 
-Report the requested issue numbers and live state, behavior changed, files touched, exact validation results, documentation updates, warnings and residual risk, commit hash, push status, and final worktree status. Do not claim an issue is complete when acceptance guidance or required validation remains unmet.
+Report the requested issue numbers and live state, behavior changed, files touched, exact validation results, documentation updates, warnings and residual risk, commit hashes, the branch and pull request opened, and final worktree status. Do not claim an issue is complete when acceptance guidance or required validation remains unmet.
