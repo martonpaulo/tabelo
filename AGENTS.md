@@ -257,15 +257,59 @@ sleeps, no pixel snapshots, and storage isolated per test.
   different rules, each with a sibling `CLAUDE.md` symbolic link.
 - Do not duplicate the same rules across instruction files.
 
-## Agent skill paths
+## Skills
 
-- Repository-local skills: `.agents/skills/`. These are the complete skill
-  source for Tabelo work in local and cloud agents; do not require or reference
-  a machine-local skills checkout.
-- GitHub issue implementation starts with
-  `.agents/skills/implement-issue/SKILL.md`, which routes to the smallest
-  applicable local specialist for debugging, domain modelling, module design,
-  research, prototypes, UI contracts, codec contracts, or conflict resolution.
+Skills this repository owns, all under `.agents/skills/`. These are the
+complete skill source for Tabelo work in local and cloud agents; do not require
+or reference a machine-local skills checkout. Keep one line each: what it owns,
+when it applies, what it defers to. Remove an entry when its skill is gone, and
+add one when a new skill is written.
+
+- `implement-issue`: owns GitHub issue implementation end to end, from the
+  scope contract through code, tests, commit, push, and handoff. Entry point
+  for any named issue number. Defers to: the specialists below for the part of
+  the work each one owns.
+- `codec-contract`: owns parsing, serialization, format sniffing, import,
+  paste, clipboard, download, output options, and round-trip preservation.
+  Defers to: `domain-model` when the ambiguity is vocabulary, not encoding.
+- `ui-contract`: owns UI, UX, accessibility, interaction, responsive layout,
+  design tokens, and visible copy, with `docs/design-system.md` normative.
+  Defers to: `module-design` when the question is ownership, not presentation.
+- `debug`: owns diagnosis of a non-trivial bug or regression whose cause is
+  still a hypothesis. Defers to: `codec-contract` or `ui-contract` for the fix
+  once the cause is established.
+- `domain-model`: owns terminology, entities, states, transitions, and rule
+  ownership, with `CONTEXT.md` canonical. Defers to: `docs/adr/` for decisions
+  already made.
+- `module-design`: owns boundaries, interfaces, dependency direction, cohesion,
+  and stable test seams inside the architecture boundaries recorded above.
+- `research`: owns external primary-source research for this stack: React,
+  CodeMirror, Base UI, Playwright, Vite, PWA, browser and web-standard
+  behavior. Defers to: the repository itself for anything answerable locally.
+- `prototype`: owns disposable experiments that answer one executable
+  question, written under `.scratch/prototypes/`.
+- `resolve-conflicts`: owns an in-progress Git merge, rebase, cherry-pick, or
+  revert conflict. Applies only when Git is already conflicted.
+- `copilot-review`: owns validating exactly one pull request against its
+  linked issue and this policy. Invoked by GitHub Copilot review through
+  `.github/copilot-instructions.md`. Read-only: it never commits, merges, or
+  changes repository settings.
+
+Six of these (`debug`, `domain-model`, `module-design`, `research`,
+`prototype`, `resolve-conflicts`) share a name with a general skill an agent
+may also carry. The Tabelo one wins in this repository: it knows the ADRs, the
+codec and view registries, `CONTEXT.md`, and the validation commands, and the
+general one does not.
+
+Precedence: when a project skill and a general one both cover a task, the
+project skill owns the project-specific procedure and the general skill keeps
+the process around it. A task no project skill claims follows normal skill
+triggering. Two skills claiming the same job is a defect to resolve, not a
+preference to exercise per task.
+
+## Reference paths
+
+- Product definition: `docs/product.md`
 - Domain glossary: `CONTEXT.md`
 - Sample people for fixtures, examples, and manual checks:
   `apps/web/src/core/sample-data.ts`
@@ -484,10 +528,11 @@ here:
 
 ## Git
 
-- Follow the recorded commit and push policies above.
+- Follow the recorded commit, push, and merge policies above.
 - Name every new branch following the branch naming policy above.
 - Check status and branch before editing and before the final report.
-- Use Conventional Commits in English. One commit per concern.
+- Use Conventional Commits in English. One commit per concern, and end the
+  subject with its issue number when the commit belongs to one.
 - Inspect the diff before committing. Never commit secrets, caches, generated
   logs, temporary artifacts, or unrelated formatting churn.
 - If commit or push fails, report the exact failure without claiming success.
