@@ -116,19 +116,47 @@ export function documentFromMatrix(
 // A source parser necessarily constructs fresh identifiers. Synchronization
 // reconciles that parsed shape with the current document by position so normal
 // text edits keep selection, column widths, and row identity attached.
+// Identity is preserved per item, not only for the document as a whole. A
+// keystroke in a source pane changes one row, and every other row must come
+// back as the very same object so the grid's memoised rows can skip it. An
+// all-or-nothing check cannot do that: the moment one row differs it hands all
+// 200 a fresh object and every memo boundary misses. This mirrors the per-item
+// early return `clearCells` already uses in `operations.ts`.
+//
+// Values are unchanged by this. Only the number of allocations is.
 export function reconcileDocument(
 	current: TableDocument,
 	parsed: TableDocument,
 ): TableDocument {
+	let columnsUnchanged = parsed.columns.length === current.columns.length;
+
 	const columns = parsed.columns.map((column, index) => {
 		const existing = current.columns[index];
-		if (!existing) return column;
+		if (!existing) {
+			columnsUnchanged = false;
+			return column;
+		}
+
+		// The id always comes from the existing column, and an existing width
+		// always wins over a parsed one, so only these three can differ.
+		const width = existing.width === undefined ? column.width : existing.width;
+		if (
+			existing.header === column.header &&
+			existing.align === column.align &&
+			existing.width === width
+		) {
+			return existing;
+		}
+
+		columnsUnchanged = false;
 		return {
 			...column,
 			id: existing.id,
-			...(existing.width === undefined ? {} : { width: existing.width }),
+			...(width === undefined ? {} : { width }),
 		};
 	});
+
+	let rowsUnchanged = parsed.rows.length === current.rows.length;
 
 	const rows = parsed.rows.map((row, rowIndex) => {
 		const existing = current.rows[rowIndex];
@@ -137,35 +165,25 @@ export function reconcileDocument(
 			const parsedColumn = parsed.columns[columnIndex];
 			cells[column.id] = parsedColumn ? (row.cells[parsedColumn.id] ?? "") : "";
 		});
+
+		// The key count has to match as well as the values: a row still carrying a
+		// deleted column's cell would otherwise pass a values-only comparison and
+		// keep a key the current column set no longer has.
+		const reusable =
+			existing !== undefined &&
+			Object.keys(existing.cells).length === columns.length &&
+			columns.every((column) => existing.cells[column.id] === cells[column.id]);
+		if (reusable) return existing;
+
+		rowsUnchanged = false;
 		return { id: existing?.id ?? row.id, cells };
 	});
 
-	const unchanged =
-		columns.length === current.columns.length &&
-		rows.length === current.rows.length &&
-		columns.every((column, index) => {
-			const existing = current.columns[index];
-			return (
-				existing !== undefined &&
-				column.id === existing.id &&
-				column.header === existing.header &&
-				column.align === existing.align &&
-				column.width === existing.width
-			);
-		}) &&
-		rows.every((row, rowIndex) => {
-			const existing = current.rows[rowIndex];
-			return (
-				existing !== undefined &&
-				row.id === existing.id &&
-				columns.every(
-					(column) =>
-						row.cells[column.id] === (existing.cells[column.id] ?? ""),
-				)
-			);
-		});
-
-	return unchanged ? current : { columns, rows };
+	if (columnsUnchanged && rowsUnchanged) return current;
+	return {
+		columns: columnsUnchanged ? current.columns : columns,
+		rows: rowsUnchanged ? current.rows : rows,
+	};
 }
 
 export interface DocumentToMatrixOptions {
