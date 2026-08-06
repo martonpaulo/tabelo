@@ -118,10 +118,16 @@ export class TabeloPage {
 	}
 
 	async dismissWelcome(): Promise<void> {
-		const emptyStart = this.page.getByRole("button", {
-			name: copy.empty.emptyAction,
-		});
-		await emptyStart.click();
+		// Every test enters through here, so a slow mount is charged to all of them
+		// at once. The welcome surface appears only after the route chunk arrives
+		// and hydration confirms the document is blank; waiting for the surface
+		// itself keeps that latency out of the click's own retry budget, and turns
+		// a stalled first paint into "the welcome surface never appeared" instead
+		// of a click that spends the full timeout on a subtree React is still
+		// replacing.
+		const welcome = this.page.getByRole("region", { name: copy.empty.title });
+		await welcome.waitFor({ state: "visible" });
+		await welcome.getByRole("button", { name: copy.empty.emptyAction }).click();
 	}
 
 	pane(view: ViewId): Locator {

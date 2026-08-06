@@ -1,6 +1,14 @@
 import { defineConfig, devices } from "@playwright/test";
+import { previewServerPort } from "./worktree-ports";
 
-const serverUrl = "http://127.0.0.1:4173";
+const serverUrl = `http://127.0.0.1:${previewServerPort}`;
+
+// Playwright computes its default worker count per process, with no awareness of
+// the other worktrees running their own suites on the same machine. Halving the
+// default halves the browser memory each run holds, which is what keeps three
+// parallel checkouts inside 8 GB. An agent that knows it is one of several can
+// drop further without editing this file.
+const localWorkers = process.env.TABELO_E2E_WORKERS ?? "25%";
 
 // Chromium owns the complete behavioural suite. Firefox repeats only contracts
 // where browser engines materially differ, so cross-browser confidence does not
@@ -23,7 +31,7 @@ export default defineConfig({
 	fullyParallel: true,
 	forbidOnly: Boolean(process.env.CI),
 	retries: process.env.CI ? 1 : 0,
-	workers: process.env.CI ? 1 : undefined,
+	workers: process.env.CI ? 1 : localWorkers,
 	reporter: process.env.CI ? [["line"], ["blob"]] : "list",
 	outputDir: "test-results",
 	use: {
@@ -43,8 +51,9 @@ export default defineConfig({
 		},
 	],
 	webServer: {
-		command:
-			"pnpm build && pnpm serve --host 127.0.0.1 --port 4173 --strictPort",
+		// The port lives in the Vite config, so the preview server binds the same
+		// value whether Playwright starts it or `pnpm test:e2e:serve` did.
+		command: "pnpm build && pnpm serve --host 127.0.0.1",
 		url: serverUrl,
 		reuseExistingServer: !process.env.CI,
 		timeout: 120_000,
