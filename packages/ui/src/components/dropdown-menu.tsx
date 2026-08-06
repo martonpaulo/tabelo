@@ -21,15 +21,34 @@ import { cn } from "@tabelo/ui/lib/utils";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
 
-function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
+// Generic over the payload Base UI already carries from a trigger to its root,
+// so a detached trigger can name what it opened the menu for. Defaulting to
+// `unknown` keeps every existing payload-free call site inferring exactly as
+// before. See https://base-ui.com/react/components/menu#detached-triggers
+function DropdownMenu<Payload = unknown>({
+	...props
+}: MenuPrimitive.Root.Props<Payload>) {
 	return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+}
+
+// The link between one root and the many triggers that can open it. Consumers
+// get it from here rather than from Base UI directly, so the primitive stays
+// the single place this package's menu machinery is imported from.
+type DropdownMenuHandle<Payload = unknown> = MenuPrimitive.Handle<Payload>;
+
+function createDropdownMenuHandle<
+	Payload = unknown,
+>(): DropdownMenuHandle<Payload> {
+	return MenuPrimitive.createHandle<Payload>();
 }
 
 function DropdownMenuPortal({ ...props }: MenuPrimitive.Portal.Props) {
 	return <MenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />;
 }
 
-function DropdownMenuTrigger({ ...props }: MenuPrimitive.Trigger.Props) {
+function DropdownMenuTrigger<Payload = unknown>({
+	...props
+}: MenuPrimitive.Trigger.Props<Payload>) {
 	return <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
 }
 
@@ -282,7 +301,9 @@ function DropdownMenuShortcut({
 	);
 }
 
+export type { DropdownMenuHandle };
 export {
+	createDropdownMenuHandle,
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
