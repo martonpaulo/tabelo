@@ -49,6 +49,14 @@ describes the migration and its downstream effects.
   is a kebab-case summary. Examples:
   `hotfix/codex/issue-083/gutter-alignment-across-pane-zoom-levels`,
   `feature/claude/issue-024/two-level-keyboard-navigation`
+- Commit subject: a commit made for an issue ends with `(#<issue number>)`, for
+  example `feat: add the export button (#54)`. It is the issue number, never
+  the pull request's, and a commit belonging to no issue carries no suffix
+- Merge policy: **rebase merge**, `gh pr merge <number> --rebase
+  --delete-branch`. Every commit of the branch reaches `main` intact, so the
+  one-concern-per-commit history and each issue suffix survive. Never squash:
+  squashing collapses them into one subject and discards every issue reference
+  but one. The repository's GitHub settings allow rebase only
 - Delete branches after merge: enabled
 - Release, signing, and secret storage: **not applicable**. Nothing is
   downloaded, installed, or signed. Deployment is GitHub Pages via GitHub
