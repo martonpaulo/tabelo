@@ -1,5 +1,5 @@
 import { cn } from "@tabelo/ui/lib/utils";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import {
@@ -8,7 +8,7 @@ import {
 	rectContains,
 	selectionRect,
 } from "@/core/selection";
-import type { Alignment } from "@/core/types";
+import type { Alignment, Column, ColumnId, Row } from "@/core/types";
 import { type StructureDeletionRefusal, useTabeloStore } from "@/state/store";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import {
@@ -27,6 +27,11 @@ const alignClass: Record<Alignment, string> = {
 	center: "text-center",
 	right: "text-right",
 };
+
+// "No column of this row is focused, selected, or being edited." Any value
+// below zero works, because a column index is never negative; naming it keeps
+// the row's props readable at the call site.
+const NO_COLUMN = -1;
 
 // Why a structural delete was refused. Keyed by the store's refusal so a new
 // reason cannot be added without a message to show for it.
@@ -501,205 +506,41 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				</thead>
 
 				<tbody>
-					{document.rows.map((row, rowIndex) => (
-						// Explicit despite looking redundant: with role="grid" on the
-						// table, browsers do not reliably expose implicit row and cell
-						// roles: the computed tree came back as "generic" without these.
-						<tr
-							key={row.id}
-							// biome-ignore lint/a11y/noRedundantRoles: see above
-							role="row"
-							// The header row is row 1, so the body starts at 2. This is
-							// what makes the declared aria-rowcount add up.
-							aria-rowindex={rowIndex + 2}
-							className="group/row"
-						>
-							<th
-								scope="row"
-								// biome-ignore lint/a11y/noRedundantRoles: see above
-								role="rowheader"
-								// The heading a screen reader reads as the row context for
-								// every cell beside it, so it names the row rather than
-								// concatenating the two controls it contains.
-								aria-label={copy.a11y.rowNumber(rowIndex)}
-								data-row-header={rowIndex}
-								className={cn(
-									"sticky left-0 z-10 border-line-subtle border-r border-b bg-surface-gutter align-top",
-									"px-1 text-right font-index font-normal text-muted-foreground text-xs tabular-nums",
-								)}
-								onPointerEnter={() => {
-									if (draggingRef.current !== "row") return;
-									selectRow(rowIndex, true);
-								}}
-							>
-								<div className="grid h-content-line-box grid-cols-[minmax(0,1fr)_1.25rem] items-center gap-1">
-									<button
-										type="button"
-										tabIndex={entered ? 0 : -1}
-										aria-label={`${copy.actions.selectRow}: ${copy.a11y.rowNumber(rowIndex)}`}
-										className="min-w-0 cursor-pointer justify-self-end rounded-interactive px-1 text-right hover:text-foreground"
-										onPointerDown={(event) => {
-											if (event.button !== 0) return;
-											draggingRef.current = "row";
-											// Mod is aliased to Shift here, matching the column axis
-											// bug for bug: #40 owns fixing the alias, and fixing it in
-											// one place instead of two keeps the axes identical.
-											selectRow(
-												rowIndex,
-												event.shiftKey || event.metaKey || event.ctrlKey,
-											);
-										}}
-										onClick={(event) => {
-											// A keyboard-generated click has no pointer detail.
-											if (event.detail === 0)
-												selectRow(rowIndex, event.shiftKey);
-										}}
-									>
-										{rowIndex + 2}
-									</button>
-									<span className="inline-flex">
-										<AxisMenuTrigger
-											handle={axisMenuHandle}
-											axis="row"
-											index={rowIndex}
-											revealed={selection.focus.row === rowIndex}
-										/>
-									</span>
-								</div>
-							</th>
+					{document.rows.map((row, rowIndex) => {
+						// Every selection prop is narrowed to this row's own membership
+						// before it crosses the memo boundary. Passing the shared focus
+						// and rectangle instead would change all 200 rows' props on every
+						// arrow key, which is the case the boundary exists to skip: a row
+						// outside the selection keeps the same NONE sentinels and is
+						// reconciled away.
+						const withinSelection =
+							rowIndex >= rect.top && rowIndex <= rect.bottom;
 
-							{document.columns.map((column, columnIndex) => {
-								const isFocus =
-									selection.focus.row === rowIndex &&
-									selection.focus.column === columnIndex;
-								const inSelection = rectContains(rect, rowIndex, columnIndex);
-								const value = row.cells[column.id] ?? "";
-								const isEditing =
-									editing?.row === rowIndex && editing?.column === columnIndex;
-								const wrapped = wrappedColumns.includes(column.id);
-
-								return (
-									// gridcell is stated rather than left implicit, for the same
-									// reason as the row role above: without it the computed
-									// accessibility tree reported these cells as "generic".
-									<td
-										key={column.id}
-										// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
-										role="gridcell"
-										data-cell={`${rowIndex}:${columnIndex}`}
-										data-grid-active={isFocus ? "true" : undefined}
-										tabIndex={isFocus && entered ? 0 : -1}
-										aria-selected={inSelection}
-										aria-colindex={columnIndex + 1}
-										// Deliberately unlabelled: the cell's name is its value,
-										// and the row and column headers supply the rest. An
-										// aria-label here would replace the content with
-										// coordinates and repeat them on every arrow key.
-										//
-										// The one native tooltip the product keeps. A cell shows
-										// a clipped value, and the browser's own tooltip reveals
-										// the rest without mounting a floating layer per cell
-										// across a 200-row table. See docs/design-system.md §3.
-										title={value || undefined}
-										className={cn(
-											"relative border-line-subtle border-r border-b px-2 align-top",
-											"cursor-cell select-none",
-											// A cell being edited overrides the column's own clipping so
-											// its editor can grow and wrap over the rows below it while
-											// the value is too long for the column, without touching
-											// the wrap preference or any other row's height.
-											isEditing ? "z-20 overflow-visible" : "overflow-hidden",
-											alignClass[column.align],
-											inSelection ? "bg-selection-fill" : "bg-background",
-											isFocus &&
-												"outline-2 outline-selection-edge -outline-offset-2",
-										)}
-										onPointerDown={(event) => {
-											if (event.button !== 0) return;
-											// Without this, the browser's own mousedown handling runs
-											// after ours and moves focus to <body>, because a <td> is
-											// not focusable by default. The cell would look selected
-											// but ignore every keystroke.
-											event.preventDefault();
-											draggingRef.current = "cell";
-											const store = useTabeloStore.getState();
-											if (event.shiftKey) {
-												store.extendSelection({
-													row: rowIndex,
-													column: columnIndex,
-												});
-											} else {
-												store.selectCell({
-													row: rowIndex,
-													column: columnIndex,
-												});
-											}
-											event.currentTarget.focus();
-										}}
-										onPointerEnter={() => {
-											if (draggingRef.current !== "cell") return;
-											useTabeloStore.getState().extendSelection({
-												row: rowIndex,
-												column: columnIndex,
-											});
-										}}
-										onDoubleClick={() =>
-											useTabeloStore
-												.getState()
-												.setEditing({ row: rowIndex, column: columnIndex })
-										}
-									>
-										{isEditing ? (
-											<CellEditor
-												initialValue={editingSeed ?? value}
-												align={alignClass[column.align]}
-												ariaLabel={copy.a11y.cellEditor(rowIndex, columnIndex)}
-												onFinish={(next, exit) => {
-													const store = useTabeloStore.getState();
-													if (exit !== "cancel")
-														store.editCell(rowIndex, columnIndex, next);
-													store.setEditing(null);
-													if (exit === "next-row") {
-														store.selectCell({
-															row: Math.min(
-																rowIndex + 1,
-																store.document.rows.length - 1,
-															),
-															column: columnIndex,
-														});
-													} else if (exit === "next-column") {
-														store.selectCell({
-															row: rowIndex,
-															column: Math.min(
-																columnIndex + 1,
-																store.document.columns.length - 1,
-															),
-														});
-													} else if (exit === "previous-column") {
-														store.selectCell({
-															row: rowIndex,
-															column: Math.max(columnIndex - 1, 0),
-														});
-													}
-												}}
-											/>
-										) : (
-											<span
-												className={cn(
-													"block leading-content-line-box",
-													wrapped
-														? "min-h-grid-row whitespace-pre-wrap break-words"
-														: "h-content-line-box overflow-hidden whitespace-pre",
-												)}
-											>
-												{value}
-											</span>
-										)}
-									</td>
-								);
-							})}
-						</tr>
-					))}
+						return (
+							<DataRow
+								key={row.id}
+								row={row}
+								rowIndex={rowIndex}
+								columns={document.columns}
+								axisMenuHandle={axisMenuHandle}
+								focused={selection.focus.row === rowIndex}
+								focusColumn={
+									selection.focus.row === rowIndex
+										? selection.focus.column
+										: NO_COLUMN
+								}
+								selectedFrom={withinSelection ? rect.left : NO_COLUMN}
+								selectedTo={withinSelection ? rect.right : NO_COLUMN}
+								editingColumn={
+									editing?.row === rowIndex ? editing.column : NO_COLUMN
+								}
+								editingSeed={editing?.row === rowIndex ? editingSeed : null}
+								wrappedColumns={wrappedColumns}
+								selectRow={selectRow}
+								draggingRef={draggingRef}
+							/>
+						);
+					})}
 				</tbody>
 			</table>
 
@@ -710,6 +551,251 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		</GridContextMenu>
 	);
 }
+
+// One data row, behind a memo boundary. `TableGrid` re-renders on every parse
+// commit, and without this React reconciled all 200 rows to discover that 199
+// of them were identical. Every prop is a primitive, a stable callback, a ref,
+// or an object `reconcileDocument` preserves the identity of, so the default
+// shallow comparator is enough and no custom `areEqual` can drift out of sync
+// with what this actually reads.
+//
+// The selection arrives already narrowed to this row: a column range this row
+// covers rather than the whole rectangle, and this row's focused and editing
+// columns rather than the grid's. That is what makes an arrow key re-render two
+// rows instead of two hundred.
+interface DataRowProps {
+	readonly row: Row;
+	readonly rowIndex: number;
+	readonly columns: readonly Column[];
+	readonly axisMenuHandle: AxisMenuHandle;
+	readonly focused: boolean;
+	// This row's focused, selected, and editing columns, or NO_COLUMN.
+	readonly focusColumn: number;
+	readonly selectedFrom: number;
+	readonly selectedTo: number;
+	readonly editingColumn: number;
+	// The character that opened the editor, when typing is what opened it.
+	readonly editingSeed: string | null;
+	readonly wrappedColumns: readonly ColumnId[];
+	readonly selectRow: (row: number, extend: boolean) => void;
+	readonly draggingRef: React.RefObject<"cell" | "column" | "row" | null>;
+}
+
+const DataRow = memo(function DataRow({
+	row,
+	rowIndex,
+	columns,
+	axisMenuHandle,
+	focused,
+	focusColumn,
+	selectedFrom,
+	selectedTo,
+	editingColumn,
+	editingSeed,
+	wrappedColumns,
+	selectRow,
+	draggingRef,
+}: DataRowProps) {
+	// Read here rather than threaded down, matching ColumnIndexCell and
+	// HeaderCell, and preserving today's behaviour of every row reacting
+	// together when pane entry changes.
+	const entered = usePaneEntered();
+
+	return (
+		// Explicit despite looking redundant: with role="grid" on the
+		// table, browsers do not reliably expose implicit row and cell
+		// roles: the computed tree came back as "generic" without these.
+		<tr
+			// biome-ignore lint/a11y/noRedundantRoles: see above
+			role="row"
+			// The header row is row 1, so the body starts at 2. This is
+			// what makes the declared aria-rowcount add up.
+			aria-rowindex={rowIndex + 2}
+			className="group/row"
+		>
+			<th
+				scope="row"
+				// biome-ignore lint/a11y/noRedundantRoles: see above
+				role="rowheader"
+				// The heading a screen reader reads as the row context for
+				// every cell beside it, so it names the row rather than
+				// concatenating the two controls it contains.
+				aria-label={copy.a11y.rowNumber(rowIndex)}
+				data-row-header={rowIndex}
+				className={cn(
+					"sticky left-0 z-10 border-line-subtle border-r border-b bg-surface-gutter align-top",
+					"px-1 text-right font-index font-normal text-muted-foreground text-xs tabular-nums",
+				)}
+				onPointerEnter={() => {
+					if (draggingRef.current !== "row") return;
+					selectRow(rowIndex, true);
+				}}
+			>
+				<div className="grid h-content-line-box grid-cols-[minmax(0,1fr)_1.25rem] items-center gap-1">
+					<button
+						type="button"
+						tabIndex={entered ? 0 : -1}
+						aria-label={`${copy.actions.selectRow}: ${copy.a11y.rowNumber(rowIndex)}`}
+						className="min-w-0 cursor-pointer justify-self-end rounded-interactive px-1 text-right hover:text-foreground"
+						onPointerDown={(event) => {
+							if (event.button !== 0) return;
+							draggingRef.current = "row";
+							// Mod is aliased to Shift here, matching the column axis
+							// bug for bug: #40 owns fixing the alias, and fixing it in
+							// one place instead of two keeps the axes identical.
+							selectRow(
+								rowIndex,
+								event.shiftKey || event.metaKey || event.ctrlKey,
+							);
+						}}
+						onClick={(event) => {
+							// A keyboard-generated click has no pointer detail.
+							if (event.detail === 0) selectRow(rowIndex, event.shiftKey);
+						}}
+					>
+						{rowIndex + 2}
+					</button>
+					<span className="inline-flex">
+						<AxisMenuTrigger
+							handle={axisMenuHandle}
+							axis="row"
+							index={rowIndex}
+							revealed={focused}
+						/>
+					</span>
+				</div>
+			</th>
+
+			{columns.map((column, columnIndex) => {
+				const isFocus = columnIndex === focusColumn;
+				const inSelection =
+					columnIndex >= selectedFrom && columnIndex <= selectedTo;
+				const value = row.cells[column.id] ?? "";
+				const isEditing = columnIndex === editingColumn;
+				const wrapped = wrappedColumns.includes(column.id);
+
+				return (
+					// gridcell is stated rather than left implicit, for the same
+					// reason as the row role above: without it the computed
+					// accessibility tree reported these cells as "generic".
+					<td
+						key={column.id}
+						// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
+						role="gridcell"
+						data-cell={`${rowIndex}:${columnIndex}`}
+						data-grid-active={isFocus ? "true" : undefined}
+						tabIndex={isFocus && entered ? 0 : -1}
+						aria-selected={inSelection}
+						aria-colindex={columnIndex + 1}
+						// Deliberately unlabelled: the cell's name is its value,
+						// and the row and column headers supply the rest. An
+						// aria-label here would replace the content with
+						// coordinates and repeat them on every arrow key.
+						//
+						// The one native tooltip the product keeps. A cell shows
+						// a clipped value, and the browser's own tooltip reveals
+						// the rest without mounting a floating layer per cell
+						// across a 200-row table. See docs/design-system.md §3.
+						title={value || undefined}
+						className={cn(
+							"relative border-line-subtle border-r border-b px-2 align-top",
+							"cursor-cell select-none",
+							// A cell being edited overrides the column's own clipping so
+							// its editor can grow and wrap over the rows below it while
+							// the value is too long for the column, without touching
+							// the wrap preference or any other row's height.
+							isEditing ? "z-20 overflow-visible" : "overflow-hidden",
+							alignClass[column.align],
+							inSelection ? "bg-selection-fill" : "bg-background",
+							isFocus && "outline-2 outline-selection-edge -outline-offset-2",
+						)}
+						onPointerDown={(event) => {
+							if (event.button !== 0) return;
+							// Without this, the browser's own mousedown handling runs
+							// after ours and moves focus to <body>, because a <td> is
+							// not focusable by default. The cell would look selected
+							// but ignore every keystroke.
+							event.preventDefault();
+							draggingRef.current = "cell";
+							const store = useTabeloStore.getState();
+							if (event.shiftKey) {
+								store.extendSelection({
+									row: rowIndex,
+									column: columnIndex,
+								});
+							} else {
+								store.selectCell({
+									row: rowIndex,
+									column: columnIndex,
+								});
+							}
+							event.currentTarget.focus();
+						}}
+						onPointerEnter={() => {
+							if (draggingRef.current !== "cell") return;
+							useTabeloStore.getState().extendSelection({
+								row: rowIndex,
+								column: columnIndex,
+							});
+						}}
+						onDoubleClick={() =>
+							useTabeloStore
+								.getState()
+								.setEditing({ row: rowIndex, column: columnIndex })
+						}
+					>
+						{isEditing ? (
+							<CellEditor
+								initialValue={editingSeed ?? value}
+								align={alignClass[column.align]}
+								ariaLabel={copy.a11y.cellEditor(rowIndex, columnIndex)}
+								onFinish={(next, exit) => {
+									const store = useTabeloStore.getState();
+									if (exit !== "cancel")
+										store.editCell(rowIndex, columnIndex, next);
+									store.setEditing(null);
+									if (exit === "next-row") {
+										store.selectCell({
+											row: Math.min(
+												rowIndex + 1,
+												store.document.rows.length - 1,
+											),
+											column: columnIndex,
+										});
+									} else if (exit === "next-column") {
+										store.selectCell({
+											row: rowIndex,
+											column: Math.min(
+												columnIndex + 1,
+												store.document.columns.length - 1,
+											),
+										});
+									} else if (exit === "previous-column") {
+										store.selectCell({
+											row: rowIndex,
+											column: Math.max(columnIndex - 1, 0),
+										});
+									}
+								}}
+							/>
+						) : (
+							<span
+								className={cn(
+									"block leading-content-line-box",
+									wrapped
+										? "min-h-grid-row whitespace-pre-wrap break-words"
+										: "h-content-line-box overflow-hidden whitespace-pre",
+								)}
+							>
+								{value}
+							</span>
+						)}
+					</td>
+				);
+			})}
+		</tr>
+	);
+});
 
 // One cell of the column index strip. It carries the column's positional
 // letter, which for an unnamed column is the only identity it has, and it owns
