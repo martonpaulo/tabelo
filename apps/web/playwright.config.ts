@@ -34,7 +34,10 @@ export default defineConfig({
 	// A shard past ten red tests is reporting one broken thing many times, not
 	// ten findings. Stop there rather than paying for the rest of the suite.
 	maxFailures: process.env.CI ? 10 : 0,
-	workers: process.env.CI ? 1 : localWorkers,
+	// A hosted runner has four cores and ran this suite one test at a time,
+	// which is the scaffold's starting value rather than a measured one. Two is
+	// what Playwright documents for CI: https://playwright.dev/docs/test-parallel
+	workers: process.env.CI ? 2 : localWorkers,
 	reporter: process.env.CI ? [["line"], ["blob"]] : "list",
 	outputDir: "test-results",
 	use: {
