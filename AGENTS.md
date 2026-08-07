@@ -148,7 +148,7 @@ vocabulary and `docs/adr/` for the reasoning.
 Use the scaffolded versions unless a task explicitly requires an upgrade.
 
 - React 19, TypeScript in strict mode, Vite
-- TanStack Router with file-based routing, SPA only
+- No router: one page, mounted directly, SPA only. See `docs/adr/0007`
 - Tailwind CSS v4
 - shadcn/ui on Base UI primitives, in `@tabelo/ui`
 - CodeMirror 6 for every source view, lazily loaded
@@ -171,6 +171,8 @@ Do not add without an explicit, demonstrated need:
 - a headless table or drag-and-drop library: both were considered and rejected
   in `docs/adr/0004`; reopening that needs a reason, not a preference
 - a CRDT or collaboration layer
+- a router: removed in `docs/adr/0007` once the product settled on one page, so
+  adding one back means naming the second page it serves
 - React Query, Axios, or Redux
 - a second component library, state library, validation library, or formatter
 - an animation library, CSS-in-JS, or Storybook

@@ -26,7 +26,6 @@
 		"@tabelo/env": "workspace:*",
 		"@tabelo/ui": "workspace:*",
 		"@tailwindcss/vite": "^4.3.2",
-		"@tanstack/react-router": "^1.170.17",
 		"dotenv": "catalog:",
 		"lucide-react": "catalog:",
 		"papaparse": "^5.5.4",
@@ -39,7 +38,6 @@
 	"devDependencies": {
 		"@playwright/test": "^1.62.0",
 		"@tabelo/config": "workspace:*",
-		"@tanstack/router-plugin": "^1.168.19",
 		"@types/node": "catalog:",
 		"@types/papaparse": "^5.5.2",
 		"@types/react": "catalog:",
