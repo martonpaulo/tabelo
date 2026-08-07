@@ -388,10 +388,3 @@ export const recordsCodec: TableCodec = {
 	sniffPriority: 25,
 	canSniff: canSniffRecords,
 };
-
-export {
-	escapeHeader as escapeRecordsHeader,
-	escapeValue as escapeRecordsValue,
-	unescapeHeader as unescapeRecordsHeader,
-	unescapeValue as unescapeRecordsValue,
-};

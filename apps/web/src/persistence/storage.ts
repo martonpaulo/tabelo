@@ -89,11 +89,3 @@ export function preserveUnreadableAndSave(
 	}
 	return { ...saveState(state), recoveryPreserved: true };
 }
-
-export function clearState(): void {
-	try {
-		window.localStorage.removeItem(STORAGE_KEY);
-	} catch {
-		// Nothing to recover from: the document stays in memory either way.
-	}
-}

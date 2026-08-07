@@ -31,14 +31,6 @@ export function createEmptyDocument(
 	return { columns, rows };
 }
 
-export function getCell(
-	document: TableDocument,
-	rowId: string,
-	columnId: ColumnId,
-): string {
-	return document.rows.find((row) => row.id === rowId)?.cells[columnId] ?? "";
-}
-
 // True when the document holds no content at all: only blank cells. Nothing
 // generates header names any more, so a header that reads "Column 1" is text
 // the user typed and the document is not blank. That closes the trap where

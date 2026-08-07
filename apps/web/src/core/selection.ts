@@ -73,18 +73,6 @@ export function activeRange(selection: GridSelection): SelectionRange {
 	);
 }
 
-// The focused cell: where the keyboard is, and what the next arrow key moves.
-export function selectionFocus(selection: GridSelection): CellPosition {
-	return activeRange(selection).focus;
-}
-
-// Which axis the selection acts on. The active region decides, so a selection
-// built entirely from column clicks answers "column" exactly as one built from
-// a single click always has.
-export function selectionMode(selection: GridSelection): SelectionMode {
-	return activeRange(selection).mode;
-}
-
 // Whether the selection is one continuous region. Operations that need a single
 // insertion point or a single origin ask this before running.
 export function isContiguous(selection: GridSelection): boolean {
