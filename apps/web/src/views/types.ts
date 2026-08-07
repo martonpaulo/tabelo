@@ -54,10 +54,6 @@ export interface ViewDefinition {
 	readonly loading: "eager" | "lazy";
 }
 
-export function isSourceView(view: ViewDefinition): boolean {
-	return view.kind === "source";
-}
-
 // Read-only is a property of the view, not of the codec: the rendered preview
 // borrows the HTML codec but never writes back through it.
 export function canParse(view: ViewDefinition): boolean {

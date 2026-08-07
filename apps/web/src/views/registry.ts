@@ -179,7 +179,3 @@ export function getView(id: ViewId): ViewDefinition {
 export function listViews(): readonly ViewDefinition[] {
 	return viewOrder.map((id) => registry[id]);
 }
-
-export function isViewId(value: unknown): value is ViewId {
-	return typeof value === "string" && value in registry;
-}

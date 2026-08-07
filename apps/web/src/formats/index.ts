@@ -107,16 +107,10 @@ export function outputOptionsFor(
 
 export type {
 	CodecId,
-	MatrixParseResult,
-	OutputOptionId,
 	OutputOptions,
-	ParsedTable,
-	ParseIssue,
-	ParseResult,
 	PreconditionFailure,
 	TableCodec,
 } from "./types";
-export { defaultOutputOptions } from "./types";
 export {
 	csvCodec,
 	htmlCodec,

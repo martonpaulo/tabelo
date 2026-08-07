@@ -2,7 +2,6 @@ import { create } from "zustand";
 import type { ClipboardPayload } from "@/clipboard/parse";
 import {
 	createEmptyDocument,
-	documentToMatrix,
 	isDocumentBlank,
 	reconcileDocument,
 } from "@/core/document";
@@ -1353,5 +1352,3 @@ export function startAutosave(): () => void {
 		}
 	};
 }
-
-export { documentToMatrix };

@@ -11,5 +11,3 @@ export const csvCodec = createDelimitedCodec({
 	sniffDelimiter: true,
 	outputOptions: ["includeHeader"],
 });
-
-export { parseDelimitedMatrix as parseCsvMatrix } from "./delimited";
