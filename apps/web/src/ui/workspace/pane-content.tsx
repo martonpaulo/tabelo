@@ -48,13 +48,12 @@ export function PaneContent({ paneId, view, zoom, wrap }: PaneContentProps) {
 			{view.kind === "preview" ? (
 				<HtmlPreview />
 			) : (
-				<SourceView
-					key={view.id}
-					paneId={paneId}
-					viewId={view.id}
-					zoom={zoom}
-					wrap={wrap}
-				/>
+				// Deliberately unkeyed: one source view replaces another in place, so
+				// the editor is reconfigured rather than torn down and rebuilt. A key
+				// here would remount CodeMirror on every view change, which flashes an
+				// empty editor for a frame and discards the caret and the local undo
+				// history with it.
+				<SourceView paneId={paneId} viewId={view.id} zoom={zoom} wrap={wrap} />
 			)}
 		</Suspense>
 	);

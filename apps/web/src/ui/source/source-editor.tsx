@@ -37,11 +37,12 @@ import {
 	notifyLocalHistoryChanged,
 	registerLocalHistory,
 } from "@/history/coordinator";
-import type { HighlightLanguage } from "@/views/types";
+import type { HighlightLanguage, ViewId } from "@/views/types";
 import { csvLanguage } from "./csv-language";
 import { syntaxTheme } from "./editor-theme";
 import { htmlLanguage } from "./html-language";
 import { jiraLanguage } from "./jira-language";
+import { minimalChange } from "./minimal-change";
 import { recordsLanguage } from "./records-language";
 
 // Marks a transaction as coming from synchronization rather than the user.
@@ -54,6 +55,7 @@ const editableCompartment = new Compartment();
 const diagnosticsCompartment = new Compartment();
 const headerLineCompartment = new Compartment();
 const attributesCompartment = new Compartment();
+const historyCompartment = new Compartment();
 const metricsCompartment = new Compartment();
 const wrapCompartment = new Compartment();
 
@@ -264,31 +266,12 @@ function languageFor(language: HighlightLanguage) {
 	}
 }
 
-// Replaces only what actually changed, so an external update does not blow the
-// cursor to the end of the document. Shared prefix and suffix are preserved.
-function minimalChange(current: string, next: string) {
-	if (current === next) return null;
-
-	let start = 0;
-	const max = Math.min(current.length, next.length);
-	while (start < max && current[start] === next[start]) start += 1;
-
-	let endCurrent = current.length;
-	let endNext = next.length;
-	while (
-		endCurrent > start &&
-		endNext > start &&
-		current[endCurrent - 1] === next[endNext - 1]
-	) {
-		endCurrent -= 1;
-		endNext -= 1;
-	}
-
-	return { from: start, to: endCurrent, insert: next.slice(start, endNext) };
-}
-
 interface SourceEditorProps {
 	readonly paneId: string;
+	// Which view this editor is currently serving. The editor outlives a view
+	// change, so this is what tells it that its text has started meaning
+	// something else.
+	readonly viewId: ViewId;
 	readonly zoom: number;
 	readonly wrap: boolean;
 	readonly value: string;
@@ -309,6 +292,7 @@ interface SourceEditorProps {
 
 export function SourceEditor({
 	paneId,
+	viewId,
 	zoom,
 	wrap,
 	value,
@@ -346,7 +330,7 @@ export function SourceEditor({
 				doc: value,
 				extensions: [
 					lineNumbers(),
-					history(),
+					historyCompartment.of(history()),
 					drawSelection(),
 					highlightActiveLine(),
 					highlightActiveLineGutter(),
@@ -476,6 +460,22 @@ export function SourceEditor({
 			effects: metricsCompartment.reconfigure(metricsSignal(zoom)),
 		});
 	}, [zoom]);
+
+	// A view change reuses this editor, so its local history would otherwise
+	// still describe text in the format the pane has left. Undo has to stop at
+	// the switch and fall through to the document timeline from there, per
+	// docs/adr/0003. Dropping the history field and adding it back is what clears
+	// it: reconfiguring a compartment that keeps the field keeps its contents
+	// too, so this has to be two transactions rather than one.
+	const servedViewId = useRef(viewId);
+	useEffect(() => {
+		if (servedViewId.current === viewId) return;
+		servedViewId.current = viewId;
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({ effects: historyCompartment.reconfigure([]) });
+		view.dispatch({ effects: historyCompartment.reconfigure(history()) });
+	}, [viewId]);
 
 	// Reconfigure the existing editor rather than remounting it. This keeps the
 	// caret, selection, draft, and CodeMirror-local undo history intact.

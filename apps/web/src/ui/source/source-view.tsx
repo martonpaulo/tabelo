@@ -72,6 +72,7 @@ export default function SourceView({
 			</p>
 			<SourceEditor
 				paneId={paneId}
+				viewId={viewId}
 				zoom={zoom}
 				wrap={wrap}
 				value={draft?.text ?? projected.text}
