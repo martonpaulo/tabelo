@@ -86,24 +86,27 @@ function ClipboardSourceEdge({ top, right, bottom, left }: ClipboardEdges) {
 	);
 }
 
-// The copied areas narrowed to one cell, or nothing when the cell is outside
-// every one of them. The first area containing the cell decides its edges:
-// separate areas never share a cell, so that is the only one, and two that did
-// overlap still each read as an outline of their own.
+// One cell's edges on the boundary of the copied region, or nothing when the
+// cell is not copied at all. A side is drawn only when the cell across it is
+// not copied too, so the mark reads as one outline rather than a grid of
+// dashes: that is the contract, and it is why this asks about neighbours
+// instead of comparing the cell against one area's own edges.
+//
+// Areas may overlap or sit side by side, and both cases are the reason. Asking
+// each area separately would draw its own border through the middle of the
+// region the clipboard actually holds; asking the neighbours gives one outline
+// around whatever shape the areas add up to, in every arrangement.
 function clipboardEdgesAt(
-	ranges: readonly CellRect[],
+	copied: (row: number, column: number) => boolean,
 	row: number,
 	column: number,
 ): ClipboardEdges | null {
-	const range = ranges.find((candidate) =>
-		rectContains(candidate, row, column),
-	);
-	if (!range) return null;
+	if (!copied(row, column)) return null;
 	return {
-		top: row === range.top,
-		right: column === range.right,
-		bottom: row === range.bottom,
-		left: column === range.left,
+		top: !copied(row - 1, column),
+		right: !copied(row, column + 1),
+		bottom: !copied(row + 1, column),
+		left: !copied(row, column - 1),
 	};
 }
 
@@ -156,36 +159,15 @@ function coveredBySpans(spans: string, column: number): boolean {
 	});
 }
 
-// The same encoding for the copied areas, carrying two more fields: whether
-// this row owns each area's top or bottom edge. The copied areas outlive the
-// selection, so a row outside them has to keep a prop that does not change.
-function copiedSpansOf(rects: readonly CellRect[], row: number): string {
-	return rects
-		.filter((rect) => row >= rect.top && row <= rect.bottom)
-		.map(
-			(rect) =>
-				`${rect.left}:${rect.right}:${row === rect.top ? 1 : 0}:${row === rect.bottom ? 1 : 0}`,
-		)
-		.join(",");
-}
-
-function copiedEdgesInSpans(
-	spans: string,
+// Whether a rect list covers one cell. The header cells ask this directly; a
+// data row asks it of the three span strings it was given, because it cannot
+// see the rects from behind the memo boundary.
+function coveredByRects(
+	rects: readonly CellRect[],
+	row: number,
 	column: number,
-): ClipboardEdges | null {
-	if (spans === "") return null;
-	for (const span of spans.split(",")) {
-		const [left, right, top, bottom] = span.split(":").map(Number);
-		if (left === undefined || right === undefined) continue;
-		if (column < left || column > right) continue;
-		return {
-			top: top === 1,
-			right: column === right,
-			bottom: bottom === 1,
-			left: column === left,
-		};
-	}
-	return null;
+): boolean {
+	return rects.some((rect) => rectContains(rect, row, column));
 }
 
 // The next cell in reading order, or nothing when there is none. This is how
@@ -216,6 +198,8 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const editingSeed = useTabeloStore((state) => state.editingSeed);
 	const editingHeader = useTabeloStore((state) => state.editingHeader);
 	const copiedRanges = useTabeloStore((state) => state.copiedRanges);
+	const copiedAt = (row: number, column: number) =>
+		coveredByRects(copiedRanges, row, column);
 	const wrappedColumns = useTabeloStore(
 		(state) => state.workspace.wrappedColumns,
 	);
@@ -711,7 +695,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									rectContains(candidate, HEADER_ROW, columnIndex),
 								)}
 								copiedEdges={clipboardEdgesAt(
-									copiedRanges,
+									copiedAt,
 									HEADER_ROW,
 									columnIndex,
 								)}
@@ -740,10 +724,17 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							focused={focus.row === rowIndex}
 							focusColumn={focus.row === rowIndex ? focus.column : NO_COLUMN}
 							selectedSpans={spansOf(rects, rowIndex)}
-							// Narrowed for the same reason, and to a primitive for the
+							// Narrowed for the same reason, and to primitives for the
 							// same reason: the copied areas outlive the selection, so a
 							// row outside them must keep props that do not change.
-							copiedSpans={copiedSpansOf(copiedRanges, rowIndex)}
+							//
+							// Three rows' worth, because a cell's top and bottom edges
+							// come from whether the cell above or below it is copied
+							// too, and a row cannot see its neighbours from behind the
+							// memo boundary.
+							copiedSpans={spansOf(copiedRanges, rowIndex)}
+							copiedSpansAbove={spansOf(copiedRanges, rowIndex - 1)}
+							copiedSpansBelow={spansOf(copiedRanges, rowIndex + 1)}
 							editingColumn={
 								editing?.row === rowIndex ? editing.column : NO_COLUMN
 							}
@@ -787,10 +778,13 @@ interface DataRowProps {
 	// than an array because it has to compare by value at the memo boundary, and
 	// a row can sit inside several areas at once.
 	readonly selectedSpans: string;
-	// This row's share of the copied areas, as "left:right:top:bottom" per area,
-	// where the last two say whether this row owns that area's top or bottom
-	// edge. One primitive for the same reason as the line above.
+	// The copied areas in the same encoding, for this row and for the two either
+	// side of it. Primitives for the same reason as the line above, and three of
+	// them because a cell's top and bottom edges are drawn from whether its
+	// neighbour there is copied too, which this row cannot see for itself.
 	readonly copiedSpans: string;
+	readonly copiedSpansAbove: string;
+	readonly copiedSpansBelow: string;
 	readonly editingColumn: number;
 	// The character that opened the editor, when typing is what opened it.
 	readonly editingSeed: string | null;
@@ -808,6 +802,8 @@ const DataRow = memo(function DataRow({
 	focusColumn,
 	selectedSpans,
 	copiedSpans,
+	copiedSpansAbove,
+	copiedSpansBelow,
 	editingColumn,
 	editingSeed,
 	wrappedColumns,
@@ -818,6 +814,15 @@ const DataRow = memo(function DataRow({
 	// HeaderCell, and preserving today's behaviour of every row reacting
 	// together when pane entry changes.
 	const entered = usePaneEntered();
+
+	// The copied region as far as this row can see it, which is exactly as far
+	// as the edge rule ever asks: the cell itself and its four neighbours.
+	const copiedAt = (row: number, column: number) => {
+		if (row === rowIndex) return coveredBySpans(copiedSpans, column);
+		if (row === rowIndex - 1) return coveredBySpans(copiedSpansAbove, column);
+		if (row === rowIndex + 1) return coveredBySpans(copiedSpansBelow, column);
+		return false;
+	};
 
 	return (
 		// Explicit despite looking redundant: with role="grid" on the
@@ -882,7 +887,7 @@ const DataRow = memo(function DataRow({
 			{columns.map((column, columnIndex) => {
 				const isFocus = columnIndex === focusColumn;
 				const inSelection = coveredBySpans(selectedSpans, columnIndex);
-				const copiedEdges = copiedEdgesInSpans(copiedSpans, columnIndex);
+				const copiedEdges = clipboardEdgesAt(copiedAt, rowIndex, columnIndex);
 				const value = row.cells[column.id] ?? "";
 				const isEditing = columnIndex === editingColumn;
 				const wrapped = wrappedColumns.includes(column.id);
