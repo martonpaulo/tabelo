@@ -45,10 +45,7 @@ describes the migration and its downstream effects.
   version. No version number, tag, or release name ever appears anywhere in
   the product. The `0.0.0` in workspace manifests is a package-manager
   placeholder, not a product version, and is never bumped as if it were a
-  release. Exception, decided in #94: the app may show the current build's
-  timestamp and a short, build-time-generated list of recent user-facing
-  changes. That list is generated from commit history, never hand-authored,
-  so there is still no `CHANGELOG.md`, no tags, and no release process
+  release. There is no `CHANGELOG.md`, no tags, and no release process
 - Branch naming: `type/agent/issue-number/short-description`. `type` is one of
   `feature`, `hotfix`, `fix`, `chore`, `docs`, `refactor`, `test`. `agent` is
   the acting coding agent (for example `claude`, `codex`), or `perso` for
