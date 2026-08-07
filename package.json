@@ -26,11 +26,6 @@
 		"prepare": "husky",
 		"postinstall": "node apps/web/write-launch-config.js"
 	},
-	"dependencies": {
-		"@tabelo/env": "workspace:*",
-		"dotenv": "catalog:",
-		"zod": "catalog:"
-	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.2",
 		"@tabelo/config": "workspace:*",
