@@ -153,3 +153,66 @@ test("a document with no rows shows a written empty state", async ({
 	await expect(pane.locator('[data-slot="preview-empty"]')).toBeVisible();
 	await expect(previewTable(pane)).toHaveCount(0);
 });
+
+// The preview leaves out structure the reader cannot act on. The two rules
+// below are the ones that decide what survives, and the header text is the
+// document's own data rather than product copy, so naming it here asserts a
+// technical contract rather than editorial wording.
+
+test("a column with no value in any row is left out", async ({ tabelo }) => {
+	await tabelo.paste("Name\tCity\tNotes\nIngrid\tRio\t\nPaulo\tMadrid\t");
+	const table = previewTable(await openPreview(tabelo));
+
+	await expect(table.getByRole("columnheader")).toHaveText(["Name", "City"]);
+	await expect(table.locator("tbody tr")).toHaveCount(2);
+});
+
+// Emptiness is judged on cell values, so headers alone do not make a table
+// count as filled in. A table nobody has typed into yet is a different case
+// from one whose rows and columns are each individually empty: it keeps its
+// blank shape rather than collapsing to nothing.
+const valuelessDocument = JSON.stringify({
+	version: 4,
+	document: {
+		columns: [
+			{ id: "column-name", header: "Name", align: "default" },
+			{ id: "column-city", header: "City", align: "default" },
+		],
+		rows: [
+			{ id: "row-one", cells: { "column-name": "", "column-city": "" } },
+			{ id: "row-two", cells: { "column-name": "", "column-city": "" } },
+		],
+	},
+	workspace: {
+		layout: "single",
+		panes: [
+			{
+				id: "pane-preview",
+				view: "html-preview",
+				slots: ["a", "b", "c", "d"],
+				zoom: 1,
+				wrap: false,
+			},
+		],
+		wrappedColumns: [],
+		columnRatio: 0.5,
+		rowRatio: 0.5,
+		activePaneId: "pane-preview",
+	},
+	draft: null,
+});
+
+test("a table with headers but no values keeps its blank shape", async ({
+	page,
+}) => {
+	await page.addInitScript((value) => {
+		window.localStorage.setItem("tabelo.document", value);
+	}, valuelessDocument);
+	const tabelo = new TabeloPage(page);
+	await page.goto("/");
+	await tabelo.workspace.waitFor({ state: "visible" });
+
+	const table = previewTable(tabelo.pane("html-preview"));
+	await expect(table.getByRole("columnheader")).toHaveCount(2);
+	await expect(table.locator("tbody tr")).toHaveCount(2);
+});
