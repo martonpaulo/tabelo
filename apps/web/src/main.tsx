@@ -1,23 +1,20 @@
-import { createRouter, Navigate, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
+import "@/index.css";
+import { TabeloApp } from "@/ui/tabelo-app";
 
-import Loader from "./components/loader";
-import { routeTree } from "./routeTree.gen";
+// GitHub Pages has no SPA rewrite rule, so the deploy workflow serves
+// index.html as 404.html. That gets a deep link here, but leaves the deep path
+// in the address bar. BASE_URL is the canonical path the build was made for,
+// and replaceState normalizes to it without leaving the deep path behind in
+// the session history.
+const canonicalPath = import.meta.env.BASE_URL;
 
-const router = createRouter({
-	routeTree,
-	basepath: import.meta.env.BASE_URL,
-	defaultPreload: "intent",
-	scrollRestoration: true,
-	defaultPendingComponent: () => <Loader />,
-	defaultNotFoundComponent: () => <Navigate to="/" replace />,
-	context: {},
-});
-
-declare module "@tanstack/react-router" {
-	interface Register {
-		router: typeof router;
-	}
+if (window.location.pathname !== canonicalPath) {
+	window.history.replaceState(
+		null,
+		"",
+		`${canonicalPath}${window.location.search}${window.location.hash}`,
+	);
 }
 
 const rootElement = document.getElementById("app");
@@ -28,5 +25,9 @@ if (!rootElement) {
 
 if (!rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);
-	root.render(<RouterProvider router={router} />);
+	root.render(
+		<div className="h-full">
+			<TabeloApp />
+		</div>,
+	);
 }

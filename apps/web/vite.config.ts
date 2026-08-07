@@ -1,5 +1,4 @@
 import tailwindcss from "@tailwindcss/vite";
-import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -25,6 +24,14 @@ export default defineConfig({
 						{
 							name: "codemirror-core",
 							test: /node_modules[\\/]@codemirror[\\/](?:commands|language|state|view)[\\/]/,
+						},
+						// The route-level split the router plugin used to provide went
+						// with the router, leaving every eager module in one chunk.
+						// React changes on its own schedule and far less often than the
+						// application, so it is the boundary worth keeping by hand.
+						{
+							name: "react",
+							test: /node_modules[\\/](?:react-dom|react|scheduler)[\\/]/,
 						},
 					],
 				},
@@ -56,10 +63,6 @@ export default defineConfig({
 					.replace("__TABELO_PRODUCT_METADATA__", productMetadata),
 		},
 		tailwindcss(),
-		tanstackRouter({
-			target: "react",
-			autoCodeSplitting: true,
-		}),
 		react(),
 		VitePWA({
 			// The React virtual module owns registration so update availability can
