@@ -25,6 +25,7 @@ import {
 } from "@/core/operations";
 import {
 	type CellPosition,
+	type CellRect,
 	clampSelection,
 	createSelection,
 	type GridSelection,
@@ -145,6 +146,15 @@ export interface TabeloState {
 	editing: CellPosition | null;
 	editingSeed: string | null;
 	editingHeader: number | null;
+	// The range the clipboard was last filled from, so the grid can keep showing
+	// what a paste would carry after the selection has moved to the destination.
+	// Stored rather than derived precisely because the selection leaves it
+	// behind, and snapshotted once at copy time from the selection's own
+	// coordinate space, header row included.
+	//
+	// Transient by construction: it is never a history step, never persisted,
+	// and never document state. A copy is not an edit.
+	copiedRange: CellRect | null;
 
 	storageIssue: StorageIssue | null;
 	// Messages waiting to be read, oldest first. A queue rather than one slot:
@@ -186,6 +196,8 @@ export interface TabeloState {
 	extendSelection: (position: CellPosition) => void;
 	setEditing: (position: CellPosition | null, seed?: string) => void;
 	setEditingHeader: (index: number | null, seed?: string) => void;
+	markCopiedRange: () => void;
+	clearCopiedRange: () => void;
 
 	editCell: (row: number, column: number, value: string) => void;
 	editHeader: (column: number, value: string) => void;
@@ -378,6 +390,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editing: null,
 	editingSeed: null,
 	editingHeader: null,
+	copiedRange: null,
 
 	storageIssue: null,
 	notices: [],
@@ -458,6 +471,12 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			inputError: null,
 			headerCorrection: null,
 			pendingPaneAction: null,
+			// A changed document is a changed meaning for the copied rectangle: an
+			// insert, a move, or a delete leaves those coordinates describing cells
+			// the clipboard never held. The mark is dropped rather than
+			// reconciled, which is also what a paste needs, since a paste is one of
+			// these changes.
+			copiedRange: null,
 			selection: clampSelection(
 				state.selection,
 				next.rows.length,
@@ -550,6 +569,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			headerCorrection: null,
 			inputError: null,
 			pendingPaneAction: null,
+			copiedRange: null,
 			selection: clampSelection(
 				current.selection,
 				document.rows.length,
@@ -810,6 +830,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				headerCorrection: null,
 				inputError: null,
 				pendingPaneAction: null,
+				copiedRange: null,
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -833,6 +854,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				headerCorrection: null,
 				inputError: null,
 				pendingPaneAction: null,
+				copiedRange: null,
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -869,6 +891,12 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			editingSeed: index === null ? null : (seed ?? null),
 			editing: null,
 		}),
+
+	// Taken from the selection at the moment of the copy, because that is the
+	// only moment the two agree. Everything after it moves the selection away.
+	markCopiedRange: () => set({ copiedRange: currentRect(get()) }),
+
+	clearCopiedRange: () => set({ copiedRange: null }),
 
 	editCell: (row, column, value) =>
 		get().applyDocument(setCell(get().document, row, column, value)),

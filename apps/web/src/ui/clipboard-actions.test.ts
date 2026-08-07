@@ -190,3 +190,85 @@ describe("cutting", () => {
 		);
 	});
 });
+
+describe("the copied range", () => {
+	function action(id: string): () => void {
+		const found = buildTableActions({ axis: "cell" })
+			.flatMap((group) => group.actions)
+			.find((candidate) => candidate.id === id);
+		expect(found).toBeDefined();
+		return found?.run ?? (() => {});
+	}
+
+	beforeEach(() => {
+		useTabeloStore.setState({
+			document: documentFromMatrix(
+				[
+					["Name", "Role"],
+					["Ingrid", "Designer"],
+					["Paulo", "Engineer"],
+				],
+				{ headerRow: true },
+			),
+			selection: createSelection({ row: 0, column: 0 }),
+		});
+	});
+
+	it("marks what a menu copy took", async () => {
+		action("copy")();
+
+		await vi.waitFor(() =>
+			expect(useTabeloStore.getState().copiedRange).toEqual({
+				top: 0,
+				left: 0,
+				bottom: 0,
+				right: 0,
+			}),
+		);
+	});
+
+	// Tabelo's cut empties the cells now rather than on paste, so a mark would
+	// outline blank cells and promise a move that never arrives.
+	it("is never left behind by a cut, and an earlier one is dropped", async () => {
+		action("copy")();
+		await vi.waitFor(() =>
+			expect(useTabeloStore.getState().copiedRange).not.toBeNull(),
+		);
+
+		action("cut")();
+
+		await vi.waitFor(() =>
+			expect(useTabeloStore.getState().copiedRange).toBeNull(),
+		);
+	});
+
+	// Nothing reached the clipboard, so the previous mark still describes what
+	// is on it.
+	it("survives a refused copy, which changed nothing", async () => {
+		action("copy")();
+		await vi.waitFor(() =>
+			expect(useTabeloStore.getState().copiedRange).not.toBeNull(),
+		);
+		const marked = useTabeloStore.getState().copiedRange;
+		writeClipboardTable.mockResolvedValue(refused);
+		useTabeloStore.getState().selectCell({ row: 1, column: 1 });
+
+		action("copy")();
+
+		await vi.waitFor(() => expect(severity()).toBe("error"));
+		expect(useTabeloStore.getState().copiedRange).toBe(marked);
+	});
+
+	// The clipboard now holds a pane's text, so the grid mark would point at
+	// cells that copy did not take.
+	it("is dropped when a source or preview copy replaces the clipboard", async () => {
+		action("copy")();
+		await vi.waitFor(() =>
+			expect(useTabeloStore.getState().copiedRange).not.toBeNull(),
+		);
+
+		await copyToClipboard({ text: "| Name |" }, "source");
+
+		expect(useTabeloStore.getState().copiedRange).toBeNull();
+	});
+});
