@@ -4,6 +4,7 @@ import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import {
 	type CellPosition,
+	type CellRect,
 	HEADER_ROW,
 	rectContains,
 	selectionRect,
@@ -32,6 +33,66 @@ const alignClass: Record<Alignment, string> = {
 // below zero works, because a column index is never negative; naming it keeps
 // the row's props readable at the call site.
 const NO_COLUMN = -1;
+
+// Which sides of a cell lie on the boundary of the copied range. Only those are
+// drawn, so the range reads as one outline rather than a grid of dashes.
+interface ClipboardEdges {
+	readonly top: boolean;
+	readonly right: boolean;
+	readonly bottom: boolean;
+	readonly left: boolean;
+}
+
+// The mark showing which cells the clipboard was last filled from. It is drawn
+// by the cells themselves rather than by one floating rectangle over the table:
+// the cells already resolve per-pane zoom, column resizing, wrapped row
+// heights, and the two sticky chrome layers, and a measured overlay would have
+// to reproduce all four and keep them in step.
+//
+// Static, never animated. Grid geometry and cell selection do not animate, and
+// static status does not pulse: see docs/design-system.md §7. The dash pattern,
+// not the colour, is what distinguishes it from the solid focus outline, so the
+// mark does not depend on colour alone.
+function ClipboardSourceEdge({ top, right, bottom, left }: ClipboardEdges) {
+	return (
+		<span
+			aria-hidden
+			// The technical contract the browser suite reads: which cells carry the
+			// mark, and which of them own an edge of it. There is no ARIA state for
+			// "the clipboard came from here", and inventing one on a gridcell would
+			// replace the cell's name with it. See docs/design-system.md §9.
+			data-clipboard-source={
+				[top && "top", right && "right", bottom && "bottom", left && "left"]
+					.filter(Boolean)
+					.join(" ") || "inside"
+			}
+			className={cn(
+				// Preflight leaves every border at zero width, so naming the style
+				// once and then only the sides that exist draws exactly those sides.
+				"pointer-events-none absolute inset-0 z-10 border-selection-edge border-dashed",
+				top && "border-t-2",
+				right && "border-r-2",
+				bottom && "border-b-2",
+				left && "border-l-2",
+			)}
+		/>
+	);
+}
+
+// The copied range narrowed to one cell, or nothing when the cell is outside it.
+function clipboardEdgesAt(
+	range: CellRect | null,
+	row: number,
+	column: number,
+): ClipboardEdges | null {
+	if (!range || !rectContains(range, row, column)) return null;
+	return {
+		top: row === range.top,
+		right: column === range.right,
+		bottom: row === range.bottom,
+		left: column === range.left,
+	};
+}
 
 // Why a structural delete was refused. Keyed by the store's refusal so a new
 // reason cannot be added without a message to show for it.
@@ -68,6 +129,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const editing = useTabeloStore((state) => state.editing);
 	const editingSeed = useTabeloStore((state) => state.editingSeed);
 	const editingHeader = useTabeloStore((state) => state.editingHeader);
+	const copiedRange = useTabeloStore((state) => state.copiedRange);
 	const wrappedColumns = useTabeloStore(
 		(state) => state.workspace.wrappedColumns,
 	);
@@ -275,9 +337,17 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				beginEditing(selection.focus);
 				return;
 			case "Escape":
-				// Close the innermost thing first: if the selection spans multiple
-				// cells, collapse it. If it is already a single cell, let the event
-				// bubble so the pane frame can exit.
+				// Close the innermost thing first. The clipboard mark is the most
+				// transient thing on screen, so it goes before the selection
+				// collapses and long before the pane exits.
+				if (store.copiedRange) {
+					event.preventDefault();
+					store.clearCopiedRange();
+					return;
+				}
+				// If the selection spans multiple cells, collapse it. If it is
+				// already a single cell, let the event bubble so the pane frame can
+				// exit.
 				if (
 					selection.anchor.row !== selection.focus.row ||
 					selection.anchor.column !== selection.focus.column
@@ -367,10 +437,18 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				onCopy={(event) => {
 					if (useTabeloStore.getState().editing) return;
 					writeClipboard(event);
+					// The browser performs this write itself, so unlike the menu's
+					// permission-gated path there is no outcome to wait for.
+					useTabeloStore.getState().markCopiedRange();
 				}}
 				onCut={(event) => {
 					if (useTabeloStore.getState().editing) return;
 					writeClipboard(event);
+					// Cut takes the cells away now rather than on paste, so it marks
+					// nothing and drops whatever an earlier copy left. Stated here
+					// rather than left to the clear below, because clearing cells that
+					// are already empty changes no document and so clears no mark.
+					useTabeloStore.getState().clearCopiedRange();
 					useTabeloStore.getState().clearSelection();
 				}}
 				onPaste={(event) => {
@@ -494,6 +572,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								align={column.align}
 								wrapped={wrappedColumns.includes(column.id)}
 								selected={rectContains(rect, HEADER_ROW, columnIndex)}
+								copiedEdges={clipboardEdgesAt(
+									copiedRange,
+									HEADER_ROW,
+									columnIndex,
+								)}
 								focus={
 									selection.focus.row === HEADER_ROW &&
 									selection.focus.column === columnIndex
@@ -515,6 +598,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 						// reconciled away.
 						const withinSelection =
 							rowIndex >= rect.top && rowIndex <= rect.bottom;
+						// Narrowed for the same reason, and to primitives for the same
+						// reason: the copied range outlives the selection, so a row
+						// outside it must keep props that do not change.
+						const withinCopied =
+							copiedRange !== null &&
+							rowIndex >= copiedRange.top &&
+							rowIndex <= copiedRange.bottom;
 
 						return (
 							<DataRow
@@ -531,6 +621,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								}
 								selectedFrom={withinSelection ? rect.left : NO_COLUMN}
 								selectedTo={withinSelection ? rect.right : NO_COLUMN}
+								copiedFrom={
+									withinCopied && copiedRange ? copiedRange.left : NO_COLUMN
+								}
+								copiedTo={
+									withinCopied && copiedRange ? copiedRange.right : NO_COLUMN
+								}
+								copiedTopEdge={withinCopied && rowIndex === copiedRange?.top}
+								copiedBottomEdge={
+									withinCopied && rowIndex === copiedRange?.bottom
+								}
 								editingColumn={
 									editing?.row === rowIndex ? editing.column : NO_COLUMN
 								}
@@ -573,6 +673,12 @@ interface DataRowProps {
 	readonly focusColumn: number;
 	readonly selectedFrom: number;
 	readonly selectedTo: number;
+	// This row's share of the copied range, and whether it owns the range's top
+	// or bottom edge.
+	readonly copiedFrom: number;
+	readonly copiedTo: number;
+	readonly copiedTopEdge: boolean;
+	readonly copiedBottomEdge: boolean;
 	readonly editingColumn: number;
 	// The character that opened the editor, when typing is what opened it.
 	readonly editingSeed: string | null;
@@ -590,6 +696,10 @@ const DataRow = memo(function DataRow({
 	focusColumn,
 	selectedFrom,
 	selectedTo,
+	copiedFrom,
+	copiedTo,
+	copiedTopEdge,
+	copiedBottomEdge,
 	editingColumn,
 	editingSeed,
 	wrappedColumns,
@@ -670,6 +780,15 @@ const DataRow = memo(function DataRow({
 				const isFocus = columnIndex === focusColumn;
 				const inSelection =
 					columnIndex >= selectedFrom && columnIndex <= selectedTo;
+				const copiedEdges: ClipboardEdges | null =
+					columnIndex >= copiedFrom && columnIndex <= copiedTo
+						? {
+								top: copiedTopEdge,
+								right: columnIndex === copiedTo,
+								bottom: copiedBottomEdge,
+								left: columnIndex === copiedFrom,
+							}
+						: null;
 				const value = row.cells[column.id] ?? "";
 				const isEditing = columnIndex === editingColumn;
 				const wrapped = wrappedColumns.includes(column.id);
@@ -790,6 +909,7 @@ const DataRow = memo(function DataRow({
 								{value}
 							</span>
 						)}
+						{copiedEdges ? <ClipboardSourceEdge {...copiedEdges} /> : null}
 					</td>
 				);
 			})}
@@ -934,6 +1054,8 @@ interface HeaderCellProps {
 	readonly align: Alignment;
 	readonly wrapped: boolean;
 	readonly selected: boolean;
+	// A column selection reaches the header row, so a copied column marks it too.
+	readonly copiedEdges: ClipboardEdges | null;
 	readonly focus: boolean;
 	readonly editing: boolean;
 	// The character that opened the editor, when typing is what opened it.
@@ -946,6 +1068,7 @@ function HeaderCell({
 	align,
 	wrapped,
 	selected,
+	copiedEdges,
 	focus,
 	editing,
 	seed,
@@ -970,6 +1093,10 @@ function HeaderCell({
 			data-grid-active={focus ? "true" : undefined}
 			tabIndex={focus && entered ? 0 : -1}
 			className={cn(
+				// No `relative` here, even though the clipboard mark below is
+				// absolutely positioned: `sticky` is already the containing block it
+				// resolves against, and the later rule would win and turn the sticky
+				// offset into a static shift. Same rule as the column resize handle.
 				"sticky z-20 border-line-strong border-r border-b align-top",
 				"cursor-cell select-none px-2 font-semibold",
 				// Sticks below the index strip rather than at the very top, so the
@@ -1024,6 +1151,7 @@ function HeaderCell({
 					{header}
 				</span>
 			)}
+			{copiedEdges ? <ClipboardSourceEdge {...copiedEdges} /> : null}
 		</th>
 	);
 }

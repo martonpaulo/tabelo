@@ -50,6 +50,15 @@ export async function copyToClipboard(
 					message: copy.notices.clipboardWriteFailed(scope),
 				},
 	);
+
+	// Copying a pane's text replaces what a grid copy put on the clipboard, so
+	// the mark it left would point at cells this copy did not take. The
+	// selection scope is not decided here: both copy and cut arrive with it, and
+	// only the caller knows which one this is. A refused write changes nothing,
+	// so it leaves an existing mark alone rather than clearing it.
+	if (outcome.ok && scope !== "selection") {
+		useTabeloStore.getState().clearCopiedRange();
+	}
 	return outcome.ok;
 }
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
-import { createSelection } from "@/core/selection";
+import { createSelection, HEADER_ROW } from "@/core/selection";
 import { conditionNoticeIds } from "./notice-queue";
 import { useTabeloStore } from "./store";
 
@@ -295,5 +295,113 @@ describe("header correction", () => {
 
 		expect(useTabeloStore.getState().document).toBe(before);
 		expect(useTabeloStore.getState().headerCorrection).toBeNull();
+	});
+});
+
+describe("copied range", () => {
+	function twoByThree() {
+		return documentFromMatrix(
+			[
+				["Name", "Role", "City"],
+				["Ingrid", "Designer", "Rio"],
+				["Paulo", "Engineer", "Madrid"],
+			],
+			{ headerRow: true },
+		);
+	}
+
+	it("snapshots the selection at the moment of the copy", () => {
+		useTabeloStore.setState({
+			document: twoByThree(),
+			selection: {
+				anchor: { row: 0, column: 0 },
+				focus: { row: 1, column: 1 },
+				mode: "cell",
+			},
+		});
+
+		useTabeloStore.getState().markCopiedRange();
+
+		expect(useTabeloStore.getState().copiedRange).toEqual({
+			top: 0,
+			left: 0,
+			bottom: 1,
+			right: 1,
+		});
+	});
+
+	it("carries the header row when a whole column is copied", () => {
+		useTabeloStore.setState({
+			document: twoByThree(),
+			selection: createSelection({ row: HEADER_ROW, column: 1 }, "column"),
+		});
+
+		useTabeloStore.getState().markCopiedRange();
+
+		expect(useTabeloStore.getState().copiedRange?.top).toBe(HEADER_ROW);
+	});
+
+	it("outlives every selection change, which is the whole point of storing it", () => {
+		useTabeloStore.setState({ document: twoByThree() });
+		useTabeloStore.getState().markCopiedRange();
+		const marked = useTabeloStore.getState().copiedRange;
+
+		useTabeloStore.getState().selectCell({ row: 1, column: 2 });
+		useTabeloStore.getState().extendSelection({ row: 1, column: 2 });
+		useTabeloStore.getState().setSelection({
+			anchor: { row: 0, column: 0 },
+			focus: { row: 1, column: 1 },
+			mode: "cell",
+		});
+
+		expect(useTabeloStore.getState().copiedRange).toBe(marked);
+	});
+
+	it("is dropped by a document change, because the coordinates stop describing it", () => {
+		useTabeloStore.setState({ document: twoByThree() });
+		useTabeloStore.getState().markCopiedRange();
+
+		useTabeloStore.getState().editCell(1, 1, "Mabel");
+
+		expect(useTabeloStore.getState().copiedRange).toBeNull();
+	});
+
+	it("is dropped by undo and by redo", () => {
+		useTabeloStore.setState({ document: twoByThree() });
+		useTabeloStore.getState().editCell(1, 1, "Mabel");
+
+		useTabeloStore.getState().markCopiedRange();
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().copiedRange).toBeNull();
+
+		useTabeloStore.getState().markCopiedRange();
+		useTabeloStore.getState().redo();
+		expect(useTabeloStore.getState().copiedRange).toBeNull();
+	});
+
+	it("is dropped by a source commit", () => {
+		const paneId = useTabeloStore
+			.getState()
+			.workspace.panes.find((pane) => pane.view === "markdown")?.id;
+		expect(paneId).toBeDefined();
+		useTabeloStore.getState().markCopiedRange();
+
+		useTabeloStore
+			.getState()
+			.setDraft(paneId ?? "", "markdown", "| Name |\n| --- |\n| Ingrid |");
+
+		expect(useTabeloStore.getState().copiedRange).toBeNull();
+	});
+
+	it("never becomes a history step", () => {
+		useTabeloStore.setState({ document: twoByThree() });
+		const before = useTabeloStore.getState();
+
+		before.markCopiedRange();
+
+		const after = useTabeloStore.getState();
+		expect(after.document).toBe(before.document);
+		expect(after.past).toHaveLength(0);
+		expect(after.future).toHaveLength(0);
 	});
 });

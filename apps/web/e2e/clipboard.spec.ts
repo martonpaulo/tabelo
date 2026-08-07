@@ -1,7 +1,7 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
-import { faultyClipboard } from "./helpers";
+import { faultyClipboard, type TabeloPage } from "./helpers";
 
 // A refused clipboard is the case that used to look like a broken button.
 // Permission cannot be denied through Playwright, so the boundary itself is
@@ -160,4 +160,112 @@ test("a granted copy confirms what it did and keeps the rich flavour", async ({
 			() => (window as unknown as { __written: string[] }).__written,
 		),
 	).toEqual(["text/plain", "text/html"]);
+});
+
+// The mark showing where the clipboard was filled from. It is drawn by the
+// cells, so each one declares which edges of the range it owns; "inside" means
+// the cell is in the range but touches none of its sides.
+function mark(tabelo: TabeloPage, row: number, column: number): Locator {
+	return tabelo.cell(row, column).locator("[data-clipboard-source]");
+}
+
+async function copyRange(tabelo: TabeloPage): Promise<void> {
+	await tabelo.cell(2, 1).click();
+	await tabelo.cell(3, 2).click({ modifiers: ["Shift"] });
+	await tabelo.page.keyboard.press("ControlOrMeta+c");
+	await expect(mark(tabelo, 2, 1)).toBeVisible();
+}
+
+test("the copied range stays marked while the selection moves to the destination", async ({
+	page,
+	tabelo,
+}) => {
+	await copyRange(tabelo);
+
+	// Navigating away is the whole reason the mark exists: the selection has to
+	// go and find the paste destination.
+	await page.keyboard.press("ArrowDown");
+	await page.keyboard.press("ArrowRight");
+
+	// Only the sides that lie on the boundary are drawn, so the range reads as
+	// one outline rather than a grid of dashes.
+	await expect(mark(tabelo, 2, 1)).toHaveAttribute(
+		"data-clipboard-source",
+		"top left",
+	);
+	await expect(mark(tabelo, 2, 2)).toHaveAttribute(
+		"data-clipboard-source",
+		"top right",
+	);
+	await expect(mark(tabelo, 3, 1)).toHaveAttribute(
+		"data-clipboard-source",
+		"bottom left",
+	);
+	await expect(mark(tabelo, 3, 2)).toHaveAttribute(
+		"data-clipboard-source",
+		"right bottom",
+	);
+	// A cell outside the range carries no mark at all.
+	await expect(mark(tabelo, 1, 1)).toHaveCount(0);
+	await expect(mark(tabelo, 2, 3)).toHaveCount(0);
+});
+
+test("Escape clears the mark before it collapses the selection", async ({
+	page,
+	tabelo,
+}) => {
+	await copyRange(tabelo);
+
+	await page.keyboard.press("Escape");
+
+	await expect(mark(tabelo, 2, 1)).toHaveCount(0);
+	// The selection is still the two-by-two range: the innermost thing went
+	// first, and this press did not reach it.
+	await expect(tabelo.cell(3, 2)).toHaveAttribute("aria-selected", "true");
+});
+
+test("pasting clears the mark", async ({ page, tabelo }) => {
+	await copyRange(tabelo);
+	await page.keyboard.press("ArrowDown");
+
+	await tabelo.paste("Mabel");
+
+	await expect(mark(tabelo, 2, 1)).toHaveCount(0);
+});
+
+test("editing the table clears the mark, because the coordinates stop describing it", async ({
+	tabelo,
+}) => {
+	await copyRange(tabelo);
+
+	await tabelo.editCell(1, 3, "Felix");
+
+	await expect(mark(tabelo, 2, 1)).toHaveCount(0);
+});
+
+// Tabelo's cut empties the cells immediately rather than on paste, so there is
+// no pending move for a mark to describe.
+test("a cut leaves no mark, and drops the one an earlier copy left", async ({
+	page,
+	tabelo,
+}) => {
+	await copyRange(tabelo);
+
+	await page.keyboard.press("ControlOrMeta+x");
+
+	await expect(mark(tabelo, 2, 1)).toHaveCount(0);
+	await expect(mark(tabelo, 3, 2)).toHaveCount(0);
+});
+
+// A column selection reaches the header row, so copying one marks it too.
+test("copying a whole column marks its header cell", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.columnIndex(2).click();
+	await page.keyboard.press("ControlOrMeta+c");
+
+	await expect(
+		tabelo.header(2).locator("[data-clipboard-source]"),
+	).toHaveAttribute("data-clipboard-source", "top right left");
 });

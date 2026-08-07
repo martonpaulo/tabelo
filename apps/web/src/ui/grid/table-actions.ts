@@ -41,12 +41,26 @@ export interface TableActionGroup {
 	readonly actions: readonly TableAction[];
 }
 
-export async function copySelectionToClipboard(): Promise<boolean> {
+// The intent is passed rather than inferred, because copy and cut both send the
+// same payload under the same scope and only differ in what they leave behind.
+// Copy marks the range so the grid can keep showing where a paste would come
+// from; cut takes the cells away immediately, so it marks nothing and drops
+// whatever an earlier copy left. A refused write changes neither the clipboard
+// nor the table, so it leaves an existing mark alone.
+export async function copySelectionToClipboard(
+	intent: "copy" | "cut",
+): Promise<boolean> {
 	const matrix = useTabeloStore.getState().selectedMatrix();
-	return copyToClipboard(
+	const ok = await copyToClipboard(
 		{ text: matrixToTsv(matrix), html: matrixToHtml(matrix) },
 		"selection",
 	);
+	if (!ok) return false;
+
+	const store = useTabeloStore.getState();
+	if (intent === "cut") store.clearCopiedRange();
+	else store.markCopiedRange();
+	return true;
 }
 
 export interface TableActionContext {
@@ -129,7 +143,7 @@ export function buildTableActions(
 			label: copy.actions.copy,
 			icon: Copy,
 			shortcut: copy.shortcuts.copy,
-			run: () => void copySelectionToClipboard(),
+			run: () => void copySelectionToClipboard("copy"),
 		},
 		{
 			id: "cut",
@@ -137,7 +151,7 @@ export function buildTableActions(
 			icon: Scissors,
 			shortcut: copy.shortcuts.cut,
 			run: () => {
-				void copySelectionToClipboard().then((ok) => {
+				void copySelectionToClipboard("cut").then((ok) => {
 					if (ok) useTabeloStore.getState().clearSelection();
 				});
 			},

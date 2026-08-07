@@ -91,6 +91,23 @@ describe("autosave lifecycle", () => {
 		});
 	});
 
+	// A copy is not an edit, and the range it marked describes a moment rather
+	// than a document. Reopening the tab to a dashed outline around cells whose
+	// content is no longer on the system clipboard would be a lie.
+	it("never writes the copied range to storage", () => {
+		useTabeloStore.getState().markCopiedRange();
+		expect(useTabeloStore.getState().copiedRange).not.toBeNull();
+
+		expect(flushPersistence()).toEqual({ status: "saved" });
+
+		const raw = window.localStorage.getItem(STORAGE_KEY) ?? "";
+		expect(raw).not.toContain("copiedRange");
+
+		useTabeloStore.setState(initialState, true);
+		useTabeloStore.getState().hydrate();
+		expect(useTabeloStore.getState().copiedRange).toBeNull();
+	});
+
 	it("clears stale write errors after a verified successful write", () => {
 		useTabeloStore.setState({ storageIssue: { kind: "unavailable" } });
 
