@@ -202,10 +202,16 @@ depend on the core, never the reverse.
   sync-originated transactions never re-trigger a parse.
 - **History**: the document timeline and its interaction with the text editor's
   local history.
-- **Persistence**: one current, versioned `localStorage` schema with validation
-  on read and no migration chain. A corrupt or unsupported-version payload falls
-  back safely and is never coerced into the current shape. This current-schema
-  policy does not narrow the valid syntax accepted by import codecs.
+- **Persistence**: one current, versioned `localStorage` schema, plus an
+  explicit forward-only migration chain from every version that has shipped.
+  Each step transforms only what changed, validates its result with Zod, and
+  carries a stored fixture of the payload it migrates. A payload that fails to
+  migrate or to validate is preserved raw and reported, never coerced into the
+  current shape, and a version newer than the current one stays unreadable
+  rather than being guessed at. Shipping a schema change without its migration
+  step is data loss caused by the product, which priority 1 forbids. This
+  current-schema policy does not narrow the valid syntax accepted by import
+  codecs.
 - **Clipboard**: format sniffing for paste and payload construction for
   copy/cut, independent of both the grid and the text panel.
 - **Visual grid**: selection, focus, keyboard model, and rendering. Presentation
