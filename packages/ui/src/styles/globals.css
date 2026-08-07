@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* shadcn ships the custom variants (data-open, data-checked, ...) and
+   keyframes the vendored components rely on. It is a devDependency, resolved
+   only at build time, not a leftover from the CLI: do not remove it as dead. */
 @import "shadcn/tailwind.css";
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
