@@ -1,14 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
+import { e2eWorkers } from "./e2e-workers";
 import { previewServerPort } from "./worktree-ports";
 
 const serverUrl = `http://127.0.0.1:${previewServerPort}`;
-
-// Playwright computes its default worker count per process, with no awareness of
-// the other worktrees running their own suites on the same machine. Halving the
-// default halves the browser memory each run holds, which is what keeps three
-// parallel checkouts inside 8 GB. An agent that knows it is one of several can
-// drop further without editing this file.
-const localWorkers = process.env.TABELO_E2E_WORKERS ?? "25%";
 
 // Chromium owns the complete behavioural suite. Firefox repeats only contracts
 // where browser engines materially differ, so cross-browser confidence does not
@@ -37,7 +31,7 @@ export default defineConfig({
 	// A hosted runner has four cores and ran this suite one test at a time,
 	// which is the scaffold's starting value rather than a measured one. Two is
 	// what Playwright documents for CI: https://playwright.dev/docs/test-parallel
-	workers: process.env.CI ? 2 : localWorkers,
+	workers: process.env.CI ? 2 : e2eWorkers,
 	reporter: process.env.CI ? [["line"], ["blob"]] : "list",
 	outputDir: "test-results",
 	use: {
