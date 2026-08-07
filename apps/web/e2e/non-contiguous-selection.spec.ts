@@ -16,6 +16,12 @@ function rowHandle(tabelo: TabeloPage, row: number) {
 	return tabelo.rowIndex(row).getByRole("button").first();
 }
 
+// The mark showing where the clipboard was filled from. Each cell declares
+// which edges of the copied region it owns.
+function mark(tabelo: TabeloPage, row: number, column: number) {
+	return tabelo.cell(row, column).locator("[data-clipboard-source]");
+}
+
 async function columnSelected(
 	tabelo: TabeloPage,
 	column: number,
@@ -241,6 +247,58 @@ test("copying two separated columns produces a well-formed two-column table", as
 	await expect(tabelo.header(2)).toHaveText("role");
 	await expect(tabelo.grid().getByRole("columnheader")).toHaveCount(2);
 	await expect(tabelo.cell(1, 2)).toHaveText("Designer");
+});
+
+// The mark's contract is one outline around what the clipboard holds, not a
+// border around each area. These two pin the arrangements that only became
+// reachable once a selection could hold several areas.
+test("each separated copied area gets its own complete outline", async ({
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+
+	await columnHandle(tabelo, 1).click();
+	await columnHandle(tabelo, 3).click({ modifiers: [modifier] });
+	await tabelo.copy();
+
+	await expect(mark(tabelo, 1, 1)).toHaveAttribute(
+		"data-clipboard-source",
+		"right left",
+	);
+	await expect(mark(tabelo, 1, 3)).toHaveAttribute(
+		"data-clipboard-source",
+		"right left",
+	);
+	// The column between them was not copied and carries no mark at all.
+	await expect(mark(tabelo, 1, 2)).toHaveCount(0);
+});
+
+test("overlapping copied areas read as one outline, with no dashes through the middle", async ({
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+
+	// Two single cells first, so the column area added last does not absorb
+	// them: the result is a cell area overlapping a column area that covers it.
+	await tabelo.cell(2, 1).click();
+	await tabelo.cell(3, 1).click({ modifiers: [modifier] });
+	await columnHandle(tabelo, 1).click({ modifiers: [modifier] });
+	await tabelo.copy();
+
+	// The cell sits inside the column, so its own horizontal edges are interior
+	// and are not drawn. Asking each area separately would box it in here.
+	await expect(mark(tabelo, 2, 1)).toHaveAttribute(
+		"data-clipboard-source",
+		"right left",
+	);
+	// The outline still closes at the two ends of the column.
+	await expect(
+		tabelo.header(1).locator("[data-clipboard-source]"),
+	).toHaveAttribute("data-clipboard-source", "top right left");
+	await expect(mark(tabelo, 3, 1)).toHaveAttribute(
+		"data-clipboard-source",
+		"right bottom left",
+	);
 });
 
 test("pasting into several areas says why it did nothing", async ({
