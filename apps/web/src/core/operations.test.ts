@@ -148,7 +148,9 @@ describe("cell operations", () => {
 	});
 
 	it("clears a rectangle without touching its neighbours", () => {
-		const next = clearCells(sample(), { top: 0, bottom: 0, left: 0, right: 0 });
+		const next = clearCells(sample(), [
+			{ top: 0, bottom: 0, left: 0, right: 0 },
+		]);
 		expect(documentToMatrix(next)).toEqual([
 			["A", "B"],
 			["", "2"],
@@ -159,12 +161,9 @@ describe("cell operations", () => {
 	// The selection can cover the header row, so the operation behind Backspace
 	// has to reach it. Clearing a header leaves it empty; nothing renames it.
 	it("clears header text and cells together across the boundary", () => {
-		const next = clearCells(sample(), {
-			top: HEADER_ROW,
-			bottom: 0,
-			left: 0,
-			right: 0,
-		});
+		const next = clearCells(sample(), [
+			{ top: HEADER_ROW, bottom: 0, left: 0, right: 0 },
+		]);
 		expect(documentToMatrix(next)).toEqual([
 			["", "B"],
 			["", "2"],
@@ -173,12 +172,9 @@ describe("cell operations", () => {
 	});
 
 	it("clears the header row alone", () => {
-		const next = clearCells(sample(), {
-			top: HEADER_ROW,
-			bottom: HEADER_ROW,
-			left: 0,
-			right: 1,
-		});
+		const next = clearCells(sample(), [
+			{ top: HEADER_ROW, bottom: HEADER_ROW, left: 0, right: 1 },
+		]);
 		expect(documentToMatrix(next)).toEqual([
 			["", ""],
 			["1", "2"],
@@ -187,7 +183,9 @@ describe("cell operations", () => {
 	});
 
 	it("leaves the header alone when the rect starts below it", () => {
-		const next = clearCells(sample(), { top: 0, bottom: 1, left: 0, right: 1 });
+		const next = clearCells(sample(), [
+			{ top: 0, bottom: 1, left: 0, right: 1 },
+		]);
 		expect(documentToMatrix(next)).toEqual([
 			["A", "B"],
 			["", ""],
@@ -201,13 +199,43 @@ describe("cell operations", () => {
 			["1", "2"],
 		]);
 		expect(
-			clearCells(before, {
-				top: HEADER_ROW,
-				bottom: HEADER_ROW,
-				left: 0,
-				right: 1,
-			}),
+			clearCells(before, [
+				{ top: HEADER_ROW, bottom: HEADER_ROW, left: 0, right: 1 },
+			]),
 		).toBe(before);
+	});
+
+	// A selection made with the modifier holds several regions, and Backspace
+	// over it is one operation and one undo step.
+	it("clears several separate rectangles at once", () => {
+		const next = clearCells(
+			docOf([
+				["A", "B", "C"],
+				["1", "2", "3"],
+				["4", "5", "6"],
+			]),
+			[
+				{ top: HEADER_ROW, bottom: 1, left: 0, right: 0 },
+				{ top: HEADER_ROW, bottom: 1, left: 2, right: 2 },
+			],
+		);
+		expect(documentToMatrix(next)).toEqual([
+			["", "B", ""],
+			["", "2", ""],
+			["", "5", ""],
+		]);
+	});
+
+	it("clears a cell two regions both cover exactly once", () => {
+		const next = clearCells(sample(), [
+			{ top: 0, bottom: 0, left: 0, right: 1 },
+			{ top: 0, bottom: 1, left: 0, right: 0 },
+		]);
+		expect(documentToMatrix(next)).toEqual([
+			["A", "B"],
+			["", ""],
+			["", "4"],
+		]);
 	});
 });
 

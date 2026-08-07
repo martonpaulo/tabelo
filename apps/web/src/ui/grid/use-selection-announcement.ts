@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
-import { rectColumns, rectRows, selectionRect } from "@/core/selection";
+import {
+	type GridSelection,
+	isContiguous,
+	rectColumns,
+	rectRows,
+	selectionColumns,
+	selectionRect,
+	selectionRows,
+} from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
 
 // Holding Shift+Down should say the extent the user stopped at, not one
@@ -22,27 +30,58 @@ export function useSelectionAnnouncement(): string {
 	const rowCount = useTabeloStore((state) => state.document.rows.length);
 	const columnCount = useTabeloStore((state) => state.document.columns.length);
 
-	const rect = selectionRect(selection, rowCount, columnCount);
-	// The header row counts as a row here, because it is selectable and its
-	// cells are cleared by the same key. Wording that distinguishes it belongs
-	// to the copy pass in #78, not to this hook.
-	const rows = rectRows(rect).length;
-	const columns = rectColumns(rect).length;
+	const summary = selectionSummary(selection, rowCount, columnCount);
 
 	const [announcement, setAnnouncement] = useState("");
 	// Seeded with the extent the app opens on, so the first render is silent:
 	// nothing has changed for the user to be told about yet.
-	const spoken = useRef(`${rows}x${columns}`);
+	const spoken = useRef(summary);
 
 	useEffect(() => {
-		const extent = `${rows}x${columns}`;
-		if (extent === spoken.current) return;
+		if (summary === spoken.current) return;
 		const timer = setTimeout(() => {
-			spoken.current = extent;
-			setAnnouncement(copy.a11y.selectionSummary(rows, columns));
+			spoken.current = summary;
+			setAnnouncement(summary);
 		}, SETTLE_MS);
 		return () => clearTimeout(timer);
-	}, [rows, columns]);
+	}, [summary]);
 
 	return announcement;
+}
+
+// One continuous region has an extent, so it is read as one. Several separate
+// regions have no single shape, so the total is what gets read: every selected
+// column counted once, not whichever region the modifier touched last.
+function selectionSummary(
+	selection: GridSelection,
+	rowCount: number,
+	columnCount: number,
+): string {
+	if (isContiguous(selection)) {
+		const rect = selectionRect(selection, rowCount, columnCount);
+		// The header row counts as a row here, because it is selectable and its
+		// cells are cleared by the same key. Wording that distinguishes it belongs
+		// to the copy pass in #78, not to this hook.
+		return copy.a11y.selectionSummary(
+			rectRows(rect).length,
+			rectColumns(rect).length,
+		);
+	}
+
+	const modes = new Set(selection.ranges.map((range) => range.mode));
+	if (modes.size === 1 && modes.has("column")) {
+		return copy.a11y.multiSelectionSummary(
+			"column",
+			selectionColumns(selection, rowCount, columnCount).length,
+		);
+	}
+	if (modes.size === 1 && modes.has("row")) {
+		return copy.a11y.multiSelectionSummary(
+			"row",
+			selectionRows(selection, rowCount, columnCount).length,
+		);
+	}
+	// Regions of different shapes have no shared unit to count, so the count is
+	// of the regions themselves.
+	return copy.a11y.multiSelectionSummary("area", selection.ranges.length);
 }

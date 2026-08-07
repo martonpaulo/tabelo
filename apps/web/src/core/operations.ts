@@ -1,6 +1,6 @@
 import { createColumn, createRow } from "./document";
 import { createRowId } from "./ids";
-import { type CellRect, rectCoversHeader } from "./selection";
+import { type CellRect, rectContains, rectCoversHeader } from "./selection";
 import type { Alignment, Column, ColumnId, Row, TableDocument } from "./types";
 
 // Pure operations over a table document. Every grid interaction goes through
@@ -225,35 +225,42 @@ export function moveColumn(
 	return { ...document, columns };
 }
 
-// Clears whatever the rect covers, header text included. A header cell is an
+// Clears whatever the rects cover, header text included. A header cell is an
 // ordinary cell for this purpose, so one Backspace over a selection that spans
 // the boundary is one operation and therefore one undo step. An emptied header
 // stays empty: nothing regenerates a name for it.
+//
+// A list rather than one rect, because a selection may hold several regions.
+// They are cleared together, and a cell two of them both cover is cleared once:
+// this is one operation and one undo step whatever shape the selection has.
 export function clearCells(
 	document: TableDocument,
-	rect: CellRect,
+	rects: readonly CellRect[],
 ): TableDocument {
+	const coversHeader = (index: number) =>
+		rects.some(
+			(rect) =>
+				rectCoversHeader(rect) && index >= rect.left && index <= rect.right,
+		);
+	const covers = (rowIndex: number, columnIndex: number) =>
+		rects.some((rect) => rectContains(rect, rowIndex, columnIndex));
+
 	let changed = false;
-	const columns = rectCoversHeader(rect)
-		? document.columns.map((column, index) => {
-				if (index < rect.left || index > rect.right) return column;
-				if (column.header === "") return column;
-				changed = true;
-				return { ...column, header: "" };
-			})
-		: document.columns;
+	const columns = document.columns.map((column, index) => {
+		if (!coversHeader(index) || column.header === "") return column;
+		changed = true;
+		return { ...column, header: "" };
+	});
 
 	const rows = document.rows.map((row, rowIndex) => {
-		if (rowIndex < rect.top || rowIndex > rect.bottom) return row;
-		const selectedColumns = document.columns.slice(rect.left, rect.right + 1);
-		if (
-			selectedColumns.every((column) => (row.cells[column.id] ?? "") === "")
-		) {
-			return row;
-		}
+		const cleared = document.columns.filter(
+			(column, columnIndex) =>
+				covers(rowIndex, columnIndex) && (row.cells[column.id] ?? "") !== "",
+		);
+		if (cleared.length === 0) return row;
 		changed = true;
 		const cells = { ...row.cells };
-		for (const column of selectedColumns) cells[column.id] = "";
+		for (const column of cleared) cells[column.id] = "";
 		return { ...row, cells };
 	});
 	return changed ? { columns, rows } : document;

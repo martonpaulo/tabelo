@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { useEffect } from "react";
 import { copy } from "@/copy/copy";
-import { HEADER_ROW } from "@/core/selection";
 import type { Alignment } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
@@ -40,6 +39,7 @@ import {
 	stepColumnWidth,
 } from "./column-width";
 import { DropdownTableActions } from "./dropdown-table-actions";
+import { targetAxisForMenu } from "./menu-target";
 
 // One menu component for both axes, replacing the near-identical row and column
 // menus that were drifting apart. Everything it offers comes from the shared
@@ -75,19 +75,6 @@ export type AxisMenuHandle = DropdownMenuHandle<AxisMenuPayload>;
 
 export function createAxisMenuHandle(): AxisMenuHandle {
 	return createDropdownMenuHandle<AxisMenuPayload>();
-}
-
-// Opening an axis menu selects what it acts on, so the actions and the
-// highlight can never disagree about their target.
-function selectAxis({ axis, index }: AxisMenuPayload) {
-	useTabeloStore
-		.getState()
-		.selectCell(
-			axis === "column"
-				? { row: HEADER_ROW, column: index }
-				: { row: index, column: 0 },
-			axis,
-		);
 }
 
 // A column names itself by its header, falling back to its index-strip letter
@@ -197,13 +184,13 @@ function AxisMenuBody({ axis, index }: AxisMenuPayload) {
 	const atMinimumWidth = atMinimumColumnWidth(column?.width);
 	const atDefaultWidth = isDefaultColumnWidth(column?.width);
 
-	const select = () => selectAxis({ axis, index });
+	const select = () => targetAxisForMenu(axis, index);
 
 	// Selecting on mount rather than on an open flag: with one shared root, the
 	// root's own open change carries no payload, and this body mounts exactly
 	// when the menu it belongs to opens.
 	useEffect(() => {
-		selectAxis({ axis, index });
+		targetAxisForMenu(axis, index);
 	}, [axis, index]);
 
 	return (

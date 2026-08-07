@@ -7,9 +7,8 @@ import {
 	ContextMenuTrigger,
 } from "@tabelo/ui/components/context-menu";
 import { Fragment, type ReactNode, useState } from "react";
-import { HEADER_ROW, rectContains, selectionRect } from "@/core/selection";
-import { useTabeloStore } from "@/state/store";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
+import { targetAxisForMenu, targetCellForMenu } from "./menu-target";
 import { buildTableActions, type TableActionContext } from "./table-actions";
 
 // One context menu for the whole grid rather than one per cell. Mounting a
@@ -39,18 +38,18 @@ export function GridContextMenu({
 					const columnHeader = target?.closest<HTMLElement>(
 						"[data-column-header]",
 					);
-					const store = useTabeloStore.getState();
 
 					if (columnHeader) {
-						const column = Number(columnHeader.dataset.columnHeader);
 						setAxis("column");
-						store.selectCell({ row: HEADER_ROW, column }, "column");
+						targetAxisForMenu(
+							"column",
+							Number(columnHeader.dataset.columnHeader),
+						);
 						return;
 					}
 					if (rowHeader) {
-						const row = Number(rowHeader.dataset.rowHeader);
 						setAxis("row");
-						store.selectCell({ row, column: 0 }, "row");
+						targetAxisForMenu("row", Number(rowHeader.dataset.rowHeader));
 						return;
 					}
 					if (cell) {
@@ -58,19 +57,7 @@ export function GridContextMenu({
 							.split(":")
 							.map(Number);
 						setAxis("cell");
-						// Asked of the selection itself rather than recomputed from its
-						// anchor and focus: only selectionRect knows that a row or column
-						// selection spans the whole other axis, and that a column reaches
-						// the header row. Recomputing it here collapsed a select-all the
-						// moment the user right-clicked inside it.
-						const rect = selectionRect(
-							store.selection,
-							store.document.rows.length,
-							store.document.columns.length,
-						);
-						if (!rectContains(rect, row, column)) {
-							store.selectCell({ row, column });
-						}
+						targetCellForMenu(row ?? 0, column ?? 0);
 						return;
 					}
 					setAxis("cell");

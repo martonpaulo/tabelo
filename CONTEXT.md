@@ -100,6 +100,16 @@ infers types, coerces numbers, or reformats content.
 
 Related to: Row, Column
 
+### Selection
+
+What the grid is pointing at: an ordered list of one or more **areas**, never
+empty. One of them is **active**, and that is the area the keyboard works in,
+the one Shift extends and the one an insertion point is measured from. A single
+area is the ordinary case; only the platform modifier makes a second one.
+Transient state: never persisted, never a document-timeline step.
+
+Related to: Cell, Row, Column, Table operation
+
 ### Alignment
 
 A column's alignment: default, left, center, or right. Only Markdown and HTML
@@ -211,6 +221,10 @@ Related to: Table document, Import
 - A header cell is an ordinary cell for selection, editing, and clearing. It
   differs from a data cell in exactly one way: the header row can never be
   deleted as a row.
+- A selection holds at least one area and may hold several. Areas may overlap,
+  and every count over them is a set, so the same row or column is never acted
+  on twice. An operation needing one insertion point or one origin acts on the
+  active area and refuses a selection holding more than one.
 - A header may be empty, and an empty header stays empty. No `Column N` name is
   ever generated. An unnamed column is identified positionally by its letter on
   the column index strip, which is chrome and not part of the table.

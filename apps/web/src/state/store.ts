@@ -24,17 +24,25 @@ import {
 	setHeader,
 } from "@/core/operations";
 import {
+	activeRange,
 	type CellPosition,
 	type CellRect,
 	clampSelection,
 	createSelection,
+	extendActiveRange,
 	type GridSelection,
-	rectColumns,
-	rectCoversHeader,
+	isContiguous,
+	moveFocusKeepingRegions,
 	rectDataRows,
 	type SelectionMode,
+	selectedAxis,
+	selectionColumns,
+	selectionCoversHeader,
+	selectionDataRows,
 	selectionRect,
+	selectionRects,
 	structureDeletionGuard,
+	toggleSelectionRegion,
 } from "@/core/selection";
 import type { Alignment, TableDocument } from "@/core/types";
 import { canSerialize } from "@/formats";
@@ -82,6 +90,11 @@ import { clampPaneZoom } from "@/workspace/zoom";
 // session, bounded so a long session cannot grow without limit.
 const HISTORY_LIMIT = 200;
 
+// "Nothing has been copied." One shared value rather than a fresh array each
+// time, so clearing a mark that was already clear leaves state referentially
+// identical and nothing downstream sees a change that did not happen.
+const NO_COPIED_RANGES: readonly CellRect[] = [];
+
 // Syntax errors get a short grace period so a transient broken delimiter never
 // flashes feedback while the user is still completing the transaction.
 const INVALID_GRACE_MS = 300;
@@ -91,6 +104,9 @@ export type StructureDeletionRefusal =
 	| "last-row"
 	| "last-column"
 	| "header-row";
+// Why a paste was refused. Like the refusal above, the store names the reason
+// and the interface owns the words for it.
+export type PasteRefusal = "single-area";
 
 // The exact pane and format holding an editor buffer. A clean buffer has
 // already committed its meaning to the document but stays here so
@@ -146,15 +162,19 @@ export interface TabeloState {
 	editing: CellPosition | null;
 	editingSeed: string | null;
 	editingHeader: number | null;
-	// The range the clipboard was last filled from, so the grid can keep showing
+	// The areas the clipboard was last filled from, so the grid can keep showing
 	// what a paste would carry after the selection has moved to the destination.
 	// Stored rather than derived precisely because the selection leaves it
 	// behind, and snapshotted once at copy time from the selection's own
 	// coordinate space, header row included.
 	//
+	// A list, because a copy takes everything the selection covers and that may
+	// be several separate areas. Empty means nothing has been copied; marking
+	// only the active area would show one column while the clipboard held two.
+	//
 	// Transient by construction: it is never a history step, never persisted,
 	// and never document state. A copy is not an edit.
-	copiedRange: CellRect | null;
+	copiedRanges: readonly CellRect[];
 
 	storageIssue: StorageIssue | null;
 	// Messages waiting to be read, oldest first. A queue rather than one slot:
@@ -194,10 +214,14 @@ export interface TabeloState {
 	setSelection: (selection: GridSelection) => void;
 	selectCell: (position: CellPosition, mode?: SelectionMode) => void;
 	extendSelection: (position: CellPosition) => void;
+	// The modifier gesture: add this region to the selection, or take it away
+	// when it is already part of one.
+	toggleSelectionRegion: (position: CellPosition, mode?: SelectionMode) => void;
+	moveFocusKeepingRegions: (position: CellPosition) => void;
 	setEditing: (position: CellPosition | null, seed?: string) => void;
 	setEditingHeader: (index: number | null, seed?: string) => void;
-	markCopiedRange: () => void;
-	clearCopiedRange: () => void;
+	markCopiedRanges: () => void;
+	clearCopiedRanges: () => void;
 
 	editCell: (row: number, column: number, value: string) => void;
 	editHeader: (column: number, value: string) => void;
@@ -219,7 +243,7 @@ export interface TabeloState {
 	clearSelection: () => void;
 	deleteSelectedStructure: () => StructureDeletionRefusal | null;
 	selectedMatrix: () => string[][];
-	pasteClipboard: (payload: ClipboardPayload) => void;
+	pasteClipboard: (payload: ClipboardPayload) => PasteRefusal | null;
 	importText: (text: string, format?: CodecId) => void;
 
 	demoteHeader: () => void;
@@ -390,7 +414,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editing: null,
 	editingSeed: null,
 	editingHeader: null,
-	copiedRange: null,
+	copiedRanges: NO_COPIED_RANGES,
 
 	storageIssue: null,
 	notices: [],
@@ -476,7 +500,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			// the clipboard never held. The mark is dropped rather than
 			// reconciled, which is also what a paste needs, since a paste is one of
 			// these changes.
-			copiedRange: null,
+			copiedRanges: NO_COPIED_RANGES,
 			selection: clampSelection(
 				state.selection,
 				next.rows.length,
@@ -569,7 +593,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			headerCorrection: null,
 			inputError: null,
 			pendingPaneAction: null,
-			copiedRange: null,
+			copiedRanges: NO_COPIED_RANGES,
 			selection: clampSelection(
 				current.selection,
 				document.rows.length,
@@ -830,7 +854,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				headerCorrection: null,
 				inputError: null,
 				pendingPaneAction: null,
-				copiedRange: null,
+				copiedRanges: NO_COPIED_RANGES,
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -854,7 +878,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				headerCorrection: null,
 				inputError: null,
 				pendingPaneAction: null,
-				copiedRange: null,
+				copiedRanges: NO_COPIED_RANGES,
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -874,8 +898,30 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			editingHeader: null,
 		}),
 
+	// Extending moves the active region only. Every other region the modifier
+	// added stays exactly where it is.
 	extendSelection: (position) =>
-		set((state) => ({ selection: { ...state.selection, focus: position } })),
+		set((state) => ({
+			selection: extendActiveRange(state.selection, position),
+		})),
+
+	toggleSelectionRegion: (position, mode = "cell") =>
+		set((state) => ({
+			selection: toggleSelectionRegion(state.selection, position, mode),
+			editing: null,
+			editingSeed: null,
+			editingHeader: null,
+		})),
+
+	// The keyboard's half of what the modifier means on the pointer: go
+	// somewhere else without discarding what is already selected.
+	moveFocusKeepingRegions: (position) =>
+		set((state) => ({
+			selection: moveFocusKeepingRegions(state.selection, position),
+			editing: null,
+			editingSeed: null,
+			editingHeader: null,
+		})),
 
 	setEditing: (position, seed) =>
 		set({
@@ -894,9 +940,9 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	// Taken from the selection at the moment of the copy, because that is the
 	// only moment the two agree. Everything after it moves the selection away.
-	markCopiedRange: () => set({ copiedRange: currentRect(get()) }),
+	markCopiedRanges: () => set({ copiedRanges: currentRects(get()) }),
 
-	clearCopiedRange: () => set({ copiedRange: null }),
+	clearCopiedRanges: () => set({ copiedRanges: NO_COPIED_RANGES }),
 
 	editCell: (row, column, value) =>
 		get().applyDocument(setCell(get().document, row, column, value)),
@@ -904,14 +950,28 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editHeader: (column, value) =>
 		get().applyDocument(setHeader(get().document, column, value)),
 
-	setColumnAlignment: (column, align) =>
-		get().applyDocument(setAlignment(get().document, column, align)),
+	// Alignment and width belong to a column rather than to a rectangle of
+	// cells, so acting on one the selection already covers acts on every
+	// selected column, adjacent or not. Acting on a column outside the selection
+	// touches only that one: a drag on an unrelated column edge must not resize
+	// something elsewhere in the table.
+	setColumnAlignment: (column, align) => {
+		const state = get();
+		let next = state.document;
+		for (const target of columnTargets(state, column)) {
+			next = setAlignment(next, target, align);
+		}
+		state.applyDocument(next);
+	},
 
 	// Width is presentation state, so it bypasses the document timeline.
 	// dragging a column edge should not consume an undo step.
 	resizeColumn: (column, width) =>
 		set((state) => {
-			const next = setColumnWidth(state.document, column, width);
+			let next = state.document;
+			for (const target of columnTargets(state, column)) {
+				next = setColumnWidth(next, target, width);
+			}
 			return next === state.document
 				? state
 				: { document: next, headerCorrection: null, inputError: null };
@@ -920,8 +980,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// Every row operation below counts data rows only. A selection may cover the
 	// header row, and the header row is structurally required: it is never
 	// inserted beside as a count, removed, duplicated, or moved.
+	//
+	// Inserting and moving need a single insertion point, so they act on the
+	// active region and refuse a selection that holds more than one. The menus
+	// disable them with a written reason first, the same way an out-of-range
+	// move has always been disabled rather than silently ignored.
 	addRowAbove: () => {
 		const state = get();
+		if (!isContiguous(state.selection)) return;
 		const rect = currentRect(state);
 		const count = Math.max(1, rectDataRows(rect).length);
 		const at = Math.max(0, rect.top);
@@ -931,6 +997,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	addRowBelow: () => {
 		const state = get();
+		if (!isContiguous(state.selection)) return;
 		const rect = currentRect(state);
 		const count = Math.max(1, rectDataRows(rect).length);
 		const at = Math.max(0, rect.bottom + 1);
@@ -942,49 +1009,58 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	removeSelectedRows: () => {
 		const state = get();
-		const rows = rectDataRows(currentRect(state));
+		const rows = currentDataRows(state);
 		if (rows.length === 0) return;
 		state.applyDocument(deleteRows(state.document, rows));
 	},
 
 	duplicateSelectedRows: () => {
 		const state = get();
-		const rows = rectDataRows(currentRect(state));
+		const rows = currentDataRows(state);
 		if (rows.length === 0) return;
 		state.applyDocument(duplicateRows(state.document, rows));
 	},
 
 	moveSelectedRow: (offset) => {
 		const state = get();
+		if (!isContiguous(state.selection)) return;
 		const rect = currentRect(state);
 		const from = rectDataRows(rect)[0];
 		if (from === undefined) return;
 		const to = from + offset;
 		if (to < 0 || to >= state.document.rows.length) return;
 		state.applyDocument(moveRow(state.document, from, to));
-		set({
+		set((current) => ({
 			selection: {
-				...state.selection,
-				anchor: { row: to, column: rect.left },
-				focus: { row: to, column: rect.right },
+				...current.selection,
+				ranges: [
+					{
+						...activeRange(current.selection),
+						anchor: { row: to, column: rect.left },
+						focus: { row: to, column: rect.right },
+					},
+				],
+				activeIndex: 0,
 			},
-		});
+		}));
 	},
 
 	addColumnLeft: () => {
 		const state = get();
+		if (!isContiguous(state.selection)) return;
 		const rect = currentRect(state);
 		state.applyDocument(
-			insertColumns(state.document, rect.left, rectColumns(rect).length),
+			insertColumns(state.document, rect.left, rect.right - rect.left + 1),
 		);
 		set({ selection: createSelection({ row: rect.top, column: rect.left }) });
 	},
 
 	addColumnRight: () => {
 		const state = get();
+		if (!isContiguous(state.selection)) return;
 		const rect = currentRect(state);
 		state.applyDocument(
-			insertColumns(state.document, rect.right + 1, rectColumns(rect).length),
+			insertColumns(state.document, rect.right + 1, rect.right - rect.left + 1),
 		);
 		set({
 			selection: createSelection({ row: rect.top, column: rect.right + 1 }),
@@ -993,36 +1069,41 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	removeSelectedColumns: () => {
 		const state = get();
-		state.applyDocument(
-			deleteColumns(state.document, rectColumns(currentRect(state))),
-		);
+		state.applyDocument(deleteColumns(state.document, currentColumns(state)));
 	},
 
 	duplicateSelectedColumns: () => {
 		const state = get();
 		state.applyDocument(
-			duplicateColumns(state.document, rectColumns(currentRect(state))),
+			duplicateColumns(state.document, currentColumns(state)),
 		);
 	},
 
 	moveSelectedColumn: (offset) => {
 		const state = get();
+		if (!isContiguous(state.selection)) return;
 		const rect = currentRect(state);
 		const to = rect.left + offset;
 		if (to < 0 || to >= state.document.columns.length) return;
 		state.applyDocument(moveColumn(state.document, rect.left, to));
-		set({
+		set((current) => ({
 			selection: {
-				...state.selection,
-				anchor: { row: rect.top, column: to },
-				focus: { row: rect.bottom, column: to },
+				...current.selection,
+				ranges: [
+					{
+						...activeRange(current.selection),
+						anchor: { row: rect.top, column: to },
+						focus: { row: rect.bottom, column: to },
+					},
+				],
+				activeIndex: 0,
 			},
-		});
+		}));
 	},
 
 	clearSelection: () => {
 		const state = get();
-		state.applyDocument(clearCells(state.document, currentRect(state)));
+		state.applyDocument(clearCells(state.document, currentRects(state)));
 	},
 
 	// Backspace clears contents; adding the modifier removes the structure. The
@@ -1030,11 +1111,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	deleteSelectedStructure: () => {
 		const state = get();
 		const guard = structureDeletionGuard(
-			[state.selection],
+			state.selection,
 			state.document.rows.length,
 			state.document.columns.length,
 		);
-		if (state.selection.mode === "column") {
+		if (activeRange(state.selection).mode === "column") {
 			if (guard.wouldRemoveAllColumns) return "last-column";
 			state.removeSelectedColumns();
 			return null;
@@ -1042,34 +1123,33 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		// The header row is reachable by the selection now, so it is reachable by
 		// a structural delete for the first time. It stays: every table has
 		// exactly one header row, and emptying it is what Backspace is for.
-		if (rectDataRows(currentRect(state)).length === 0) return "header-row";
+		if (currentDataRows(state).length === 0) return "header-row";
 		if (guard.wouldRemoveAllRows) return "last-row";
 		state.removeSelectedRows();
 		return null;
 	},
 
+	// The rows and columns the selection covers, as a well-formed table. A gap
+	// between two selected columns closes rather than travelling to the
+	// clipboard as a ragged payload, so pasting the result back produces exactly
+	// the columns that were selected. Excel and Google Sheets do the same.
 	selectedMatrix: () => {
 		const state = get();
-		const rect = currentRect(state);
-		const body = state.document.rows
-			// Clamped because the header row's index is below zero, and a negative
-			// argument would make slice count back from the end of the rows.
-			.slice(Math.max(0, rect.top), rect.bottom + 1)
-			.map((row) =>
-				state.document.columns
-					.slice(rect.left, rect.right + 1)
-					.map((column) => row.cells[column.id] ?? ""),
-			);
+		const rowCount = state.document.rows.length;
+		const columnCount = state.document.columns.length;
+		const columns = selectionColumns(state.selection, rowCount, columnCount)
+			.map((index) => state.document.columns[index])
+			.filter((column) => column !== undefined);
+
+		const body = selectionDataRows(state.selection, rowCount, columnCount)
+			.map((index) => state.document.rows[index])
+			.filter((row) => row !== undefined)
+			.map((row) => columns.map((column) => row.cells[column.id] ?? ""));
 
 		// A selection that covers the header carries it, which is what makes the
 		// result useful when pasted somewhere else. Whole columns always do.
-		return rectCoversHeader(rect)
-			? [
-					state.document.columns
-						.slice(rect.left, rect.right + 1)
-						.map((c) => c.header),
-					...body,
-				]
+		return selectionCoversHeader(state.selection, rowCount, columnCount)
+			? [columns.map((column) => column.header), ...body]
 			: body;
 	},
 
@@ -1080,7 +1160,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			if (prepared.error.code !== "empty") {
 				set({ inputError: prepared.error });
 			}
-			return;
+			return null;
 		}
 
 		// Into an empty document, a paste creates the table: including the
@@ -1092,8 +1172,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				headerCorrection: prepared.value.headerRow ? { document } : null,
 				selection: createSelection({ row: 0, column: 0 }),
 			});
-			return;
+			return null;
 		}
+
+		// A paste writes a rectangle from one origin, and a selection holding
+		// several regions names several of them. The refusal is reported rather
+		// than silent: the user has content in hand and pressed a key for it, so
+		// nothing happening at all would read as the clipboard having failed.
+		if (!isContiguous(state.selection)) return "single-area";
 
 		const rect = currentRect(state);
 		state.applyDocument(
@@ -1103,6 +1189,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				prepared.value.matrix,
 			),
 		);
+		return null;
 	},
 
 	importText: (text, format) => {
@@ -1161,12 +1248,54 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set((state) => ({ notices: queueNotice(state.notices, request) })),
 }));
 
+// Where the keyboard is working: the active region alone. Only operations that
+// need a single insertion point or a single origin read this, and each of them
+// refuses a selection that holds more than one region first.
 function currentRect(state: TabeloState) {
 	return selectionRect(
 		state.selection,
 		state.document.rows.length,
 		state.document.columns.length,
 	);
+}
+
+// Everything the user selected. These three are what an operation reads when it
+// acts on the whole selection rather than on one insertion point.
+function currentRects(state: TabeloState) {
+	return selectionRects(
+		state.selection,
+		state.document.rows.length,
+		state.document.columns.length,
+	);
+}
+
+function currentDataRows(state: TabeloState) {
+	return selectionDataRows(
+		state.selection,
+		state.document.rows.length,
+		state.document.columns.length,
+	);
+}
+
+function currentColumns(state: TabeloState) {
+	return selectionColumns(
+		state.selection,
+		state.document.rows.length,
+		state.document.columns.length,
+	);
+}
+
+// Which columns a per-column property change applies to. Acting on a column
+// that is selected as a column acts on every selected column, adjacent or not;
+// acting on any other column stays where the gesture pointed.
+function columnTargets(state: TabeloState, column: number): readonly number[] {
+	const selected = selectedAxis(
+		state.selection,
+		"column",
+		state.document.rows.length,
+		state.document.columns.length,
+	);
+	return selected.includes(column) ? selected : [column];
 }
 
 // Autosave. Persisting on every keystroke would be wasteful, and persisting
