@@ -1,7 +1,9 @@
 import { cn } from "@tabelo/ui/lib/utils";
+import { memo, useMemo } from "react";
 import { copy } from "@/copy/copy";
-import type { Alignment } from "@/core/types";
+import type { Alignment, Column, Row } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
+import { visibleShape } from "./visible-shape";
 
 // The rendered view shows the table as a reader would meet it, not as markup.
 // It is built from the document directly rather than by injecting the HTML
@@ -23,27 +25,13 @@ const alignClass: Record<Alignment, string> = {
 export default function HtmlPreview() {
 	const document = useTabeloStore((state) => state.document);
 
-	// The preview is a reading copy, not an editing surface: a column or row
-	// with no value anywhere, alongside others that do have content, is
-	// structure the reader can't act on, so it is left out rather than shown as
-	// an empty band. Emptiness is judged against the full document,
-	// independently for rows and columns, so hiding one never changes whether
-	// the other counts as empty. A document with no content anywhere is a
-	// different case, not "every row and column is individually empty": a
-	// freshly started table still shows its blank shape rather than nothing.
-	const hasContent = document.rows.some((row) =>
-		document.columns.some((column) => (row.cells[column.id] ?? "") !== ""),
+	// What the reader is shown, and why, lives in `visible-shape.ts`. It
+	// recomputes only when the document changes, not when some other pane is
+	// being typed into.
+	const { columns: visibleColumns, rows: visibleRows } = useMemo(
+		() => visibleShape(document),
+		[document],
 	);
-	const visibleColumns = hasContent
-		? document.columns.filter((column) =>
-				document.rows.some((row) => (row.cells[column.id] ?? "") !== ""),
-			)
-		: document.columns;
-	const visibleRows = hasContent
-		? document.rows.filter((row) =>
-				document.columns.some((column) => (row.cells[column.id] ?? "") !== ""),
-			)
-		: document.rows;
 
 	return (
 		<div
@@ -100,23 +88,7 @@ export default function HtmlPreview() {
 					</thead>
 					<tbody>
 						{visibleRows.map((row) => (
-							<tr key={row.id}>
-								{visibleColumns.map((column) => (
-									<td
-										key={column.id}
-										className={cn(
-											"border border-line-subtle px-3 py-1.5 align-top",
-											alignClass[column.align],
-										)}
-									>
-										{/* A cell may legitimately contain line breaks; preserving
-									    them is the point of the escaping the codecs do. */}
-										<span className="whitespace-pre-wrap">
-											{row.cells[column.id] ?? ""}
-										</span>
-									</td>
-								))}
-							</tr>
+							<PreviewRow key={row.id} row={row} columns={visibleColumns} />
 						))}
 					</tbody>
 				</table>
@@ -124,3 +96,42 @@ export default function HtmlPreview() {
 		</div>
 	);
 }
+
+// One body row, behind a memo boundary, for the same reason the grid's DataRow
+// has one: this component subscribes to the whole document, so a keystroke in a
+// source pane re-renders it, and without this React reconciled every row to
+// discover that all but one were identical. Both props are references
+// `reconcileDocument` preserves, so the default shallow comparator is enough and
+// no custom `areEqual` can drift out of sync with what this reads.
+//
+// The exception is a document that actually has a wholly empty column or row:
+// `visibleShape` has to allocate a filtered array for that axis, so `columns`
+// changes identity on every commit and this boundary stops paying. Left alone
+// deliberately. The fix is to cache the filtered array on the surviving ids,
+// which is a layer that the uncommon shape has not earned.
+interface PreviewRowProps {
+	readonly row: Row;
+	readonly columns: readonly Column[];
+}
+
+const PreviewRow = memo(function PreviewRow({ row, columns }: PreviewRowProps) {
+	return (
+		<tr>
+			{columns.map((column) => (
+				<td
+					key={column.id}
+					className={cn(
+						"border border-line-subtle px-3 py-1.5 align-top",
+						alignClass[column.align],
+					)}
+				>
+					{/* A cell may legitimately contain line breaks; preserving
+					    them is the point of the escaping the codecs do. */}
+					<span className="whitespace-pre-wrap">
+						{row.cells[column.id] ?? ""}
+					</span>
+				</td>
+			))}
+		</tr>
+	);
+});
