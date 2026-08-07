@@ -634,6 +634,7 @@ not a polish item.
 | Hover or keyboard highlight | Shared `bg-accent` interaction background |
 | Focus | 0.125rem `--selection-edge` outline, inset. Never remove it |
 | Selected | `bg-selection-fill`, plus outline when it is the focused cell |
+| Copied | 0.125rem dashed `--selection-edge` border, drawn only on the outer sides of the copied range |
 | Disabled | `opacity-50`, no hover or highlight state, `not-allowed` on the actual hit layer, and a tooltip explaining why. Never hide a disabled action |
 | Invalid | Red wavy underline; written diagnostic on hover and in the editor description |
 | Warning | Yellow dotted underline; written diagnostic on hover and in the editor description |
@@ -641,6 +642,27 @@ not a polish item.
 Disabled actions stay visible so the interface does not reflow as the selection
 changes. Every disabled control must expose a concise reason through the shared
 disabled-tooltip pattern. Layout stability outranks tidiness.
+
+The copied state marks where the clipboard was filled from, so the user can go
+and find the paste destination without losing track of the source. It outlives
+the selection, which is the only reason it exists as a state of its own, and it
+is drawn by the cells themselves rather than by a floating rectangle over the
+table: the cells already resolve per-pane zoom, column width, wrapped row
+height, and the sticky chrome layers. Only the sides on the boundary of the
+range are drawn, so it reads as one outline rather than a grid of dashes.
+
+**It is static.** It never becomes marching ants: §7 puts grid geometry and cell
+selection outside motion, and a status that pulses is exactly what that rule
+forbids. The dash pattern, not the colour, separates it from the solid focus
+outline, so it carries meaning without colour.
+
+**Copy marks; cut does not.** Cut empties the cells at once rather than on
+paste, so there is no pending move to describe and a mark would outline blank
+cells. Cut clears an existing mark instead, as does a source or preview copy:
+both replace what is on the clipboard. Beyond that the mark is cleared by
+pasting, by `Escape`, and by any document change, since an insert, a move, or a
+delete leaves its coordinates describing cells the clipboard never held. It is
+transient: never document state, never a history step, never persisted.
 
 A dialog confirm is disabled when it would produce no state change. The shared
 confirm wrapper owns its required disabled tooltip, so feature dialogs cannot
@@ -1063,7 +1085,7 @@ container, so the arrow keys still work.
 | `Home` / `End` | First or last column of the row; with the modifier, the first or last cell of the table |
 | `Enter` / `F2` | Edit the focused cell. On a column header, rename it |
 | `Space` | On a column header, select the column: activating a button does what buttons do |
-| `Escape` | Close the innermost thing first: cancel an edit, collapse a selection, close a menu. If nothing else is open, exit the pane |
+| `Escape` | Close the innermost thing first: cancel an edit, close a menu, clear the copied mark, collapse a selection. If nothing else is open, exit the pane |
 | `Backspace` | Clear the contents of the selection |
 | `Mod`+`Backspace` | Remove the selected rows or columns |
 | `Mod`+`Enter` | Add a row below |
