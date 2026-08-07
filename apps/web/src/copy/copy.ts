@@ -214,6 +214,10 @@ export const copy = {
 		lastRemainingRow: "A table must keep at least one row.",
 		lastRemainingColumn: "A table must keep at least one column.",
 		headerRowRequired: "Every table keeps its header row.",
+		// Inserting, moving, and pasting each need one place to act. A selection
+		// holding several separate areas names several, so the action says so
+		// rather than picking one of them.
+		singleAreaRequired: "This needs one selected area, not several.",
 		updateInProgress: "The update is already being applied.",
 		codecPrecondition: (failure: PreconditionFailure) =>
 			preconditionMessage(failure),
@@ -505,6 +509,17 @@ export const copy = {
 			rows === 1 && columns === 1
 				? "1 cell selected"
 				: `${rows} × ${columns} cells selected`,
+		// A selection holding several separate areas has no single extent to
+		// read out, so the summary states the total instead: how many columns,
+		// how many rows, or how many areas when the areas are not one shape.
+		multiSelectionSummary: (
+			scope: "row" | "column" | "area",
+			total: number,
+		): string => {
+			const noun =
+				scope === "column" ? "column" : scope === "row" ? "row" : "area";
+			return `${total} ${noun}${total === 1 ? "" : "s"} selected`;
+		},
 	},
 
 	shortcuts: {
@@ -521,5 +536,9 @@ export const copy = {
 		resetZoom: "Mod+0",
 		zoomIn: "Mod++",
 		editHeader: "F2",
+		// The keyboard equal of a modifier click. Ctrl is the modifier that
+		// reaches the page on every platform: macOS keeps Cmd+Space for itself.
+		toggleColumn: "Ctrl+Space",
+		toggleRow: "Ctrl+Shift+Space",
 	},
 } as const;

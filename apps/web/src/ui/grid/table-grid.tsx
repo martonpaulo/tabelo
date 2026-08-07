@@ -3,14 +3,21 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import {
+	activeRange,
 	type CellPosition,
 	type CellRect,
 	HEADER_ROW,
 	rectContains,
+	replaceActiveRange,
 	selectionRect,
+	selectionRects,
 } from "@/core/selection";
 import type { Alignment, Column, ColumnId, Row } from "@/core/types";
-import { type StructureDeletionRefusal, useTabeloStore } from "@/state/store";
+import {
+	type PasteRefusal,
+	type StructureDeletionRefusal,
+	useTabeloStore,
+} from "@/state/store";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import {
 	type AxisMenuHandle,
@@ -79,13 +86,19 @@ function ClipboardSourceEdge({ top, right, bottom, left }: ClipboardEdges) {
 	);
 }
 
-// The copied range narrowed to one cell, or nothing when the cell is outside it.
+// The copied areas narrowed to one cell, or nothing when the cell is outside
+// every one of them. The first area containing the cell decides its edges:
+// separate areas never share a cell, so that is the only one, and two that did
+// overlap still each read as an outline of their own.
 function clipboardEdgesAt(
-	range: CellRect | null,
+	ranges: readonly CellRect[],
 	row: number,
 	column: number,
 ): ClipboardEdges | null {
-	if (!range || !rectContains(range, row, column)) return null;
+	const range = ranges.find((candidate) =>
+		rectContains(candidate, row, column),
+	);
+	if (!range) return null;
 	return {
 		top: row === range.top,
 		right: column === range.right,
@@ -101,6 +114,79 @@ const structureRefusalMessage: Record<StructureDeletionRefusal, string> = {
 	"last-column": copy.disabled.lastRemainingColumn,
 	"header-row": copy.disabled.headerRowRequired,
 };
+
+const pasteRefusalMessage: Record<PasteRefusal, string> = {
+	"single-area": copy.disabled.singleAreaRequired,
+};
+
+// What a pointer gesture on a select handle or a cell means. "replace" is a
+// plain click, "extend" is Shift, and "toggle" is the platform modifier adding
+// a region to the selection or taking one away.
+type SelectIntent = "replace" | "extend" | "toggle";
+
+function selectIntentOf(event: {
+	shiftKey: boolean;
+	metaKey: boolean;
+	ctrlKey: boolean;
+}): SelectIntent {
+	// Shift wins over the modifier, so Mod+Shift+click extends the region the
+	// modifier most recently added rather than starting another one. That is
+	// what makes a modifier click and a following Shift click compose.
+	if (event.shiftKey) return "extend";
+	return event.metaKey || event.ctrlKey ? "toggle" : "replace";
+}
+
+// The selected column spans of one row, encoded so it can cross the memo
+// boundary below as a primitive. A row may sit inside several regions at once,
+// and an array of them would be a new object on every render of the grid.
+function spansOf(rects: readonly CellRect[], row: number): string {
+	return rects
+		.filter((rect) => row >= rect.top && row <= rect.bottom)
+		.map((rect) => `${rect.left}:${rect.right}`)
+		.join(",");
+}
+
+function coveredBySpans(spans: string, column: number): boolean {
+	if (spans === "") return false;
+	return spans.split(",").some((span) => {
+		const [left, right] = span.split(":").map(Number);
+		return left !== undefined && right !== undefined
+			? column >= left && column <= right
+			: false;
+	});
+}
+
+// The same encoding for the copied areas, carrying two more fields: whether
+// this row owns each area's top or bottom edge. The copied areas outlive the
+// selection, so a row outside them has to keep a prop that does not change.
+function copiedSpansOf(rects: readonly CellRect[], row: number): string {
+	return rects
+		.filter((rect) => row >= rect.top && row <= rect.bottom)
+		.map(
+			(rect) =>
+				`${rect.left}:${rect.right}:${row === rect.top ? 1 : 0}:${row === rect.bottom ? 1 : 0}`,
+		)
+		.join(",");
+}
+
+function copiedEdgesInSpans(
+	spans: string,
+	column: number,
+): ClipboardEdges | null {
+	if (spans === "") return null;
+	for (const span of spans.split(",")) {
+		const [left, right, top, bottom] = span.split(":").map(Number);
+		if (left === undefined || right === undefined) continue;
+		if (column < left || column > right) continue;
+		return {
+			top: top === 1,
+			right: column === right,
+			bottom: bottom === 1,
+			left: column === left,
+		};
+	}
+	return null;
+}
 
 // The next cell in reading order, or nothing when there is none. This is how
 // Tab knows it has reached an edge and should let focus leave the grid.
@@ -129,7 +215,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const editing = useTabeloStore((state) => state.editing);
 	const editingSeed = useTabeloStore((state) => state.editingSeed);
 	const editingHeader = useTabeloStore((state) => state.editingHeader);
-	const copiedRange = useTabeloStore((state) => state.copiedRange);
+	const copiedRanges = useTabeloStore((state) => state.copiedRanges);
 	const wrappedColumns = useTabeloStore(
 		(state) => state.workspace.wrappedColumns,
 	);
@@ -141,11 +227,20 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// mounted below, because only one axis menu can be open at a time.
 	const [axisMenuHandle] = useState(createAxisMenuHandle);
 
+	// The active region, which is where the keyboard is working: what an arrow
+	// key moves and what an insertion point is measured from.
 	const rect = selectionRect(
 		selection,
 		document.rows.length,
 		document.columns.length,
 	);
+	// Everything the user selected, which is what gets painted.
+	const rects = selectionRects(
+		selection,
+		document.rows.length,
+		document.columns.length,
+	);
+	const focus = activeRange(selection).focus;
 	// Tracks the edit that just ended, so focus can be handed back to the grid
 	// when the cell editor unmounts and drops it on <body>.
 	const wasEditingRef = useRef(false);
@@ -165,10 +260,10 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			return;
 
 		const target = grid.querySelector<HTMLElement>(
-			`[data-cell="${selection.focus.row}:${selection.focus.column}"]`,
+			`[data-cell="${focus.row}:${focus.column}"]`,
 		);
 		target?.focus({ preventScroll: false });
-	}, [selection.focus.row, selection.focus.column, editing, editingHeader]);
+	}, [focus.row, focus.column, editing, editingHeader]);
 
 	useEffect(() => {
 		const stop = () => {
@@ -180,66 +275,78 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 	// A column selection starts on the header row, because a column is its header
 	// plus its cells.
-	const selectColumn = useCallback((column: number, extend: boolean) => {
+	const selectColumn = useCallback((column: number, intent: SelectIntent) => {
 		const store = useTabeloStore.getState();
-		if (!extend) {
+		if (intent === "replace") {
 			store.selectCell({ row: HEADER_ROW, column }, "column");
 			return;
 		}
+		if (intent === "toggle") {
+			store.toggleSelectionRegion({ row: HEADER_ROW, column }, "column");
+			return;
+		}
 
+		// Extending replaces the active region rather than moving its focus: the
+		// region may have been a cell or a row before this, and Shift+clicking a
+		// column letter means "columns from there to here" either way.
+		const active = activeRange(store.selection);
 		const anchorColumn =
-			store.selection.mode === "column"
-				? store.selection.anchor.column
-				: store.selection.focus.column;
-		store.setSelection({
-			anchor: { row: HEADER_ROW, column: anchorColumn },
-			focus: { row: HEADER_ROW, column },
-			mode: "column",
-		});
+			active.mode === "column" ? active.anchor.column : active.focus.column;
+		store.setSelection(
+			replaceActiveRange(store.selection, {
+				anchor: { row: HEADER_ROW, column: anchorColumn },
+				focus: { row: HEADER_ROW, column },
+				mode: "column",
+			}),
+		);
 	}, []);
 
 	// Mirrors selectColumn's anchor rule verbatim: extend from the existing
 	// anchor when already in row mode, otherwise from the focus.
-	const selectRow = useCallback((row: number, extend: boolean) => {
+	const selectRow = useCallback((row: number, intent: SelectIntent) => {
 		const store = useTabeloStore.getState();
-		if (!extend) {
+		if (intent === "replace") {
 			store.selectCell({ row, column: 0 }, "row");
 			return;
 		}
+		if (intent === "toggle") {
+			store.toggleSelectionRegion({ row, column: 0 }, "row");
+			return;
+		}
 
+		const active = activeRange(store.selection);
 		const anchorRow =
-			store.selection.mode === "row"
-				? store.selection.anchor.row
-				: store.selection.focus.row;
-		store.setSelection({
-			anchor: { row: anchorRow, column: 0 },
-			focus: { row, column: 0 },
-			mode: "row",
-		});
+			active.mode === "row" ? active.anchor.row : active.focus.row;
+		store.setSelection(
+			replaceActiveRange(store.selection, {
+				anchor: { row: anchorRow, column: 0 },
+				focus: { row, column: 0 },
+				mode: "row",
+			}),
+		);
 	}, []);
 
 	const moveFocus = useCallback(
-		(rowDelta: number, columnDelta: number, extend: boolean) => {
+		(rowDelta: number, columnDelta: number, intent: SelectIntent) => {
 			const store = useTabeloStore.getState();
+			const from = activeRange(store.selection).focus;
 			const next = {
 				// The floor is the header row: arrows and Shift+arrows reach it, and
 				// stop there rather than wrapping or escaping the grid.
 				row: Math.max(
 					HEADER_ROW,
-					Math.min(
-						store.selection.focus.row + rowDelta,
-						store.document.rows.length - 1,
-					),
+					Math.min(from.row + rowDelta, store.document.rows.length - 1),
 				),
 				column: Math.max(
 					0,
 					Math.min(
-						store.selection.focus.column + columnDelta,
+						from.column + columnDelta,
 						store.document.columns.length - 1,
 					),
 				),
 			};
-			if (extend) store.extendSelection(next);
+			if (intent === "extend") store.extendSelection(next);
+			else if (intent === "toggle") store.moveFocusKeepingRegions(next);
 			else store.selectCell(next);
 		},
 		[],
@@ -267,6 +374,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		if (target && !target.closest("[data-cell]")) return;
 
 		const mod = event.metaKey || event.ctrlKey;
+		const active = activeRange(selection);
 
 		// Reordering shares the arrow keys with navigation, behind Alt. Keeping
 		// it on the keyboard means drag is never the only way to reorder.
@@ -285,26 +393,30 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			}
 		}
 
+		// Shift extends the active area, the modifier moves the focus without
+		// discarding the areas already selected, and a plain arrow replaces them.
+		const arrowIntent = selectIntentOf(event);
+
 		switch (event.key) {
 			case "ArrowUp":
 				event.preventDefault();
-				moveFocus(-1, 0, event.shiftKey);
+				moveFocus(-1, 0, arrowIntent);
 				return;
 			case "ArrowDown":
 				event.preventDefault();
-				moveFocus(1, 0, event.shiftKey);
+				moveFocus(1, 0, arrowIntent);
 				return;
 			case "ArrowLeft":
 				event.preventDefault();
-				moveFocus(0, -1, event.shiftKey);
+				moveFocus(0, -1, arrowIntent);
 				return;
 			case "ArrowRight":
 				event.preventDefault();
-				moveFocus(0, 1, event.shiftKey);
+				moveFocus(0, 1, arrowIntent);
 				return;
 			case "Tab": {
 				const next = adjacentCell(
-					selection.focus,
+					focus,
 					event.shiftKey ? -1 : 1,
 					store.document.rows.length,
 					store.document.columns.length,
@@ -316,44 +428,59 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			case "Home":
 				event.preventDefault();
 				store.selectCell({
-					row: mod ? HEADER_ROW : selection.focus.row,
+					row: mod ? HEADER_ROW : focus.row,
 					column: 0,
 				});
 				return;
 			case "End":
 				event.preventDefault();
 				store.selectCell({
-					row: mod ? store.document.rows.length - 1 : selection.focus.row,
+					row: mod ? store.document.rows.length - 1 : focus.row,
 					column: store.document.columns.length - 1,
 				});
 				return;
 			case "Enter":
 				event.preventDefault();
 				if (mod) store.addRowBelow();
-				else beginEditing(selection.focus);
+				else beginEditing(focus);
 				return;
 			case "F2":
 				event.preventDefault();
-				beginEditing(selection.focus);
+				beginEditing(focus);
+				return;
+			case " ":
+				// The keyboard equal of a modifier click: add the focused cell's
+				// column, or its row with Shift, to the selection, or take it away
+				// when it is already there. Ctrl rather than Cmd is what reaches the
+				// page on macOS, and the modifier check already accepts both.
+				//
+				// The focused cell itself is passed through rather than the axis's
+				// own origin, because a row or column area spans the other axis
+				// whatever its anchor says. That is what leaves the focus where the
+				// user left it instead of jumping it to the header row.
+				if (!mod) break;
+				event.preventDefault();
+				store.toggleSelectionRegion(focus, event.shiftKey ? "row" : "column");
 				return;
 			case "Escape":
 				// Close the innermost thing first. The clipboard mark is the most
 				// transient thing on screen, so it goes before the selection
 				// collapses and long before the pane exits.
-				if (store.copiedRange) {
+				if (store.copiedRanges.length > 0) {
 					event.preventDefault();
-					store.clearCopiedRange();
+					store.clearCopiedRanges();
 					return;
 				}
-				// If the selection spans multiple cells, collapse it. If it is
-				// already a single cell, let the event bubble so the pane frame can
-				// exit.
+				// If the selection holds more than one area, or spans multiple
+				// cells, collapse it. If it is already a single cell, let the event
+				// bubble so the pane frame can exit.
 				if (
-					selection.anchor.row !== selection.focus.row ||
-					selection.anchor.column !== selection.focus.column
+					selection.ranges.length > 1 ||
+					active.anchor.row !== active.focus.row ||
+					active.anchor.column !== active.focus.column
 				) {
 					event.preventDefault();
-					store.selectCell(selection.focus);
+					store.selectCell(focus);
 				}
 				return;
 			case "Delete":
@@ -381,12 +508,17 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		if (mod && event.key.toLowerCase() === "a") {
 			event.preventDefault();
 			store.setSelection({
-				anchor: { row: HEADER_ROW, column: 0 },
-				focus: {
-					row: HEADER_ROW,
-					column: store.document.columns.length - 1,
-				},
-				mode: "column",
+				ranges: [
+					{
+						anchor: { row: HEADER_ROW, column: 0 },
+						focus: {
+							row: HEADER_ROW,
+							column: store.document.columns.length - 1,
+						},
+						mode: "column",
+					},
+				],
+				activeIndex: 0,
 			});
 			return;
 		}
@@ -395,7 +527,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		// editor, the way a spreadsheet does: it is the fastest path to typing.
 		if (!mod && !event.altKey && event.key.length === 1) {
 			event.preventDefault();
-			beginEditing(selection.focus, event.key);
+			beginEditing(focus, event.key);
 		}
 	};
 
@@ -439,7 +571,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					writeClipboard(event);
 					// The browser performs this write itself, so unlike the menu's
 					// permission-gated path there is no outcome to wait for.
-					useTabeloStore.getState().markCopiedRange();
+					useTabeloStore.getState().markCopiedRanges();
 				}}
 				onCut={(event) => {
 					if (useTabeloStore.getState().editing) return;
@@ -448,16 +580,23 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					// nothing and drops whatever an earlier copy left. Stated here
 					// rather than left to the clear below, because clearing cells that
 					// are already empty changes no document and so clears no mark.
-					useTabeloStore.getState().clearCopiedRange();
+					useTabeloStore.getState().clearCopiedRanges();
 					useTabeloStore.getState().clearSelection();
 				}}
 				onPaste={(event) => {
-					if (useTabeloStore.getState().editing) return;
+					const store = useTabeloStore.getState();
+					if (store.editing) return;
 					event.preventDefault();
-					useTabeloStore.getState().pasteClipboard({
+					const refusal = store.pasteClipboard({
 						text: event.clipboardData.getData("text/plain"),
 						html: event.clipboardData.getData("text/html"),
 					});
+					if (refusal) {
+						store.pushNotice({
+							severity: "warning",
+							message: pasteRefusalMessage[refusal],
+						});
+					}
 				}}
 			>
 				<colgroup>
@@ -498,16 +637,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								axisMenuHandle={axisMenuHandle}
 								columnIndex={columnIndex}
 								header={column.header}
-								focused={selection.focus.column === columnIndex}
+								focused={focus.column === columnIndex}
 								width={resolveColumnWidth(column.width)}
 								zoom={zoom}
-								onSelect={(extend) => selectColumn(columnIndex, extend)}
+								onSelect={(intent) => selectColumn(columnIndex, intent)}
 								onDragStart={() => {
 									draggingRef.current = "column";
 								}}
 								onDragEnter={() => {
 									if (draggingRef.current !== "column") return;
-									selectColumn(columnIndex, true);
+									selectColumn(columnIndex, "extend");
 								}}
 							/>
 						))}
@@ -531,7 +670,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							className="sticky top-grid-strip left-0 z-30 border-line-strong border-r border-b bg-surface-gutter px-1 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums"
 							onPointerEnter={() => {
 								if (draggingRef.current !== "row") return;
-								selectRow(HEADER_ROW, true);
+								selectRow(HEADER_ROW, "extend");
 							}}
 						>
 							<div className="grid h-content-line-box grid-cols-[minmax(0,1fr)_1.25rem] items-center gap-1">
@@ -543,15 +682,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									onPointerDown={(event) => {
 										if (event.button !== 0) return;
 										draggingRef.current = "row";
-										selectRow(
-											HEADER_ROW,
-											event.shiftKey || event.metaKey || event.ctrlKey,
-										);
+										selectRow(HEADER_ROW, selectIntentOf(event));
 									}}
 									onClick={(event) => {
 										// A keyboard-generated click has no pointer detail.
 										if (event.detail === 0)
-											selectRow(HEADER_ROW, event.shiftKey);
+											selectRow(HEADER_ROW, selectIntentOf(event));
 									}}
 								>
 									1
@@ -560,7 +696,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									handle={axisMenuHandle}
 									axis="row"
 									index={HEADER_ROW}
-									revealed={selection.focus.row === HEADER_ROW}
+									revealed={focus.row === HEADER_ROW}
 								/>
 							</div>
 						</th>
@@ -571,16 +707,15 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								header={column.header}
 								align={column.align}
 								wrapped={wrappedColumns.includes(column.id)}
-								selected={rectContains(rect, HEADER_ROW, columnIndex)}
+								selected={rects.some((candidate) =>
+									rectContains(candidate, HEADER_ROW, columnIndex),
+								)}
 								copiedEdges={clipboardEdgesAt(
-									copiedRange,
+									copiedRanges,
 									HEADER_ROW,
 									columnIndex,
 								)}
-								focus={
-									selection.focus.row === HEADER_ROW &&
-									selection.focus.column === columnIndex
-								}
+								focus={focus.row === HEADER_ROW && focus.column === columnIndex}
 								editing={editingHeader === columnIndex}
 								seed={editingSeed}
 							/>
@@ -589,58 +724,35 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				</thead>
 
 				<tbody>
-					{document.rows.map((row, rowIndex) => {
+					{document.rows.map((row, rowIndex) => (
 						// Every selection prop is narrowed to this row's own membership
 						// before it crosses the memo boundary. Passing the shared focus
-						// and rectangle instead would change all 200 rows' props on every
-						// arrow key, which is the case the boundary exists to skip: a row
-						// outside the selection keeps the same NONE sentinels and is
+						// and the regions instead would change all 200 rows' props on
+						// every arrow key, which is the case the boundary exists to skip:
+						// a row outside the selection keeps the same empty spans and is
 						// reconciled away.
-						const withinSelection =
-							rowIndex >= rect.top && rowIndex <= rect.bottom;
-						// Narrowed for the same reason, and to primitives for the same
-						// reason: the copied range outlives the selection, so a row
-						// outside it must keep props that do not change.
-						const withinCopied =
-							copiedRange !== null &&
-							rowIndex >= copiedRange.top &&
-							rowIndex <= copiedRange.bottom;
-
-						return (
-							<DataRow
-								key={row.id}
-								row={row}
-								rowIndex={rowIndex}
-								columns={document.columns}
-								axisMenuHandle={axisMenuHandle}
-								focused={selection.focus.row === rowIndex}
-								focusColumn={
-									selection.focus.row === rowIndex
-										? selection.focus.column
-										: NO_COLUMN
-								}
-								selectedFrom={withinSelection ? rect.left : NO_COLUMN}
-								selectedTo={withinSelection ? rect.right : NO_COLUMN}
-								copiedFrom={
-									withinCopied && copiedRange ? copiedRange.left : NO_COLUMN
-								}
-								copiedTo={
-									withinCopied && copiedRange ? copiedRange.right : NO_COLUMN
-								}
-								copiedTopEdge={withinCopied && rowIndex === copiedRange?.top}
-								copiedBottomEdge={
-									withinCopied && rowIndex === copiedRange?.bottom
-								}
-								editingColumn={
-									editing?.row === rowIndex ? editing.column : NO_COLUMN
-								}
-								editingSeed={editing?.row === rowIndex ? editingSeed : null}
-								wrappedColumns={wrappedColumns}
-								selectRow={selectRow}
-								draggingRef={draggingRef}
-							/>
-						);
-					})}
+						<DataRow
+							key={row.id}
+							row={row}
+							rowIndex={rowIndex}
+							columns={document.columns}
+							axisMenuHandle={axisMenuHandle}
+							focused={focus.row === rowIndex}
+							focusColumn={focus.row === rowIndex ? focus.column : NO_COLUMN}
+							selectedSpans={spansOf(rects, rowIndex)}
+							// Narrowed for the same reason, and to a primitive for the
+							// same reason: the copied areas outlive the selection, so a
+							// row outside them must keep props that do not change.
+							copiedSpans={copiedSpansOf(copiedRanges, rowIndex)}
+							editingColumn={
+								editing?.row === rowIndex ? editing.column : NO_COLUMN
+							}
+							editingSeed={editing?.row === rowIndex ? editingSeed : null}
+							wrappedColumns={wrappedColumns}
+							selectRow={selectRow}
+							draggingRef={draggingRef}
+						/>
+					))}
 				</tbody>
 			</table>
 
@@ -659,31 +771,31 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 // shallow comparator is enough and no custom `areEqual` can drift out of sync
 // with what this actually reads.
 //
-// The selection arrives already narrowed to this row: a column range this row
-// covers rather than the whole rectangle, and this row's focused and editing
-// columns rather than the grid's. That is what makes an arrow key re-render two
-// rows instead of two hundred.
+// The selection arrives already narrowed to this row: the column spans this row
+// covers rather than the whole set of regions, and this row's focused and
+// editing columns rather than the grid's. That is what makes an arrow key
+// re-render two rows instead of two hundred.
 interface DataRowProps {
 	readonly row: Row;
 	readonly rowIndex: number;
 	readonly columns: readonly Column[];
 	readonly axisMenuHandle: AxisMenuHandle;
 	readonly focused: boolean;
-	// This row's focused, selected, and editing columns, or NO_COLUMN.
+	// This row's focused and editing columns, or NO_COLUMN.
 	readonly focusColumn: number;
-	readonly selectedFrom: number;
-	readonly selectedTo: number;
-	// This row's share of the copied range, and whether it owns the range's top
-	// or bottom edge.
-	readonly copiedFrom: number;
-	readonly copiedTo: number;
-	readonly copiedTopEdge: boolean;
-	readonly copiedBottomEdge: boolean;
+	// This row's selected column spans, as "left:right" pairs. A string rather
+	// than an array because it has to compare by value at the memo boundary, and
+	// a row can sit inside several areas at once.
+	readonly selectedSpans: string;
+	// This row's share of the copied areas, as "left:right:top:bottom" per area,
+	// where the last two say whether this row owns that area's top or bottom
+	// edge. One primitive for the same reason as the line above.
+	readonly copiedSpans: string;
 	readonly editingColumn: number;
 	// The character that opened the editor, when typing is what opened it.
 	readonly editingSeed: string | null;
 	readonly wrappedColumns: readonly ColumnId[];
-	readonly selectRow: (row: number, extend: boolean) => void;
+	readonly selectRow: (row: number, intent: SelectIntent) => void;
 	readonly draggingRef: React.RefObject<"cell" | "column" | "row" | null>;
 }
 
@@ -694,12 +806,8 @@ const DataRow = memo(function DataRow({
 	axisMenuHandle,
 	focused,
 	focusColumn,
-	selectedFrom,
-	selectedTo,
-	copiedFrom,
-	copiedTo,
-	copiedTopEdge,
-	copiedBottomEdge,
+	selectedSpans,
+	copiedSpans,
 	editingColumn,
 	editingSeed,
 	wrappedColumns,
@@ -738,7 +846,7 @@ const DataRow = memo(function DataRow({
 				)}
 				onPointerEnter={() => {
 					if (draggingRef.current !== "row") return;
-					selectRow(rowIndex, true);
+					selectRow(rowIndex, "extend");
 				}}
 			>
 				<div className="grid h-content-line-box grid-cols-[minmax(0,1fr)_1.25rem] items-center gap-1">
@@ -750,17 +858,12 @@ const DataRow = memo(function DataRow({
 						onPointerDown={(event) => {
 							if (event.button !== 0) return;
 							draggingRef.current = "row";
-							// Mod is aliased to Shift here, matching the column axis
-							// bug for bug: #40 owns fixing the alias, and fixing it in
-							// one place instead of two keeps the axes identical.
-							selectRow(
-								rowIndex,
-								event.shiftKey || event.metaKey || event.ctrlKey,
-							);
+							selectRow(rowIndex, selectIntentOf(event));
 						}}
 						onClick={(event) => {
 							// A keyboard-generated click has no pointer detail.
-							if (event.detail === 0) selectRow(rowIndex, event.shiftKey);
+							if (event.detail === 0)
+								selectRow(rowIndex, selectIntentOf(event));
 						}}
 					>
 						{rowIndex + 2}
@@ -778,17 +881,8 @@ const DataRow = memo(function DataRow({
 
 			{columns.map((column, columnIndex) => {
 				const isFocus = columnIndex === focusColumn;
-				const inSelection =
-					columnIndex >= selectedFrom && columnIndex <= selectedTo;
-				const copiedEdges: ClipboardEdges | null =
-					columnIndex >= copiedFrom && columnIndex <= copiedTo
-						? {
-								top: copiedTopEdge,
-								right: columnIndex === copiedTo,
-								bottom: copiedBottomEdge,
-								left: columnIndex === copiedFrom,
-							}
-						: null;
+				const inSelection = coveredBySpans(selectedSpans, columnIndex);
+				const copiedEdges = copiedEdgesInSpans(copiedSpans, columnIndex);
 				const value = row.cells[column.id] ?? "";
 				const isEditing = columnIndex === editingColumn;
 				const wrapped = wrappedColumns.includes(column.id);
@@ -837,17 +931,12 @@ const DataRow = memo(function DataRow({
 							event.preventDefault();
 							draggingRef.current = "cell";
 							const store = useTabeloStore.getState();
-							if (event.shiftKey) {
-								store.extendSelection({
-									row: rowIndex,
-									column: columnIndex,
-								});
-							} else {
-								store.selectCell({
-									row: rowIndex,
-									column: columnIndex,
-								});
-							}
+							const at = { row: rowIndex, column: columnIndex };
+							const intent = selectIntentOf(event);
+							if (intent === "extend") store.extendSelection(at);
+							else if (intent === "toggle")
+								store.toggleSelectionRegion(at, "cell");
+							else store.selectCell(at);
 							event.currentTarget.focus();
 						}}
 						onPointerEnter={() => {
@@ -931,7 +1020,7 @@ interface ColumnIndexCellProps {
 	// gesture converts viewport pixels back before writing a width down.
 	readonly width: number;
 	readonly zoom: number;
-	readonly onSelect: (extend: boolean) => void;
+	readonly onSelect: (intent: SelectIntent) => void;
 	readonly onDragStart: () => void;
 	readonly onDragEnter: () => void;
 }
@@ -988,11 +1077,11 @@ function ColumnIndexCell({
 					onPointerDown={(event) => {
 						if (event.button !== 0) return;
 						onDragStart();
-						onSelect(event.shiftKey || event.metaKey || event.ctrlKey);
+						onSelect(selectIntentOf(event));
 					}}
 					onClick={(event) => {
 						// A keyboard-generated click has no pointer detail.
-						if (event.detail === 0) onSelect(event.shiftKey);
+						if (event.detail === 0) onSelect(selectIntentOf(event));
 					}}
 				>
 					{letter}
@@ -1117,11 +1206,11 @@ function HeaderCell({
 				// the cell would look selected while ignoring every keystroke.
 				event.preventDefault();
 				const store = useTabeloStore.getState();
-				if (event.shiftKey) {
-					store.extendSelection({ row: HEADER_ROW, column: columnIndex });
-				} else {
-					store.selectCell({ row: HEADER_ROW, column: columnIndex });
-				}
+				const at = { row: HEADER_ROW, column: columnIndex };
+				const intent = selectIntentOf(event);
+				if (intent === "extend") store.extendSelection(at);
+				else if (intent === "toggle") store.toggleSelectionRegion(at, "cell");
+				else store.selectCell(at);
 				event.currentTarget.focus();
 			}}
 			onDoubleClick={() =>

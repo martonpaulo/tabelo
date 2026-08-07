@@ -95,17 +95,17 @@ describe("autosave lifecycle", () => {
 	// than a document. Reopening the tab to a dashed outline around cells whose
 	// content is no longer on the system clipboard would be a lie.
 	it("never writes the copied range to storage", () => {
-		useTabeloStore.getState().markCopiedRange();
-		expect(useTabeloStore.getState().copiedRange).not.toBeNull();
+		useTabeloStore.getState().markCopiedRanges();
+		expect(useTabeloStore.getState().copiedRanges).not.toHaveLength(0);
 
 		expect(flushPersistence()).toEqual({ status: "saved" });
 
 		const raw = window.localStorage.getItem(STORAGE_KEY) ?? "";
-		expect(raw).not.toContain("copiedRange");
+		expect(raw).not.toContain("copiedRanges");
 
 		useTabeloStore.setState(initialState, true);
 		useTabeloStore.getState().hydrate();
-		expect(useTabeloStore.getState().copiedRange).toBeNull();
+		expect(useTabeloStore.getState().copiedRanges).toHaveLength(0);
 	});
 
 	it("clears stale write errors after a verified successful write", () => {

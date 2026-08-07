@@ -13,9 +13,9 @@ import {
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import {
-	rectColumns,
-	rectDataRows,
-	selectionRect,
+	isContiguous,
+	selectionColumns,
+	selectionDataRows,
 	structureDeletionGuard,
 } from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
@@ -58,8 +58,8 @@ export async function copySelectionToClipboard(
 	if (!ok) return false;
 
 	const store = useTabeloStore.getState();
-	if (intent === "cut") store.clearCopiedRange();
-	else store.markCopiedRange();
+	if (intent === "cut") store.clearCopiedRanges();
+	else store.markCopiedRanges();
 	return true;
 }
 
@@ -76,29 +76,33 @@ export function buildTableActions(
 ): readonly TableActionGroup[] {
 	const store = useTabeloStore.getState();
 	const { document, selection } = store;
-	const rect = selectionRect(
-		selection,
-		document.rows.length,
-		document.columns.length,
-	);
+	const rows = document.rows.length;
+	const columns = document.columns.length;
 
 	const showRows = context.axis !== "column";
 	const showColumns = context.axis !== "row";
 	// Row actions count data rows only. A selection may cover the header row,
 	// which is structurally required and so is never one of the rows an action
 	// inserts beside, duplicates, moves, or removes.
-	const dataRows = rectDataRows(rect);
+	//
+	// Counted across every region of the selection, as a set: two regions that
+	// both cover a column still describe one column, so the labels stay honest
+	// about what the action will do.
+	const dataRows = selectionDataRows(selection, rows, columns);
+	const selectedColumns = selectionColumns(selection, rows, columns);
 	const rowCount = dataRows.length;
-	const columnCount = rectColumns(rect).length;
+	const columnCount = selectedColumns.length;
 	const firstDataRow = dataRows[0];
 	const lastDataRow = dataRows.at(-1);
+	const firstColumn = selectedColumns[0];
+	const lastColumn = selectedColumns.at(-1);
 	// Nothing to act on when the selection sits on the header row alone.
 	const noDataRows = rowCount === 0;
-	const deletionGuard = structureDeletionGuard(
-		[selection],
-		document.rows.length,
-		document.columns.length,
-	);
+	// Inserting, moving, and pasting each need one place to act, and several
+	// separate areas name several. Disabled with the reason written out, never
+	// hidden: see docs/design-system.md §4.
+	const severalAreas = !isContiguous(selection);
+	const deletionGuard = structureDeletionGuard(selection, rows, columns);
 
 	const insert: TableAction[] = [];
 	if (showRows) {
@@ -110,12 +114,16 @@ export function buildTableActions(
 				id: "row-above",
 				label: copy.actions.insertRowsAbove(insertCount),
 				icon: ArrowUp,
+				disabled: severalAreas,
+				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addRowAbove(),
 			},
 			{
 				id: "row-below",
 				label: copy.actions.insertRowsBelow(insertCount),
 				icon: ArrowDown,
+				disabled: severalAreas,
+				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addRowBelow(),
 			},
 		);
@@ -126,12 +134,16 @@ export function buildTableActions(
 				id: "column-left",
 				label: copy.actions.insertColumnsLeft(columnCount),
 				icon: ArrowLeft,
+				disabled: severalAreas,
+				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addColumnLeft(),
 			},
 			{
 				id: "column-right",
 				label: copy.actions.insertColumnsRight(columnCount),
 				icon: ArrowRight,
+				disabled: severalAreas,
+				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addColumnRight(),
 			},
 		);
@@ -161,6 +173,8 @@ export function buildTableActions(
 			label: copy.actions.paste,
 			icon: ClipboardPaste,
 			shortcut: copy.shortcuts.paste,
+			disabled: severalAreas,
+			disabledReason: copy.disabled.singleAreaRequired,
 			run: () => void pasteFromClipboard(),
 		},
 	];
@@ -198,8 +212,10 @@ export function buildTableActions(
 				id: "move-up",
 				label: copy.actions.moveUp,
 				icon: ArrowUp,
-				disabled: noDataRows || firstDataRow === 0,
-				disabledReason: copy.disabled.firstRow,
+				disabled: severalAreas || noDataRows || firstDataRow === 0,
+				disabledReason: severalAreas
+					? copy.disabled.singleAreaRequired
+					: copy.disabled.firstRow,
 				run: () => store.moveSelectedRow(-1),
 			},
 			{
@@ -207,10 +223,13 @@ export function buildTableActions(
 				label: copy.actions.moveDown,
 				icon: ArrowDown,
 				disabled:
+					severalAreas ||
 					noDataRows ||
 					lastDataRow === undefined ||
-					lastDataRow >= document.rows.length - 1,
-				disabledReason: copy.disabled.lastRow,
+					lastDataRow >= rows - 1,
+				disabledReason: severalAreas
+					? copy.disabled.singleAreaRequired
+					: copy.disabled.lastRow,
 				run: () => store.moveSelectedRow(1),
 			},
 		);
@@ -221,16 +240,21 @@ export function buildTableActions(
 				id: "move-left",
 				label: copy.actions.moveLeft,
 				icon: ArrowLeft,
-				disabled: rect.left === 0,
-				disabledReason: copy.disabled.firstColumn,
+				disabled: severalAreas || firstColumn === 0,
+				disabledReason: severalAreas
+					? copy.disabled.singleAreaRequired
+					: copy.disabled.firstColumn,
 				run: () => store.moveSelectedColumn(-1),
 			},
 			{
 				id: "move-right",
 				label: copy.actions.moveRight,
 				icon: ArrowRight,
-				disabled: rect.right >= document.columns.length - 1,
-				disabledReason: copy.disabled.lastColumn,
+				disabled:
+					severalAreas || lastColumn === undefined || lastColumn >= columns - 1,
+				disabledReason: severalAreas
+					? copy.disabled.singleAreaRequired
+					: copy.disabled.lastColumn,
 				run: () => store.moveSelectedColumn(1),
 			},
 		);

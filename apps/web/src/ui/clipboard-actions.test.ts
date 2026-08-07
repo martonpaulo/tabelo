@@ -218,12 +218,9 @@ describe("the copied range", () => {
 		action("copy")();
 
 		await vi.waitFor(() =>
-			expect(useTabeloStore.getState().copiedRange).toEqual({
-				top: 0,
-				left: 0,
-				bottom: 0,
-				right: 0,
-			}),
+			expect(useTabeloStore.getState().copiedRanges).toEqual([
+				{ top: 0, left: 0, bottom: 0, right: 0 },
+			]),
 		);
 	});
 
@@ -232,13 +229,13 @@ describe("the copied range", () => {
 	it("is never left behind by a cut, and an earlier one is dropped", async () => {
 		action("copy")();
 		await vi.waitFor(() =>
-			expect(useTabeloStore.getState().copiedRange).not.toBeNull(),
+			expect(useTabeloStore.getState().copiedRanges).not.toHaveLength(0),
 		);
 
 		action("cut")();
 
 		await vi.waitFor(() =>
-			expect(useTabeloStore.getState().copiedRange).toBeNull(),
+			expect(useTabeloStore.getState().copiedRanges).toHaveLength(0),
 		);
 	});
 
@@ -247,16 +244,16 @@ describe("the copied range", () => {
 	it("survives a refused copy, which changed nothing", async () => {
 		action("copy")();
 		await vi.waitFor(() =>
-			expect(useTabeloStore.getState().copiedRange).not.toBeNull(),
+			expect(useTabeloStore.getState().copiedRanges).not.toHaveLength(0),
 		);
-		const marked = useTabeloStore.getState().copiedRange;
+		const marked = useTabeloStore.getState().copiedRanges;
 		writeClipboardTable.mockResolvedValue(refused);
 		useTabeloStore.getState().selectCell({ row: 1, column: 1 });
 
 		action("copy")();
 
 		await vi.waitFor(() => expect(severity()).toBe("error"));
-		expect(useTabeloStore.getState().copiedRange).toBe(marked);
+		expect(useTabeloStore.getState().copiedRanges).toBe(marked);
 	});
 
 	// The clipboard now holds a pane's text, so the grid mark would point at
@@ -264,11 +261,11 @@ describe("the copied range", () => {
 	it("is dropped when a source or preview copy replaces the clipboard", async () => {
 		action("copy")();
 		await vi.waitFor(() =>
-			expect(useTabeloStore.getState().copiedRange).not.toBeNull(),
+			expect(useTabeloStore.getState().copiedRanges).not.toHaveLength(0),
 		);
 
 		await copyToClipboard({ text: "| Name |" }, "source");
 
-		expect(useTabeloStore.getState().copiedRange).toBeNull();
+		expect(useTabeloStore.getState().copiedRanges).toHaveLength(0);
 	});
 });

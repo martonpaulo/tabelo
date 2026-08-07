@@ -232,7 +232,7 @@ test("context menu refuses to delete every selected row", async ({
 	await expect(tabelo.cell(3, 1)).toBeVisible();
 });
 
-test("column headers extend selection by drag, Shift, and the platform modifier", async ({
+test("column headers extend selection by drag and by Shift", async ({
 	page,
 	tabelo,
 }) => {
@@ -268,20 +268,9 @@ test("column headers extend selection by drag, Shift, and the platform modifier"
 	expect(await selected(1)).toBe(true);
 	expect(await selected(2)).toBe(true);
 	expect(await selected(3)).toBe(false);
-
-	const modifier = process.platform === "darwin" ? "Meta" : "Control";
-	await tabelo.columnIndex(1).getByRole("button").first().click();
-	await tabelo
-		.columnIndex(3)
-		.getByRole("button")
-		.first()
-		.click({ modifiers: [modifier] });
-	expect(await selected(1)).toBe(true);
-	expect(await selected(2)).toBe(true);
-	expect(await selected(3)).toBe(true);
 });
 
-test("row numbers extend selection by drag, Shift, and the platform modifier", async ({
+test("row numbers extend selection by drag and by Shift", async ({
 	page,
 	tabelo,
 }) => {
@@ -317,17 +306,6 @@ test("row numbers extend selection by drag, Shift, and the platform modifier", a
 	expect(await selected(1)).toBe(true);
 	expect(await selected(2)).toBe(true);
 	expect(await selected(3)).toBe(false);
-
-	const modifier = process.platform === "darwin" ? "Meta" : "Control";
-	await tabelo.rowIndex(2).getByRole("button").first().click();
-	await tabelo
-		.rowIndex(4)
-		.getByRole("button")
-		.first()
-		.click({ modifiers: [modifier] });
-	expect(await selected(1)).toBe(true);
-	expect(await selected(2)).toBe(true);
-	expect(await selected(3)).toBe(true);
 });
 
 test("the header row's select handle extends into data rows", async ({

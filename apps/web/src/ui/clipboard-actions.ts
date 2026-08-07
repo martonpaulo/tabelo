@@ -57,7 +57,7 @@ export async function copyToClipboard(
 	// only the caller knows which one this is. A refused write changes nothing,
 	// so it leaves an existing mark alone rather than clearing it.
 	if (outcome.ok && scope !== "selection") {
-		useTabeloStore.getState().clearCopiedRange();
+		useTabeloStore.getState().clearCopiedRanges();
 	}
 	return outcome.ok;
 }

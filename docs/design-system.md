@@ -1079,17 +1079,27 @@ container, so the arrow keys still work.
 | Key | Effect |
 | :--- | :--- |
 | Arrows | Move the focused cell. They stop at the edges and never leave the grid |
-| `Shift`+Arrows | Extend the selection from the anchor |
+| `Shift`+Arrows | Extend the active area from its anchor |
+| `Mod`+Arrows | Move the focused cell without discarding the areas already selected |
 | `Alt`+Arrows | Reorder the row or column instead of navigating |
 | `Tab` / `Shift`+`Tab` | Move one cell in reading order, wrapping at row ends and grid edges. It never leaves the grid |
 | `Home` / `End` | First or last column of the row; with the modifier, the first or last cell of the table |
 | `Enter` / `F2` | Edit the focused cell. On a column header, rename it |
 | `Space` | On a column header, select the column: activating a button does what buttons do |
-| `Escape` | Close the innermost thing first: cancel an edit, close a menu, clear the copied mark, collapse a selection. If nothing else is open, exit the pane |
+| `Ctrl`+`Space` | Add the focused cell's column to the selection, or take it away |
+| `Ctrl`+`Shift`+`Space` | The same for its row |
+| `Escape` | Close the innermost thing first: cancel an edit, close a menu, clear the copied mark, collapse a selection to one cell. If nothing else is open, exit the pane |
 | `Backspace` | Clear the contents of the selection |
 | `Mod`+`Backspace` | Remove the selected rows or columns |
 | `Mod`+`Enter` | Add a row below |
 | Any printable character | Replace the cell and start editing |
+
+The two `Space` chords are the one place the key table names `Ctrl` rather than
+`Mod`. Both modifiers count as the modifier everywhere, but macOS keeps
+`Cmd`+`Space` for itself and the page never sees it, so `Ctrl` is the one that
+is true on every platform. macOS reserves `Ctrl`+arrows the same way, so there
+it is `Cmd` that carries `Mod`+Arrows. Whichever one the platform leaves alone
+is the one that works; neither chord is unreachable anywhere.
 
 While a cell or header editor is open it owns every key, and the grid's own
 handler stands down: a `Backspace` in an editor must never delete the row the
@@ -1098,7 +1108,42 @@ editor is sitting in.
 **Every pointer affordance needs a keyboard equal.** Column width is the case
 that proves it: the drag handle stays pointer-only and `aria-hidden`, and the
 column menu carries the same widen, narrow, and reset. That is what makes
-hiding the handle honest rather than a way of avoiding the problem.
+hiding the handle honest rather than a way of avoiding the problem. The
+modifier click that builds a selection out of several areas is the same
+obligation, and the two `Space` chords above are its answer.
+
+### Selecting several areas
+
+A selection is an ordered list of areas, and a single area is the ordinary
+case: every gesture except the modifier produces exactly one.
+
+- A plain click replaces the selection. `Shift` extends the **active** area,
+  the one the keyboard is working in. The platform modifier adds an area, or
+  removes one when the click names an area already selected.
+- `Mod`+`Shift`+click extends the area the modifier most recently added, so the
+  two gestures compose instead of fighting.
+- Removing works along the axis the click names. A modifier click on a selected
+  column letter subtracts that column, splitting one area in two when the
+  column sat in the middle of it. A cell has no axis to subtract along, so a
+  modifier click on one adds an area unless it names exactly that single cell.
+- A selection is never empty. A subtraction that would empty it does nothing.
+- Every count is a set: two areas covering the same column still describe one
+  column, so a label never promises to delete something twice.
+- **The modifier means "keep what is already selected" on the keyboard too.**
+  `Mod`+arrows move the focused cell without discarding the other areas, which
+  is what lets `Ctrl`+`Space` reach a second column at all. The single cell the
+  focus sits on is provisional: moving it moves that cell rather than leaving a
+  trail of one-cell areas, and turning its column or row into an area replaces
+  it instead of painting it twice.
+
+**Operations that need one place to act say so.** Insert above, below, left and
+right, the four moves, and paste each need a single insertion point or origin,
+and several areas name several. They are disabled with the reason written out,
+never hidden, per §4. Copy, cut, clear, delete, duplicate, alignment and width
+all act on the union of the areas.
+
+The announcement states the total across every area, not the extent of the last
+one: two selected columns announce as two.
 
 Cursor shape confirms the interaction before a click: buttons, menu actions,
 checkboxes, radio controls, and clickable row or column labels use `pointer`;
@@ -1166,6 +1211,13 @@ mirrors the row-number gutter on the other axis. Both are chrome:
 - **It owns the column.** Clicking a letter selects the whole column, header
   included. The column menu and the resize handle live here, revealed by the
   same rule as the row affordances (§6).
+- **A per-column property follows the selection.** Alignment and width applied
+  to a column that is selected as a column apply to every selected column,
+  adjacent or not. Applied to any other column they stay there, so dragging an
+  unrelated edge never resizes something elsewhere. For the same reason a menu
+  opened on a target already inside the selection keeps the selection instead of
+  collapsing onto it: collapsing would silently discard the rest of what the
+  user picked and leave the menu acting on one column of several.
 - It is never itself selected and never takes `--selection-fill`. Selecting a
   column paints the header and body cells it represents, while this metadata
   strip remains chrome.
