@@ -1,0 +1,13 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	// Entry points are discovered from the manifests: Knip's Vite, Vitest and
+	// Playwright plugins already resolve index.html, src/**/*.test.ts,
+	// e2e/**/*.spec.ts, pwa-assets.config.ts and the postinstall script, so
+	// declaring them here would only be configuration that repeats itself.
+	//
+	// Knip flags an export that no other file imports even when the declaring
+	// file uses it, which describes a redundant `export` keyword rather than
+	// dead code. That class is the majority of the raw report here, and the
+	// remaining findings are unreadable underneath it.
+	"ignoreExportsUsedInFile": true
+}
