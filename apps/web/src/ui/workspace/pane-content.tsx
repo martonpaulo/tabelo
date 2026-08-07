@@ -16,8 +16,8 @@ const HtmlPreview = lazy(() => import("@/ui/preview/html-preview"));
 
 function PaneLoading() {
 	return (
-		<div className="flex h-full items-center justify-center">
-			<span className="text-muted-foreground text-xs">
+		<div role="status" className="flex h-full items-center justify-center">
+			<span className="text-muted-foreground text-sm">
 				{copy.status.loading}
 			</span>
 		</div>
