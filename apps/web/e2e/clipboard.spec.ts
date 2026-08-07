@@ -172,7 +172,7 @@ function mark(tabelo: TabeloPage, row: number, column: number): Locator {
 async function copyRange(tabelo: TabeloPage): Promise<void> {
 	await tabelo.cell(2, 1).click();
 	await tabelo.cell(3, 2).click({ modifiers: ["Shift"] });
-	await tabelo.page.keyboard.press("ControlOrMeta+c");
+	await tabelo.copy();
 	await expect(mark(tabelo, 2, 1)).toBeVisible();
 }
 
@@ -246,24 +246,20 @@ test("editing the table clears the mark, because the coordinates stop describing
 // Tabelo's cut empties the cells immediately rather than on paste, so there is
 // no pending move for a mark to describe.
 test("a cut leaves no mark, and drops the one an earlier copy left", async ({
-	page,
 	tabelo,
 }) => {
 	await copyRange(tabelo);
 
-	await page.keyboard.press("ControlOrMeta+x");
+	await tabelo.cut();
 
 	await expect(mark(tabelo, 2, 1)).toHaveCount(0);
 	await expect(mark(tabelo, 3, 2)).toHaveCount(0);
 });
 
 // A column selection reaches the header row, so copying one marks it too.
-test("copying a whole column marks its header cell", async ({
-	page,
-	tabelo,
-}) => {
+test("copying a whole column marks its header cell", async ({ tabelo }) => {
 	await tabelo.columnIndex(2).click();
-	await page.keyboard.press("ControlOrMeta+c");
+	await tabelo.copy();
 
 	await expect(
 		tabelo.header(2).locator("[data-clipboard-source]"),

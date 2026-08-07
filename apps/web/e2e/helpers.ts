@@ -393,6 +393,28 @@ export class TabeloPage {
 		);
 	}
 
+	// The grid implements no Mod+C or Mod+X of its own: those are the browser's
+	// own key bindings, and what Tabelo owns is the clipboard event they raise.
+	// That event is what these dispatch, which is also the only way to reach it
+	// on every engine, because a synthetic Control+C raises none in Firefox.
+	async copy(): Promise<void> {
+		await this.clipboardEvent("copy");
+	}
+
+	async cut(): Promise<void> {
+		await this.clipboardEvent("cut");
+	}
+
+	private async clipboardEvent(type: "copy" | "cut"): Promise<void> {
+		await this.grid().evaluate((grid, name) => {
+			const event = new Event(name, { bubbles: true, cancelable: true });
+			Object.defineProperty(event, "clipboardData", {
+				value: new DataTransfer(),
+			});
+			grid.dispatchEvent(event);
+		}, type);
+	}
+
 	async importFile(
 		name: string,
 		text: string,
