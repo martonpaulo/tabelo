@@ -57,6 +57,23 @@ describe("autosave lifecycle", () => {
 		expect(restored.draft?.issues.length).toBeGreaterThan(0);
 	});
 
+	it("keeps every identifier distinct after hydrating and then mutating", () => {
+		expect(flushPersistence()).toEqual({ status: "saved" });
+
+		useTabeloStore.getState().discardDraft();
+		useTabeloStore.setState(initialState, true);
+		useTabeloStore.getState().hydrate();
+
+		useTabeloStore.getState().addRowAbove();
+		useTabeloStore.getState().addColumnLeft();
+
+		const document = useTabeloStore.getState().document;
+		const rowIds = document.rows.map((row) => row.id);
+		const columnIds = document.columns.map((column) => column.id);
+		expect(new Set(rowIds).size).toBe(rowIds.length);
+		expect(new Set(columnIds).size).toBe(columnIds.length);
+	});
+
 	it("flushes the latest invalid draft on pagehide before debounce", () => {
 		stopAutosave = startAutosave();
 		const paneId = markdownPaneId();
