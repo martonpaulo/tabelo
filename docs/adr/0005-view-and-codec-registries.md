@@ -52,11 +52,11 @@ codec's declared default instead.
 
 **A view registry** holds what the workspace can display. A `ViewDefinition`
 adds presentation to a codec: a label, a description, an icon, a `kind`
-(`grid`, `source`, or `preview`), a highlight language named as a string, and a
+(`grid`, `source`, or `preview`), a highlight language named as a string, a
 `capabilities` record: editable, syntax-highlighted, downloadable, structured
-clipboard, text clipboard, table operations. The view picker, the pane
-renderer, and the clipboard behaviour all read capabilities rather than
-checking ids.
+clipboard, text clipboard, table operations, and a `loading` declaration
+(`eager` or `lazy`). The view picker, the pane renderer, and the clipboard
+behaviour all read capabilities rather than checking ids.
 
 Two rules keep the abstraction honest:
 
@@ -66,6 +66,14 @@ Two rules keep the abstraction honest:
 - **The registry never imports the editor.** Highlighting is a name that the
   lazily loaded editor resolves, which is what allows CodeMirror to stay out of
   the initial bundle.
+
+Whether a view's component ships in the initial bundle or loads on first use
+is `loading`, not a branch on the view's identity in the pane renderer. Every
+view currently keeps its existing effective behaviour: the grid is `eager`
+because it is what almost every workspace opens with and because it measures
+column widths rather than styling them, everything else is `lazy` because it
+shares CodeMirror or the preview's own bundle. Changing a view's declared
+loading strategy is a data edit, not a renderer change.
 
 Read-only is a property of the *view*, not the codec. The rendered preview
 borrows the HTML codec to serialize for download and simply declares

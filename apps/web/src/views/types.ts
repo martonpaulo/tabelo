@@ -47,6 +47,11 @@ export interface ViewDefinition {
 	readonly codec?: TableCodec;
 	readonly highlight: HighlightLanguage;
 	readonly capabilities: ViewCapabilities;
+	// Whether the pane renderer code-splits this view behind a lazy import and
+	// shows a loading state first, or renders it from the initial bundle. A
+	// property the registry declares, not a branch the renderer takes on a
+	// view's identity. See docs/adr/0005.
+	readonly loading: "eager" | "lazy";
 }
 
 export function isSourceView(view: ViewDefinition): boolean {
