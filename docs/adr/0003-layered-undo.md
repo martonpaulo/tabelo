@@ -30,6 +30,10 @@ Undo is layered, and the layer is chosen by focus.
   rather than discarding it.
 - Sync-originated editor transactions are annotated and excluded from the local
   history, so undo never rewinds a change the user did not make.
+- A pane changing view resets that pane's local history, as its own step. The
+  editor survives the change, but its text now means something else, so its
+  keystroke history describes a format the pane has left. Undo therefore stops
+  at the switch and falls through to the document timeline from there.
 
 ## Consequences
 
