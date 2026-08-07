@@ -8,7 +8,9 @@ import type { ViewDefinition } from "@/views/types";
 
 // CodeMirror and the preview are the two heavy things in the bundle, and a
 // workspace showing only the grid should not pay for either. Both load on
-// first use and stay loaded.
+// first use and stay loaded. Which views are lazy is declared per view in
+// `views/registry.ts` (`loading`); this file never singles out a view by id
+// or kind to decide how it loads.
 const SourceView = lazy(() => import("@/ui/source/source-view"));
 const HtmlPreview = lazy(() => import("@/ui/preview/html-preview"));
 
@@ -39,13 +41,19 @@ interface PaneContentProps {
 
 export function PaneContent({ paneId, view, zoom, wrap }: PaneContentProps) {
 	const document = useTabeloStore((state) => state.document);
-	if (view.kind === "grid") return <GridPane zoom={zoom} />;
 	const failure = view.codec ? canSerialize(view.codec, document) : null;
 	if (failure) return <BlockedState failure={failure} />;
 
+	// Every view goes through this one path. Whether it shows a loading state
+	// first comes from its own registry declaration, not from a check against
+	// `view.kind` here.
+	const fallback = view.loading === "lazy" ? <PaneLoading /> : null;
+
 	return (
-		<Suspense fallback={<PaneLoading />}>
-			{view.kind === "preview" ? (
+		<Suspense fallback={fallback}>
+			{view.kind === "grid" ? (
+				<GridPane zoom={zoom} />
+			) : view.kind === "preview" ? (
 				<HtmlPreview />
 			) : (
 				// Deliberately unkeyed: one source view replaces another in place, so

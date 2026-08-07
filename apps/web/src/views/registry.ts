@@ -56,6 +56,10 @@ const registry: Record<ViewId, ViewDefinition> = {
 		kind: "grid",
 		highlight: "plain",
 		capabilities: gridCapabilities,
+		// The grid is the view almost every workspace opens with, and it is the
+		// one place column widths are measured rather than styled. It stays
+		// eager by product decision, not pending a bundle-size measurement.
+		loading: "eager",
 	},
 
 	markdown: {
@@ -66,6 +70,8 @@ const registry: Record<ViewId, ViewDefinition> = {
 		codec: markdownCodec,
 		highlight: "markdown",
 		capabilities: sourceCapabilities,
+		// Every source view shares one lazily loaded CodeMirror bundle.
+		loading: "lazy",
 	},
 
 	csv: {
@@ -76,6 +82,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		codec: csvCodec,
 		highlight: "delimited",
 		capabilities: sourceCapabilities,
+		loading: "lazy",
 	},
 
 	tsv: {
@@ -86,6 +93,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		codec: tsvCodec,
 		highlight: "delimited",
 		capabilities: sourceCapabilities,
+		loading: "lazy",
 	},
 
 	html: {
@@ -96,6 +104,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		codec: htmlCodec,
 		highlight: "html",
 		capabilities: sourceCapabilities,
+		loading: "lazy",
 	},
 
 	jira: {
@@ -106,6 +115,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		codec: jiraCodec,
 		highlight: "jira",
 		capabilities: sourceCapabilities,
+		loading: "lazy",
 	},
 
 	json: {
@@ -116,6 +126,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		codec: jsonCodec,
 		highlight: "json",
 		capabilities: sourceCapabilities,
+		loading: "lazy",
 	},
 
 	records: {
@@ -126,6 +137,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		codec: recordsCodec,
 		highlight: "records",
 		capabilities: sourceCapabilities,
+		loading: "lazy",
 	},
 
 	"html-preview": {
@@ -143,6 +155,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 			textClipboard: false,
 			structuredClipboard: true,
 		},
+		loading: "lazy",
 	},
 };
 
