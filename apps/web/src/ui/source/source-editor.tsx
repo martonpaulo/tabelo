@@ -13,6 +13,7 @@ import {
 	Annotation,
 	Compartment,
 	EditorState,
+	type Extension,
 	Prec,
 	type Range,
 	Transaction,
@@ -53,13 +54,29 @@ const editableCompartment = new Compartment();
 const diagnosticsCompartment = new Compartment();
 const headerLineCompartment = new Compartment();
 const attributesCompartment = new Compartment();
-const zoomCompartment = new Compartment();
+const metricsCompartment = new Compartment();
 const wrapCompartment = new Compartment();
 
-function zoomExtension(zoom: number) {
-	return EditorView.theme({
-		"&": { "--pane-zoom": String(zoom) },
-	});
+// Everything the editor draws at the pane's scale, the text, the gutter width,
+// and the caret, reads `--pane-zoom` from the cascade, and the pane body is the
+// only thing that sets it: see docs/design-system.md, "Per-pane content scale".
+// So a zoom step never touches the editor's own configuration, and CodeMirror
+// has no way to know that the line heights and character width it caches, and
+// positions the line numbers and the caret from, have just changed underneath
+// it. Asking for a measurement is not enough on its own: the pass it schedules
+// keeps the cached metrics unless something first marks them stale, and a theme
+// change is what marks them. Each zoom level therefore gets its own theme,
+// carrying no rules at all: the identity change is the entire point, and the
+// scale itself keeps its single owner. Levels are reused rather than rebuilt,
+// so stepping up and down does not register a new theme every time.
+const metricsSignals = new Map<number, Extension>();
+
+function metricsSignal(zoom: number): Extension {
+	const known = metricsSignals.get(zoom);
+	if (known) return known;
+	const signal = EditorView.theme({});
+	metricsSignals.set(zoom, signal);
+	return signal;
 }
 
 function wrapExtension(wrap: boolean) {
@@ -344,7 +361,7 @@ export function SourceEditor({
 							contentAttributes(ariaLabel, invalid, describedBy, entered),
 						),
 					),
-					zoomCompartment.of(zoomExtension(zoom)),
+					metricsCompartment.of(metricsSignal(zoom)),
 
 					// Precedence matters: this must see Mod-z before the default
 					// history keymap consumes it.
@@ -449,17 +466,15 @@ export function SourceEditor({
 		});
 	}, [value]);
 
-	// The font size comes from the pane's CSS variable. CodeMirror cannot infer
-	// that an ancestor variable changed, so explicitly remeasure its cursor,
-	// lines, and gutters after each zoom step.
+	// Marking the cached metrics stale in the commit that publishes the new scale
+	// has CodeMirror remeasure before that frame is painted, so the line numbers
+	// and the caret land with the resized text rather than settling after it.
 	useLayoutEffect(() => {
-		if (zoom <= 0) return;
 		const view = viewRef.current;
 		if (!view) return;
 		view.dispatch({
-			effects: zoomCompartment.reconfigure(zoomExtension(zoom)),
+			effects: metricsCompartment.reconfigure(metricsSignal(zoom)),
 		});
-		view.requestMeasure();
 	}, [zoom]);
 
 	// Reconfigure the existing editor rather than remounting it. This keeps the

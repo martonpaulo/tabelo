@@ -72,3 +72,126 @@ test("wrapped source line numbers belong to the first visual line before focus",
 	await source.focus();
 	expect(await numbersStartOnTheirLogicalLine()).toBe(true);
 });
+
+const peopleTable = [
+	"| name | city |",
+	"| --- | --- |",
+	"| Ingrid | Rio |",
+	"| Paulo | Madrid |",
+	"| Mabel | Buenos Aires |",
+	"| Felix | Mexico City |",
+	"| Amora | Tokyo |",
+].join("\n");
+
+interface ZoomSample {
+	readonly fontSize: number;
+	readonly gutterWidth: number;
+	readonly onTheirLines: boolean;
+}
+
+// The scale reaches the text, the gutter, and the caret through one CSS
+// variable, but where CodeMirror *places* a line number or the caret comes from
+// metrics it measured and cached, and a zoom step changes those from outside
+// anything it can observe. So the assertion is that the two agree: after the
+// step, every number still sits inside the line it identifies and the caret
+// inside the line it is on, at the larger size.
+//
+// Each sample reads the scale and the placement together, from inside an
+// animation frame, and the first sample showing the new scale is the one
+// asserted on. Reading at frame time is what makes this a statement about what
+// the user sees: CodeMirror remeasures in the same frame the new scale is
+// painted in, and between a style change and that frame there is a moment when
+// the two disagree in the DOM and nothing has been drawn yet. A sample taken
+// outside a frame would catch that moment and call a correct editor broken.
+test("a zoom step carries the line numbers and the caret onto the resized lines", async ({
+	tabelo,
+}) => {
+	const source = tabelo.source("markdown");
+	await source.fill(peopleTable);
+	await expect(tabelo.cell(5, 1)).toHaveText("Amora");
+
+	// The caret goes to the last line, where a stale line height has had every
+	// row above it to accumulate into an offset worth seeing.
+	await source.focus();
+	await source.press("ControlOrMeta+End");
+	await expect(tabelo.pane("markdown").locator(".cm-activeLine")).toHaveCount(
+		1,
+	);
+
+	const pane = tabelo.pane("markdown");
+	const probe = (): Promise<ZoomSample> =>
+		pane.evaluate((node) => {
+			const read = () => {
+				const editor = node.querySelector(".cm-editor");
+				const lines = editor
+					? [...editor.querySelectorAll<HTMLElement>(".cm-content .cm-line")]
+					: [];
+				const numbers = editor
+					? [
+							...editor.querySelectorAll<HTMLElement>(
+								".cm-lineNumbers .cm-gutterElement",
+							),
+						].filter(
+							(element) => getComputedStyle(element).visibility !== "hidden",
+						)
+					: [];
+				const content = editor?.querySelector(".cm-content");
+				const caret = editor?.querySelector(".cm-cursor-primary");
+				const activeLine = editor?.querySelector(".cm-activeLine");
+
+				const encloses = (outer: DOMRect, inner: DOMRect) =>
+					inner.top >= outer.top && inner.bottom <= outer.bottom;
+
+				return {
+					fontSize: content
+						? Number.parseFloat(getComputedStyle(content).fontSize)
+						: 0,
+					gutterWidth: numbers[0]?.getBoundingClientRect().width ?? 0,
+					// Enclosure rather than size: what is being checked is that measured
+					// placement and styled scale still describe the same rows.
+					onTheirLines:
+						numbers.length === lines.length &&
+						caret !== null &&
+						caret !== undefined &&
+						activeLine !== null &&
+						activeLine !== undefined &&
+						encloses(
+							activeLine.getBoundingClientRect(),
+							caret.getBoundingClientRect(),
+						) &&
+						numbers.every((number, index) => {
+							const line = lines[index];
+							return (
+								line !== undefined &&
+								encloses(
+									line.getBoundingClientRect(),
+									number.getBoundingClientRect(),
+								)
+							);
+						}),
+				};
+			};
+			return new Promise<ZoomSample>((resolve) => {
+				requestAnimationFrame(() => resolve(read()));
+			});
+		});
+
+	const before = await probe();
+	expect(before.onTheirLines).toBe(true);
+
+	// The keyboard shortcut rather than the pane menu: opening a menu takes the
+	// focus, and an unfocused editor draws no caret to check.
+	await source.press("ControlOrMeta+=");
+
+	let resized = before;
+	const deadline = Date.now() + 5000;
+	while (resized.fontSize === before.fontSize && Date.now() < deadline) {
+		resized = await probe();
+	}
+
+	// Direction only: the step has to have actually reached the text and the
+	// gutter, or the placement check below proves nothing.
+	expect(resized.fontSize).toBeGreaterThan(before.fontSize);
+	expect(resized.gutterWidth).toBeGreaterThan(before.gutterWidth);
+	expect(resized.onTheirLines).toBe(true);
+});
