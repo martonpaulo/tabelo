@@ -231,6 +231,11 @@ Prefer the smallest relevant check.
 - `pnpm build`: production build for every workspace
 - `pnpm check-types`: TypeScript across the workspace
 - `pnpm check`: Biome format and lint with `--write`
+- `pnpm check:dead-code`: Knip, reporting unused files, exports, dependencies,
+  and catalog entries. It needs an installed workspace, because without
+  `node_modules` it cannot load the Vite, Vitest, and Playwright configuration
+  and every test file turns into a false positive. Advisory and deliberately
+  not in CI: run it when removing code or changing a manifest
 - `pnpm test`: unit tests, `pnpm test:watch` to re-run on change
 - `pnpm test:e2e`: the Playwright suite in Chromium. It builds and serves the
   app itself, so it needs no running dev server. First run only:
