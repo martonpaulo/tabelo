@@ -156,7 +156,7 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 
 	return {
 		ok: true,
-		table: { matrix: [headerCells, ...bodyRows] },
+		table: { matrix: [headerCells, ...bodyRows], headerRow: true },
 		warnings: warnings.length > 0 ? warnings : undefined,
 	};
 }

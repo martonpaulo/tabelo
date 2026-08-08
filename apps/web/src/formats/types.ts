@@ -61,6 +61,10 @@ export type ParseResult =
 
 export interface ParsedTable {
 	readonly matrix: string[][];
+	// Formats that encode row roles declare whether row 1 is a header. An
+	// absent fact means import must ask; it is never permission to infer from
+	// cell values.
+	readonly headerRow?: boolean;
 	readonly alignments?: readonly Alignment[];
 }
 

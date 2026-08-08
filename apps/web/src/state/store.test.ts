@@ -7,7 +7,6 @@ import {
 	HEADER_ROW,
 	type SelectionRange,
 } from "@/core/selection";
-import { conditionNoticeIds } from "./notice-queue";
 import { hasSessionWork, useTabeloStore } from "./store";
 
 const initialState = useTabeloStore.getInitialState();
@@ -69,7 +68,10 @@ describe("session content", () => {
 
 		store.resetDocument();
 		expect(useTabeloStore.getState().hasHeldContent).toBe(false);
-		store.importText("Name,Role\nPaulo,Designer", "csv");
+		store.importText(
+			"| Name | Role |\n| --- | --- |\n| Paulo | Designer |",
+			"markdown",
+		);
 		expect(useTabeloStore.getState().hasHeldContent).toBe(true);
 	});
 
@@ -208,6 +210,7 @@ describe("transactional input", () => {
 		const before = documentToMatrix(useTabeloStore.getState().document);
 
 		useTabeloStore.getState().importText("Name,Role\nIngrid,Designer", "csv");
+		useTabeloStore.getState().answerPendingImport(true);
 
 		expect(useTabeloStore.getState().past).toHaveLength(1);
 		useTabeloStore.getState().undo();
@@ -340,123 +343,91 @@ describe("structure insertion", () => {
 	});
 });
 
-describe("header correction", () => {
-	it("does not offer correction when a numeric first row stays data", () => {
+describe("pending header decision", () => {
+	it("does not change the document or history before an answer", () => {
+		const before = useTabeloStore.getState();
+
+		before.importText("Name,Role\nIngrid,Designer", "csv");
+
+		const pending = useTabeloStore.getState();
+		expect(pending.document).toBe(before.document);
+		expect(pending.past).toEqual(before.past);
+		expect(pending.pendingImport?.prepared.source).toBe("csv");
+	});
+
+	it("uses row 1 as headers in one undoable document step", () => {
+		useTabeloStore.getState().importText("Name,Role\nIngrid,Designer", "csv");
+
+		useTabeloStore.getState().answerPendingImport(true);
+
+		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
+			["Name", "Role"],
+			["Ingrid", "Designer"],
+		]);
+		expect(useTabeloStore.getState().pendingImport).toBeNull();
+		expect(useTabeloStore.getState().past).toHaveLength(1);
+
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().document).toBe(initialState.document);
+	});
+
+	it("keeps row 1 as data under empty headers", () => {
 		useTabeloStore.getState().pasteClipboard({ text: "1\t2\n3\t4" });
 
-		const state = useTabeloStore.getState();
-		expect(state.headerCorrection).toBeNull();
-		expect(documentToMatrix(state.document)).toEqual([
+		useTabeloStore.getState().answerPendingImport(false);
+
+		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
 			["", ""],
 			["1", "2"],
 			["3", "4"],
 		]);
 	});
 
-	it("does not offer correction when a blank first-row cell stays data", () => {
-		useTabeloStore.getState().importText("Name,\nIngrid,Designer", "csv");
+	it("cancels without changing document, selection, or history", () => {
+		const before = useTabeloStore.getState();
+		before.importText("Name,Role\nIngrid,Designer", "csv");
 
-		const state = useTabeloStore.getState();
-		expect(state.headerCorrection).toBeNull();
-		expect(documentToMatrix(state.document)[0]).toEqual(["", ""]);
+		useTabeloStore.getState().cancelPendingImport();
+
+		const after = useTabeloStore.getState();
+		expect(after.document).toBe(before.document);
+		expect(after.selection).toBe(before.selection);
+		expect(after.past).toBe(before.past);
+		expect(after.pendingImport).toBeNull();
 	});
 
-	it("binds text-header correction to the imported document", () => {
-		useTabeloStore
-			.getState()
-			.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
+	it("replaces an unanswered request with the latest import", () => {
+		const store = useTabeloStore.getState();
+		store.importText("Old\nvalue", "csv");
+		store.importText("New\nvalue", "csv");
 
-		const state = useTabeloStore.getState();
-		expect(state.headerCorrection?.document).toBe(state.document);
-	});
-
-	it("invalidates correction after a grid edit", () => {
-		useTabeloStore
-			.getState()
-			.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
-
-		useTabeloStore.getState().editCell(0, 0, "Paulo");
-
-		expect(useTabeloStore.getState().headerCorrection).toBeNull();
-	});
-
-	it("invalidates correction after a successful source commit", () => {
-		useTabeloStore
-			.getState()
-			.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
-
-		const state = useTabeloStore.getState();
-		const paneId = state.workspace.panes.find(
-			(pane) => pane.view === "markdown",
-		)?.id;
-		expect(paneId).toBeDefined();
-		state.setDraft(
-			paneId ?? "",
-			"markdown",
-			"| Other | Role |\n| --- | --- |\n| Paulo | Developer |",
-		);
-
-		expect(useTabeloStore.getState().headerCorrection).toBeNull();
-	});
-
-	it("refuses a correction whose imported revision is no longer current", () => {
-		useTabeloStore
-			.getState()
-			.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
-		const imported = useTabeloStore.getState().document;
-		const replacement = documentFromMatrix(
-			[
-				["Other", "Role"],
-				["Paulo", "Developer"],
-			],
-			{ headerRow: true },
-		);
-		useTabeloStore.setState({
-			document: replacement,
-			headerCorrection: { document: imported },
-		});
-
-		useTabeloStore.getState().demoteHeader();
-
-		expect(useTabeloStore.getState().document).toBe(replacement);
-		expect(useTabeloStore.getState().headerCorrection).toBeNull();
-	});
-
-	it("makes correction and undo one atomic step each", () => {
-		useTabeloStore
-			.getState()
-			.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
-		const imported = documentToMatrix(useTabeloStore.getState().document);
-
-		useTabeloStore.getState().demoteHeader();
+		useTabeloStore.getState().answerPendingImport(true);
 
 		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
-			["", ""],
-			["Name", "Role"],
-			["Ingrid", "Designer"],
+			["New"],
+			["value"],
 		]);
-		expect(useTabeloStore.getState().headerCorrection).toBeNull();
-
-		useTabeloStore.getState().undo();
-
-		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual(
-			imported,
-		);
-		expect(useTabeloStore.getState().headerCorrection).toBeNull();
 	});
 
-	it("dismisses only the correction notice", () => {
+	it("imports a declared Markdown header without asking", () => {
 		useTabeloStore
 			.getState()
-			.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
-		const before = useTabeloStore.getState().document;
+			.importText("| Name |\n| --- |\n| Ingrid |", "markdown");
 
-		useTabeloStore
-			.getState()
-			.dismissNotice(conditionNoticeIds.headerCorrection);
+		expect(useTabeloStore.getState().pendingImport).toBeNull();
+		expect(useTabeloStore.getState().document.columns[0]?.header).toBe("Name");
+	});
 
-		expect(useTabeloStore.getState().document).toBe(before);
-		expect(useTabeloStore.getState().headerCorrection).toBeNull();
+	it("keeps paste into existing content as a matrix write", () => {
+		useTabeloStore.getState().editCell(0, 0, "Existing");
+
+		useTabeloStore.getState().pasteClipboard({ text: "Name\tRole" });
+
+		const state = useTabeloStore.getState();
+		expect(state.pendingImport).toBeNull();
+		expect(
+			state.document.rows[0]?.cells[state.document.columns[0]?.id ?? ""],
+		).toBe("Name");
 	});
 });
 

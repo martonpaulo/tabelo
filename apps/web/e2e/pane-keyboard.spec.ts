@@ -51,8 +51,8 @@ test("the workspace ring does not grow with the table", async ({
 	expect(before).toBeGreaterThan(0);
 
 	await tabelo.paste(bigTable);
-	// Pasting runs header detection, so the exact row count is the heuristic's
-	// business. That the grid is now far larger than it was is this test's.
+	// The fixture explicitly uses row 1 as headers. The exact count is not this
+	// test's contract; only that the grid is now far larger than it was.
 	await expect
 		.poll(() => tabelo.grid().getByRole("row").count())
 		.toBeGreaterThan(100);

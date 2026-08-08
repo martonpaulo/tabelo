@@ -89,7 +89,7 @@ function parseJsonMatrix(text: string): MatrixParseResult {
 
 	return {
 		ok: true,
-		table: { matrix },
+		table: { matrix, headerRow: true },
 		warnings: warnings.length > 0 ? warnings : undefined,
 	};
 }

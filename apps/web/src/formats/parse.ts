@@ -7,7 +7,7 @@ export function toDocumentParseResult(result: MatrixParseResult): ParseResult {
 	return {
 		ok: true,
 		document: documentFromMatrix(result.table.matrix, {
-			headerRow: true,
+			headerRow: result.table.headerRow ?? true,
 			alignments: result.table.alignments,
 		}),
 		warnings: result.warnings,

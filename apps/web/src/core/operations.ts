@@ -306,22 +306,4 @@ export function pasteMatrix(
 	return { ...next, rows };
 }
 
-// Turns the current header row into a data row, leaving the header row empty.
-// This is the undoable correction offered when header detection guesses wrong.
-// The new header row is blank rather than generated: the row that moved down
-// keeps the only names the user actually wrote.
-export function demoteHeaderToRow(document: TableDocument): TableDocument {
-	const columns = document.columns.map((column) => ({
-		...column,
-		header: "",
-	}));
-	const promoted: Row = {
-		id: createRowId(),
-		cells: Object.fromEntries(
-			document.columns.map((column) => [column.id, column.header]),
-		),
-	};
-	return { columns, rows: [promoted, ...document.rows] };
-}
-
 export { sortedDesc };

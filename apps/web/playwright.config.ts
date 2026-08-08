@@ -11,6 +11,7 @@ const firefoxContractSpecs = [
 	"**/clipboard.spec.ts",
 	"**/download.spec.ts",
 	"**/grid-keyboard.spec.ts",
+	"**/header-import.spec.ts",
 	"**/history.spec.ts",
 	"**/import.spec.ts",
 	"**/new-table.spec.ts",

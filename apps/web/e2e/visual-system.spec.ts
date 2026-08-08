@@ -176,7 +176,9 @@ test("every rounded boundary is drawn as one filled stroke", async ({
 	expect(await roundedOffenders(page)).toEqual([]);
 	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
 
-	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
+	await tabelo.paste(
+		Array.from({ length: 501 }, (_, index) => `${index}`).join("\n"),
+	);
 	await expect(tabelo.notice().first()).toBeVisible();
 	expect(await roundedOffenders(page)).toEqual([]);
 });
@@ -374,6 +376,10 @@ test("the initial surface accepts the standard paste event directly", async ({
 		Object.defineProperty(event, "clipboardData", { value: clipboardData });
 		window.dispatchEvent(event);
 	});
+	await page
+		.getByRole("dialog", { name: copy.headerImport.title })
+		.getByRole("button", { name: copy.headerImport.asHeaders })
+		.click();
 
 	await expect(
 		page.getByRole("heading", { name: copy.empty.title }),

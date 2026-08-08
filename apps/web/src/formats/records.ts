@@ -265,7 +265,7 @@ function parseRecordsMatrix(text: string): MatrixParseResult {
 		matrix.push(row);
 	}
 
-	return { ok: true, table: { matrix } };
+	return { ok: true, table: { matrix, headerRow: true } };
 }
 
 function serializeRecords(
