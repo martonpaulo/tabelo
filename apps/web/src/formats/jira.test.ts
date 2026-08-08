@@ -58,6 +58,23 @@ describe("jira parsing", () => {
 });
 
 describe("jira serialization", () => {
+	it.each([
+		" leading",
+		"trailing ",
+		"  repeated  ",
+		"\tvalue\t",
+		"\u00a0value\u00a0",
+		"   ",
+	])("round-trips boundary whitespace in %j", (value) => {
+		const original = [["Note"], [value]];
+		const document = documentFromMatrix(original, { headerRow: true });
+		const parsed = jiraCodec.parse(jiraCodec.serialize(document));
+
+		expect(parsed.ok).toBe(true);
+		if (!parsed.ok) return;
+		expect(documentToMatrix(parsed.document)).toEqual(original);
+	});
+
 	it("marks header cells with doubled pipes", () => {
 		const document = documentFromMatrix(
 			[

@@ -21,10 +21,16 @@ The Markdown serializer escapes rather than flattens:
 
 - `|` is written as `\|`
 - a newline inside a cell is written as `<br>`
+- meaningful whitespace at a cell boundary is written as a decimal numeric
+  character reference before readability padding is added
+- a literal `&` is written as `&amp;`, protecting user text that already looks
+  like a character reference
 - a literal `\|` or `<br>` already present in a cell value is itself escaped so
   the transformation stays reversible
 
-The Markdown parser reverses both. Any cell value must survive
+The Markdown parser removes alignment padding, then reverses the emitted grammar
+in one non-recursive pass. Decoded output is never fed back into that decoder,
+so literal text such as `&#32;` remains literal. Any cell value must survive
 CSV → Markdown → CSV byte-exact, and this is enforced by round-trip tests rather
 than left to review.
 

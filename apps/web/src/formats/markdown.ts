@@ -7,9 +7,24 @@ import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
 // reversible. See docs/adr/0002. This is why the escape sequences
 // themselves (`\`, `\|`, and a literal `<br>`) are escaped too.
 export function escapeCell(value: string): string {
+	const source = value.replace(/\r\n?/g, "\n");
+	const leadingWhitespace = source.match(/^\s*/u)?.[0].length ?? 0;
+	const trailingWhitespace = source.match(/\s*$/u)?.[0].length ?? 0;
+	const trailingWhitespaceStart = source.length - trailingWhitespace;
 	let out = "";
-	for (let index = 0; index < value.length; index += 1) {
-		const char = value[index];
+	for (let index = 0; index < source.length; index += 1) {
+		const char = source[index];
+		if (
+			/^\s$/u.test(char) &&
+			(index < leadingWhitespace || index >= trailingWhitespaceStart)
+		) {
+			out += `&#${char.codePointAt(0)};`;
+			continue;
+		}
+		if (char === "&") {
+			out += "&amp;";
+			continue;
+		}
 		if (char === "\\") {
 			out += "\\\\";
 			continue;
@@ -18,29 +33,23 @@ export function escapeCell(value: string): string {
 			out += "\\|";
 			continue;
 		}
-		if (char === "\r") {
-			// Normalize CRLF to a single break.
-			if (value[index + 1] === "\n") continue;
-			out += "<br>";
-			continue;
-		}
 		if (char === "\n") {
 			out += "<br>";
 			continue;
 		}
 		// Every spelling the decoder recognises has to be escaped here, or a
 		// literal `<br/>` typed by the user would come back as a line break.
-		if (value.startsWith("<br />", index)) {
+		if (source.startsWith("<br />", index)) {
 			out += "\\<br />";
 			index += 5;
 			continue;
 		}
-		if (value.startsWith("<br/>", index)) {
+		if (source.startsWith("<br/>", index)) {
 			out += "\\<br/>";
 			index += 4;
 			continue;
 		}
-		if (value.startsWith("<br>", index)) {
+		if (source.startsWith("<br>", index)) {
 			out += "\\<br>";
 			index += 3;
 			continue;
@@ -53,6 +62,27 @@ export function escapeCell(value: string): string {
 export function unescapeCell(value: string): string {
 	let out = "";
 	for (let index = 0; index < value.length; index += 1) {
+		// Decode only the entity forms the serializer emits. Appended output is
+		// never scanned again, so literal text such as `&#32;` stays literal after
+		// its protected ampersand is restored.
+		if (value.startsWith("&amp;", index)) {
+			out += "&";
+			index += 4;
+			continue;
+		}
+		const entity = value.slice(index).match(/^&#([0-9]+);/);
+		if (entity) {
+			const codePoint = Number(entity[1]);
+			const decoded =
+				codePoint <= 0x10ffff && String(codePoint) === entity[1]
+					? String.fromCodePoint(codePoint)
+					: "";
+			if (codePoint !== 13 && /^\s$/u.test(decoded)) {
+				out += decoded;
+				index += entity[0].length - 1;
+				continue;
+			}
+		}
 		// Longest escape first, and every escaped break form before the plain
 		// backslash rule, or `\<br>` would decode as a backslash followed by a
 		// line break.
