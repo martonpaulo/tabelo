@@ -153,6 +153,10 @@ export interface TabeloState {
 	workspace: Workspace;
 
 	draft: Draft | null;
+	// Whether this browser visit has held a valid document with any content.
+	// Session-only and monotonic until New table completes: emptying, undo, and
+	// redo never make previously held work safe to replace without confirmation.
+	hasHeldContent: boolean;
 
 	past: readonly HistoryEntry[];
 	future: readonly HistoryEntry[];
@@ -400,11 +404,18 @@ export function visibleTextForPane(
 		: textForView(state.document, viewId);
 }
 
+export function hasSessionWork(
+	state: Pick<TabeloState, "hasHeldContent" | "draft">,
+): boolean {
+	return state.hasHeldContent || state.draft !== null;
+}
+
 export const useTabeloStore = create<TabeloState>((set, get) => ({
 	document: createEmptyDocument(),
 	workspace: createDefaultWorkspace(),
 
 	draft: null,
+	hasHeldContent: false,
 
 	past: [],
 	future: [],
@@ -435,6 +446,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				draft: outcome.state.draft
 					? deriveDraft(outcome.state.draft, workspace)
 					: null,
+				hasHeldContent: !isDocumentBlank(outcome.state.document),
 				past: [],
 				future: [],
 				storageIssue: null,
@@ -489,6 +501,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			past: pushHistory(state.past, snapshotOf(state)),
 			future: [],
 			document: next,
+			hasHeldContent: state.hasHeldContent || !isDocumentBlank(next),
 			workspace: reconcileWrappedColumns(state.workspace, next),
 			draft: null,
 			inputError: null,
@@ -580,6 +593,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 					}
 				: {}),
 			document,
+			hasHeldContent: current.hasHeldContent || !isDocumentBlank(document),
 			workspace: reconcileWrappedColumns(current.workspace, document),
 			draft: {
 				paneId,
@@ -848,6 +862,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				past: state.past.slice(0, -1),
 				future: [snapshotOf(state), ...state.future],
 				document: entry.document,
+				hasHeldContent:
+					state.hasHeldContent || !isDocumentBlank(entry.document),
 				workspace: reconcileWrappedColumns(state.workspace, entry.document),
 				draft: restoreDraft(entry.draft, state.workspace),
 				headerCorrection: null,
@@ -872,6 +888,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				past: pushHistory(state.past, snapshotOf(state)),
 				future: state.future.slice(1),
 				document: entry.document,
+				hasHeldContent:
+					state.hasHeldContent || !isDocumentBlank(entry.document),
 				workspace: reconcileWrappedColumns(state.workspace, entry.document),
 				draft: restoreDraft(entry.draft, state.workspace),
 				headerCorrection: null,
@@ -1223,7 +1241,10 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	resetDocument: () => {
 		get().applyDocument(createEmptyDocument());
-		set({ selection: createSelection({ row: 0, column: 0 }) });
+		set({
+			hasHeldContent: false,
+			selection: createSelection({ row: 0, column: 0 }),
+		});
 	},
 
 	// One dismissal for every notice, whichever channel it came from. A queued
