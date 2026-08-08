@@ -72,11 +72,15 @@ function payloadBytes(payload: ClipboardPayload): number {
 	);
 }
 
-function limitError(
-	matrix: readonly (readonly string[])[],
-): ImportError | null {
-	const rows = matrix.length;
-	const columns = matrix[0]?.length ?? 0;
+export interface TableShape {
+	readonly rows: number;
+	readonly columns: number;
+}
+
+export function tableShapeLimitError({
+	rows,
+	columns,
+}: TableShape): ImportError | null {
 	const cells = rows * columns;
 
 	if (rows > IMPORT_LIMITS.rows) {
@@ -151,7 +155,10 @@ export function prepareImport(
 		return { ok: false, error: { code: "empty" } };
 	}
 
-	const error = limitError(matrix);
+	const error = tableShapeLimitError({
+		rows: matrix.length,
+		columns: matrix[0]?.length ?? 0,
+	});
 	if (error) return { ok: false, error };
 
 	return {

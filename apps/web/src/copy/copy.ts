@@ -426,13 +426,13 @@ export const copy = {
 				case "invalid-format":
 					return `Not valid ${views[error.format].shortLabel}. Your table is unchanged.`;
 				case "too-many-rows":
-					return `${error.actual} rows, over the ${error.limit} limit. Your table is unchanged.`;
+					return `${error.actual} rows, over the ${error.limit} limit. Remove rows and try again. Your table is unchanged.`;
 				case "too-many-columns":
-					return `${error.actual} columns, over the ${error.limit} limit. Your table is unchanged.`;
+					return `${error.actual} columns, over the ${error.limit} limit. Remove columns and try again. Your table is unchanged.`;
 				case "too-many-cells":
-					return `${error.actual} cells, over the ${error.limit} limit. Your table is unchanged.`;
+					return `${error.actual} cells, over the ${error.limit} limit. Reduce the table and try again. Your table is unchanged.`;
 				case "payload-too-large":
-					return "Over the 1 MB limit. Your table is unchanged.";
+					return "Over the 1 MB limit. Use less data and try again. Your table is unchanged.";
 				case "empty":
 					return "Nothing to import. Your table is unchanged.";
 			}
