@@ -18,9 +18,22 @@ export function downloadText(
 	requestAnimationFrame(() => URL.revokeObjectURL(url));
 }
 
+export type PickTextFileResult =
+	| {
+			readonly status: "selected";
+			readonly name: string;
+			readonly text: string;
+	  }
+	| {
+			readonly status: "too-large";
+			readonly name: string;
+			readonly size: number;
+	  };
+
 export function pickTextFile(
 	accept: string,
-): Promise<{ name: string; text: string } | null> {
+	maximumBytes: number,
+): Promise<PickTextFileResult | null> {
 	return new Promise((resolve) => {
 		const input = window.document.createElement("input");
 		input.type = "file";
@@ -31,7 +44,11 @@ export function pickTextFile(
 				resolve(null);
 				return;
 			}
-			resolve({ name: file.name, text: await file.text() });
+			if (file.size > maximumBytes) {
+				resolve({ status: "too-large", name: file.name, size: file.size });
+				return;
+			}
+			resolve({ status: "selected", name: file.name, text: await file.text() });
 		});
 		// A cancelled picker fires no change event in most browsers, so the
 		// promise simply never resolves: harmless, and the caller does nothing.

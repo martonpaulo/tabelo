@@ -139,6 +139,71 @@ describe("transactional input", () => {
 		]);
 	});
 
+	it("accepts the resulting row limit and refuses one row beyond it", () => {
+		const document = documentFromMatrix(
+			[["value"], ...Array.from({ length: 499 }, (_, index) => [`${index}`])],
+			{ headerRow: true },
+		);
+		useTabeloStore.setState({
+			document,
+			selection: createSelection({ row: 498, column: 0 }),
+		});
+
+		useTabeloStore.getState().pasteClipboard({ text: "at limit\nlast" });
+		expect(useTabeloStore.getState().document.rows).toHaveLength(500);
+
+		useTabeloStore.setState({
+			selection: createSelection({ row: 499, column: 0 }),
+			draft: {
+				paneId: "pending-pane",
+				viewId: "markdown",
+				text: "| unfinished |",
+				status: "invalid",
+				issues: [],
+				warnings: [],
+			},
+		});
+		const before = useTabeloStore.getState();
+		before.pasteClipboard({ text: "keep\nrefuse" });
+
+		const after = useTabeloStore.getState();
+		expect(after.document).toBe(before.document);
+		expect(after.selection).toEqual(before.selection);
+		expect(after.past).toBe(before.past);
+		expect(after.draft).toBe(before.draft);
+		expect(after.inputError?.code).toBe("too-many-rows");
+	});
+
+	it("refuses row and column duplication beyond the resulting limits", () => {
+		const rowLimited = documentFromMatrix(
+			[["value"], ...Array.from({ length: 500 }, (_, index) => [`${index}`])],
+			{ headerRow: true },
+		);
+		useTabeloStore.setState({
+			document: rowLimited,
+			selection: createSelection({ row: 0, column: 0 }, "row"),
+		});
+		useTabeloStore.getState().duplicateSelectedRows();
+		expect(useTabeloStore.getState().document).toBe(rowLimited);
+		expect(useTabeloStore.getState().inputError?.code).toBe("too-many-rows");
+
+		const columnLimited = documentFromMatrix(
+			[
+				Array.from({ length: 200 }, (_, index) => `column ${index}`),
+				Array.from({ length: 200 }, () => ""),
+			],
+			{ headerRow: true },
+		);
+		useTabeloStore.setState({
+			document: columnLimited,
+			selection: createSelection({ row: HEADER_ROW, column: 0 }, "column"),
+			inputError: null,
+		});
+		useTabeloStore.getState().duplicateSelectedColumns();
+		expect(useTabeloStore.getState().document).toBe(columnLimited);
+		expect(useTabeloStore.getState().inputError?.code).toBe("too-many-columns");
+	});
+
 	it("keeps a successful import to one document-history operation", () => {
 		const before = documentToMatrix(useTabeloStore.getState().document);
 

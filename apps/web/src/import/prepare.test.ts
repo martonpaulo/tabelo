@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { CodecId } from "@/formats";
-import { IMPORT_LIMITS, prepareImport } from "./prepare";
+import { IMPORT_LIMITS, prepareImport, tableShapeLimitError } from "./prepare";
 
 function rows(count: number): string {
 	return Array.from({ length: count }, (_, index) => `row ${index}`).join("\n");
@@ -43,6 +43,17 @@ describe("named format validation", () => {
 });
 
 describe("supported import limits", () => {
+	it.each([
+		[{ rows: IMPORT_LIMITS.rows, columns: 1 }, null],
+		[{ rows: IMPORT_LIMITS.rows + 1, columns: 1 }, "too-many-rows"],
+		[{ rows: 1, columns: IMPORT_LIMITS.columns }, null],
+		[{ rows: 1, columns: IMPORT_LIMITS.columns + 1 }, "too-many-columns"],
+		[{ rows: 250, columns: 200 }, null],
+		[{ rows: 251, columns: 200 }, "too-many-cells"],
+	] as const)("validates resulting table shape %#", (shape, code) => {
+		expect(tableShapeLimitError(shape)?.code ?? null).toBe(code);
+	});
+
 	it.each([
 		[IMPORT_LIMITS.rows - 1, true],
 		[IMPORT_LIMITS.rows, true],
