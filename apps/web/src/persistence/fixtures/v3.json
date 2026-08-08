@@ -1,0 +1,30 @@
+{
+	"version": 3,
+	"document": {
+		"columns": [
+			{ "id": "c-name", "header": "Name", "align": "left" },
+			{ "id": "c-role", "header": "Role", "align": "default" }
+		],
+		"rows": [
+			{
+				"id": "r-ingrid",
+				"cells": { "c-name": "Ingrid", "c-role": "Designer" }
+			}
+		]
+	},
+	"workspace": {
+		"layout": "columns",
+		"panes": [
+			{ "id": "ac", "view": "grid", "slots": ["a", "c"] },
+			{ "id": "bd", "view": "markdown", "slots": ["b", "d"] }
+		],
+		"columnRatio": 0.4,
+		"rowRatio": 0.5,
+		"activePaneId": "bd"
+	},
+	"draft": {
+		"paneId": "bd",
+		"viewId": "markdown",
+		"text": "| Name | Role |\n| not a divider | --- |\n| Ingrid | Designer |"
+	}
+}
