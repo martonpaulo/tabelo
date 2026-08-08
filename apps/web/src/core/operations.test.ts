@@ -240,6 +240,25 @@ describe("cell operations", () => {
 });
 
 describe("paste", () => {
+	it.each([
+		[0, ["a", "b", "c"]],
+		[1, ["1", "a", "b", "c"]],
+		[3, ["1", "3", "", "a", "b", "c"]],
+	] as const)(
+		"writes every payload row from row index %i",
+		(rowIndex, expected) => {
+			const next = pasteMatrix(sample(), { rowIndex, columnIndex: 0 }, [
+				["a"],
+				["b"],
+				["c"],
+			]);
+
+			expect(
+				next.rows.map((row) => row.cells[next.columns[0].id] ?? ""),
+			).toEqual(expected);
+		},
+	);
+
 	it("grows the table when the payload runs past its edges", () => {
 		const next = pasteMatrix(sample(), { rowIndex: 1, columnIndex: 1 }, [
 			["x", "y"],
