@@ -9,8 +9,8 @@ import {
 	duplicateRows,
 	insertColumns,
 	insertRows,
-	moveColumn,
-	moveRow,
+	moveColumns,
+	moveRows,
 	pasteMatrix,
 	setAlignment,
 	setCell,
@@ -186,19 +186,21 @@ describe("document operation properties", () => {
 		"moving an entity away and back restores the document",
 		({ document }) => {
 			const before = cloneDocument(document);
-			const rowFrom = 0;
-			const rowTo = document.rows.length - 1;
-			const columnFrom = 0;
-			const columnTo = document.columns.length - 1;
+			const rowOffset = document.rows.length - 1;
+			const columnOffset = document.columns.length - 1;
 
 			expect(
-				moveRow(moveRow(document, rowFrom, rowTo), rowTo, rowFrom),
+				moveRows(
+					moveRows(document, { from: 0, count: 1 }, rowOffset),
+					{ from: rowOffset, count: 1 },
+					-rowOffset,
+				),
 			).toEqual(document);
 			expect(
-				moveColumn(
-					moveColumn(document, columnFrom, columnTo),
-					columnTo,
-					columnFrom,
+				moveColumns(
+					moveColumns(document, { from: 0, count: 1 }, columnOffset),
+					{ from: columnOffset, count: 1 },
+					-columnOffset,
 				),
 			).toEqual(document);
 			expect(document).toEqual(before);
@@ -283,16 +285,24 @@ describe("document operation properties", () => {
 				setCell(document, position.rowIndex, position.columnIndex, value),
 				setHeader(document, position.columnIndex, value),
 				setAlignment(document, position.columnIndex, alignment),
-				moveRow(document, 0, document.rows.length - 1),
-				moveColumn(document, 0, document.columns.length - 1),
+				moveRows(document, { from: 0, count: 1 }, document.rows.length - 1),
+				moveColumns(
+					document,
+					{ from: 0, count: 1 },
+					document.columns.length - 1,
+				),
 				clearCells(document, [rect]),
 			];
 			const second = [
 				setCell(document, position.rowIndex, position.columnIndex, value),
 				setHeader(document, position.columnIndex, value),
 				setAlignment(document, position.columnIndex, alignment),
-				moveRow(document, 0, document.rows.length - 1),
-				moveColumn(document, 0, document.columns.length - 1),
+				moveRows(document, { from: 0, count: 1 }, document.rows.length - 1),
+				moveColumns(
+					document,
+					{ from: 0, count: 1 },
+					document.columns.length - 1,
+				),
 				clearCells(document, [rect]),
 			];
 

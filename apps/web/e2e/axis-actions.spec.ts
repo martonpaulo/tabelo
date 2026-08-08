@@ -1,6 +1,8 @@
 import type { Locator } from "@playwright/test";
 import { copy } from "@/copy/copy";
+import { samplePeopleCsv } from "@/core/sample-data";
 import { expect, test } from "./fixtures";
+import type { TabeloPage } from "./helpers";
 
 // Row and column actions were a small icon that only existed while the pointer
 // was inside its header. They are still quiet, but they are now findable: the
@@ -23,6 +25,11 @@ function hitArea(trigger: Locator): Promise<{ width: number; height: number }> {
 			height: box.height + inset(after.top) + inset(after.bottom),
 		};
 	});
+}
+
+async function seedRoster(tabelo: TabeloPage): Promise<void> {
+	await tabelo.paste(samplePeopleCsv(4).replaceAll(",", "\t"));
+	await tabelo.dismissNotices();
 }
 
 test("row and column actions meet the control minimum target", async ({
@@ -99,6 +106,103 @@ test("moving by keyboard moves the revealed affordance with it", async ({
 
 	await expect.poll(() => opacity(rowTrigger(2))).toBe("1");
 	await expect.poll(() => opacity(rowTrigger(1))).toBe("0");
+});
+
+test("Alt+Down moves a two-row selection as one block", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("Shift+ArrowDown");
+	await page.keyboard.press("Shift+ArrowRight");
+	await expect(tabelo.announcements).toHaveText(
+		copy.a11y.selectionSummary(2, 2),
+	);
+
+	await page.keyboard.press("Alt+ArrowDown");
+
+	await expect(tabelo.cell(1, 1)).toHaveText("Mabel");
+	await expect(tabelo.cell(2, 1)).toHaveText("Ingrid");
+	await expect(tabelo.cell(3, 1)).toHaveText("Paulo");
+	for (const row of [2, 3]) {
+		for (const column of [1, 2]) {
+			await expect(tabelo.cell(row, column)).toHaveAttribute(
+				"aria-selected",
+				"true",
+			);
+		}
+	}
+	await expect(tabelo.cell(1, 1)).toHaveAttribute("aria-selected", "false");
+	await expect(tabelo.announcements).toHaveText(
+		copy.a11y.selectionSummary(2, 2),
+	);
+});
+
+test("the column menu moves a two-column selection as one block", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	await tabelo.columnIndex(1).getByRole("button").first().click();
+	await tabelo
+		.columnIndex(2)
+		.getByRole("button")
+		.first()
+		.click({ modifiers: ["Shift"] });
+
+	const menuName = `${copy.actions.columnActions}: ${copy.a11y.columnHeader("name", 0)}`;
+	await tabelo.grid().getByRole("button", { name: menuName }).click();
+	const menu = page.getByRole("menu", { name: menuName });
+	await expect(menu).toBeVisible();
+	await menu.getByRole("menuitem", { name: copy.actions.moveRight }).click();
+
+	await expect(tabelo.header(1)).toHaveText("role");
+	await expect(tabelo.header(2)).toHaveText("name");
+	await expect(tabelo.header(3)).toHaveText("city");
+	await expect(tabelo.cell(1, 1)).toHaveText("Designer");
+	await expect(tabelo.cell(1, 2)).toHaveText("Ingrid");
+	await expect(tabelo.cell(1, 3)).toHaveText("Rio");
+	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "false");
+	await expect(tabelo.header(2)).toHaveAttribute("aria-selected", "true");
+	await expect(tabelo.header(3)).toHaveAttribute("aria-selected", "true");
+});
+
+test("Alt+Down refuses the header row without changing the selection", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	await tabelo.header(2).click();
+
+	await page.keyboard.press("Alt+ArrowDown");
+
+	await expect(tabelo.notice("warning")).toBeVisible();
+	await expect(tabelo.header(2)).toHaveAttribute("aria-selected", "true");
+	await expect(tabelo.cell(1, 2)).toHaveAttribute("aria-selected", "false");
+	await expect(tabelo.header(2)).toHaveText("city");
+	await expect(tabelo.cell(1, 2)).toHaveText("Rio");
+});
+
+test("Move down is disabled for a block ending at the last row", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	await tabelo.rowIndex(4).getByRole("button").first().click();
+	await tabelo
+		.rowIndex(5)
+		.getByRole("button")
+		.first()
+		.click({ modifiers: ["Shift"] });
+
+	const menuName = `${copy.actions.rowActions}: ${copy.a11y.rowNumber(3)}`;
+	await tabelo.grid().getByRole("button", { name: menuName }).click();
+	const menu = page.getByRole("menu", { name: menuName });
+	const moveDown = menu.getByRole("menuitem", { name: copy.actions.moveDown });
+	await expect(moveDown).toBeDisabled();
+	await moveDown.hover();
+	await expect(page.getByRole("tooltip")).toBeVisible();
 });
 
 test("tabbing into a header reveals its actions without a pointer", async ({

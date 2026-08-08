@@ -23,6 +23,40 @@ function sortedDesc(indices: readonly number[]): number[] {
 	return [...new Set(indices)].sort((a, b) => b - a);
 }
 
+export interface ContiguousBlock {
+	readonly from: number;
+	readonly count: number;
+}
+
+// `from` names the block's current start, while `offset` names where that
+// start lands in the final list. Removing the whole block before reinserting
+// it keeps downward and rightward moves from drifting by the block's length.
+function moveBlock<T>(
+	items: readonly T[],
+	block: ContiguousBlock,
+	offset: number,
+): readonly T[] {
+	const { from, count } = block;
+	const to = from + offset;
+	if (
+		!Number.isInteger(from) ||
+		!Number.isInteger(count) ||
+		!Number.isInteger(offset) ||
+		count < 1 ||
+		offset === 0 ||
+		from < 0 ||
+		from + count > items.length ||
+		to < 0 ||
+		to + count > items.length
+	) {
+		return items;
+	}
+
+	const moved = items.slice(from, from + count);
+	const remaining = [...items.slice(0, from), ...items.slice(from + count)];
+	return [...remaining.slice(0, to), ...moved, ...remaining.slice(to)];
+}
+
 export function setCell(
 	document: TableDocument,
 	rowIndex: number,
@@ -126,16 +160,13 @@ export function duplicateRows(
 	return withRows(document, rows);
 }
 
-export function moveRow(
+export function moveRows(
 	document: TableDocument,
-	from: number,
-	to: number,
+	block: ContiguousBlock,
+	offset: number,
 ): TableDocument {
-	if (from === to) return document;
-	const rows = [...document.rows];
-	const [moved] = rows.splice(from, 1);
-	if (!moved) return document;
-	rows.splice(Math.max(0, Math.min(to, rows.length)), 0, moved);
+	const rows = moveBlock(document.rows, block, offset);
+	if (rows === document.rows) return document;
 	return { ...document, rows };
 }
 
@@ -212,16 +243,13 @@ export function duplicateColumns(
 	return { columns, rows };
 }
 
-export function moveColumn(
+export function moveColumns(
 	document: TableDocument,
-	from: number,
-	to: number,
+	block: ContiguousBlock,
+	offset: number,
 ): TableDocument {
-	if (from === to) return document;
-	const columns = [...document.columns];
-	const [moved] = columns.splice(from, 1);
-	if (!moved) return document;
-	columns.splice(Math.max(0, Math.min(to, columns.length)), 0, moved);
+	const columns = moveBlock(document.columns, block, offset);
+	if (columns === document.columns) return document;
 	return { ...document, columns };
 }
 

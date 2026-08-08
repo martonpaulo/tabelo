@@ -541,6 +541,142 @@ describe("copied ranges", () => {
 // The selection can hold several separate regions once the modifier has been
 // used. Each operation below is either explicitly aware of all of them, or
 // refuses because it has no single place to act.
+describe("contiguous block movement", () => {
+	const roster = () =>
+		documentFromMatrix(samplePeopleMatrix(), { headerRow: true });
+
+	it("moves selected rows in one history step and translates the range", () => {
+		useTabeloStore.setState({
+			document: roster(),
+			selection: selectionOf({
+				anchor: { row: 2, column: 2 },
+				focus: { row: 1, column: 1 },
+				mode: "cell",
+			}),
+		});
+
+		expect(useTabeloStore.getState().moveSelectedRow(1)).toBeNull();
+
+		const state = useTabeloStore.getState();
+		expect(
+			documentToMatrix(state.document)
+				.slice(1)
+				.map((row) => row[0]),
+		).toEqual(["Ingrid", "Felix", "Paulo", "Mabel", "Amora"]);
+		expect(state.selection).toEqual(
+			selectionOf({
+				anchor: { row: 3, column: 2 },
+				focus: { row: 2, column: 1 },
+				mode: "cell",
+			}),
+		);
+		expect(state.past).toHaveLength(1);
+	});
+
+	it("moves selected columns in one history step and translates the range", () => {
+		useTabeloStore.setState({
+			document: roster(),
+			selection: selectionOf({
+				anchor: { row: 2, column: 2 },
+				focus: { row: 1, column: 1 },
+				mode: "cell",
+			}),
+		});
+
+		expect(useTabeloStore.getState().moveSelectedColumn(1)).toBeNull();
+
+		const state = useTabeloStore.getState();
+		expect(documentToMatrix(state.document)[0]).toEqual([
+			"name",
+			"age",
+			"city",
+			"role",
+		]);
+		expect(state.selection).toEqual(
+			selectionOf({
+				anchor: { row: 2, column: 3 },
+				focus: { row: 1, column: 2 },
+				mode: "cell",
+			}),
+		);
+		expect(state.past).toHaveLength(1);
+	});
+
+	it.each([
+		[
+			"header-only",
+			createSelection({ row: HEADER_ROW, column: 1 }),
+			1,
+			"header-row",
+		],
+		[
+			"mixed header and data",
+			selectionOf({
+				anchor: { row: HEADER_ROW, column: 0 },
+				focus: { row: 0, column: 1 },
+				mode: "cell",
+			}),
+			1,
+			"header-row",
+		],
+		[
+			"first-edge",
+			selectionOf({
+				anchor: { row: 0, column: 0 },
+				focus: { row: 1, column: 1 },
+				mode: "cell",
+			}),
+			-1,
+			"first-row",
+		],
+		[
+			"last-edge",
+			selectionOf({
+				anchor: { row: 3, column: 0 },
+				focus: { row: 4, column: 1 },
+				mode: "cell",
+			}),
+			1,
+			"last-row",
+		],
+	] as const)(
+		"refuses a %s row move without changing document or selection",
+		(_name, selection, offset, expected) => {
+			const document = roster();
+			useTabeloStore.setState({ document, selection });
+
+			expect(useTabeloStore.getState().moveSelectedRow(offset)).toBe(expected);
+
+			const state = useTabeloStore.getState();
+			expect(state.document).toBe(document);
+			expect(state.selection).toBe(selection);
+			expect(state.past).toHaveLength(0);
+		},
+	);
+
+	it.each([
+		[0, 1, -1, "first-column"],
+		[2, 3, 1, "last-column"],
+	] as const)(
+		"refuses a column block at columns %i-%i moved by %i",
+		(from, to, offset, expected) => {
+			const document = roster();
+			const selection = selectionOf({
+				anchor: { row: 0, column: from },
+				focus: { row: 1, column: to },
+				mode: "cell",
+			});
+			useTabeloStore.setState({ document, selection });
+
+			expect(useTabeloStore.getState().moveSelectedColumn(offset)).toBe(
+				expected,
+			);
+			expect(useTabeloStore.getState().document).toBe(document);
+			expect(useTabeloStore.getState().selection).toBe(selection);
+		},
+	);
+});
+
 describe("operations over several selected regions", () => {
 	const roster = () =>
 		documentFromMatrix(samplePeopleMatrix(3), { headerRow: true });
@@ -703,9 +839,10 @@ describe("operations over several selected regions", () => {
 
 		store.addRowAbove();
 		store.addColumnLeft();
-		store.moveSelectedColumn(1);
+		const moveRefusal = store.moveSelectedColumn(1);
 		const refusal = store.pasteClipboard({ text: "x" });
 
+		expect(moveRefusal).toBe("single-area");
 		expect(refusal).toBe("single-area");
 		expect(useTabeloStore.getState().document).toBe(document);
 	});

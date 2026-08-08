@@ -48,6 +48,15 @@ export interface GridSelection {
 	readonly activeIndex: number;
 }
 
+export type SelectionMoveAxis = "row" | "column";
+export type SelectionMoveRefusal =
+	| "single-area"
+	| "header-row"
+	| "first-row"
+	| "last-row"
+	| "first-column"
+	| "last-column";
+
 export function createRange(
 	position: CellPosition,
 	mode: SelectionMode = "cell",
@@ -120,6 +129,52 @@ export function selectionRects(
 	return selection.ranges.map((range) =>
 		rangeRect(range, rowCount, columnCount),
 	);
+}
+
+// Reordering needs one contiguous structural block and one destination. This
+// guard is shared by the action and the menus so a disabled action can never
+// disagree with what the store will accept.
+export function selectionMoveRefusal(
+	selection: GridSelection,
+	rowCount: number,
+	columnCount: number,
+	axis: SelectionMoveAxis,
+	offset: number,
+): SelectionMoveRefusal | null {
+	if (!isContiguous(selection)) return "single-area";
+	if (offset === 0) return null;
+
+	const rect = selectionRect(selection, rowCount, columnCount);
+	if (axis === "row") {
+		if (rectCoversHeader(rect)) return "header-row";
+		if (rect.top + offset < 0) return "first-row";
+		if (rect.bottom + offset >= rowCount) return "last-row";
+		return null;
+	}
+
+	if (rect.left + offset < 0) return "first-column";
+	if (rect.right + offset >= columnCount) return "last-column";
+	return null;
+}
+
+export function translateSelection(
+	selection: GridSelection,
+	axis: SelectionMoveAxis,
+	offset: number,
+): GridSelection {
+	if (offset === 0) return selection;
+	const translate = (position: CellPosition): CellPosition =>
+		axis === "row"
+			? { ...position, row: position.row + offset }
+			: { ...position, column: position.column + offset };
+	return {
+		...selection,
+		ranges: selection.ranges.map((range) => ({
+			...range,
+			anchor: translate(range.anchor),
+			focus: translate(range.focus),
+		})),
+	};
 }
 
 export function selectionContains(
