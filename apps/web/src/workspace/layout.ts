@@ -194,6 +194,7 @@ export interface Workspace {
 	// Grid presentation keyed by stable column id. It follows the workspace
 	// rather than the document timeline, codecs, or clipboard projections.
 	readonly wrappedColumns: readonly string[];
+	readonly columnWidths: Readonly<Record<string, number>>;
 	// Fractions of the workspace given to the first column and the first row.
 	readonly columnRatio: number;
 	readonly rowRatio: number;
@@ -474,6 +475,7 @@ export function createDefaultWorkspace(): Workspace {
 		layout: "columns",
 		panes,
 		wrappedColumns: [],
+		columnWidths: {},
 		columnRatio: 0.5,
 		rowRatio: 0.5,
 		activePaneId: panes[0].id,

@@ -18,7 +18,6 @@ import {
 	pasteMatrix,
 	setAlignment,
 	setCell,
-	setColumnWidth,
 	setHeader,
 } from "@/core/operations";
 import {
@@ -45,7 +44,7 @@ import {
 	toggleSelectionRegion,
 	translateSelection,
 } from "@/core/selection";
-import type { Alignment, TableDocument } from "@/core/types";
+import type { Alignment, ColumnId, TableDocument } from "@/core/types";
 import { canSerialize } from "@/formats";
 import type {
 	CodecId,
@@ -78,6 +77,7 @@ import {
 } from "@/state/notice-queue";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
+import { clampColumnWidth } from "@/workspace/column-width";
 import {
 	applyLayout,
 	createDefaultWorkspace,
@@ -142,6 +142,11 @@ export interface PendingImport {
 	readonly prepared: PreparedImport;
 }
 
+export interface GridStatusAnnouncement {
+	readonly id: string;
+	readonly message: string;
+}
+
 export type StorageIssue =
 	| { readonly kind: "unavailable" }
 	| { readonly kind: "quota" }
@@ -187,6 +192,7 @@ export interface TabeloState {
 	// nothing a producer says may be destroyed by whatever comes after it.
 	notices: readonly TransientNotice[];
 	inputError: ImportError | null;
+	gridStatus: GridStatusAnnouncement | null;
 	// A document replacement whose format does not identify row 1. It remains
 	// outside the document and history until the user answers the question.
 	pendingImport: PendingImport | null;
@@ -235,7 +241,11 @@ export interface TabeloState {
 	editCell: (row: number, column: number, value: string) => void;
 	editHeader: (column: number, value: string) => void;
 	setColumnAlignment: (column: number, align: Alignment) => void;
-	resizeColumn: (column: number, width: number | undefined) => void;
+	resizeColumn: (
+		column: number,
+		width: number | undefined,
+		scope?: "selection" | "column",
+	) => void;
 
 	addRowAbove: () => void;
 	addRowBelow: () => void;
@@ -260,9 +270,11 @@ export interface TabeloState {
 	resetDocument: () => void;
 	dismissNotice: (id: string) => void;
 	pushNotice: (request: NoticeRequest) => void;
+	announceGridStatus: (message: string) => void;
 }
 
 let invalidTimer: ReturnType<typeof setTimeout> | null = null;
+let gridStatusSequence = 0;
 
 function snapshotOf(state: TabeloState): HistoryEntry {
 	const draft =
@@ -278,15 +290,40 @@ function clearInvalidTimer(): void {
 	invalidTimer = null;
 }
 
-function reconcileWrappedColumns(
+function reconcileColumnPreferences(
 	workspace: Workspace,
 	document: TableDocument,
 ): Workspace {
 	const valid = new Set(document.columns.map((column) => column.id));
 	const wrappedColumns = workspace.wrappedColumns.filter((id) => valid.has(id));
-	return wrappedColumns.length === workspace.wrappedColumns.length
+	const columnWidths = Object.fromEntries(
+		Object.entries(workspace.columnWidths).filter(([id]) => valid.has(id)),
+	);
+	return wrappedColumns.length === workspace.wrappedColumns.length &&
+		Object.keys(columnWidths).length ===
+			Object.keys(workspace.columnWidths).length
 		? workspace
-		: { ...workspace, wrappedColumns };
+		: { ...workspace, wrappedColumns, columnWidths };
+}
+
+function widthsAfterDuplication(
+	previous: TableDocument,
+	next: TableDocument,
+	columnWidths: Readonly<Record<ColumnId, number>>,
+): Readonly<Record<ColumnId, number>> {
+	const previousIds = new Set(previous.columns.map((column) => column.id));
+	let changed = false;
+	const widths = { ...columnWidths };
+	for (let index = 0; index < next.columns.length; index += 1) {
+		const column = next.columns[index];
+		if (!column || previousIds.has(column.id)) continue;
+		const source = next.columns[index - 1];
+		const width = source ? columnWidths[source.id] : undefined;
+		if (width === undefined) continue;
+		widths[column.id] = width;
+		changed = true;
+	}
+	return changed ? widths : columnWidths;
 }
 
 function pushHistory(
@@ -436,6 +473,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	storageIssue: null,
 	notices: [],
 	inputError: null,
+	gridStatus: null,
 	pendingImport: null,
 	pendingPaneAction: null,
 	outputOptions: { ...defaultOutputOptions },
@@ -443,7 +481,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	hydrate: () => {
 		const outcome = loadState();
 		if (outcome.status === "ok") {
-			const workspace = reconcileWrappedColumns(
+			const workspace = reconcileColumnPreferences(
 				outcome.state.workspace,
 				outcome.state.document,
 			);
@@ -509,7 +547,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			future: [],
 			document: next,
 			hasHeldContent: state.hasHeldContent || !isDocumentBlank(next),
-			workspace: reconcileWrappedColumns(state.workspace, next),
+			workspace: reconcileColumnPreferences(state.workspace, next),
 			draft: null,
 			inputError: null,
 			pendingImport: null,
@@ -601,7 +639,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				: {}),
 			document,
 			hasHeldContent: current.hasHeldContent || !isDocumentBlank(document),
-			workspace: reconcileWrappedColumns(current.workspace, document),
+			workspace: reconcileColumnPreferences(current.workspace, document),
 			draft: {
 				paneId,
 				viewId,
@@ -886,7 +924,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				document: entry.document,
 				hasHeldContent:
 					state.hasHeldContent || !isDocumentBlank(entry.document),
-				workspace: reconcileWrappedColumns(state.workspace, entry.document),
+				workspace: reconcileColumnPreferences(state.workspace, entry.document),
 				draft: restoreDraft(entry.draft, state.workspace),
 				pendingImport: null,
 				inputError: null,
@@ -912,7 +950,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				document: entry.document,
 				hasHeldContent:
 					state.hasHeldContent || !isDocumentBlank(entry.document),
-				workspace: reconcileWrappedColumns(state.workspace, entry.document),
+				workspace: reconcileColumnPreferences(state.workspace, entry.document),
 				draft: restoreDraft(entry.draft, state.workspace),
 				pendingImport: null,
 				inputError: null,
@@ -1003,17 +1041,34 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		state.applyDocument(next);
 	},
 
-	// Width is presentation state, so it bypasses the document timeline.
-	// dragging a column edge should not consume an undo step.
-	resizeColumn: (column, width) =>
+	// Width is a persisted workspace preference, so it bypasses the document
+	// timeline. Dragging a column edge must not consume an undo step.
+	resizeColumn: (column, width, scope = "selection") =>
 		set((state) => {
-			let next = state.document;
-			for (const target of columnTargets(state, column)) {
-				next = setColumnWidth(next, target, width);
+			const columnWidths = { ...state.workspace.columnWidths };
+			let changed = false;
+			const targets =
+				scope === "column" ? [column] : columnTargets(state, column);
+			for (const target of targets) {
+				const id = state.document.columns[target]?.id;
+				if (!id) continue;
+				if (width === undefined) {
+					if (!(id in columnWidths)) continue;
+					delete columnWidths[id];
+					changed = true;
+					continue;
+				}
+				const next = clampColumnWidth(width);
+				if (columnWidths[id] === next) continue;
+				columnWidths[id] = next;
+				changed = true;
 			}
-			return next === state.document
-				? state
-				: { document: next, inputError: null };
+			return changed
+				? {
+						workspace: { ...state.workspace, columnWidths },
+						inputError: null,
+					}
+				: state;
 		}),
 
 	// Every row operation below counts data rows only. A selection may cover the
@@ -1127,7 +1182,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			set({ inputError: error });
 			return;
 		}
-		state.applyDocument(duplicateColumns(state.document, columns));
+		const next = duplicateColumns(state.document, columns);
+		const columnWidths = widthsAfterDuplication(
+			state.document,
+			next,
+			state.workspace.columnWidths,
+		);
+		state.applyDocument(next);
+		if (columnWidths !== state.workspace.columnWidths) {
+			set((current) => ({
+				workspace: { ...current.workspace, columnWidths },
+			}));
+		}
 	},
 
 	moveSelectedColumn: (offset) => {
@@ -1328,6 +1394,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		}),
 	pushNotice: (request) =>
 		set((state) => ({ notices: queueNotice(state.notices, request) })),
+
+	announceGridStatus: (message) => {
+		gridStatusSequence += 1;
+		set({ gridStatus: { id: `grid-status-${gridStatusSequence}`, message } });
+	},
 }));
 
 // Where the keyboard is working: the active region alone. Only operations that

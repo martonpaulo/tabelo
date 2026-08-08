@@ -16,7 +16,8 @@ const people = [
 // A source parser builds fresh identifiers every time, so reconciliation is the
 // only thing standing between a keystroke and 200 newly allocated rows. These
 // assertions are about object identity rather than values: identity is what the
-// grid's memoised rows compare, and what selection and column widths hang off.
+// grid's memoised rows compare, and what selection and column preferences
+// hang off.
 describe("reconcileDocument identity preservation", () => {
 	it("returns the current document when nothing changed", () => {
 		const current = docOf(people);
@@ -57,14 +58,8 @@ describe("reconcileDocument identity preservation", () => {
 		expect(next.rows).toBe(current.rows);
 	});
 
-	it("preserves row and column ids and an existing width across a change", () => {
-		const parsed = docOf(people);
-		const current: TableDocument = {
-			...parsed,
-			columns: parsed.columns.map((column, index) =>
-				index === 0 ? { ...column, width: 12 } : column,
-			),
-		};
+	it("preserves row and column ids across a change", () => {
+		const current = docOf(people);
 		const edited = people.map((row, index) =>
 			index === 2 ? ["Paulo", "Porto", "29"] : row,
 		);
@@ -74,7 +69,6 @@ describe("reconcileDocument identity preservation", () => {
 		expect(next.columns.map((column) => column.id)).toEqual(
 			current.columns.map((column) => column.id),
 		);
-		expect(next.columns[0].width).toBe(12);
 		expect(next.rows.map((row) => row.id)).toEqual(
 			current.rows.map((row) => row.id),
 		);

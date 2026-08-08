@@ -2,7 +2,7 @@ import { z } from "zod";
 import { workspacePanesTileLayout } from "@/workspace/layout";
 import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
-export const PERSISTED_VERSION = 4 as const;
+export const PERSISTED_VERSION = 5 as const;
 
 // These schemas mirror the payloads shipped by the commits that introduced
 // versions 1 through 4. Keep them beside their stored fixtures: a migration
@@ -10,7 +10,7 @@ export const PERSISTED_VERSION = 4 as const;
 
 const alignmentSchema = z.enum(["default", "left", "center", "right"]);
 
-const columnSchema = z.object({
+const historicalColumnSchema = z.object({
 	id: z.string().min(1),
 	header: z.string(),
 	align: alignmentSchema,
@@ -22,8 +22,14 @@ const rowSchema = z.object({
 	cells: z.record(z.string(), z.string()),
 });
 
-const documentSchema = z.object({
-	columns: z.array(columnSchema).min(1),
+const historicalDocumentSchema = z.object({
+	columns: z.array(historicalColumnSchema).min(1),
+	rows: z.array(rowSchema),
+});
+
+const currentColumnSchema = historicalColumnSchema.omit({ width: true });
+const currentDocumentSchema = z.object({
+	columns: z.array(currentColumnSchema).min(1),
 	rows: z.array(rowSchema),
 });
 
@@ -83,21 +89,21 @@ const historicalDraftSchema = z.object({
 
 export const persistedStateV1Schema = z.object({
 	version: z.literal(1),
-	document: documentSchema,
+	document: historicalDocumentSchema,
 	textFormat: z.enum(["markdown", "csv"]),
 	textPanelVisible: z.boolean().default(true),
 });
 
 export const persistedStateV2Schema = z.object({
 	version: z.literal(2),
-	document: documentSchema,
+	document: historicalDocumentSchema,
 	workspace: historicalWorkspaceSchema,
 });
 
 export const persistedStateV3Schema = z
 	.object({
 		version: z.literal(3),
-		document: documentSchema,
+		document: historicalDocumentSchema,
 		workspace: historicalWorkspaceSchema,
 		draft: historicalDraftSchema.nullable(),
 	})
@@ -129,7 +135,7 @@ const currentPaneSchema = z.object({
 	wrap: z.boolean().default(false),
 });
 
-const currentWorkspaceSchema = z.object({
+const persistedWorkspaceV4Schema = z.object({
 	layout: layoutSchema,
 	panes: z.array(currentPaneSchema).min(1).max(4),
 	// Defaulting keeps version-4 payloads written before per-column wrapping
@@ -146,47 +152,68 @@ const currentDraftSchema = z.object({
 	text: z.string(),
 });
 
+export const persistedStateV4Schema = z
+	.object({
+		version: z.literal(4),
+		document: historicalDocumentSchema,
+		workspace: persistedWorkspaceV4Schema,
+		draft: currentDraftSchema.nullable(),
+	})
+	.superRefine((state, context) => refineCurrentRelationships(state, context));
+
+const currentWorkspaceSchema = persistedWorkspaceV4Schema.extend({
+	columnWidths: z.record(z.string().min(1), z.number().positive()),
+});
+
 export const persistedStateSchema = z
 	.object({
 		version: z.literal(PERSISTED_VERSION),
-		document: documentSchema,
+		document: currentDocumentSchema,
 		workspace: currentWorkspaceSchema,
 		draft: currentDraftSchema.nullable(),
 	})
 	.superRefine((state, context) => {
-		if (
-			!workspacePanesTileLayout(state.workspace.layout, state.workspace.panes)
-		) {
-			context.addIssue({
-				code: "custom",
-				path: ["workspace", "panes"],
-				message: "Workspace panes must tile the selected layout.",
-			});
-		}
-
-		const views = state.workspace.panes.map((pane) => pane.view);
-		if (new Set(views).size !== views.length) {
-			context.addIssue({
-				code: "custom",
-				path: ["workspace", "panes"],
-				message: "A workspace cannot show the same view more than once.",
-			});
-		}
-
-		if (
-			state.draft &&
-			!state.workspace.panes.some(
-				(pane) =>
-					pane.id === state.draft?.paneId && pane.view === state.draft.viewId,
-			)
-		) {
-			context.addIssue({
-				code: "custom",
-				path: ["draft"],
-				message: "Draft owner is not present in the workspace.",
-			});
-		}
+		refineCurrentRelationships(state, context);
 	});
+
+function refineCurrentRelationships(
+	state: {
+		readonly workspace: z.infer<typeof persistedWorkspaceV4Schema>;
+		readonly draft: z.infer<typeof currentDraftSchema> | null;
+	},
+	context: z.RefinementCtx,
+): void {
+	if (!workspacePanesTileLayout(state.workspace.layout, state.workspace.panes)) {
+		context.addIssue({
+			code: "custom",
+			path: ["workspace", "panes"],
+			message: "Workspace panes must tile the selected layout.",
+		});
+	}
+
+	const views = state.workspace.panes.map((pane) => pane.view);
+	if (new Set(views).size !== views.length) {
+		context.addIssue({
+			code: "custom",
+			path: ["workspace", "panes"],
+			message: "A workspace cannot show the same view more than once.",
+		});
+	}
+
+	if (
+		state.draft &&
+		!state.workspace.panes.some(
+			(pane) =>
+				pane.id === state.draft?.paneId && pane.view === state.draft.viewId,
+		)
+	) {
+		context.addIssue({
+			code: "custom",
+			path: ["draft"],
+			message: "Draft owner is not present in the workspace.",
+		});
+	}
+}
 
 export type PersistedState = z.infer<typeof persistedStateSchema>;
 export type PersistedDraft = PersistedState["draft"];

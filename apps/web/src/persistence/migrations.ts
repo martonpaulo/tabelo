@@ -6,6 +6,7 @@ import {
 	persistedStateV1Schema,
 	persistedStateV2Schema,
 	persistedStateV3Schema,
+	persistedStateV4Schema,
 } from "./versions";
 
 export interface MigrationStep {
@@ -93,6 +94,30 @@ function migrateV3ToV4(input: unknown): unknown {
 	};
 }
 
+// Version 5 makes column width a workspace preference keyed by stable id. The
+// migration moves every shipped width without deriving it from column order.
+function migrateV4ToV5(input: unknown): unknown {
+	const source = input as z.infer<typeof persistedStateV4Schema>;
+	const columnWidths = Object.fromEntries(
+		source.document.columns.flatMap((column) =>
+			column.width === undefined ? [] : [[column.id, column.width]],
+		),
+	);
+	return {
+		...source,
+		version: 5,
+		document: {
+			...source.document,
+			columns: source.document.columns.map(({ id, header, align }) => ({
+				id,
+				header,
+				align,
+			})),
+		},
+		workspace: { ...source.workspace, columnWidths },
+	};
+}
+
 export const migrationRegistry: MigrationRegistry = {
 	1: {
 		source: persistedStateV1Schema,
@@ -106,8 +131,13 @@ export const migrationRegistry: MigrationRegistry = {
 	},
 	3: {
 		source: persistedStateV3Schema,
-		target: persistedStateSchema,
+		target: persistedStateV4Schema,
 		migrate: migrateV3ToV4,
+	},
+	4: {
+		source: persistedStateV4Schema,
+		target: persistedStateSchema,
+		migrate: migrateV4ToV5,
 	},
 };
 

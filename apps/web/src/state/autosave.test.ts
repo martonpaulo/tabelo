@@ -75,6 +75,26 @@ describe("autosave lifecycle", () => {
 		expect(new Set(columnIds).size).toBe(columnIds.length);
 	});
 
+	it("hydrates surviving widths and removes orphaned column ids", () => {
+		const store = useTabeloStore.getState();
+		const columnId = store.document.columns[0]?.id ?? "";
+		store.resizeColumn(0, 18);
+		expect(flushPersistence()).toEqual({ status: "saved" });
+
+		const saved = JSON.parse(
+			window.localStorage.getItem(STORAGE_KEY) ?? "null",
+		);
+		saved.workspace.columnWidths.orphan = 24;
+		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+
+		useTabeloStore.setState(initialState, true);
+		useTabeloStore.getState().hydrate();
+
+		expect(useTabeloStore.getState().workspace.columnWidths).toEqual({
+			[columnId]: 18,
+		});
+	});
+
 	it("flushes the latest invalid draft on pagehide before debounce", () => {
 		stopAutosave = startAutosave();
 		const paneId = markdownPaneId();

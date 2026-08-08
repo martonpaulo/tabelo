@@ -30,14 +30,17 @@ export function NoticeBar() {
 	// it joins the notices at the one place that owns the live regions rather
 	// than mounting a region of its own next to the grid.
 	const selectionExtent = useSelectionAnnouncement();
+	const gridStatus = useTabeloStore((state) => state.gridStatus);
 	const announcements = useMemo(
-		() =>
-			notices.map((notice) => ({
+		() => [
+			...notices.map((notice) => ({
 				id: notice.id,
 				urgency: notice.urgency,
 				message: announcementText(notice),
 			})),
-		[notices],
+			...(gridStatus ? [{ ...gridStatus, urgency: "polite" as const }] : []),
+		],
+		[gridStatus, notices],
 	);
 
 	return (

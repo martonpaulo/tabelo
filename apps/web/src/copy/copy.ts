@@ -254,8 +254,9 @@ export const copy = {
 		addViewMaximum: "The maximum is four views.",
 		undo: "There is nothing to undo.",
 		redo: "There is nothing to redo.",
-		minimumColumnWidth: "This column is already at its minimum width.",
-		defaultColumnWidth: "This column already uses the default width.",
+		fitWrappedColumn: "Turn off Wrap text to fit this column.",
+		columnAlreadyFitted: "This column already fits its content.",
+		columnFitUnavailable: "This column cannot be measured right now.",
 		firstRow: "The selected row is already first.",
 		lastRow: "The selected row is already last.",
 		firstColumn: "The selected column is already first.",
@@ -388,6 +389,8 @@ export const copy = {
 		alignRight: "Align right",
 		alignDefault: "No alignment",
 		alignment: "Alignment",
+		edit: "Edit",
+		move: "Move",
 		copy: "Copy",
 		cut: "Cut",
 		paste: "Paste",
@@ -402,11 +405,7 @@ export const copy = {
 		newTable: "New table",
 		selectRow: "Select row",
 		selectColumn: "Select column",
-		columnWidth: (rem: number) =>
-			`Column width ${Number.parseFloat(rem.toFixed(2))} rem`,
-		widenColumn: "Widen column",
-		narrowColumn: "Narrow column",
-		resetColumnWidth: "Reset column width",
+		fitColumnToContent: "Fit column to content",
 		wrapColumnText: "Wrap text",
 		editHeader: "Rename column",
 	},
@@ -458,6 +457,12 @@ export const copy = {
 	},
 
 	status: {
+		columnWidth: (column: string, rem: number) =>
+			`Column ${column} width ${Number.parseFloat(rem.toFixed(2))} rem.`,
+		columnWidthMinimum: (column: string) =>
+			`Column ${column} is already at its minimum width.`,
+		columnWidthMaximum: (column: string) =>
+			`Column ${column} is already at its maximum width.`,
 		loading: "Loading…",
 	},
 

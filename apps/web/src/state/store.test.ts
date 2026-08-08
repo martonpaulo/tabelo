@@ -221,6 +221,19 @@ describe("transactional input", () => {
 });
 
 describe("document history", () => {
+	it("keeps a resized column unchanged through unrelated undo and redo", () => {
+		const store = useTabeloStore.getState();
+		store.editCell(0, 0, "Ingrid");
+		store.resizeColumn(0, 18);
+
+		useTabeloStore.getState().undo();
+		const columnId = useTabeloStore.getState().document.columns[0]?.id ?? "";
+		expect(useTabeloStore.getState().workspace.columnWidths[columnId]).toBe(18);
+
+		useTabeloStore.getState().redo();
+		expect(useTabeloStore.getState().workspace.columnWidths[columnId]).toBe(18);
+	});
+
 	it("does not record no-op cell commits", () => {
 		const store = useTabeloStore.getState();
 

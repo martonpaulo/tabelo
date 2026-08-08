@@ -102,19 +102,6 @@ export function setAlignment(
 	return { ...document, columns };
 }
 
-export function setColumnWidth(
-	document: TableDocument,
-	columnIndex: number,
-	width: number | undefined,
-): TableDocument {
-	const column = document.columns[columnIndex];
-	if (!column || column.width === width) return document;
-	const columns = document.columns.map((candidate, index) =>
-		index === columnIndex ? { ...candidate, width } : candidate,
-	);
-	return { ...document, columns };
-}
-
 export function insertRows(
 	document: TableDocument,
 	atIndex: number,
@@ -228,7 +215,6 @@ export function duplicateColumns(
 		const created = {
 			...createColumn(source.header),
 			align: source.align,
-			width: source.width,
 		};
 		columns.splice(index + 1, 0, created);
 		copies.push({ source: source.id, created });

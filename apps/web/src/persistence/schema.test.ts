@@ -4,6 +4,7 @@ import v1 from "./fixtures/v1.json";
 import v2 from "./fixtures/v2.json";
 import v3 from "./fixtures/v3.json";
 import v4 from "./fixtures/v4.json";
+import v5 from "./fixtures/v5.json";
 import { CURRENT_VERSION, validatePersistedState } from "./schema";
 
 const document = {
@@ -27,6 +28,7 @@ function payload(overrides: Record<string, unknown> = {}) {
 			columnRatio: 0.5,
 			rowRatio: 0.5,
 			activePaneId: "ac",
+			columnWidths: {},
 		},
 		draft: null,
 		...overrides,
@@ -71,6 +73,17 @@ describe("loading a stored payload", () => {
 		expect(outcome.state.workspace.wrappedColumns).toEqual(["c1"]);
 	});
 
+	it("migrates v4 document widths into the current workspace schema", () => {
+		const outcome = validatePersistedState(v4);
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.workspace.columnWidths).toEqual({ "c-name": 18 });
+		expect(
+			outcome.state.document.columns.every((column) => !("width" in column)),
+		).toBe(true);
+	});
+
 	it("preserves pane wrapping while defaulting older version-4 panes", () => {
 		const workspace = payload().workspace;
 		const outcome = validatePersistedState(
@@ -96,6 +109,7 @@ describe("loading a stored payload", () => {
 		["v2", v2],
 		["v3", v3],
 		["v4", v4],
+		["v5", v5],
 	] as const)(
 		"loads the stored %s fixture as current state",
 		(_name, fixture) => {

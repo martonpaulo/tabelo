@@ -333,13 +333,14 @@ describe("source synchronization", () => {
 			],
 			{ headerRow: true },
 		);
-		const document = {
-			...parsed,
-			columns: [{ ...parsed.columns[0], width: 15 }],
-		};
+		const document = parsed;
 		const selection = createSelection({ row: 199, column: 0 });
 		useTabeloStore.setState({
 			document,
+			workspace: {
+				...useTabeloStore.getState().workspace,
+				columnWidths: { [document.columns[0]?.id ?? ""]: 15 },
+			},
 			selection,
 			past: [],
 			future: [],
@@ -360,7 +361,7 @@ describe("source synchronization", () => {
 		expect(state.document.columns.map((column) => column.id)).toEqual(
 			columnIds,
 		);
-		expect(state.document.columns[0]?.width).toBe(15);
+		expect(state.workspace.columnWidths[columnIds[0] ?? ""]).toBe(15);
 		expect(state.selection).toEqual(selection);
 		expect(state.document.rows[199]?.cells[columnIds[0] ?? ""]).toBe("Changed");
 		expect(state.past).toHaveLength(1);
