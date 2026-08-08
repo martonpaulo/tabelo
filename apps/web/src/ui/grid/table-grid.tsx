@@ -19,13 +19,20 @@ import {
 } from "@/state/store";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import {
+	atMaximumColumnWidth,
+	atMinimumColumnWidth,
+	clampColumnWidth,
+	fitColumnWidth,
+	resolveColumnWidth,
+	stepColumnWidth,
+} from "@/workspace/column-width";
+import {
 	type AxisMenuHandle,
 	AxisMenuPopupHost,
 	AxisMenuTrigger,
 	createAxisMenuHandle,
 } from "./axis-menu";
 import { CellEditor } from "./cell-editor";
-import { clampColumnWidth, resolveColumnWidth } from "./column-width";
 import { GridContextMenu } from "./grid-context-menu";
 import { moveRefusalMessage } from "./table-actions";
 import {
@@ -230,6 +237,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const wrappedColumns = useTabeloStore(
 		(state) => state.workspace.wrappedColumns,
 	);
+	const columnWidths = useTabeloStore((state) => state.workspace.columnWidths);
 	const entered = usePaneEntered();
 
 	const gridRef = useRef<HTMLTableElement>(null);
@@ -433,10 +441,41 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		// Without this the printable-character branch below would swallow Space
 		// and the handles could never be activated from the keyboard.
 		const target = event.target as HTMLElement | null;
-		if (target && !target.closest("[data-cell]")) return;
+		const targetCell = target?.closest<HTMLElement>("[data-cell]");
+		if (target && !targetCell) return;
 
 		const mod = event.metaKey || event.ctrlKey;
 		const active = activeRange(selection);
+
+		// Shift distinguishes keyboard resizing from the existing Alt+arrow reorder
+		// path. The focused column owns the gesture even when the selection spans
+		// several cells, matching the pointer handle's exact target.
+		if (
+			event.altKey &&
+			event.shiftKey &&
+			(event.key === "ArrowLeft" || event.key === "ArrowRight")
+		) {
+			event.preventDefault();
+			const focusedColumn = Number(
+				targetCell?.dataset.cell?.split(":")[1] ?? focus.column,
+			);
+			const column = store.document.columns[focusedColumn];
+			if (!column) return;
+			const width = store.workspace.columnWidths[column.id];
+			const letter = copy.a11y.columnLetter(focusedColumn);
+			if (event.key === "ArrowLeft" && atMinimumColumnWidth(width)) {
+				store.announceGridStatus(copy.status.columnWidthMinimum(letter));
+				return;
+			}
+			if (event.key === "ArrowRight" && atMaximumColumnWidth(width)) {
+				store.announceGridStatus(copy.status.columnWidthMaximum(letter));
+				return;
+			}
+			const next = stepColumnWidth(width, event.key === "ArrowLeft" ? -1 : 1);
+			store.resizeColumn(focusedColumn, next, "column");
+			store.announceGridStatus(copy.status.columnWidth(letter, next));
+			return;
+		}
 
 		// Reordering shares the arrow keys with navigation, behind Alt. Keeping
 		// it on the keyboard means drag is never the only way to reorder.
@@ -614,7 +653,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		event.preventDefault();
 	};
 	const contentWidth = document.columns.reduce(
-		(total, column) => total + resolveColumnWidth(column.width),
+		(total, column) => total + resolveColumnWidth(columnWidths[column.id]),
 		0,
 	);
 
@@ -692,7 +731,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 						<col
 							key={column.id}
 							style={{
-								width: `${resolveColumnWidth(column.width) * zoom}rem`,
+								width: `${resolveColumnWidth(columnWidths[column.id]) * zoom}rem`,
 							}}
 						/>
 					))}
@@ -723,7 +762,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								columnIndex={columnIndex}
 								header={column.header}
 								focused={focus.column === columnIndex}
-								width={resolveColumnWidth(column.width)}
+								width={resolveColumnWidth(columnWidths[column.id])}
 								zoom={zoom}
 								onSelect={(intent) => selectColumn(columnIndex, intent)}
 								onDragStart={() => {
@@ -1094,6 +1133,7 @@ const DataRow = memo(function DataRow({
 							/>
 						) : (
 							<span
+								data-column-content={columnIndex}
 								className={cn(
 									"block leading-content-line-box",
 									wrapped
@@ -1131,6 +1171,48 @@ interface ColumnIndexCellProps {
 	readonly onDragEnter: () => void;
 }
 
+function zoomNormalizedNaturalWidth(
+	element: HTMLElement,
+	zoom: number,
+): number {
+	const style = getComputedStyle(element);
+	const clone = element.cloneNode(true) as HTMLElement;
+	clone.removeAttribute("data-column-content");
+	Object.assign(clone.style, {
+		position: "fixed",
+		top: "0",
+		left: "-10000px",
+		visibility: "hidden",
+		pointerEvents: "none",
+		width: "max-content",
+		maxWidth: "none",
+		height: "auto",
+		overflow: "visible",
+		whiteSpace: "pre",
+		fontFamily: style.fontFamily,
+		fontSize: `${Number.parseFloat(style.fontSize) / zoom}px`,
+		fontStyle: style.fontStyle,
+		fontWeight: style.fontWeight,
+		fontStretch: style.fontStretch,
+		fontKerning: style.fontKerning,
+		fontFeatureSettings: style.fontFeatureSettings,
+		fontVariationSettings: style.fontVariationSettings,
+		letterSpacing: style.letterSpacing,
+		wordSpacing: style.wordSpacing,
+		textTransform: style.textTransform,
+	});
+	document.body.append(clone);
+	try {
+		// Measure at the product's base content size, then express that value in
+		// the current zoomed coordinate space for fitColumnWidth to normalize.
+		// This avoids variable-font optical sizing changing stored widths when the
+		// same text is fitted in panes with different content scales.
+		return clone.scrollWidth * zoom;
+	} finally {
+		clone.remove();
+	}
+}
+
 function ColumnIndexCell({
 	axisMenuHandle,
 	columnIndex,
@@ -1142,6 +1224,7 @@ function ColumnIndexCell({
 	onDragStart,
 	onDragEnter,
 }: ColumnIndexCellProps) {
+	const cellRef = useRef<HTMLTableCellElement>(null);
 	const resizeState = useRef<{
 		startX: number;
 		startWidth: number;
@@ -1149,9 +1232,41 @@ function ColumnIndexCell({
 	} | null>(null);
 	const letter = copy.a11y.columnLetter(columnIndex);
 	const entered = usePaneEntered();
+	const measureFitWidth = () => {
+		const cell = cellRef.current;
+		const table = cell?.closest("table");
+		if (!cell || !table) return undefined;
+		const content = Array.from(
+			table.querySelectorAll<HTMLElement>(
+				`[data-column-content="${columnIndex}"]`,
+			),
+		);
+		if (content.length === 0) return undefined;
+		const box = content[0]?.parentElement;
+		if (!box) return undefined;
+		const boxStyle = getComputedStyle(box);
+		const decorationWidth = [
+			boxStyle.paddingLeft,
+			boxStyle.paddingRight,
+			boxStyle.borderLeftWidth,
+			boxStyle.borderRightWidth,
+		].reduce((total, value) => total + (Number.parseFloat(value) || 0), 0);
+		const rootFontSize = Number.parseFloat(
+			getComputedStyle(document.documentElement).fontSize,
+		);
+		return fitColumnWidth(
+			Math.max(
+				...content.map((element) => zoomNormalizedNaturalWidth(element, zoom)),
+			),
+			rootFontSize,
+			zoom,
+			decorationWidth,
+		);
+	};
 
 	return (
 		<td
+			ref={cellRef}
 			role="presentation"
 			data-column-header={columnIndex}
 			data-column-letter={letter}
@@ -1197,12 +1312,12 @@ function ColumnIndexCell({
 					axis="column"
 					index={columnIndex}
 					revealed={focused}
+					measureFitWidth={measureFitWidth}
 				/>
 			</div>
 
-			{/* Pointer-only by design, and hidden from assistive technology because
-			    it duplicates a command: the column menu carries the same widen,
-			    narrow, and reset without needing a drag. */}
+			{/* Pointer-only by design, and hidden from assistive technology. The
+			    focused grid column has Alt+Shift+Left/Right as its keyboard equal. */}
 			<div
 				aria-hidden
 				className="absolute top-0 right-0 z-20 h-full w-2 cursor-col-resize touch-none hover:bg-selection-edge/40"
@@ -1336,6 +1451,7 @@ function HeaderCell({
 				/>
 			) : (
 				<span
+					data-column-content={columnIndex}
 					className={cn(
 						"block leading-content-line-box",
 						wrapped

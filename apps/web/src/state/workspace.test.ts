@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { HEADER_ROW } from "@/core/selection";
 import type { ViewId } from "@/views/types";
 import { paneCount, splitOptions } from "@/workspace/layout";
 import {
@@ -246,6 +247,74 @@ describe("column wrapping preference", () => {
 		expect(useTabeloStore.getState().workspace.wrappedColumns).not.toContain(
 			target.id,
 		);
+	});
+});
+
+describe("column width preference", () => {
+	it("uses stable ids, stays outside history, and prunes deleted columns", () => {
+		const before = useTabeloStore.getState();
+		const target = before.document.columns[0];
+		expect(target).toBeDefined();
+		if (!target) return;
+
+		before.resizeColumn(0, 18);
+		let current = useTabeloStore.getState();
+		expect(current.workspace.columnWidths).toEqual({ [target.id]: 18 });
+		expect(current.document).toBe(before.document);
+		expect(current.past).toBe(before.past);
+
+		current.applyDocument({
+			...current.document,
+			columns: [...current.document.columns].reverse(),
+		});
+		current = useTabeloStore.getState();
+		expect(current.workspace.columnWidths[target.id]).toBe(18);
+
+		current.applyDocument({
+			...current.document,
+			columns: current.document.columns.filter(
+				(column) => column.id !== target.id,
+			),
+		});
+		expect(useTabeloStore.getState().workspace.columnWidths[target.id]).toBe(
+			undefined,
+		);
+	});
+
+	it("copies a source width to each newly duplicated column id", () => {
+		const before = useTabeloStore.getState();
+		const source = before.document.columns[0];
+		expect(source).toBeDefined();
+		if (!source) return;
+
+		before.resizeColumn(0, 18);
+		before.selectCell({ row: HEADER_ROW, column: 0 }, "column");
+		before.duplicateSelectedColumns();
+
+		const current = useTabeloStore.getState();
+		const duplicate = current.document.columns[1];
+		expect(duplicate?.id).not.toBe(source.id);
+		expect(current.workspace.columnWidths[source.id]).toBe(18);
+		expect(current.workspace.columnWidths[duplicate?.id ?? ""]).toBe(18);
+	});
+
+	it("drops obsolete ids when import and New table replace the document", () => {
+		const store = useTabeloStore.getState();
+		const originalId = store.document.columns[0]?.id ?? "";
+		store.resizeColumn(0, 18);
+
+		store.importText(
+			"| Name | Role |\n| --- | --- |\n| Ingrid | Designer |",
+			"markdown",
+		);
+		let current = useTabeloStore.getState();
+		expect(current.workspace.columnWidths[originalId]).toBeUndefined();
+		const importedId = current.document.columns[0]?.id ?? "";
+		current.resizeColumn(0, 15);
+
+		current.resetDocument();
+		current = useTabeloStore.getState();
+		expect(current.workspace.columnWidths[importedId]).toBeUndefined();
 	});
 });
 

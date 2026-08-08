@@ -84,7 +84,8 @@ export function documentFromMatrix(
 
 // A source parser necessarily constructs fresh identifiers. Synchronization
 // reconciles that parsed shape with the current document by position so normal
-// text edits keep selection, column widths, and row identity attached.
+// text edits keep selection, workspace column preferences, and row identity
+// attached.
 // Identity is preserved per item, not only for the document as a whole. A
 // keystroke in a source pane changes one row, and every other row must come
 // back as the very same object so the grid's memoised rows can skip it. An
@@ -106,23 +107,14 @@ export function reconcileDocument(
 			return column;
 		}
 
-		// The id always comes from the existing column, and an existing width
-		// always wins over a parsed one, so only these three can differ.
-		const width = existing.width === undefined ? column.width : existing.width;
-		if (
-			existing.header === column.header &&
-			existing.align === column.align &&
-			existing.width === width
-		) {
+		// The id always comes from the existing column. Presentation preferences
+		// are keyed by that id in the workspace and never enter reconciliation.
+		if (existing.header === column.header && existing.align === column.align) {
 			return existing;
 		}
 
 		columnsUnchanged = false;
-		return {
-			...column,
-			id: existing.id,
-			...(width === undefined ? {} : { width }),
-		};
+		return { ...column, id: existing.id };
 	});
 
 	let rowsUnchanged = parsed.rows.length === current.rows.length;

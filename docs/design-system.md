@@ -274,6 +274,13 @@ The two radii communicate hierarchy rather than decoration. Grid cells, row or
 column headers, resize tracks, and layout glyphs stay square because their
 geometry communicates table structure.
 
+Column width is a persisted workspace preference keyed by stable column id,
+never table document state or a document-history step. Pointer resize,
+keyboard resize, and Fit share one arithmetic owner: 4.5rem through 64rem,
+stored to one sixteenth of a rem. Reordering follows the id, deletion removes
+the orphaned preference, and duplication copies the source preference to the
+new adjacent id.
+
 ### Per-pane content scale
 
 One pane can scale what it displays without touching the rest of the app.
@@ -464,6 +471,14 @@ is right for a stepper and wrong for a choice that is finished once made.
 A group whose items are *actions* rather than states, such as zoom, add, and
 close, stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
 
+Every action collection uses the menu primitive's semantic Group, in dropdown
+and context menus alike. A visible group title is reserved for Alignment, Edit,
+and Move. It is canonical copy rendered through GroupLabel, and the Group is
+named with `aria-labelledby`. Clipboard, Insert, Remove, and the single
+self-explanatory Fit column to content action remain untitled semantic groups,
+without an empty label. Group labels are non-interactive and arrow-key
+navigation skips them. App and pane menus follow the same grouping contract.
+
 Tabelo does not use cascading menus. A menu item either performs its command or
 opens one dialog for a choice that cannot live in the current menu. In
 particular, the global Layout command opens the layout chooser dialog; it never
@@ -478,6 +493,11 @@ description or shortcut may use 0.75rem. Floating menus are translucent over a
 backdrop blur when the browser supports it, with the opaque popover colour as
 the fallback. Their floating surface, strong boundary, and shadow must remain
 visibly distinct from the pane beneath.
+
+Groups are separated by the same 0.0625rem hairline used elsewhere, with
+0.5rem vertical margin on each side. That shared rhythm belongs to the menu
+primitive; no menu adds a local separator variant. Long menus keep the shared
+available-height ceiling and vertical scrolling at narrow viewports.
 
 Shortcut hints use the shared normal sans-serif typeface, never the source
 editor's monospace face. Each physical key is one compact, quiet tonal rectangle
@@ -1135,6 +1155,7 @@ container, so the arrow keys still work.
 | `Shift`+Arrows | Extend the active area from its anchor |
 | `Mod`+Arrows | Move the focused cell without discarding the areas already selected |
 | `Alt`+Arrows | Reorder one contiguous row or column block. A header-touching selection cannot move rows; several areas never collapse into one |
+| `Alt`+`Shift`+Left / Right | Narrow or widen the focused column without reordering it |
 | `Tab` / `Shift`+`Tab` | Move one cell in reading order, wrapping at row ends and grid edges. It never leaves the grid |
 | `Home` / `End` | First or last column of the row; with the modifier, the first or last cell of the table |
 | `Enter` / `F2` | Edit the focused cell. On a column header, rename it |
@@ -1163,11 +1184,12 @@ the grid commits the open editor before the destination takes focus, just like
 `Enter` or `Tab`. `Escape` is the only exit that discards the in-progress value.
 
 **Every pointer affordance needs a keyboard equal.** Column width is the case
-that proves it: the drag handle stays pointer-only and `aria-hidden`, and the
-column menu carries the same widen, narrow, and reset. That is what makes
-hiding the handle honest rather than a way of avoiding the problem. The
-modifier click that builds a selection out of several areas is the same
-obligation, and the two `Space` chords above are its answer.
+that proves it: the drag handle stays pointer-only and `aria-hidden`, while
+`Alt`+`Shift`+Left/Right resizes the focused column and announces the resulting
+width or limit through the grid status channel. The column menu adds Fit column
+to content for the common automatic case, not stepping commands or a live
+numeric readout. The modifier click that builds a selection out of several
+areas is the same obligation, and the two `Space` chords above are its answer.
 
 ### Selecting several areas
 
@@ -1245,7 +1267,8 @@ breaks, wraps long text inside the authoritative column width, and lets each
 row grow to its tallest cell while `--grid-row-h` remains the floor. Row numbers
 stay on the first visual line of that variable-height row, and arrow keys still
 move one cell rather than one visual line. The semantic checked item in the
-column menu is the sole control for this preference.
+column menu is the sole control for this preference. Fit is disabled while the
+column wraps, with a written reason to turn wrapping off first.
 
 **An empty header stays empty.** Nothing generates a name for a column the user
 has not named. An unnamed column is identified by its letter on the index strip,

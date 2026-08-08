@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { STORAGE_KEY } from "@/persistence/schema";
+import { MIN_COLUMN_WIDTH } from "@/workspace/column-width";
 import { expect, test } from "./fixtures";
 
 // The grid is a hand-built widget, so every keyboard contract it advertises is
@@ -296,14 +297,13 @@ test("the column is selected from the index strip", async ({
 	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "true");
 });
 
-test("column width commands change the selected column", async ({
+test("Fit reveals clipped column content and explains disabled states", async ({
 	page,
 	tabelo,
 }) => {
-	await tabelo.editCell(
+	await tabelo.editHeader(
 		1,
-		1,
-		"A very long single-line cell value that will certainly not fit inside the default column width",
+		"A deliberately long header that is clipped at the default column width",
 	);
 
 	const header = tabelo.header(1);
@@ -324,28 +324,215 @@ test("column width commands change the selected column", async ({
 		await menu.waitFor({ state: "visible" });
 		return menu;
 	};
-	const activate = async (item: Locator) => {
-		await item.focus();
-		await item.press("Enter");
-	};
-
 	const open = await openMenu();
+	const fit = open.getByRole("menuitem", {
+		name: copy.actions.fitColumnToContent,
+	});
+	const wrap = open.getByRole("menuitemcheckbox", {
+		name: copy.actions.wrapColumnText,
+	});
+	await expect(fit).toBeEnabled();
+	await wrap.click();
+	await expect(fit).toBeDisabled();
+	await fit.hover();
+	await expect(page.getByRole("tooltip")).toBeVisible();
+	await wrap.click();
+	await expect(fit).toBeEnabled();
+	await fit.click();
+
+	await expect.poll(width).toBeGreaterThan(original);
+	const reopened = await openMenu();
 	await expect(
-		open.getByRole("menuitem", { name: copy.actions.resetColumnWidth }),
+		reopened.getByRole("menuitem", {
+			name: copy.actions.fitColumnToContent,
+		}),
 	).toBeDisabled();
-	await activate(
-		open.getByRole("menuitem", { name: copy.actions.narrowColumn }),
+});
+
+test("keyboard resizing changes only the focused column and announces outcomes", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editHeader(1, "First");
+	await tabelo.editHeader(2, "Second");
+	const first = tabelo.header(1);
+	const second = tabelo.header(2);
+	const width = async (target: Locator) =>
+		(await target.boundingBox())?.width ?? 0;
+	const firstBefore = await width(first);
+
+	await first.focus();
+	await page.keyboard.press("Alt+Shift+ArrowRight");
+
+	await expect.poll(() => width(first)).toBeGreaterThan(firstBefore);
+	await expect
+		.poll(() =>
+			page.evaluate((key) => {
+				const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+				return Object.values(saved?.workspace?.columnWidths ?? {});
+			}, STORAGE_KEY),
+		)
+		.toEqual([12]);
+	await expect(first).toHaveText("First");
+	await expect(second).toHaveText("Second");
+	await expect(tabelo.announcements).not.toBeEmpty();
+	const widenedAnnouncement = await tabelo.announcements.textContent();
+	expect(widenedAnnouncement).toContain("A");
+	expect(widenedAnnouncement).toContain("12");
+
+	const widened = await width(first);
+	await page.keyboard.press("Alt+Shift+ArrowLeft");
+	await expect.poll(() => width(first)).toBeLessThan(widened);
+
+	for (let press = 0; press < 5; press += 1) {
+		await page.keyboard.press("Alt+Shift+ArrowLeft");
+	}
+	const changedAnnouncement = await tabelo.announcements.textContent();
+	expect(changedAnnouncement).not.toBe(widenedAnnouncement);
+	await page.keyboard.press("Alt+Shift+ArrowLeft");
+	await expect
+		.poll(() =>
+			page.evaluate((key) => {
+				const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+				return Object.values(saved?.workspace?.columnWidths ?? {})[0];
+			}, STORAGE_KEY),
+		)
+		.toBe(MIN_COLUMN_WIDTH);
+});
+
+test("the pointer resize handle still changes its own column", async ({
+	page,
+	tabelo,
+}) => {
+	const header = tabelo.header(1);
+	const before = (await header.boundingBox())?.width ?? 0;
+	const handle = tabelo
+		.columnIndex(1)
+		.locator('[aria-hidden][class*="cursor-col-resize"]');
+	const box = await handle.boundingBox();
+	expect(box).not.toBeNull();
+	await page.mouse.move((box?.x ?? 0) + 2, (box?.y ?? 0) + 2);
+	await page.mouse.down();
+	await page.mouse.move((box?.x ?? 0) + 50, (box?.y ?? 0) + 2);
+	await page.mouse.up();
+
+	await expect
+		.poll(async () => (await header.boundingBox())?.width ?? 0)
+		.toBeGreaterThan(before);
+});
+
+test("workspace width survives document history, reload, and duplication", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.editCell(1, 2, "Paulo");
+	let first = tabelo.header(1);
+	let untouched = tabelo.header(2);
+	const handle = tabelo
+		.columnIndex(1)
+		.locator('[aria-hidden][class*="cursor-col-resize"]');
+	const box = await handle.boundingBox();
+	expect(box).not.toBeNull();
+	await page.mouse.move((box?.x ?? 0) + 2, (box?.y ?? 0) + 2);
+	await page.mouse.down();
+	await page.mouse.move((box?.x ?? 0) + 50, (box?.y ?? 0) + 2);
+	await page.mouse.up();
+
+	const firstWidth = async () => (await first.boundingBox())?.width ?? 0;
+	const untouchedWidth = async () =>
+		(await untouched.boundingBox())?.width ?? 0;
+	await expect.poll(firstWidth).toBeGreaterThan(await untouchedWidth());
+	await tabelo.runAppCommand("undo");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect(tabelo.cell(1, 2)).toHaveText("");
+	await expect.poll(firstWidth).toBeGreaterThan(await untouchedWidth());
+
+	await page.reload();
+	await tabelo.workspace.waitFor({ state: "visible" });
+	first = tabelo.header(1);
+	untouched = tabelo.header(2);
+	await expect.poll(firstWidth).toBeGreaterThan(await untouchedWidth());
+
+	await tabelo
+		.columnIndex(1)
+		.getByRole("button", {
+			name: new RegExp(`^${copy.actions.selectColumn}:`),
+		})
+		.click();
+	await tabelo
+		.grid()
+		.getByRole("button", {
+			name: new RegExp(`^${copy.actions.columnActions}:`),
+		})
+		.first()
+		.click();
+	await page
+		.getByRole("menuitem", { name: copy.actions.duplicateColumns(1) })
+		.click();
+	await expect(tabelo.header(4)).toBeVisible();
+	const duplicateWidth = async () =>
+		(await tabelo.header(2).boundingBox())?.width ?? 0;
+	const shiftedUntouchedWidth = async () =>
+		(await tabelo.header(3).boundingBox())?.width ?? 0;
+	await expect
+		.poll(duplicateWidth)
+		.toBeGreaterThan(await shiftedUntouchedWidth());
+});
+
+test("Fit stores the same normalized width at different pane zoom levels", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(
+		1,
+		1,
+		"A long single-line value whose natural width is measured at both pane zoom levels",
 	);
-	await expect.poll(width).toBeLessThan(original);
-	await expect(
-		open.getByRole("menuitem", { name: copy.actions.resetColumnWidth }),
-	).toBeEnabled();
-	await activate(
-		open.getByRole("menuitem", { name: copy.actions.resetColumnWidth }),
+	const fitColumn = async () => {
+		await tabelo
+			.grid()
+			.getByRole("button", {
+				name: new RegExp(`^${copy.actions.columnActions}:`),
+			})
+			.first()
+			.click();
+		await page
+			.getByRole("menu")
+			.getByRole("menuitem", { name: copy.actions.fitColumnToContent })
+			.click();
+	};
+	const storedWidth = () =>
+		page.evaluate((key) => {
+			const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+			return Object.values(saved?.workspace?.columnWidths ?? {})[0] as
+				| number
+				| undefined;
+		}, STORAGE_KEY);
+
+	await fitColumn();
+	await expect.poll(storedWidth).not.toBeUndefined();
+	const atDefaultZoom = await storedWidth();
+
+	const zoomedPayload = await page.evaluate((key) => {
+		const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+		saved.workspace.columnWidths = {};
+		const gridPane = saved.workspace.panes.find(
+			(pane: { view: string }) => pane.view === "grid",
+		);
+		gridPane.zoom = 2;
+		return saved;
+	}, STORAGE_KEY);
+	await page.addInitScript(
+		({ key, payload }) => {
+			localStorage.setItem(key, JSON.stringify(payload));
+		},
+		{ key: STORAGE_KEY, payload: zoomedPayload },
 	);
-	await expect(
-		open.getByRole("menuitem", { name: copy.actions.resetColumnWidth }),
-	).toBeDisabled();
+	await page.reload();
+	await tabelo.workspace.waitFor({ state: "visible" });
+	await fitColumn();
+	await expect.poll(storedWidth).toBe(atDefaultZoom);
 });
 
 test("column wrapping grows rows, persists, and keeps cell navigation", async ({

@@ -1,8 +1,8 @@
 {
-	"version": 4,
+	"version": 5,
 	"document": {
 		"columns": [
-			{ "id": "c-name", "header": "Name", "align": "left", "width": 18 },
+			{ "id": "c-name", "header": "Name", "align": "left" },
 			{ "id": "c-role", "header": "Role", "align": "default" }
 		],
 		"rows": [
@@ -15,14 +15,23 @@
 	"workspace": {
 		"layout": "columns",
 		"panes": [
-			{ "id": "ac", "view": "grid", "slots": ["a", "c"], "zoom": 1 },
+			{
+				"id": "ac",
+				"view": "grid",
+				"slots": ["a", "c"],
+				"zoom": 1,
+				"wrap": false
+			},
 			{
 				"id": "bd",
 				"view": "markdown",
 				"slots": ["b", "d"],
-				"zoom": 1.2
+				"zoom": 1.2,
+				"wrap": false
 			}
 		],
+		"wrappedColumns": [],
+		"columnWidths": { "c-name": 18 },
 		"columnRatio": 0.4,
 		"rowRatio": 0.5,
 		"activePaneId": "bd"

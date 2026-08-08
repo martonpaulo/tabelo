@@ -34,7 +34,10 @@ Related to: View, Slot, Workspace
 
 The 2×2 arrangement of slots that holds one to four panes. Its shape comes from
 a named layout preset; free slot assignment does not exist. A registered view
-may appear in at most one pane at a time.
+may appear in at most one pane at a time. It also owns persisted presentation
+preferences that never change the table document or its history, including
+pane scale and wrapping plus per-column wrapping and width keyed by stable
+column id.
 
 Related to: Pane, Slot, Layout preset
 
@@ -72,9 +75,10 @@ Related to: View
 
 ### Column
 
-An ordered table field with a stable identifier, a header, an alignment, and an
-optional display width. Identifier and header are distinct: the header is user
-content, the identifier is application-owned and never shown.
+An ordered table field with a stable identifier, a header, and an alignment.
+Identifier and header are distinct: the header is user content, the identifier
+is application-owned and never shown. Its display width is a workspace
+preference rather than document data.
 
 Related to: Header row, Alignment, Cell
 
@@ -88,8 +92,8 @@ Related to: Column, Header decision
 ### Row
 
 An ordered collection of cell values with a stable identifier. Identifiers
-survive reordering, parsing, and format switching so that selection and column
-widths stay attached to the right thing.
+survive reordering, parsing, and format switching so that selection and
+workspace preferences stay attached to the right thing.
 
 Related to: Cell, Table document
 
@@ -153,8 +157,8 @@ Related to: Commit, Table operation
 ### Table operation
 
 A pure function from one table document to another: insert, delete, duplicate,
-move, resize, set cell, edit header, clear range. Table operations are the only
-way the grid changes the document.
+move, set cell, edit header, clear range. Table operations are the only way the
+grid changes the document.
 
 Related to: Table document, Document timeline
 
@@ -249,6 +253,10 @@ Related to: Table document, Import
 - Alignment belongs to the column, so it survives a round trip through any
   format that cannot express it: CSV, TSV, and Jira all lose it on paper and
   none of them lose it in Tabelo.
+- Column width belongs to the workspace, keyed by stable column id. It survives
+  document undo, redo, parsing, reordering, and reload, but orphaned entries are
+  removed when their columns no longer exist. Duplicating a column seeds the
+  new adjacent id with the source width without adding a history step.
 - Every codec-specific escape must be reversible: any cell value survives a
   round trip through Markdown or Jira byte-exact.
 - Header presence is an import-time fact or explicit choice, never a stored

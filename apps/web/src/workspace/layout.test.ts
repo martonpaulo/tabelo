@@ -177,6 +177,7 @@ function workspaceFor(id: LayoutId): Workspace {
 		layout: id,
 		panes,
 		wrappedColumns: [],
+		columnWidths: {},
 		columnRatio: 0.5,
 		rowRatio: 0.5,
 		activePaneId: panes[0].id,

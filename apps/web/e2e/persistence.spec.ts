@@ -1,5 +1,6 @@
 import { copy } from "@/copy/copy";
 import v1 from "@/persistence/fixtures/v1.json" with { type: "json" };
+import v4 from "@/persistence/fixtures/v4.json" with { type: "json" };
 import { CURRENT_VERSION, STORAGE_KEY } from "@/persistence/schema";
 import { expect, test } from "./fixtures";
 
@@ -40,6 +41,38 @@ test("the oldest shipped payload restores and saves as the current schema", asyn
 			}, STORAGE_KEY),
 		)
 		.toEqual({ version: CURRENT_VERSION, value: "Writer", zooms: [1, 1] });
+});
+
+test("v4 document widths migrate into workspace preferences", async ({
+	tabelo,
+}) => {
+	await tabelo.page.addInitScript(
+		({ key, payload }) => {
+			window.localStorage.setItem(key, JSON.stringify(payload));
+		},
+		{ key: STORAGE_KEY, payload: v4 },
+	);
+	await tabelo.page.reload();
+	await tabelo.workspace.waitFor({ state: "visible" });
+
+	const first = (await tabelo.header(1).boundingBox())?.width ?? 0;
+	const second = (await tabelo.header(2).boundingBox())?.width ?? 0;
+	expect(first).toBeGreaterThan(second);
+	await tabelo.editCell(1, 2, "Writer");
+	await expect
+		.poll(() =>
+			tabelo.page.evaluate((key) => {
+				const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+				return {
+					version: saved?.version,
+					width: saved?.workspace?.columnWidths?.["c-name"],
+					hasDocumentWidth: saved?.document?.columns?.some(
+						(column: Record<string, unknown>) => "width" in column,
+					),
+				};
+			}, STORAGE_KEY),
+		)
+		.toEqual({ version: CURRENT_VERSION, width: 18, hasDocumentWidth: false });
 });
 
 test("reload within debounce restores an invalid draft and its last valid table", async ({
@@ -102,7 +135,7 @@ test("unreadable storage stays byte-exact until explicit replacement", async ({
 		await tabelo.page.evaluate(() =>
 			JSON.parse(window.localStorage.getItem("tabelo.document") ?? "null"),
 		),
-	).toMatchObject({ version: 4, draft: null });
+	).toMatchObject({ version: CURRENT_VERSION, draft: null });
 });
 
 test("quota notice clears after a later successful write", async ({

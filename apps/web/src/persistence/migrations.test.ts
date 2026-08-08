@@ -3,6 +3,7 @@ import { z } from "zod";
 import v1 from "./fixtures/v1.json";
 import v2 from "./fixtures/v2.json";
 import v3 from "./fixtures/v3.json";
+import v4 from "./fixtures/v4.json";
 import {
 	type MigrationRegistry,
 	migrationRegistry,
@@ -77,12 +78,29 @@ describe("adjacent persistence migrations", () => {
 		});
 	});
 
+	it("moves v4 document widths into workspace preferences", () => {
+		const result = runMigrationChain(v4, 4, 5, migrationRegistry);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		const value = result.value as {
+			version: number;
+			document: { columns: Record<string, unknown>[] };
+			workspace: { columnWidths: Record<string, number> };
+		};
+		expect(value.version).toBe(5);
+		expect(value.workspace.columnWidths).toEqual({ "c-name": 18 });
+		expect(value.document.columns.every((column) => !("width" in column))).toBe(
+			true,
+		);
+	});
+
 	it("runs the oldest fixture through the complete chain", () => {
-		const result = runMigrationChain(v1, 1, 4, migrationRegistry);
+		const result = runMigrationChain(v1, 1, 5, migrationRegistry);
 
 		expect(result).toMatchObject({
 			ok: true,
-			value: { version: 4, draft: null },
+			value: { version: 5, draft: null },
 		});
 	});
 });
