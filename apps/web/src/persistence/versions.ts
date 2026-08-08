@@ -183,7 +183,9 @@ function refineCurrentRelationships(
 	},
 	context: z.RefinementCtx,
 ): void {
-	if (!workspacePanesTileLayout(state.workspace.layout, state.workspace.panes)) {
+	if (
+		!workspacePanesTileLayout(state.workspace.layout, state.workspace.panes)
+	) {
 		context.addIssue({
 			code: "custom",
 			path: ["workspace", "panes"],
