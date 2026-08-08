@@ -1,3 +1,4 @@
+import stringWidth from "string-width";
 import type { Alignment, TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
 import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
@@ -282,16 +283,22 @@ function serializeMarkdown(document: TableDocument): string {
 	);
 
 	// Pad columns to a common width so the source stays readable by hand.
-	const widths = document.columns.map((_, index) =>
-		Math.max(
-			headers[index]?.length ?? 0,
-			...body.map((cells) => cells[index]?.length ?? 0),
-			3,
-		),
-	);
+	const widths = document.columns.map((_, index) => {
+		let width = Math.max(stringWidth(headers[index] ?? ""), 3);
+		for (const cells of body) {
+			const cellWidth = stringWidth(cells[index] ?? "");
+			if (cellWidth > width) width = cellWidth;
+		}
+		return width;
+	});
 
 	const line = (cells: readonly string[]) =>
-		`| ${cells.map((cell, index) => cell.padEnd(widths[index])).join(" | ")} |`;
+		`| ${cells
+			.map(
+				(cell, index) =>
+					`${cell}${" ".repeat(Math.max(0, widths[index] - stringWidth(cell)))}`,
+			)
+			.join(" | ")} |`;
 
 	const divider = `| ${document.columns
 		.map((column, index) => alignmentMarker(column.align, widths[index]))

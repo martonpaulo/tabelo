@@ -277,8 +277,11 @@ export function pasteMatrix(
 ): TableDocument {
 	if (matrix.length === 0) return document;
 
-	const neededColumns =
-		at.columnIndex + Math.max(...matrix.map((row) => row.length));
+	let widestRow = 0;
+	for (const row of matrix) {
+		if (row.length > widestRow) widestRow = row.length;
+	}
+	const neededColumns = at.columnIndex + widestRow;
 	const neededRows = at.rowIndex + matrix.length;
 
 	let next = document;
