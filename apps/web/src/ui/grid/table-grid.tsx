@@ -28,6 +28,11 @@ import {
 import { CellEditor } from "./cell-editor";
 import { clampColumnWidth, resolveColumnWidth } from "./column-width";
 import { GridContextMenu } from "./grid-context-menu";
+import {
+	type GridAutoscrollAxis,
+	type GridAutoscrollPoint,
+	useGridAutoscroll,
+} from "./use-grid-autoscroll";
 
 const alignClass: Record<Alignment, string> = {
 	default: "text-left",
@@ -126,6 +131,28 @@ const pasteRefusalMessage: Record<PasteRefusal, string> = {
 // plain click, "extend" is Shift, and "toggle" is the platform modifier adding
 // a region to the selection or taking one away.
 type SelectIntent = "replace" | "extend" | "toggle";
+type GridDragKind = "cell" | "column" | "row";
+
+function autoscrollAxisOf(drag: GridDragKind): GridAutoscrollAxis {
+	if (drag === "column") return "horizontal";
+	if (drag === "row") return "vertical";
+	return "both";
+}
+
+function gridTargetAt(
+	grid: HTMLTableElement,
+	point: GridAutoscrollPoint,
+	selector: string,
+): HTMLElement | null {
+	for (const sampled of grid.ownerDocument.elementsFromPoint(
+		point.x,
+		point.y,
+	)) {
+		const target = sampled.closest<HTMLElement>(selector);
+		if (target && grid.contains(target)) return target;
+	}
+	return null;
+}
 
 function selectIntentOf(event: {
 	shiftKey: boolean;
@@ -206,7 +233,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const entered = usePaneEntered();
 
 	const gridRef = useRef<HTMLTableElement>(null);
-	const draggingRef = useRef<"cell" | "column" | "row" | null>(null);
+	const draggingRef = useRef<GridDragKind | null>(null);
 	// One handle for the whole grid: every gutter trigger opens the single root
 	// mounted below, because only one axis menu can be open at a time.
 	const [axisMenuHandle] = useState(createAxisMenuHandle);
@@ -248,14 +275,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		);
 		target?.focus({ preventScroll: false });
 	}, [focus.row, focus.column, editing, editingHeader]);
-
-	useEffect(() => {
-		const stop = () => {
-			draggingRef.current = null;
-		};
-		window.addEventListener("pointerup", stop);
-		return () => window.removeEventListener("pointerup", stop);
-	}, []);
 
 	// A column selection starts on the header row, because a column is its header
 	// plus its cells.
@@ -309,6 +328,72 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			}),
 		);
 	}, []);
+
+	const extendAutoscrolledDrag = useCallback(
+		(
+			drag: GridDragKind,
+			point: GridAutoscrollPoint,
+			grid: HTMLTableElement,
+		) => {
+			if (drag === "column") {
+				const stripCell = grid.querySelector<HTMLElement>(
+					"[data-column-header]",
+				);
+				if (!stripCell) return;
+				const stripBox = stripCell.getBoundingClientRect();
+				const target = gridTargetAt(
+					grid,
+					{ x: point.x, y: (stripBox.top + stripBox.bottom) / 2 },
+					"[data-column-header]",
+				);
+				if (!target) return;
+				const column = Number(target.dataset.columnHeader);
+				if (Number.isInteger(column)) selectColumn(column, "extend");
+				return;
+			}
+
+			if (drag === "row") {
+				const gutterCell = grid.querySelector<HTMLElement>("[data-row-header]");
+				if (!gutterCell) return;
+				const gutterBox = gutterCell.getBoundingClientRect();
+				const target = gridTargetAt(
+					grid,
+					{ x: (gutterBox.left + gutterBox.right) / 2, y: point.y },
+					"[data-row-header]",
+				);
+				if (!target) return;
+				const row = Number(target.dataset.rowHeader);
+				if (Number.isInteger(row)) selectRow(row, "extend");
+				return;
+			}
+
+			const headerCell = grid.querySelector<HTMLElement>('[data-cell="-1:0"]');
+			const gutterCell = grid.querySelector<HTMLElement>("[data-row-header]");
+			if (!headerCell || !gutterCell) return;
+			const headerBox = headerCell.getBoundingClientRect();
+			const gutterBox = gutterCell.getBoundingClientRect();
+			const target = gridTargetAt(
+				grid,
+				{
+					x: Math.max(point.x, gutterBox.right + 1),
+					y: Math.max(point.y, headerBox.bottom + 1),
+				},
+				"[data-cell]",
+			);
+			if (!target) return;
+			const [row, column] = target.dataset.cell?.split(":").map(Number) ?? [];
+			if (!Number.isInteger(row) || !Number.isInteger(column)) return;
+			useTabeloStore.getState().extendSelection({ row, column });
+		},
+		[selectColumn, selectRow],
+	);
+
+	useGridAutoscroll({
+		gridRef,
+		draggingRef,
+		axisOf: autoscrollAxisOf,
+		onScroll: extendAutoscrolledDrag,
+	});
 
 	const moveFocus = useCallback(
 		(rowDelta: number, columnDelta: number, intent: SelectIntent) => {
@@ -801,7 +886,7 @@ interface DataRowProps {
 	readonly editingSeed: string | null;
 	readonly wrappedColumns: readonly ColumnId[];
 	readonly selectRow: (row: number, intent: SelectIntent) => void;
-	readonly draggingRef: React.RefObject<"cell" | "column" | "row" | null>;
+	readonly draggingRef: React.RefObject<GridDragKind | null>;
 }
 
 const DataRow = memo(function DataRow({

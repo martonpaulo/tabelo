@@ -29,6 +29,76 @@ async function typeWithoutCommitting(
 	await editor.fill(value);
 }
 
+function largeTable(rows = 80, columns = 12): string {
+	const header = Array.from(
+		{ length: columns },
+		(_, column) => `Column ${column + 1}`,
+	);
+	return [
+		header.join("\t"),
+		...Array.from({ length: rows }, (_, row) =>
+			header.map((_, column) => `${row + 1}:${column + 1}`).join("\t"),
+		),
+	].join("\n");
+}
+
+async function expectFocusedCellClearOfStickyChrome(page: Page): Promise<void> {
+	const focused = page.locator('[data-grid-active="true"]');
+	const geometry = await focused.evaluate((cell) => {
+		const grid = cell.closest('[role="grid"]');
+		const header = grid?.querySelector('[data-cell="-1:0"]');
+		const gutter = cell
+			.closest('[role="row"]')
+			?.querySelector('[role="rowheader"]');
+		if (!(header instanceof HTMLElement) || !(gutter instanceof HTMLElement)) {
+			throw new Error("Sticky grid chrome was not found.");
+		}
+		const cellBox = cell.getBoundingClientRect();
+		const headerBox = header.getBoundingClientRect();
+		const gutterBox = gutter.getBoundingClientRect();
+		return {
+			cellTop: cellBox.top,
+			cellLeft: cellBox.left,
+			headerBottom: headerBox.bottom,
+			gutterRight: gutterBox.right,
+		};
+	});
+	expect(geometry.cellTop).toBeGreaterThanOrEqual(geometry.headerBottom);
+	expect(geometry.cellLeft).toBeGreaterThanOrEqual(geometry.gutterRight);
+}
+
+test("keyboard scrolling keeps the focused cell clear of sticky grid chrome", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(largeTable());
+	const scroller = tabelo.pane("grid").locator('[data-slot="panel-body"]');
+	const target = tabelo.cell(40, 8);
+	await target.click();
+
+	const hideFocusedCellAboveAndLeft = async () => {
+		await scroller.evaluate((element, cell) => {
+			const targetCell = document.querySelector<HTMLElement>(cell);
+			if (!targetCell) throw new Error("Focused test cell was not found.");
+			element.scrollTop = targetCell.offsetTop + targetCell.offsetHeight;
+			element.scrollLeft = targetCell.offsetLeft + targetCell.offsetWidth;
+		}, '[data-cell="39:7"]');
+	};
+
+	await hideFocusedCellAboveAndLeft();
+	await page.keyboard.press("ArrowUp");
+	await page.keyboard.press("ArrowLeft");
+	await expectFocusedCellClearOfStickyChrome(page);
+
+	await tabelo.runPaneCommand("grid", "zoomIn");
+	await page.keyboard.press("Escape");
+	await target.click();
+	await hideFocusedCellAboveAndLeft();
+	await page.keyboard.press("ArrowUp");
+	await page.keyboard.press("ArrowLeft");
+	await expectFocusedCellClearOfStickyChrome(page);
+});
+
 test("Tab walks the grid in reading order and wraps around after the last cell", async ({
 	page,
 	tabelo,
