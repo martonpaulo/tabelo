@@ -107,6 +107,10 @@ test("the New table welcome can start by trusted paste and file import", async (
 		Object.defineProperty(event, "clipboardData", { value: clipboardData });
 		window.dispatchEvent(event);
 	});
+	await page
+		.getByRole("dialog", { name: copy.headerImport.title })
+		.getByRole("button", { name: copy.headerImport.asHeaders })
+		.click();
 	await expect(welcome).toHaveCount(0);
 	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 
@@ -125,6 +129,10 @@ test("the New table welcome can start by trusted paste and file import", async (
 		mimeType: "text/csv",
 		buffer: Buffer.from("Name,City\nPaulo,Madrid"),
 	});
+	await page
+		.getByRole("dialog", { name: copy.headerImport.title })
+		.getByRole("button", { name: copy.headerImport.asHeaders })
+		.click();
 	await expect(welcome).toHaveCount(0);
 	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
 });

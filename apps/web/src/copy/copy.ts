@@ -165,6 +165,14 @@ export const copy = {
 		confirm: "Start new table",
 	},
 
+	headerImport: {
+		title: "Does row 1 contain headers?",
+		description:
+			"Choose whether row 1 names the columns or stays as the first data row.",
+		asData: "Keep row 1 as data",
+		asHeaders: "Use row 1 as headers",
+	},
+
 	appUpdate: {
 		label: "Reload to update",
 		description: "A new version of Tabelo is ready",
@@ -419,8 +427,6 @@ export const copy = {
 				: "This source is not valid yet. Keep editing or discard it to change views.",
 		discardPaneAction: (kind: "view" | "close") =>
 			kind === "close" ? "Discard and close" : "Discard and change",
-		headerGuess: "First row used as headers",
-		headerGuessAction: "Use as data",
 		importError: (error: ImportError) => {
 			switch (error.code) {
 				case "invalid-format":

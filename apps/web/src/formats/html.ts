@@ -40,6 +40,7 @@ function alignmentOf(cell: Element): Alignment {
 
 export interface HtmlTable {
 	readonly matrix: string[][];
+	readonly headerRow: boolean;
 	readonly alignments: readonly Alignment[];
 }
 
@@ -62,9 +63,15 @@ export function readHtmlTable(html: string): HtmlTable | null {
 	if (!matrix.some((row) => row.length > 0)) return null;
 
 	const headerCells = [...(rows[0]?.querySelectorAll("th, td") ?? [])];
+	// A row is the document header only when every cell is marked as one. A
+	// mixed row commonly uses <th> as a row label inside body data; treating it
+	// as the table header would drop that row from the imported data.
+	const headerRow =
+		headerCells.length > 0 &&
+		headerCells.every((cell) => cell.tagName === "TH");
 	const alignments = headerCells.map((cell) => alignmentOf(cell));
 
-	return { matrix: normalizeMatrix(matrix), alignments };
+	return { matrix: normalizeMatrix(matrix), headerRow, alignments };
 }
 
 function parseHtmlMatrix(text: string): MatrixParseResult {
@@ -90,6 +97,7 @@ function parseHtmlMatrix(text: string): MatrixParseResult {
 		ok: true,
 		table: {
 			matrix: table.matrix,
+			headerRow: table.headerRow,
 			alignments: table.alignments,
 		},
 	};

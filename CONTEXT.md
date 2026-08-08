@@ -83,7 +83,7 @@ Related to: Header row, Alignment, Cell
 The single row of column headers that every table document has. Not a data row,
 not optional, and not a document mode.
 
-Related to: Column, Header detection
+Related to: Column, Header decision
 
 ### Row
 
@@ -182,11 +182,13 @@ emitted grammar in one non-recursive pass. Escaping is always reversible.
 
 Related to: Serializer, Parser
 
-### Header detection
+### Header decision
 
-The import-time heuristic that decides whether row 1 of pasted or imported text
-becomes the header row. It runs only at import, produces no persistent state,
-and is correctable with one undoable action.
+The import-time choice for formats that do not identify whether row 1 is a
+header. Markdown, Jira, HTML, JSON, and Records declare the row role from their
+syntax. CSV, TSV, and plain text ask before replacing the document. Choosing
+data leaves the structural header row empty. No cell value is inspected to make
+the choice, and the pending question is transient rather than document state.
 
 Related to: Header row, Import
 
@@ -195,7 +197,7 @@ Related to: Header row, Import
 Bringing external content in, from a file or the clipboard. Clipboard paste is a
 first-class import path, not a lesser one.
 
-Related to: Header detection, Format sniffing
+Related to: Header decision, Format sniffing
 
 ### Format sniffing
 
@@ -249,5 +251,6 @@ Related to: Table document, Import
   none of them lose it in Tabelo.
 - Escaping must be reversible: any cell value survives
   CSV → Markdown → CSV byte-exact.
-- Header detection is an import-time decision, never a stored document property.
+- Header presence is an import-time fact or explicit choice, never a stored
+  document property.
 - Cell values are opaque strings; no view may reinterpret them.

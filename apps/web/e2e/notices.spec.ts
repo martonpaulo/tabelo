@@ -31,12 +31,14 @@ test("both announcement regions exist before there is anything to announce", asy
 });
 
 test("a notice is written into the region that was already there", async ({
+	page,
 	tabelo,
 }) => {
-	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
+	await tabelo.editCell(1, 1, "Ingrid");
+	await setClipboard(page, "granted");
+	await copyCell(page);
 
 	await expect(tabelo.announcements).not.toHaveText("");
-	// The header guess is a suggestion, not an emergency: it must not interrupt.
 	await expect(tabelo.alerts).toHaveText("");
 });
 
@@ -47,9 +49,12 @@ test("a refused copy is not swallowed by the notice already on screen", async ({
 	await faultyClipboard(page, "blocked");
 	await page.reload();
 	await tabelo.dismissWelcome();
-	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
+	await tabelo.editCell(1, 1, "Ingrid");
+	await setClipboard(page, "granted");
+	await copyCell(page);
 	await expect(tabelo.notice()).toHaveCount(1);
 
+	await setClipboard(page, "blocked");
 	await copyCell(page);
 
 	// Both are on screen. The lower-ranked one used to be discarded outright.
@@ -67,7 +72,10 @@ test("dismissing one notice leaves the others alone", async ({
 	await faultyClipboard(page, "blocked");
 	await page.reload();
 	await tabelo.dismissWelcome();
-	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
+	await tabelo.editCell(1, 1, "Ingrid");
+	await setClipboard(page, "granted");
+	await copyCell(page);
+	await setClipboard(page, "blocked");
 	await copyCell(page);
 	await expect(tabelo.notice()).toHaveCount(2);
 

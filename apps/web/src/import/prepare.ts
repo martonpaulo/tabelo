@@ -3,11 +3,7 @@ import {
 	type ClipboardSource,
 	readClipboardTable,
 } from "@/clipboard/parse";
-import {
-	detectHeaderRow,
-	documentFromMatrix,
-	normalizeMatrix,
-} from "@/core/document";
+import { documentFromMatrix, normalizeMatrix } from "@/core/document";
 import type { Alignment, TableDocument } from "@/core/types";
 import { getCodec } from "@/formats";
 import type { CodecId, ParseIssue } from "@/formats/types";
@@ -50,7 +46,7 @@ export type ImportError =
 export interface PreparedImport {
 	readonly matrix: string[][];
 	readonly source: ClipboardSource;
-	readonly headerRow: boolean;
+	readonly headerRow?: boolean;
 	readonly alignments?: readonly Alignment[];
 	readonly warnings: readonly ParseIssue[];
 }
@@ -122,6 +118,7 @@ export function prepareImport(
 	let table: {
 		readonly matrix: string[][];
 		readonly source: ClipboardSource;
+		readonly headerRow?: boolean;
 		readonly alignments?: readonly Alignment[];
 		readonly warnings?: readonly ParseIssue[];
 	};
@@ -141,6 +138,7 @@ export function prepareImport(
 		table = {
 			matrix: parsed.table.matrix,
 			source: namedCodec.id,
+			headerRow: parsed.table.headerRow,
 			alignments: parsed.table.alignments,
 			warnings: parsed.warnings,
 		};
@@ -166,7 +164,7 @@ export function prepareImport(
 		value: {
 			matrix,
 			source: table.source,
-			headerRow: detectHeaderRow(matrix),
+			headerRow: table.headerRow,
 			alignments: table.alignments,
 			warnings: table.warnings ?? [],
 		},
@@ -175,9 +173,10 @@ export function prepareImport(
 
 export function createImportedDocument(
 	prepared: PreparedImport,
+	headerRow: boolean,
 ): TableDocument {
 	return documentFromMatrix(prepared.matrix, {
-		headerRow: prepared.headerRow,
+		headerRow,
 		alignments: prepared.alignments,
 	});
 }
