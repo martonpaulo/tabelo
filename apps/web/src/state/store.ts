@@ -9,7 +9,6 @@ import {
 	clearCells,
 	deleteColumns,
 	deleteRows,
-	demoteHeaderToRow,
 	duplicateColumns,
 	duplicateRows,
 	insertColumns,
@@ -56,6 +55,7 @@ import { defaultOutputOptions } from "@/formats/types";
 import {
 	createImportedDocument,
 	type ImportError,
+	type PreparedImport,
 	prepareImport,
 	tableShapeLimitError,
 } from "@/import/prepare";
@@ -134,10 +134,8 @@ export interface HistoryEntry {
 	readonly draft: Draft | null;
 }
 
-export interface HeaderCorrection {
-	// Object identity is the revision token. The action is valid only while this
-	// exact imported document remains current.
-	readonly document: TableDocument;
+export interface PendingImport {
+	readonly prepared: PreparedImport;
 }
 
 export type StorageIssue =
@@ -185,7 +183,9 @@ export interface TabeloState {
 	// nothing a producer says may be destroyed by whatever comes after it.
 	notices: readonly TransientNotice[];
 	inputError: ImportError | null;
-	headerCorrection: HeaderCorrection | null;
+	// A document replacement whose format does not identify row 1. It remains
+	// outside the document and history until the user answers the question.
+	pendingImport: PendingImport | null;
 	pendingPaneAction: PendingPaneAction | null;
 	// What the next download should produce. Deliberately session-only: it
 	// changes the shape of the exported file, and a silently remembered "no
@@ -250,8 +250,8 @@ export interface TabeloState {
 	pasteClipboard: (payload: ClipboardPayload) => PasteRefusal | null;
 	importText: (text: string, format?: CodecId) => void;
 	reportInputError: (error: ImportError) => void;
-
-	demoteHeader: () => void;
+	answerPendingImport: (headerRow: boolean) => void;
+	cancelPendingImport: () => void;
 	resetDocument: () => void;
 	dismissNotice: (id: string) => void;
 	pushNotice: (request: NoticeRequest) => void;
@@ -431,7 +431,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	storageIssue: null,
 	notices: [],
 	inputError: null,
-	headerCorrection: null,
+	pendingImport: null,
 	pendingPaneAction: null,
 	outputOptions: { ...defaultOutputOptions },
 
@@ -452,7 +452,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				past: [],
 				future: [],
 				storageIssue: null,
-				headerCorrection: null,
+				pendingImport: null,
 				inputError: null,
 				pendingPaneAction: null,
 				selection: createSelection({ row: 0, column: 0 }),
@@ -507,7 +507,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			workspace: reconcileWrappedColumns(state.workspace, next),
 			draft: null,
 			inputError: null,
-			headerCorrection: null,
+			pendingImport: null,
 			pendingPaneAction: null,
 			// A changed document is a changed meaning for the copied rectangle: an
 			// insert, a move, or a delete leaves those coordinates describing cells
@@ -605,7 +605,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				issues: [],
 				warnings: result.warnings ?? [],
 			},
-			headerCorrection: null,
+			pendingImport: null,
 			inputError: null,
 			pendingPaneAction: null,
 			copiedRanges: NO_COPIED_RANGES,
@@ -868,7 +868,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 					state.hasHeldContent || !isDocumentBlank(entry.document),
 				workspace: reconcileWrappedColumns(state.workspace, entry.document),
 				draft: restoreDraft(entry.draft, state.workspace),
-				headerCorrection: null,
+				pendingImport: null,
 				inputError: null,
 				pendingPaneAction: null,
 				copiedRanges: NO_COPIED_RANGES,
@@ -894,7 +894,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 					state.hasHeldContent || !isDocumentBlank(entry.document),
 				workspace: reconcileWrappedColumns(state.workspace, entry.document),
 				draft: restoreDraft(entry.draft, state.workspace),
-				headerCorrection: null,
+				pendingImport: null,
 				inputError: null,
 				pendingPaneAction: null,
 				copiedRanges: NO_COPIED_RANGES,
@@ -993,7 +993,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			}
 			return next === state.document
 				? state
-				: { document: next, headerCorrection: null, inputError: null };
+				: { document: next, inputError: null };
 		}),
 
 	// Every row operation below counts data rows only. A selection may cover the
@@ -1200,10 +1200,16 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		// Into an empty document, a paste creates the table: including the
 		// header decision. Into an existing one, it writes at the selection.
 		if (isDocumentBlank(state.document)) {
-			const document = createImportedDocument(prepared.value);
+			if (prepared.value.headerRow === undefined) {
+				set({ pendingImport: { prepared: prepared.value }, inputError: null });
+				return null;
+			}
+			const document = createImportedDocument(
+				prepared.value,
+				prepared.value.headerRow,
+			);
 			state.applyDocument(document);
 			set({
-				headerCorrection: prepared.value.headerRow ? { document } : null,
 				selection: createSelection({ row: 0, column: 0 }),
 			});
 			return null;
@@ -1253,27 +1259,32 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			return;
 		}
 
-		const document = createImportedDocument(prepared.value);
+		if (prepared.value.headerRow === undefined) {
+			set({ pendingImport: { prepared: prepared.value }, inputError: null });
+			return;
+		}
+		const document = createImportedDocument(
+			prepared.value,
+			prepared.value.headerRow,
+		);
 		state.applyDocument(document);
 		set({
-			headerCorrection: prepared.value.headerRow ? { document } : null,
 			selection: createSelection({ row: 0, column: 0 }),
 		});
 	},
 
 	reportInputError: (error) => set({ inputError: error }),
 
-	demoteHeader: () => {
+	answerPendingImport: (headerRow) => {
 		const state = get();
-		if (
-			!state.headerCorrection ||
-			state.headerCorrection.document !== state.document
-		) {
-			set({ headerCorrection: null });
-			return;
-		}
-		state.applyDocument(demoteHeaderToRow(state.document));
+		if (!state.pendingImport) return;
+		state.applyDocument(
+			createImportedDocument(state.pendingImport.prepared, headerRow),
+		);
+		set({ selection: createSelection({ row: 0, column: 0 }) });
 	},
+
+	cancelPendingImport: () => set({ pendingImport: null }),
 
 	resetDocument: () => {
 		get().applyDocument(createEmptyDocument());
@@ -1292,8 +1303,6 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			switch (id) {
 				case conditionNoticeIds.inputError:
 					return { inputError: null };
-				case conditionNoticeIds.headerCorrection:
-					return { headerCorrection: null };
 				case conditionNoticeIds.pendingPaneAction:
 					return { pendingPaneAction: null };
 				default:

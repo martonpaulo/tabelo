@@ -34,7 +34,6 @@ export interface NoticeRequest {
 export const conditionNoticeIds = {
 	storage: "condition-storage",
 	inputError: "condition-input-error",
-	headerCorrection: "condition-header-correction",
 	pendingPaneAction: "condition-pending-pane-action",
 } as const;
 

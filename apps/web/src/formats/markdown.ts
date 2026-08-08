@@ -268,6 +268,7 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 		ok: true,
 		table: {
 			matrix,
+			headerRow: true,
 			alignments: delimiterCells.map(alignmentOf),
 		},
 		warnings: warnings.length > 0 ? warnings : undefined,

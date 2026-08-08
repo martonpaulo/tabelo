@@ -33,26 +33,19 @@ function find(id: string): AppNotice | undefined {
 	return current().find((notice) => notice.id === id);
 }
 
-function pasteWithHeaderGuess(): void {
-	useTabeloStore
-		.getState()
-		.pasteClipboard({ text: "Name\tRole\nIngrid\tDesigner" });
-}
-
 describe("what is shown", () => {
 	it("shows nothing at rest", () => {
 		expect(current()).toEqual([]);
 	});
 
-	// The exact defect: a refused clipboard write behind a header correction.
 	it("never lets a condition suppress a message", () => {
-		pasteWithHeaderGuess();
+		useTabeloStore.setState({ storageIssue: { kind: "quota" } });
 		useTabeloStore.getState().pushNotice({
 			severity: "error",
 			message: "It failed.",
 		});
 
-		expect(ids()).toContain(conditionNoticeIds.headerCorrection);
+		expect(ids()).toContain(conditionNoticeIds.storage);
 		expect(current()).toHaveLength(2);
 		expect(current().at(-1)?.severity).toBe("error");
 	});
@@ -68,15 +61,6 @@ describe("what is shown", () => {
 });
 
 describe("conditions are state, not messages", () => {
-	it("clears a projected notice when its state clears, with no dismissal", () => {
-		pasteWithHeaderGuess();
-		expect(ids()).toContain(conditionNoticeIds.headerCorrection);
-
-		useTabeloStore.getState().editCell(0, 0, "Paulo");
-
-		expect(ids()).not.toContain(conditionNoticeIds.headerCorrection);
-	});
-
 	it("keeps reflecting the condition it describes as that condition changes", () => {
 		useTabeloStore.setState({
 			storageIssue: { kind: "unreadable", raw: "{}" },
@@ -95,7 +79,7 @@ describe("conditions are state, not messages", () => {
 	});
 
 	it("dismisses one notice without touching the others", () => {
-		pasteWithHeaderGuess();
+		useTabeloStore.setState({ inputError: { code: "empty" } });
 		useTabeloStore
 			.getState()
 			.pushNotice({ severity: "error", message: "It failed." });
@@ -103,11 +87,9 @@ describe("conditions are state, not messages", () => {
 
 		useTabeloStore.getState().dismissNotice(message);
 
-		expect(ids()).toEqual([conditionNoticeIds.headerCorrection]);
+		expect(ids()).toEqual([conditionNoticeIds.inputError]);
 
-		useTabeloStore
-			.getState()
-			.dismissNotice(conditionNoticeIds.headerCorrection);
+		useTabeloStore.getState().dismissNotice(conditionNoticeIds.inputError);
 
 		expect(ids()).toEqual([]);
 	});
@@ -144,14 +126,6 @@ describe("severity and urgency", () => {
 		},
 	);
 
-	it("keeps the header guess informational and polite", () => {
-		pasteWithHeaderGuess();
-
-		const notice = find(conditionNoticeIds.headerCorrection);
-		expect(notice?.severity).toBe("info");
-		expect(notice?.urgency).toBe("polite");
-	});
-
 	it("carries the severity a message was pushed with", () => {
 		useTabeloStore
 			.getState()
@@ -181,30 +155,4 @@ describe("what may expire on its own", () => {
 			expect(autoDismissDelay(current()[0] as AppNotice)).toBeNull();
 		},
 	);
-
-	// A four-second window is not long enough to notice, decide, and click.
-	it("keeps anything carrying an action, however calm it reads", () => {
-		pasteWithHeaderGuess();
-		const notice = find(conditionNoticeIds.headerCorrection) as AppNotice;
-
-		expect(notice.severity).toBe("info");
-		expect(notice.actions).not.toHaveLength(0);
-		expect(autoDismissDelay(notice)).toBeNull();
-	});
-});
-
-describe("actions", () => {
-	it("runs the header correction through the document timeline", () => {
-		pasteWithHeaderGuess();
-		const notice = find(conditionNoticeIds.headerCorrection) as AppNotice;
-
-		notice.actions[0]?.run();
-
-		// The guessed header row moves down into the data it always was, and the
-		// header row it leaves behind is empty rather than generated.
-		const document = useTabeloStore.getState().document;
-		expect(document.columns[0]?.header).toBe("");
-		expect(document.rows[0]?.cells[document.columns[0]?.id ?? ""]).toBe("Name");
-		expect(ids()).toEqual([]);
-	});
 });

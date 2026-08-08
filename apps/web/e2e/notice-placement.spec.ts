@@ -11,10 +11,11 @@ import type { TabeloPage } from "./helpers";
 const TILED = { width: 1280, height: 720 };
 const STACKED = { width: 390, height: 700 };
 
-// The header guess is raised by a paste, carries an action, and therefore
-// never expires on its own, so it stays on screen for the whole measurement.
 async function raiseNotice(tabelo: TabeloPage): Promise<void> {
-	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
+	const oversized = Array.from({ length: 501 }, (_, index) => `${index}`).join(
+		"\n",
+	);
+	await tabelo.paste(oversized);
 	await expect(tabelo.notice()).toHaveCount(1);
 }
 
@@ -77,10 +78,18 @@ test("a short notice takes only the width it needs", async ({
 // The recovery comes before the way out: a notice offering an action puts that
 // action in the tab order first, and dismissal last.
 test("a notice reaches its action before its dismissal", async ({ tabelo }) => {
-	await raiseNotice(tabelo);
+	await tabelo.source("markdown").fill("| invalid |");
+	await expect(
+		tabelo.pane("markdown").locator(".cm-diagnosticError"),
+	).toHaveCount(1);
+	await tabelo.runPaneCommand("markdown", "closeView");
+	await expect(tabelo.notice()).toHaveCount(1);
 
 	const controls = tabelo.notice().first().getByRole("button");
 	await expect(controls).toHaveCount(2);
+	await expect(controls.first()).toHaveAccessibleName(
+		copy.notices.discardPaneAction("close"),
+	);
 	await expect(controls.last()).toHaveAccessibleName(copy.actions.dismiss);
 });
 
