@@ -6,6 +6,33 @@ import { escapeCell, markdownCodec, unescapeCell } from "./markdown";
 // The escaping contract from docs/adr/0002 is the one thing in this project
 // that must never regress: a value has to survive the round trip byte-exact.
 
+const unicodeBoundaryWhitespace = [
+	["0009", "\u0009"],
+	["000A", "\u000a"],
+	["000B", "\u000b"],
+	["000C", "\u000c"],
+	["0020", "\u0020"],
+	["00A0", "\u00a0"],
+	["1680", "\u1680"],
+	["2000", "\u2000"],
+	["2001", "\u2001"],
+	["2002", "\u2002"],
+	["2003", "\u2003"],
+	["2004", "\u2004"],
+	["2005", "\u2005"],
+	["2006", "\u2006"],
+	["2007", "\u2007"],
+	["2008", "\u2008"],
+	["2009", "\u2009"],
+	["200A", "\u200a"],
+	["2028", "\u2028"],
+	["2029", "\u2029"],
+	["202F", "\u202f"],
+	["205F", "\u205f"],
+	["3000", "\u3000"],
+	["FEFF", "\ufeff"],
+] as const;
+
 describe("markdown cell escaping", () => {
 	const hostile = [
 		"plain",
@@ -106,9 +133,63 @@ describe("markdown parsing", () => {
 		if (!result.ok) return;
 		expect(result.document.columns).toHaveLength(2);
 	});
+
+	it("treats ordinary hand-written padding as syntax", () => {
+		const result = markdownCodec.parse(
+			"| Name    | Note       |\n| ------- | ---------- |\n| Ingrid  | readable   |",
+		);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(documentToMatrix(result.document)).toEqual([
+			["Name", "Note"],
+			["Ingrid", "readable"],
+		]);
+	});
 });
 
 describe("markdown serialization", () => {
+	it("keeps alignment padding outside encoded boundary whitespace", () => {
+		const document = documentFromMatrix([["Note"], ["  spaced  "], ["wide"]], {
+			headerRow: true,
+		});
+
+		expect(markdownCodec.serialize(document)).toBe(
+			[
+				"| Note                       |",
+				"| -------------------------- |",
+				"| &#32;&#32;spaced&#32;&#32; |",
+				"| wide                       |",
+			].join("\n"),
+		);
+	});
+
+	it.each(unicodeBoundaryWhitespace)(
+		"round-trips U+%s at both cell boundaries",
+		(_codePoint, whitespace) => {
+			const original = [["Note"], [`${whitespace}value${whitespace}`]];
+			const document = documentFromMatrix(original, { headerRow: true });
+			const parsed = markdownCodec.parse(markdownCodec.serialize(document));
+
+			expect(parsed.ok).toBe(true);
+			if (!parsed.ok) return;
+			expect(documentToMatrix(parsed.document)).toEqual(original);
+		},
+	);
+
+	it("decodes emitted entities once and keeps entity-like user text literal", () => {
+		const original = [["Note"], ["&#32;"], ["&amp;"], ["  &  "]];
+		const document = documentFromMatrix(original, { headerRow: true });
+		const source = markdownCodec.serialize(document);
+
+		expect(source).toContain("&amp;#32;");
+		expect(source).toContain("&amp;amp;");
+		const parsed = markdownCodec.parse(source);
+		expect(parsed.ok).toBe(true);
+		if (!parsed.ok) return;
+		expect(documentToMatrix(parsed.document)).toEqual(original);
+	});
+
 	it("emits the alignment it parsed", () => {
 		const source = "| A | B |\n| :-- | --: |\n| 1 | 2 |";
 		const parsed = markdownCodec.parse(source);

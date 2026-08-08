@@ -94,7 +94,7 @@ function splitJiraRow(line: string): string[] {
 	if (source.startsWith("|")) parts.shift();
 	if (endedOnPipe && parts.length > 0) parts.pop();
 
-	return parts.map((part) => part.trim());
+	return parts;
 }
 
 const HEADER_LINE = /^\s*\|\|/;
