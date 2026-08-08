@@ -1,0 +1,21 @@
+{
+	"version": 1,
+	"document": {
+		"columns": [
+			{ "id": "c-name", "header": "Name", "align": "left" },
+			{ "id": "c-role", "header": "Role", "align": "default" }
+		],
+		"rows": [
+			{
+				"id": "r-ingrid",
+				"cells": { "c-name": "Ingrid", "c-role": "Designer" }
+			},
+			{
+				"id": "r-paulo",
+				"cells": { "c-name": "Paulo", "c-role": "Developer" }
+			}
+		]
+	},
+	"textFormat": "csv",
+	"textPanelVisible": true
+}
