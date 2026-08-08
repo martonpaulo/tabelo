@@ -217,14 +217,36 @@ shape with written tooltip text. This is not optional.
 
 ### Theme
 
-Tabelo follows `prefers-color-scheme` on first paint and whenever the operating
-system changes. CSS media queries own theme selection; no React state, root
-class, persistent toolbar control, or stored manual override may compete with
-the system.
+Theme is one global display preference with three values: System, Light, and
+Dark. System is the default. Resolve the effective theme in this order:
 
-Tabelo never reads a stored theme preference. System theme is the only current
-contract, so obsolete storage is ignored and never participates in startup or
-paint.
+1. an explicit Light or Dark choice;
+2. a usable Light or Dark result from the system or browser;
+3. Dark when the platform exposes neither usable result.
+
+System follows `prefers-color-scheme` on first paint and whenever the operating
+system changes. The media feature exposes only Light or Dark and treats no
+active preference as Light, so a Light result is always used as Light; Tabelo
+does not try to detect a separate `no-preference` state. See
+[Media Queries Level 5](https://www.w3.org/TR/mediaqueries-5/#prefers-color-scheme).
+System is represented by the absence of a root `data-theme` attribute; explicit
+Light or Dark uses `data-theme="light"` or `data-theme="dark"`. System media
+branches apply only when that attribute is absent, so either stored override
+wins against the opposing operating-system palette.
+
+The versioned `tabelo.preferences` payload owns the stored value independently
+from table persistence. A generated synchronous script in the document head
+validates and applies it before application styles can paint. Invalid,
+inaccessible, unsupported-version, and unsupported-value preference storage
+falls back to System, then to Dark only when the platform has no usable result,
+without changing the saved table. The same effective theme owns browser
+`theme-color` metadata at startup and at runtime.
+
+Settings previews a draft theme immediately, without writing storage. Apply
+persists the complete preferences draft once; Cancel, Escape, and a failed write
+restore the committed theme and browser colour. Palette changes never animate.
+The App menu is the only global theme entry point; the primary workspace keeps
+no persistent theme control.
 
 **Dark is the reference interface.** Both themes are supported and neither may
 regress, but when something has to be looked at, measured, or decided in one
@@ -548,6 +570,14 @@ small layout diagram and a worded name such as "Top left" or "Right, full
 height". The diagram is supplemental; the words carry the destination for
 assistive technology. Choosing one swaps the two pane positions without
 changing the preset or pane count.
+
+Settings is the other deliberate exception. Preferences are not immediate menu
+commands: they form one draft that the user visits, previews, and either applies
+together or unwinds with Cancel. A dialog supplies that transactional boundary
+and one extensible preferences list without turning the App menu into stored
+toggle state. Theme is a labelled single-selection group; global binary display
+preferences are labelled checkbox rows in the same list. Per-pane preferences,
+including source wrapping and pane zoom, remain in the pane menu.
 
 A dialog is never used to announce something. Notices belong in the notice
 layer described in §5: it floats above the workspace without modal semantics,

@@ -22,6 +22,7 @@ const firefoxContractSpecs = [
 	"**/smoke.spec.ts",
 	"**/source-geometry.spec.ts",
 	"**/source-sync.spec.ts",
+	"**/system-theme.spec.ts",
 ];
 
 export default defineConfig({

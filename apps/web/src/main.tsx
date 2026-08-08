@@ -1,5 +1,6 @@
 import ReactDOM from "react-dom/client";
 import "@/index.css";
+import { startThemeRuntime } from "@/preferences/theme";
 import { TabeloApp } from "@/ui/tabelo-app";
 
 // GitHub Pages has no SPA rewrite rule, so the deploy workflow serves
@@ -16,6 +17,8 @@ if (window.location.pathname !== canonicalPath) {
 		`${canonicalPath}${window.location.search}${window.location.hash}`,
 	);
 }
+
+startThemeRuntime();
 
 const rootElement = document.getElementById("app");
 

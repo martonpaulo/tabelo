@@ -60,35 +60,32 @@
 }
 
 :root {
-	color-scheme: light dark;
+	color-scheme: dark;
 
-	--surface-app: #f0f0f0;
-	--surface-panel: #ffffff;
-	--surface-header: #f5f5f5;
-	--surface-table-header: rgb(15 108 189 / 6%);
-	--surface-gutter: #f5f5f5;
-	--surface-readonly: #f5f5f5;
-	--surface-floating: #fafafa;
+	--surface-app: #1f1f1f;
+	--surface-panel: #292929;
+	--surface-header: #333333;
+	--surface-table-header: rgb(77 166 255 / 10%);
+	--surface-gutter: #333333;
+	--surface-readonly: #242424;
+	--surface-floating: #3a3a3a;
 
-	--line-subtle: #d6d6d6;
-	--line-strong: #c4c4c4;
+	--line-subtle: #464646;
+	--line-strong: #545454;
 	/* Structure lines separate content that is already there. This one has to
 	   prove a layer is floating above unrelated content, so it carries the
 	   3:1 that WCAG 1.4.11 asks of anything required to identify a component,
 	   against every surface a floating layer can cover.
 	   https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html */
-	--line-floating: #8a8a8a;
+	--line-floating: #949494;
 	--control-outline: #8a8a8a;
 
-	--selection-fill: rgb(15 108 189 / 14%);
-	--text-selection-fill: rgb(15 108 189 / 24%);
-	--active-line-fill: rgb(15 108 189 / 7%);
-	--selection-edge: #0f6cbd;
+	--selection-fill: rgb(77 166 255 / 24%);
+	--text-selection-fill: rgb(77 166 255 / 32%);
+	--active-line-fill: rgb(77 166 255 / 9%);
+	--selection-edge: #4da6ff;
 
-	/* Amber at 4.5:1 on the panel. The lighter amber this replaced sat at
-	   2.15:1, below the floor for the underline it draws and far below the
-	   floor for the source tokens that use it as text. */
-	--status-warning: #b45309;
+	--status-warning: #fbbf24;
 
 	--control-h-sm: 1.75rem;
 	--control-h-md: 2rem;
@@ -118,20 +115,20 @@
 
 	/* Keep shadcn primitives on the same neutral product surfaces. */
 	--background: var(--surface-panel);
-	--foreground: #242424;
+	--foreground: #ffffff;
 	--card: var(--surface-panel);
 	--card-foreground: var(--foreground);
 	--popover: var(--surface-floating);
 	--popover-foreground: var(--foreground);
-	--primary: #0f6cbd;
-	--primary-foreground: #ffffff;
+	--primary: #4da6ff;
+	--primary-foreground: #1f1f1f;
 	--secondary: var(--surface-header);
 	--secondary-foreground: var(--foreground);
 	--muted: var(--surface-header);
-	--muted-foreground: #616161;
-	--accent: #eff6fc;
-	--accent-foreground: #0f6cbd;
-	--destructive: #b91c1c;
+	--muted-foreground: #d6d6d6;
+	--accent: #17324a;
+	--accent-foreground: #75b6e7;
+	--destructive: #fca5a5;
 	--border: var(--line-subtle);
 	--input: var(--line-subtle);
 	--ring: var(--selection-edge);
@@ -141,37 +138,79 @@
 	--font-family-index: var(--font-family-source);
 }
 
-@media (prefers-color-scheme: dark) {
-	:root {
-		--surface-app: #1f1f1f;
-		--surface-panel: #292929;
-		--surface-header: #333333;
-		--surface-table-header: rgb(77 166 255 / 10%);
-		--surface-gutter: #333333;
-		--surface-readonly: #242424;
-		--surface-floating: #3a3a3a;
+:root[data-theme="light"] {
+	color-scheme: light;
 
-		--line-subtle: #464646;
-		--line-strong: #545454;
-		--line-floating: #949494;
+	--surface-app: #f0f0f0;
+	--surface-panel: #ffffff;
+	--surface-header: #f5f5f5;
+	--surface-table-header: rgb(15 108 189 / 6%);
+	--surface-gutter: #f5f5f5;
+	--surface-readonly: #f5f5f5;
+	--surface-floating: #fafafa;
 
-		--selection-fill: rgb(77 166 255 / 24%);
-		--text-selection-fill: rgb(77 166 255 / 32%);
-		--active-line-fill: rgb(77 166 255 / 9%);
-		--selection-edge: #4da6ff;
+	--line-subtle: #d6d6d6;
+	--line-strong: #c4c4c4;
+	--line-floating: #8a8a8a;
 
-		--status-warning: #fbbf24;
+	--selection-fill: rgb(15 108 189 / 14%);
+	--text-selection-fill: rgb(15 108 189 / 24%);
+	--active-line-fill: rgb(15 108 189 / 7%);
+	--selection-edge: #0f6cbd;
 
-		--foreground: #ffffff;
+	--status-warning: #b45309;
+
+	--foreground: #242424;
+	--card-foreground: var(--foreground);
+	--popover-foreground: var(--foreground);
+	--primary: #0f6cbd;
+	--primary-foreground: #ffffff;
+	--secondary-foreground: var(--foreground);
+	--muted-foreground: #616161;
+	--accent: #eff6fc;
+	--accent-foreground: #0f6cbd;
+	--destructive: #b91c1c;
+}
+
+/* Dark is the final fallback. System Light replaces it only when the platform
+   exposes a usable Light result. */
+:root[data-theme="dark"] {
+	color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+	:root:not([data-theme]) {
+		color-scheme: light;
+
+		--surface-app: #f0f0f0;
+		--surface-panel: #ffffff;
+		--surface-header: #f5f5f5;
+		--surface-table-header: rgb(15 108 189 / 6%);
+		--surface-gutter: #f5f5f5;
+		--surface-readonly: #f5f5f5;
+		--surface-floating: #fafafa;
+
+		--line-subtle: #d6d6d6;
+		--line-strong: #c4c4c4;
+		--line-floating: #8a8a8a;
+
+		--selection-fill: rgb(15 108 189 / 14%);
+		--text-selection-fill: rgb(15 108 189 / 24%);
+		--active-line-fill: rgb(15 108 189 / 7%);
+		--selection-edge: #0f6cbd;
+
+		--status-warning: #b45309;
+
+		--foreground: #242424;
 		--card-foreground: var(--foreground);
 		--popover-foreground: var(--foreground);
-		--primary: #4da6ff;
-		--primary-foreground: #1f1f1f;
+		--primary: #0f6cbd;
+		--primary-foreground: #ffffff;
 		--secondary-foreground: var(--foreground);
-		--muted-foreground: #d6d6d6;
-		--accent: #17324a;
-		--accent-foreground: #75b6e7;
-		--destructive: #fca5a5;
+		--muted-foreground: #616161;
+		--accent: #eff6fc;
+		--accent-foreground: #0f6cbd;
+		--destructive: #b91c1c;
 	}
 }
 
@@ -262,4 +301,12 @@ textarea,
 		   yield to the global accessibility preference. */
 		animation: none !important;
 	}
+}
+
+:root[data-theme-changing] *,
+:root[data-theme-changing] *::before,
+:root[data-theme-changing] *::after {
+	/* biome-ignore lint/complexity/noImportantStyles: a theme transaction must
+	   beat component utility transitions so the palette changes atomically. */
+	transition: none !important;
 }
