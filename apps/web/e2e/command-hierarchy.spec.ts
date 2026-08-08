@@ -1,3 +1,4 @@
+import type { Locator } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
@@ -95,6 +96,51 @@ test("each pane names itself and opens Change view from its actions", async ({
 	).toBeVisible();
 	// Adding a view belongs to the split edge, and the view list is not nested.
 	await expect(actionsMenu.getByRole("menuitemradio")).toHaveCount(0);
+});
+
+test("pane actions follow content, display, then pane reading order", async ({
+	tabelo,
+}) => {
+	const menu = await tabelo.openPaneMenu("markdown");
+	const orderedItems = menu.locator(
+		'[role="menuitem"], [role="menuitemcheckbox"]',
+	);
+	const positionOf = async (item: Locator) =>
+		item.evaluate((node) => {
+			const ordered = node
+				.closest('[role="menu"]')
+				?.querySelectorAll('[role="menuitem"], [role="menuitemcheckbox"]');
+			return ordered ? [...ordered].indexOf(node) : -1;
+		});
+
+	const copyPosition = await positionOf(
+		menu.getByRole("menuitem", { name: copy.actions.copySource }),
+	);
+	const zoomPosition = await positionOf(
+		menu.getByRole("menuitem", { name: copy.workspace.zoomOut }),
+	);
+	const wrapPosition = await positionOf(
+		menu.getByRole("menuitemcheckbox", { name: copy.workspace.wrapSource }),
+	);
+	const changePosition = await positionOf(
+		menu.getByRole("menuitem", { name: copy.workspace.changeView }),
+	);
+	const closePosition = await positionOf(
+		menu.getByRole("menuitem", { name: copy.workspace.closeView }),
+	);
+
+	expect(copyPosition).toBeGreaterThanOrEqual(0);
+	expect(await orderedItems.count()).toBeGreaterThan(0);
+	expect(copyPosition).toBeLessThan(zoomPosition);
+	expect(zoomPosition).toBeLessThan(wrapPosition);
+	expect(wrapPosition).toBeLessThan(changePosition);
+	expect(changePosition).toBeLessThan(closePosition);
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.downloadTable }),
+	).toHaveCount(0);
+	await expect(
+		menu.getByRole("menuitem", { name: copy.workspace.layout }),
+	).toHaveCount(0);
 });
 
 test("a global shortcut never stacks a second dialog", async ({

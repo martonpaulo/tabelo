@@ -879,10 +879,17 @@ per keystroke.
 - Editable pane bodies use the main panel surface. A non-editable pane uses the
   read-only surface and the written "Read only" label. Never rely on a muted
   background alone to communicate editability.
-- The pane actions menu is flat. Changing a view opens one dialog; closing and
-  zooming remain plain menu items. Add view grows the workspace and hands the
-  new pane frame focus, so the result is announced without relying on a title
-  control that no longer exists.
+- The pane actions menu is flat and follows one semantic reading order. An
+  applicable capability-driven Copy command comes first. Zoom and conditional
+  source wrapping form one contiguous display group. Change view and structural
+  pane actions form the final group. Separators communicate those groups without
+  visible titles. Changing a view opens one dialog; zooming and closing remain
+  plain menu items. A command that does not apply is absent when capability
+  decides it, while a temporarily unavailable structural command remains in
+  place, disabled with a written reason.
+- Download and Layout remain document-level commands in the floating menu and
+  keep their dialogs. Add view remains in the floating menu and on splittable
+  pane edges; it never moves into the pane actions menu.
 - A view already open in another pane remains listed but disabled, with a
   tooltip explaining that it is already open. The current
   pane's own view remains selected and enabled. No workspace may show two
