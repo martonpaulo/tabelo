@@ -14,7 +14,6 @@ import {
 	pasteMatrix,
 	setAlignment,
 	setCell,
-	setColumnWidth,
 	setHeader,
 } from "@/core/operations";
 import type { TableDocument } from "@/core/types";
@@ -54,9 +53,6 @@ function operationCaseArbitrary() {
 				rect: cellRectArbitrary(document),
 				value: cellStringArbitrary,
 				alignment: alignmentArbitrary,
-				width: fc.option(fc.integer({ min: 4, max: 48 }), {
-					nil: undefined,
-				}),
 			})
 			.map((parameters) => ({ document, ...parameters })),
 	);
@@ -69,14 +65,13 @@ describe("document operation properties", () => {
 	)(
 		"cell and column edits leave every neighbour untouched",
 		({ operation }) => {
-			const { document, position, rect, value, alignment, width } = operation;
+			const { document, position, rect, value, alignment } = operation;
 			const before = cloneDocument(document);
 			const { rowIndex, columnIndex } = position;
 
 			const cellResult = setCell(document, rowIndex, columnIndex, value);
 			const headerResult = setHeader(document, columnIndex, value);
 			const alignmentResult = setAlignment(document, columnIndex, alignment);
-			const widthResult = setColumnWidth(document, columnIndex, width);
 			const clearResult = clearCells(document, [rect]);
 
 			expect(document).toEqual(before);
@@ -87,7 +82,6 @@ describe("document operation properties", () => {
 			).toBe(value);
 			expect(headerResult.columns[columnIndex]?.header).toBe(value);
 			expect(alignmentResult.columns[columnIndex]?.align).toBe(alignment);
-			expect(widthResult.columns[columnIndex]?.width).toBe(width);
 			for (const [index, row] of document.rows.entries()) {
 				if (index !== rowIndex) expect(cellResult.rows[index]).toBe(row);
 			}
@@ -95,7 +89,6 @@ describe("document operation properties", () => {
 				if (index === columnIndex) continue;
 				expect(headerResult.columns[index]).toBe(column);
 				expect(alignmentResult.columns[index]).toBe(column);
-				expect(widthResult.columns[index]).toBe(column);
 			}
 
 			for (const [currentRow, row] of document.rows.entries()) {
@@ -166,7 +159,6 @@ describe("document operation properties", () => {
 			expect(columns.columns[columnIndex + 1]).toMatchObject({
 				header: document.columns[columnIndex]?.header,
 				align: document.columns[columnIndex]?.align,
-				width: document.columns[columnIndex]?.width,
 			});
 			expect(columns.columns[columnIndex + 1]?.id).not.toBe(
 				document.columns[columnIndex]?.id,

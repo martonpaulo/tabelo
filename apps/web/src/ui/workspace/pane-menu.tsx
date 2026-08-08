@@ -232,7 +232,6 @@ export function PaneMenu({
 							</DropdownMenuShortcut>
 						</DropdownMenuItem>
 					</DisabledTooltip>
-
 				</DropdownMenuGroup>
 
 				{view.kind === "source" ? (
