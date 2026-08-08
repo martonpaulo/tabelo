@@ -16,6 +16,7 @@ import {
 	PanelRightOpen,
 	Redo2,
 	RefreshCw,
+	Settings2,
 	Undo2,
 	Upload,
 } from "lucide-react";
@@ -38,6 +39,7 @@ interface AppMenuProps {
 	readonly onImport: () => void;
 	readonly onDownload: () => void;
 	readonly onLayout: () => void;
+	readonly onSettings: () => void;
 	readonly onAddView: () => void;
 	readonly onNewTable: () => void;
 	readonly pwaUpdate: PwaUpdate;
@@ -48,6 +50,7 @@ export function AppMenu({
 	onImport,
 	onDownload,
 	onLayout,
+	onSettings,
 	onAddView,
 	onNewTable,
 	pwaUpdate,
@@ -211,6 +214,12 @@ export function AppMenu({
 					<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onLayout)}>
 						<LayoutGrid aria-hidden />
 						{copy.workspace.layout}
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						onClick={() => menuDialog.runAfterClose(onSettings)}
+					>
+						<Settings2 aria-hidden />
+						{copy.settings.title}
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 

@@ -10,11 +10,12 @@ import { importTableFile } from "@/ui/import";
 import { NewTableDialog } from "@/ui/new-table-dialog";
 import { NoticeBar } from "@/ui/notice-bar";
 import { usePwaUpdate } from "@/ui/pwa-update";
+import { SettingsDialog } from "@/ui/settings-dialog";
 import { LayoutDialog } from "@/ui/workspace/layout-dialog";
 import { Workspace } from "@/ui/workspace/workspace";
 import { DEFAULT_PANE_ZOOM, stepPaneZoom } from "@/workspace/zoom";
 
-type RootDialog = "download" | "layout" | "new-table" | null;
+type RootDialog = "download" | "layout" | "new-table" | "settings" | null;
 
 export function TabeloApp() {
 	const pwaUpdate = usePwaUpdate();
@@ -184,6 +185,7 @@ export function TabeloApp() {
 					onImport={() => void importTableFile()}
 					onDownload={() => openRootDialog("download")}
 					onLayout={() => openRootDialog("layout")}
+					onSettings={() => openRootDialog("settings")}
 					onAddView={() => setAddViewRequest((request) => request + 1)}
 					onNewTable={requestNewTable}
 					pwaUpdate={pwaUpdate}
@@ -197,6 +199,10 @@ export function TabeloApp() {
 			/>
 			<LayoutDialog
 				open={rootDialog === "layout"}
+				onOpenChange={closeRootDialog}
+			/>
+			<SettingsDialog
+				open={rootDialog === "settings"}
 				onOpenChange={closeRootDialog}
 			/>
 			<NewTableDialog

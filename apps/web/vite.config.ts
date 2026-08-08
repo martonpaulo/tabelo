@@ -3,6 +3,10 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { product } from "./src/copy/product";
+import {
+	createThemeBootstrapScript,
+	THEME_COLORS,
+} from "./src/preferences/contract";
 import { createProductMetadata } from "./src/product-metadata";
 import { devServerPort, previewServerPort } from "./worktree-ports";
 
@@ -60,7 +64,9 @@ export default defineConfig({
 				html
 					.replaceAll("__TABELO_DOCUMENT_TITLE__", product.documentTitle)
 					.replaceAll("__TABELO_DESCRIPTION__", product.description)
-					.replace("__TABELO_PRODUCT_METADATA__", productMetadata),
+					.replace("__TABELO_PRODUCT_METADATA__", productMetadata)
+					.replace("__TABELO_THEME_COLOR_FALLBACK__", THEME_COLORS.dark)
+					.replace("__TABELO_THEME_BOOTSTRAP__", createThemeBootstrapScript()),
 		},
 		tailwindcss(),
 		react(),

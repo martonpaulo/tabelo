@@ -191,6 +191,27 @@ export const copy = {
 		description: "A new version of Tabelo is ready",
 	},
 
+	settings: {
+		title: "Settings",
+		description: "Choose display preferences for Tabelo",
+		apply: "Apply settings",
+		theme: {
+			label: "Theme",
+			description: "Choose a palette or follow this device",
+			options: {
+				system: { label: "System", description: "Follow this device" },
+				light: { label: "Light", description: "Always use the light palette" },
+				dark: { label: "Dark", description: "Always use the dark palette" },
+			},
+		},
+		whitespaceIndicators: {
+			label: "Whitespace and empty-value indicators",
+			description: "Show non-content markers in source views",
+		},
+		saveError:
+			"Settings could not be saved. Allow browser storage or free some space, then try again.",
+	},
+
 	workspace: {
 		layout: "Layout",
 		layoutHint: "Choose how the workspace is divided",
@@ -222,6 +243,7 @@ export const copy = {
 		viewAlreadyOpen: (label: string) => `${label} is already open.`,
 		chooseAvailableView: "Choose an available view first.",
 		layoutAlreadyApplied: "This layout is already applied.",
+		settingsAlreadyApplied: "These settings are already applied.",
 		viewAlreadyShown: "This view is already shown in this pane.",
 		zoomMinimum: "Zoom is already at 50%.",
 		zoomDefault: "Zoom is already at 100%.",
