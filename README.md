@@ -187,6 +187,13 @@ other's build. `TABELO_DEV_PORT` and `TABELO_PREVIEW_PORT` override them.
 starting first when a fix needs several `test:e2e:failed` rounds: the suite
 reuses that server and skips the build and boot each time.
 
+Property tests run 100 generated cases per invariant. A failure reports its
+`seed`, `path`, and minimal counterexample. Replay it by temporarily passing the
+reported `{ seed, path }` beside `numRuns` in that `test.prop` call, then run the
+focused spec. Keep the property after the fix. Add the shrunk example as an
+ordinary regression test only when it communicates a distinct contract more
+clearly than the property itself.
+
 Firefox repeats only the contracts where browser engines differ, and CI runs it
 on every push, so the local default stays on Chromium. Run `pnpm test:e2e:all`
 before opening a pull request that touches clipboard, download, focus,
