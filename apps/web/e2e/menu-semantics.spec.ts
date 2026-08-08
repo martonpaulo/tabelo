@@ -266,6 +266,104 @@ test("column alignment uses the shared one-line radio anatomy", async ({
 	).toBeChecked();
 });
 
+test("table menus preserve named and unnamed semantic groups", async ({
+	page,
+	tabelo,
+}) => {
+	const trigger = tabelo
+		.grid()
+		.getByRole("button", {
+			name: new RegExp(`^${copy.actions.columnActions}:`),
+		})
+		.first();
+	await trigger.click();
+	let menu = page.getByRole("menu", {
+		name: new RegExp(`^${copy.actions.columnActions}:`),
+	});
+
+	const dropdownGroups = menu.locator(
+		'[data-slot="dropdown-menu-group"], [data-slot="dropdown-menu-radio-group"]',
+	);
+	await expect(dropdownGroups).toHaveCount(7);
+	await expect(
+		menu.getByRole("group", { name: copy.actions.alignment }),
+	).toHaveCount(1);
+	await expect(
+		menu.getByRole("group", { name: copy.actions.edit }),
+	).toHaveCount(1);
+	await expect(
+		menu.getByRole("group", { name: copy.actions.move }),
+	).toHaveCount(1);
+	await expect(menu.locator('[data-slot="dropdown-menu-label"]')).toHaveCount(
+		3,
+	);
+	await expect(dropdownGroups.locator(":scope[aria-labelledby]")).toHaveCount(
+		3,
+	);
+	await expect(
+		dropdownGroups.locator(":scope:not([aria-labelledby])"),
+	).toHaveCount(4);
+
+	await page.keyboard.press("Escape");
+	await expect(trigger).toBeFocused();
+	await tabelo.cell(1, 1).click({ button: "right" });
+	menu = page.locator('[data-slot="context-menu-content"]');
+	await expect(menu).toBeVisible();
+	const contextGroups = menu.locator('[data-slot="context-menu-group"]');
+	await expect(contextGroups).toHaveCount(5);
+	await expect(
+		menu.getByRole("group", { name: copy.actions.edit }),
+	).toHaveCount(1);
+	await expect(
+		menu.getByRole("group", { name: copy.actions.move }),
+	).toHaveCount(1);
+	await expect(contextGroups.locator(":scope[aria-labelledby]")).toHaveCount(2);
+	await expect(
+		contextGroups.locator(":scope:not([aria-labelledby])"),
+	).toHaveCount(3);
+});
+
+test("column menu labels stay out of traversal and the menu scrolls when narrow", async ({
+	page,
+	tabelo,
+}) => {
+	await page.setViewportSize({ width: 320, height: 568 });
+	const trigger = tabelo
+		.grid()
+		.getByRole("button", {
+			name: new RegExp(`^${copy.actions.columnActions}:`),
+		})
+		.first();
+	await trigger.click();
+	const menu = page.getByRole("menu", {
+		name: new RegExp(`^${copy.actions.columnActions}:`),
+	});
+	await expect(menu).toHaveCSS("overflow-y", "auto");
+	expect(
+		await menu.evaluate(
+			(element) => element.scrollHeight > element.clientHeight,
+		),
+	).toBe(true);
+
+	for (let step = 0; step < 12; step += 1) {
+		await page.keyboard.press("ArrowDown");
+		expect(
+			await page.evaluate(() =>
+				document.activeElement?.matches(
+					'[data-slot="dropdown-menu-label"], [data-slot="context-menu-label"]',
+				),
+			),
+		).toBe(false);
+	}
+	const box = await menu.boundingBox();
+	expect(box).not.toBeNull();
+	expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);
+	expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(568);
+
+	await page.keyboard.press("Escape");
+	await expect(trigger).toBeFocused();
+});
+
 test("destructive menu actions keep one color across label and icon", async ({
 	page,
 	tabelo,
