@@ -92,6 +92,10 @@ export function PaneMenu({
 	const currentViewFailure = view.codec
 		? canSerialize(view.codec, document)
 		: null;
+	const canCopy =
+		view.capabilities.textClipboard ||
+		(view.capabilities.structuredClipboard &&
+			!view.capabilities.tableOperations);
 
 	const setZoom = (next: number) =>
 		useTabeloStore.getState().setPaneZoom(paneId, next);
@@ -121,6 +125,48 @@ export function PaneMenu({
 			</DropdownMenuTrigger>
 
 			<DropdownMenuContent align="end" className="w-auto min-w-64">
+				{/* Copy leads when this view exposes a clipboard capability. The
+				    registry decides both availability and payload; the menu only
+				    places the command in the content group. */}
+				{canCopy ? (
+					<>
+						<DropdownMenuGroup>
+							<DisabledTooltip
+								reason={
+									currentViewFailure
+										? copy.disabled.codecPrecondition(currentViewFailure)
+										: undefined
+								}
+							>
+								<DropdownMenuItem
+									disabled={currentViewFailure !== null}
+									onClick={() => {
+										const state = useTabeloStore.getState();
+										if (view.capabilities.textClipboard) {
+											const visible = visibleTextForPane(
+												state,
+												paneId,
+												view.id,
+											);
+											if (visible.ok) {
+												void copyToClipboard({ text: visible.text }, "source");
+											}
+										} else {
+											void copyFormattedTableToClipboard(state.document);
+										}
+									}}
+								>
+									<ClipboardCopy aria-hidden />
+									{view.capabilities.textClipboard
+										? copy.actions.copySource
+										: copy.actions.copyFormattedTable}
+								</DropdownMenuItem>
+							</DisabledTooltip>
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+					</>
+				) : null}
+
 				<DropdownMenuGroup>
 					{/* The group's label carries the current value, so a screen reader
 					    reports the percentage on entering the group and again after each
@@ -182,11 +228,8 @@ export function PaneMenu({
 							</DropdownMenuShortcut>
 						</DropdownMenuItem>
 					</DisabledTooltip>
-				</DropdownMenuGroup>
 
-				{view.kind === "source" ? (
-					<>
-						<DropdownMenuSeparator />
+					{view.kind === "source" ? (
 						<DropdownMenuCheckboxItem
 							checked={wrap}
 							closeOnClick={false}
@@ -197,73 +240,37 @@ export function PaneMenu({
 							<WrapText aria-hidden />
 							{copy.workspace.wrapSource}
 						</DropdownMenuCheckboxItem>
-					</>
-				) : null}
+					) : null}
+				</DropdownMenuGroup>
 
 				<DropdownMenuSeparator />
 
-				<DropdownMenuItem
-					onClick={() =>
-						menuDialog.runAfterClose(() => onChangeView(triggerRef.current))
-					}
-				>
-					<Replace aria-hidden />
-					{copy.workspace.changeView}
-				</DropdownMenuItem>
-
-				{/* Adding a view is not here. It belongs to the edge a pane would be
-				    split along, because that edge is what decides where the new pane
-				    lands, and a menu item cannot say which edge it means.
-				    See docs/adr/0006. */}
-				<DisabledTooltip
-					reason={canClose ? undefined : copy.disabled.closeOnlyView}
-				>
+				<DropdownMenuGroup>
 					<DropdownMenuItem
-						disabled={!canClose}
-						onClick={() => useTabeloStore.getState().closePane(paneId)}
+						onClick={() =>
+							menuDialog.runAfterClose(() => onChangeView(triggerRef.current))
+						}
 					>
-						<X aria-hidden />
-						{copy.workspace.closeView}
+						<Replace aria-hidden />
+						{copy.workspace.changeView}
 					</DropdownMenuItem>
-				</DisabledTooltip>
 
-				{/* Whether a view can be copied from its pane menu is the registry's
-				    answer. Source views offer text; the rendered preview offers a
-				    structured table payload. The grid handles its own copying. */}
-				{view.capabilities.textClipboard ||
-				(view.capabilities.structuredClipboard &&
-					!view.capabilities.tableOperations) ? (
-					<>
-						<DropdownMenuSeparator />
-						<DisabledTooltip
-							reason={
-								currentViewFailure
-									? copy.disabled.codecPrecondition(currentViewFailure)
-									: undefined
-							}
+					{/* Adding a view is not here. It belongs to the edge a pane would be
+					    split along, because that edge is what decides where the new pane
+					    lands, and a menu item cannot say which edge it means.
+					    See docs/adr/0006. */}
+					<DisabledTooltip
+						reason={canClose ? undefined : copy.disabled.closeOnlyView}
+					>
+						<DropdownMenuItem
+							disabled={!canClose}
+							onClick={() => useTabeloStore.getState().closePane(paneId)}
 						>
-							<DropdownMenuItem
-								disabled={currentViewFailure !== null}
-								onClick={() => {
-									const state = useTabeloStore.getState();
-									if (view.capabilities.textClipboard) {
-										const visible = visibleTextForPane(state, paneId, view.id);
-										if (visible.ok) {
-											void copyToClipboard({ text: visible.text }, "source");
-										}
-									} else {
-										void copyFormattedTableToClipboard(state.document);
-									}
-								}}
-							>
-								<ClipboardCopy aria-hidden />
-								{view.capabilities.textClipboard
-									? copy.actions.copySource
-									: copy.actions.copyFormattedTable}
-							</DropdownMenuItem>
-						</DisabledTooltip>
-					</>
-				) : null}
+							<X aria-hidden />
+							{copy.workspace.closeView}
+						</DropdownMenuItem>
+					</DisabledTooltip>
+				</DropdownMenuGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
