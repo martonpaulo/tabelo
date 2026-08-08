@@ -119,6 +119,24 @@ test("keyboard paste still works while the clipboard API is refusing", async ({
 	await expect(tabelo.cell(1, 2)).toHaveText("Designer");
 });
 
+test("pasting into a whole column keeps every input row", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "keep");
+	await tabelo
+		.columnIndex(1)
+		.getByRole("button", {
+			name: new RegExp(`^${copy.actions.selectColumn}:`),
+		})
+		.click();
+
+	await tabelo.paste("Mabel\nFelix\nAmora");
+
+	await expect(tabelo.cell(1, 1)).toHaveText("Mabel");
+	await expect(tabelo.cell(2, 1)).toHaveText("Felix");
+	await expect(tabelo.cell(3, 1)).toHaveText("Amora");
+});
+
 // Granting the real permission is Chromium-only in Playwright, so success is
 // verified against a clipboard that accepts everything and records it. That
 // also pins the flavours: a paste into a spreadsheet needs the HTML one.

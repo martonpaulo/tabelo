@@ -116,6 +116,29 @@ describe("transactional input", () => {
 		expect(after.inputError?.code).toBe("too-many-rows");
 	});
 
+	it("starts a whole-column paste at the first data row", () => {
+		useTabeloStore.setState({
+			document: documentFromMatrix(
+				[
+					["Name", "Role"],
+					["Ingrid", "Designer"],
+					["Paulo", "Engineer"],
+				],
+				{ headerRow: true },
+			),
+			selection: createSelection({ row: HEADER_ROW, column: 0 }, "column"),
+		});
+
+		useTabeloStore.getState().pasteClipboard({ text: "Mabel\nFelix\nAmora" });
+
+		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
+			["Name", "Role"],
+			["Mabel", "Designer"],
+			["Felix", "Engineer"],
+			["Amora", ""],
+		]);
+	});
+
 	it("keeps a successful import to one document-history operation", () => {
 		const before = documentToMatrix(useTabeloStore.getState().document);
 
