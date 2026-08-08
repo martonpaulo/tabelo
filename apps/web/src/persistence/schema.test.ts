@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { layoutPresets } from "@/workspace/layout";
+import v1 from "./fixtures/v1.json";
+import v2 from "./fixtures/v2.json";
+import v3 from "./fixtures/v3.json";
+import v4 from "./fixtures/v4.json";
 import { CURRENT_VERSION, validatePersistedState } from "./schema";
 
 const document = {
@@ -87,17 +91,53 @@ describe("loading a stored payload", () => {
 		]);
 	});
 
-	it("refuses every non-current version", () => {
+	it.each([
+		["v1", v1],
+		["v2", v2],
+		["v3", v3],
+		["v4", v4],
+	] as const)(
+		"loads the stored %s fixture as current state",
+		(_name, fixture) => {
+			const outcome = validatePersistedState(fixture);
+
+			expect(outcome.status).toBe("ok");
+			if (outcome.status !== "ok") return;
+			expect(outcome.state.version).toBe(CURRENT_VERSION);
+			expect(outcome.state.document.rows[0]?.cells["c-name"]).toBe("Ingrid");
+		},
+	);
+
+	it("classifies future and invalid current payloads without prose", () => {
 		expect(
-			validatePersistedState(payload({ version: CURRENT_VERSION - 1 })).status,
-		).toBe("unreadable");
+			validatePersistedState(payload({ version: CURRENT_VERSION + 1 })),
+		).toEqual({ status: "unreadable", reason: "future-version" });
 		expect(
-			validatePersistedState(payload({ version: CURRENT_VERSION + 1 })).status,
-		).toBe("unreadable");
+			validatePersistedState(payload({ document: { columns: [] } })),
+		).toEqual({ status: "unreadable", reason: "current-schema-invalid" });
 	});
 
 	it("refuses a payload with no version rather than guessing", () => {
-		expect(validatePersistedState({ document }).status).toBe("unreadable");
+		expect(validatePersistedState({ document })).toEqual({
+			status: "unreadable",
+			reason: "current-schema-invalid",
+		});
+	});
+
+	it("does not coerce a string version into a shipped version", () => {
+		expect(validatePersistedState({ ...v1, version: "1" })).toEqual({
+			status: "unreadable",
+			reason: "current-schema-invalid",
+		});
+	});
+
+	it("classifies an invalid historical source as a migration failure", () => {
+		expect(
+			validatePersistedState({
+				...v2,
+				workspace: { ...v2.workspace, panes: [] },
+			}),
+		).toEqual({ status: "unreadable", reason: "migration-failed" });
 	});
 
 	it("refuses a payload whose shape does not match", () => {
