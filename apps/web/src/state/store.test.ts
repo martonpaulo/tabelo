@@ -8,7 +8,7 @@ import {
 	type SelectionRange,
 } from "@/core/selection";
 import { conditionNoticeIds } from "./notice-queue";
-import { useTabeloStore } from "./store";
+import { hasSessionWork, useTabeloStore } from "./store";
 
 const initialState = useTabeloStore.getInitialState();
 
@@ -21,6 +21,67 @@ function selectionOf(...ranges: readonly SelectionRange[]): GridSelection {
 
 beforeEach(() => {
 	useTabeloStore.setState(initialState, true);
+});
+
+describe("session content", () => {
+	it("starts untouched and treats a draft as separately protected work", () => {
+		const store = useTabeloStore.getState();
+		expect(store.hasHeldContent).toBe(false);
+		expect(hasSessionWork(store)).toBe(false);
+
+		const paneId = store.workspace.panes.find(
+			(pane) => pane.view === "markdown",
+		)?.id;
+		expect(paneId).toBeDefined();
+		store.setDraft(paneId ?? "", "markdown", "| unfinished |");
+
+		const withDraft = useTabeloStore.getState();
+		expect(withDraft.hasHeldContent).toBe(false);
+		expect(hasSessionWork(withDraft)).toBe(true);
+	});
+
+	it("becomes monotonic after a valid document holds content", () => {
+		const store = useTabeloStore.getState();
+		store.editCell(0, 0, "Ingrid");
+		expect(useTabeloStore.getState().hasHeldContent).toBe(true);
+
+		useTabeloStore.getState().editCell(0, 0, "");
+		expect(useTabeloStore.getState().hasHeldContent).toBe(true);
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().hasHeldContent).toBe(true);
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().hasHeldContent).toBe(true);
+		useTabeloStore.getState().redo();
+		expect(useTabeloStore.getState().hasHeldContent).toBe(true);
+	});
+
+	it("recognizes successful source parsing and import, but not invalid input", () => {
+		const store = useTabeloStore.getState();
+		const paneId = store.workspace.panes.find(
+			(pane) => pane.view === "markdown",
+		)?.id;
+		expect(paneId).toBeDefined();
+		store.setDraft(paneId ?? "", "markdown", "| invalid |");
+		expect(useTabeloStore.getState().hasHeldContent).toBe(false);
+
+		store.setDraft(paneId ?? "", "markdown", "| Name |\n| --- |\n| Ingrid |");
+		expect(useTabeloStore.getState().hasHeldContent).toBe(true);
+
+		store.resetDocument();
+		expect(useTabeloStore.getState().hasHeldContent).toBe(false);
+		store.importText("Name,Role\nPaulo,Designer", "csv");
+		expect(useTabeloStore.getState().hasHeldContent).toBe(true);
+	});
+
+	it("clears only for New table and returns when undo restores content", () => {
+		const store = useTabeloStore.getState();
+		store.editCell(0, 0, "Mabel");
+		store.resetDocument();
+		expect(useTabeloStore.getState().hasHeldContent).toBe(false);
+
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().hasHeldContent).toBe(true);
+	});
 });
 
 describe("transactional input", () => {

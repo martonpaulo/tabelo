@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { isDocumentBlank } from "@/core/document";
 import { runHistory } from "@/history/coordinator";
-import { startAutosave, useTabeloStore } from "@/state/store";
+import { hasSessionWork, startAutosave, useTabeloStore } from "@/state/store";
 import { AppMenu } from "@/ui/app-menu";
 import { DownloadDialog } from "@/ui/download-dialog";
 import { EmptyState } from "@/ui/grid/empty-state";
@@ -42,7 +42,7 @@ export function TabeloApp() {
 
 	const requestNewTable = () => {
 		const state = useTabeloStore.getState();
-		if (isDocumentBlank(state.document) && state.draft === null) {
+		if (!hasSessionWork(state)) {
 			state.resetDocument();
 			setWelcomeOpen(false);
 			return;

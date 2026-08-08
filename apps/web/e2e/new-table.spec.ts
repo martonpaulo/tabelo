@@ -23,12 +23,36 @@ test("a new table confirms before clearing document content", async ({
 		tabelo.page.getByRole("button", { name: copy.actions.openAppMenu }),
 	).toBeFocused();
 
+	await tabelo.cell(1, 1).click();
+	await tabelo.page.keyboard.press("Backspace");
+	await expect(tabelo.cell(1, 1)).toHaveText("");
+	await tabelo.runAppCommand("newTable");
+	await expect(dialog).toBeVisible();
+	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
+
 	await tabelo.runAppCommand("newTable");
 	await dialog.getByRole("button", { name: copy.newTable.confirm }).click();
 	await expect(tabelo.cell(1, 1)).toHaveText("");
 	await expect(
 		tabelo.page.getByRole("heading", { name: copy.empty.title }),
 	).toHaveCount(0);
+});
+
+test("restored content remains protected after it is emptied", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Saved");
+	await tabelo.page.reload();
+	await expect(tabelo.cell(1, 1)).toHaveText("Saved");
+
+	await tabelo.cell(1, 1).click();
+	await tabelo.page.keyboard.press("Backspace");
+	await expect(tabelo.cell(1, 1)).toHaveText("");
+	await tabelo.runAppCommand("newTable");
+
+	await expect(
+		tabelo.page.getByRole("dialog", { name: copy.newTable.title }),
+	).toBeVisible();
 });
 
 test("an unfinished source draft also requires confirmation", async ({

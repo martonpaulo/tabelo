@@ -55,6 +55,7 @@ describe("autosave lifecycle", () => {
 			status: "invalid",
 		});
 		expect(restored.draft?.issues.length).toBeGreaterThan(0);
+		expect(restored.hasHeldContent).toBe(true);
 	});
 
 	it("keeps every identifier distinct after hydrating and then mutating", () => {
