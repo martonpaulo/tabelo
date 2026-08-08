@@ -1199,10 +1199,13 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		if (!isContiguous(state.selection)) return "single-area";
 
 		const rect = currentRect(state);
+		// A whole-column selection includes the header sentinel. Paste still
+		// targets data rows, so translate that UI coordinate at this boundary.
+		const rowIndex = Math.max(0, rect.top);
 		state.applyDocument(
 			pasteMatrix(
 				state.document,
-				{ rowIndex: rect.top, columnIndex: rect.left },
+				{ rowIndex, columnIndex: rect.left },
 				prepared.value.matrix,
 			),
 		);
