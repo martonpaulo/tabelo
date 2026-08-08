@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
 	createEmptyDocument,
-	detectHeaderRow,
 	documentFromMatrix,
 	documentToMatrix,
 	isDocumentBlank,
@@ -10,7 +9,6 @@ import {
 	clearCells,
 	deleteColumns,
 	deleteRows,
-	demoteHeaderToRow,
 	duplicateColumns,
 	duplicateRows,
 	insertColumns,
@@ -285,33 +283,6 @@ describe("paste", () => {
 });
 
 describe("header handling", () => {
-	it("treats an all-text first row as headers", () => {
-		expect(
-			detectHeaderRow([
-				["Name", "Role"],
-				["Ingrid", "Designer"],
-			]),
-		).toBe(true);
-	});
-
-	it("treats a first row containing a number as data", () => {
-		expect(
-			detectHeaderRow([
-				["Ingrid", "31"],
-				["Paulo", "24"],
-			]),
-		).toBe(false);
-	});
-
-	it("treats a first row with a blank cell as data", () => {
-		expect(
-			detectHeaderRow([
-				["Ingrid", ""],
-				["Paulo", "x"],
-			]),
-		).toBe(false);
-	});
-
 	// The table still has exactly one header row; it simply has no text yet.
 	// Inventing "Column 1" here would write content the user never typed and
 	// then serialize it into every format.
@@ -338,16 +309,6 @@ describe("header handling", () => {
 		expect(document.columns.map((column) => column.header)).toEqual([
 			"Name",
 			"",
-		]);
-	});
-
-	it("demotes the header row into data and leaves the header empty", () => {
-		const next = demoteHeaderToRow(sample());
-		expect(documentToMatrix(next)).toEqual([
-			["", ""],
-			["A", "B"],
-			["1", "2"],
-			["3", "4"],
 		]);
 	});
 });

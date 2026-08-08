@@ -41,8 +41,9 @@ the exact text format the person came for.
 - Keeps working when a draft does not parse. Every other view holds the last
   valid parse and stays editable, and the broken draft stays recoverable
   through undo rather than being discarded.
-- Accepts pasted and imported data, deciding at import time whether the first
-  row is a header, as an undoable correction rather than a hidden mode.
+- Accepts pasted and imported data, reading the header row from formats that
+  declare it and asking before replacing the table when CSV, TSV, or plain text
+  does not.
 - Runs entirely in the browser, offline, with no account and nothing uploaded.
 
 ## What it will never do

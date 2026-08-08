@@ -112,9 +112,11 @@ describe("supported import limits", () => {
 });
 
 describe("header decision metadata", () => {
-	it("records when row one is a header", () => {
+	it("preserves a format-declared header", () => {
 		const result = prepareImport({
-			payload: { text: "Name\tRole\nIngrid\tDesigner" },
+			payload: {
+				text: "| Name | Role |\n| --- | --- |\n| Ingrid | Designer |",
+			},
 		});
 
 		expect(result.ok).toBe(true);
@@ -122,11 +124,13 @@ describe("header decision metadata", () => {
 		expect(result.value.headerRow).toBe(true);
 	});
 
-	it("records when row one is data", () => {
-		const result = prepareImport({ payload: { text: "1\t2\n3\t4" } });
+	it("preserves an absent header fact for delimited text", () => {
+		const result = prepareImport({
+			payload: { text: "Name\tRole\nIngrid\tDesigner" },
+		});
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		expect(result.value.headerRow).toBe(false);
+		expect(result.value.headerRow).toBeUndefined();
 	});
 });

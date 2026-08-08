@@ -5,6 +5,7 @@ import { hasSessionWork, startAutosave, useTabeloStore } from "@/state/store";
 import { AppMenu } from "@/ui/app-menu";
 import { DownloadDialog } from "@/ui/download-dialog";
 import { EmptyState } from "@/ui/grid/empty-state";
+import { HeaderRowDialog } from "@/ui/header-row-dialog";
 import { importTableFile } from "@/ui/import";
 import { NewTableDialog } from "@/ui/new-table-dialog";
 import { NoticeBar } from "@/ui/notice-bar";
@@ -23,7 +24,11 @@ export function TabeloApp() {
 	const [hydrated, setHydrated] = useState(false);
 	const [welcomeOpen, setWelcomeOpen] = useState(false);
 	const [addViewRequest, setAddViewRequest] = useState(0);
+	const importQuestionOpen = useTabeloStore(
+		(state) => state.pendingImport !== null,
+	);
 	const showWelcome = hydrated && welcomeOpen;
+	const showWelcomeSurface = showWelcome && !importQuestionOpen;
 
 	const openRootDialog = (dialog: Exclude<RootDialog, null>) => {
 		if (rootDialog !== null || document.querySelector('[role="dialog"]'))
@@ -74,22 +79,27 @@ export function TabeloApp() {
 	// denies the async clipboard API. While the first-visit surface is open, it
 	// should be enough to press the standard paste shortcut anywhere.
 	useEffect(() => {
-		if (!showWelcome) return;
+		if (!showWelcomeSurface) return;
 		const onPaste = (event: ClipboardEvent) => {
 			if (!event.clipboardData) return;
 			const payload = {
 				text: event.clipboardData.getData("text/plain"),
 				html: event.clipboardData.getData("text/html"),
 			};
-			const before = useTabeloStore.getState().document;
-			useTabeloStore.getState().pasteClipboard(payload);
-			if (useTabeloStore.getState().document === before) return;
+			const before = useTabeloStore.getState();
+			before.pasteClipboard(payload);
+			const after = useTabeloStore.getState();
+			if (
+				after.document === before.document &&
+				after.pendingImport === before.pendingImport
+			)
+				return;
 			event.preventDefault();
-			setWelcomeOpen(false);
+			if (after.document !== before.document) setWelcomeOpen(false);
 		};
 		window.addEventListener("paste", onPaste);
 		return () => window.removeEventListener("paste", onPaste);
-	}, [showWelcome]);
+	}, [showWelcomeSurface]);
 
 	// Undo and redo are document-level, so they work wherever focus is, except
 	// inside a source editor, which owns the shortcut first and falls through to
@@ -162,7 +172,7 @@ export function TabeloApp() {
 						addViewOpenerRef={appMenuTriggerRef}
 					/>
 				</div>
-				{showWelcome ? (
+				{showWelcomeSurface ? (
 					<EmptyState
 						onStartEmpty={() => setWelcomeOpen(false)}
 						onStarted={() => setWelcomeOpen(false)}
@@ -194,6 +204,7 @@ export function TabeloApp() {
 				onOpenChange={closeRootDialog}
 				onConfirm={startNewTable}
 			/>
+			<HeaderRowDialog onImported={() => setWelcomeOpen(false)} />
 		</div>
 	);
 }
