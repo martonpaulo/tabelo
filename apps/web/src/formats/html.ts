@@ -27,8 +27,7 @@ function cellText(cell: Element): string {
 	for (const br of clone.querySelectorAll("br")) {
 		br.replaceWith(clone.ownerDocument.createTextNode("\n"));
 	}
-	// Non-breaking spaces are a spreadsheet artefact, not content.
-	return (clone.textContent ?? "").replace(/ /g, " ").trim();
+	return clone.textContent ?? "";
 }
 
 function alignmentOf(cell: Element): Alignment {

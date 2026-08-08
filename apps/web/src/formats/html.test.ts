@@ -100,4 +100,18 @@ describe("html serialization", () => {
 		if (!reparsed.ok) return;
 		expect(documentToMatrix(reparsed.document)).toEqual(original);
 	});
+
+	it("preserves boundary whitespace and non-breaking spaces byte-exact", () => {
+		const original = [
+			["Name", "Note"],
+			["Ingrid", "  spaced  "],
+			["Paulo", "\u00a0kept\u00a0"],
+		];
+		const document = documentFromMatrix(original, { headerRow: true });
+		const reparsed = htmlCodec.parse(htmlCodec.serialize(document));
+
+		expect(reparsed.ok).toBe(true);
+		if (!reparsed.ok) return;
+		expect(documentToMatrix(reparsed.document)).toEqual(original);
+	});
 });

@@ -105,9 +105,11 @@ vocabulary and `docs/adr/` for the reasoning.
   row 1 down. CSV export offers an "include header row" option. That is an
   output preference, never document state.
 - **Markdown serialization is lossless.** Escape `|` as `\|` and newlines as
-  `<br>`; the parser reverses both. A value must survive
-  CSV → Markdown → CSV byte-exact. Never flatten or drop content to make
-  Markdown look cleaner.
+  `<br>`, and encode meaningful boundary whitespace before adding readable
+  alignment padding. Literal ampersands protect entity-like user text, and the
+  parser reverses the emitted grammar once without recursive decoding. A value
+  must survive CSV → Markdown → CSV byte-exact. Never flatten or drop content
+  to make Markdown look cleaner.
 - **Every other view holds the last valid parse and stays editable.** When a
   draft does not parse, keep displaying the last successful parse everywhere
   else, surface the error in the owning pane, and leave the grid fully editable.
