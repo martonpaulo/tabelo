@@ -4,6 +4,7 @@ import {
 	CURRENT_VERSION,
 	type PersistedDraft,
 	type PersistedState,
+	type PersistenceFailureReason,
 	RECOVERY_KEY,
 	STORAGE_KEY,
 	validatePersistedState,
@@ -28,7 +29,7 @@ export type StorageLoadOutcome =
 	| { readonly status: "unavailable" }
 	| {
 			readonly status: "unreadable";
-			readonly reason: string;
+			readonly reason: PersistenceFailureReason;
 			readonly raw: string;
 	  };
 
@@ -49,7 +50,7 @@ export function loadState(): StorageLoadOutcome {
 	} catch {
 		return {
 			status: "unreadable",
-			reason: "The saved table is not valid JSON.",
+			reason: "invalid-json",
 			raw,
 		};
 	}
