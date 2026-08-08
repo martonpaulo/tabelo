@@ -57,6 +57,7 @@ import {
 	createImportedDocument,
 	type ImportError,
 	prepareImport,
+	tableShapeLimitError,
 } from "@/import/prepare";
 import {
 	loadState,
@@ -248,6 +249,7 @@ export interface TabeloState {
 	selectedMatrix: () => string[][];
 	pasteClipboard: (payload: ClipboardPayload) => PasteRefusal | null;
 	importText: (text: string, format?: CodecId) => void;
+	reportInputError: (error: ImportError) => void;
 
 	demoteHeader: () => void;
 	resetDocument: () => void;
@@ -1035,6 +1037,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const state = get();
 		const rows = currentDataRows(state);
 		if (rows.length === 0) return;
+		const error = tableShapeLimitError({
+			rows: state.document.rows.length + rows.length,
+			columns: state.document.columns.length,
+		});
+		if (error) {
+			set({ inputError: error });
+			return;
+		}
 		state.applyDocument(duplicateRows(state.document, rows));
 	},
 
@@ -1091,9 +1101,16 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	duplicateSelectedColumns: () => {
 		const state = get();
-		state.applyDocument(
-			duplicateColumns(state.document, currentColumns(state)),
-		);
+		const columns = currentColumns(state);
+		const error = tableShapeLimitError({
+			rows: state.document.rows.length,
+			columns: state.document.columns.length + columns.length,
+		});
+		if (error) {
+			set({ inputError: error });
+			return;
+		}
+		state.applyDocument(duplicateColumns(state.document, columns));
 	},
 
 	moveSelectedColumn: (offset) => {
@@ -1202,6 +1219,20 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		// A whole-column selection includes the header sentinel. Paste still
 		// targets data rows, so translate that UI coordinate at this boundary.
 		const rowIndex = Math.max(0, rect.top);
+		const projectedError = tableShapeLimitError({
+			rows: Math.max(
+				state.document.rows.length,
+				rowIndex + prepared.value.matrix.length,
+			),
+			columns: Math.max(
+				state.document.columns.length,
+				rect.left + Math.max(...prepared.value.matrix.map((row) => row.length)),
+			),
+		});
+		if (projectedError) {
+			set({ inputError: projectedError });
+			return null;
+		}
 		state.applyDocument(
 			pasteMatrix(
 				state.document,
@@ -1229,6 +1260,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			selection: createSelection({ row: 0, column: 0 }),
 		});
 	},
+
+	reportInputError: (error) => set({ inputError: error }),
 
 	demoteHeader: () => {
 		const state = get();

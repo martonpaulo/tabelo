@@ -1,4 +1,5 @@
 import { listCodecs } from "@/formats";
+import { IMPORT_LIMITS } from "@/import/prepare";
 import { pickTextFile } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 
@@ -14,8 +15,16 @@ const ACCEPT = [
 ].join(",");
 
 export async function importTableFile(): Promise<boolean> {
-	const file = await pickTextFile(ACCEPT);
+	const file = await pickTextFile(ACCEPT, IMPORT_LIMITS.payloadBytes);
 	if (!file) return false;
+	if (file.status === "too-large") {
+		useTabeloStore.getState().reportInputError({
+			code: "payload-too-large",
+			actual: file.size,
+			limit: IMPORT_LIMITS.payloadBytes,
+		});
+		return false;
+	}
 
 	// The extension picks the codec; anything unrecognised falls through to
 	// sniffing inside importText.
