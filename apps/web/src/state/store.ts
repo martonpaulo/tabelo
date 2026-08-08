@@ -79,6 +79,7 @@ import {
 	applyLayout,
 	createDefaultWorkspace,
 	type LayoutId,
+	movePane as moveWorkspacePane,
 	type SplitOption,
 	smallerLayout,
 	splitOptions,
@@ -203,6 +204,7 @@ export interface TabeloState {
 	setPaneView: (paneId: string, view: ViewId) => void;
 	addPaneBySplit: (option: SplitOption, viewId: ViewId) => void;
 	closePane: (paneId: string) => void;
+	movePane: (paneId: string, destinationPaneId: string) => boolean;
 	confirmPaneAction: () => void;
 	setActivePane: (paneId: string) => void;
 	setOutputOption: (id: OutputOptionId, value: boolean) => void;
@@ -734,6 +736,21 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		if (!next) return;
 		clearInvalidTimer();
 		set(next);
+	},
+
+	// Moving a pane is workspace presentation. The pure operation swaps only
+	// slots, so pane identity, drafts, preferences, and the document timeline do
+	// not need another reconciliation path here.
+	movePane: (paneId, destinationPaneId) => {
+		const state = get();
+		const workspace = moveWorkspacePane(
+			state.workspace,
+			paneId,
+			destinationPaneId,
+		);
+		if (!workspace) return false;
+		set({ workspace });
+		return true;
 	},
 
 	confirmPaneAction: () => {

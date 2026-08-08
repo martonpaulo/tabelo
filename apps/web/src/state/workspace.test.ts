@@ -441,3 +441,53 @@ describe("per-pane source wrapping", () => {
 		).toBe(false);
 	});
 });
+
+describe("moving panes", () => {
+	it("moves pane-owned state without touching the document timeline", () => {
+		const initial = useTabeloStore.getState();
+		const paneId = markdownPaneId();
+		const destinationId = initial.workspace.panes.find(
+			(pane) => pane.id !== paneId,
+		)?.id;
+		expect(destinationId).toBeDefined();
+
+		initial.setPaneZoom(paneId, 1.4);
+		initial.setPaneWrap(paneId, true);
+		initial.setDraft(paneId, "markdown", invalidMarkdown);
+		const before = useTabeloStore.getState();
+		const sourceSlots = before.workspace.panes.find(
+			(pane) => pane.id === paneId,
+		)?.slots;
+		const destinationSlots = before.workspace.panes.find(
+			(pane) => pane.id === destinationId,
+		)?.slots;
+
+		expect(before.movePane(paneId, destinationId ?? "")).toBe(true);
+
+		const after = useTabeloStore.getState();
+		const moved = after.workspace.panes.find((pane) => pane.id === paneId);
+		expect(moved).toMatchObject({
+			id: paneId,
+			view: "markdown",
+			zoom: 1.4,
+			wrap: true,
+			slots: destinationSlots,
+		});
+		expect(
+			after.workspace.panes.find((pane) => pane.id === destinationId)?.slots,
+		).toBe(sourceSlots);
+		expect(after.workspace.activePaneId).toBe(paneId);
+		expect(after.draft).toBe(before.draft);
+		expect(after.document).toBe(before.document);
+		expect(after.past).toBe(before.past);
+		expect(after.future).toBe(before.future);
+	});
+
+	it("refuses a stale destination without changing state", () => {
+		const before = useTabeloStore.getState();
+		const paneId = before.workspace.panes[0].id;
+
+		expect(before.movePane(paneId, "missing-pane")).toBe(false);
+		expect(useTabeloStore.getState()).toBe(before);
+	});
+});

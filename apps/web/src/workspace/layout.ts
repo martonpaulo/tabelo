@@ -202,6 +202,23 @@ export interface Workspace {
 	readonly activePaneId: string;
 }
 
+export type PanePositionId =
+	| "full"
+	| "top-full-width"
+	| "bottom-full-width"
+	| "left-full-height"
+	| "right-full-height"
+	| "top-left"
+	| "top-right"
+	| "bottom-left"
+	| "bottom-right";
+
+export interface MovePaneDestination {
+	readonly paneId: string;
+	readonly slots: readonly SlotId[];
+	readonly position: PanePositionId;
+}
+
 // Views chosen for panes that a layout change newly created. The order is the
 // product's opinion about what is most useful to see next to the table.
 const FILL_ORDER: readonly ViewId[] = [
@@ -225,6 +242,105 @@ function nextPaneId(used: Set<string>): string {
 function cornerOf(slots: readonly SlotId[]): string {
 	const area = gridAreaOf(slots);
 	return `${area.rowStart}:${area.columnStart}`;
+}
+
+function sameSlots(left: readonly SlotId[], right: readonly SlotId[]): boolean {
+	return (
+		left.length === right.length && left.every((slot) => right.includes(slot))
+	);
+}
+
+// The same tiling invariant persistence applies to untrusted storage. Runtime
+// workspace operations use it too, so a stale or malformed state is refused
+// rather than being turned into another invalid arrangement.
+export function workspacePanesTileLayout(
+	layoutId: LayoutId,
+	panes: readonly WorkspacePane[],
+): boolean {
+	const preset = getLayout(layoutId);
+	return (
+		panes.length === preset.panes.length &&
+		preset.panes.every((expectedSlots) =>
+			panes.some((pane) => sameSlots(pane.slots, expectedSlots)),
+		)
+	);
+}
+
+export function panePositionId(
+	slots: readonly SlotId[],
+): PanePositionId | null {
+	const area = gridAreaOf(slots);
+	const width = area.columnEnd - area.columnStart;
+	const height = area.rowEnd - area.rowStart;
+
+	if (width === 2 && height === 2) return "full";
+	if (width === 2 && height === 1) {
+		return area.rowStart === 1 ? "top-full-width" : "bottom-full-width";
+	}
+	if (width === 1 && height === 2) {
+		return area.columnStart === 1 ? "left-full-height" : "right-full-height";
+	}
+	if (width !== 1 || height !== 1) return null;
+	if (area.rowStart === 1) {
+		return area.columnStart === 1 ? "top-left" : "top-right";
+	}
+	return area.columnStart === 1 ? "bottom-left" : "bottom-right";
+}
+
+export function movePaneDestinations(
+	workspace: Workspace,
+	paneId: string,
+): readonly MovePaneDestination[] {
+	if (
+		!workspace.panes.some((pane) => pane.id === paneId) ||
+		!workspacePanesTileLayout(workspace.layout, workspace.panes)
+	) {
+		return [];
+	}
+
+	return workspace.panes.flatMap<MovePaneDestination>((pane) => {
+		if (pane.id === paneId) return [];
+		const position = panePositionId(pane.slots);
+		return position ? [{ paneId: pane.id, slots: pane.slots, position }] : [];
+	});
+}
+
+// Move keeps pane identity and every pane-owned preference intact by exchanging
+// only the source and destination slot sets. The returned array is normalized
+// to the preset's visual reading order for DOM, keyboard, and persistence.
+export function movePane(
+	workspace: Workspace,
+	paneId: string,
+	destinationPaneId: string,
+): Workspace | null {
+	if (
+		paneId === destinationPaneId ||
+		!workspacePanesTileLayout(workspace.layout, workspace.panes)
+	) {
+		return null;
+	}
+
+	const source = workspace.panes.find((pane) => pane.id === paneId);
+	const destination = workspace.panes.find(
+		(pane) => pane.id === destinationPaneId,
+	);
+	if (!source || !destination) return null;
+
+	const swapped = workspace.panes.map((pane) => {
+		if (pane.id === source.id) return { ...pane, slots: destination.slots };
+		if (pane.id === destination.id) return { ...pane, slots: source.slots };
+		return pane;
+	});
+	if (!workspacePanesTileLayout(workspace.layout, swapped)) return null;
+
+	const positions = getLayout(workspace.layout).panes;
+	const panes = [...swapped].sort(
+		(left, right) =>
+			positions.findIndex((slots) => sameSlots(slots, left.slots)) -
+			positions.findIndex((slots) => sameSlots(slots, right.slots)),
+	);
+
+	return { ...workspace, panes, activePaneId: paneId };
 }
 
 // Rebuilds the pane list for a layout while keeping pane identity independent

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getLayout } from "@/workspace/layout";
+import { workspacePanesTileLayout } from "@/workspace/layout";
 import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
 export const PERSISTED_VERSION = 4 as const;
@@ -154,18 +154,9 @@ export const persistedStateSchema = z
 		draft: currentDraftSchema.nullable(),
 	})
 	.superRefine((state, context) => {
-		const preset = getLayout(state.workspace.layout);
-		const panesTileLayout =
-			state.workspace.panes.length === preset.panes.length &&
-			preset.panes.every((expectedSlots) =>
-				state.workspace.panes.some(
-					(pane) =>
-						pane.slots.length === expectedSlots.length &&
-						expectedSlots.every((slot) => pane.slots.includes(slot)),
-				),
-			);
-
-		if (!panesTileLayout) {
+		if (
+			!workspacePanesTileLayout(state.workspace.layout, state.workspace.panes)
+		) {
 			context.addIssue({
 				code: "custom",
 				path: ["workspace", "panes"],

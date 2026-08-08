@@ -317,6 +317,17 @@ export class TabeloPage {
 		return dialog;
 	}
 
+	async openMovePaneDialog(view: ViewId, index = 0): Promise<Locator> {
+		const menu = await this.openPaneMenu(view, index);
+		await menu.getByRole("menuitem", { name: copy.workspace.movePane }).click();
+		await menu.waitFor({ state: "hidden" });
+		const dialog = this.page.getByRole("dialog", {
+			name: copy.workspace.movePane,
+		});
+		await dialog.waitFor({ state: "visible" });
+		return dialog;
+	}
+
 	// Notices float over the top trailing corner, so they cover the pane header
 	// they land on. A test that is not about notices clears them first, the
 	// same way a user would, rather than reaching around them.
@@ -338,8 +349,9 @@ export class TabeloPage {
 		});
 	}
 
-	// Add view, Close view, and the zoom steps are all plain items in the pane's
-	// own menu, so one helper covers every direct pane command.
+	// Close view, zoom, and copy are immediate items in the pane's own menu, so
+	// one helper covers every direct command. Change view and Move pane instead
+	// have dedicated helpers for the dialogs they open.
 	async runPaneCommand(
 		view: ViewId,
 		command: PaneCommand,
