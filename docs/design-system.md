@@ -1134,7 +1134,7 @@ container, so the arrow keys still work.
 | Arrows | Move the focused cell. They stop at the edges and never leave the grid |
 | `Shift`+Arrows | Extend the active area from its anchor |
 | `Mod`+Arrows | Move the focused cell without discarding the areas already selected |
-| `Alt`+Arrows | Reorder the row or column instead of navigating |
+| `Alt`+Arrows | Reorder one contiguous row or column block. A header-touching selection cannot move rows; several areas never collapse into one |
 | `Tab` / `Shift`+`Tab` | Move one cell in reading order, wrapping at row ends and grid edges. It never leaves the grid |
 | `Home` / `End` | First or last column of the row; with the modifier, the first or last cell of the table |
 | `Enter` / `F2` | Edit the focused cell. On a column header, rename it |

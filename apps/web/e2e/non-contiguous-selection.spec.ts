@@ -188,6 +188,25 @@ test("actions needing one area are disabled with a reason, never hidden", async 
 	).toBeEnabled();
 });
 
+test("Alt+Right refuses several areas without changing them", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	await columnHandle(tabelo, 1).click();
+	await columnHandle(tabelo, 3).click({ modifiers: [modifier] });
+	await tabelo.cell(1, 3).focus();
+
+	await page.keyboard.press("Alt+ArrowRight");
+
+	await expect(tabelo.notice("warning")).toBeVisible();
+	expect(await columnSelected(tabelo, 1)).toBe(true);
+	expect(await columnSelected(tabelo, 2)).toBe(false);
+	expect(await columnSelected(tabelo, 3)).toBe(true);
+	await expect(tabelo.header(1)).toHaveText("name");
+	await expect(tabelo.header(3)).toHaveText("role");
+});
+
 test("deleting removes exactly the selected columns, gap and all", async ({
 	page,
 	tabelo,

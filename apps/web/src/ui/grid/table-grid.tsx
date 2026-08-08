@@ -9,7 +9,6 @@ import {
 	HEADER_ROW,
 	rectContains,
 	replaceActiveRange,
-	selectionRect,
 	selectionRects,
 } from "@/core/selection";
 import type { Alignment, Column, ColumnId, Row } from "@/core/types";
@@ -28,6 +27,7 @@ import {
 import { CellEditor } from "./cell-editor";
 import { clampColumnWidth, resolveColumnWidth } from "./column-width";
 import { GridContextMenu } from "./grid-context-menu";
+import { moveRefusalMessage } from "./table-actions";
 import {
 	type GridAutoscrollAxis,
 	type GridAutoscrollPoint,
@@ -238,13 +238,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// mounted below, because only one axis menu can be open at a time.
 	const [axisMenuHandle] = useState(createAxisMenuHandle);
 
-	// The active region, which is where the keyboard is working: what an arrow
-	// key moves and what an insertion point is measured from.
-	const rect = selectionRect(
-		selection,
-		document.rows.length,
-		document.columns.length,
-	);
 	// Everything the user selected, which is what gets painted.
 	const rects = selectionRects(
 		selection,
@@ -450,14 +443,26 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		if (event.altKey) {
 			if (event.key === "ArrowUp" || event.key === "ArrowDown") {
 				event.preventDefault();
-				store.selectCell({ row: rect.top, column: rect.left }, "row");
-				store.moveSelectedRow(event.key === "ArrowUp" ? -1 : 1);
+				const refusal = store.moveSelectedRow(event.key === "ArrowUp" ? -1 : 1);
+				if (refusal) {
+					store.pushNotice({
+						severity: "warning",
+						message: moveRefusalMessage[refusal],
+					});
+				}
 				return;
 			}
 			if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
 				event.preventDefault();
-				store.selectCell({ row: rect.top, column: rect.left }, "column");
-				store.moveSelectedColumn(event.key === "ArrowLeft" ? -1 : 1);
+				const refusal = store.moveSelectedColumn(
+					event.key === "ArrowLeft" ? -1 : 1,
+				);
+				if (refusal) {
+					store.pushNotice({
+						severity: "warning",
+						message: moveRefusalMessage[refusal],
+					});
+				}
 				return;
 			}
 		}

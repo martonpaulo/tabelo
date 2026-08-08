@@ -14,8 +14,10 @@ import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import {
 	isContiguous,
+	type SelectionMoveRefusal,
 	selectionColumns,
 	selectionDataRows,
+	selectionMoveRefusal,
 	structureDeletionGuard,
 } from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
@@ -40,6 +42,15 @@ export interface TableActionGroup {
 	readonly id: string;
 	readonly actions: readonly TableAction[];
 }
+
+export const moveRefusalMessage: Record<SelectionMoveRefusal, string> = {
+	"single-area": copy.disabled.singleAreaRequired,
+	"header-row": copy.disabled.headerRowRequired,
+	"first-row": copy.disabled.firstRow,
+	"last-row": copy.disabled.lastRow,
+	"first-column": copy.disabled.firstColumn,
+	"last-column": copy.disabled.lastColumn,
+};
 
 // The intent is passed rather than inferred, because copy and cut both send the
 // same payload under the same scope and only differ in what they leave behind.
@@ -92,10 +103,6 @@ export function buildTableActions(
 	const selectedColumns = selectionColumns(selection, rows, columns);
 	const rowCount = dataRows.length;
 	const columnCount = selectedColumns.length;
-	const firstDataRow = dataRows[0];
-	const lastDataRow = dataRows.at(-1);
-	const firstColumn = selectedColumns[0];
-	const lastColumn = selectedColumns.at(-1);
 	// Nothing to act on when the selection sits on the header row alone.
 	const noDataRows = rowCount === 0;
 	// Inserting, moving, and pasting each need one place to act, and several
@@ -103,6 +110,34 @@ export function buildTableActions(
 	// hidden: see docs/design-system.md §4.
 	const severalAreas = !isContiguous(selection);
 	const deletionGuard = structureDeletionGuard(selection, rows, columns);
+	const moveUpRefusal = selectionMoveRefusal(
+		selection,
+		rows,
+		columns,
+		"row",
+		-1,
+	);
+	const moveDownRefusal = selectionMoveRefusal(
+		selection,
+		rows,
+		columns,
+		"row",
+		1,
+	);
+	const moveLeftRefusal = selectionMoveRefusal(
+		selection,
+		rows,
+		columns,
+		"column",
+		-1,
+	);
+	const moveRightRefusal = selectionMoveRefusal(
+		selection,
+		rows,
+		columns,
+		"column",
+		1,
+	);
 
 	const insert: TableAction[] = [];
 	if (showRows) {
@@ -212,24 +247,22 @@ export function buildTableActions(
 				id: "move-up",
 				label: copy.actions.moveUp,
 				icon: ArrowUp,
-				disabled: severalAreas || noDataRows || firstDataRow === 0,
-				disabledReason: severalAreas
-					? copy.disabled.singleAreaRequired
-					: copy.disabled.firstRow,
+				disabled: moveUpRefusal !== null,
+				disabledReason:
+					moveUpRefusal === null
+						? undefined
+						: moveRefusalMessage[moveUpRefusal],
 				run: () => store.moveSelectedRow(-1),
 			},
 			{
 				id: "move-down",
 				label: copy.actions.moveDown,
 				icon: ArrowDown,
-				disabled:
-					severalAreas ||
-					noDataRows ||
-					lastDataRow === undefined ||
-					lastDataRow >= rows - 1,
-				disabledReason: severalAreas
-					? copy.disabled.singleAreaRequired
-					: copy.disabled.lastRow,
+				disabled: moveDownRefusal !== null,
+				disabledReason:
+					moveDownRefusal === null
+						? undefined
+						: moveRefusalMessage[moveDownRefusal],
 				run: () => store.moveSelectedRow(1),
 			},
 		);
@@ -240,21 +273,22 @@ export function buildTableActions(
 				id: "move-left",
 				label: copy.actions.moveLeft,
 				icon: ArrowLeft,
-				disabled: severalAreas || firstColumn === 0,
-				disabledReason: severalAreas
-					? copy.disabled.singleAreaRequired
-					: copy.disabled.firstColumn,
+				disabled: moveLeftRefusal !== null,
+				disabledReason:
+					moveLeftRefusal === null
+						? undefined
+						: moveRefusalMessage[moveLeftRefusal],
 				run: () => store.moveSelectedColumn(-1),
 			},
 			{
 				id: "move-right",
 				label: copy.actions.moveRight,
 				icon: ArrowRight,
-				disabled:
-					severalAreas || lastColumn === undefined || lastColumn >= columns - 1,
-				disabledReason: severalAreas
-					? copy.disabled.singleAreaRequired
-					: copy.disabled.lastColumn,
+				disabled: moveRightRefusal !== null,
+				disabledReason:
+					moveRightRefusal === null
+						? undefined
+						: moveRefusalMessage[moveRightRefusal],
 				run: () => store.moveSelectedColumn(1),
 			},
 		);

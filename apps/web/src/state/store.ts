@@ -13,8 +13,8 @@ import {
 	duplicateRows,
 	insertColumns,
 	insertRows,
-	moveColumn,
-	moveRow,
+	moveColumns,
+	moveRows,
 	pasteMatrix,
 	setAlignment,
 	setCell,
@@ -33,14 +33,17 @@ import {
 	moveFocusKeepingRegions,
 	rectDataRows,
 	type SelectionMode,
+	type SelectionMoveRefusal,
 	selectedAxis,
 	selectionColumns,
 	selectionCoversHeader,
 	selectionDataRows,
+	selectionMoveRefusal,
 	selectionRect,
 	selectionRects,
 	structureDeletionGuard,
 	toggleSelectionRegion,
+	translateSelection,
 } from "@/core/selection";
 import type { Alignment, TableDocument } from "@/core/types";
 import { canSerialize } from "@/formats";
@@ -238,13 +241,13 @@ export interface TabeloState {
 	addRowBelow: () => void;
 	removeSelectedRows: () => void;
 	duplicateSelectedRows: () => void;
-	moveSelectedRow: (offset: number) => void;
+	moveSelectedRow: (offset: number) => SelectionMoveRefusal | null;
 
 	addColumnLeft: () => void;
 	addColumnRight: () => void;
 	removeSelectedColumns: () => void;
 	duplicateSelectedColumns: () => void;
-	moveSelectedColumn: (offset: number) => void;
+	moveSelectedColumn: (offset: number) => SelectionMoveRefusal | null;
 
 	clearSelection: () => void;
 	deleteSelectedStructure: () => StructureDeletionRefusal | null;
@@ -1067,26 +1070,23 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	moveSelectedRow: (offset) => {
 		const state = get();
-		if (!isContiguous(state.selection)) return;
+		const refusal = selectionMoveRefusal(
+			state.selection,
+			state.document.rows.length,
+			state.document.columns.length,
+			"row",
+			offset,
+		);
+		if (refusal) return refusal;
 		const rect = currentRect(state);
-		const from = rectDataRows(rect)[0];
-		if (from === undefined) return;
-		const to = from + offset;
-		if (to < 0 || to >= state.document.rows.length) return;
-		state.applyDocument(moveRow(state.document, from, to));
-		set((current) => ({
-			selection: {
-				...current.selection,
-				ranges: [
-					{
-						...activeRange(current.selection),
-						anchor: { row: to, column: rect.left },
-						focus: { row: to, column: rect.right },
-					},
-				],
-				activeIndex: 0,
-			},
-		}));
+		const rows = rectDataRows(rect);
+		const from = rows[0];
+		if (from === undefined) return "header-row";
+		const next = moveRows(state.document, { from, count: rows.length }, offset);
+		if (next === state.document) return null;
+		state.applyDocument(next);
+		set({ selection: translateSelection(state.selection, "row", offset) });
+		return null;
 	},
 
 	addColumnLeft: () => {
@@ -1132,24 +1132,24 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	moveSelectedColumn: (offset) => {
 		const state = get();
-		if (!isContiguous(state.selection)) return;
+		const refusal = selectionMoveRefusal(
+			state.selection,
+			state.document.rows.length,
+			state.document.columns.length,
+			"column",
+			offset,
+		);
+		if (refusal) return refusal;
 		const rect = currentRect(state);
-		const to = rect.left + offset;
-		if (to < 0 || to >= state.document.columns.length) return;
-		state.applyDocument(moveColumn(state.document, rect.left, to));
-		set((current) => ({
-			selection: {
-				...current.selection,
-				ranges: [
-					{
-						...activeRange(current.selection),
-						anchor: { row: rect.top, column: to },
-						focus: { row: rect.bottom, column: to },
-					},
-				],
-				activeIndex: 0,
-			},
-		}));
+		const next = moveColumns(
+			state.document,
+			{ from: rect.left, count: rect.right - rect.left + 1 },
+			offset,
+		);
+		if (next === state.document) return null;
+		state.applyDocument(next);
+		set({ selection: translateSelection(state.selection, "column", offset) });
+		return null;
 	},
 
 	clearSelection: () => {

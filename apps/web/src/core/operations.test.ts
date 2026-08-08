@@ -13,11 +13,12 @@ import {
 	duplicateRows,
 	insertColumns,
 	insertRows,
-	moveColumn,
-	moveRow,
+	moveColumns,
+	moveRows,
 	pasteMatrix,
 	setCell,
 } from "./operations";
+import { samplePeopleMatrix } from "./sample-data";
 import { HEADER_ROW } from "./selection";
 
 function docOf(matrix: string[][]) {
@@ -80,13 +81,53 @@ describe("row operations", () => {
 		]);
 	});
 
-	it("moves a row", () => {
-		expect(documentToMatrix(moveRow(sample(), 0, 1))).toEqual([
-			["A", "B"],
-			["3", "4"],
-			["1", "2"],
+	it.each([
+		[{ from: 0, count: 2 }, 1, ["Mabel", "Ingrid", "Paulo", "Felix", "Amora"]],
+		[{ from: 3, count: 2 }, -1, ["Ingrid", "Paulo", "Felix", "Amora", "Mabel"]],
+		[{ from: 1, count: 2 }, 1, ["Ingrid", "Felix", "Paulo", "Mabel", "Amora"]],
+		[{ from: 2, count: 2 }, -1, ["Ingrid", "Mabel", "Felix", "Paulo", "Amora"]],
+		[{ from: 1, count: 3 }, 1, ["Ingrid", "Amora", "Paulo", "Mabel", "Felix"]],
+		[{ from: 1, count: 3 }, -1, ["Paulo", "Mabel", "Felix", "Ingrid", "Amora"]],
+	] as const)(
+		"moves row block %o by %i without changing its order",
+		(block, offset, expected) => {
+			const next = moveRows(docOf(samplePeopleMatrix()), block, offset);
+			expect(
+				documentToMatrix(next)
+					.slice(1)
+					.map((row) => row[0]),
+			).toEqual(expected);
+		},
+	);
+
+	it("preserves row identities and cell contents while moving a block", () => {
+		const before = docOf(samplePeopleMatrix());
+		const moved = before.rows.slice(1, 3);
+		const next = moveRows(before, { from: 1, count: 2 }, 1);
+
+		expect(next.rows.slice(2, 4)).toEqual(moved);
+		expect(documentToMatrix(next).slice(1)).toEqual([
+			["Ingrid", "Rio", "Designer", "35"],
+			["Felix", "Mexico City", "Analyst", "60"],
+			["Paulo", "Madrid", "Developer", "35"],
+			["Mabel", "Buenos Aires", "Writer", "45"],
+			["Amora", "Tokyo", "Doctor", "25"],
 		]);
 	});
+
+	it.each([
+		[{ from: 0, count: 2 }, -1],
+		[{ from: 3, count: 2 }, 1],
+		[{ from: -1, count: 2 }, 1],
+		[{ from: 1, count: 0 }, 1],
+		[{ from: 4, count: 2 }, -1],
+	] as const)(
+		"returns the original document for row block %o moved by %i",
+		(block, offset) => {
+			const before = docOf(samplePeopleMatrix());
+			expect(moveRows(before, block, offset)).toBe(before);
+		},
+	);
 });
 
 describe("column operations", () => {
@@ -130,13 +171,59 @@ describe("column operations", () => {
 		]);
 	});
 
-	it("moves a column and carries its cells", () => {
-		expect(documentToMatrix(moveColumn(sample(), 0, 1))).toEqual([
-			["B", "A"],
-			["2", "1"],
-			["4", "3"],
+	it.each([
+		[{ from: 0, count: 2 }, 1, ["role", "name", "city", "age"]],
+		[{ from: 2, count: 2 }, -1, ["name", "role", "age", "city"]],
+		[{ from: 1, count: 2 }, 1, ["name", "age", "city", "role"]],
+		[{ from: 1, count: 2 }, -1, ["city", "role", "name", "age"]],
+		[{ from: 0, count: 3 }, 1, ["age", "name", "city", "role"]],
+		[{ from: 1, count: 3 }, -1, ["city", "role", "age", "name"]],
+	] as const)(
+		"moves column block %o by %i without changing its order",
+		(block, offset, expected) => {
+			const next = moveColumns(docOf(samplePeopleMatrix()), block, offset);
+			expect(documentToMatrix(next)[0]).toEqual(expected);
+		},
+	);
+
+	it("preserves column identities, metadata, headers, and values", () => {
+		const source = docOf(samplePeopleMatrix());
+		const before = {
+			...source,
+			columns: source.columns.map((column, index) =>
+				index === 1
+					? { ...column, align: "right" as const, width: 12 }
+					: column,
+			),
+		};
+		const moved = before.columns.slice(1, 3);
+		const next = moveColumns(before, { from: 1, count: 2 }, 1);
+
+		expect(next.columns.slice(2, 4)).toEqual(moved);
+		expect(next.columns[2]).toMatchObject({ align: "right", width: 12 });
+		expect(documentToMatrix(next)).toEqual([
+			["name", "age", "city", "role"],
+			["Ingrid", "35", "Rio", "Designer"],
+			["Paulo", "35", "Madrid", "Developer"],
+			["Mabel", "45", "Buenos Aires", "Writer"],
+			["Felix", "60", "Mexico City", "Analyst"],
+			["Amora", "25", "Tokyo", "Doctor"],
 		]);
 	});
+
+	it.each([
+		[{ from: 0, count: 2 }, -1],
+		[{ from: 2, count: 2 }, 1],
+		[{ from: -1, count: 2 }, 1],
+		[{ from: 1, count: 0 }, 1],
+		[{ from: 3, count: 2 }, -1],
+	] as const)(
+		"returns the original document for column block %o moved by %i",
+		(block, offset) => {
+			const before = docOf(samplePeopleMatrix());
+			expect(moveColumns(before, block, offset)).toBe(before);
+		},
+	);
 });
 
 describe("cell operations", () => {
