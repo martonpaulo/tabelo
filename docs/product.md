@@ -36,8 +36,9 @@ the exact text format the person came for.
 
 - Keeps one table document and projects it into every open view at once, so
   there is no copy-and-paste step between formats and no stale second copy.
-- Preserves cell content byte-exact across any sequence of views. A value
-  survives CSV to Markdown to CSV unchanged, including pipes and newlines.
+- Treats data preservation as the first product requirement. Codec escapes are
+  reversible, and any supported round trip that changes or drops a cell value
+  is a defect.
 - Keeps working when a draft does not parse. Every other view holds the last
   valid parse and stays editable, and the broken draft stays recoverable
   through undo rather than being discarded.
@@ -59,13 +60,14 @@ Each of these is a decision, not a gap waiting to be filled.
 - **No analytics or telemetry, of any kind.** The table content belongs to the
   user, and the product collects nothing, so there is nothing to leak. This is
   deliberate and it has a cost: see the success signals below.
-- **No formulas, calculations, multiple sheets, charts, or macros.** Cell
-  values are opaque strings. The moment the product interprets a value it can
-  also reformat or coerce one, which puts data preservation at risk. Tabelo is
-  an editor, not a spreadsheet, and must not import spreadsheet density.
+- **No spreadsheet computational model.** Tabelo may adopt an interaction
+  people already know from a spreadsheet when it makes editing a text-backed
+  table faster or safer. It does not adopt formulas, multiple sheets, charts,
+  macros, aggregation, or hidden type inference.
 - **No large-document machinery.** Target scale is roughly 200 rows.
-  Virtualization, Web Workers, and IndexedDB are all excluded. Oversized input
-  degrades with a clear message, never by freezing the tab.
+  Virtualization, Web Workers, and IndexedDB are all excluded. Input outside
+  the supported bounds must be refused clearly instead of freezing or crashing
+  the tab; that safeguard does not justify large-document architecture.
 - **No localization framework.** English only, single locale, single
   maintainer. Dates and numbers inside cells stay opaque text.
 - **No versions or releases.** The deployed site is always the current version.
@@ -74,10 +76,10 @@ Each of these is a decision, not a gap waiting to be filled.
 
 Three signals, in the order they can actually be checked.
 
-1. **No data is ever lost.** A value that goes in comes back out byte-exact
-   through any sequence of views. This is the one signal that is measured: the
-   round-trip test suite is its check, and a failure is a defect regardless of
-   what else the change improves.
+1. **Data preservation holds.** A value that goes in must come back out
+   byte-exact through every supported round trip. This is the one signal that is
+   measured: the round-trip test suite is its check, and a failure is a defect
+   regardless of what else the change improves.
 2. **The user needs no second tool.** The whole task, paste through edit
    through export, happens here, without a spreadsheet, a converter site, or a
    text editor opened alongside.

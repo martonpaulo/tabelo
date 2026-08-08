@@ -249,8 +249,8 @@ Related to: Table document, Import
 - Alignment belongs to the column, so it survives a round trip through any
   format that cannot express it: CSV, TSV, and Jira all lose it on paper and
   none of them lose it in Tabelo.
-- Escaping must be reversible: any cell value survives
-  CSV → Markdown → CSV byte-exact.
+- Every codec-specific escape must be reversible: any cell value survives a
+  round trip through Markdown or Jira byte-exact.
 - Header presence is an import-time fact or explicit choice, never a stored
   document property.
 - Cell values are opaque strings; no view may reinterpret them.

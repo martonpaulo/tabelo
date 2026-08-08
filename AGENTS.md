@@ -105,12 +105,13 @@ vocabulary and `docs/adr/` for the reasoning.
   headers; nothing infers from cell values. Paste into an existing selection is
   a matrix write and never asks. CSV export offers an "include header row"
   option. That is an output preference, never document state.
-- **Markdown serialization is lossless.** Escape `|` as `\|` and newlines as
-  `<br>`, and encode meaningful boundary whitespace before adding readable
-  alignment padding. Literal ampersands protect entity-like user text, and the
-  parser reverses the emitted grammar once without recursive decoding. A value
-  must survive CSV → Markdown → CSV byte-exact. Never flatten or drop content
-  to make Markdown look cleaner.
+- **Escaping is reversible in every codec that owns it.** Markdown escapes `|`
+  as `\|` and newlines as `<br>`, and encodes meaningful boundary whitespace
+  before adding readable alignment padding. Jira escapes pipes, newlines,
+  backslashes, and literal ampersands. Each parser reverses only the grammar its
+  serializer emits, exactly once and without recursive decoding. A value must
+  survive a round trip through either codec byte-exact. Never flatten or drop
+  content to make serialized text look cleaner.
 - **Every other view holds the last valid parse and stays editable.** When a
   draft does not parse, keep displaying the last successful parse everywhere
   else, surface the error in the owning pane, and leave the grid fully editable.
@@ -125,8 +126,9 @@ vocabulary and `docs/adr/` for the reasoning.
   in CSV, TSV, or Jira. None of those formats can express it, and it round-trips
   back unchanged.
 - **Target scale is roughly 200 rows.** Do not add virtualization, Web Workers,
-  or IndexedDB. Oversized input must degrade gracefully with a clear message,
-  never by freezing the tab.
+  or IndexedDB. Refuse oversized input with a clear, actionable message before
+  it can freeze or crash the tab. An engine limit or allocation failure is a
+  defect, not an acceptable oversized-input path.
 - **Exactly one draft can be pending at a time.** The view being typed into owns
   it; every other view is a pure projection of the document. There is never a
   question of which pending edit wins.
@@ -170,9 +172,12 @@ Use the scaffolded versions unless a task explicitly requires an upgrade.
 Do not add without an explicit, demonstrated need:
 
 - a backend, server runtime, database, ORM, or authentication
-- a spreadsheet or data-grid component (Handsontable, AG Grid, Glide, Monaco)
-- a headless table or drag-and-drop library: both were considered and rejected
-  in `docs/adr/0004`; reopening that needs a reason, not a preference
+- a second source-editor implementation such as Monaco
+- a grid, headless-table, or drag-and-drop library. It is not the current
+  architecture. Reopen the decision only when a concrete backlog cluster shows
+  that a named candidate removes more product-specific interaction and state
+  code than it introduces, and record that comparison as an amendment to
+  `docs/adr/0004`
 - a CRDT or collaboration layer
 - a router: removed in `docs/adr/0007` once the product settled on one page, so
   adding one back means naming the second page it serves
@@ -346,6 +351,10 @@ preference to exercise per task.
 - Code is evidence of current behavior. `AGENTS.md` is normative for process. An
   approved specification is normative for desired behavior. Expose divergence
   among them; do not silently resolve every conflict in favor of one source.
+- An accepted issue that reverses a rule, decision, or rationale in canonical
+  documentation must amend that document in the same implementation. This
+  includes ADR decisions and reasoning; do not defer the correction to a
+  tracking issue.
 - Keep one canonical source for each rule. Secondary documents summarize or link
   to it instead of restating it.
 - Be direct and evidence-based. State assumptions, uncertainty, risks, and
