@@ -10,15 +10,21 @@ import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
 // Like Markdown it is line-delimited and pipe-delimited, so pipes and newlines
 // inside a cell have to be escaped reversibly. Jira renders `\\` as a forced
 // line break, which is the closest equivalent to Markdown's `<br>`.
+// Atlassian documents that break syntax here:
+// https://confluence.atlassian.com/conf101/confluence-wiki-markup-1652924946.html
+// A Jira defect records `&#92;` as the compatible literal-backslash spelling:
+// https://jira.atlassian.com/browse/JRASERVER-76901
 
 export function escapeJiraCell(value: string): string {
 	let out = "";
 	for (let index = 0; index < value.length; index += 1) {
 		const char = value[index];
+		if (char === "&") {
+			out += "&amp;";
+			continue;
+		}
 		if (char === "\\") {
-			// Doubling first keeps the escape alphabet unambiguous, exactly as the
-			// Markdown codec does.
-			out += "\\\\\\\\";
+			out += "&#92;";
 			continue;
 		}
 		if (char === "|") {
@@ -42,11 +48,11 @@ export function escapeJiraCell(value: string): string {
 export function unescapeJiraCell(value: string): string {
 	let out = "";
 	for (let index = 0; index < value.length; index += 1) {
-		// Four backslashes are one literal backslash; two are a line break. The
-		// longer sequence has to be tested first.
-		if (value.startsWith("\\\\\\\\", index)) {
-			out += "\\";
-			index += 3;
+		// Scan the serialized source once. Restored output is never examined
+		// again, which keeps literal entity-like user text reversible.
+		if (value.startsWith("\\\\", index)) {
+			out += "\n";
+			index += 1;
 			continue;
 		}
 		if (value.startsWith("\\|", index)) {
@@ -54,9 +60,14 @@ export function unescapeJiraCell(value: string): string {
 			index += 1;
 			continue;
 		}
-		if (value.startsWith("\\\\", index)) {
-			out += "\n";
-			index += 1;
+		if (value.startsWith("&#92;", index)) {
+			out += "\\";
+			index += 4;
+			continue;
+		}
+		if (value.startsWith("&amp;", index)) {
+			out += "&";
+			index += 4;
 			continue;
 		}
 		out += value[index];

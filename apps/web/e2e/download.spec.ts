@@ -114,6 +114,42 @@ test("CSV includes the header row by default", async ({ page, tabelo }) => {
 	expect(file.body).toContain("Ingrid");
 });
 
+test("source edits preserve whitespace and adjacent Jira escapes in CSV", async ({
+	page,
+	tabelo,
+}) => {
+	const value = "  start\n\\end  ";
+	await tabelo
+		.source("markdown")
+		.fill("| Name |\n| --- |\n| &#32;&#32;start<br>\\\\end&#32;&#32; |");
+	await expect.poll(() => tabelo.cell(1, 1).textContent()).toBe(value);
+
+	await tabelo.choosePaneView("markdown", "jira");
+	const jiraSource = "||Name||\n|  start\\\\&#92;end  |";
+	await expect
+		.poll(() =>
+			tabelo
+				.source("jira")
+				.evaluate((element) => (element as HTMLElement).innerText),
+		)
+		.toBe(jiraSource);
+	await tabelo.source("jira").fill(jiraSource);
+	await expect.poll(() => tabelo.cell(1, 1).textContent()).toBe(value);
+
+	const file = await savedFile(page, async () => {
+		await openChooser(page);
+		await page
+			.getByRole("dialog")
+			.getByRole("radio", { name: copy.views.csv.label })
+			.click();
+		await page
+			.getByRole("button", { name: copy.actions.download, exact: true })
+			.click();
+	});
+
+	expect(file.body).toBe('Name\n"  start\n\\end  "');
+});
+
 test("unchecking the option omits the header row from the file only", async ({
 	page,
 	tabelo,

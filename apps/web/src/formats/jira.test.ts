@@ -22,6 +22,23 @@ describe("jira cell escaping", () => {
 		const escaped = escapeJiraCell("a | b");
 		expect(escaped.replace(/\\\|/g, "")).not.toContain("|");
 	});
+
+	it.each([
+		["newline then backslash", "\n\\", "\\\\&#92;"],
+		["backslash then newline", "\\\n", "&#92;\\\\"],
+		["newline then two backslashes", "\n\\\\", "\\\\&#92;&#92;"],
+		["two literal backslashes", "\\\\", "&#92;&#92;"],
+		["every token", "&\\|\n", "&amp;&#92;\\|\\\\"],
+	])("emits an injective source for %s", (_case, value, expected) => {
+		expect(escapeJiraCell(value)).toBe(expected);
+		expect(unescapeJiraCell(expected)).toBe(value);
+	});
+
+	it("decodes entities once and keeps entity-like user text literal", () => {
+		for (const value of ["&amp;", "&#92;", "&amp;#92;"]) {
+			expect(unescapeJiraCell(escapeJiraCell(value))).toBe(value);
+		}
+	});
 });
 
 describe("jira parsing", () => {
