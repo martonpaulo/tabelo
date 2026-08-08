@@ -508,10 +508,11 @@ After hydration, an initially empty document with no source draft presents the
 existing Start with surface in the centre of the workspace. The normal workspace
 stays visible only as blurred context and is inert; the global action button is hidden
 until the user chooses an empty table, pastes, or imports. This is an onboarding
-surface, not a dialog: it does not claim modal semantics and never appears over
-saved content, an unfinished draft, or a table the user emptied during the
-current visit. A trusted `Mod`+`V` paste event starts the table directly while
-this surface is open.
+surface, not a dialog: it does not claim modal semantics and never appears
+automatically over saved content, an unfinished draft, or a table the user
+emptied during the current visit. An explicit New table command resets the
+document first and then returns to this surface. A trusted `Mod`+`V` paste event
+starts the table directly while the surface is open.
 
 Its three entry actions use the shared decision-action group: right-aligned in
 one horizontal row at every supported width. Ordinary alternatives come first
@@ -526,8 +527,8 @@ and only when the command has a choice to make that the current menu cannot
 hold without cascading: a choice with its own options, one that needs stating
 before it happens, or the layout gallery opened from the global menu. The
 download chooser holds format-specific output choices. New table also uses a
-dialog when the current document or a pending draft would be lost; an already
-empty document with no draft clears without interruption.
+dialog when the current visit has held valid content or a pending draft would
+be lost; an untouched session returns to onboarding without interruption.
 
 Adding a view qualifies under **"needs stating before it happens"**, not under
 length. Seven views are something a menu holds comfortably, so the list is not

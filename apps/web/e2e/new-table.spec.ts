@@ -32,10 +32,11 @@ test("a new table confirms before clearing document content", async ({
 
 	await tabelo.runAppCommand("newTable");
 	await dialog.getByRole("button", { name: copy.newTable.confirm }).click();
+	const welcome = tabelo.page.getByRole("region", { name: copy.empty.title });
+	await expect(welcome).toBeVisible();
+	await expect(welcome).toBeFocused();
+	await welcome.getByRole("button", { name: copy.empty.emptyAction }).click();
 	await expect(tabelo.cell(1, 1)).toHaveText("");
-	await expect(
-		tabelo.page.getByRole("heading", { name: copy.empty.title }),
-	).toHaveCount(0);
 });
 
 test("restored content remains protected after it is emptied", async ({
@@ -68,15 +69,64 @@ test("an unfinished source draft also requires confirmation", async ({
 	await expect(
 		tabelo.page.getByRole("dialog", { name: copy.newTable.title }),
 	).toBeVisible();
+	await tabelo.page
+		.getByRole("dialog", { name: copy.newTable.title })
+		.getByRole("button", { name: copy.newTable.confirm })
+		.click();
+	await expect(
+		tabelo.page.getByRole("region", { name: copy.empty.title }),
+	).toBeFocused();
 });
 
-test("an untouched empty table clears without an unnecessary dialog", async ({
+test("an untouched empty table returns to onboarding without a dialog", async ({
 	tabelo,
 }) => {
 	await tabelo.runAppCommand("newTable");
 	await expect(
 		tabelo.page.getByRole("dialog", { name: copy.newTable.title }),
 	).toHaveCount(0);
+	const welcome = tabelo.page.getByRole("region", { name: copy.empty.title });
+	await expect(welcome).toBeFocused();
+	await welcome.getByRole("button", { name: copy.empty.emptyAction }).click();
+	await expect(welcome).toHaveCount(0);
+	await expect(tabelo.cell(1, 1)).toBeVisible();
+});
+
+test("the New table welcome can start by trusted paste and file import", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.runAppCommand("newTable");
+	const welcome = page.getByRole("region", { name: copy.empty.title });
+	await expect(welcome).toBeFocused();
+
+	await page.evaluate(() => {
+		const clipboardData = new DataTransfer();
+		clipboardData.setData("text/plain", "Name\tRole\nIngrid\tDesigner");
+		const event = new Event("paste", { bubbles: true, cancelable: true });
+		Object.defineProperty(event, "clipboardData", { value: clipboardData });
+		window.dispatchEvent(event);
+	});
+	await expect(welcome).toHaveCount(0);
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+
+	await tabelo.runAppCommand("newTable");
+	await page
+		.getByRole("dialog", { name: copy.newTable.title })
+		.getByRole("button", { name: copy.newTable.confirm })
+		.click();
+	await expect(welcome).toBeFocused();
+
+	const chooserPromise = page.waitForEvent("filechooser");
+	await welcome.getByRole("button", { name: copy.actions.importFile }).click();
+	const chooser = await chooserPromise;
+	await chooser.setFiles({
+		name: "people.csv",
+		mimeType: "text/csv",
+		buffer: Buffer.from("Name,City\nPaulo,Madrid"),
+	});
+	await expect(welcome).toHaveCount(0);
+	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
 });
 
 test("an unknown path redirects to the only application route", async ({

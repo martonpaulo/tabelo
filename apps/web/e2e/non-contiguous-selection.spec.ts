@@ -241,6 +241,10 @@ test("copying two separated columns produces a well-formed two-column table", as
 		.getByRole("dialog", { name: copy.newTable.title })
 		.getByRole("button", { name: copy.newTable.confirm })
 		.click();
+	await page
+		.getByRole("region", { name: copy.empty.title })
+		.getByRole("button", { name: copy.empty.emptyAction })
+		.click();
 	await tabelo.paste(copied);
 
 	await expect(tabelo.header(1)).toHaveText("name");
