@@ -84,7 +84,7 @@ test("repeated paste is rejected when the resulting table exceeds the limit", as
 	const atLimit = Array.from({ length: IMPORT_LIMITS.rows }, (_, index) =>
 		String(index),
 	).join("\n");
-	await tabelo.paste(atLimit);
+	await tabelo.paste(atLimit, undefined, false);
 	await tabelo.cell(IMPORT_LIMITS.rows, 1).click();
 
 	await tabelo.paste("keep\nrefuse");

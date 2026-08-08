@@ -9,6 +9,7 @@ export type ClipboardSource = CodecId | "text";
 export interface ClipboardTable {
 	readonly matrix: string[][];
 	readonly source: ClipboardSource;
+	readonly headerRow?: boolean;
 	readonly alignments?: readonly Alignment[];
 	readonly warnings?: readonly ParseIssue[];
 }
@@ -25,6 +26,7 @@ function tableViaCodec(codec: TableCodec, text: string): ClipboardTable | null {
 	return {
 		matrix: normalizeMatrix(result.table.matrix),
 		source: codec.id,
+		headerRow: result.table.headerRow,
 		alignments: result.table.alignments,
 		warnings: result.warnings,
 	};
@@ -43,6 +45,7 @@ export function readClipboardTable(
 		return {
 			matrix: normalizeMatrix(html.matrix),
 			source: "html",
+			headerRow: html.headerRow,
 			alignments: html.alignments,
 		};
 	}
