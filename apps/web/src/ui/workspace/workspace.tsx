@@ -11,6 +11,7 @@ import {
 } from "@/workspace/layout";
 import { AddViewDialog } from "./add-view-dialog";
 import { ChangeViewDialog } from "./change-view-dialog";
+import { MovePaneDialog } from "./move-pane-dialog";
 import { Pane } from "./pane";
 import { useStackedWorkspace } from "./stacking";
 
@@ -28,6 +29,7 @@ type Axis = "columns" | "rows";
 type WorkspaceDialog =
 	| { readonly kind: "add-view"; readonly option: SplitOption }
 	| { readonly kind: "change-view"; readonly paneId: string }
+	| { readonly kind: "move-pane"; readonly paneId: string }
 	| null;
 
 interface ResizerProps {
@@ -133,7 +135,7 @@ export function Workspace({
 	const stacked = useStackedWorkspace();
 	const handledAddViewRequest = useRef(addViewRequest);
 
-	// Add and Change view are mutually exclusive workspace decisions. One
+	// Add, Change, and Move are mutually exclusive workspace decisions. One
 	// discriminated state prevents their portalled dialogs from ever stacking.
 	const [dialog, setDialog] = useState<WorkspaceDialog>(null);
 	const [addedPaneId, setAddedPaneId] = useState<string | null>(null);
@@ -147,6 +149,14 @@ export function Workspace({
 		(paneId: string, opener: HTMLButtonElement | null) => {
 			dialogOpenerRef.current = opener;
 			setDialog({ kind: "change-view", paneId });
+		},
+		[],
+	);
+
+	const openMovePane = useCallback(
+		(paneId: string, opener: HTMLButtonElement | null) => {
+			dialogOpenerRef.current = opener;
+			setDialog({ kind: "move-pane", paneId });
 		},
 		[],
 	);
@@ -242,6 +252,7 @@ export function Workspace({
 						}
 						onSplit={openAddView}
 						onChangeView={openChangeView}
+						onMovePane={openMovePane}
 						justAdded={pane.id === addedPaneId}
 					/>
 				);
@@ -275,6 +286,12 @@ export function Workspace({
 			<ChangeViewDialog
 				paneId={
 					interactive && dialog?.kind === "change-view" ? dialog.paneId : null
+				}
+				onClose={closeDialog}
+			/>
+			<MovePaneDialog
+				paneId={
+					interactive && dialog?.kind === "move-pane" ? dialog.paneId : null
 				}
 				onClose={closeDialog}
 			/>

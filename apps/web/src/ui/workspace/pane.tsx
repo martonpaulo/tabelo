@@ -51,6 +51,10 @@ interface PaneProps {
 		paneId: string,
 		opener: HTMLButtonElement | null,
 	) => void;
+	readonly onMovePane: (
+		paneId: string,
+		opener: HTMLButtonElement | null,
+	) => void;
 	// Set for the pane a split just created, so it says so once.
 	readonly justAdded: boolean;
 }
@@ -65,6 +69,7 @@ export const Pane = memo(function Pane({
 	splitRight,
 	onSplit,
 	onChangeView,
+	onMovePane,
 	justAdded,
 }: PaneProps) {
 	const view = getView(pane.view);
@@ -115,6 +120,7 @@ export const Pane = memo(function Pane({
 						paneId={pane.id}
 						view={view}
 						onChangeView={(opener) => onChangeView(pane.id, opener)}
+						onMovePane={(opener) => onMovePane(pane.id, opener)}
 					/>
 				</Panel.Header>
 

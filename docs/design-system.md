@@ -542,6 +542,13 @@ disable it and explain, where a menu that did the same would be a menu whose
 items mostly do nothing. The choice is also unwound by Cancel with nothing
 changed, which is the shape of a decision rather than of a command.
 
+Moving a pane also qualifies because the choice is spatial. The Move pane
+dialog shows every other occupied position in the current preset through a
+small layout diagram and a worded name such as "Top left" or "Right, full
+height". The diagram is supplemental; the words carry the destination for
+assistive technology. Choosing one swaps the two pane positions without
+changing the preset or pane count.
+
 A dialog is never used to announce something. Notices belong in the notice
 layer described in §5: it floats above the workspace without modal semantics,
 without a focus trap, and without blocking the work underneath.
@@ -890,6 +897,14 @@ per keystroke.
 - Download and Layout remain document-level commands in the floating menu and
   keep their dialogs. Add view remains in the floating menu and on splittable
   pane edges; it never moves into the pane actions menu.
+- Move pane sits between Change view and Close view in the final pane group. It
+  opens the spatial destination dialog and offers every other occupied position
+  in the current preset. Choosing a destination swaps positions while pane id,
+  view, zoom, wrap, draft ownership, and active state move together. The pane
+  array returns to visual reading order, the preset and pane count stay fixed,
+  and the operation is persisted workspace presentation rather than document
+  history. At one pane, Move pane stays visible and disabled with a written
+  reason.
 - A view already open in another pane remains listed but disabled, with a
   tooltip explaining that it is already open. The current
   pane's own view remains selected and enabled. No workspace may show two

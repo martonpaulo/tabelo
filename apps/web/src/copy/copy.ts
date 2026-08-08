@@ -6,7 +6,7 @@ import type {
 	PreconditionFailure,
 } from "@/formats/types";
 import type { ImportError } from "@/import/prepare";
-import type { SplitEdge } from "@/workspace/layout";
+import type { PanePositionId, SplitEdge } from "@/workspace/layout";
 
 // Every user-visible string lives here. One place to keep the voice
 // consistent, and the seam a locale would plug into if Tabelo ever ships one.
@@ -159,6 +159,18 @@ export const copy = {
 		quad: { label: "Four panes", description: "All four views at once" },
 	},
 
+	panePositions: {
+		full: "Full workspace",
+		"top-full-width": "Top, full width",
+		"bottom-full-width": "Bottom, full width",
+		"left-full-height": "Left, full height",
+		"right-full-height": "Right, full height",
+		"top-left": "Top left",
+		"top-right": "Top right",
+		"bottom-left": "Bottom left",
+		"bottom-right": "Bottom right",
+	} satisfies Record<PanePositionId, string>,
+
 	newTable: {
 		title: "Start a new table?",
 		description:
@@ -186,6 +198,10 @@ export const copy = {
 		changeView: "Change view",
 		changeViewHint: (label: string) =>
 			`Choose the view shown in the ${label} pane.`,
+		movePane: "Move pane",
+		movePaneHint: (label: string) => `Choose where to move the ${label} pane.`,
+		moveDestination: "Pane position",
+		destinationView: (label: string) => `Currently ${label}`,
 		addView: "Add view",
 		closeView: "Close view",
 		paneActions: "Pane actions",
@@ -211,6 +227,8 @@ export const copy = {
 		zoomDefault: "Zoom is already at 100%.",
 		zoomMaximum: "Zoom is already at 200%.",
 		closeOnlyView: "At least one view must stay open.",
+		moveOnlyView: "Add another view before moving this pane.",
+		chooseMoveDestination: "Choose an available pane position first.",
 		addViewMaximum: "The maximum is four views.",
 		undo: "There is nothing to undo.",
 		redo: "There is nothing to redo.",

@@ -8,13 +8,17 @@ import {
 	layoutPresets,
 	layoutSplitsColumns,
 	layoutSplitsRows,
+	movePane,
+	movePaneDestinations,
 	paneCount,
+	panePositionId,
 	SLOT_ORDER,
 	type SlotId,
 	smallerLayout,
 	splitOptions,
 	type Workspace,
 	type WorkspacePane,
+	workspacePanesTileLayout,
 } from "./layout";
 
 // The invariant that makes the workspace safe: every preset tiles the 2x2 grid
@@ -423,6 +427,88 @@ describe("pane count transitions", () => {
 				.find((pane) => pane.id === before[3].id)
 				?.slots.includes(before[3].slots[0]),
 		).toBe(true);
+	});
+});
+
+describe("moving panes", () => {
+	it.each(layoutIds)("offers every other occupied position in %s", (id) => {
+		const workspace = workspaceFor(id);
+		for (const pane of workspace.panes) {
+			const destinations = movePaneDestinations(workspace, pane.id);
+			expect(destinations).toHaveLength(workspace.panes.length - 1);
+			expect(destinations.map((destination) => destination.paneId)).toEqual(
+				workspace.panes
+					.filter((candidate) => candidate.id !== pane.id)
+					.map((candidate) => candidate.id),
+			);
+		}
+	});
+
+	it.each([
+		[["a", "b", "c", "d"], "full"],
+		[["a", "b"], "top-full-width"],
+		[["c", "d"], "bottom-full-width"],
+		[["a", "c"], "left-full-height"],
+		[["b", "d"], "right-full-height"],
+		[["a"], "top-left"],
+		[["b"], "top-right"],
+		[["c"], "bottom-left"],
+		[["d"], "bottom-right"],
+	] as const)("names %s as %s", (slots, expected) => {
+		expect(panePositionId(slots)).toBe(expected);
+	});
+
+	it.each(layoutIds)("swaps every valid pane pair in %s", (id) => {
+		const workspace = workspaceFor(id);
+		for (const source of workspace.panes) {
+			for (const destination of workspace.panes) {
+				if (source.id === destination.id) continue;
+				const moved = movePane(workspace, source.id, destination.id);
+				expect(moved).not.toBeNull();
+				if (!moved) continue;
+
+				expect(workspacePanesTileLayout(moved.layout, moved.panes)).toBe(true);
+				expect(moved.activePaneId).toBe(source.id);
+				expect(moved.panes.map((pane) => pane.slots)).toEqual(
+					workspace.panes.map((pane) => pane.slots),
+				);
+				expect(moved.panes.find((pane) => pane.id === source.id)?.slots).toBe(
+					destination.slots,
+				);
+				expect(
+					moved.panes.find((pane) => pane.id === destination.id)?.slots,
+				).toBe(source.slots);
+				for (const pane of moved.panes) {
+					const original = workspace.panes.find(
+						(candidate) => candidate.id === pane.id,
+					);
+					expect(pane).toMatchObject({
+						id: original?.id,
+						view: original?.view,
+						zoom: original?.zoom,
+						wrap: original?.wrap,
+					});
+				}
+			}
+		}
+	});
+
+	it("refuses missing, same, and invalid destinations", () => {
+		const workspace = workspaceFor("columns");
+		const source = workspace.panes[0].id;
+		expect(movePane(workspace, source, source)).toBeNull();
+		expect(movePane(workspace, source, "missing")).toBeNull();
+		expect(movePane(workspace, "missing", workspace.panes[1].id)).toBeNull();
+		expect(
+			movePane(
+				{
+					...workspace,
+					panes: workspace.panes.map((pane) => ({ ...pane, slots: ["a"] })),
+				},
+				source,
+				workspace.panes[1].id,
+			),
+		).toBeNull();
 	});
 });
 

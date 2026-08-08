@@ -13,6 +13,7 @@ import {
 import {
 	ChevronDown,
 	ClipboardCopy,
+	Move as MoveIcon,
 	Replace,
 	RotateCcw,
 	WrapText,
@@ -69,10 +70,12 @@ export function PaneMenu({
 	paneId,
 	view,
 	onChangeView,
+	onMovePane,
 }: {
 	readonly paneId: string;
 	readonly view: ViewDefinition;
 	readonly onChangeView: (opener: HTMLButtonElement | null) => void;
+	readonly onMovePane: (opener: HTMLButtonElement | null) => void;
 }) {
 	const triggerRef = useRef<HTMLButtonElement>(null);
 	const menuDialog = useMenuDialogCommand();
@@ -88,6 +91,7 @@ export function PaneMenu({
 	const canClose = useTabeloStore(
 		(state) => smallerLayout(state.workspace.layout) !== undefined,
 	);
+	const canMove = useTabeloStore((state) => state.workspace.panes.length > 1);
 	const document = useTabeloStore((state) => state.document);
 	const currentViewFailure = view.codec
 		? canSerialize(view.codec, document)
@@ -254,6 +258,19 @@ export function PaneMenu({
 						<Replace aria-hidden />
 						{copy.workspace.changeView}
 					</DropdownMenuItem>
+					<DisabledTooltip
+						reason={canMove ? undefined : copy.disabled.moveOnlyView}
+					>
+						<DropdownMenuItem
+							disabled={!canMove}
+							onClick={() =>
+								menuDialog.runAfterClose(() => onMovePane(triggerRef.current))
+							}
+						>
+							<MoveIcon aria-hidden />
+							{copy.workspace.movePane}
+						</DropdownMenuItem>
+					</DisabledTooltip>
 
 					{/* Adding a view is not here. It belongs to the edge a pane would be
 					    split along, because that edge is what decides where the new pane

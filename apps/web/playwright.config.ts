@@ -16,6 +16,7 @@ const firefoxContractSpecs = [
 	"**/import.spec.ts",
 	"**/new-table.spec.ts",
 	"**/overscroll.spec.ts",
+	"**/pane-move.spec.ts",
 	"**/persistence.spec.ts",
 	"**/responsive.spec.ts",
 	"**/smoke.spec.ts",

@@ -125,6 +125,9 @@ test("pane actions follow content, display, then pane reading order", async ({
 	const changePosition = await positionOf(
 		menu.getByRole("menuitem", { name: copy.workspace.changeView }),
 	);
+	const movePosition = await positionOf(
+		menu.getByRole("menuitem", { name: copy.workspace.movePane }),
+	);
 	const closePosition = await positionOf(
 		menu.getByRole("menuitem", { name: copy.workspace.closeView }),
 	);
@@ -134,7 +137,8 @@ test("pane actions follow content, display, then pane reading order", async ({
 	expect(copyPosition).toBeLessThan(zoomPosition);
 	expect(zoomPosition).toBeLessThan(wrapPosition);
 	expect(wrapPosition).toBeLessThan(changePosition);
-	expect(changePosition).toBeLessThan(closePosition);
+	expect(changePosition).toBeLessThan(movePosition);
+	expect(movePosition).toBeLessThan(closePosition);
 	await expect(
 		menu.getByRole("menuitem", { name: copy.actions.downloadTable }),
 	).toHaveCount(0);

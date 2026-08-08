@@ -148,7 +148,10 @@ test("the range ends stop the commands that would leave it", async ({
 	await expect(
 		menu.getByRole("menuitem", { name: copy.workspace.closeView }),
 	).toBeDisabled();
-	await menu.getByRole("menuitem", { name: copy.workspace.closeView }).hover();
+	await expect(
+		menu.getByRole("menuitem", { name: copy.workspace.movePane }),
+	).toBeDisabled();
+	await menu.getByRole("menuitem", { name: copy.workspace.movePane }).hover();
 	await expect(tabelo.page.getByRole("tooltip")).toBeVisible();
 	await tabelo.page.keyboard.press("Escape");
 
