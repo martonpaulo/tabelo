@@ -224,18 +224,20 @@ export function AppMenu({
 				</DropdownMenuGroup>
 
 				<DropdownMenuSeparator />
-				<DropdownMenuItem
-					render={
-						<a
-							href="https://github.com/martonpaulo/tabelo"
-							target="_blank"
-							rel="noreferrer"
-						/>
-					}
-				>
-					<ExternalLink aria-hidden />
-					{copy.actions.github}
-				</DropdownMenuItem>
+				<DropdownMenuGroup>
+					<DropdownMenuItem
+						render={
+							<a
+								href="https://github.com/martonpaulo/tabelo"
+								target="_blank"
+								rel="noreferrer"
+							/>
+						}
+					>
+						<ExternalLink aria-hidden />
+						{copy.actions.github}
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

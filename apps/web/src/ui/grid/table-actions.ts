@@ -40,6 +40,8 @@ export interface TableAction {
 
 export interface TableActionGroup {
 	readonly id: string;
+	readonly label?: string;
+	readonly labelId?: string;
 	readonly actions: readonly TableAction[];
 }
 
@@ -324,8 +326,18 @@ export function buildTableActions(
 	return [
 		{ id: "clipboard", actions: clipboard },
 		{ id: "insert", actions: insert },
-		{ id: "edit", actions: edit },
-		{ id: "move", actions: move },
+		{
+			id: "edit",
+			label: copy.actions.edit,
+			labelId: "table-actions-edit-label",
+			actions: edit,
+		},
+		{
+			id: "move",
+			label: copy.actions.move,
+			labelId: "table-actions-move-label",
+			actions: move,
+		},
 		{ id: "remove", actions: remove },
 	].filter((group) => group.actions.length > 0);
 }

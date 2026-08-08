@@ -1,5 +1,7 @@
 import {
+	DropdownMenuGroup,
 	DropdownMenuItem,
+	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
 } from "@tabelo/ui/components/dropdown-menu";
@@ -22,27 +24,34 @@ export function DropdownTableActions({
 	return buildTableActions({ axis }).map((group, groupIndex) => (
 		<Fragment key={group.id}>
 			{groupIndex > 0 ? <DropdownMenuSeparator /> : null}
-			{group.actions.map((action) => (
-				<DisabledTooltip
-					key={action.id}
-					reason={action.disabled ? action.disabledReason : undefined}
-				>
-					<DropdownMenuItem
-						disabled={action.disabled}
-						variant={action.danger ? "destructive" : "default"}
-						onClick={() => {
-							beforeRun?.();
-							action.run();
-						}}
+			<DropdownMenuGroup aria-labelledby={group.labelId}>
+				{group.label && group.labelId ? (
+					<DropdownMenuLabel id={group.labelId}>
+						{group.label}
+					</DropdownMenuLabel>
+				) : null}
+				{group.actions.map((action) => (
+					<DisabledTooltip
+						key={action.id}
+						reason={action.disabled ? action.disabledReason : undefined}
 					>
-						<action.icon aria-hidden />
-						{action.label}
-						{action.shortcut ? (
-							<DropdownMenuShortcut>{action.shortcut}</DropdownMenuShortcut>
-						) : null}
-					</DropdownMenuItem>
-				</DisabledTooltip>
-			))}
+						<DropdownMenuItem
+							disabled={action.disabled}
+							variant={action.danger ? "destructive" : "default"}
+							onClick={() => {
+								beforeRun?.();
+								action.run();
+							}}
+						>
+							<action.icon aria-hidden />
+							{action.label}
+							{action.shortcut ? (
+								<DropdownMenuShortcut>{action.shortcut}</DropdownMenuShortcut>
+							) : null}
+						</DropdownMenuItem>
+					</DisabledTooltip>
+				))}
+			</DropdownMenuGroup>
 		</Fragment>
 	));
 }

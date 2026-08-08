@@ -48,4 +48,4 @@ export const singleSelectionIndicatorFillStyles =
 
 export const menuSubTriggerLayoutStyles = `flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive px-2 py-2 text-sm leading-snug outline-hidden data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
 
-export const menuSeparatorStyles = "-mx-1 my-1 h-[0.0625rem] bg-border";
+export const menuSeparatorStyles = "-mx-1 my-2 h-[0.0625rem] bg-border";

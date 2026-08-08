@@ -233,19 +233,25 @@ export function PaneMenu({
 						</DropdownMenuItem>
 					</DisabledTooltip>
 
-					{view.kind === "source" ? (
-						<DropdownMenuCheckboxItem
-							checked={wrap}
-							closeOnClick={false}
-							onCheckedChange={(checked) =>
-								useTabeloStore.getState().setPaneWrap(paneId, checked)
-							}
-						>
-							<WrapText aria-hidden />
-							{copy.workspace.wrapSource}
-						</DropdownMenuCheckboxItem>
-					) : null}
 				</DropdownMenuGroup>
+
+				{view.kind === "source" ? (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuCheckboxItem
+								checked={wrap}
+								closeOnClick={false}
+								onCheckedChange={(checked) =>
+									useTabeloStore.getState().setPaneWrap(paneId, checked)
+								}
+							>
+								<WrapText aria-hidden />
+								{copy.workspace.wrapSource}
+							</DropdownMenuCheckboxItem>
+						</DropdownMenuGroup>
+					</>
+				) : null}
 
 				<DropdownMenuSeparator />
 

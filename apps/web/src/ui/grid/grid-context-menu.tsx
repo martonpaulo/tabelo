@@ -1,7 +1,9 @@
 import {
 	ContextMenu,
 	ContextMenuContent,
+	ContextMenuGroup,
 	ContextMenuItem,
+	ContextMenuLabel,
 	ContextMenuSeparator,
 	ContextMenuShortcut,
 	ContextMenuTrigger,
@@ -70,24 +72,33 @@ export function GridContextMenu({
 				{buildTableActions({ axis }).map((group, index) => (
 					<Fragment key={group.id}>
 						{index > 0 ? <ContextMenuSeparator /> : null}
-						{group.actions.map((action) => (
-							<DisabledTooltip
-								key={action.id}
-								reason={action.disabled ? action.disabledReason : undefined}
-							>
-								<ContextMenuItem
-									disabled={action.disabled}
-									variant={action.danger ? "destructive" : "default"}
-									onClick={action.run}
+						<ContextMenuGroup aria-labelledby={group.labelId}>
+							{group.label && group.labelId ? (
+								<ContextMenuLabel id={group.labelId}>
+									{group.label}
+								</ContextMenuLabel>
+							) : null}
+							{group.actions.map((action) => (
+								<DisabledTooltip
+									key={action.id}
+									reason={action.disabled ? action.disabledReason : undefined}
 								>
-									<action.icon aria-hidden />
-									{action.label}
-									{action.shortcut ? (
-										<ContextMenuShortcut>{action.shortcut}</ContextMenuShortcut>
-									) : null}
-								</ContextMenuItem>
-							</DisabledTooltip>
-						))}
+									<ContextMenuItem
+										disabled={action.disabled}
+										variant={action.danger ? "destructive" : "default"}
+										onClick={action.run}
+									>
+										<action.icon aria-hidden />
+										{action.label}
+										{action.shortcut ? (
+											<ContextMenuShortcut>
+												{action.shortcut}
+											</ContextMenuShortcut>
+										) : null}
+									</ContextMenuItem>
+								</DisabledTooltip>
+							))}
+						</ContextMenuGroup>
 					</Fragment>
 				))}
 			</ContextMenuContent>
