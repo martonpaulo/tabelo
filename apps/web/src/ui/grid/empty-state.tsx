@@ -1,4 +1,5 @@
 import { ClipboardPaste, Table2, Upload } from "lucide-react";
+import { useLayoutEffect, useRef } from "react";
 import { copy } from "@/copy/copy";
 import { pasteFromClipboard } from "@/ui/clipboard-actions";
 import { importTableFile } from "@/ui/import";
@@ -18,11 +19,19 @@ export function EmptyState({
 	readonly onStartEmpty: () => void;
 	readonly onStarted: () => void;
 }) {
+	const sectionRef = useRef<HTMLElement>(null);
+
+	useLayoutEffect(() => {
+		sectionRef.current?.focus();
+	}, []);
+
 	return (
 		<div className="absolute inset-0 z-40 flex items-center justify-center bg-surface-app/60 p-4 supports-backdrop-filter:backdrop-blur-sm">
 			<section
+				ref={sectionRef}
 				aria-labelledby="empty-state-title"
-				className="w-auto min-w-[min(28rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface bg-popover p-4 text-popover-foreground shadow-md ring-1 ring-line-strong"
+				tabIndex={-1}
+				className="w-auto min-w-[min(28rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface bg-popover p-4 text-popover-foreground shadow-md ring-1 ring-line-strong focus-visible:outline-2 focus-visible:outline-selection-edge focus-visible:-outline-offset-2"
 			>
 				<h2 id="empty-state-title" className="font-medium text-sm">
 					{copy.empty.title}

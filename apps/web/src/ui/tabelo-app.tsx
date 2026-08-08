@@ -40,11 +40,19 @@ export function TabeloApp() {
 		if (opener?.isConnected) requestAnimationFrame(() => opener.focus());
 	};
 
+	const startNewTable = () => {
+		// The app-menu trigger disappears behind the welcome surface, so a confirmed
+		// dialog must not return focus to that now-inert opener as it closes.
+		dialogOpenerRef.current = null;
+		useTabeloStore.getState().resetDocument();
+		setRootDialog(null);
+		setWelcomeOpen(true);
+	};
+
 	const requestNewTable = () => {
 		const state = useTabeloStore.getState();
 		if (!hasSessionWork(state)) {
-			state.resetDocument();
-			setWelcomeOpen(false);
+			startNewTable();
 			return;
 		}
 		openRootDialog("new-table");
@@ -56,7 +64,7 @@ export function TabeloApp() {
 	useLayoutEffect(() => {
 		useTabeloStore.getState().hydrate();
 		const state = useTabeloStore.getState();
-		setWelcomeOpen(isDocumentBlank(state.document) && state.draft === null);
+		setWelcomeOpen(isDocumentBlank(state.document) && !hasSessionWork(state));
 		const stopAutosave = startAutosave();
 		setHydrated(true);
 		return stopAutosave;
@@ -184,7 +192,7 @@ export function TabeloApp() {
 			<NewTableDialog
 				open={rootDialog === "new-table"}
 				onOpenChange={closeRootDialog}
-				onConfirm={() => useTabeloStore.getState().resetDocument()}
+				onConfirm={startNewTable}
 			/>
 		</div>
 	);

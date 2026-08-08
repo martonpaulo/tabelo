@@ -12,6 +12,7 @@ const firefoxContractSpecs = [
 	"**/download.spec.ts",
 	"**/grid-keyboard.spec.ts",
 	"**/history.spec.ts",
+	"**/new-table.spec.ts",
 	"**/overscroll.spec.ts",
 	"**/persistence.spec.ts",
 	"**/responsive.spec.ts",
