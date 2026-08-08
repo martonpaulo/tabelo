@@ -1105,6 +1105,10 @@ While a cell or header editor is open it owns every key, and the grid's own
 handler stands down: a `Backspace` in an editor must never delete the row the
 editor is sitting in.
 
+Moving the pointer to another cell, header, grid control, or surface outside
+the grid commits the open editor before the destination takes focus, just like
+`Enter` or `Tab`. `Escape` is the only exit that discards the in-progress value.
+
 **Every pointer affordance needs a keyboard equal.** Column width is the case
 that proves it: the drag handle stays pointer-only and `aria-hidden`, and the
 column menu carries the same widen, narrow, and reset. That is what makes

@@ -19,6 +19,16 @@ function focusedCell(page: Page): Promise<string | null> {
 	);
 }
 
+async function typeWithoutCommitting(
+	target: Locator,
+	editor: Locator,
+	value: string,
+): Promise<void> {
+	await target.dblclick();
+	await expect(editor).toBeFocused();
+	await editor.fill(value);
+}
+
 test("Tab walks the grid in reading order and wraps around after the last cell", async ({
 	page,
 	tabelo,
@@ -114,6 +124,90 @@ test("a header cell is renamed with Enter or F2 like any cell", async ({
 	await expect(tabelo.grid().getByRole("textbox")).toHaveValue("R");
 	await page.keyboard.press("Enter");
 	await expect(tabelo.header(1)).toHaveText("R");
+});
+
+test("pointer exits commit the active cell editor before focus moves", async ({
+	page,
+	tabelo,
+}) => {
+	const grid = tabelo.grid();
+	const firstCell = tabelo.cell(1, 1);
+	const secondCell = tabelo.cell(1, 2);
+
+	await typeWithoutCommitting(
+		firstCell,
+		grid.getByRole("textbox", { name: copy.a11y.cellEditor(0, 0) }),
+		"Ingrid",
+	);
+	await secondCell.click();
+	await expect(firstCell).toHaveText("Ingrid");
+	await expect(secondCell).toBeFocused();
+
+	// The pointer exit creates one ordinary document step, not a second commit
+	// for the blur plus the receiving cell's pointer handler.
+	await tabelo.runAppCommand("undo");
+	await expect(firstCell).toHaveText("");
+
+	await typeWithoutCommitting(
+		firstCell,
+		grid.getByRole("textbox", { name: copy.a11y.cellEditor(0, 0) }),
+		"Paulo",
+	);
+	await tabelo.header(2).click();
+	await expect(firstCell).toHaveText("Paulo");
+	await expect(tabelo.header(2)).toBeFocused();
+
+	await typeWithoutCommitting(
+		tabelo.cell(2, 1),
+		grid.getByRole("textbox", { name: copy.a11y.cellEditor(1, 0) }),
+		"Rio",
+	);
+	const rowMenuTrigger = grid.getByRole("button", {
+		name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(1)}`,
+	});
+	await tabelo.rowIndex(3).hover();
+	await expect(rowMenuTrigger).toBeVisible();
+	await rowMenuTrigger.click();
+	await expect(tabelo.cell(2, 1)).toHaveText("Rio");
+	const axisMenu = page.getByRole("menu", {
+		name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(1)}`,
+	});
+	await expect(axisMenu).toBeVisible();
+	await page.keyboard.press("Escape");
+	await expect(axisMenu).toBeHidden();
+
+	await typeWithoutCommitting(
+		tabelo.cell(3, 1),
+		grid.getByRole("textbox", { name: copy.a11y.cellEditor(2, 0) }),
+		"Madrid",
+	);
+	const paneMenu = await tabelo.openPaneMenu("grid");
+	await expect(tabelo.cell(3, 1)).toHaveText("Madrid");
+	await expect(paneMenu).toBeVisible();
+});
+
+test("pointer exit commits a header edit and Escape remains the discard path", async ({
+	tabelo,
+}) => {
+	const grid = tabelo.grid();
+	const header = tabelo.header(1);
+
+	await typeWithoutCommitting(
+		header,
+		grid.getByRole("textbox", { name: copy.a11y.headerEditor("", 0) }),
+		"Name",
+	);
+	await tabelo.cell(1, 1).click();
+	await expect(header).toHaveText("Name");
+	await expect(tabelo.cell(1, 1)).toBeFocused();
+
+	await typeWithoutCommitting(
+		header,
+		grid.getByRole("textbox", { name: copy.a11y.headerEditor("Name", 0) }),
+		"Role",
+	);
+	await grid.getByRole("textbox").press("Escape");
+	await expect(header).toHaveText("Name");
 });
 
 test("the column is selected from the index strip", async ({
