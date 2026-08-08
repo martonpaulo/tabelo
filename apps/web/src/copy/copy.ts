@@ -56,7 +56,8 @@ const views = {
 	"html-preview": {
 		label: "Rendered preview",
 		shortLabel: "Preview",
-		description: "A plain document table, as it reads outside Tabelo",
+		description:
+			"A formatted table for pasting into Microsoft Word, Microsoft Teams, Slack, Google Docs, Gmail, and similar rich-text apps",
 	},
 } as const;
 
@@ -353,7 +354,7 @@ export const copy = {
 		rowActions: "Row actions",
 		columnActions: "Column actions",
 		copySource: "Copy source",
-		copyFormattedTable: "Copy formatted table",
+		copyFormattedTable: "Copy rich-text table",
 		downloadTable: "Download table",
 		download: "Download",
 		cancel: "Cancel",
