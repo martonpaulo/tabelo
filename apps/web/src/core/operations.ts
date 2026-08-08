@@ -266,8 +266,9 @@ export function clearCells(
 	return changed ? { columns, rows } : document;
 }
 
-// Writes a matrix starting at the given cell, growing the table when the
-// payload runs past its current edges. Pasting is a primary way to build a
+// Writes a matrix starting at non-negative data-row and column indexes,
+// growing the table when the payload runs past its current edges. Selection
+// sentinels are converted by the caller. Pasting is a primary way to build a
 // table here, so it must never silently truncate.
 export function pasteMatrix(
 	document: TableDocument,
