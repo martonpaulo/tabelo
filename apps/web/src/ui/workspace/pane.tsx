@@ -123,6 +123,7 @@ export const Pane = memo(function Pane({
 				<Panel.Body
 					style={{ "--pane-zoom": pane.zoom } as React.CSSProperties}
 					className={cn(
+						view.kind === "grid" && "tabelo-grid-scroller",
 						view.kind === "source" && "overflow-hidden",
 						view.capabilities.editable
 							? "bg-surface-panel"

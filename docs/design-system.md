@@ -1234,3 +1234,19 @@ accidental: body cells paint under the row gutter (`z-10`), which paints under
 the strip and header cells (`z-20`), which paint under the two corners that
 stick on both axes (`z-30`). A sticky cell must not also be `relative`: the
 later rule wins and turns the sticky offset into a static shift.
+
+The pane body is the grid's scroll container. Its optimal viewing region uses
+`scroll-padding-top` equal to the strip plus one content line box and
+`scroll-padding-left` equal to the gutter. Native focus scrolling and any
+future `scrollIntoView` caller therefore leave a target fully clear of sticky
+chrome. The strip and gutter remain fixed chrome while the content line box
+follows pane zoom, so the compensation derives from the same tokens as the
+layers it reserves.
+
+Dragging a cell, row number, or column letter past the pane edge autoscrolls the
+grid on the axes that gesture owns and continues extending the selection. One
+controller owns every grid drag, clamps velocity, and stops at the document
+edge; reorder and fill gestures consume it rather than creating parallel frame
+loops. Reduced motion keeps the capability but advances in discrete rows or
+columns. `Shift` plus the arrow keys is the keyboard equal: it extends the same
+selection while native focus scrolling keeps the focused cell visible.

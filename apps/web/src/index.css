@@ -205,6 +205,16 @@ body {
 	overscroll-behavior: contain;
 }
 
+/* Native focus scrolling and scrollIntoView use this optimal viewing region,
+   keeping their target clear of the grid chrome without measured offsets. */
+.tabelo-grid-scroller {
+	scroll-padding-top: calc(
+		var(--grid-strip-h) +
+		var(--spacing-content-line-box)
+	);
+	scroll-padding-left: var(--grid-gutter-w);
+}
+
 ::selection {
 	background-color: var(--text-selection-fill);
 }
