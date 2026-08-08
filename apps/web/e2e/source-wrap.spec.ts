@@ -28,9 +28,6 @@ test("source panes scroll both axes by default and persist wrapping independentl
 	await tabelo.paste(
 		["Column 1", ...Array.from({ length: 50 }, () => longValue)].join("\n"),
 	);
-	// The paste raises the header guess, which floats over the pane header the
-	// next step needs to reach.
-	await tabelo.dismissNotices();
 	await tabelo.choosePaneView("markdown", "tsv");
 
 	await expect

@@ -99,11 +99,12 @@ These are normative and were resolved deliberately. See `CONTEXT.md` for
 vocabulary and `docs/adr/` for the reasoning.
 
 - **Every table has exactly one header row.** There is no headerless mode and no
-  `hasHeader` document state. Header detection is an **import-time** decision
-  only: when pasting or importing, a heuristic decides whether row 1 becomes the
-  header, and an undoable correction generates `Column 1..N` headers and pushes
-  row 1 down. CSV export offers an "include header row" option. That is an
-  output preference, never document state.
+  `hasHeader` document state. Header presence is an **import-time** fact: formats
+  that identify a header declare it, and CSV, TSV, or plain text asks whether row
+  1 is the header before replacing the document. Choosing data creates empty
+  headers; nothing infers from cell values. Paste into an existing selection is
+  a matrix write and never asks. CSV export offers an "include header row"
+  option. That is an output preference, never document state.
 - **Markdown serialization is lossless.** Escape `|` as `\|` and newlines as
   `<br>`, and encode meaningful boundary whitespace before adding readable
   alignment padding. Literal ampersands protect entity-like user text, and the

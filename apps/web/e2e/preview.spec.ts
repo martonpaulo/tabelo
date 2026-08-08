@@ -37,9 +37,6 @@ function borderWidths(table: Locator): Promise<number[]> {
 }
 
 async function openPreview(tabelo: TabeloPage): Promise<Locator> {
-	// A paste leaves the header-guess notice floating over the pane header, and
-	// the pane menu is underneath it.
-	await tabelo.dismissNotices();
 	await tabelo.choosePaneView("markdown", "html-preview");
 	return tabelo.pane("html-preview");
 }

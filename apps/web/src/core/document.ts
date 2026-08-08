@@ -53,29 +53,6 @@ export function normalizeMatrix(
 	);
 }
 
-// Import-time header decision. See AGENTS.md: this never becomes document
-// state, and the user can reverse it with one action.
-//
-// Defaults to treating row 1 as the header, because that is what a Markdown
-// table always means and what most pasted tables intend. Only positive
-// evidence that row 1 is data: a blank cell or a numeric value where headers
-// would carry labels: flips the decision.
-const NUMERIC_LIKE = /^-?[\d.,\s]*\d[\d.,\s]*%?$/;
-
-export function detectHeaderRow(
-	matrix: readonly (readonly string[])[],
-): boolean {
-	const first = matrix[0];
-	if (!first || first.length === 0) return false;
-	if (matrix.length === 1) return true;
-
-	const looksLikeData = first.some((value) => {
-		const trimmed = value.trim();
-		return trimmed === "" || NUMERIC_LIKE.test(trimmed);
-	});
-	return !looksLikeData;
-}
-
 export interface MatrixToDocumentOptions {
 	// When false, the header row is left empty and row 1 stays data. The table
 	// still has exactly one header row: it simply has no text in it yet.

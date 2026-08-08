@@ -8,18 +8,14 @@ import {
 	type NoticeUrgency,
 	type TransientNotice,
 } from "@/state/notice-queue";
-import type {
-	HeaderCorrection,
-	PendingPaneAction,
-	StorageIssue,
-} from "@/state/store";
+import type { PendingPaneAction, StorageIssue } from "@/state/store";
 import { useTabeloStore } from "@/state/store";
 
 // Everything the notice area has to say, in one list. Two kinds of thing end
 // up here and they behave differently:
 //
-// A condition (storage failure, import refusal, header guess, pending pane
-// action) is state. It lasts until whatever caused it is resolved, so it is
+// A condition (storage failure, import refusal, or pending pane action) is
+// state. It lasts until whatever caused it is resolved, so it is
 // projected on every read and disappears on its own when the state clears.
 //
 // A message is a one-off report of something that already happened. It is
@@ -51,7 +47,6 @@ export interface AppNotice {
 export interface NoticeSources {
 	readonly storageIssue: StorageIssue | null;
 	readonly inputError: ImportError | null;
-	readonly headerCorrection: HeaderCorrection | null;
 	readonly pendingPaneAction: PendingPaneAction | null;
 	readonly notices: readonly TransientNotice[];
 }
@@ -98,23 +93,6 @@ function projectedNotices(sources: NoticeSources): readonly AppNotice[] {
 			urgency: "assertive",
 			message: copy.notices.importError(sources.inputError),
 			actions: [],
-			dismissible: true,
-		});
-	}
-
-	if (sources.headerCorrection) {
-		projected.push({
-			id: conditionNoticeIds.headerCorrection,
-			severity: "info",
-			urgency: "polite",
-			message: copy.notices.headerGuess,
-			actions: [
-				{
-					id: "demote-header",
-					label: copy.notices.headerGuessAction,
-					run: () => useTabeloStore.getState().demoteHeader(),
-				},
-			],
 			dismissible: true,
 		});
 	}

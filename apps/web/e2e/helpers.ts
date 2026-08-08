@@ -376,7 +376,11 @@ export class TabeloPage {
 		await header.filter({ hasText: value }).waitFor();
 	}
 
-	async paste(text: string, html?: string): Promise<void> {
+	async paste(
+		text: string,
+		html?: string,
+		headerRow: boolean | null = true,
+	): Promise<void> {
 		await this.grid().evaluate(
 			(grid, payload) => {
 				const data = new DataTransfer();
@@ -391,6 +395,22 @@ export class TabeloPage {
 			},
 			{ text, html },
 		);
+
+		// Most tests paste only to establish a fixture and should state the header
+		// decision that the product no longer guesses. The header-import contract
+		// passes null so it can inspect the unanswered dialog itself.
+		if (headerRow === null) return;
+		const dialog = this.page.getByRole("dialog", {
+			name: copy.headerImport.title,
+		});
+		if ((await dialog.count()) === 0) return;
+		await dialog
+			.getByRole("button", {
+				name: headerRow
+					? copy.headerImport.asHeaders
+					: copy.headerImport.asData,
+			})
+			.click();
 	}
 
 	// The grid implements no Mod+C or Mod+X of its own: those are the browser's

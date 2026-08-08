@@ -69,7 +69,6 @@ export function NoticeBar() {
 function useAppNotices(): readonly AppNotice[] {
 	const storageIssue = useTabeloStore((state) => state.storageIssue);
 	const inputError = useTabeloStore((state) => state.inputError);
-	const headerCorrection = useTabeloStore((state) => state.headerCorrection);
 	const pendingPaneAction = useTabeloStore((state) => state.pendingPaneAction);
 	const notices = useTabeloStore((state) => state.notices);
 
@@ -78,11 +77,10 @@ function useAppNotices(): readonly AppNotice[] {
 			appNotices({
 				storageIssue,
 				inputError,
-				headerCorrection,
 				pendingPaneAction,
 				notices,
 			}),
-		[storageIssue, inputError, headerCorrection, pendingPaneAction, notices],
+		[storageIssue, inputError, pendingPaneAction, notices],
 	);
 }
 
