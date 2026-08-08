@@ -549,6 +549,17 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				aria-rowcount={document.rows.length + 1}
 				aria-colcount={document.columns.length}
 				className="table-fixed border-separate border-spacing-0 text-content"
+				onPointerDownCapture={(event) => {
+					const activeEditor = event.currentTarget.ownerDocument.activeElement;
+					if (!(activeEditor instanceof HTMLTextAreaElement)) return;
+					if (!event.currentTarget.contains(activeEditor)) return;
+					if (event.target === activeEditor) return;
+
+					// Cell, header, and axis handlers may cancel pointerdown before the
+					// browser can move focus. Drain the editor's one commit owner first,
+					// while it is still mounted, then let the receiving handler continue.
+					activeEditor.blur();
+				}}
 				onKeyDown={handleKeyDown}
 				onCopy={(event) => {
 					if (useTabeloStore.getState().editing) return;
