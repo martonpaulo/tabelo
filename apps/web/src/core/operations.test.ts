@@ -238,6 +238,17 @@ describe("cell operations", () => {
 });
 
 describe("paste", () => {
+	it("accepts an oversized ragged matrix and grows to its widest row", () => {
+		const matrix = Array.from({ length: 130_000 }, () => [] as string[]);
+		matrix[matrix.length - 1] = ["last", "widest", "value"];
+
+		const next = pasteMatrix(sample(), { rowIndex: 0, columnIndex: 0 }, matrix);
+
+		expect(next.columns).toHaveLength(3);
+		expect(next.rows).toHaveLength(matrix.length);
+		expect(documentToMatrix(next).at(-1)).toEqual(["last", "widest", "value"]);
+	});
+
 	it.each([
 		[0, ["a", "b", "c"]],
 		[1, ["1", "a", "b", "c"]],

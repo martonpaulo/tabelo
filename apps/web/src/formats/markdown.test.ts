@@ -149,6 +149,71 @@ describe("markdown parsing", () => {
 });
 
 describe("markdown serialization", () => {
+	it.each([
+		{
+			case: "ASCII",
+			matrix: [["ASCII"], ["text"]],
+			expected: ["| ASCII |", "| ----- |", "| text  |"].join("\n"),
+		},
+		{
+			case: "CJK",
+			matrix: [["CJK"], ["東京"]],
+			expected: ["| CJK  |", "| ---- |", "| 東京 |"].join("\n"),
+		},
+		{
+			case: "an emoji ZWJ sequence",
+			matrix: [["Icon"], ["👩‍💻"]],
+			expected: ["| Icon |", "| ---- |", "| 👩‍💻   |"].join("\n"),
+		},
+		{
+			case: "a combining accent",
+			matrix: [["Mark"], ["e\u0301"]],
+			expected: ["| Mark |", "| ---- |", "| e\u0301    |"].join("\n"),
+		},
+		{
+			case: "mixed display widths",
+			matrix: [
+				["Type", "Value"],
+				["CJK", "東京"],
+				["Emoji", "👩‍💻"],
+				["Accent", "e\u0301"],
+			],
+			expected: [
+				"| Type   | Value |",
+				"| ------ | ----- |",
+				"| CJK    | 東京  |",
+				"| Emoji  | 👩‍💻    |",
+				"| Accent | e\u0301     |",
+			].join("\n"),
+		},
+	])(
+		"aligns $case by display width without changing its data",
+		({ matrix, expected }) => {
+			const document = documentFromMatrix(matrix, { headerRow: true });
+			const source = markdownCodec.serialize(document);
+
+			expect(source).toBe(expected);
+			const parsed = markdownCodec.parse(source);
+			expect(parsed.ok).toBe(true);
+			if (!parsed.ok) return;
+			expect(documentToMatrix(parsed.document)).toEqual(matrix);
+		},
+	);
+
+	it("serializes an oversized narrow table without an argument-limit failure", () => {
+		const rowCount = 130_000;
+		const document = documentFromMatrix(
+			[["A"], ...Array.from({ length: rowCount }, () => ["x"])],
+			{ headerRow: true },
+		);
+
+		const lines = markdownCodec.serialize(document).split("\n");
+
+		expect(lines).toHaveLength(rowCount + 2);
+		expect(lines.slice(0, 3)).toEqual(["| A   |", "| --- |", "| x   |"]);
+		expect(lines.at(-1)).toBe("| x   |");
+	});
+
 	it("keeps alignment padding outside encoded boundary whitespace", () => {
 		const document = documentFromMatrix([["Note"], ["  spaced  "], ["wide"]], {
 			headerRow: true,
