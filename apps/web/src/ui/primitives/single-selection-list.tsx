@@ -4,7 +4,9 @@ import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-style
 import { RadioGroup, RadioGroupItem } from "@tabelo/ui/components/radio-group";
 import { cn } from "@tabelo/ui/lib/utils";
 import { useId } from "react";
+import type { PreconditionRecovery } from "@/ui/precondition-recovery";
 import { DisabledTooltip } from "./disabled-tooltip";
+import { RecoveryButton } from "./recovery-command";
 import {
 	SelectionOptionContent,
 	type SelectionOptionContentProps,
@@ -28,6 +30,8 @@ export function SingleSelectionOption({
 	value,
 	selected,
 	availability,
+	recovery,
+	onRecover,
 	icon,
 	label,
 	description,
@@ -36,11 +40,17 @@ export function SingleSelectionOption({
 	readonly value: string;
 	readonly selected: boolean;
 	readonly availability?: SelectionOptionContentProps["availability"];
+	// The correction for a choice a precondition refused. It is a sibling of
+	// the option, never part of it: the radio stays genuinely disabled and this
+	// stays a separate enabled command. Absent when the refusal names no
+	// position to go to.
+	readonly recovery?: PreconditionRecovery;
+	readonly onRecover?: () => void;
 } & Omit<SelectionOptionContentProps, "availability">) {
 	const radioId = useId();
 	const disabled = availability !== undefined;
 
-	return (
+	const option = (
 		<DisabledTooltip reason={availability?.reason}>
 			<Label
 				htmlFor={radioId}
@@ -71,5 +81,23 @@ export function SingleSelectionOption({
 				/>
 			</Label>
 		</DisabledTooltip>
+	);
+
+	if (!recovery) return option;
+
+	return (
+		<div>
+			{option}
+			{/* Indented under the option it repairs, matching the download
+			    options, so it reads as belonging to that row rather than as a
+			    choice of its own. */}
+			<div className="mt-1 pl-9">
+				<RecoveryButton
+					recovery={recovery}
+					target={label}
+					onRun={() => onRecover?.()}
+				/>
+			</div>
+		</div>
 	);
 }

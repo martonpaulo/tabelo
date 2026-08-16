@@ -19,6 +19,7 @@ import type {
 import { downloadText } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copyToClipboard } from "@/ui/clipboard-actions";
+import { preconditionRecovery } from "@/ui/precondition-recovery";
 import {
 	DialogActions,
 	DialogCancel,
@@ -134,6 +135,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 									candidate.id === codec.id ? options : ([] as OutputOptionId[])
 								}
 								failure={canSerialize(candidate, document)}
+								onRecover={() => onOpenChange(false)}
 							/>
 						);
 					})}
@@ -159,6 +161,7 @@ interface FormatChoiceProps {
 	readonly selected: boolean;
 	readonly options: readonly OutputOptionId[];
 	readonly failure: PreconditionFailure | null;
+	readonly onRecover: () => void;
 }
 
 // The options belong to the format they modify, so they sit under it rather
@@ -172,6 +175,7 @@ function FormatChoice({
 	selected,
 	options,
 	failure,
+	onRecover,
 }: FormatChoiceProps) {
 	return (
 		<div>
@@ -186,6 +190,8 @@ function FormatChoice({
 							}
 						: undefined
 				}
+				recovery={preconditionRecovery(failure) ?? undefined}
+				onRecover={onRecover}
 				icon={icon}
 				label={label}
 				description={description}

@@ -12,6 +12,10 @@ import type { PanePositionId, SplitEdge } from "@/workspace/layout";
 // consistent, and the seam a locale would plug into if Tabelo ever ships one.
 // Keep the tone plain and calm: say what happened, not how clever the app is.
 
+// Named once because it is both the visible label of the recovery command and
+// the opening of the accessible name that says which refusal it belongs to.
+const FIX_TABLE = "Fix table";
+
 const views = {
 	grid: {
 		label: "Visual table",
@@ -408,6 +412,9 @@ export const copy = {
 		fitColumnToContent: "Fit column to content",
 		wrapColumnText: "Wrap text",
 		editHeader: "Rename column",
+		// The command that sits beside a choice its codec has refused. The
+		// refusal already says what is wrong; this takes the user to it.
+		fixTable: FIX_TABLE,
 	},
 
 	addView: {
@@ -554,6 +561,11 @@ export const copy = {
 			`Row ${row + 2}, column ${column + 1}`,
 		headerEditor: (header: string, column: number) =>
 			`Rename ${header.trim() === "" ? `column ${columnLetter(column)}` : header}`,
+		// A list can refuse more than one choice at a time, and every recovery
+		// command in it reads "Fix table". The refused choice is what tells them
+		// apart, so it opens the accessible name while the visible label stays
+		// inside it.
+		fixTableFor: (label: string) => `${FIX_TABLE} for ${label}`,
 		sourceEditor: (format: string) => `${format} source`,
 		preview: "Rendered table preview",
 		blockedView: "Blocked view reason",

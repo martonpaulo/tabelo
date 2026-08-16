@@ -8,6 +8,7 @@ import {
 import { type ReactNode, useId, useState } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
+import { preconditionRecovery } from "@/ui/precondition-recovery";
 import {
 	DialogActions,
 	DialogCancel,
@@ -21,7 +22,10 @@ import {
 import { getView, listViews } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import type { SplitOption } from "@/workspace/layout";
-import { availabilityForView } from "./view-availability";
+import {
+	availabilityForView,
+	type ViewAvailability,
+} from "./view-availability";
 
 // Adding a view is one question asked once: which view goes in the pane the
 // split is about to create. Asking up front is what lets the split and the view
@@ -111,6 +115,10 @@ export function AddViewDialog({
 							icon={<candidate.icon />}
 							availability={availabilityFor(candidate.id)}
 							selected={selected === candidate.id}
+							onRecover={() => {
+								setChosen(null);
+								onClose();
+							}}
 						/>
 					))}
 				</SingleSelectionList>
@@ -137,7 +145,8 @@ interface ViewChoiceProps {
 	readonly description: string;
 	readonly icon: ReactNode;
 	readonly selected: boolean;
-	readonly availability: ReturnType<typeof availabilityForView>;
+	readonly availability: ViewAvailability | undefined;
+	readonly onRecover: () => void;
 }
 
 function ViewChoice({
@@ -147,12 +156,17 @@ function ViewChoice({
 	icon,
 	selected,
 	availability,
+	onRecover,
 }: ViewChoiceProps) {
 	return (
 		<SingleSelectionOption
 			value={id}
 			selected={selected}
-			availability={availability}
+			availability={availability?.availability}
+			recovery={
+				preconditionRecovery(availability?.failure ?? null) ?? undefined
+			}
+			onRecover={onRecover}
 			icon={icon}
 			label={label}
 			description={description}
