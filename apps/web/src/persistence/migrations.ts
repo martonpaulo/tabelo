@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { DEFAULT_EXPECTED_TYPE } from "@/core/cell-value";
 import { DEFAULT_PANE_ZOOM } from "@/workspace/zoom";
 import {
 	PERSISTED_VERSION,
@@ -7,6 +8,7 @@ import {
 	persistedStateV2Schema,
 	persistedStateV3Schema,
 	persistedStateV4Schema,
+	persistedStateV5Schema,
 } from "./versions";
 
 export interface MigrationStep {
@@ -118,6 +120,26 @@ function migrateV4ToV5(input: unknown): unknown {
 	};
 }
 
+// Version 6 lets a cell hold a native scalar and lets a column declare the
+// type it expects. Every value a version-5 release wrote was a string, so the
+// migration copies the rows through untouched and only records the expectation
+// each existing column already had: text. Nothing here reads a value to guess
+// a type, which is the rule ADR 0008 makes durable.
+function migrateV5ToV6(input: unknown): unknown {
+	const source = input as z.infer<typeof persistedStateV5Schema>;
+	return {
+		...source,
+		version: 6,
+		document: {
+			...source.document,
+			columns: source.document.columns.map((column) => ({
+				...column,
+				expectedType: DEFAULT_EXPECTED_TYPE,
+			})),
+		},
+	};
+}
+
 export const migrationRegistry: MigrationRegistry = {
 	1: {
 		source: persistedStateV1Schema,
@@ -136,8 +158,13 @@ export const migrationRegistry: MigrationRegistry = {
 	},
 	4: {
 		source: persistedStateV4Schema,
-		target: persistedStateSchema,
+		target: persistedStateV5Schema,
 		migrate: migrateV4ToV5,
+	},
+	5: {
+		source: persistedStateV5Schema,
+		target: persistedStateSchema,
+		migrate: migrateV5ToV6,
 	},
 };
 

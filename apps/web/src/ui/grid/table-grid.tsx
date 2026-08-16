@@ -2,6 +2,7 @@ import { cn } from "@tabelo/ui/lib/utils";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
+import { cellTextAt } from "@/core/cell-value";
 import {
 	activeRange,
 	type CellPosition,
@@ -1028,7 +1029,7 @@ const DataRow = memo(function DataRow({
 				const isFocus = columnIndex === focusColumn;
 				const inSelection = coveredBySpans(selectedSpans, columnIndex);
 				const copiedEdges = clipboardEdgesAt(copiedAt, rowIndex, columnIndex);
-				const value = row.cells[column.id] ?? "";
+				const value = cellTextAt(row, column.id);
 				const isEditing = columnIndex === editingColumn;
 				const wrapped = wrappedColumns.includes(column.id);
 

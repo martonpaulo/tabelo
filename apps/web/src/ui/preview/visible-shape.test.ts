@@ -58,8 +58,18 @@ describe("visibleShape", () => {
 	it("treats a missing cell key as empty", () => {
 		const document: TableDocument = {
 			columns: [
-				{ id: "column-name", header: "Name", align: "default" },
-				{ id: "column-city", header: "City", align: "default" },
+				{
+					id: "column-name",
+					header: "Name",
+					align: "default",
+					expectedType: "text",
+				},
+				{
+					id: "column-city",
+					header: "City",
+					align: "default",
+					expectedType: "text",
+				},
 			],
 			// The city cell is absent rather than empty, which is a shape the
 			// document type explicitly allows.

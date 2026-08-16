@@ -5,12 +5,13 @@ import v2 from "./fixtures/v2.json";
 import v3 from "./fixtures/v3.json";
 import v4 from "./fixtures/v4.json";
 import v5 from "./fixtures/v5.json";
+import v6 from "./fixtures/v6.json";
 import { CURRENT_VERSION, validatePersistedState } from "./schema";
 
 const document = {
 	columns: [
-		{ id: "c1", header: "Name", align: "left" },
-		{ id: "c2", header: "Role", align: "default" },
+		{ id: "c1", header: "Name", align: "left", expectedType: "text" },
+		{ id: "c2", header: "Role", align: "default", expectedType: "text" },
 	],
 	rows: [{ id: "r1", cells: { c1: "Ingrid", c2: "Designer" } }],
 };
@@ -110,6 +111,7 @@ describe("loading a stored payload", () => {
 		["v3", v3],
 		["v4", v4],
 		["v5", v5],
+		["v6", v6],
 	] as const)(
 		"loads the stored %s fixture as current state",
 		(_name, fixture) => {
@@ -119,6 +121,54 @@ describe("loading a stored payload", () => {
 			if (outcome.status !== "ok") return;
 			expect(outcome.state.version).toBe(CURRENT_VERSION);
 			expect(outcome.state.document.rows[0]?.cells["c-name"]).toBe("Ingrid");
+		},
+	);
+
+	it("migrates v5 columns to the text expectation with values untouched", () => {
+		const outcome = validatePersistedState(v5);
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(
+			outcome.state.document.columns.every(
+				(column) => column.expectedType === "text",
+			),
+		).toBe(true);
+		expect(outcome.state.document.rows.map((row) => row.cells)).toEqual(
+			v5.document.rows.map((row) => row.cells),
+		);
+	});
+
+	it("accepts every scalar variant in a stored cell", () => {
+		const outcome = validatePersistedState(
+			payload({
+				document: {
+					columns: document.columns,
+					rows: [{ id: "r1", cells: { c1: 42, c2: null } }],
+				},
+			}),
+		);
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.document.rows[0]?.cells).toEqual({ c1: 42, c2: null });
+	});
+
+	// `JSON.stringify` writes these as `null`, so accepting them would turn a
+	// number into a different type on the next load rather than preserving it.
+	it.each([Number.NaN, Number.POSITIVE_INFINITY])(
+		"refuses %p as a stored cell value",
+		(cell) => {
+			expect(
+				validatePersistedState(
+					payload({
+						document: {
+							columns: document.columns,
+							rows: [{ id: "r1", cells: { c1: cell } }],
+						},
+					}),
+				),
+			).toEqual({ status: "unreadable", reason: "current-schema-invalid" });
 		},
 	);
 

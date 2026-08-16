@@ -1,3 +1,4 @@
+import { cellTextAt } from "@/core/cell-value";
 import { normalizeMatrix } from "@/core/document";
 import type { Alignment, TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
@@ -121,7 +122,7 @@ function serializeHtml(document: TableDocument): string {
 		.map((row) => {
 			const cells = document.columns
 				.map((column) =>
-					cellMarkup("td", row.cells[column.id] ?? "", column.align),
+					cellMarkup("td", cellTextAt(row, column.id), column.align),
 				)
 				.join("\n");
 			return `    <tr>\n${cells}\n    </tr>`;
