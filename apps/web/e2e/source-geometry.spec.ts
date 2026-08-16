@@ -178,7 +178,7 @@ test("a zoom step carries the line numbers and the caret onto the resized lines"
 
 	// The keyboard shortcut rather than the pane menu: opening a menu takes the
 	// focus, and an unfocused editor draws no caret to check.
-	await source.press("ControlOrMeta+=");
+	await source.press("ControlOrMeta+Alt+=");
 
 	let resized = before;
 	const deadline = Date.now() + 5000;

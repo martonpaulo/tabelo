@@ -584,9 +584,11 @@ export const copy = {
 		copy: "Mod+C",
 		cut: "Mod+X",
 		paste: "Mod+V",
-		zoomOut: "Mod+-",
-		resetZoom: "Mod+0",
-		zoomIn: "Mod++",
+		// Alt keeps these clear of Mod+plus, Mod+minus, and Mod+0, which belong to
+		// the browser and stay the way to scale the whole interface.
+		zoomOut: "Mod+Alt+-",
+		resetZoom: "Mod+Alt+0",
+		zoomIn: "Mod+Alt++",
 		editHeader: "F2",
 		// The keyboard equal of a modifier click. Ctrl is the modifier that
 		// reaches the page on every platform: macOS keeps Cmd+Space for itself.
