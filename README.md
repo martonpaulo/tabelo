@@ -244,8 +244,8 @@ including with us.
 
 - **Built for tables up to a few hundred rows.** There is no virtualization, on
   purpose. Paste 50,000 rows and it will warn you rather than pretend.
-- **Cell values are opaque text.** Tabelo never guesses types, never coerces a
-  number, never reformats a date. What you typed is what is stored.
+- **Tabelo never guesses types.** It never coerces a number, never reformats a
+  date, never strips a leading zero. What you typed is what is stored.
 - **Markdown output contains `<br>`** where a cell has a line break. That is the
   price of not losing the line break. Strict CommonMark renderers that escape
   raw HTML will show it literally.

@@ -41,8 +41,14 @@ The synchronization layer owns the round trip:
 - **Loop prevention.** Every editor transaction carries an origin annotation.
   Sync-originated transactions never re-trigger a parse.
 
-Cell values are opaque strings throughout. Markdown and CSV are parsers and
-serializers around the document, not alternative homes for the data.
+Markdown and CSV are parsers and serializers around the document, not
+alternative homes for the data.
+
+This decision originally added that cell values are opaque strings throughout.
+ADR 0008 replaces that: a cell carries a native scalar, and a text format still
+sees only the text the core projects for it. What does not change is that
+nothing reinterprets a cell. A type is carried from a source that stated it,
+never derived from how the text looks.
 
 ## Consequences
 

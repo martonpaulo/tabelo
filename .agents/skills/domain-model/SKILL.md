@@ -34,7 +34,7 @@ Do not silently pick one source when they diverge. Label current behavior, curre
 ## Guardrails
 
 - Every document has exactly one structural header row unless an accepted issue changes that rule and updates its canonical documentation.
-- Cell values remain opaque strings.
+- A cell value's type is carried from a typed source or an explicit choice, never derived from text.
 - Text views remain derived projections, with at most one pending draft.
 - Alignment remains document metadata even when a format cannot express it.
 - Stable row and column identifiers are application-owned and never user-visible.

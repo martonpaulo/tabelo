@@ -63,13 +63,15 @@ Each of these is a decision, not a gap waiting to be filled.
 - **No spreadsheet computational model.** Tabelo may adopt an interaction
   people already know from a spreadsheet when it makes editing a text-backed
   table faster or safer. It does not adopt formulas, multiple sheets, charts,
-  macros, aggregation, or hidden type inference.
+  macros, aggregation, or hidden type inference. A cell may carry a native
+  number, boolean, or null, but only because a typed source stated it or the
+  user chose it; nothing reads text and decides what it must be.
 - **No large-document machinery.** Target scale is roughly 200 rows.
   Virtualization, Web Workers, and IndexedDB are all excluded. Input outside
   the supported bounds must be refused clearly instead of freezing or crashing
   the tab; that safeguard does not justify large-document architecture.
 - **No localization framework.** English only, single locale, single
-  maintainer. Dates and numbers inside cells stay opaque text.
+  maintainer. Dates and numbers inside cells are never localized or reformatted.
 - **No versions or releases.** The deployed site is always the current version.
 
 ## How you know it worked
