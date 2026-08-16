@@ -1,5 +1,10 @@
+import type { Locator } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
+
+interface ZoomProbe {
+	zoomCancelled: string[];
+}
 
 // Composing the workspace by splitting the pane edge the new view should appear
 // along, rather than by naming a tiling first. The presets still own every
@@ -192,27 +197,71 @@ test("closing a pane that owns an invalid draft asks before discarding it", asyn
 	await expect(tabelo.workspace.getByRole("region")).toHaveCount(2);
 });
 
-test("keyboard zoom changes the active pane and resets with the standard shortcut", async ({
+const contentSize = (pane: Locator) =>
+	pane
+		.locator(".cm-content")
+		.evaluate((element) =>
+			Number.parseFloat(getComputedStyle(element).fontSize),
+		);
+
+test("the pane-zoom chord steps and resets the active pane, including inside a source editor", async ({
 	page,
 	tabelo,
 }) => {
-	const markdownSize = () =>
-		tabelo
-			.pane("markdown")
-			.locator(".cm-content")
-			.evaluate((element) =>
-				Number.parseFloat(getComputedStyle(element).fontSize),
-			);
-	const markdownSizeBefore = await markdownSize();
+	const markdown = tabelo.pane("markdown");
+	const sizeBefore = await contentSize(markdown);
 	await tabelo.source("markdown").click();
-	await page.keyboard.press("ControlOrMeta+=");
-	await expect.poll(markdownSize).toBeGreaterThan(markdownSizeBefore);
+	await page.keyboard.press("ControlOrMeta+Alt+=");
+	await expect.poll(() => contentSize(markdown)).toBeGreaterThan(sizeBefore);
 
-	await page.keyboard.press("ControlOrMeta+0");
+	await page.keyboard.press("ControlOrMeta+Alt+-");
+	await page.keyboard.press("ControlOrMeta+Alt+-");
+	await expect.poll(() => contentSize(markdown)).toBeLessThan(sizeBefore);
+
+	await page.keyboard.press("ControlOrMeta+Alt+0");
+	await expect.poll(() => contentSize(markdown)).toBe(sizeBefore);
 	const menu = await tabelo.openPaneMenu("markdown");
 	await expect(
 		menu.getByRole("menuitem", { name: copy.workspace.resetZoom }),
 	).toBeDisabled();
+});
+
+// The browser owns Mod+plus, Mod+minus, and Mod+0. Playwright cannot observe the
+// browser-level zoom those keys drive, but it can prove the two things the
+// application controls: pane zoom does not move, and the event is never
+// cancelled, so whatever the engine does with it still happens.
+test("the browser's own zoom shortcuts reach the browser untouched", async ({
+	page,
+	tabelo,
+}) => {
+	// Registered after the app's own window listener, so it observes the flag the
+	// app either set or left alone.
+	await page.evaluate(() => {
+		const cancelled: string[] = [];
+		(window as unknown as ZoomProbe).zoomCancelled = cancelled;
+		window.addEventListener("keydown", (event) => {
+			if (event.defaultPrevented) cancelled.push(event.key);
+		});
+	});
+
+	const markdown = tabelo.pane("markdown");
+	const sizeBefore = await contentSize(markdown);
+
+	for (const focus of [
+		() => tabelo.source("markdown").click(),
+		() => tabelo.cell(1, 1).click(),
+	]) {
+		await focus();
+		await page.keyboard.press("ControlOrMeta+=");
+		await page.keyboard.press("ControlOrMeta+-");
+		await page.keyboard.press("ControlOrMeta+0");
+	}
+
+	const cancelled = await page.evaluate(
+		() => (window as unknown as ZoomProbe).zoomCancelled,
+	);
+	expect(cancelled).toEqual([]);
+	expect(await contentSize(markdown)).toBe(sizeBefore);
 });
 
 test("zoom resets in one action and survives a reload", async ({ tabelo }) => {

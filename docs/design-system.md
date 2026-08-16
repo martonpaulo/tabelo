@@ -305,8 +305,11 @@ Do not implement scale as a transform on the pane. That breaks hit testing and
 text rendering. Scale the type, and scale measured geometry such as the grid's
 column widths in the component that owns it. Zoom is a local preference belonging to
 the pane, never document state and never a history step; it is bounded, and
-browser zoom remains the way to scale the whole interface. `Mod`+`+` and
-`Mod`+`-` step the active pane; `Mod`+`0` resets it.
+browser zoom remains the way to scale the whole interface. `Mod`+`Alt`+`+` and
+`Mod`+`Alt`+`-` step the active pane; `Mod`+`Alt`+`0` resets it. The `Alt` is
+load-bearing: `Mod`+`+`, `Mod`+`-`, and `Mod`+`0` belong to the browser and are
+never intercepted, because a user pressing them wants the chrome, hit targets,
+and focus rings that pane zoom deliberately leaves alone.
 
 ### Syntax and table structure
 

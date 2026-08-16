@@ -17,6 +17,37 @@ import { DEFAULT_PANE_ZOOM, stepPaneZoom } from "@/workspace/zoom";
 
 type RootDialog = "download" | "layout" | "new-table" | "settings" | null;
 
+// Which way the pane-zoom chord points: out, back to the default, or in.
+// `code` is read first because Option rewrites the character on Apple keyboards,
+// where Alt+`=` can arrive as `≠`; the physical key is what the user pressed, and
+// it is also how browsers themselves bind their own zoom keys. The `key` values
+// stay as a fallback for layouts and remappings that move those characters.
+// https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
+function paneZoomStep(event: KeyboardEvent): -1 | 0 | 1 | null {
+	switch (event.code) {
+		case "Minus":
+		case "NumpadSubtract":
+			return -1;
+		case "Digit0":
+		case "Numpad0":
+			return 0;
+		case "Equal":
+		case "NumpadAdd":
+			return 1;
+	}
+	switch (event.key) {
+		case "-":
+			return -1;
+		case "0":
+			return 0;
+		case "+":
+		case "=":
+			return 1;
+		default:
+			return null;
+	}
+}
+
 export function TabeloApp() {
 	const pwaUpdate = usePwaUpdate();
 	const [rootDialog, setRootDialog] = useState<RootDialog>(null);
@@ -114,20 +145,23 @@ export function TabeloApp() {
 				(pane) => pane.id === store.workspace.activePaneId,
 			);
 
-			// Pane zoom follows the standard browser/editor shortcuts but changes
-			// only the active view. It owns these keys even inside CodeMirror.
-			if (activePane && (key === "+" || key === "=" || key === "-")) {
-				event.preventDefault();
-				store.setPaneZoom(
-					activePane.id,
-					stepPaneZoom(activePane.zoom, key === "-" ? -1 : 1),
-				);
-				return;
-			}
-			if (activePane && key === "0") {
-				event.preventDefault();
-				store.setPaneZoom(activePane.id, DEFAULT_PANE_ZOOM);
-				return;
+			// Pane zoom adds Alt to the familiar zoom keys so that Mod+plus,
+			// Mod+minus, and Mod+0 keep scaling the whole interface: that is the
+			// affordance a user reaches for when the pane chrome, hit targets, and
+			// focus rings are too small, and pane zoom deliberately leaves those
+			// alone. The pane menu remains the discoverable path.
+			if (event.altKey && activePane) {
+				const step = paneZoomStep(event);
+				if (step !== null) {
+					event.preventDefault();
+					store.setPaneZoom(
+						activePane.id,
+						step === 0
+							? DEFAULT_PANE_ZOOM
+							: stepPaneZoom(activePane.zoom, step),
+					);
+					return;
+				}
 			}
 
 			// Mod+S means "keep my work" everywhere else, so it opens the download
