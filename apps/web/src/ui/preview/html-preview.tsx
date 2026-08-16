@@ -1,6 +1,7 @@
 import { cn } from "@tabelo/ui/lib/utils";
 import { memo, useMemo } from "react";
 import { copy } from "@/copy/copy";
+import { cellTextAt } from "@/core/cell-value";
 import type { Alignment, Column, Row } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { visibleShape } from "./visible-shape";
@@ -128,7 +129,7 @@ const PreviewRow = memo(function PreviewRow({ row, columns }: PreviewRowProps) {
 					{/* A cell may legitimately contain line breaks; preserving
 					    them is the point of the escaping the codecs do. */}
 					<span className="whitespace-pre-wrap">
-						{row.cells[column.id] ?? ""}
+						{cellTextAt(row, column.id)}
 					</span>
 				</td>
 			))}

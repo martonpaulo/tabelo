@@ -1,4 +1,5 @@
 import stringWidth from "string-width";
+import { cellTextAt } from "@/core/cell-value";
 import type { Alignment, TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
 import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
@@ -279,7 +280,7 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 function serializeMarkdown(document: TableDocument): string {
 	const headers = document.columns.map((column) => escapeCell(column.header));
 	const body = document.rows.map((row) =>
-		document.columns.map((column) => escapeCell(row.cells[column.id] ?? "")),
+		document.columns.map((column) => escapeCell(cellTextAt(row, column.id))),
 	);
 
 	// Pad columns to a common width so the source stays readable by hand.

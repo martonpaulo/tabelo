@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ClipboardPayload } from "@/clipboard/parse";
+import { cellTextAt } from "@/core/cell-value";
 import {
 	createEmptyDocument,
 	isDocumentBlank,
@@ -1261,7 +1262,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const body = selectionDataRows(state.selection, rowCount, columnCount)
 			.map((index) => state.document.rows[index])
 			.filter((row) => row !== undefined)
-			.map((row) => columns.map((column) => row.cells[column.id] ?? ""));
+			.map((row) => columns.map((column) => cellTextAt(row, column.id)));
 
 		// A selection that covers the header carries it, which is what makes the
 		// result useful when pasted somewhere else. Whole columns always do.

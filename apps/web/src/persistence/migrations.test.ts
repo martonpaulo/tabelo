@@ -4,6 +4,7 @@ import v1 from "./fixtures/v1.json";
 import v2 from "./fixtures/v2.json";
 import v3 from "./fixtures/v3.json";
 import v4 from "./fixtures/v4.json";
+import v5 from "./fixtures/v5.json";
 import {
 	type MigrationRegistry,
 	migrationRegistry,
@@ -95,12 +96,43 @@ describe("adjacent persistence migrations", () => {
 		);
 	});
 
+	it("gives every v5 column the text expectation without touching its values", () => {
+		const result = runMigrationChain(v5, 5, 6, migrationRegistry);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		const value = result.value as {
+			version: number;
+			document: {
+				columns: { id: string; expectedType: string }[];
+				rows: { cells: Record<string, unknown> }[];
+			};
+		};
+		expect(value.version).toBe(6);
+		expect(value.document.columns.map((column) => column.expectedType)).toEqual(
+			["text", "text"],
+		);
+		// Byte-identical values in their original column order. A migration that
+		// read a value to guess a type is the failure this pins down.
+		expect(value.document.columns.map((column) => column.id)).toEqual(
+			v5.document.columns.map((column) => column.id),
+		);
+		expect(value.document.rows.map((row) => row.cells)).toEqual(
+			v5.document.rows.map((row) => row.cells),
+		);
+		expect(
+			value.document.rows.every((row) =>
+				Object.values(row.cells).every((cell) => typeof cell === "string"),
+			),
+		).toBe(true);
+	});
+
 	it("runs the oldest fixture through the complete chain", () => {
-		const result = runMigrationChain(v1, 1, 5, migrationRegistry);
+		const result = runMigrationChain(v1, 1, 6, migrationRegistry);
 
 		expect(result).toMatchObject({
 			ok: true,
-			value: { version: 5, draft: null },
+			value: { version: 6, draft: null },
 		});
 	});
 });

@@ -1,6 +1,12 @@
 import { fc } from "@fast-check/vitest";
+import { EXPECTED_COLUMN_TYPES } from "@/core/cell-value";
 import type { CellRect } from "@/core/selection";
-import type { Alignment, TableDocument } from "@/core/types";
+import type {
+	Alignment,
+	CellValue,
+	ExpectedColumnType,
+	TableDocument,
+} from "@/core/types";
 import type { CodecId, TableCodec } from "@/formats";
 
 export const PROPERTY_RUNS = 100;
@@ -51,6 +57,20 @@ export const alignmentArbitrary: fc.Arbitrary<Alignment> = fc.constantFrom(
 	"right",
 );
 
+const expectedColumnTypeArbitrary: fc.Arbitrary<ExpectedColumnType> =
+	fc.constantFrom(...EXPECTED_COLUMN_TYPES);
+
+// Every scalar a cell may hold. Only finite numbers: a non-finite number is
+// not a persistable cell value, so generating one would test a state the
+// product refuses rather than one it has to survive.
+export const cellValueArbitrary: fc.Arbitrary<CellValue> = fc.oneof(
+	cellStringArbitrary,
+	fc.double({ noNaN: true, noDefaultInfinity: true }),
+	fc.integer(),
+	fc.boolean(),
+	fc.constant(null),
+);
+
 const widthArbitrary = fc.option(
 	fc.integer({ min: 4, max: 48 }).map((value) => value / 2),
 	{ nil: undefined },
@@ -61,14 +81,20 @@ interface DocumentArbitraryOptions {
 	readonly keyedHeaders: boolean;
 	readonly minColumnCount: number;
 	readonly titledRows: boolean;
+	// The text alphabet a format has to survive. It supplies headers and, unless
+	// `scalarArbitrary` overrides them, cell values too.
 	readonly valueArbitrary?: fc.Arbitrary<string>;
+	// Native scalars for the cells. Only the core model accepts these today: a
+	// codec that round-trips text would read a number back as its own text.
+	readonly scalarArbitrary?: fc.Arbitrary<CellValue>;
 }
 
 function createDocumentArbitrary(
 	options: DocumentArbitraryOptions,
 ): fc.Arbitrary<TableDocument> {
-	const valueArbitrary = options.valueArbitrary ?? cellStringArbitrary;
-	const generatedHeaderArbitrary = options.headerArbitrary ?? valueArbitrary;
+	const textArbitrary = options.valueArbitrary ?? cellStringArbitrary;
+	const valueArbitrary = options.scalarArbitrary ?? textArbitrary;
+	const generatedHeaderArbitrary = options.headerArbitrary ?? textArbitrary;
 	return fc
 		.record({
 			columnCount: fc.integer({
@@ -92,6 +118,10 @@ function createDocumentArbitrary(
 						minLength: columnCount,
 						maxLength: columnCount,
 					}),
+					fc.array(expectedColumnTypeArbitrary, {
+						minLength: columnCount,
+						maxLength: columnCount,
+					}),
 					fc.array(
 						fc.array(valueArbitrary, {
 							minLength: columnCount,
@@ -100,24 +130,32 @@ function createDocumentArbitrary(
 						{ minLength: rowCount, maxLength: rowCount },
 					),
 				)
-				.map(([headers, alignments, widths, values]) => {
+				.map(([headers, alignments, widths, expectedTypes, values]) => {
 					const columns = headers.map((header, index) => ({
 						id: `c_property_${index}`,
 						header: options.keyedHeaders
 							? `column-${index + 1}:${header}`
 							: header,
 						align: alignments[index] ?? "default",
+						expectedType: expectedTypes[index] ?? "text",
 						...(widths[index] === undefined ? {} : { width: widths[index] }),
 					}));
 					const rows = values.map((rowValues, rowIndex) => ({
 						id: `r_property_${rowIndex}`,
 						cells: Object.fromEntries(
-							columns.map((column, columnIndex) => [
-								column.id,
-								options.titledRows && columnIndex === 0
-									? `row-${rowIndex + 1}:${rowValues[columnIndex] ?? ""}`
-									: (rowValues[columnIndex] ?? ""),
-							]),
+							columns.map((column, columnIndex) => {
+								// A short row pads with an empty string. `??` would
+								// also swallow a generated `null`, which is the one
+								// variant these documents exist to exercise.
+								const generated = rowValues[columnIndex];
+								const value = generated === undefined ? "" : generated;
+								return [
+									column.id,
+									options.titledRows && columnIndex === 0
+										? `row-${rowIndex + 1}:${value}`
+										: value,
+								];
+							}),
 						),
 					}));
 					return { columns, rows };
@@ -128,6 +166,16 @@ function createDocumentArbitrary(
 export const tableDocumentArbitrary = createDocumentArbitrary({
 	keyedHeaders: false,
 	minColumnCount: 1,
+	titledRows: false,
+});
+
+// Documents whose cells hold every scalar variant. The core model and the
+// pure operations accept these today; no codec does, because a serialized
+// number parses back as its own text rather than as a number.
+export const typedTableDocumentArbitrary = createDocumentArbitrary({
+	keyedHeaders: false,
+	minColumnCount: 1,
+	scalarArbitrary: cellValueArbitrary,
 	titledRows: false,
 });
 

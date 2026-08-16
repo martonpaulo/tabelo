@@ -1,3 +1,4 @@
+import { cellTextAt } from "@/core/cell-value";
 import type { Column, ColumnId, Row, RowId, TableDocument } from "@/core/types";
 
 // The preview is a reading copy, not an editing surface: a column or row with
@@ -25,7 +26,9 @@ export function visibleShape(document: TableDocument): VisibleShape {
 	const filledRows = new Set<RowId>();
 	for (const row of document.rows) {
 		for (const column of document.columns) {
-			if ((row.cells[column.id] ?? "") === "") continue;
+			// Emptiness is what the reader sees, so it is judged on the projected
+			// text: a cell holding `null` renders blank and counts as empty here.
+			if (cellTextAt(row, column.id) === "") continue;
 			filledColumns.add(column.id);
 			filledRows.add(row.id);
 		}
