@@ -1,0 +1,90 @@
+# Carry a cell's type, never derive it from its text
+
+## Context
+
+Every Tabelo cell was a string. ADR 0001 stated it plainly: "Cell values are
+opaque strings throughout." That is what made the codecs safe. A cell was
+whatever bytes the user typed, and no view could reinterpret them, so `007`
+came back as `007`, `1/2` was never a date, and `=SUM(A1)` was three formats'
+worth of text and nothing else.
+
+That model cannot express what JSON already contains. A JSON document holding
+`{"age": 35, "active": true, "notes": null}` has three types the product
+currently flattens to `"35"`, `"true"`, and `""` on the way in, and cannot
+give back on the way out. Round-tripping someone's JSON through Tabelo
+silently quotes every number and boolean and loses the distinction between a
+null and an empty string. Priority 1, data preservation, is what that violates.
+
+The tempting fix is type inference: look at `35` and store a number. That is
+exactly the behavior the product rejects, for the same reason spreadsheets are
+infuriating: inference is invisible, it is wrong at the edges the user cares
+about most (leading zeros, long digit strings, anything that resembles a date),
+and there is no way to spell "I meant the text".
+
+So the question was not whether cells should have types. It was where a type is
+allowed to come from.
+
+## Decision
+
+A cell carries `string | number | boolean | null`. A column carries the type it
+**expects** for editing: `text`, `number`, or `boolean`.
+
+**A type is carried, never derived.** A value becomes a number because a typed
+source said so or because the user explicitly chose it. Nothing reads text and
+concludes a type from how it looks: not a codec, not the grid, not paste, not
+persistence, and not a migration.
+
+Three consequences of that rule are load-bearing:
+
+- **The real type belongs to the cell, not the column.** The column expectation
+  guides editing and validation; it does not constrain the data. A typed source
+  may legitimately put a string in a column that expects numbers, and Tabelo
+  stores what it was given rather than what it expected.
+- **`null` is a cell value, not a column mode.** It is chosen explicitly or
+  carried from a typed source. There is no nullability flag anywhere.
+- **`cellText` in the core owns every projection to text.** `null` and `""`
+  both project to empty text and stay distinct as values, which is only
+  coherent while text is a projection rather than a second home for the data.
+  A codec or component computing its own conversion would immediately
+  reintroduce two answers to what a value looks like.
+
+Rejected alternatives:
+
+- **Infer from text, with an escape hatch.** The escape hatch is the tell: it
+  exists because inference is wrong often enough to need one. It also cannot be
+  made lossless, because the inference has to run before the user can object.
+- **Type the column instead of the cell.** Simpler, and it cannot represent a
+  JSON array whose records disagree about a field's type, which is the input
+  that started this. Mixed columns are real data, not user error.
+- **Keep strings and remember the source type beside them.** A second store
+  that has to stay synchronized with the first, which the ADR 0001 model exists
+  to avoid.
+
+## Consequences
+
+Text formats keep behaving exactly as they always have. Markdown, CSV, TSV,
+Jira, HTML, and Records have no syntax for a type, so they serialize `cellText`
+and parse back strings. A number that leaves through CSV and returns is a
+string, and that is correct: the format carried no type, so nothing may invent
+one.
+
+That makes JSON the first and, for now, only source of a native value, and it
+makes the visual table the place a user can state a type deliberately. Both
+arrive after this decision; the model lands first so the migration is
+reviewable on its own.
+
+Round-trip preservation stays the measured signal, and it now has two halves:
+text still survives byte-exact, and a native value must survive as the same
+value rather than as its text.
+
+Persistence gained a schema version whose migration assigns every existing
+column the `text` expectation and copies every stored value through as the
+string it already was. No shipped table changes meaning. A non-finite number is
+not a valid cell value: `JSON.stringify` writes `NaN` and `Infinity` as `null`,
+which would turn a number into a different type on the next load, so the
+payload is refused and preserved rather than silently altered.
+
+ADR 0001 is amended: its "opaque strings throughout" sentence described the
+model this replaces. What survives from it, and matters more, is that Tabelo
+does not reinterpret content. A carried type is not a reinterpretation; a
+derived one would be.

@@ -99,10 +99,37 @@ Related to: Cell, Table document
 
 ### Cell
 
-The value at one row/column intersection. Always an opaque string: Tabelo never
-infers types, coerces numbers, or reformats content.
+The value at one row/column intersection. It holds a **cell value**: a string, a
+number, a boolean, or null. Tabelo never infers a type, coerces a number, or
+reformats content: a type is carried from a source that stated it or chosen
+explicitly, never derived from how the text looks.
 
-Related to: Row, Column
+Related to: Cell value, Cell text, Expected column type, Row, Column
+
+### Cell value
+
+The scalar a cell holds. `null` is one of them, chosen explicitly or carried
+from a typed source, and it is not a column mode or a nullability flag.
+
+Related to: Cell, Cell text
+
+### Cell text
+
+A cell value projected to text, owned by one core function. Every view, codec,
+and export reads a cell through it, so there is exactly one answer to what a
+value looks like. `null` and the empty string project alike and remain distinct
+values: text is a projection, never a second home for the data.
+
+Related to: Cell value, Serializer
+
+### Expected column type
+
+The type a column expects to be typed into it: text, number, or boolean. It
+guides editing and validation and never constrains the cells, because a typed
+source may legitimately carry mixed types in one column. The real type always
+belongs to the cell.
+
+Related to: Column, Cell value
 
 ### Selection
 
@@ -261,4 +288,7 @@ Related to: Table document, Import
   round trip through Markdown or Jira byte-exact.
 - Header presence is an import-time fact or explicit choice, never a stored
   document property.
-- Cell values are opaque strings; no view may reinterpret them.
+- A cell value's type is carried, never derived. No view may reinterpret a cell,
+  and no format that cannot express a type may invent one.
+- The expected type belongs to the column and the real type belongs to the cell,
+  so a column may hold values that disagree with what it expects.

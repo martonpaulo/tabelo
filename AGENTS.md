@@ -30,7 +30,7 @@ describes the migration and its downstream effects.
 - Development language: English (code, comments, commits, filenames, tests,
   configuration, developer docs)
 - Product copy: English only, single locale, no i18n framework. Dates and
-  numbers inside table cells are opaque text and are never reformatted
+  numbers inside table cells are never localized or reformatted
 - Branch workflow: **branch and pull request by default.** A task or issue gets
   its own branch named under the scheme below; direct commits to `main` are
   reserved for quick, low-risk fixes, most often made by the maintainer
@@ -121,6 +121,14 @@ vocabulary and `docs/adr/` for the reasoning.
   keystroke-level history. When that history is exhausted, or when focus is on
   the grid, undo walks a single document timeline in which each committed parse
   and each grid operation is one step.
+- **A cell's type is carried, never derived.** A cell holds a string, a number,
+  a boolean, or null, and a column declares the type it expects for editing. The
+  expectation guides entry and never constrains the data, so one column may hold
+  values that disagree with it. A value becomes typed only because a typed source
+  stated the type or the user chose it: no codec, view, paste, or migration may
+  read text and conclude a type from it. A format that cannot express a type
+  serializes the projected text and parses strings back. `null` and the empty
+  string project alike and stay distinct values. See `docs/adr/0008`.
 - **Column alignment is document state.** Alignment is Markdown- and
   HTML-specific metadata but belongs to the document, so it survives time spent
   in CSV, TSV, or Jira. None of those formats can express it, and it round-trips
@@ -225,8 +233,11 @@ depend on the core, never the reverse.
 - **Visual grid**: selection, focus, keyboard model, and rendering. Presentation
   only; it calls table operations rather than mutating the document itself.
 
-Cell values are opaque strings. Tabelo does not infer types, coerce numbers, or
-reformat content.
+A cell value is a string, a number, a boolean, or null, and its type is always
+carried rather than derived: a typed source stated it or the user chose it.
+Tabelo does not infer a type from text, coerce numbers, or reformat content.
+One core function projects a value to text, and every view, codec, and export
+reads a cell through it. See `docs/adr/0008`.
 
 ## Build and validate
 
@@ -505,7 +516,8 @@ here:
   one or two for a small fixture and more only when the case needs them, and
   add a person to that file rather than inventing one at the call site. The
   roster carries an age column because numeric-looking values are the case
-  most likely to be mishandled: they stay opaque strings. Public identifiers
+  most likely to be mishandled: they stay strings, because nothing derives a
+  type from text and a fixture must not imply otherwise. Public identifiers
   required for the repository link, the licence attribution, or deployment
   configuration are not test data and stay as they are.
 - A test asserting a platform-dependent result derives its expectation from the

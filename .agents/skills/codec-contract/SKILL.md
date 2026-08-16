@@ -5,7 +5,7 @@ description: Implement or review Tabelo codecs, parsing, serialization, format s
 
 # Codec Contract
 
-Data preservation is Tabelo's highest priority. Treat every external string, file, clipboard payload, and persisted value as untrusted input, while keeping cell values opaque and byte-preserving.
+Data preservation is Tabelo's highest priority. Treat every external string, file, clipboard payload, and persisted value as untrusted input, while keeping cell values byte-preserving and never deriving a type from text.
 
 ## Workflow
 
@@ -27,7 +27,7 @@ Data preservation is Tabelo's highest priority. Treat every external string, fil
 ## Invariants
 
 - The table document is the only canonical representation.
-- Cell values are opaque strings and are never type-inferred or reformatted.
+- A cell value is never type-inferred or reformatted. A format that cannot express a type serializes the projected text and parses strings back; only a format that states a type may produce one. See ADR 0008.
 - Markdown escaping is reversible; a CSV to Markdown to CSV round trip remains byte-exact.
 - Invalid drafts leave the last valid document and every other view editable.
 - Alignment stays on the document through formats that cannot represent it.
