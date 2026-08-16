@@ -226,6 +226,46 @@ test("the pane-zoom chord steps and resets the active pane, including inside a s
 	).toBeDisabled();
 });
 
+// The chord is not conditioned on where focus sits: it steps whichever pane is
+// active, so it has to behave the same in the grid and from a control that
+// belongs to no pane at all.
+test("the pane-zoom chord steps the active pane from the grid and from outside every pane", async ({
+	page,
+	tabelo,
+}) => {
+	const cellSize = () =>
+		tabelo
+			.cell(1, 1)
+			.evaluate((element) =>
+				Number.parseFloat(getComputedStyle(element).fontSize),
+			);
+
+	await tabelo.cell(1, 1).click();
+	const sizeBefore = await cellSize();
+	await page.keyboard.press("ControlOrMeta+Alt+=");
+	await expect.poll(cellSize).toBeGreaterThan(sizeBefore);
+	const zoomedInGrid = await cellSize();
+
+	// Focused rather than clicked: opening the menu would take the keystrokes.
+	// The grid stays the active pane, so the chord keeps stepping it from here.
+	await page
+		.getByRole("button", { name: copy.actions.openAppMenu })
+		.first()
+		.focus();
+	await page.keyboard.press("ControlOrMeta+Alt+=");
+	await expect.poll(cellSize).toBeGreaterThan(zoomedInGrid);
+
+	await page.keyboard.press("ControlOrMeta+Alt+-");
+	await expect.poll(cellSize).toBe(zoomedInGrid);
+
+	await page.keyboard.press("ControlOrMeta+Alt+0");
+	await expect.poll(cellSize).toBe(sizeBefore);
+	const menu = await tabelo.openPaneMenu("grid");
+	await expect(
+		menu.getByRole("menuitem", { name: copy.workspace.resetZoom }),
+	).toBeDisabled();
+});
+
 // The browser owns Mod+plus, Mod+minus, and Mod+0. Playwright cannot observe the
 // browser-level zoom those keys drive, but it can prove the two things the
 // application controls: pane zoom does not move, and the event is never
