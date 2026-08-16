@@ -762,6 +762,20 @@ blocked replaces its content with one keyboard-focusable written status. The
 status is announced to assistive technology and identifies affected rows or
 columns without relying on the grid being visible.
 
+**A refusal that names a position offers the correction beside it.** The
+refused choice stays natively disabled with its reason, and an ordinary enabled
+`Fix table` command sits immediately after it as a sibling: never nested inside
+the disabled option, its label, or its full-row overlay. A control must not
+report itself as disabled while answering to activation, and an enabled control
+must not perform a command other than the one its label states. The correction
+takes the user to the first offending header or cell, raises the same reason
+through the notice channel, and closes the surface it was invoked from without
+changing the view, the panes, or the document. Several refused choices in one
+list each get their own command, so the accessible name opens with the label
+and names the refused choice. A refusal that names no position offers no
+command: the choice stays disabled with its reason rather than gaining a
+control that would do nothing.
+
 The pane frame owns focus for a source view. CodeMirror never draws a second
 inner rectangle: its caret and selection remain visible, while the pane's 0.125rem
 inset edge supplies all four focus sides. The source caret is a 0.125rem accent line

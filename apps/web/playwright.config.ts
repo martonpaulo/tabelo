@@ -18,6 +18,9 @@ const firefoxContractSpecs = [
 	"**/overscroll.spec.ts",
 	"**/pane-move.spec.ts",
 	"**/persistence.spec.ts",
+	// Recovery places focus in the grid across a closing dialog or menu, which
+	// races each engine's own focus restoration.
+	"**/precondition-recovery.spec.ts",
 	"**/responsive.spec.ts",
 	"**/smoke.spec.ts",
 	"**/source-geometry.spec.ts",
