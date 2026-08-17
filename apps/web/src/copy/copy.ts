@@ -396,6 +396,11 @@ export const copy = {
 		moveDown: "Move down",
 		moveLeft: "Move left",
 		moveRight: "Move right",
+		fill: "Fill",
+		fillUp: "Fill up",
+		fillDown: "Fill down",
+		fillLeft: "Fill left",
+		fillRight: "Fill right",
 		alignLeft: "Align left",
 		alignCenter: "Align center",
 		alignRight: "Align right",
@@ -482,6 +487,8 @@ export const copy = {
 			`Column ${column} is already at its minimum width.`,
 		columnWidthMaximum: (column: string) =>
 			`Column ${column} is already at its maximum width.`,
+		cellsFilled: (count: number) =>
+			`${count} ${count === 1 ? "cell" : "cells"} filled.`,
 		loading: "Loading…",
 	},
 
@@ -603,6 +610,9 @@ export const copy = {
 				scope === "column" ? "column" : scope === "row" ? "row" : "area";
 			return `${total} ${noun}${total === 1 ? "" : "s"} selected`;
 		},
+		fillHandle: "Fill selected cells",
+		fillHandleHint:
+			"Drag to repeat the selection, or use Mod+Alt with an arrow key.",
 	},
 
 	shortcuts: {
@@ -625,5 +635,9 @@ export const copy = {
 		// reaches the page on every platform: macOS keeps Cmd+Space for itself.
 		toggleColumn: "Ctrl+Space",
 		toggleRow: "Ctrl+Shift+Space",
+		fillUp: "Mod+Alt+↑",
+		fillDown: "Mod+Alt+↓",
+		fillLeft: "Mod+Alt+←",
+		fillRight: "Mod+Alt+→",
 	},
 } as const;

@@ -876,3 +876,62 @@ describe("operations over several selected regions", () => {
 		]);
 	});
 });
+
+describe("fill history", () => {
+	it("commits a filled rectangle as one step and undoes it exactly", () => {
+		const document = documentFromMatrix(
+			[
+				["A", "B"],
+				["a", "b"],
+				["c", "d"],
+				["", ""],
+			],
+			{ headerRow: true },
+		);
+		useTabeloStore.setState({
+			document,
+			selection: selectionOf({
+				anchor: { row: 0, column: 0 },
+				focus: { row: 1, column: 1 },
+				mode: "cell",
+			}),
+		});
+
+		expect(
+			useTabeloStore.getState().fillSelection({
+				top: 0,
+				bottom: 2,
+				left: 0,
+				right: 1,
+			}),
+		).toBe(2);
+		const filled = useTabeloStore.getState();
+		expect(documentToMatrix(filled.document)).toEqual([
+			["A", "B"],
+			["a", "b"],
+			["c", "d"],
+			["a", "b"],
+		]);
+		expect(filled.past).toHaveLength(1);
+
+		filled.undo();
+		expect(useTabeloStore.getState().document).toBe(document);
+	});
+
+	it("refuses a fill from a header or several areas without changing history", () => {
+		const before = useTabeloStore.getState();
+		useTabeloStore.setState({
+			selection: createSelection({ row: HEADER_ROW, column: 0 }),
+		});
+		expect(
+			useTabeloStore.getState().fillSelection({
+				top: HEADER_ROW,
+				bottom: 1,
+				left: 0,
+				right: 0,
+			}),
+		).toBe(0);
+		expect(useTabeloStore.getState().document).toBe(before.document);
+		expect(useTabeloStore.getState().past).toBe(before.past);
+	});
+});

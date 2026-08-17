@@ -323,14 +323,17 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	menu = page.locator('[data-slot="context-menu-content"]');
 	await expect(menu).toBeVisible();
 	const contextGroups = menu.locator('[data-slot="context-menu-group"]');
-	await expect(contextGroups).toHaveCount(5);
+	await expect(contextGroups).toHaveCount(6);
 	await expect(
 		menu.getByRole("group", { name: copy.actions.edit }),
 	).toHaveCount(1);
 	await expect(
+		menu.getByRole("group", { name: copy.actions.fill }),
+	).toHaveCount(1);
+	await expect(
 		menu.getByRole("group", { name: copy.actions.move }),
 	).toHaveCount(1);
-	await expect(contextGroups.locator(":scope[aria-labelledby]")).toHaveCount(2);
+	await expect(contextGroups.locator(":scope[aria-labelledby]")).toHaveCount(3);
 	await expect(
 		contextGroups.locator(":scope:not([aria-labelledby])"),
 	).toHaveCount(3);

@@ -10,6 +10,8 @@ import {
 	HEADER_ROW,
 	rectContains,
 	replaceActiveRange,
+	selectionFillRefusal,
+	selectionRect,
 	selectionRects,
 } from "@/core/selection";
 import type { Alignment, Column, ColumnId, Row } from "@/core/types";
@@ -36,15 +38,22 @@ import {
 } from "./axis-menu";
 import { AxisReorderGrip } from "./axis-reorder-grip";
 import { CellEditor } from "./cell-editor";
+import { FillHandle } from "./fill-handle";
+import { FillPreview, type FillPreviewSetter } from "./fill-preview";
 import { GridContextMenu } from "./grid-context-menu";
 import { autoscrollAxisOf, type GridDragKind, gridTargetAt } from "./grid-drag";
 import { revealGridCell } from "./reveal-cell";
-import { moveRefusalMessage } from "./table-actions";
+import {
+	fillRefusalMessage,
+	moveRefusalMessage,
+	runFillDirection,
+} from "./table-actions";
 import {
 	type AxisReorderController,
 	type DropIndicatorSetter,
 	useAxisReorder,
 } from "./use-axis-reorder";
+import { useFillDrag } from "./use-fill-drag";
 import {
 	type GridAutoscrollPoint,
 	useGridAutoscroll,
@@ -233,6 +242,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// Written by the drop indicator when it mounts, so a reorder drag repaints
 	// one element rather than the whole table on every pointer move.
 	const setIndicatorRef = useRef<DropIndicatorSetter | null>(null);
+	const setFillPreviewRef = useRef<FillPreviewSetter | null>(null);
 	// One handle for the whole grid: every gutter trigger opens the single root
 	// mounted below, because only one axis menu can be open at a time.
 	const [axisMenuHandle] = useState(createAxisMenuHandle);
@@ -244,6 +254,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		document.columns.length,
 	);
 	const focus = activeRange(selection).focus;
+	const fillSource = selectionFillRefusal(
+		selection,
+		document.rows.length,
+		document.columns.length,
+	)
+		? null
+		: selectionRect(selection, document.rows.length, document.columns.length);
 	// Tracks the edit that just ended, so focus can be handed back to the grid
 	// when the cell editor unmounts and drops it on <body>.
 	const wasEditingRef = useRef(false);
@@ -332,6 +349,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		draggingRef,
 		setIndicatorRef,
 	});
+	const fill = useFillDrag({
+		gridRef,
+		wrapperRef,
+		draggingRef,
+		setPreviewRef: setFillPreviewRef,
+	});
 	const extendAutoscrolledDrag = useCallback(
 		(
 			drag: GridDragKind,
@@ -343,6 +366,10 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			// through content the pointer itself never travelled over.
 			if (drag === "row-reorder" || drag === "column-reorder") {
 				reorder.trackReorder(point, grid);
+				return;
+			}
+			if (drag === "fill-row" || drag === "fill-column") {
+				fill.trackFill(point, grid);
 				return;
 			}
 
@@ -396,7 +423,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			if (!Number.isInteger(row) || !Number.isInteger(column)) return;
 			useTabeloStore.getState().extendSelection({ row, column });
 		},
-		[reorder, selectColumn, selectRow],
+		[fill, reorder, selectColumn, selectRow],
 	);
 
 	useGridAutoscroll({
@@ -484,6 +511,34 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			const next = stepColumnWidth(width, event.key === "ArrowLeft" ? -1 : 1);
 			store.resizeColumn(focusedColumn, next, "column");
 			store.announceStatus(copy.status.columnWidth(letter, next));
+			return;
+		}
+
+		if (
+			mod &&
+			event.altKey &&
+			!event.shiftKey &&
+			(event.key === "ArrowUp" ||
+				event.key === "ArrowDown" ||
+				event.key === "ArrowLeft" ||
+				event.key === "ArrowRight")
+		) {
+			event.preventDefault();
+			const direction =
+				event.key === "ArrowUp"
+					? "up"
+					: event.key === "ArrowDown"
+						? "down"
+						: event.key === "ArrowLeft"
+							? "left"
+							: "right";
+			const refusal = runFillDirection(direction);
+			if (refusal) {
+				store.pushNotice({
+					severity: "warning",
+					message: fillRefusalMessage[refusal],
+				});
+			}
 			return;
 		}
 
@@ -903,6 +958,17 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					))}
 				</tbody>
 			</table>
+
+			{fillSource ? (
+				<FillHandle
+					gridRef={gridRef}
+					wrapperRef={wrapperRef}
+					source={fillSource}
+					corner={focus}
+					onPointerDown={fill.onHandlePointerDown}
+				/>
+			) : null}
+			<FillPreview setterRef={setFillPreviewRef} />
 
 			{/* Drawn against the positioned wrapper rather than the table, because a
 			    table cannot hold a non-table child. It scrolls with the table, so

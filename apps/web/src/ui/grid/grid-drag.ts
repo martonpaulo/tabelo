@@ -15,6 +15,8 @@ export type GridDragKind =
 	| "cell"
 	| "column"
 	| "row"
+	| "fill-row"
+	| "fill-column"
 	| "row-reorder"
 	| "column-reorder";
 
@@ -28,8 +30,10 @@ export function reorderDragOf(axis: ReorderAxis): GridDragKind {
 // column gesture never scrolls down, so overshooting on the axis the gesture
 // does not own leaves the grid where it is.
 export function autoscrollAxisOf(drag: GridDragKind): GridAutoscrollAxis {
-	if (drag === "column" || drag === "column-reorder") return "horizontal";
-	if (drag === "row" || drag === "row-reorder") return "vertical";
+	if (drag === "column" || drag === "column-reorder" || drag === "fill-column")
+		return "horizontal";
+	if (drag === "row" || drag === "row-reorder" || drag === "fill-row")
+		return "vertical";
 	return "both";
 }
 

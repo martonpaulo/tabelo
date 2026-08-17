@@ -12,6 +12,7 @@ import {
 	deleteRows,
 	duplicateColumns,
 	duplicateRows,
+	fillRange,
 	insertColumns,
 	insertRows,
 	moveColumns,
@@ -38,6 +39,7 @@ import {
 	selectionColumns,
 	selectionCoversHeader,
 	selectionDataRows,
+	selectionFillRefusal,
 	selectionMoveRefusal,
 	selectionRect,
 	selectionRects,
@@ -264,6 +266,7 @@ export interface TabeloState {
 	removeSelectedColumns: () => void;
 	duplicateSelectedColumns: () => void;
 	moveSelectedColumn: (offset: number) => SelectionMoveRefusal | null;
+	fillSelection: (target: CellRect) => number;
 
 	clearSelection: () => void;
 	deleteSelectedStructure: () => StructureDeletionRefusal | null;
@@ -1227,6 +1230,44 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		state.applyDocument(next);
 		set({ selection: translateSelection(state.selection, "column", offset) });
 		return null;
+	},
+
+	// Pointer, keyboard, and menu fill all end here. The selection is the source
+	// at call time and the target is the complete preview rectangle, including
+	// that source. One `applyDocument` call makes the whole fill one history step.
+	fillSelection: (target) => {
+		const state = get();
+		if (
+			selectionFillRefusal(
+				state.selection,
+				state.document.rows.length,
+				state.document.columns.length,
+			)
+		) {
+			return 0;
+		}
+		const source = currentRect(state);
+		const next = fillRange(state.document, source, target);
+		if (next === state.document) return 0;
+
+		state.applyDocument(next);
+		set({
+			selection: {
+				ranges: [
+					{
+						anchor: { row: target.top, column: target.left },
+						focus: { row: target.bottom, column: target.right },
+						mode: "cell",
+					},
+				],
+				activeIndex: 0,
+			},
+		});
+		const targetSize =
+			(target.bottom - target.top + 1) * (target.right - target.left + 1);
+		const sourceSize =
+			(source.bottom - source.top + 1) * (source.right - source.left + 1);
+		return targetSize - sourceSize;
 	},
 
 	clearSelection: () => {
