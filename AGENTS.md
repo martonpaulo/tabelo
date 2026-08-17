@@ -268,8 +268,34 @@ Prefer the smallest relevant check.
 - `pnpm test:e2e:all`: adds Firefox. CI owns the cross-browser matrix, so this
   is for changes to clipboard, download, focus, persistence, responsive layout,
   or source editor synchronization
+- Pass a focused spec path or Playwright option directly after the root script.
+  Never add a standalone `--` after `pnpm test:e2e`: it ends option parsing and
+  can turn a focused command into the configured project matrix. Before a new
+  focused selection, list its resolved scope and confirm the files, projects,
+  and test count match the intent:
+
+  ```sh
+  pnpm test:e2e e2e/import.spec.ts --list
+  pnpm test:e2e:all e2e/import.spec.ts --list
+  ```
+
+  Then run Chromium, the configured two-browser coverage, or one named behavior
+  explicitly:
+
+  ```sh
+  TABELO_E2E_WORKERS=1 pnpm test:e2e e2e/import.spec.ts
+  TABELO_E2E_WORKERS=1 pnpm test:e2e:all e2e/import.spec.ts
+  pnpm test:e2e e2e/import.spec.ts -g "<title>"
+  ```
+
+  If execution announces an unexpected project or materially larger test count,
+  interrupt it immediately and correct the command. Do not let a focused run
+  silently become a full gate. Run `pnpm test:e2e:all` without a spec path only
+  when the task's risk explicitly requires the complete cross-browser matrix
 - Several worktrees share one machine. Set `TABELO_E2E_WORKERS=1` when another
-  checkout is running its own suite
+  checkout is running its own suite. Before a full browser gate, check whether
+  another worktree is already running Playwright; wait or keep one worker rather
+  than creating resource contention and unrelated timeout failures
 
 CI and Pages deployment are skipped only when every changed path matches the
 non-build path list owned by their workflows. For pull requests that run CI,
