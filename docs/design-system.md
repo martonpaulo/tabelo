@@ -612,6 +612,11 @@ toggle state. Theme is a labelled single-selection group; global binary display
 preferences are labelled checkbox rows in the same list. Per-pane preferences,
 including source wrapping and pane zoom, remain in the pane menu.
 
+Rename table uses the same transactional boundary for one persisted text value.
+Its labelled input starts with the current name, validates before saving, and
+keeps both the prior name and the dialog open when durable storage refuses the
+change.
+
 A dialog is never used to announce something. Notices belong in the notice
 layer described in §5: it floats above the workspace without modal semantics,
 without a focus trap, and without blocking the work underneath.
@@ -934,7 +939,8 @@ per keystroke.
 - There is no app header. One floating action button is the document-level
   command surface at every viewport width. It is a floating layer and takes the
   floating surface and elevation, with no resting border. Its menu contains the Tabelo identity
-  and description, Undo, Redo, New table, Import, Download, Add view, Layout,
+  and description, the current table name with a Rename command, Undo, Redo,
+  New table, Import, Download, Add view, Layout,
   and a link to the GitHub repository. The trigger has a stable accessible name
   and never replaces visible menu labels with unexplained icons. Global Add
   view chooses the first valid split in workspace reading order and opens the

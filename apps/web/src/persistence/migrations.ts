@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { DEFAULT_TABLE_NAME } from "@/copy/product";
 import { DEFAULT_EXPECTED_TYPE } from "@/core/cell-value";
 import { DEFAULT_PANE_ZOOM } from "@/workspace/zoom";
 import {
@@ -9,6 +10,7 @@ import {
 	persistedStateV3Schema,
 	persistedStateV4Schema,
 	persistedStateV5Schema,
+	persistedStateV6Schema,
 } from "./versions";
 
 export interface MigrationStep {
@@ -140,6 +142,13 @@ function migrateV5ToV6(input: unknown): unknown {
 	};
 }
 
+// Version 7 gives the table an identity outside the document timeline. Every
+// earlier table receives the product-owned default without inspecting content.
+function migrateV6ToV7(input: unknown): unknown {
+	const source = input as z.infer<typeof persistedStateV6Schema>;
+	return { ...source, version: 7, name: DEFAULT_TABLE_NAME };
+}
+
 export const migrationRegistry: MigrationRegistry = {
 	1: {
 		source: persistedStateV1Schema,
@@ -163,8 +172,13 @@ export const migrationRegistry: MigrationRegistry = {
 	},
 	5: {
 		source: persistedStateV5Schema,
-		target: persistedStateSchema,
+		target: persistedStateV6Schema,
 		migrate: migrateV5ToV6,
+	},
+	6: {
+		source: persistedStateV6Schema,
+		target: persistedStateSchema,
+		migrate: migrateV6ToV7,
 	},
 };
 

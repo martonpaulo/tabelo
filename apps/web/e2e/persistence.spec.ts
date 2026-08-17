@@ -34,6 +34,7 @@ test("the oldest shipped payload restores and saves as the current schema", asyn
 				const saved = JSON.parse(window.localStorage.getItem(key) ?? "null");
 				return {
 					version: saved?.version,
+					name: saved?.name,
 					value: saved?.document?.rows?.[0]?.cells?.["c-role"],
 					zooms: saved?.workspace?.panes?.map(
 						(pane: { zoom?: number }) => pane.zoom,
@@ -41,7 +42,12 @@ test("the oldest shipped payload restores and saves as the current schema", asyn
 				};
 			}, STORAGE_KEY),
 		)
-		.toEqual({ version: CURRENT_VERSION, value: "Writer", zooms: [1, 1] });
+		.toEqual({
+			version: CURRENT_VERSION,
+			name: "Untitled table",
+			value: "Writer",
+			zooms: [1, 1],
+		});
 });
 
 test("v4 document widths migrate into workspace preferences", async ({

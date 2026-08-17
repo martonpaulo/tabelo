@@ -1,7 +1,11 @@
 // @vitest-environment happy-dom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { pickTextFile } from "./files";
+import {
+	pickTextFile,
+	tableDownloadFilename,
+	tableFilenameStem,
+} from "./files";
 
 afterEach(() => {
 	vi.restoreAllMocks();
@@ -39,5 +43,30 @@ describe("text file picker", () => {
 			size: 10,
 		});
 		expect(text).not.toHaveBeenCalled();
+	});
+});
+
+describe("table download filenames", () => {
+	it.each([
+		["Résumé & roadmap", "resume-roadmap"],
+		["  Quarterly   plan...final  ", "quarterly-plan-final"],
+		["😀 東京", "untitled-table"],
+		["../CON:<draft>?*", "con-draft"],
+		["one---two___three", "one-two-three"],
+		["", "untitled-table"],
+	])("turns %j into %s", (name, expected) => {
+		expect(tableFilenameStem(name)).toBe(expected);
+	});
+
+	it("caps the stem at 120 ASCII characters without a trailing separator", () => {
+		const stem = tableFilenameStem(`${"a".repeat(119)} - remainder`);
+		expect(stem).toHaveLength(119);
+		expect(stem.endsWith("-")).toBe(false);
+	});
+
+	it("leaves the codec-owned extension outside the stem", () => {
+		expect(tableDownloadFilename("Project roles", "csv")).toBe(
+			"project-roles.csv",
+		);
 	});
 });

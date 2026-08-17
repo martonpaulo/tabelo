@@ -14,6 +14,7 @@ import {
 // own readonly types rather than the schema's inferred ones: persistence
 // serves the document, not the other way round.
 export interface SavePayload {
+	readonly name: string;
 	readonly document: TableDocument;
 	readonly workspace: Workspace;
 	readonly draft: PersistedDraft;

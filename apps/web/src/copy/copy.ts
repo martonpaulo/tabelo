@@ -422,6 +422,7 @@ export const copy = {
 		downloadTable: "Download table",
 		download: "Download",
 		cancel: "Cancel",
+		renameTable: "Rename table",
 		importFile: "Import file",
 		newTable: "New table",
 		selectRow: "Select row",
@@ -432,6 +433,17 @@ export const copy = {
 		// The command that sits beside a choice its codec has refused. The
 		// refusal already says what is wrong; this takes the user to it.
 		fixTable: FIX_TABLE,
+	},
+
+	tableName: {
+		label: "Table name",
+		dialogTitle: "Rename table",
+		description: "Choose the name used for this table and its downloads",
+		confirm: "Rename",
+		empty: "Enter a table name.",
+		tooLong: "Use 120 characters or fewer.",
+		unchanged: "Enter a different table name.",
+		saveError: "The table name could not be saved. Try again.",
 	},
 
 	addView: {

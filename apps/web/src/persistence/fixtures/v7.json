@@ -1,0 +1,51 @@
+{
+	"version": 7,
+	"name": "Project roles",
+	"document": {
+		"columns": [
+			{
+				"id": "c-name",
+				"header": "Name",
+				"align": "left",
+				"expectedType": "text"
+			},
+			{
+				"id": "c-role",
+				"header": "Role",
+				"align": "default",
+				"expectedType": "text"
+			}
+		],
+		"rows": [
+			{
+				"id": "r-ingrid",
+				"cells": { "c-name": "Ingrid", "c-role": "Designer" }
+			}
+		]
+	},
+	"workspace": {
+		"layout": "columns",
+		"panes": [
+			{
+				"id": "ac",
+				"view": "grid",
+				"slots": ["a", "c"],
+				"zoom": 1,
+				"wrap": false
+			},
+			{
+				"id": "bd",
+				"view": "markdown",
+				"slots": ["b", "d"],
+				"zoom": 1.2,
+				"wrap": false
+			}
+		],
+		"wrappedColumns": [],
+		"columnWidths": { "c-name": 18 },
+		"columnRatio": 0.4,
+		"rowRatio": 0.5,
+		"activePaneId": "bd"
+	},
+	"draft": null
+}

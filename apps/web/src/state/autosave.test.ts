@@ -66,6 +66,54 @@ describe("autosave lifecycle", () => {
 		expect(restored.hasHeldContent).toBe(true);
 	});
 
+	it("saves and reloads the table name outside document history", () => {
+		const before = useTabeloStore.getState();
+		expect(before.renameTable("Project roles")).toEqual({ status: "saved" });
+		expect(useTabeloStore.getState().past).toHaveLength(0);
+
+		useTabeloStore.setState(initialState, true);
+		useTabeloStore.getState().hydrate();
+		expect(useTabeloStore.getState().name).toBe("Project roles");
+		expect(useTabeloStore.getState().past).toHaveLength(0);
+	});
+
+	it("keeps the prior name when its durable write fails", () => {
+		const write = vi
+			.spyOn(window.localStorage, "setItem")
+			.mockImplementation(() => {
+				throw new DOMException("full", "QuotaExceededError");
+			});
+
+		expect(useTabeloStore.getState().renameTable("Project roles")).toEqual({
+			status: "quota",
+		});
+		expect(useTabeloStore.getState().name).toBe("Untitled table");
+		expect(useTabeloStore.getState().storageIssue).toEqual({ kind: "quota" });
+		write.mockRestore();
+	});
+
+	it("does not rename over unreadable saved bytes", () => {
+		const raw = "{keep me unchanged";
+		window.localStorage.setItem(STORAGE_KEY, raw);
+		useTabeloStore.setState({
+			storageIssue: { kind: "unreadable", raw },
+		});
+
+		expect(useTabeloStore.getState().renameTable("Project roles")).toEqual({
+			status: "blocked",
+		});
+		expect(useTabeloStore.getState().name).toBe("Untitled table");
+		expect(window.localStorage.getItem(STORAGE_KEY)).toBe(raw);
+	});
+
+	it("gives a new table the default name", () => {
+		expect(useTabeloStore.getState().renameTable("Project roles")).toEqual({
+			status: "saved",
+		});
+		useTabeloStore.getState().resetDocument();
+		expect(useTabeloStore.getState().name).toBe("Untitled table");
+	});
+
 	it("keeps every identifier distinct after hydrating and then mutating", () => {
 		expect(flushPersistence()).toEqual({ status: "saved" });
 

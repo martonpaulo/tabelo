@@ -18,6 +18,7 @@ import {
 	FilePlus2,
 	LayoutGrid,
 	PanelRightOpen,
+	Pencil,
 	Redo2,
 	RefreshCw,
 	Settings2,
@@ -51,6 +52,7 @@ interface AppMenuProps {
 	readonly onSettings: () => void;
 	readonly onAddView: () => void;
 	readonly onNewTable: () => void;
+	readonly onRename: () => void;
 	readonly pwaUpdate: PwaUpdate;
 	readonly triggerRef: RefObject<HTMLButtonElement | null>;
 }
@@ -62,11 +64,13 @@ export function AppMenu({
 	onSettings,
 	onAddView,
 	onNewTable,
+	onRename,
 	pwaUpdate,
 	triggerRef,
 }: AppMenuProps) {
 	const menuDialog = useMenuDialogCommand();
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
+	const tableName = useTabeloStore((state) => state.name);
 	const canRedoDocument = useTabeloStore((state) => state.future.length > 0);
 	const activePaneId = useTabeloStore((state) => state.workspace.activePaneId);
 	const canAddView = useTabeloStore(
@@ -146,7 +150,14 @@ export function AppMenu({
 						<span className="block text-muted-foreground text-xs">
 							{copy.app.copyright}
 						</span>
+						<span className="block text-muted-foreground text-xs">
+							{tableName}
+						</span>
 					</div>
+					<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onRename)}>
+						<Pencil aria-hidden />
+						{copy.actions.renameTable}
+					</DropdownMenuItem>
 				</DropdownMenuGroup>
 				{pwaUpdate.ready ? (
 					<>

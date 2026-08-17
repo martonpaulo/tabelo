@@ -1,7 +1,7 @@
 import { copy } from "@/copy/copy";
 import { getCodec } from "@/formats";
 import type { ImportError } from "@/import/prepare";
-import { downloadText } from "@/platform/files";
+import { downloadText, tableDownloadFilename } from "@/platform/files";
 import {
 	conditionNoticeIds,
 	type NoticeSeverity,
@@ -187,9 +187,10 @@ function replaceSavedData(): void {
 
 function downloadCurrentTable(): void {
 	const codec = getCodec("markdown");
+	const state = useTabeloStore.getState();
 	downloadText(
-		`table.${codec.extension}`,
+		tableDownloadFilename(state.name, codec.extension),
 		codec.mimeType,
-		codec.serialize(useTabeloStore.getState().document),
+		codec.serialize(state.document),
 	);
 }

@@ -18,6 +18,28 @@ export function downloadText(
 	requestAnimationFrame(() => URL.revokeObjectURL(url));
 }
 
+const MAX_FILENAME_STEM_LENGTH = 120;
+
+export function tableFilenameStem(tableName: string): string {
+	const ascii = [...tableName.normalize("NFKD").replace(/\p{M}+/gu, "")]
+		.filter((character) => character.charCodeAt(0) <= 0x7f)
+		.join("");
+	const stem = ascii
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+		.slice(0, MAX_FILENAME_STEM_LENGTH)
+		.replace(/-+$/g, "");
+	return stem || "untitled-table";
+}
+
+export function tableDownloadFilename(
+	tableName: string,
+	extension: string,
+): string {
+	return `${tableFilenameStem(tableName)}.${extension}`;
+}
+
 export type PickTextFileResult =
 	| {
 			readonly status: "selected";

@@ -22,7 +22,7 @@ import type {
 	OutputOptionId,
 	PreconditionFailure,
 } from "@/formats/types";
-import { downloadText } from "@/platform/files";
+import { downloadText, tableDownloadFilename } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
 import { copyToClipboard } from "@/ui/clipboard-actions";
 import { preconditionRecovery } from "@/ui/precondition-recovery";
@@ -44,8 +44,6 @@ import { getView } from "@/views/registry";
 // the keyboard shortcut open this same chooser, so there is one format list
 // and one set of options rather than a parallel pair. See docs/adr/0005.
 
-const BASE_FILENAME = "table";
-
 interface DownloadDialogProps {
 	readonly open: boolean;
 	readonly onOpenChange: (open: boolean) => void;
@@ -55,6 +53,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 	const codecs = listCodecs();
 	const [selected, setSelected] = useState<CodecId>(DEFAULT_CODEC_ID);
 	const document = useTabeloStore((state) => state.document);
+	const tableName = useTabeloStore((state) => state.name);
 	const outputOptions = useTabeloStore((state) => state.outputOptions);
 	const titleId = useId();
 	const hintId = useId();
@@ -84,7 +83,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 		const failure = canSerialize(codec, document);
 		if (failure) return;
 		downloadText(
-			`${BASE_FILENAME}.${codec.extension}`,
+			tableDownloadFilename(tableName, codec.extension),
 			codec.mimeType,
 			// Only what this format declared: see outputOptionsFor.
 			codec.serialize(document, outputOptionsFor(codec, outputOptions)),

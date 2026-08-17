@@ -6,6 +6,7 @@ import v3 from "./fixtures/v3.json";
 import v4 from "./fixtures/v4.json";
 import v5 from "./fixtures/v5.json";
 import v6 from "./fixtures/v6.json";
+import v7 from "./fixtures/v7.json";
 import { CURRENT_VERSION, validatePersistedState } from "./schema";
 
 const document = {
@@ -19,6 +20,7 @@ const document = {
 function payload(overrides: Record<string, unknown> = {}) {
 	return {
 		version: CURRENT_VERSION,
+		name: "Project roles",
 		document,
 		workspace: {
 			layout: "columns",
@@ -112,6 +114,7 @@ describe("loading a stored payload", () => {
 		["v4", v4],
 		["v5", v5],
 		["v6", v6],
+		["v7", v7],
 	] as const)(
 		"loads the stored %s fixture as current state",
 		(_name, fixture) => {
@@ -123,6 +126,19 @@ describe("loading a stored payload", () => {
 			expect(outcome.state.document.rows[0]?.cells["c-name"]).toBe("Ingrid");
 		},
 	);
+
+	it("requires a trimmed non-empty name within 120 Unicode code points", () => {
+		expect(validatePersistedState(payload({ name: "" }))).toEqual({
+			status: "unreadable",
+			reason: "current-schema-invalid",
+		});
+		expect(validatePersistedState(payload({ name: "😀".repeat(121) }))).toEqual(
+			{ status: "unreadable", reason: "current-schema-invalid" },
+		);
+		expect(
+			validatePersistedState(payload({ name: " Project roles " })),
+		).toEqual({ status: "unreadable", reason: "current-schema-invalid" });
+	});
 
 	it("migrates v5 columns to the text expectation with values untouched", () => {
 		const outcome = validatePersistedState(v5);

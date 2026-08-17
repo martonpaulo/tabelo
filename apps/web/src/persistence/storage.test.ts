@@ -5,7 +5,7 @@ import { createEmptyDocument } from "@/core/document";
 import { createDefaultWorkspace } from "@/workspace/layout";
 import v2 from "./fixtures/v2.json";
 import v4 from "./fixtures/v4.json";
-import v6 from "./fixtures/v6.json";
+import v7 from "./fixtures/v7.json";
 import { CURRENT_VERSION, RECOVERY_KEY, STORAGE_KEY } from "./schema";
 import {
 	loadState,
@@ -15,6 +15,7 @@ import {
 } from "./storage";
 
 const payload: SavePayload = {
+	name: "Untitled table",
 	document: createEmptyDocument(),
 	workspace: createDefaultWorkspace(),
 	draft: null,
@@ -51,7 +52,7 @@ describe("browser storage outcomes", () => {
 		],
 		[
 			"invalid current schema",
-			JSON.stringify({ ...v6, document: { columns: [] } }),
+			JSON.stringify({ ...v7, document: { columns: [] } }),
 			"current-schema-invalid",
 		],
 		[
