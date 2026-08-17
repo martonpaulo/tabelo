@@ -8,7 +8,7 @@ import {
 	ContextMenuShortcut,
 	ContextMenuTrigger,
 } from "@tabelo/ui/components/context-menu";
-import { Fragment, type ReactNode, useState } from "react";
+import { Fragment, type ReactNode, type RefObject, useState } from "react";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { targetAxisForMenu, targetCellForMenu } from "./menu-target";
 import { buildTableActions, type TableActionContext } from "./table-actions";
@@ -21,15 +21,21 @@ export type ContextAxis = TableActionContext["axis"];
 
 export function GridContextMenu({
 	children,
+	wrapperRef,
 }: {
 	readonly children: ReactNode;
+	// The positioned box the drop indicator measures and draws against. It is
+	// this element rather than the table because a table cannot hold a non-table
+	// child, and because it scrolls with the table, so the indicator needs no
+	// scroll arithmetic of its own.
+	readonly wrapperRef?: RefObject<HTMLDivElement | null>;
 }) {
 	const [axis, setAxis] = useState<ContextAxis>("cell");
 
 	return (
 		<ContextMenu>
 			<ContextMenuTrigger
-				render={<div className="min-w-max" />}
+				render={<div ref={wrapperRef} className="relative min-w-max" />}
 				onContextMenuCapture={(event: React.MouseEvent) => {
 					const target = event.target as HTMLElement | null;
 

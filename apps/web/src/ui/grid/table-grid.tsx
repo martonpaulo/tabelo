@@ -27,18 +27,25 @@ import {
 	resolveColumnWidth,
 	stepColumnWidth,
 } from "@/workspace/column-width";
+import { AxisDropIndicator } from "./axis-drop-indicator";
 import {
 	type AxisMenuHandle,
 	AxisMenuPopupHost,
 	AxisMenuTrigger,
 	createAxisMenuHandle,
 } from "./axis-menu";
+import { AxisReorderGrip } from "./axis-reorder-grip";
 import { CellEditor } from "./cell-editor";
 import { GridContextMenu } from "./grid-context-menu";
+import { autoscrollAxisOf, type GridDragKind, gridTargetAt } from "./grid-drag";
 import { revealGridCell } from "./reveal-cell";
 import { moveRefusalMessage } from "./table-actions";
 import {
-	type GridAutoscrollAxis,
+	type AxisReorderController,
+	type DropIndicatorSetter,
+	useAxisReorder,
+} from "./use-axis-reorder";
+import {
 	type GridAutoscrollPoint,
 	useGridAutoscroll,
 } from "./use-grid-autoscroll";
@@ -140,28 +147,6 @@ const pasteRefusalMessage: Record<PasteRefusal, string> = {
 // plain click, "extend" is Shift, and "toggle" is the platform modifier adding
 // a region to the selection or taking one away.
 type SelectIntent = "replace" | "extend" | "toggle";
-type GridDragKind = "cell" | "column" | "row";
-
-function autoscrollAxisOf(drag: GridDragKind): GridAutoscrollAxis {
-	if (drag === "column") return "horizontal";
-	if (drag === "row") return "vertical";
-	return "both";
-}
-
-function gridTargetAt(
-	grid: HTMLTableElement,
-	point: GridAutoscrollPoint,
-	selector: string,
-): HTMLElement | null {
-	for (const sampled of grid.ownerDocument.elementsFromPoint(
-		point.x,
-		point.y,
-	)) {
-		const target = sampled.closest<HTMLElement>(selector);
-		if (target && grid.contains(target)) return target;
-	}
-	return null;
-}
 
 function selectIntentOf(event: {
 	shiftKey: boolean;
@@ -243,7 +228,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const entered = usePaneEntered();
 
 	const gridRef = useRef<HTMLTableElement>(null);
+	const wrapperRef = useRef<HTMLDivElement>(null);
 	const draggingRef = useRef<GridDragKind | null>(null);
+	// Written by the drop indicator when it mounts, so a reorder drag repaints
+	// one element rather than the whole table on every pointer move.
+	const setIndicatorRef = useRef<DropIndicatorSetter | null>(null);
 	// One handle for the whole grid: every gutter trigger opens the single root
 	// mounted below, because only one axis menu can be open at a time.
 	const [axisMenuHandle] = useState(createAxisMenuHandle);
@@ -337,12 +326,26 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		);
 	}, []);
 
+	const reorder = useAxisReorder({
+		gridRef,
+		wrapperRef,
+		draggingRef,
+		setIndicatorRef,
+	});
 	const extendAutoscrolledDrag = useCallback(
 		(
 			drag: GridDragKind,
 			point: GridAutoscrollPoint,
 			grid: HTMLTableElement,
 		) => {
+			// A reorder drag has nothing to extend. It re-resolves the gap the
+			// pointer names, so scrolling past the edge keeps moving the line
+			// through content the pointer itself never travelled over.
+			if (drag === "row-reorder" || drag === "column-reorder") {
+				reorder.trackReorder(point, grid);
+				return;
+			}
+
 			if (drag === "column") {
 				const stripCell = grid.querySelector<HTMLElement>(
 					"[data-column-header]",
@@ -393,7 +396,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			if (!Number.isInteger(row) || !Number.isInteger(column)) return;
 			useTabeloStore.getState().extendSelection({ row, column });
 		},
-		[selectColumn, selectRow],
+		[reorder, selectColumn, selectRow],
 	);
 
 	useGridAutoscroll({
@@ -665,7 +668,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	);
 
 	return (
-		<GridContextMenu>
+		<GridContextMenu wrapperRef={wrapperRef}>
 			<table
 				ref={gridRef}
 				// Automatic table layout treats column widths as minimums and lets
@@ -779,6 +782,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									if (draggingRef.current !== "column") return;
 									selectColumn(columnIndex, "extend");
 								}}
+								onGripPointerDown={reorder.onGripPointerDown}
 							/>
 						))}
 					</tr>
@@ -804,7 +808,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								selectRow(HEADER_ROW, "extend");
 							}}
 						>
-							<div className="grid h-content-line-box grid-cols-[minmax(0,1fr)_1.25rem] items-center gap-1">
+							<div className="grid h-content-line-box grid-cols-[1.25rem_minmax(0,1fr)_1.25rem] items-center gap-1">
+								{/* No reorder grip: every table keeps exactly one header row
+								    and it is always the first, so there is nowhere for it to
+								    go. The track stays so its number lines up with every
+								    other one. */}
+								<span aria-hidden="true" />
 								<button
 									type="button"
 									tabIndex={entered ? 0 : -1}
@@ -889,10 +898,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							wrappedColumns={wrappedColumns}
 							selectRow={selectRow}
 							draggingRef={draggingRef}
+							onGripPointerDown={reorder.onGripPointerDown}
 						/>
 					))}
 				</tbody>
 			</table>
+
+			{/* Drawn against the positioned wrapper rather than the table, because a
+			    table cannot hold a non-table child. It scrolls with the table, so
+			    the geometry needs no scroll arithmetic of its own. */}
+			<AxisDropIndicator setterRef={setIndicatorRef} />
 
 			{/* The one root behind every gutter trigger above. It sits outside the
 			    table so it is never a child of a <tr>, and it portals its popup
@@ -938,6 +953,7 @@ interface DataRowProps {
 	readonly wrappedColumns: readonly ColumnId[];
 	readonly selectRow: (row: number, intent: SelectIntent) => void;
 	readonly draggingRef: React.RefObject<GridDragKind | null>;
+	readonly onGripPointerDown: AxisReorderController["onGripPointerDown"];
 }
 
 const DataRow = memo(function DataRow({
@@ -956,6 +972,7 @@ const DataRow = memo(function DataRow({
 	wrappedColumns,
 	selectRow,
 	draggingRef,
+	onGripPointerDown,
 }: DataRowProps) {
 	// Read here rather than threaded down, matching ColumnIndexCell and
 	// HeaderCell, and preserving today's behaviour of every row reacting
@@ -1001,7 +1018,13 @@ const DataRow = memo(function DataRow({
 					selectRow(rowIndex, "extend");
 				}}
 			>
-				<div className="grid h-content-line-box grid-cols-[minmax(0,1fr)_1.25rem] items-center gap-1">
+				<div className="grid h-content-line-box grid-cols-[1.25rem_minmax(0,1fr)_1.25rem] items-center gap-1">
+					<AxisReorderGrip
+						axis="row"
+						index={rowIndex}
+						revealed={focused}
+						onPointerDown={onGripPointerDown}
+					/>
 					<button
 						type="button"
 						tabIndex={entered ? 0 : -1}
@@ -1176,6 +1199,7 @@ interface ColumnIndexCellProps {
 	readonly onSelect: (intent: SelectIntent) => void;
 	readonly onDragStart: () => void;
 	readonly onDragEnter: () => void;
+	readonly onGripPointerDown: AxisReorderController["onGripPointerDown"];
 }
 
 function zoomNormalizedNaturalWidth(
@@ -1230,6 +1254,7 @@ function ColumnIndexCell({
 	onSelect,
 	onDragStart,
 	onDragEnter,
+	onGripPointerDown,
 }: ColumnIndexCellProps) {
 	const cellRef = useRef<HTMLTableCellElement>(null);
 	const resizeState = useRef<{
@@ -1290,10 +1315,16 @@ function ColumnIndexCell({
 			    itself rather than on the space left over after the menu trigger,
 			    the same anchoring technique the row-number gutter uses below to
 			    keep its digits put regardless of the control beside them. The
-			    leading track has nothing in it: it exists only to balance the
-			    trigger's width on the other side. */}
+			    leading track balanced the trigger's width on the other side and
+			    was empty; the reorder grip now occupies it, so the letter stays
+			    exactly where it was. */}
 			<div className="grid h-full grid-cols-[1.25rem_minmax(0,1fr)_1.25rem] items-center gap-1">
-				<span aria-hidden="true" />
+				<AxisReorderGrip
+					axis="column"
+					index={columnIndex}
+					revealed={focused}
+					onPointerDown={onGripPointerDown}
+				/>
 				{/* The handle for the whole column. It names itself after the column it
 				    selects, falling back to the letter when the header is empty, which
 				    is the same rule the header cell announces by. */}

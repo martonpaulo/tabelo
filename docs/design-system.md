@@ -263,7 +263,7 @@ either.
 | `--control-h-sm` | `h-control-sm` | 1.75rem: dense toolbars, menu triggers |
 | `--control-h-md` | `h-control-md` | 2rem: default control height |
 | `--panel-header-h` | `h-panel-header` | 2.75rem: every pane header |
-| `--grid-gutter-w` | `w-grid-gutter` | 4rem: row number and its options control |
+| `--grid-gutter-w` | `w-grid-gutter` | 5.5rem: row number between its reorder grip and its options control |
 | `--grid-row-h` | `min-h-grid-row` | calc(var(--pane-zoom, 1) * 2rem): minimum table row height |
 | `--grid-col-w` | `w-grid-col` | 10.5rem: default column width |
 | `--grid-col-w-min` | `w-grid-col-min` | 4.5rem: resize floor |
@@ -1040,7 +1040,15 @@ whichever row and column the selection is currently in: the last of those is
 what teaches the relationship without putting an icon on every row at once.
 Every numbered gutter cell, including row 1, uses the same right-aligned,
 normal-weight number and row-actions icon. The gutter token reserves separate
-space for both, so revealing the action never covers a number.
+space for the number and for each affordance beside it, so revealing one never
+covers a number.
+The reorder grip is the third of those and follows the same reveal rule, sitting
+on the leading side of the row number and in the column strip's leading track.
+It is a drag target rather than a button: it is `aria-hidden` and never takes a
+tab stop, exactly like the column resize handle, because `Alt`+arrows and the
+menu's Move actions are its keyboard equal and a stop per row would be a trap
+(§9). The header row has no grip, since every table keeps exactly one header row
+and it is always the first; its track stays empty so the numbers stay aligned.
 The pane-edge Add view control uses the full default control target and a larger
 plus than row or column affordances. It remains centred on the edge band and is
 revealed by edge hover or keyboard focus, never by hovering the pane body.
@@ -1233,6 +1241,28 @@ to content for the common automatic case, not stepping commands or a live
 numeric readout. The modifier click that builds a selection out of several
 areas is the same obligation, and the two `Space` chords above are its answer.
 
+**An equal is an addition, never a replacement.** Reordering ships both ways:
+`Alt`+arrows and the menu's four Move actions stay exactly as they are and
+remain the accessible path, and dragging a reorder grip is offered beside them.
+Both routes end in the same store action, so a drag can never produce a document
+shape the keyboard could not, and both are one history step.
+
+**A gesture means one thing on one target.** The three drag targets in the grid
+chrome are distinct elements, not three readings of the same press: the row
+number and the column letter select, and drag-select along their axis; the
+column letter's trailing edge resizes; the grip on the leading side reorders.
+This is what the rule rests on, not cursor shape, though the grip does carry
+`grab` and `grabbing` to confirm it. A reorder begins only once the pointer
+crosses a small threshold along its own axis, so a press that does not travel
+stays a press and keeps the selection it made. The gesture is mouse and pen
+only: on touch a press-and-drag belongs to scrolling the pane, and the keyboard
+and menu equals cover the operation there.
+
+While a block is being dragged, one line marks the gap it will land in. The
+document changes once, on drop. `Escape`, a cancelled or lost pointer, and a
+drop back where the block already sits all leave the document and the selection
+untouched.
+
 ### Selecting several areas
 
 A selection is an ordered list of areas, and a single area is the ordinary
@@ -1269,8 +1299,9 @@ one: two selected columns announce as two.
 Cursor shape confirms the interaction before a click: buttons, menu actions,
 checkboxes, radio controls, and clickable row or column labels use `pointer`;
 editable text uses `text`; cells use `cell`; split and column handles use the
-matching resize cursor; disabled controls use `not-allowed`. Do not apply a
-pointer cursor to passive labels or read-only content.
+matching resize cursor; reorder grips use `grab`, and `grabbing` while held;
+disabled controls use `not-allowed`. Do not apply a pointer cursor to passive
+labels or read-only content.
 
 ### Naming inside the grid
 
@@ -1372,9 +1403,11 @@ keep in step. The remainder is rounded outwards, because a cell left a fraction
 of a pixel under the gutter has still failed.
 
 Dragging a cell, row number, or column letter past the pane edge autoscrolls the
-grid on the axes that gesture owns and continues extending the selection. One
-controller owns every grid drag, clamps velocity, and stops at the document
-edge; reorder and fill gestures consume it rather than creating parallel frame
-loops. Reduced motion keeps the capability but advances in discrete rows or
-columns. `Shift` plus the arrow keys is the keyboard equal: it extends the same
-selection while native focus scrolling keeps the focused cell visible.
+grid on the axes that gesture owns and continues extending the selection. A
+reorder grip autoscrolls the same way and keeps moving the drop line instead,
+since it has no selection to extend. One controller owns every grid drag, clamps
+velocity, and stops at the document edge; reorder and fill gestures consume it
+rather than creating parallel frame loops. Reduced motion keeps the capability
+but advances in discrete rows or columns. `Shift` plus the arrow keys is the
+keyboard equal: it extends the same selection while native focus scrolling keeps
+the focused cell visible.

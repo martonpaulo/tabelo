@@ -90,7 +90,7 @@
 	--control-h-sm: 1.75rem;
 	--control-h-md: 2rem;
 	--panel-header-h: 2.75rem;
-	--grid-gutter-w: 4rem;
+	--grid-gutter-w: 5.5rem;
 	/* The column index strip is chrome, but it keeps the same baseline height as
 	   a table row so the table starts on one coherent vertical rhythm. */
 	--grid-strip-h: 2rem;
