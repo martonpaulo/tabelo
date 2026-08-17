@@ -45,12 +45,16 @@ async function contrastBetweenColors(
 				return [...context.getImageData(0, 0, 1, 1).data.slice(0, 3)];
 			};
 			const luminance = (channels: number[]) => {
-				const [red, green, blue] = channels.map((channel) => {
+				const converted = channels.map((channel) => {
 					const value = channel / 255;
 					return value <= 0.04045
 						? value / 12.92
 						: ((value + 0.055) / 1.055) ** 2.4;
 				});
+				const [red, green, blue] = converted;
+				if (red === undefined || green === undefined || blue === undefined) {
+					throw new Error("RGB conversion requires three channels.");
+				}
 				return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 			};
 
@@ -667,7 +671,7 @@ test("start actions keep the shared one-row priority order across widths", async
 		page.getByRole("button", { name: copy.empty.pasteHint }),
 		page.getByRole("button", { name: copy.actions.importFile }),
 		page.getByRole("button", { name: copy.empty.emptyAction }),
-	];
+	] as const;
 
 	for (const button of buttons) {
 		await expect(button).toBeVisible();

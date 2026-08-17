@@ -135,6 +135,7 @@ export async function recordingClipboard(page: Page): Promise<void> {
 					}>,
 				) => {
 					const item = items[0];
+					if (!item) throw new Error("Clipboard write requires an item.");
 					let text = "";
 					let html: string | undefined;
 					if (item.types.includes("text/plain")) {
@@ -411,6 +412,14 @@ export class TabeloPage {
 		const [rowStart, columnStart, rowEnd, columnEnd] = area
 			.split("/")
 			.map((part) => Number(part.trim()));
+		if (
+			rowStart === undefined ||
+			rowEnd === undefined ||
+			columnStart === undefined ||
+			columnEnd === undefined
+		) {
+			throw new Error("Pane grid area must contain four line numbers.");
+		}
 		return { rowStart, rowEnd, columnStart, columnEnd };
 	}
 

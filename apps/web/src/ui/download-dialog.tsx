@@ -10,7 +10,13 @@ import {
 import { Label } from "@tabelo/ui/components/label";
 import { type ReactNode, useId, useState } from "react";
 import { copy } from "@/copy/copy";
-import { canSerialize, listCodecs, outputOptionsFor } from "@/formats";
+import {
+	canSerialize,
+	DEFAULT_CODEC_ID,
+	getCodec,
+	listCodecs,
+	outputOptionsFor,
+} from "@/formats";
 import type {
 	CodecId,
 	OutputOptionId,
@@ -47,14 +53,15 @@ interface DownloadDialogProps {
 
 export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 	const codecs = listCodecs();
-	const [selected, setSelected] = useState<CodecId>(codecs[0].id);
+	const [selected, setSelected] = useState<CodecId>(DEFAULT_CODEC_ID);
 	const document = useTabeloStore((state) => state.document);
 	const outputOptions = useTabeloStore((state) => state.outputOptions);
 	const titleId = useId();
 	const hintId = useId();
 
 	const selectedCodec =
-		codecs.find((candidate) => candidate.id === selected) ?? codecs[0];
+		codecs.find((candidate) => candidate.id === selected) ??
+		getCodec(DEFAULT_CODEC_ID);
 	const codec =
 		canSerialize(selectedCodec, document) === null
 			? selectedCodec
