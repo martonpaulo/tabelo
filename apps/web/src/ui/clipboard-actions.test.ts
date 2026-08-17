@@ -238,7 +238,7 @@ describe("cutting", () => {
 	it("clears the selection once the copy has landed", async () => {
 		cut()();
 		await vi.waitFor(() =>
-			expect(documentToMatrix(useTabeloStore.getState().document)[1][0]).toBe(
+			expect(documentToMatrix(useTabeloStore.getState().document)[1]?.[0]).toBe(
 				"",
 			),
 		);

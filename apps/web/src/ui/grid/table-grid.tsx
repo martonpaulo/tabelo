@@ -393,7 +393,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			);
 			if (!target) return;
 			const [row, column] = target.dataset.cell?.split(":").map(Number) ?? [];
-			if (!Number.isInteger(row) || !Number.isInteger(column)) return;
+			if (
+				row === undefined ||
+				column === undefined ||
+				!Number.isInteger(row) ||
+				!Number.isInteger(column)
+			)
+				return;
 			useTabeloStore.getState().extendSelection({ row, column });
 		},
 		[reorder, selectColumn, selectRow],

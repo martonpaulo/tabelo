@@ -34,7 +34,7 @@ function noticeIsTopmostAt(page: Page, x: number, y: number): Promise<boolean> {
 			Boolean(
 				document.elementFromPoint(pointX, pointY)?.closest("[data-severity]"),
 			),
-		[x, y],
+		[x, y] as const,
 	);
 }
 
