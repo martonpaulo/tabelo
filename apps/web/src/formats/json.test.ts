@@ -1,26 +1,55 @@
+import { fc, test } from "@fast-check/vitest";
 import { describe, expect, it } from "vitest";
+import { readCell } from "@/core/cell-value";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
+import type { CellValue, TableDocument } from "@/core/types";
+import {
+	cellStringArbitrary,
+	PROPERTY_RUNS,
+} from "@/testing/property-arbitraries";
 import { jsonCodec } from "./json";
 
+function valuesOf(document: TableDocument): CellValue[][] {
+	return document.rows.map((row) =>
+		document.columns.map((column) => readCell(row, column.id)),
+	);
+}
+
 describe("json parsing", () => {
-	it("reads an array of row objects without coercing cell values", () => {
+	it("reads every JSON scalar without coercing its type", () => {
 		const result = jsonCodec.parse(
-			'[ { "Name": "Ingrid", "Active": "true" } ]',
+			'[{"qty":1,"ok":true,"note":null,"name":"x","code":"007","truth":"true","nil":"null"}]',
 		);
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		expect(documentToMatrix(result.document)).toEqual([
-			["Name", "Active"],
-			["Ingrid", "true"],
+		expect(result.document.columns.map((column) => column.header)).toEqual([
+			"qty",
+			"ok",
+			"note",
+			"name",
+			"code",
+			"truth",
+			"nil",
+		]);
+		expect(valuesOf(result.document)).toEqual([
+			[1, true, null, "x", "007", "true", "null"],
 		]);
 	});
 
-	it("rejects malformed JSON, the positional shape, and non-string cells", () => {
+	it("rejects malformed JSON, positional rows, and non-scalar cells", () => {
 		expect(jsonCodec.parse("[").ok).toBe(false);
 		expect(jsonCodec.parse('{"Name":"Ingrid"}').ok).toBe(false);
 		expect(jsonCodec.parse('[["Name"], ["Ingrid"]]').ok).toBe(false);
-		expect(jsonCodec.parse('[{"Name": 42}]').ok).toBe(false);
+		expect(jsonCodec.parse('[{"Name":{"first":"Ingrid"}}]').ok).toBe(false);
+		expect(jsonCodec.parse('[{"Name":["Ingrid"]}]').ok).toBe(false);
 		expect(jsonCodec.parse("[{}]").ok).toBe(false);
+	});
+
+	it("accepts mixed types under one key", () => {
+		const result = jsonCodec.parse('[{"a":1},{"a":"x"}]');
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(valuesOf(result.document)).toEqual([[1], ["x"]]);
 	});
 
 	it("warns about ragged rows without dropping their values", () => {
@@ -48,6 +77,16 @@ describe("json parsing", () => {
 			["A", "Z"],
 			["one", ""],
 			["", "two"],
+		]);
+	});
+
+	it("keeps a missing key as an empty string and explicit null as null", () => {
+		const result = jsonCodec.parse('[{"A":null},{"B":false}]');
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(valuesOf(result.document)).toEqual([
+			[null, ""],
+			["", false],
 		]);
 	});
 });
@@ -78,6 +117,67 @@ describe("json serialization", () => {
 			'[\n  {"Name":"Ingrid","Role":"Designer"}\n]',
 		);
 	});
+
+	it("serializes canonical values as their native JSON scalars", () => {
+		const document = documentFromMatrix(
+			[
+				["qty", "ok", "note", "name"],
+				[1, true, null, "x"],
+			],
+			{ headerRow: true },
+		);
+		expect(jsonCodec.serialize(document)).toBe(
+			'[\n  {"qty":1,"ok":true,"note":null,"name":"x"}\n]',
+		);
+	});
+
+	const scalarArbitrary: fc.Arbitrary<CellValue> = fc.oneof(
+		cellStringArbitrary,
+		fc.integer(),
+		fc.boolean(),
+		fc.constant(null),
+		fc.constantFrom("007", "true", "null"),
+	);
+	const recordArbitrary = fc.dictionary(
+		fc.constantFrom("alpha", "beta", "gamma"),
+		scalarArbitrary,
+		{ maxKeys: 3 },
+	);
+
+	test.prop(
+		{
+			records: fc
+				.array(recordArbitrary, { minLength: 1, maxLength: 8 })
+				.filter((records) =>
+					records.some((record) => Object.keys(record).length),
+				),
+		},
+		{ numRuns: PROPERTY_RUNS },
+	)(
+		"round-trips bounded mixed scalar records, missing keys, and lookalikes",
+		({ records }) => {
+			const headers = [
+				...new Set(records.flatMap((record) => Object.keys(record))),
+			];
+			const expected = records.map((record) =>
+				headers.map((header) =>
+					Object.hasOwn(record, header) ? record[header] : "",
+				),
+			);
+			const parsed = jsonCodec.parse(JSON.stringify(records));
+			expect(parsed.ok).toBe(true);
+			if (!parsed.ok) return;
+			expect(parsed.document.columns.map((column) => column.header)).toEqual(
+				headers,
+			);
+			expect(valuesOf(parsed.document)).toEqual(expected);
+
+			const reparsed = jsonCodec.parse(jsonCodec.serialize(parsed.document));
+			expect(reparsed.ok).toBe(true);
+			if (!reparsed.ok) return;
+			expect(valuesOf(reparsed.document)).toEqual(expected);
+		},
+	);
 });
 
 describe("json header precondition", () => {

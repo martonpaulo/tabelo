@@ -4,7 +4,7 @@ import {
 	readClipboardTable,
 } from "@/clipboard/parse";
 import { documentFromMatrix, normalizeMatrix } from "@/core/document";
-import type { Alignment, TableDocument } from "@/core/types";
+import type { Alignment, CellValue, TableDocument } from "@/core/types";
 import { getCodec } from "@/formats";
 import type { CodecId, ParseIssue } from "@/formats/types";
 
@@ -44,7 +44,7 @@ export type ImportError =
 	  };
 
 export interface PreparedImport {
-	readonly matrix: string[][];
+	readonly matrix: CellValue[][];
 	readonly source: ClipboardSource;
 	readonly headerRow?: boolean;
 	readonly alignments?: readonly Alignment[];
@@ -116,7 +116,7 @@ export function prepareImport(
 
 	const namedCodec = request.format ? getCodec(request.format) : null;
 	let table: {
-		readonly matrix: string[][];
+		readonly matrix: CellValue[][];
 		readonly source: ClipboardSource;
 		readonly headerRow?: boolean;
 		readonly alignments?: readonly Alignment[];

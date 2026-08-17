@@ -76,9 +76,10 @@ serialize as empty text. Reconciliation preserves either one when the previous
 document identifies it; a newly inserted or freshly imported empty text cell is
 the empty string.
 
-That makes JSON the first and, for now, only source of a native value, and it
-makes the visual table the place a user can state a type deliberately. Both
-arrive after this decision; the model lands first so the migration is
+JSON is the first source of a native value: its scalar syntax carries strings,
+numbers, booleans, and null directly into the document and receives those same
+types on serialization. The visual table later becomes the place a user can
+state a type deliberately. The model landed first so its migration stayed
 reviewable on its own.
 
 Round-trip preservation stays the measured signal, and it now has two halves:

@@ -22,8 +22,9 @@ import {
 } from "./operations";
 import { samplePeopleMatrix } from "./sample-data";
 import { HEADER_ROW } from "./selection";
+import type { CellValue } from "./types";
 
-function docOf(matrix: string[][]) {
+function docOf(matrix: CellValue[][]) {
 	return documentFromMatrix(matrix, { headerRow: true });
 }
 

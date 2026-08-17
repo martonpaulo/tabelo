@@ -69,10 +69,19 @@ export function isDocumentBlank(document: TableDocument): boolean {
 // Pads every row to the widest row so the matrix is rectangular.
 export function normalizeMatrix(
 	matrix: readonly (readonly string[])[],
-): string[][] {
+): string[][];
+export function normalizeMatrix(
+	matrix: readonly (readonly CellValue[])[],
+): CellValue[][];
+export function normalizeMatrix(
+	matrix: readonly (readonly CellValue[])[],
+): CellValue[][] {
 	const width = matrix.reduce((max, row) => Math.max(max, row.length), 0);
 	return matrix.map((row) =>
-		Array.from({ length: width }, (_, index) => row[index] ?? ""),
+		Array.from({ length: width }, (_, index) => {
+			const value = row[index];
+			return value === undefined ? "" : value;
+		}),
 	);
 }
 
@@ -84,14 +93,18 @@ export interface MatrixToDocumentOptions {
 }
 
 export function documentFromMatrix(
-	input: readonly (readonly string[])[],
+	input: readonly (readonly CellValue[])[],
 	options: MatrixToDocumentOptions,
 ): TableDocument {
 	const matrix = normalizeMatrix(input);
 	const firstRow = matrix[0];
 	if (!firstRow) return createEmptyDocument();
 
-	const headerValues = options.headerRow ? firstRow : firstRow.map(() => "");
+	// Headers are names, not typed cells. Named formats that declare a header
+	// still carry body values without projecting them through text here.
+	const headerValues = options.headerRow
+		? firstRow.map(cellText)
+		: firstRow.map(() => "");
 	const bodyRows = options.headerRow ? matrix.slice(1) : matrix;
 
 	// A blank header in the source stays blank. Coercing it to a generated name
