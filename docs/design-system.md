@@ -1402,6 +1402,13 @@ the contract is written about at any zoom and any gutter width, with nothing to
 keep in step. The remainder is rounded outwards, because a cell left a fraction
 of a pixel under the gutter has still failed.
 
+When a cell is wider or taller than the region the chrome leaves over, both
+edges cannot be satisfied at once and the leading edge wins. That is where the
+value starts, so aligning the trailing edge would scroll the beginning of the
+content out of sight to reveal an end the reader has not reached. A column can
+be set to 64rem against a pane a fraction of that wide, so this is an ordinary
+arrangement, not an extreme one.
+
 Dragging a cell, row number, or column letter past the pane edge autoscrolls the
 grid on the axes that gesture owns and continues extending the selection. A
 reorder grip autoscrolls the same way and keeps moving the drop line instead,

@@ -36,25 +36,36 @@ export function revealGridCell(
 
 	const view = scroller.getBoundingClientRect();
 	const box = cell.getBoundingClientRect();
+	// Where the content region begins on each axis, once the sticky chrome that
+	// paints over it is taken off.
 	const clearLeft = gutter ? gutter.getBoundingClientRect().right : view.left;
 	const clearTop = above ? above.getBoundingClientRect().bottom : view.top;
 
-	// The smallest scroll that clears the chrome. A cell larger than the region
-	// left over aligns to its leading edge, which is the edge the reader starts
-	// from and the one the chrome would otherwise cover.
-	const left = awayFromZero(
-		box.left < clearLeft
-			? box.left - clearLeft
-			: Math.max(0, box.right - view.right),
-	);
-	const top = awayFromZero(
-		box.top < clearTop
-			? box.top - clearTop
-			: Math.max(0, box.bottom - view.bottom),
-	);
+	const left = clearingScroll(box.left, box.right, clearLeft, view.right);
+	const top = clearingScroll(box.top, box.bottom, clearTop, view.bottom);
 
 	if (left === 0 && top === 0) return;
 	scroller.scrollBy({ left, top, behavior: "auto" });
+}
+
+// The smallest scroll along one axis that clears the chrome.
+//
+// Both edges can be satisfied only while the cell fits in what the chrome
+// leaves over. When it does not, the leading edge wins: it is where the value
+// starts, so aligning the trailing edge instead would scroll the beginning of
+// the content out of sight to reveal an end the reader has not reached. A
+// column may be set to 64rem against a pane a fraction of that wide, so this is
+// an ordinary arrangement rather than an extreme one.
+function clearingScroll(
+	start: number,
+	end: number,
+	clear: number,
+	viewEnd: number,
+): number {
+	if (start < clear || end - start > viewEnd - clear) {
+		return awayFromZero(start - clear);
+	}
+	return awayFromZero(Math.max(0, end - viewEnd));
 }
 
 // Column widths and zoomed line boxes both land on fractions, so the distance
