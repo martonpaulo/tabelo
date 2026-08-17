@@ -403,6 +403,22 @@ test("destructive menu actions keep one color across label and icon", async ({
 	expect(colors.icon).toBe(colors.label);
 });
 
+test("New table is destructive while Close view stays neutral", async ({
+	page,
+	tabelo,
+}) => {
+	const appMenu = await tabelo.openAppMenu();
+	await expect(
+		appMenu.getByRole("menuitem", { name: copy.actions.newTable }),
+	).toHaveAttribute("data-variant", "destructive");
+	await page.keyboard.press("Escape");
+
+	const paneMenu = await tabelo.openPaneMenu("markdown");
+	await expect(
+		paneMenu.getByRole("menuitem", { name: copy.workspace.closeView }),
+	).toHaveAttribute("data-variant", "default");
+});
+
 test("Add view and Download reuse the dialog option anatomy", async ({
 	page,
 	tabelo,

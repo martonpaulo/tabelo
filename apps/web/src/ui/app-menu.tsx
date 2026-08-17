@@ -129,7 +129,7 @@ export function AppMenu({
 				{pwaUpdate.ready ? (
 					<span
 						aria-hidden
-						className="absolute top-1 right-1 size-2 rounded-full bg-selection-edge ring-2 ring-surface-panel"
+						className="absolute top-1 right-1 size-2 rounded-full bg-selection-edge ring-2 ring-line-floating"
 					/>
 				) : null}
 			</DropdownMenuTrigger>
@@ -143,6 +143,9 @@ export function AppMenu({
 				<DropdownMenuGroup>
 					<div className="max-w-72 whitespace-normal px-2 py-1.5 text-sm">
 						<MenuOption label={copy.app.name} description={copy.app.tagline} />
+						<span className="block text-muted-foreground text-xs">
+							{copy.app.copyright}
+						</span>
 					</div>
 				</DropdownMenuGroup>
 				{pwaUpdate.ready ? (
@@ -189,6 +192,7 @@ export function AppMenu({
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuItem
+						variant="destructive"
 						onClick={() => menuDialog.runAfterClose(onNewTable)}
 					>
 						<FilePlus2 aria-hidden />
