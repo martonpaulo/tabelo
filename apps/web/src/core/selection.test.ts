@@ -4,6 +4,7 @@ import {
 	clampSelection,
 	createRange,
 	createSelection,
+	fillTargetInDirection,
 	type GridSelection,
 	HEADER_ROW,
 	isContiguous,
@@ -14,6 +15,7 @@ import {
 	selectionColumns,
 	selectionContains,
 	selectionDataRows,
+	selectionFillRefusal,
 	selectionRect,
 	selectionRects,
 	structureDeletionGuard,
@@ -384,5 +386,59 @@ describe("structure deletion guard", () => {
 		expect(
 			structureDeletionGuard(columnSelection(0, 2), 2, 3).wouldRemoveAllColumns,
 		).toBe(false);
+	});
+});
+
+describe("fill availability", () => {
+	const rectangle: GridSelection = {
+		ranges: [
+			{
+				anchor: { row: 1, column: 1 },
+				focus: { row: 2, column: 2 },
+				mode: "cell",
+			},
+		],
+		activeIndex: 0,
+	};
+
+	it.each([
+		["up", { top: 0, bottom: 2, left: 1, right: 2 }],
+		["down", { top: 1, bottom: 3, left: 1, right: 2 }],
+		["left", { top: 1, bottom: 2, left: 0, right: 2 }],
+		["right", { top: 1, bottom: 2, left: 1, right: 3 }],
+	] as const)("extends one cell %s", (direction, expected) => {
+		expect(fillTargetInDirection(rectangle, 4, 4, direction)).toEqual(expected);
+	});
+
+	it("refuses selections that include the header or several areas", () => {
+		expect(
+			selectionFillRefusal(
+				createSelection({ row: HEADER_ROW, column: 0 }),
+				3,
+				3,
+			),
+		).toBe("header-row");
+		expect(
+			selectionFillRefusal(
+				{
+					ranges: [
+						createRange({ row: 0, column: 0 }),
+						createRange({ row: 2, column: 2 }),
+					],
+					activeIndex: 1,
+				},
+				3,
+				3,
+			),
+		).toBe("single-area");
+	});
+
+	it.each([
+		["up", "first-row"],
+		["left", "first-column"],
+	] as const)("reports the %s table edge", (direction, expected) => {
+		const corner = createSelection({ row: 0, column: 0 });
+		expect(selectionFillRefusal(corner, 3, 3, direction)).toBe(expected);
+		expect(fillTargetInDirection(corner, 3, 3, direction)).toBeNull();
 	});
 });

@@ -12,6 +12,7 @@ import {
 	deleteRows,
 	duplicateColumns,
 	duplicateRows,
+	fillRange,
 	insertColumns,
 	insertRows,
 	moveColumns,
@@ -361,6 +362,127 @@ describe("cell operations", () => {
 			["", "4"],
 		]);
 	});
+});
+
+describe("fill", () => {
+	const source = { top: 1, bottom: 2, left: 1, right: 2 };
+	const fillSample = () =>
+		docOf([
+			["A", "B", "C", "D", "E"],
+			["0", "0", "0", "0", "0"],
+			["0", "a", "b", "0", "0"],
+			["0", "c", "d", "0", "0"],
+			["0", "0", "0", "0", "0"],
+			["0", "0", "0", "0", "0"],
+		]);
+
+	it.each([
+		[
+			"downward",
+			{ top: 1, bottom: 4, left: 1, right: 2 },
+			[
+				["a", "b"],
+				["c", "d"],
+				["a", "b"],
+				["c", "d"],
+			],
+		],
+		[
+			"upward with a partial repetition",
+			{ top: 0, bottom: 2, left: 1, right: 2 },
+			[
+				["c", "d"],
+				["a", "b"],
+				["c", "d"],
+			],
+		],
+		[
+			"rightward with a partial repetition",
+			{ top: 1, bottom: 2, left: 1, right: 4 },
+			[
+				["a", "b", "a", "b"],
+				["c", "d", "c", "d"],
+			],
+		],
+		[
+			"leftward",
+			{ top: 1, bottom: 2, left: 0, right: 2 },
+			[
+				["b", "a", "b"],
+				["d", "c", "d"],
+			],
+		],
+	] as const)("tiles a rectangular source %s", (_, target, expected) => {
+		const next = fillRange(fillSample(), source, target);
+		const matrix = documentToMatrix(next).slice(
+			target.top + 1,
+			target.bottom + 2,
+		);
+		expect(
+			matrix.map((row) => row.slice(target.left, target.right + 1)),
+		).toEqual(expected);
+	});
+
+	it("preserves opaque values and existing row and column identities", () => {
+		let before = fillSample();
+		before = setCell(before, 1, 1, "007");
+		before = setCell(before, 1, 2, "a|b\n");
+		before = setCell(before, 2, 1, "");
+		before = setCell(before, 2, 2, null);
+		const rowIds = before.rows.map((row) => row.id);
+		const columnIds = before.columns.map((column) => column.id);
+
+		const next = fillRange(before, source, {
+			top: 1,
+			bottom: 4,
+			left: 1,
+			right: 2,
+		});
+
+		expect(next.rows.map((row) => row.id)).toEqual(rowIds);
+		expect(next.columns.map((column) => column.id)).toEqual(columnIds);
+		expect(
+			next.rows
+				.slice(3, 5)
+				.map((row) => [
+					row.cells[next.columns[1].id],
+					row.cells[next.columns[2].id],
+				]),
+		).toEqual([
+			["007", "a|b\n"],
+			["", null],
+		]);
+	});
+
+	it.each([
+		[
+			"a header source",
+			{ top: HEADER_ROW, bottom: 1, left: 1, right: 2 },
+			{ top: HEADER_ROW, bottom: 2, left: 1, right: 2 },
+		],
+		[
+			"a header target",
+			source,
+			{ top: HEADER_ROW, bottom: 2, left: 1, right: 2 },
+		],
+		[
+			"a target outside the table",
+			source,
+			{ top: 1, bottom: 8, left: 1, right: 2 },
+		],
+		[
+			"a target that does not contain the source",
+			source,
+			{ top: 2, bottom: 4, left: 1, right: 2 },
+		],
+		["an unchanged target", source, source],
+	] as const)(
+		"returns the original document for %s",
+		(_, candidateSource, target) => {
+			const before = fillSample();
+			expect(fillRange(before, candidateSource, target)).toBe(before);
+		},
+	);
 });
 
 describe("paste", () => {

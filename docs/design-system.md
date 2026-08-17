@@ -1205,6 +1205,7 @@ container, so the arrow keys still work.
 | `Shift`+Arrows | Extend the active area from its anchor |
 | `Mod`+Arrows | Move the focused cell without discarding the areas already selected |
 | `Alt`+Arrows | Reorder one contiguous row or column block. A header-touching selection cannot move rows; several areas never collapse into one |
+| `Mod`+`Alt`+Arrows | Repeat one contiguous data-cell selection into one more row or column in the requested direction |
 | `Alt`+`Shift`+Left / Right | Narrow or widen the focused column without reordering it |
 | `Tab` / `Shift`+`Tab` | Move one cell in reading order, wrapping at row ends and grid edges. It never leaves the grid |
 | `Home` / `End` | First or last column of the row; with the modifier, the first or last cell of the table |
@@ -1247,6 +1248,26 @@ remain the accessible path, and dragging a reorder grip is offered beside them.
 Both routes end in the same store action, so a drag can never produce a document
 shape the keyboard could not, and both are one history step.
 
+Copy fill follows the same rule. One handle sits at the active corner of one
+contiguous data-cell selection, and the cell context menu keeps Fill up, down,
+left, and right visible. `Mod`+`Alt`+arrows are the direct keyboard equal. All
+three routes end in the same store action, tile the source values without
+parsing or coercion, update every view immediately, and commit the complete fill
+as one document-history step. A header-touching or several-area selection has no
+handle, while the menu actions remain visible and explain why they are
+unavailable.
+
+The fill handle is a focusable overlay control with the 1.75rem control target
+and a small square mark at its centre. It tracks the selected cell geometry, so
+pane zoom, scrolling, resized columns, and wrapped rows need no parallel
+position state. Its crosshair cursor keeps it distinct from cell selection,
+column resize, and reorder. Once a drag crosses the shared threshold, its
+dominant axis locks for that gesture. A dashed selection-colour preview covers
+only the cells that would be added; it is static at every motion preference,
+because §7 never animates grid geometry. `Escape`, pointer cancellation, lost
+capture, window blur, or a release back inside the source clears the preview and
+changes nothing.
+
 **A gesture means one thing on one target.** The three drag targets in the grid
 chrome are distinct elements, not three readings of the same press: the row
 number and the column letter select, and drag-select along their axis; the
@@ -1288,10 +1309,11 @@ case: every gesture except the modifier produces exactly one.
   it instead of painting it twice.
 
 **Operations that need one place to act say so.** Insert above, below, left and
-right, the four moves, and paste each need a single insertion point or origin,
-and several areas name several. They are disabled with the reason written out,
-never hidden, per §4. Copy, cut, clear, delete, duplicate, alignment and width
-all act on the union of the areas.
+right, the four moves, fill, and paste each need a single insertion point or
+origin, and several areas name several. Fill additionally requires data cells
+only. These actions are disabled with the reason written out, never hidden, per
+§4. Copy, cut, clear, delete, duplicate, alignment and width all act on the
+union of the areas.
 
 The announcement states the total across every area, not the extent of the last
 one: two selected columns announce as two.
@@ -1300,8 +1322,8 @@ Cursor shape confirms the interaction before a click: buttons, menu actions,
 checkboxes, radio controls, and clickable row or column labels use `pointer`;
 editable text uses `text`; cells use `cell`; split and column handles use the
 matching resize cursor; reorder grips use `grab`, and `grabbing` while held;
-disabled controls use `not-allowed`. Do not apply a pointer cursor to passive
-labels or read-only content.
+the fill handle uses `crosshair`; disabled controls use `not-allowed`. Do not
+apply a pointer cursor to passive labels or read-only content.
 
 ### Naming inside the grid
 
@@ -1412,9 +1434,9 @@ arrangement, not an extreme one.
 Dragging a cell, row number, or column letter past the pane edge autoscrolls the
 grid on the axes that gesture owns and continues extending the selection. A
 reorder grip autoscrolls the same way and keeps moving the drop line instead,
-since it has no selection to extend. One controller owns every grid drag, clamps
-velocity, and stops at the document edge; reorder and fill gestures consume it
-rather than creating parallel frame loops. Reduced motion keeps the capability
-but advances in discrete rows or columns. `Shift` plus the arrow keys is the
-keyboard equal: it extends the same selection while native focus scrolling keeps
-the focused cell visible.
+while a fill handle extends its preview. One controller owns every grid drag,
+clamps velocity, and stops at the document edge; reorder and fill gestures
+consume it rather than creating parallel frame loops. Reduced motion keeps the
+capability but advances in discrete rows or columns. `Shift` plus the arrow keys
+is selection drag's keyboard equal; reordering and fill use the chords recorded
+in the keyboard table above.

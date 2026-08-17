@@ -56,6 +56,14 @@ export type SelectionMoveRefusal =
 	| "last-row"
 	| "first-column"
 	| "last-column";
+export type FillDirection = "up" | "down" | "left" | "right";
+export type SelectionFillRefusal =
+	| "single-area"
+	| "header-row"
+	| "first-row"
+	| "last-row"
+	| "first-column"
+	| "last-column";
 
 export function createRange(
 	position: CellPosition,
@@ -155,6 +163,47 @@ export function selectionMoveRefusal(
 	if (rect.left + offset < 0) return "first-column";
 	if (rect.right + offset >= columnCount) return "last-column";
 	return null;
+}
+
+// Fill needs one rectangular source made only of data cells. With a direction,
+// this also owns the table-edge refusal shared by keyboard and menu actions.
+export function selectionFillRefusal(
+	selection: GridSelection,
+	rowCount: number,
+	columnCount: number,
+	direction?: FillDirection,
+): SelectionFillRefusal | null {
+	if (!isContiguous(selection)) return "single-area";
+	const rect = selectionRect(selection, rowCount, columnCount);
+	if (rectCoversHeader(rect)) return "header-row";
+	if (direction === "up" && rect.top === 0) return "first-row";
+	if (direction === "down" && rect.bottom === rowCount - 1) return "last-row";
+	if (direction === "left" && rect.left === 0) return "first-column";
+	if (direction === "right" && rect.right === columnCount - 1)
+		return "last-column";
+	return null;
+}
+
+export function fillTargetInDirection(
+	selection: GridSelection,
+	rowCount: number,
+	columnCount: number,
+	direction: FillDirection,
+): CellRect | null {
+	if (selectionFillRefusal(selection, rowCount, columnCount, direction)) {
+		return null;
+	}
+	const rect = selectionRect(selection, rowCount, columnCount);
+	switch (direction) {
+		case "up":
+			return { ...rect, top: rect.top - 1 };
+		case "down":
+			return { ...rect, bottom: rect.bottom + 1 };
+		case "left":
+			return { ...rect, left: rect.left - 1 };
+		case "right":
+			return { ...rect, right: rect.right + 1 };
+	}
 }
 
 export function translateSelection(

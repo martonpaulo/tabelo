@@ -16,6 +16,7 @@ const firefoxContractSpecs = [
 	// never reaches. Firefox implements the two separately.
 	"**/copy-as.spec.ts",
 	"**/download.spec.ts",
+	"**/fill.spec.ts",
 	"**/grid-keyboard.spec.ts",
 	"**/header-import.spec.ts",
 	"**/history.spec.ts",

@@ -13,10 +13,14 @@ import {
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import {
+	type FillDirection,
+	fillTargetInDirection,
 	isContiguous,
+	type SelectionFillRefusal,
 	type SelectionMoveRefusal,
 	selectionColumns,
 	selectionDataRows,
+	selectionFillRefusal,
 	selectionMoveRefusal,
 	structureDeletionGuard,
 } from "@/core/selection";
@@ -53,6 +57,50 @@ export const moveRefusalMessage: Record<SelectionMoveRefusal, string> = {
 	"first-column": copy.disabled.firstColumn,
 	"last-column": copy.disabled.lastColumn,
 };
+
+export const fillRefusalMessage: Record<SelectionFillRefusal, string> = {
+	"single-area": copy.disabled.singleAreaRequired,
+	"header-row": copy.disabled.headerRowRequired,
+	"first-row": copy.disabled.firstRow,
+	"last-row": copy.disabled.lastRow,
+	"first-column": copy.disabled.firstColumn,
+	"last-column": copy.disabled.lastColumn,
+};
+
+export function commitFillTarget(target: {
+	readonly top: number;
+	readonly bottom: number;
+	readonly left: number;
+	readonly right: number;
+}): number {
+	const store = useTabeloStore.getState();
+	const count = store.fillSelection(target);
+	if (count > 0) store.announceStatus(copy.status.cellsFilled(count));
+	return count;
+}
+
+export function runFillDirection(
+	direction: FillDirection,
+): SelectionFillRefusal | null {
+	const store = useTabeloStore.getState();
+	const rows = store.document.rows.length;
+	const columns = store.document.columns.length;
+	const refusal = selectionFillRefusal(
+		store.selection,
+		rows,
+		columns,
+		direction,
+	);
+	if (refusal) return refusal;
+	const target = fillTargetInDirection(
+		store.selection,
+		rows,
+		columns,
+		direction,
+	);
+	if (target) commitFillTarget(target);
+	return null;
+}
 
 // The intent is passed rather than inferred, because copy and cut both send the
 // same payload under the same scope and only differ in what they leave behind.
@@ -140,6 +188,12 @@ export function buildTableActions(
 		"column",
 		1,
 	);
+	const fillDirections = [
+		["up", ArrowUp, copy.actions.fillUp, copy.shortcuts.fillUp],
+		["down", ArrowDown, copy.actions.fillDown, copy.shortcuts.fillDown],
+		["left", ArrowLeft, copy.actions.fillLeft, copy.shortcuts.fillLeft],
+		["right", ArrowRight, copy.actions.fillRight, copy.shortcuts.fillRight],
+	] as const;
 
 	const insert: TableAction[] = [];
 	if (showRows) {
@@ -269,6 +323,28 @@ export function buildTableActions(
 			},
 		);
 	}
+
+	const fill: TableAction[] =
+		context.axis === "cell"
+			? fillDirections.map(([direction, icon, label, shortcut]) => {
+					const refusal = selectionFillRefusal(
+						selection,
+						rows,
+						columns,
+						direction,
+					);
+					return {
+						id: `fill-${direction}`,
+						label,
+						icon,
+						shortcut,
+						disabled: refusal !== null,
+						disabledReason:
+							refusal === null ? undefined : fillRefusalMessage[refusal],
+						run: () => runFillDirection(direction),
+					};
+				})
+			: [];
 	if (showColumns) {
 		move.push(
 			{
@@ -337,6 +413,12 @@ export function buildTableActions(
 			label: copy.actions.move,
 			labelId: "table-actions-move-label",
 			actions: move,
+		},
+		{
+			id: "fill",
+			label: copy.actions.fill,
+			labelId: "table-actions-fill-label",
+			actions: fill,
 		},
 		{ id: "remove", actions: remove },
 	].filter((group) => group.actions.length > 0);

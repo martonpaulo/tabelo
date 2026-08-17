@@ -277,6 +277,91 @@ export function moveColumns(
 	return { ...document, columns };
 }
 
+function validDataRect(
+	rect: CellRect,
+	rowCount: number,
+	columnCount: number,
+): boolean {
+	return (
+		Number.isInteger(rect.top) &&
+		Number.isInteger(rect.bottom) &&
+		Number.isInteger(rect.left) &&
+		Number.isInteger(rect.right) &&
+		rect.top >= 0 &&
+		rect.left >= 0 &&
+		rect.top <= rect.bottom &&
+		rect.left <= rect.right &&
+		rect.bottom < rowCount &&
+		rect.right < columnCount
+	);
+}
+
+function positiveModulo(value: number, divisor: number): number {
+	return ((value % divisor) + divisor) % divisor;
+}
+
+// Repeats one data-cell rectangle across a larger rectangle without deriving
+// or projecting values. The target includes the source so a pointer preview can
+// describe the complete filled area, while cells already in the source map to
+// themselves. Header, out-of-bounds, inverted, and non-containing rectangles
+// are invalid and leave the original document untouched.
+export function fillRange(
+	document: TableDocument,
+	source: CellRect,
+	target: CellRect,
+): TableDocument {
+	if (
+		!validDataRect(source, document.rows.length, document.columns.length) ||
+		!validDataRect(target, document.rows.length, document.columns.length) ||
+		target.top > source.top ||
+		target.bottom < source.bottom ||
+		target.left > source.left ||
+		target.right < source.right ||
+		(target.top === source.top &&
+			target.bottom === source.bottom &&
+			target.left === source.left &&
+			target.right === source.right)
+	) {
+		return document;
+	}
+
+	const sourceHeight = source.bottom - source.top + 1;
+	const sourceWidth = source.right - source.left + 1;
+	let changed = false;
+	const rows = document.rows.map((row, rowIndex) => {
+		if (rowIndex < target.top || rowIndex > target.bottom) return row;
+		let cells: Record<ColumnId, CellValue> | null = null;
+
+		for (
+			let columnIndex = target.left;
+			columnIndex <= target.right;
+			columnIndex++
+		) {
+			const sourceRow =
+				document.rows[
+					source.top + positiveModulo(rowIndex - source.top, sourceHeight)
+				];
+			const sourceColumn =
+				document.columns[
+					source.left + positiveModulo(columnIndex - source.left, sourceWidth)
+				];
+			const targetColumn = document.columns[columnIndex];
+			if (!sourceRow || !sourceColumn || !targetColumn) continue;
+
+			const value = readCell(sourceRow, sourceColumn.id);
+			if (readCell(row, targetColumn.id) === value) continue;
+			cells ??= { ...row.cells };
+			cells[targetColumn.id] = value;
+		}
+
+		if (!cells) return row;
+		changed = true;
+		return { ...row, cells };
+	});
+
+	return changed ? { ...document, rows } : document;
+}
+
 // Clears whatever the rects cover, header text included. A header cell is an
 // ordinary cell for this purpose, so one Backspace over a selection that spans
 // the boundary is one operation and therefore one undo step. An emptied header
