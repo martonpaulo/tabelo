@@ -36,6 +36,7 @@ const firefoxContractSpecs = [
 	"**/source-occurrences.spec.ts",
 	"**/source-sync.spec.ts",
 	"**/system-theme.spec.ts",
+	"**/typed-cell-presentation.spec.ts",
 	// Rename spans dialog focus, durable storage, tab metadata, and downloads.
 	"**/table-name.spec.ts",
 ];

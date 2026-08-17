@@ -101,7 +101,7 @@ test("the column menu lives on the strip and names an unnamed column", async ({
 	).toHaveCount(0);
 
 	const trigger = tabelo.columnIndex(1).getByRole("button", {
-		name: `${copy.actions.columnActions}: ${copy.a11y.columnLetter(0)}`,
+		name: `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("", 0, "text")}`,
 	});
 	await trigger.click();
 	await expect(

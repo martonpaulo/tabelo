@@ -9,6 +9,8 @@ export type Alignment = "default" | "left" | "center" | "right";
 // from how text looks. See docs/adr/0008.
 export type CellValue = string | number | boolean | null;
 
+export type CellValueType = "string" | "number" | "boolean" | "null";
+
 // What a column expects to be typed into it. It guides editing and validation
 // and never constrains the cells: a typed source may legitimately carry mixed
 // types in one column, and the real type always belongs to the cell.

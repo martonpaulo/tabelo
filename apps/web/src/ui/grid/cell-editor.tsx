@@ -16,6 +16,7 @@ interface CellEditorProps {
 	readonly initialValue: string;
 	readonly align: string;
 	readonly ariaLabel: string;
+	readonly monospace?: boolean;
 	readonly onFinish: (value: string, exit: EditorExit) => void;
 }
 
@@ -23,6 +24,7 @@ export function CellEditor({
 	initialValue,
 	align,
 	ariaLabel,
+	monospace = false,
 	onFinish,
 }: CellEditorProps) {
 	const [value, setValue] = useState(initialValue);
@@ -96,6 +98,7 @@ export function CellEditor({
 			className={cn(
 				"absolute inset-0 z-10 h-full w-full cursor-text resize-none break-words bg-background px-2 text-content leading-content-line-box",
 				"outline-2 outline-selection-edge -outline-offset-2",
+				monospace && "font-value",
 				align,
 			)}
 		/>

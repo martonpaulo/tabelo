@@ -45,6 +45,7 @@
 	--radius-surface: var(--surface-radius);
 
 	--font-source: var(--font-family-source);
+	--font-value: var(--font-family-source);
 	--font-index: var(--font-family-index);
 }
 
@@ -55,6 +56,8 @@
 @theme inline {
 	--text-content: calc(var(--pane-zoom, 1) * 0.875rem);
 	--text-content--line-height: calc(var(--pane-zoom, 1) * 1.25rem);
+	--text-cell-type-mark: calc(var(--pane-zoom, 1) * 0.75rem);
+	--text-cell-type-mark--line-height: calc(var(--pane-zoom, 1) * 1.25rem);
 	--spacing-content-line: calc(var(--pane-zoom, 1) * 1.25rem);
 	--spacing-content-line-box: calc(var(--pane-zoom, 1) * 2rem);
 }
@@ -263,6 +266,12 @@ textarea,
 [contenteditable="true"] {
 	caret-color: var(--selection-edge);
 	user-select: text;
+}
+
+@media (forced-colors: active) {
+	[data-cell-type-mark] {
+		color: CanvasText;
+	}
 }
 
 /* One focus treatment for the whole app, including inside the grid.

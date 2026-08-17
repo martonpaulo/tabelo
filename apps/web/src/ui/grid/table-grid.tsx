@@ -2,7 +2,7 @@ import { cn } from "@tabelo/ui/lib/utils";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
-import { cellTextAt } from "@/core/cell-value";
+import { cellText, readCell } from "@/core/cell-value";
 import {
 	activeRange,
 	type CellPosition,
@@ -14,7 +14,13 @@ import {
 	selectionRect,
 	selectionRects,
 } from "@/core/selection";
-import type { Alignment, Column, ColumnId, Row } from "@/core/types";
+import type {
+	Alignment,
+	Column,
+	ColumnId,
+	ExpectedColumnType,
+	Row,
+} from "@/core/types";
 import {
 	type PasteRefusal,
 	type StructureDeletionRefusal,
@@ -38,6 +44,12 @@ import {
 } from "./axis-menu";
 import { AxisReorderGrip } from "./axis-reorder-grip";
 import { CellEditor } from "./cell-editor";
+import {
+	cellTypeDiverges,
+	cellValueType,
+	expectedCellValueType,
+} from "./cell-type";
+import { CellTypeMark } from "./cell-type-mark";
 import { FillHandle } from "./fill-handle";
 import { FillPreview, type FillPreviewSetter } from "./fill-preview";
 import { GridContextMenu } from "./grid-context-menu";
@@ -832,6 +844,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								axisMenuHandle={axisMenuHandle}
 								columnIndex={columnIndex}
 								header={column.header}
+								expectedType={column.expectedType}
 								focused={focus.column === columnIndex}
 								width={resolveColumnWidth(columnWidths[column.id])}
 								zoom={zoom}
@@ -1130,7 +1143,11 @@ const DataRow = memo(function DataRow({
 				const isFocus = columnIndex === focusColumn;
 				const inSelection = coveredBySpans(selectedSpans, columnIndex);
 				const copiedEdges = clipboardEdgesAt(copiedAt, rowIndex, columnIndex);
-				const value = cellTextAt(row, column.id);
+				const cellValue = readCell(row, column.id);
+				const value = cellText(cellValue);
+				const type = cellValueType(cellValue);
+				const divergent = cellTypeDiverges(cellValue, column.expectedType);
+				const describesType = type !== "string" || divergent;
 				const isEditing = columnIndex === editingColumn;
 				const wrapped = wrappedColumns.includes(column.id);
 
@@ -1143,6 +1160,8 @@ const DataRow = memo(function DataRow({
 						// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
 						role="gridcell"
 						data-cell={`${rowIndex}:${columnIndex}`}
+						data-cell-type={type}
+						data-cell-type-divergent={divergent ? "true" : undefined}
 						data-grid-active={isFocus ? "true" : undefined}
 						tabIndex={isFocus && entered ? 0 : -1}
 						aria-selected={inSelection}
@@ -1203,7 +1222,8 @@ const DataRow = memo(function DataRow({
 							<CellEditor
 								initialValue={editingSeed ?? value}
 								align={alignClass[column.align]}
-								ariaLabel={copy.a11y.cellEditor(rowIndex, columnIndex)}
+								ariaLabel={`${copy.a11y.cellEditor(rowIndex, columnIndex)}${describesType ? `, ${copy.a11y.realCellType(type)}` : ""}`}
+								monospace={type !== "string"}
 								onFinish={(next, exit) => {
 									const store = useTabeloStore.getState();
 									if (exit !== "cancel")
@@ -1237,13 +1257,30 @@ const DataRow = memo(function DataRow({
 							<span
 								data-column-content={columnIndex}
 								className={cn(
-									"block leading-content-line-box",
+									"grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1 leading-content-line-box",
 									wrapped
-										? "min-h-grid-row whitespace-pre-wrap break-words"
-										: "h-content-line-box overflow-hidden whitespace-pre",
+										? "min-h-grid-row"
+										: "h-content-line-box overflow-hidden",
 								)}
 							>
-								{value}
+								<span
+									data-cell-value
+									className={cn(
+										"min-w-0",
+										wrapped
+											? "whitespace-pre-wrap break-words"
+											: "overflow-hidden whitespace-pre",
+										type !== "string" && "font-value",
+									)}
+								>
+									{value}
+									{describesType ? (
+										<span className="sr-only">
+											{`, ${copy.a11y.realCellType(type)}`}
+										</span>
+									) : null}
+								</span>
+								{divergent ? <CellTypeMark type={type} context="cell" /> : null}
 							</span>
 						)}
 						{copiedEdges ? <ClipboardSourceEdge {...copiedEdges} /> : null}
@@ -1262,6 +1299,7 @@ interface ColumnIndexCellProps {
 	readonly axisMenuHandle: AxisMenuHandle;
 	readonly columnIndex: number;
 	readonly header: string;
+	readonly expectedType: ExpectedColumnType;
 	// The column the user is working in, which is where its actions appear.
 	readonly focused: boolean;
 	// The stored width is in rem. Zoom scales what is rendered, so the drag
@@ -1320,6 +1358,7 @@ function ColumnIndexCell({
 	axisMenuHandle,
 	columnIndex,
 	header,
+	expectedType,
 	focused,
 	width,
 	zoom,
@@ -1374,6 +1413,7 @@ function ColumnIndexCell({
 			role="presentation"
 			data-column-header={columnIndex}
 			data-column-letter={letter}
+			data-expected-type={expectedType}
 			// `sticky` already establishes the containing block the resize handle
 			// positions against, so no `relative` here: it would win over `sticky`
 			// and turn the offset into a shift rather than a scroll threshold.
@@ -1403,7 +1443,7 @@ function ColumnIndexCell({
 				<button
 					type="button"
 					tabIndex={entered ? 0 : -1}
-					aria-label={`${copy.actions.selectColumn}: ${copy.a11y.columnHeader(header, columnIndex)}`}
+					aria-label={`${copy.actions.selectColumn}: ${copy.a11y.columnWithExpectedType(header, columnIndex, expectedType)}`}
 					className="min-w-0 cursor-pointer truncate rounded-interactive px-1 text-center hover:text-foreground"
 					onPointerDown={(event) => {
 						if (event.button !== 0) return;
@@ -1415,7 +1455,13 @@ function ColumnIndexCell({
 						if (event.detail === 0) onSelect(selectIntentOf(event));
 					}}
 				>
-					{letter}
+					<span className="inline-flex min-w-0 items-center gap-1">
+						<span className="truncate">{letter}</span>
+						<CellTypeMark
+							type={expectedCellValueType(expectedType)}
+							context="column"
+						/>
+					</span>
 				</button>
 				<AxisMenuTrigger
 					handle={axisMenuHandle}

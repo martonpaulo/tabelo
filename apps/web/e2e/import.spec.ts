@@ -26,9 +26,13 @@ test("a typed JSON import preserves native scalars through an edit and projectio
 		"application/json",
 	);
 
-	await expect(tabelo.cell(1, 1)).toHaveText("1");
-	await expect(tabelo.cell(1, 2)).toHaveText("true");
-	await expect(tabelo.cell(1, 3)).toHaveText("");
+	await expect(tabelo.cell(1, 1).locator("[data-cell-value]")).toContainText(
+		"1",
+	);
+	await expect(tabelo.cell(1, 2).locator("[data-cell-value]")).toContainText(
+		"true",
+	);
+	await expect(tabelo.cell(1, 3)).toHaveAccessibleName(/null/i);
 	await expect(tabelo.cell(1, 5)).toHaveText("007");
 	await tabelo.editCell(1, 4, "edited");
 	await tabelo.choosePaneView("markdown", "json");

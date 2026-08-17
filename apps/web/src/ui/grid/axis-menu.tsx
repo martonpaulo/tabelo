@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { copy } from "@/copy/copy";
-import type { Alignment } from "@/core/types";
+import type { Alignment, ExpectedColumnType } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuSelectionOption } from "@/ui/primitives/menu-selection-option";
@@ -73,9 +73,14 @@ export function createAxisMenuHandle(): AxisMenuHandle {
 
 // A column names itself by its header, falling back to its index-strip letter
 // when it has none, so the menu of an unnamed column is still identifiable.
-function axisMenuLabel(axis: Axis, index: number, header: string): string {
+function axisMenuLabel(
+	axis: Axis,
+	index: number,
+	header: string,
+	expectedType?: ExpectedColumnType,
+): string {
 	return axis === "column"
-		? `${copy.actions.columnActions}: ${copy.a11y.columnHeader(header, index)}`
+		? `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType(header, index, expectedType ?? "text")}`
 		: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(index)}`;
 }
 
@@ -98,12 +103,12 @@ export function AxisMenuTrigger({
 	measureFitWidth,
 }: AxisMenuTriggerProps) {
 	const entered = usePaneEntered();
-	// The only document state a trigger needs is the word in its own label, so
-	// it subscribes to that string rather than to the whole document. There is
-	// one of these per row and per column; a broad selector here woke every one
-	// of them on every keystroke.
-	const header = useTabeloStore((state) =>
-		axis === "column" ? (state.document.columns[index]?.header ?? "") : "",
+	// The only document state a trigger needs is its own column identity, so it
+	// subscribes to that column rather than to the whole document. There is one
+	// of these per row and per column; a broad selector here woke every one on
+	// every keystroke.
+	const column = useTabeloStore((state) =>
+		axis === "column" ? state.document.columns[index] : undefined,
 	);
 
 	const Icon = axis === "column" ? ChevronDown : MoreVertical;
@@ -118,7 +123,13 @@ export function AxisMenuTrigger({
 		<DropdownMenuTrigger
 			handle={handle}
 			payload={{ axis, index, measureFitWidth }}
-			aria-label={axisMenuLabel(axis, index, header)}
+			aria-label={axisMenuLabel(
+				axis,
+				index,
+				column?.header ?? "",
+				column?.expectedType,
+			)}
+			data-expected-type={column?.expectedType}
 			tabIndex={entered ? 0 : -1}
 			// The icon stays small so the grid stays quiet, while the ::after box
 			// grows the target to the control minimum without taking any

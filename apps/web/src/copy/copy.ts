@@ -1,6 +1,7 @@
 import { modShortcut } from "@tabelo/ui/lib/platform";
 import type { CopyScope } from "@/clipboard/serialize";
 import { product } from "@/copy/product";
+import type { CellValueType, ExpectedColumnType } from "@/core/types";
 import type {
 	OutputOptionId,
 	ParseIssue,
@@ -16,6 +17,19 @@ import type { PanePositionId, SplitEdge } from "@/workspace/layout";
 // Named once because it is both the visible label of the recovery command and
 // the opening of the accessible name that says which refusal it belongs to.
 const FIX_TABLE = "Fix table";
+
+const cellTypeLabels = {
+	string: "String",
+	number: "Number",
+	boolean: "Boolean",
+	null: "Null",
+} as const satisfies Record<CellValueType, string>;
+
+const expectedColumnTypeLabels = {
+	text: "Text",
+	number: "Number",
+	boolean: "Boolean",
+} as const satisfies Record<ExpectedColumnType, string>;
 
 const views = {
 	grid: {
@@ -140,6 +154,11 @@ export const copy = {
 	app: product,
 
 	views,
+
+	cellTypes: {
+		real: cellTypeLabels,
+		expected: expectedColumnTypeLabels,
+	},
 
 	layouts: {
 		single: { label: "One pane", description: "One view at a time" },
@@ -594,6 +613,16 @@ export const copy = {
 		// inventing content that would serialize into the document.
 		columnHeader: (header: string, column: number) =>
 			header.trim() === "" ? columnLetter(column) : header,
+		columnWithExpectedType: (
+			header: string,
+			column: number,
+			type: ExpectedColumnType,
+		) =>
+			`${header.trim() === "" ? columnLetter(column) : header}, Expected type ${expectedColumnTypeLabels[type].toLowerCase()}`,
+		realCellType: (type: CellValueType) =>
+			`Type ${cellTypeLabels[type].toLowerCase()}`,
+		expectedColumnType: (type: ExpectedColumnType) =>
+			`Expected type ${expectedColumnTypeLabels[type].toLowerCase()}`,
 		// The editor that opens inside a cell is a control, not a cell, so it
 		// names itself by position rather than borrowing the cell's value.
 		cellEditor: (row: number, column: number) =>
