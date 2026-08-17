@@ -1,7 +1,12 @@
 import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { STORAGE_KEY } from "@/persistence/schema";
-import { MIN_COLUMN_WIDTH } from "@/workspace/column-width";
+import {
+	COLUMN_WIDTH_STEP,
+	DEFAULT_COLUMN_WIDTH,
+	MAX_COLUMN_WIDTH,
+	MIN_COLUMN_WIDTH,
+} from "@/workspace/column-width";
 import { expect, test } from "./fixtures";
 
 // The grid is a hand-built widget, so every keyboard contract it advertises is
@@ -97,6 +102,38 @@ test("keyboard scrolling keeps the focused cell clear of sticky grid chrome", as
 	await hideFocusedCellAboveAndLeft();
 	await page.keyboard.press("ArrowUp");
 	await page.keyboard.press("ArrowLeft");
+	await expectFocusedCellClearOfStickyChrome(page);
+});
+
+test("a cell too wide to fit still shows its beginning, not its end", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(largeTable());
+
+	// Widened to its maximum through the keyboard path rather than a long drag:
+	// the step is a known size, so this reaches the cap on any engine without
+	// depending on how far a pointer may travel outside the viewport.
+	await tabelo.cell(1, 2).click();
+	const steps = Math.ceil(
+		(MAX_COLUMN_WIDTH - DEFAULT_COLUMN_WIDTH) / COLUMN_WIDTH_STEP,
+	);
+	for (let step = 0; step < steps; step += 1) {
+		await page.keyboard.press("Alt+Shift+ArrowRight");
+	}
+
+	// Wider than the pane can show, so the two edges cannot both be satisfied
+	// and the choice between them becomes observable.
+	const scroller = tabelo.pane("grid").locator('[data-slot="panel-body"]');
+	const width = (await tabelo.cell(1, 2).boundingBox())?.width ?? 0;
+	expect(width).toBeGreaterThan(await scroller.evaluate((e) => e.clientWidth));
+
+	// Arriving from the left is the ordinary case: the cell starts clear of the
+	// gutter and runs off the far edge, so aligning its trailing edge would
+	// scroll the beginning of the value out of sight.
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("ArrowRight");
+
 	await expectFocusedCellClearOfStickyChrome(page);
 });
 
