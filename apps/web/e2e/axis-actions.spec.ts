@@ -66,7 +66,7 @@ test("the row and column being worked in reveal their own actions", async ({
 		});
 	const columnTrigger = (name: string) =>
 		tabelo.grid().getByRole("button", {
-			name: `${copy.actions.columnActions}: ${name}`,
+			name: `${copy.actions.columnActions}: ${name}, ${copy.a11y.expectedColumnType("text")}`,
 		});
 
 	// The rows the user is not in stay quiet. (Row 1 starts selected, so it is
@@ -151,7 +151,7 @@ test("the column menu moves a two-column selection as one block", async ({
 		.first()
 		.click({ modifiers: ["Shift"] });
 
-	const menuName = `${copy.actions.columnActions}: ${copy.a11y.columnHeader("name", 0)}`;
+	const menuName = `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("name", 0, "text")}`;
 	await tabelo.grid().getByRole("button", { name: menuName }).click();
 	const menu = page.getByRole("menu", { name: menuName });
 	await expect(menu).toBeVisible();
@@ -209,7 +209,7 @@ test("tabbing into a header reveals its actions without a pointer", async ({
 	tabelo,
 }) => {
 	const trigger = tabelo.grid().getByRole("button", {
-		name: `${copy.actions.columnActions}: ${copy.a11y.columnLetter(2)}`,
+		name: `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("", 2, "text")}`,
 	});
 	expect(await opacity(trigger)).toBe("0");
 

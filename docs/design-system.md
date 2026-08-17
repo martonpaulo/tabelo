@@ -289,6 +289,7 @@ One pane can scale what it displays without touching the rest of the app.
 | :--- | :--- | :--- |
 | `--pane-zoom` | inline on the pane body | The pane's scale factor, 0.5–2 |
 | `--text-content` | `text-content` | Any text that is pane *content* |
+| `--text-cell-type-mark` | `text-cell-type-mark` | A compact real-type mark that scales with grid content |
 | `--spacing-content-line` | `h-content-line` | A one-line clip box that scales with it |
 | `--spacing-content-line-box` | `h-content-line-box` | A line rhythm token shared by grid and source |
 
@@ -336,7 +337,20 @@ row and the rendered preview use the shared editable table-header surface,
 while body cells keep the normal content treatment. Header text position shows
 alignment without an extra icon inside the editable cell. A native source
 selection must paint over the header treatment just as it does over any other
-line. Do not colour-code columns or infer cell types.
+line.
+
+Cell types are carried from the document and never inferred from visible text.
+A number, boolean, or null value uses the dedicated `font-value` token, which
+aliases the source monospace stack without making source typography the owner
+of grid presentation. Alignment stays independent metadata and never signals a
+type. When a real type differs from its column expectation, one compact textual
+mark stays inside the cell: `text` for string, `num` for number, `bool` for
+boolean, or `null` for null. The word, not its colour, carries the distinction.
+It uses the product sans stack at `--text-cell-type-mark`, does not take focus
+or pointer events, and shares the cell's scaling, wrapping, selection, copied,
+focus, and clipping states. A narrow column may clip the compact mark, while
+the full type remains available through the accessible name. Dark, light, and
+forced-colour modes keep the same text treatment.
 
 ### Spacing rhythm
 
@@ -356,6 +370,7 @@ BlinkMacSystemFont, sans-serif`. The source editor keeps the existing
 | Pane title | `text-sm font-medium` |
 | Control label | `text-sm font-medium` |
 | Table cell | `text-sm` |
+| Native cell value | `text-content font-value` |
 | Source editor | `text-sm font-source` |
 | Index chrome | `font-index` |
 | Helper / status | `text-xs text-muted-foreground` |
@@ -711,6 +726,7 @@ not a polish item.
 | Focus | 0.125rem `--selection-edge` outline, inset. Never remove it |
 | Selected | `bg-selection-fill`, plus outline when it is the focused cell |
 | Copied | 0.125rem dashed `--selection-edge` border, drawn only on the outer sides of the copied range |
+| Divergent cell type | Compact textual `CellTypeMark` inside the cell, never alignment or colour alone |
 | Disabled | `opacity-50`, no hover or highlight state, `not-allowed` on the actual hit layer, and a tooltip explaining why. Never hide a disabled action |
 | Invalid | Red wavy underline; written diagnostic on hover and in the editor description |
 | Warning | Yellow dotted underline; written diagnostic on hover and in the editor description |
@@ -1347,6 +1363,14 @@ right alignment; the editable cell carries no separate alignment or menu icon.
 An `aria-label` on a gridcell is a defect: it replaces the content with
 coordinates and repeats them on every arrow key.
 
+The real type supplements that content instead of replacing it. Every native
+number, boolean, and null, plus any string that diverges from its column
+expectation, includes visually hidden full type text inside the gridcell.
+The visible compact mark appears only for divergence. A null cell therefore
+has a written accessible value even though its `cellText` projection is empty.
+Opening its editor retains the native-value typeface and includes the real type
+in the editor's accessible name. Neither treatment adds another focus target.
+
 **A header cell holds editable text and nothing else.** It is a cell for every
 purpose the user can observe: it is selectable, it answers Enter, F2, and
 typing, and `Backspace` clears it. The one thing it is not is a row that can be
@@ -1390,8 +1414,12 @@ mirrors the row-number gutter on the other axis. Both are chrome:
   At 100% it is exactly one table-row baseline tall, so the strip, header row,
   and body begin on one vertical rhythm.
 - **It owns the column.** Clicking a letter selects the whole column, header
-  included. The column menu and the resize handle live here, revealed by the
-  same rule as the row affordances (§6).
+  included. The letter is paired with the compact mark for the column's
+  expected type. The select control and column-actions control both include
+  the full expected type in their accessible names, so the same metadata is
+  available by keyboard without another tab stop. The column menu and the
+  resize handle live here, revealed by the same rule as the row affordances
+  (§6).
 - **A per-column property follows the selection.** Alignment and width applied
   to a column that is selected as a column apply to every selected column,
   adjacent or not. Applied to any other column they stay there, so dragging an
