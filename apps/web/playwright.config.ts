@@ -24,6 +24,9 @@ const firefoxContractSpecs = [
 	"**/responsive.spec.ts",
 	"**/smoke.spec.ts",
 	"**/source-geometry.spec.ts",
+	// Multiple selection, the primary range, and where focus stays after a
+	// command are exactly where the two engines' selection handling differs.
+	"**/source-occurrences.spec.ts",
 	"**/source-sync.spec.ts",
 	"**/system-theme.spec.ts",
 ];
