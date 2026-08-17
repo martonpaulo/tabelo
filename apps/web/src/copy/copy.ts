@@ -329,8 +329,9 @@ export const copy = {
 				case "json-header-required":
 					message = "At least one JSON row must name a column.";
 					break;
-				case "json-string-cells-required":
-					message = "Every JSON cell must be a string.";
+				case "json-scalar-cells-required":
+					message =
+						"Every JSON cell must be a string, number, boolean, or null.";
 					break;
 				case "delimited-unclosed-quote":
 					message = "A quoted field is not closed.";

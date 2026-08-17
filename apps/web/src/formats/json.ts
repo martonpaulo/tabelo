@@ -1,5 +1,6 @@
+import { readCell } from "@/core/cell-value";
 import { documentToMatrix } from "@/core/document";
-import type { TableDocument } from "@/core/types";
+import type { CellValue, TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
 import type {
 	MatrixParseResult,
@@ -17,6 +18,15 @@ function syntaxErrorLine(error: unknown, text: string): number | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isJsonScalar(value: unknown): value is CellValue {
+	return (
+		value === null ||
+		typeof value === "string" ||
+		typeof value === "number" ||
+		typeof value === "boolean"
+	);
 }
 
 function parseJsonMatrix(text: string): MatrixParseResult {
@@ -61,14 +71,14 @@ function parseJsonMatrix(text: string): MatrixParseResult {
 	}
 	if (
 		records.some((record) =>
-			Object.values(record).some((cell) => typeof cell !== "string"),
+			Object.values(record).some((cell) => !isJsonScalar(cell)),
 		)
 	) {
-		return { ok: false, issues: [{ code: "json-string-cells-required" }] };
+		return { ok: false, issues: [{ code: "json-scalar-cells-required" }] };
 	}
 
 	const warnings: ParseIssue[] = [];
-	const matrix: string[][] = [headers];
+	const matrix: CellValue[][] = [headers];
 	records.forEach((record, index) => {
 		const present = Object.keys(record).length;
 		if (present !== headers.length) {
@@ -81,8 +91,9 @@ function parseJsonMatrix(text: string): MatrixParseResult {
 		}
 		matrix.push(
 			headers.map((header) => {
+				if (!Object.hasOwn(record, header)) return "";
 				const cell = record[header];
-				return typeof cell === "string" ? cell : "";
+				return isJsonScalar(cell) ? cell : "";
 			}),
 		);
 	});
@@ -98,13 +109,12 @@ function parseJsonMatrix(text: string): MatrixParseResult {
 // headers leave the document as object keys instead of as a first row. The
 // precondition below is what guarantees they can be.
 function serializeJson(document: TableDocument): string {
-	const [headers = [], ...rows] = documentToMatrix(document);
-	if (rows.length === 0) return "[]";
+	if (document.rows.length === 0) return "[]";
 
-	const records = rows.map((row) => {
-		const record: Record<string, string> = {};
-		headers.forEach((header, index) => {
-			record[header] = row[index] ?? "";
+	const records = document.rows.map((row) => {
+		const record: Record<string, CellValue> = {};
+		document.columns.forEach((column) => {
+			record[column.header] = readCell(row, column.id);
 		});
 		return `  ${JSON.stringify(record)}`;
 	});

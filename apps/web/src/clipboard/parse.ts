@@ -1,5 +1,5 @@
 import { normalizeMatrix } from "@/core/document";
-import type { Alignment } from "@/core/types";
+import type { Alignment, CellValue } from "@/core/types";
 import { listSniffableCodecs } from "@/formats";
 import { readHtmlTable } from "@/formats/html";
 import type { CodecId, ParseIssue, TableCodec } from "@/formats/types";
@@ -7,7 +7,7 @@ import type { CodecId, ParseIssue, TableCodec } from "@/formats/types";
 export type ClipboardSource = CodecId | "text";
 
 export interface ClipboardTable {
-	readonly matrix: string[][];
+	readonly matrix: CellValue[][];
 	readonly source: ClipboardSource;
 	readonly headerRow?: boolean;
 	readonly alignments?: readonly Alignment[];

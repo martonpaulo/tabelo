@@ -1,5 +1,5 @@
 import type { ReconciliationSource } from "@/core/document";
-import type { Alignment, TableDocument } from "@/core/types";
+import type { Alignment, CellValue, TableDocument } from "@/core/types";
 
 export type CodecId =
 	| "markdown"
@@ -39,7 +39,7 @@ export type ParseIssue =
 	| ({ readonly code: "json-rows-required" } & LocatedParseIssue)
 	| ({ readonly code: "json-row-object-required" } & LocatedParseIssue)
 	| ({ readonly code: "json-header-required" } & LocatedParseIssue)
-	| ({ readonly code: "json-string-cells-required" } & LocatedParseIssue)
+	| ({ readonly code: "json-scalar-cells-required" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-unclosed-quote" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-invalid-quote" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-delimiter-undetected" } & LocatedParseIssue)
@@ -61,7 +61,7 @@ export type ParseResult =
 	| { readonly ok: false; readonly issues: readonly ParseIssue[] };
 
 export interface ParsedTable {
-	readonly matrix: string[][];
+	readonly matrix: CellValue[][];
 	// Formats that encode row roles declare whether row 1 is a header. An
 	// absent fact means import must ask; it is never permission to infer from
 	// cell values.

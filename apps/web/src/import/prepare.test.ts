@@ -1,8 +1,14 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it } from "vitest";
+import { readCell } from "@/core/cell-value";
 import type { CodecId } from "@/formats";
-import { IMPORT_LIMITS, prepareImport, tableShapeLimitError } from "./prepare";
+import {
+	createImportedDocument,
+	IMPORT_LIMITS,
+	prepareImport,
+	tableShapeLimitError,
+} from "./prepare";
 
 function rows(count: number): string {
 	return Array.from({ length: count }, (_, index) => `row ${index}`).join("\n");
@@ -39,6 +45,30 @@ describe("named format validation", () => {
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
 		expect(result.value.source).toBe("tsv");
+	});
+
+	it("carries typed JSON cells through preparation and document construction", () => {
+		const result = prepareImport({
+			payload: { text: '[{"qty":1,"ok":true,"note":null,"code":"007"}]' },
+			format: "json",
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.value.matrix).toEqual([
+			["qty", "ok", "note", "code"],
+			[1, true, null, "007"],
+		]);
+		const document = createImportedDocument(result.value, true);
+		const row = document.rows[0];
+		expect(row).toBeDefined();
+		if (!row) return;
+		expect(document.columns.map((column) => readCell(row, column.id))).toEqual([
+			1,
+			true,
+			null,
+			"007",
+		]);
 	});
 });
 
@@ -108,6 +138,19 @@ describe("supported import limits", () => {
 		if (result.ok) return;
 		expect(result.error.code).toBe("too-many-rows");
 		expect(result).not.toHaveProperty("document");
+	});
+
+	it("applies shape limits to a typed JSON result", () => {
+		const text = JSON.stringify(
+			Array.from({ length: IMPORT_LIMITS.rows + 1 }, (_, index) => ({
+				value: index,
+			})),
+		);
+		const result = prepareImport({ payload: { text }, format: "json" });
+
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.error.code).toBe("too-many-rows");
 	});
 });
 

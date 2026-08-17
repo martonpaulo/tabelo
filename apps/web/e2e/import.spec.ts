@@ -17,6 +17,44 @@ test("a malformed named file preserves the current table", async ({
 	await expect(tabelo.notice("error")).toBeVisible();
 });
 
+test("a typed JSON import preserves native scalars through an edit and projection", async ({
+	tabelo,
+}) => {
+	await tabelo.importFile(
+		"typed.json",
+		'[{"qty":1,"ok":true,"note":null,"name":"x","code":"007"}]',
+		"application/json",
+	);
+
+	await expect(tabelo.cell(1, 1)).toHaveText("1");
+	await expect(tabelo.cell(1, 2)).toHaveText("true");
+	await expect(tabelo.cell(1, 3)).toHaveText("");
+	await expect(tabelo.cell(1, 5)).toHaveText("007");
+	await tabelo.editCell(1, 4, "edited");
+	await tabelo.choosePaneView("markdown", "json");
+
+	const source = tabelo.source("json");
+	await expect(source).toContainText('"qty":1');
+	await expect(source).toContainText('"ok":true');
+	await expect(source).toContainText('"note":null');
+	await expect(source).toContainText('"name":"edited"');
+	await expect(source).toContainText('"code":"007"');
+});
+
+test("a JSON file with nested cells preserves the current table", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "keep me");
+	await tabelo.importFile(
+		"nested.json",
+		'[{"person":{"name":"Ingrid"}}]',
+		"application/json",
+	);
+
+	await expect(tabelo.cell(1, 1)).toHaveText("keep me");
+	await expect(tabelo.notice("error")).toBeVisible();
+});
+
 test("an oversized paste is rejected without changing the table", async ({
 	tabelo,
 }) => {
