@@ -90,6 +90,77 @@ export async function setClipboard(
 	await page.evaluate(installClipboard, mode);
 }
 
+export interface CopiedFlavours {
+	readonly text: string;
+	readonly html?: string;
+}
+
+// A clipboard that accepts everything and remembers it, so the copied bytes can
+// be asserted without the permission plumbing Playwright cannot grant in every
+// browser. Serialized into the page, so it closes over nothing.
+export async function recordingClipboard(page: Page): Promise<void> {
+	await page.addInitScript(() => {
+		Object.defineProperty(window, "__copied", {
+			value: [] as { text: string; html?: string }[],
+			configurable: true,
+			writable: true,
+		});
+
+		Object.defineProperty(window, "ClipboardItem", {
+			value: class {
+				types: string[];
+				data: Record<string, Blob>;
+				constructor(data: Record<string, Blob>) {
+					this.data = data;
+					this.types = Object.keys(data);
+				}
+				async getType(type: string) {
+					return this.data[type];
+				}
+			},
+			configurable: true,
+		});
+
+		Object.defineProperty(navigator, "clipboard", {
+			value: {
+				writeText: async (text: string) => {
+					(
+						window as unknown as { __copied: { text: string; html?: string }[] }
+					).__copied.push({ text });
+				},
+				write: async (
+					items: Array<{
+						types: string[];
+						getType: (type: string) => Promise<{ text: () => Promise<string> }>;
+					}>,
+				) => {
+					const item = items[0];
+					let text = "";
+					let html: string | undefined;
+					if (item.types.includes("text/plain")) {
+						text = await (await item.getType("text/plain")).text();
+					}
+					if (item.types.includes("text/html")) {
+						html = await (await item.getType("text/html")).text();
+					}
+					(
+						window as unknown as { __copied: { text: string; html?: string }[] }
+					).__copied.push({ text, html });
+				},
+			},
+			configurable: true,
+		});
+	});
+}
+
+export function lastCopied(page: Page): Promise<CopiedFlavours | undefined> {
+	return page.evaluate(() =>
+		(
+			window as unknown as { __copied: { text: string; html?: string }[] }
+		).__copied.at(-1),
+	);
+}
+
 export class TabeloPage {
 	readonly workspace: Locator;
 	readonly notices: Locator;
@@ -275,6 +346,28 @@ export class TabeloPage {
 			.click();
 		await menu.waitFor({ state: "visible" });
 		return menu;
+	}
+
+	// The submenu is its own menu once open, so it is addressed by its own
+	// accessible name rather than through the parent it hangs off.
+	async openCopyAsSubmenu(): Promise<Locator> {
+		const parent = await this.openAppMenu();
+		const submenu = this.page.getByRole("menu", {
+			name: copy.actions.copyAs,
+		});
+		await parent
+			.getByRole("menuitem", { name: copy.actions.copyAs })
+			.first()
+			.click();
+		await submenu.waitFor({ state: "visible" });
+		return submenu;
+	}
+
+	async copyAs(view: ViewId): Promise<void> {
+		const submenu = await this.openCopyAsSubmenu();
+		await submenu
+			.getByRole("menuitem", { name: getView(view).label, exact: true })
+			.click();
 	}
 
 	async openLayoutDialog(): Promise<Locator> {

@@ -1,7 +1,7 @@
-import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import type { ViewId } from "@/views/types";
 import { expect, test } from "./fixtures";
+import { lastCopied, recordingClipboard } from "./helpers";
 
 // Copy source hands over the text the pane is showing. The case that decides
 // the design is a pane holding source that does not parse: every other view is
@@ -10,74 +10,6 @@ import { expect, test } from "./fixtures";
 
 const invalidMarkdown = "| Name |\n| not a divider |\n| Ingrid |";
 const writeRecovery = copy.notices.clipboardWriteFailed("source");
-
-// A clipboard that accepts everything and remembers it, so the copied bytes can
-// be asserted without the permission plumbing Playwright cannot grant in every
-// browser.
-async function recordingClipboard(page: Page): Promise<void> {
-	await page.addInitScript(() => {
-		Object.defineProperty(window, "__copied", {
-			value: [] as { text: string; html?: string }[],
-			configurable: true,
-			writable: true,
-		});
-
-		Object.defineProperty(window, "ClipboardItem", {
-			value: class {
-				types: string[];
-				data: Record<string, Blob>;
-				constructor(data: Record<string, Blob>) {
-					this.data = data;
-					this.types = Object.keys(data);
-				}
-				async getType(type: string) {
-					return this.data[type];
-				}
-			},
-			configurable: true,
-		});
-
-		Object.defineProperty(navigator, "clipboard", {
-			value: {
-				writeText: async (text: string) => {
-					(
-						window as unknown as { __copied: { text: string; html?: string }[] }
-					).__copied.push({ text });
-				},
-				write: async (
-					items: Array<{
-						types: string[];
-						getType: (type: string) => Promise<{ text: () => Promise<string> }>;
-					}>,
-				) => {
-					const item = items[0];
-					let text = "";
-					let html: string | undefined;
-					if (item.types.includes("text/plain")) {
-						text = await (await item.getType("text/plain")).text();
-					}
-					if (item.types.includes("text/html")) {
-						html = await (await item.getType("text/html")).text();
-					}
-					(
-						window as unknown as { __copied: { text: string; html?: string }[] }
-					).__copied.push({ text, html });
-				},
-			},
-			configurable: true,
-		});
-	});
-}
-
-function lastCopied(
-	page: Page,
-): Promise<{ text: string; html?: string } | undefined> {
-	return page.evaluate(() =>
-		(
-			window as unknown as { __copied: { text: string; html?: string }[] }
-		).__copied.at(-1),
-	);
-}
 
 test("copies the visible source of a valid view", async ({ page, tabelo }) => {
 	await recordingClipboard(page);

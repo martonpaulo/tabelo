@@ -434,3 +434,45 @@ test("dialog radio choices support the keyboard and Cancel restores focus", asyn
 	await expect(dialog).toBeHidden();
 	await expect(trigger).toBeFocused();
 });
+
+// The only submenu class docs/design-system.md §3 allows: a flat list of
+// immediate commands. It is also the first place in this product where focus
+// could be trapped, so the whole open-and-leave path is walked by keyboard.
+test("the Copy as submenu opens, navigates, and closes without trapping focus", async ({
+	page,
+	tabelo,
+}) => {
+	const menu = await tabelo.openAppMenu();
+	const parentItem = menu.getByRole("menuitem", { name: copy.actions.copyAs });
+
+	// The trigger says it opens something and says whether it is open, so a
+	// screen reader announces the submenu before it is entered.
+	await expect(parentItem).toHaveAttribute("aria-haspopup", "menu");
+	await expect(parentItem).toHaveAttribute("aria-expanded", "false");
+
+	await parentItem.focus();
+	await page.keyboard.press("ArrowRight");
+	const submenu = page.getByRole("menu", { name: copy.actions.copyAs });
+	await expect(submenu).toBeVisible();
+	await expect(parentItem).toHaveAttribute("aria-expanded", "true");
+
+	// Arrow navigation reaches the rows rather than stopping at the first.
+	const rows = submenu.getByRole("menuitem");
+	await expect(rows.first()).toBeFocused();
+	await page.keyboard.press("ArrowDown");
+	await expect(rows.nth(1)).toBeFocused();
+
+	// Escape leaves the submenu and nothing else, with focus back on the row
+	// that opened it.
+	await page.keyboard.press("Escape");
+	await expect(submenu).toBeHidden();
+	await expect(menu).toBeVisible();
+	await expect(parentItem).toBeFocused();
+
+	// A second Escape closes the menu itself and returns focus to its trigger.
+	await page.keyboard.press("Escape");
+	await expect(menu).toBeHidden();
+	await expect(
+		page.getByRole("button", { name: copy.actions.openAppMenu }),
+	).toBeFocused();
+});

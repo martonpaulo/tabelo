@@ -9,6 +9,9 @@ const serverUrl = `http://127.0.0.1:${previewServerPort}`;
 // require running every product assertion twice.
 const firefoxContractSpecs = [
 	"**/clipboard.spec.ts",
+	// The plain-text half of the clipboard API, which the grid's rich write
+	// never reaches. Firefox implements the two separately.
+	"**/copy-as.spec.ts",
 	"**/download.spec.ts",
 	"**/grid-keyboard.spec.ts",
 	"**/header-import.spec.ts",
