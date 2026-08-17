@@ -1,4 +1,5 @@
 import { modShortcut } from "@tabelo/ui/lib/platform";
+import type { CopyScope } from "@/clipboard/serialize";
 import { product } from "@/copy/product";
 import type {
 	OutputOptionId,
@@ -409,6 +410,10 @@ export const copy = {
 		columnActions: "Column actions",
 		copySource: "Copy source",
 		copyFormattedTable: "Copy rich-text table",
+		// The document as a chosen format, whatever the workspace happens to be
+		// showing. Distinct from Copy source, which copies the pane in front of
+		// the user, draft and all.
+		copyAs: "Copy as",
 		downloadTable: "Download table",
 		download: "Download",
 		cancel: "Cancel",
@@ -503,24 +508,31 @@ export const copy = {
 					return "Nothing to import. Your table is unchanged.";
 			}
 		},
-		copied: (scope: "selection" | "source" | "preview") =>
+		copied: (scope: CopyScope) =>
 			scope === "source"
 				? "Source copied"
 				: scope === "preview"
 					? "Formatted table copied"
-					: "Copied",
+					: scope === "format"
+						? "Table copied"
+						: "Copied",
 		// Tabelo cannot grant itself clipboard permission, so the recovery is
 		// always the keyboard. It stays available because a trusted key press
 		// never needs the permission the button does.
 		// The app knows which keyboard the user has, so it names one key rather
 		// than offering both spellings of the same shortcut.
 		clipboardReadFailed: `Paste was blocked. Use ${modShortcut("V")} instead.`,
-		clipboardWriteFailed: (scope: "selection" | "source" | "preview") =>
+		clipboardWriteFailed: (scope: CopyScope) =>
 			scope === "source"
 				? `Copy was blocked. Select the text and use ${modShortcut("C")}.`
 				: scope === "preview"
 					? `Copy was blocked. Select the table and use ${modShortcut("C")}.`
-					: `Copy was blocked. Select the cells and use ${modShortcut("C")}.`,
+					: // A format copy is document-level, so there may be no pane showing
+						// the text the user asked for. The recovery has to name the pane
+						// first, rather than telling them to select something absent.
+						scope === "format"
+						? `Copy was blocked. Open the format in a pane and use ${modShortcut("C")}.`
+						: `Copy was blocked. Select the cells and use ${modShortcut("C")}.`,
 		clipboardEmpty: "Nothing on the clipboard",
 		imported: "Table imported",
 		storageUnavailable:
