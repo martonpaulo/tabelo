@@ -52,6 +52,15 @@ function addFirstSplit(view: ViewId = "csv"): void {
 	store.addPaneBySplit(option, view);
 }
 
+// Closing is the only way down to one pane: Layout rearranges the panes that
+// are open and never removes one.
+function closeDownToOnePane(): void {
+	while (workspace().panes.length > 1) {
+		const store = useTabeloStore.getState();
+		store.closePane(store.workspace.panes.at(-1)?.id ?? "");
+	}
+}
+
 function addedPaneId(before: readonly { id: string }[]): string {
 	const added = workspace().panes.find(
 		(pane) => !before.some((candidate) => candidate.id === pane.id),
@@ -179,7 +188,7 @@ describe("closing a view", () => {
 	);
 
 	it("does nothing at one pane, which is the floor", () => {
-		useTabeloStore.getState().setLayout("single");
+		closeDownToOnePane();
 		const onePane = workspace();
 		expect(onePane.panes).toHaveLength(1);
 
@@ -204,7 +213,7 @@ describe("closing a view", () => {
 
 	it("is reversible: every pane count from one to four is reachable again", () => {
 		const store = useTabeloStore.getState();
-		store.setLayout("single");
+		closeDownToOnePane();
 		const counts: number[] = [workspace().panes.length];
 		while (workspace().panes.length < 4) {
 			addFirstSplit();
@@ -215,6 +224,85 @@ describe("closing a view", () => {
 			counts.push(workspace().panes.length);
 		}
 		expect(counts).toEqual([1, 2, 3, 4, 3, 2, 1]);
+	});
+});
+
+// Layout answers how the open panes are arranged. Growing and closing are their
+// own commands, so no arrangement may add or remove a pane behind the choice.
+describe("rearranging at a fixed pane count", () => {
+	it("swaps two panes between the arrangements of their count", () => {
+		const before = workspace();
+		expect(before.panes).toHaveLength(2);
+		expect(before.layout).toBe("columns");
+
+		useTabeloStore.getState().setLayout("rows");
+
+		const after = workspace();
+		expect(after.layout).toBe("rows");
+		expect(after.panes).toHaveLength(2);
+		expect(after.panes.map((pane) => pane.id)).toEqual(
+			before.panes.map((pane) => pane.id),
+		);
+		expect(after.panes.map((pane) => pane.view)).toEqual(
+			before.panes.map((pane) => pane.view),
+		);
+		expect(after.activePaneId).toBe(before.activePaneId);
+	});
+
+	it.each(["single", "left-split", "quad"] as const)(
+		"refuses %s from a two-pane workspace",
+		(layout) => {
+			const before = workspace();
+			expect(before.panes).toHaveLength(2);
+
+			useTabeloStore.getState().setLayout(layout);
+
+			expect(workspace()).toBe(before);
+		},
+	);
+
+	it("refuses a two-pane arrangement once a third pane is open", () => {
+		addFirstSplit();
+		const before = workspace();
+		expect(before.panes).toHaveLength(3);
+
+		useTabeloStore.getState().setLayout("columns");
+
+		expect(workspace()).toBe(before);
+	});
+
+	it("reaches the arrangements growing alone cannot", () => {
+		// A split preserves the divider the current preset already has, so three
+		// panes are only ever reached as a left or right split from two columns.
+		// The other two are the picker's job, and the reason it exists.
+		addFirstSplit();
+		expect(workspace().layout).toBe("left-split");
+
+		useTabeloStore.getState().setLayout("top-split");
+
+		const after = workspace();
+		expect(after.layout).toBe("top-split");
+		expect(after.panes).toHaveLength(3);
+	});
+
+	it("carries every per-pane preference across a rearrangement", () => {
+		addFirstSplit();
+		const before = workspace();
+		const target = before.panes[0];
+		const store = useTabeloStore.getState();
+		store.setPaneZoom(target.id, 1.3);
+		store.setPaneWrap(target.id, true);
+		store.setActivePane(target.id);
+
+		useTabeloStore.getState().setLayout("bottom-split");
+
+		const after = workspace();
+		expect(after.layout).toBe("bottom-split");
+		expect(after.activePaneId).toBe(target.id);
+		const moved = after.panes.find((pane) => pane.id === target.id);
+		expect(moved?.view).toBe(target.view);
+		expect(moved?.zoom).toBe(1.3);
+		expect(moved?.wrap).toBe(true);
 	});
 });
 
@@ -434,7 +522,7 @@ describe("per-pane zoom", () => {
 		const paneId = markdownPaneId();
 		useTabeloStore.getState().setPaneZoom(paneId, 0.5);
 
-		useTabeloStore.getState().setLayout("quad");
+		useTabeloStore.getState().setLayout("rows");
 
 		expect(workspace().panes.find((pane) => pane.id === paneId)?.zoom).toBe(
 			0.5,

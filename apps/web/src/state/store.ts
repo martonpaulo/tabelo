@@ -84,6 +84,7 @@ import {
 	createDefaultWorkspace,
 	type LayoutId,
 	movePane as moveWorkspacePane,
+	paneCount,
 	type SplitOption,
 	smallerLayout,
 	splitOptions,
@@ -668,6 +669,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	setLayout: (layout) =>
 		set((state) => {
+			// Rearranging is not resizing the workspace. A selection naming another
+			// pane count is stale or impossible, so it is refused rather than
+			// silently opening or closing a pane behind the user's choice.
+			if (paneCount(layout) !== state.workspace.panes.length) return state;
+
 			const panes = applyLayout(
 				layout,
 				state.workspace.panes,

@@ -30,6 +30,20 @@ columns, two rows, split left, split right, split top, split bottom, and four
 panes. Choosing one is a single click, and the glyph shows the result before it
 is applied.
 
+**A preset belongs to a pane count, and the picker offers only the count that is
+open.** One pane and four panes tile the grid exactly one way each; two panes are
+either columns or rows; three panes are one of the four asymmetric splits.
+Layout therefore answers "how are these panes arranged" and never "how many
+panes are there", which Add view and Close view answer with controls of their
+own. A command able to do both would make the pane count a side effect of
+picking a picture, and would give the user two unrelated ways to reach the same
+change. The offered set is filtered from the canonical preset list by pane
+count, so a new preset joins its count without a second list to keep in step,
+and the store refuses a selection naming another count rather than resizing the
+workspace behind the choice. At one and four panes the command stays in the
+menu, disabled with a written reason, because a command that vanishes at the
+ends of the range teaches nothing about why.
+
 One pane is expressed as a preset spanning all four slots, not as a pane count
 with no preset. Splitting, shrinking, and the persisted schema all read the
 shapes a layout declares, so a preset keeps every one of them working unchanged,
@@ -121,9 +135,9 @@ so a new preset needs no edit there.
 
 ## Consequences
 
-- The layout control is one menu of seven pictures, with nothing to learn, and
-  it is the advanced path rather than the only one: adding or closing a view
-  needs no understanding of layout names at all.
+- The layout control is a short list of pictures, never more than four of them,
+  with nothing to learn, and it is the advanced path rather than the only one:
+  adding or closing a view needs no understanding of layout names at all.
 - The preset set survives unchanged, but the way a user moves between presets
   changed completely. Growing is now a direct manipulation of the edge that
   will be split, so the arrangement is a result of where the user pointed
@@ -135,7 +149,9 @@ so a new preset needs no edit there.
 - Growing can no longer reach `top-split` or `bottom-split` from `columns`, nor
   `left-split` or `right-split` from `rows`, because a split preserves the
   divider the current preset already has. Reaching those is the layout picker's
-  job, which is what keeps it rather than retiring it with the add flow.
+  job, which is what keeps it rather than retiring it with the add flow, and
+  what makes filtering it to the current pane count sufficient: every preset a
+  count holds is one click away once that many panes are open.
 - Invalid layouts are unrepresentable, so there is no validation to write and
   no error state to design: including for the direct commands, which can only
   move between presets.

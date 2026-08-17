@@ -53,6 +53,13 @@ Related to: Workspace, Pane
 A named arrangement of panes over the slots, such as "two columns" or "four
 panes". Every preset tiles all four slots exactly once with rectangular panes.
 
+There are eight, grouped by the number of panes they hold: one pane; two
+columns and two rows; split left, split right, split top and split bottom;
+and four panes. The pane count decides which presets exist, so choosing an
+arrangement never changes how many panes are open. Adding and closing a view
+are the commands that do that. One pane and four panes each have a single
+preset, so there is no arrangement to choose there.
+
 Related to: Workspace, Slot
 
 ### Codec

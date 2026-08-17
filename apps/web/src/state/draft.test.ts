@@ -7,7 +7,13 @@ import { jsonCodec } from "@/formats";
 import type { TableCodec } from "@/formats/types";
 import { listViews } from "@/views/registry";
 import { canParse } from "@/views/types";
-import { layoutPresets } from "@/workspace/layout";
+import {
+	type LayoutId,
+	layoutPresets,
+	layoutsForPaneCount,
+	paneCount,
+	splitOptions,
+} from "@/workspace/layout";
 import { textForView, useTabeloStore } from "./store";
 
 const initialState = useTabeloStore.getInitialState();
@@ -32,9 +38,31 @@ function markdownPaneId(): string {
 	return pane?.id ?? "";
 }
 
+// A preset is reached the way a user reaches it: Add view and Close view move
+// between pane counts, and Layout only rearranges the panes already open. A test
+// that wants a three-pane preset therefore has to grow into three panes first.
+function goToLayout(id: LayoutId): void {
+	const target = paneCount(id);
+	while (useTabeloStore.getState().workspace.panes.length < target) {
+		const state = useTabeloStore.getState();
+		const option = splitOptions(state.workspace)[0];
+		if (!option) break;
+		const shown = new Set(state.workspace.panes.map((pane) => pane.view));
+		const view = listViews().find((candidate) => !shown.has(candidate.id));
+		state.addPaneBySplit(option, view?.id ?? "csv");
+	}
+	while (useTabeloStore.getState().workspace.panes.length > target) {
+		const state = useTabeloStore.getState();
+		state.closePane(state.workspace.panes.at(-1)?.id ?? "");
+	}
+	useTabeloStore.getState().setLayout(id);
+}
+
 describe("draft ownership", () => {
+	// Only same-count pairs: Layout cannot cross a pane count, so a cross-count
+	// pair would assert nothing but the refusal, which the store tests own.
 	const layoutTransitions = layoutPresets.flatMap((from) =>
-		layoutPresets.flatMap((to) =>
+		layoutsForPaneCount(from.panes.length).flatMap((to) =>
 			[
 				["clean", validMarkdown],
 				["invalid", invalidMarkdown],
@@ -46,7 +74,7 @@ describe("draft ownership", () => {
 		"%s to %s preserves its %s draft owner",
 		(from, to, _status, text) => {
 			const store = useTabeloStore.getState();
-			store.setLayout(from);
+			goToLayout(from);
 			const existingMarkdown = useTabeloStore
 				.getState()
 				.workspace.panes.find((pane) => pane.view === "markdown");
@@ -73,7 +101,7 @@ describe("draft ownership", () => {
 
 	it("does not let another pane duplicate the draft owner's view", () => {
 		const store = useTabeloStore.getState();
-		store.setLayout("quad");
+		goToLayout("quad");
 		const panes = useTabeloStore.getState().workspace.panes;
 		const owner = panes.find((pane) => pane.view === "markdown");
 		const other = panes.find((pane) => pane.view !== "markdown");
