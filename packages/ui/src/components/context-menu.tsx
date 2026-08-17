@@ -219,9 +219,11 @@ function ContextMenuRadioItem({
 	className,
 	children,
 	inset,
+	hideIndicator = false,
 	...props
 }: ContextMenuPrimitive.RadioItem.Props & {
 	inset?: boolean;
+	hideIndicator?: boolean;
 }) {
 	return (
 		<ContextMenuPrimitive.RadioItem
@@ -235,17 +237,19 @@ function ContextMenuRadioItem({
 			)}
 			{...props}
 		>
-			<span
-				className={cn(
-					singleSelectionIndicatorShapeStyles,
-					"pointer-events-none absolute right-2",
-				)}
-				data-slot="context-menu-radio-item-indicator"
-			>
-				<ContextMenuPrimitive.RadioItemIndicator
-					className={singleSelectionIndicatorFillStyles}
-				/>
-			</span>
+			{hideIndicator ? null : (
+				<span
+					className={cn(
+						singleSelectionIndicatorShapeStyles,
+						"pointer-events-none absolute right-2",
+					)}
+					data-slot="context-menu-radio-item-indicator"
+				>
+					<ContextMenuPrimitive.RadioItemIndicator
+						className={singleSelectionIndicatorFillStyles}
+					/>
+				</span>
+			)}
 			{children}
 		</ContextMenuPrimitive.RadioItem>
 	);

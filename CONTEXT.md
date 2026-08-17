@@ -137,7 +137,13 @@ Related to: Cell value, Serializer
 The type a column expects to be typed into it: text, number, or boolean. It
 guides editing and validation and never constrains the cells, because a typed
 source may legitimately carry mixed types in one column. The real type always
-belongs to the cell.
+belongs to the cell. A text expectation stores grid input exactly as a string.
+A number or boolean expectation stores canonical valid input as that native
+type. One leading apostrophe explicitly chooses a string and is removed; a
+second apostrophe remains content. Valid input whose native value has a
+different text projection requires an explicit Convert or Keep as text choice.
+Invalid input remains editable until the user continues editing or explicitly
+stores it as text.
 
 Related to: Column, Cell value
 
@@ -206,8 +212,9 @@ Related to: Commit, Table operation
 ### Table operation
 
 A pure function from one table document to another: insert, delete, duplicate,
-move, set cell, edit header, clear range. Table operations are the only way the
-grid changes the document.
+move, set cell, convert a cell type, change a column expectation, edit header,
+or clear a range. Table operations are the only way the grid changes the
+document.
 
 Related to: Table document, Document timeline
 
@@ -319,3 +326,6 @@ Related to: Table document, Import
   text. This previous value is what keeps `null` distinct from an empty string.
 - The expected type belongs to the column and the real type belongs to the cell,
   so a column may hold values that disagree with what it expects.
+- Typed grid entry may carry a native type only from canonical input or an
+  explicit conversion choice. Ambiguous and invalid drafts never write the
+  document before that choice.

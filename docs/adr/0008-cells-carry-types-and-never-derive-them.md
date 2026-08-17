@@ -78,9 +78,14 @@ the empty string.
 
 JSON is the first source of a native value: its scalar syntax carries strings,
 numbers, booleans, and null directly into the document and receives those same
-types on serialization. The visual table later becomes the place a user can
-state a type deliberately. The model landed first so its migration stayed
-reviewable on its own.
+types on serialization. The visual table is the other source: its column menu
+sets an expected text, number, or boolean type without converting cells, and a
+cell menu explicitly converts one existing value. Grid entry into a number or
+boolean column carries canonical input as that native type. A leading
+apostrophe explicitly carries the remainder as a string. Valid input whose
+native projection would change the entered representation, and invalid input,
+requires a user choice before the document changes. The model landed first so
+its migration stayed reviewable on its own.
 
 Round-trip preservation stays the measured signal, and it now has two halves:
 text still survives byte-exact, and a native value must survive synchronized

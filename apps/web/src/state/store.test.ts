@@ -221,6 +221,48 @@ describe("transactional input", () => {
 });
 
 describe("document history", () => {
+	it("records explicit cell type conversion as one undoable step", () => {
+		const store = useTabeloStore.getState();
+		store.editCell(0, 0, "007");
+		const beforeConversion = useTabeloStore.getState().document;
+
+		expect(useTabeloStore.getState().setCellType(0, 0, "number")).toBe(true);
+		let state = useTabeloStore.getState();
+		const columnId = state.document.columns[0]?.id ?? "";
+		expect(state.document.rows[0]?.cells[columnId]).toBe(7);
+		expect(state.past).toHaveLength(2);
+
+		state.undo();
+		state = useTabeloStore.getState();
+		expect(state.document).toBe(beforeConversion);
+		expect(state.document.rows[0]?.cells[columnId]).toBe("007");
+	});
+
+	it("changes selected column expectations in one history step", () => {
+		const document = documentFromMatrix(
+			[
+				["Name", "City"],
+				["Ingrid", "Rio"],
+			],
+			{ headerRow: true },
+		);
+		useTabeloStore.setState({
+			document,
+			selection: createSelection({ row: HEADER_ROW, column: 0 }, "column"),
+		});
+		const store = useTabeloStore.getState();
+
+		store.setColumnExpectedType(0, "number");
+		let state = useTabeloStore.getState();
+		expect(state.document.columns[0]?.expectedType).toBe("number");
+		expect(state.document.columns[1]?.expectedType).toBe("text");
+		expect(state.past).toHaveLength(1);
+
+		state.undo();
+		state = useTabeloStore.getState();
+		expect(state.document).toBe(document);
+	});
+
 	it("keeps a resized column unchanged through unrelated undo and redo", () => {
 		const store = useTabeloStore.getState();
 		store.editCell(0, 0, "Ingrid");

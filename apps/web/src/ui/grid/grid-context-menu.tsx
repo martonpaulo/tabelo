@@ -4,12 +4,31 @@ import {
 	ContextMenuGroup,
 	ContextMenuItem,
 	ContextMenuLabel,
+	ContextMenuRadioGroup,
 	ContextMenuSeparator,
 	ContextMenuShortcut,
 	ContextMenuTrigger,
 } from "@tabelo/ui/components/context-menu";
-import { Fragment, type ReactNode, type RefObject, useState } from "react";
+import {
+	Fragment,
+	type ReactNode,
+	type RefObject,
+	useId,
+	useState,
+} from "react";
+import { copy } from "@/copy/copy";
+import { cellValueType, readCell } from "@/core/cell-value";
+import {
+	activeRange,
+	type CellPosition,
+	type GridSelection,
+} from "@/core/selection";
+import { convertCellValue } from "@/core/typed-input";
+import type { CellValueType } from "@/core/types";
+import { useTabeloStore } from "@/state/store";
+import { ContextMenuSelectionOption } from "@/ui/primitives/context-menu-selection-option";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
+import { cellTypeOptions } from "./cell-type-options";
 import { targetAxisForMenu, targetCellForMenu } from "./menu-target";
 import { buildTableActions, type TableActionContext } from "./table-actions";
 
@@ -18,6 +37,66 @@ import { buildTableActions, type TableActionContext } from "./table-actions";
 // user clicked is enough to decide what the menu should offer.
 
 export type ContextAxis = TableActionContext["axis"];
+
+function singleSelectedCell(selection: GridSelection): CellPosition | null {
+	if (selection.ranges.length !== 1) return null;
+	const range = activeRange(selection);
+	if (
+		range.mode !== "cell" ||
+		range.focus.row < 0 ||
+		range.anchor.row !== range.focus.row ||
+		range.anchor.column !== range.focus.column
+	) {
+		return null;
+	}
+	return range.focus;
+}
+
+function CellTypeMenuGroup() {
+	const labelId = useId();
+	const document = useTabeloStore((state) => state.document);
+	const selection = useTabeloStore((state) => state.selection);
+	const target = singleSelectedCell(selection);
+	const column = target ? document.columns[target.column] : undefined;
+	const row = target ? document.rows[target.row] : undefined;
+	const value = row && column ? readCell(row, column.id) : undefined;
+	const currentType = value === undefined ? undefined : cellValueType(value);
+
+	return (
+		<ContextMenuRadioGroup
+			aria-labelledby={labelId}
+			value={currentType ?? ""}
+			onValueChange={(next) => {
+				if (target) {
+					useTabeloStore
+						.getState()
+						.setCellType(target.row, target.column, next as CellValueType);
+				}
+			}}
+		>
+			<ContextMenuLabel id={labelId}>{copy.actions.cellType}</ContextMenuLabel>
+			{cellTypeOptions.map((option) => {
+				const unavailable =
+					value === undefined || !convertCellValue(value, option.value).ok;
+				const reason =
+					value === undefined
+						? copy.disabled.singleCellRequired
+						: unavailable
+							? copy.disabled.cellTypeConversion(option.label)
+							: undefined;
+				return (
+					<ContextMenuSelectionOption
+						key={option.value}
+						value={option.value}
+						icon={<option.icon />}
+						label={option.label}
+						availability={reason ? { kind: "unavailable", reason } : undefined}
+					/>
+				);
+			})}
+		</ContextMenuRadioGroup>
+	);
+}
 
 export function GridContextMenu({
 	children,
@@ -75,6 +154,12 @@ export function GridContextMenu({
 			</ContextMenuTrigger>
 
 			<ContextMenuContent className="w-auto min-w-56">
+				{axis === "cell" ? (
+					<>
+						<CellTypeMenuGroup />
+						<ContextMenuSeparator />
+					</>
+				) : null}
 				{buildTableActions({ axis }).map((group, index) => (
 					<Fragment key={group.id}>
 						{index > 0 ? <ContextMenuSeparator /> : null}

@@ -233,7 +233,7 @@ test("option highlights include descriptions and disabled rows stay inert", asyn
 	await expect(redoItem).toHaveAccessibleName(/Shift/);
 });
 
-test("column alignment uses the shared one-line radio anatomy", async ({
+test("column choices use the shared one-line radio anatomy", async ({
 	page,
 	tabelo,
 }) => {
@@ -247,20 +247,27 @@ test("column alignment uses the shared one-line radio anatomy", async ({
 	const menu = page.getByRole("menu", {
 		name: new RegExp(`^${copy.actions.columnActions}:`),
 	});
-	const options = menu.getByRole("menuitemradio");
+	const expectedType = menu.getByRole("group", {
+		name: copy.actions.expectedType,
+	});
+	const alignment = menu.getByRole("group", { name: copy.actions.alignment });
 
-	await expect(options).toHaveCount(4);
+	await expect(expectedType.getByRole("menuitemradio")).toHaveCount(3);
+	await expect(alignment.getByRole("menuitemradio")).toHaveCount(4);
 	await expect(menu.locator('[data-slot="selection-option-icon"]')).toHaveCount(
-		4,
+		7,
 	);
 	await expect(
 		menu.locator('[data-slot="dropdown-menu-radio-item-indicator"]'),
 	).toHaveCount(0);
-	await expect(menu.getByRole("menuitemradio", { checked: true })).toHaveCount(
-		1,
-	);
+	await expect(
+		expectedType.getByRole("menuitemradio", { checked: true }),
+	).toHaveCount(1);
+	await expect(
+		alignment.getByRole("menuitemradio", { checked: true }),
+	).toHaveCount(1);
 
-	await menu
+	await alignment
 		.getByRole("menuitemradio", { name: copy.actions.alignCenter })
 		.click();
 	await tabelo
@@ -275,6 +282,7 @@ test("column alignment uses the shared one-line radio anatomy", async ({
 			.getByRole("menu", {
 				name: new RegExp(`^${copy.actions.columnActions}:`),
 			})
+			.getByRole("group", { name: copy.actions.alignment })
 			.getByRole("menuitemradio", { name: copy.actions.alignCenter }),
 	).toBeChecked();
 });
@@ -297,7 +305,10 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	const dropdownGroups = menu.locator(
 		'[data-slot="dropdown-menu-group"], [data-slot="dropdown-menu-radio-group"]',
 	);
-	await expect(dropdownGroups).toHaveCount(7);
+	await expect(dropdownGroups).toHaveCount(8);
+	await expect(
+		menu.getByRole("group", { name: copy.actions.expectedType }),
+	).toHaveCount(1);
 	await expect(
 		menu.getByRole("group", { name: copy.actions.alignment }),
 	).toHaveCount(1);
@@ -308,10 +319,10 @@ test("table menus preserve named and unnamed semantic groups", async ({
 		menu.getByRole("group", { name: copy.actions.move }),
 	).toHaveCount(1);
 	await expect(menu.locator('[data-slot="dropdown-menu-label"]')).toHaveCount(
-		3,
+		4,
 	);
 	await expect(dropdownGroups.locator(":scope[aria-labelledby]")).toHaveCount(
-		3,
+		4,
 	);
 	await expect(
 		dropdownGroups.locator(":scope:not([aria-labelledby])"),
@@ -322,8 +333,13 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	await tabelo.cell(1, 1).click({ button: "right" });
 	menu = page.locator('[data-slot="context-menu-content"]');
 	await expect(menu).toBeVisible();
-	const contextGroups = menu.locator('[data-slot="context-menu-group"]');
-	await expect(contextGroups).toHaveCount(6);
+	const contextGroups = menu.locator(
+		'[data-slot="context-menu-group"], [data-slot="context-menu-radio-group"]',
+	);
+	await expect(contextGroups).toHaveCount(7);
+	await expect(
+		menu.getByRole("group", { name: copy.actions.cellType }),
+	).toHaveCount(1);
 	await expect(
 		menu.getByRole("group", { name: copy.actions.edit }),
 	).toHaveCount(1);
@@ -333,7 +349,7 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	await expect(
 		menu.getByRole("group", { name: copy.actions.move }),
 	).toHaveCount(1);
-	await expect(contextGroups.locator(":scope[aria-labelledby]")).toHaveCount(3);
+	await expect(contextGroups.locator(":scope[aria-labelledby]")).toHaveCount(4);
 	await expect(
 		contextGroups.locator(":scope:not([aria-labelledby])"),
 	).toHaveCount(3);

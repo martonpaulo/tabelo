@@ -2,11 +2,14 @@ import { readCell } from "./cell-value";
 import { createColumn, createRow } from "./document";
 import { createRowId } from "./ids";
 import { type CellRect, rectContains, rectCoversHeader } from "./selection";
+import { convertCellValue } from "./typed-input";
 import type {
 	Alignment,
 	CellValue,
+	CellValueType,
 	Column,
 	ColumnId,
+	ExpectedColumnType,
 	Row,
 	TableDocument,
 } from "./types";
@@ -109,6 +112,21 @@ export function setCell(
 	return { ...document, rows };
 }
 
+export function setCellType(
+	document: TableDocument,
+	rowIndex: number,
+	columnIndex: number,
+	targetType: CellValueType,
+): TableDocument {
+	const row = document.rows[rowIndex];
+	const column = document.columns[columnIndex];
+	if (!row || !column) return document;
+	const converted = convertCellValue(readCell(row, column.id), targetType);
+	return converted.ok
+		? setCell(document, rowIndex, columnIndex, converted.value)
+		: document;
+}
+
 export function setHeader(
 	document: TableDocument,
 	columnIndex: number,
@@ -131,6 +149,19 @@ export function setAlignment(
 	if (!column || column.align === align) return document;
 	const columns = document.columns.map((candidate, index) =>
 		index === columnIndex ? { ...candidate, align } : candidate,
+	);
+	return { ...document, columns };
+}
+
+export function setColumnExpectedType(
+	document: TableDocument,
+	columnIndex: number,
+	expectedType: ExpectedColumnType,
+): TableDocument {
+	const column = document.columns[columnIndex];
+	if (!column || column.expectedType === expectedType) return document;
+	const columns = document.columns.map((candidate, index) =>
+		index === columnIndex ? { ...candidate, expectedType } : candidate,
 	);
 	return { ...document, columns };
 }

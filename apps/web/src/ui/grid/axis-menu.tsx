@@ -31,13 +31,14 @@ import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuSelectionOption } from "@/ui/primitives/menu-selection-option";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import { isSameColumnWidth } from "@/workspace/column-width";
+import { expectedTypeOptions } from "./cell-type-options";
 import { DropdownTableActions } from "./dropdown-table-actions";
 import { targetAxisForMenu } from "./menu-target";
 
 // One menu component for both axes, replacing the near-identical row and column
 // menus that were drifting apart. Everything it offers comes from the shared
-// action list; alignment is the single column-only addition, because it is the
-// one operation that belongs to a column rather than to a selection.
+// action list; alignment and expected type are the column-only additions,
+// because both belong to a column rather than to a cell range.
 //
 // The affordance is per row and per column, but the machinery behind it is not:
 // only one axis menu can be open at a time, so the grid mounts one root and
@@ -239,6 +240,29 @@ function AxisMenuBody({ axis, index, measureFitWidth }: AxisMenuPayload) {
 							{copy.actions.wrapColumnText}
 						</DropdownMenuCheckboxItem>
 					</DropdownMenuGroup>
+					<DropdownMenuSeparator />
+
+					<DropdownMenuRadioGroup
+						aria-labelledby="column-expected-type-label"
+						value={column?.expectedType ?? "text"}
+						onValueChange={(next) =>
+							useTabeloStore
+								.getState()
+								.setColumnExpectedType(index, next as ExpectedColumnType)
+						}
+					>
+						<DropdownMenuLabel id="column-expected-type-label">
+							{copy.actions.expectedType}
+						</DropdownMenuLabel>
+						{expectedTypeOptions.map((option) => (
+							<MenuSelectionOption
+								key={option.value}
+								value={option.value}
+								icon={<option.icon />}
+								label={option.label}
+							/>
+						))}
+					</DropdownMenuRadioGroup>
 					<DropdownMenuSeparator />
 
 					{/* A column has one alignment, so these are radio items rather

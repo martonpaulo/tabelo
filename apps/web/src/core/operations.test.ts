@@ -19,6 +19,8 @@ import {
 	moveRows,
 	pasteMatrix,
 	setCell,
+	setCellType,
+	setColumnExpectedType,
 } from "./operations";
 import { samplePeopleMatrix } from "./sample-data";
 import { HEADER_ROW } from "./selection";
@@ -275,6 +277,32 @@ describe("cell operations", () => {
 	it("returns the same document when a write changes nothing", () => {
 		const before = sample();
 		expect(setCell(before, 0, 0, "1")).toBe(before);
+	});
+
+	it("changes a cell type through an explicit valid conversion", () => {
+		const before = sample();
+		const next = setCellType(before, 0, 0, "number");
+		const column = next.columns[0];
+
+		expect(next.rows[0]?.cells[column?.id ?? ""]).toBe(1);
+		expect(setCellType(next, 0, 0, "number")).toBe(next);
+	});
+
+	it("refuses an explicit cell type that cannot represent the value", () => {
+		const before = sample();
+		expect(setCellType(before, 0, 0, "boolean")).toBe(before);
+	});
+
+	it("changes only the requested column expectation", () => {
+		const before = sample();
+		const next = setColumnExpectedType(before, 1, "number");
+
+		expect(next.columns.map((column) => column.expectedType)).toEqual([
+			"text",
+			"number",
+		]);
+		expect(next.rows).toBe(before.rows);
+		expect(setColumnExpectedType(next, 1, "number")).toBe(next);
 	});
 
 	it("clears a rectangle without touching its neighbours", () => {
