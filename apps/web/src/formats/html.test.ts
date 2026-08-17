@@ -38,7 +38,7 @@ describe("html parsing", () => {
 		);
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		expect(result.document.columns[0].align).toBe("left");
+		expect(result.document.columns[0]?.align).toBe("left");
 	});
 
 	it("turns <br> into a real line break", () => {
@@ -47,7 +47,7 @@ describe("html parsing", () => {
 		);
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		expect(documentToMatrix(result.document)[1][0]).toBe("one\ntwo");
+		expect(documentToMatrix(result.document)[1]?.[0]).toBe("one\ntwo");
 	});
 
 	it("pads a ragged row", () => {

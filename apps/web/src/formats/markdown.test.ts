@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
 import { csvCodec } from "./csv";
 import { escapeCell, markdownCodec, unescapeCell } from "./markdown";
@@ -101,6 +101,8 @@ describe("markdown parsing", () => {
 
 		const [row] = result.document.rows;
 		const firstColumn = result.document.columns[0];
+		assert(row);
+		assert(firstColumn);
 		expect(row.cells[firstColumn.id]).toBe("x | y");
 		expect(result.document.columns).toHaveLength(2);
 	});
@@ -109,7 +111,7 @@ describe("markdown parsing", () => {
 		const result = markdownCodec.parse("| Name | Role |");
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
-		expect(result.issues[0].code).toBe("markdown-table-incomplete");
+		expect(result.issues[0]?.code).toBe("markdown-table-incomplete");
 	});
 
 	it("rejects a divider whose column count disagrees with the header", () => {

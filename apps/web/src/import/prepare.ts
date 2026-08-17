@@ -149,13 +149,14 @@ export function prepareImport(
 	}
 
 	const matrix = normalizeMatrix(table.matrix);
-	if (matrix.length === 0 || (matrix.length === 1 && matrix[0].length === 0)) {
+	const firstRow = matrix[0];
+	if (!firstRow || (matrix.length === 1 && firstRow.length === 0)) {
 		return { ok: false, error: { code: "empty" } };
 	}
 
 	const error = tableShapeLimitError({
 		rows: matrix.length,
-		columns: matrix[0]?.length ?? 0,
+		columns: firstRow.length,
 	});
 	if (error) return { ok: false, error };
 
