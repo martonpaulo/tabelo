@@ -182,7 +182,11 @@ function parseRecordsMatrix(text: string): MatrixParseResult {
 	}
 
 	const [firstBlock, ...restBlocks] = blocks;
-	const firstTitle = splitHeaderValue(firstBlock.lines[0]);
+	if (!firstBlock) {
+		return { ok: false, issues: [{ code: "empty-source" }] };
+	}
+	const firstLine = firstBlock.lines[0];
+	const firstTitle = firstLine ? splitHeaderValue(firstLine) : null;
 	if (!firstTitle) {
 		return {
 			ok: false,
@@ -194,7 +198,7 @@ function parseRecordsMatrix(text: string): MatrixParseResult {
 	const firstBullets: HeaderValue[] = [];
 	for (let index = 1; index < firstBlock.lines.length; index += 1) {
 		const line = firstBlock.lines[index];
-		const bullet = line.startsWith("- ")
+		const bullet = line?.startsWith("- ")
 			? splitHeaderValue(line.slice(2))
 			: null;
 		if (!bullet) {
@@ -219,7 +223,8 @@ function parseRecordsMatrix(text: string): MatrixParseResult {
 	];
 
 	for (const block of restBlocks) {
-		const title = splitHeaderValue(block.lines[0]);
+		const titleLine = block.lines[0];
+		const title = titleLine ? splitHeaderValue(titleLine) : null;
 		if (!title) {
 			return {
 				ok: false,
@@ -228,7 +233,7 @@ function parseRecordsMatrix(text: string): MatrixParseResult {
 		}
 		// Editing one record's title prefix must not silently rename the column:
 		// the source becomes invalid instead, per the confirmed decision.
-		if (title.header !== headers[0]) {
+		if (title.header !== firstTitle.header) {
 			return {
 				ok: false,
 				issues: [{ code: "records-title-mismatch", line: block.start + 1 }],
@@ -240,7 +245,7 @@ function parseRecordsMatrix(text: string): MatrixParseResult {
 
 		for (let index = 1; index < block.lines.length; index += 1) {
 			const line = block.lines[index];
-			const bullet = line.startsWith("- ")
+			const bullet = line?.startsWith("- ")
 				? splitHeaderValue(line.slice(2))
 				: null;
 			if (!bullet) {
@@ -369,10 +374,11 @@ function canSniffRecords(text: string): boolean {
 	const lines = text.split(/\r?\n/);
 	for (let index = 0; index < lines.length - 1; index += 1) {
 		const line = lines[index];
+		if (line === undefined) continue;
 		if (line.trim() === "" || line.startsWith("- ")) continue;
 		if (!line.includes(":")) continue;
 		const next = lines[index + 1];
-		if (next.startsWith("- ") && next.includes(":")) return true;
+		if (next?.startsWith("- ") && next.includes(":")) return true;
 	}
 	return false;
 }

@@ -38,8 +38,8 @@ export function parseDelimitedMatrix(
 	// A trailing newline produces one phantom row; a genuinely empty last row
 	// would have been written as a blank line the user can still see.
 	if (matrix.length > 1) {
-		const last = matrix[matrix.length - 1];
-		if (last.length === 1 && last[0] === "") matrix.pop();
+		const last = matrix.at(-1);
+		if (last?.length === 1 && last[0] === "") matrix.pop();
 	}
 
 	const issues: ParseIssue[] = result.errors.map((error) => {

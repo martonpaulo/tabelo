@@ -313,14 +313,14 @@ describe("records parsing", () => {
 		const result = recordsCodec.parse(["Product: A", "", "Item: B"].join("\n"));
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
-		expect(result.issues[0].code).toBe("records-title-mismatch");
+		expect(result.issues[0]?.code).toBe("records-title-mismatch");
 	});
 
 	it("rejects a line after the title that is not a hyphen bullet", () => {
 		const result = recordsCodec.parse(["Product: A", "Price: 20"].join("\n"));
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
-		expect(result.issues[0].code).toBe("records-bullet-required");
+		expect(result.issues[0]?.code).toBe("records-bullet-required");
 	});
 
 	it("rejects a bullet naming a column the first record never declared", () => {
@@ -329,7 +329,7 @@ describe("records parsing", () => {
 		);
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
-		expect(result.issues[0].code).toBe("records-unknown-column");
+		expect(result.issues[0]?.code).toBe("records-unknown-column");
 	});
 
 	it("fills a missing bullet with an empty value and tolerates reordering", () => {
@@ -356,7 +356,7 @@ describe("records parsing", () => {
 		const result = recordsCodec.parse("");
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
-		expect(result.issues[0].code).toBe("empty-source");
+		expect(result.issues[0]?.code).toBe("empty-source");
 	});
 });
 

@@ -16,6 +16,7 @@ export function escapeCell(value: string): string {
 	let out = "";
 	for (let index = 0; index < source.length; index += 1) {
 		const char = source[index];
+		if (char === undefined) break;
 		if (
 			/^\s$/u.test(char) &&
 			(index < leadingWhitespace || index >= trailingWhitespaceStart)
@@ -73,10 +74,11 @@ export function unescapeCell(value: string): string {
 			continue;
 		}
 		const entity = value.slice(index).match(/^&#([0-9]+);/);
-		if (entity) {
-			const codePoint = Number(entity[1]);
+		const decimal = entity?.[1];
+		if (entity && decimal !== undefined) {
+			const codePoint = Number(decimal);
 			const decoded =
-				codePoint <= 0x10ffff && String(codePoint) === entity[1]
+				codePoint <= 0x10ffff && String(codePoint) === decimal
 					? String.fromCodePoint(codePoint)
 					: "";
 			if (codePoint !== 13 && /^\s$/u.test(decoded)) {
@@ -128,7 +130,9 @@ export function unescapeCell(value: string): string {
 			index += 3;
 			continue;
 		}
-		out += value[index];
+		const char = value[index];
+		if (char === undefined) break;
+		out += char;
 	}
 	return out;
 }
@@ -204,10 +208,16 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 
 	// A Markdown table is a contiguous block of non-blank lines.
 	let end = start;
-	while (end < lines.length && lines[end].trim() !== "") end += 1;
+	while (end < lines.length) {
+		const line = lines[end];
+		if (line === undefined || line.trim() === "") break;
+		end += 1;
+	}
 	const block = lines.slice(start, end);
+	const headerLine = block[0];
+	const delimiterLine = block[1];
 
-	if (block.length < 2) {
+	if (headerLine === undefined || delimiterLine === undefined) {
 		return {
 			ok: false,
 			issues: [
@@ -219,8 +229,8 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 		};
 	}
 
-	const headerCells = splitRow(block[0]);
-	const delimiterCells = splitRow(block[1]);
+	const headerCells = splitRow(headerLine);
+	const delimiterCells = splitRow(delimiterLine);
 
 	if (!isDelimiterRow(delimiterCells)) {
 		return {
@@ -292,17 +302,24 @@ function serializeMarkdown(document: TableDocument): string {
 		}
 		return width;
 	});
+	const widthAt = (index: number): number => {
+		const width = widths[index];
+		if (width === undefined) {
+			throw new Error("Markdown column width is missing.");
+		}
+		return width;
+	};
 
 	const line = (cells: readonly string[]) =>
 		`| ${cells
 			.map(
 				(cell, index) =>
-					`${cell}${" ".repeat(Math.max(0, widths[index] - stringWidth(cell)))}`,
+					`${cell}${" ".repeat(Math.max(0, widthAt(index) - stringWidth(cell)))}`,
 			)
 			.join(" | ")} |`;
 
 	const divider = `| ${document.columns
-		.map((column, index) => alignmentMarker(column.align, widths[index]))
+		.map((column, index) => alignmentMarker(column.align, widthAt(index)))
 		.join(" | ")} |`;
 
 	return [line(headers), divider, ...body.map(line)].join("\n");

@@ -26,16 +26,18 @@ const registry: Record<CodecId, TableCodec> = {
 	records: recordsCodec,
 };
 
+export const DEFAULT_CODEC_ID = "markdown" satisfies CodecId;
+
 // Order is the product's own preference, shown wherever formats are listed.
-export const codecOrder: readonly CodecId[] = [
-	"markdown",
+export const codecOrder = [
+	DEFAULT_CODEC_ID,
 	"csv",
 	"tsv",
 	"html",
 	"jira",
 	"json",
 	"records",
-];
+] as const satisfies readonly CodecId[];
 
 export function getCodec(id: CodecId): TableCodec {
 	return registry[id];

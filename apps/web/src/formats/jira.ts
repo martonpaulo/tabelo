@@ -120,10 +120,15 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 	}
 
 	let end = start;
-	while (end < lines.length && lines[end].trim() !== "") end += 1;
+	while (end < lines.length) {
+		const line = lines[end];
+		if (line === undefined || line.trim() === "") break;
+		end += 1;
+	}
 	const block = lines.slice(start, end);
+	const headerLine = block[0];
 
-	if (!HEADER_LINE.test(block[0])) {
+	if (headerLine === undefined || !HEADER_LINE.test(headerLine)) {
 		return {
 			ok: false,
 			issues: [
@@ -136,7 +141,7 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 	}
 
 	// Collapse the header's doubled pipes so one splitter handles both rows.
-	const headerCells = splitJiraRow(block[0].replace(/\|\|/g, "|")).map(
+	const headerCells = splitJiraRow(headerLine.replace(/\|\|/g, "|")).map(
 		unescapeJiraCell,
 	);
 
