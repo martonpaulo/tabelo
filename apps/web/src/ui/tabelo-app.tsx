@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { tableDocumentTitle } from "@/copy/product";
 import { isDocumentBlank } from "@/core/document";
 import { runHistory } from "@/history/coordinator";
 import { hasSessionWork, startAutosave, useTabeloStore } from "@/state/store";
@@ -10,12 +11,19 @@ import { importTableFile } from "@/ui/import";
 import { NewTableDialog } from "@/ui/new-table-dialog";
 import { NoticeBar } from "@/ui/notice-bar";
 import { usePwaUpdate } from "@/ui/pwa-update";
+import { RenameTableDialog } from "@/ui/rename-table-dialog";
 import { SettingsDialog } from "@/ui/settings-dialog";
 import { LayoutDialog } from "@/ui/workspace/layout-dialog";
 import { Workspace } from "@/ui/workspace/workspace";
 import { DEFAULT_PANE_ZOOM, stepPaneZoom } from "@/workspace/zoom";
 
-type RootDialog = "download" | "layout" | "new-table" | "settings" | null;
+type RootDialog =
+	| "download"
+	| "layout"
+	| "new-table"
+	| "rename-table"
+	| "settings"
+	| null;
 
 // Which way the pane-zoom chord points: out, back to the default, or in.
 // `code` is read first because Option rewrites the character on Apple keyboards,
@@ -56,6 +64,7 @@ export function TabeloApp() {
 	const [hydrated, setHydrated] = useState(false);
 	const [welcomeOpen, setWelcomeOpen] = useState(false);
 	const [addViewRequest, setAddViewRequest] = useState(0);
+	const tableName = useTabeloStore((state) => state.name);
 	const importQuestionOpen = useTabeloStore(
 		(state) => state.pendingImport !== null,
 	);
@@ -106,6 +115,11 @@ export function TabeloApp() {
 		setHydrated(true);
 		return stopAutosave;
 	}, []);
+
+	useEffect(() => {
+		if (!hydrated) return;
+		document.title = tableDocumentTitle(tableName);
+	}, [hydrated, tableName]);
 
 	// A trusted paste event carries the clipboard payload even when the browser
 	// denies the async clipboard API. While the first-visit surface is open, it
@@ -222,6 +236,7 @@ export function TabeloApp() {
 					onSettings={() => openRootDialog("settings")}
 					onAddView={() => setAddViewRequest((request) => request + 1)}
 					onNewTable={requestNewTable}
+					onRename={() => openRootDialog("rename-table")}
 					pwaUpdate={pwaUpdate}
 					triggerRef={appMenuTriggerRef}
 				/>
@@ -237,6 +252,10 @@ export function TabeloApp() {
 			/>
 			<SettingsDialog
 				open={rootDialog === "settings"}
+				onOpenChange={closeRootDialog}
+			/>
+			<RenameTableDialog
+				open={rootDialog === "rename-table"}
 				onOpenChange={closeRootDialog}
 			/>
 			<NewTableDialog

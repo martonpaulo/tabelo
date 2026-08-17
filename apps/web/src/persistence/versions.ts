@@ -1,9 +1,10 @@
 import { z } from "zod";
+import { MAX_TABLE_NAME_CODE_POINTS } from "@/copy/product";
 import { EXPECTED_COLUMN_TYPES } from "@/core/cell-value";
 import { workspacePanesTileLayout } from "@/workspace/layout";
 import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
-export const PERSISTED_VERSION = 6 as const;
+export const PERSISTED_VERSION = 7 as const;
 
 // These schemas mirror the payloads shipped by the commits that introduced
 // versions 1 through 5. Keep them beside their stored fixtures: a migration
@@ -201,12 +202,29 @@ export const persistedStateV5Schema = z
 	})
 	.superRefine((state, context) => refineCurrentRelationships(state, context));
 
+const currentStateShape = {
+	document: currentDocumentSchema,
+	workspace: currentWorkspaceSchema,
+	draft: currentDraftSchema.nullable(),
+};
+
+export const persistedStateV6Schema = z
+	.object({ version: z.literal(6), ...currentStateShape })
+	.superRefine((state, context) => {
+		refineCurrentRelationships(state, context);
+	});
+
+const tableNameSchema = z
+	.string()
+	.min(1)
+	.refine((name) => name === name.trim())
+	.refine((name) => [...name].length <= MAX_TABLE_NAME_CODE_POINTS);
+
 export const persistedStateSchema = z
 	.object({
 		version: z.literal(PERSISTED_VERSION),
-		document: currentDocumentSchema,
-		workspace: currentWorkspaceSchema,
-		draft: currentDraftSchema.nullable(),
+		name: tableNameSchema,
+		...currentStateShape,
 	})
 	.superRefine((state, context) => {
 		refineCurrentRelationships(state, context);

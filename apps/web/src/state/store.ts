@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ClipboardPayload } from "@/clipboard/parse";
+import { DEFAULT_TABLE_NAME, validateTableName } from "@/copy/product";
 import { cellTextAt } from "@/core/cell-value";
 import {
 	createEmptyDocument,
@@ -162,6 +163,7 @@ export type StorageIssue =
 	  };
 
 export interface TabeloState {
+	name: string;
 	document: TableDocument;
 	workspace: Workspace;
 
@@ -226,6 +228,9 @@ export interface TabeloState {
 	confirmPaneAction: () => void;
 	setActivePane: (paneId: string) => void;
 	setOutputOption: (id: OutputOptionId, value: boolean) => void;
+	renameTable: (
+		name: string,
+	) => SaveOutcome | { readonly status: "invalid" | "blocked" };
 	setPaneZoom: (paneId: string, zoom: number) => void;
 	setPaneWrap: (paneId: string, wrap: boolean) => void;
 	toggleColumnWrap: (columnId: string) => void;
@@ -407,6 +412,7 @@ function closedPaneState(
 
 function savePayload(state: TabeloState): SavePayload {
 	return {
+		name: state.name,
 		document: state.document,
 		workspace: state.workspace,
 		draft: state.draft
@@ -465,6 +471,7 @@ export function hasSessionWork(
 }
 
 export const useTabeloStore = create<TabeloState>((set, get) => ({
+	name: DEFAULT_TABLE_NAME,
 	document: createEmptyDocument(),
 	workspace: createDefaultWorkspace(),
 
@@ -496,6 +503,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				outcome.state.document,
 			);
 			set({
+				name: outcome.state.name,
 				document: outcome.state.document,
 				workspace,
 				draft: outcome.state.draft
@@ -862,6 +870,23 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set((state) => ({
 			outputOptions: { ...state.outputOptions, [id]: value },
 		})),
+
+	renameTable: (name) => {
+		const validated = validateTableName(name);
+		if (!validated.ok) return { status: "invalid" };
+		const state = get();
+		if (state.storageIssue?.kind === "unreadable") {
+			return { status: "blocked" };
+		}
+		if (validated.name === state.name) return { status: "saved" };
+		const outcome = saveState({ ...savePayload(state), name: validated.name });
+		if (outcome.status === "saved") {
+			set({ name: validated.name, storageIssue: null });
+		} else {
+			set({ storageIssue: { kind: outcome.status } });
+		}
+		return outcome;
+	},
 
 	// Zoom is presentation, like column width: it never reaches the document and
 	// never consumes an undo step.
@@ -1429,6 +1454,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	resetDocument: () => {
 		get().applyDocument(createEmptyDocument());
 		set({
+			name: DEFAULT_TABLE_NAME,
 			hasHeldContent: false,
 			selection: createSelection({ row: 0, column: 0 }),
 		});
@@ -1536,6 +1562,7 @@ export function startAutosave(): () => void {
 	};
 	const unsubscribe = useTabeloStore.subscribe((state, previous) => {
 		if (
+			state.name === previous.name &&
 			state.document === previous.document &&
 			state.workspace === previous.workspace &&
 			state.draft === previous.draft

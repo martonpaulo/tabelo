@@ -14,6 +14,7 @@ const validMarkdown =
 
 const typedSourceState = {
 	version: CURRENT_VERSION,
+	name: "Untitled table",
 	document: {
 		columns: [
 			{

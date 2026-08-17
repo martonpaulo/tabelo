@@ -5,6 +5,7 @@ import v2 from "./fixtures/v2.json";
 import v3 from "./fixtures/v3.json";
 import v4 from "./fixtures/v4.json";
 import v5 from "./fixtures/v5.json";
+import v6 from "./fixtures/v6.json";
 import {
 	type MigrationRegistry,
 	migrationRegistry,
@@ -127,12 +128,21 @@ describe("adjacent persistence migrations", () => {
 		).toBe(true);
 	});
 
-	it("runs the oldest fixture through the complete chain", () => {
-		const result = runMigrationChain(v1, 1, 6, migrationRegistry);
+	it("gives every v6 table the product-owned default name", () => {
+		const result = runMigrationChain(v6, 6, 7, migrationRegistry);
 
 		expect(result).toMatchObject({
 			ok: true,
-			value: { version: 6, draft: null },
+			value: { version: 7, name: "Untitled table" },
+		});
+	});
+
+	it("runs the oldest fixture through the complete chain", () => {
+		const result = runMigrationChain(v1, 1, 7, migrationRegistry);
+
+		expect(result).toMatchObject({
+			ok: true,
+			value: { version: 7, name: "Untitled table", draft: null },
 		});
 	});
 });

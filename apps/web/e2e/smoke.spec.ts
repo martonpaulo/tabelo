@@ -1,4 +1,4 @@
-import { product } from "@/copy/product";
+import { DEFAULT_TABLE_NAME, tableDocumentTitle } from "@/copy/product";
 
 import { expect, test } from "./fixtures";
 
@@ -6,7 +6,7 @@ test("opens a clean workspace through accessible product labels", async ({
 	page,
 	tabelo,
 }) => {
-	await expect(page).toHaveTitle(product.documentTitle);
+	await expect(page).toHaveTitle(tableDocumentTitle(DEFAULT_TABLE_NAME));
 	await expect(page.locator("head > title")).toHaveCount(1);
 	await expect(page.locator('head > meta[name="description"]')).toHaveCount(1);
 	await expect(page.locator('head > meta[property="og:title"]')).toHaveCount(1);

@@ -109,7 +109,7 @@ test("CSV includes the header row by default", async ({ page, tabelo }) => {
 			.click();
 	});
 
-	expect(file.name).toBe("table.csv");
+	expect(file.name).toBe("untitled-table.csv");
 	expect(file.body.split("\n")[0]).toBe("Name,,");
 	expect(file.body).toContain("Ingrid");
 });
@@ -204,7 +204,7 @@ test("the option does not leak into other formats", async ({
 			.click();
 	});
 
-	expect(file.name).toBe("table.tsv");
+	expect(file.name).toBe("untitled-table.tsv");
 	expect(file.body.split("\n")[0]).toBe("Name\t\t");
 });
 
@@ -274,7 +274,7 @@ test("valid source work is already in the file the shortcut downloads", async ({
 			.click();
 	});
 
-	expect(file.name).toBe("table.md");
+	expect(file.name).toBe("untitled-table.md");
 	expect(file.body).toContain("Ingrid");
 });
 
