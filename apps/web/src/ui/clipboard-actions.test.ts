@@ -9,13 +9,18 @@ import type { NoticeSeverity, TransientNotice } from "@/state/notice-queue";
 // must never clear a selection it failed to copy. Both are verified against the
 // real store with only the browser boundary replaced.
 
-const writeClipboardText = vi.fn<() => Promise<ClipboardWriteOutcome>>();
-const writeClipboardTable = vi.fn<() => Promise<ClipboardWriteOutcome>>();
+// The arguments travel through, so a test can assert what actually reached the
+// boundary rather than only that it was reached.
+const writeClipboardText =
+	vi.fn<(text: string) => Promise<ClipboardWriteOutcome>>();
+const writeClipboardTable =
+	vi.fn<(text: string, html: string) => Promise<ClipboardWriteOutcome>>();
 const readClipboardTable = vi.fn<() => Promise<ClipboardReadOutcome>>();
 
 vi.mock("@/platform/clipboard", () => ({
-	writeClipboardText: () => writeClipboardText(),
-	writeClipboardTable: () => writeClipboardTable(),
+	writeClipboardText: (text: string) => writeClipboardText(text),
+	writeClipboardTable: (text: string, html: string) =>
+		writeClipboardTable(text, html),
 	readClipboardTable: () => readClipboardTable(),
 }));
 
@@ -25,8 +30,14 @@ const { documentFromMatrix, documentToMatrix } = await import(
 const { createSelection } = await import("@/core/selection");
 const { useTabeloStore } = await import("@/state/store");
 
-const { copyToClipboard, pasteFromClipboard, readTableFromClipboard } =
-	await import("./clipboard-actions");
+const { csvCodec, jiraCodec, listCodecs } = await import("@/formats");
+
+const {
+	copyCodecToClipboard,
+	copyToClipboard,
+	pasteFromClipboard,
+	readTableFromClipboard,
+} = await import("./clipboard-actions");
 const { buildTableActions } = await import("./grid/table-actions");
 
 const initialState = useTabeloStore.getInitialState();
@@ -99,6 +110,63 @@ describe("copying", () => {
 		writeClipboardTable.mockResolvedValue({ ok: false, reason: "unknown" });
 		await copyToClipboard({ text: "a", html: "<b/>" }, "selection");
 		expect(notice()).not.toMatch(/error|exception|permission denied/i);
+	});
+});
+
+describe("copying the document as a format", () => {
+	const document = documentFromMatrix(
+		[
+			["Name", "City"],
+			["Ingrid", "Rio"],
+		],
+		{ headerRow: true },
+	);
+
+	it("writes the codec's own serialization as plain text", async () => {
+		expect(await copyCodecToClipboard(jiraCodec, document)).toBe(true);
+
+		expect(writeClipboardText).toHaveBeenCalledWith(
+			jiraCodec.serialize(document),
+		);
+		// No rich flavour: the preview's rich-text table owns text/html.
+		expect(writeClipboardTable).not.toHaveBeenCalled();
+	});
+
+	// The clipboard is not a file, so a preference about how a download is
+	// written must not follow the text onto it. CSV without its header row
+	// would no longer read back as this table.
+	it("ignores the download chooser's output options", async () => {
+		useTabeloStore.getState().setOutputOption("includeHeader", false);
+
+		await copyCodecToClipboard(csvCodec, document);
+
+		expect(writeClipboardText).toHaveBeenCalledWith(
+			csvCodec.serialize(document, { includeHeader: true }),
+		);
+	});
+
+	// Every registered codec, so the action stays general rather than knowing
+	// which formats exist. Reading the text back into a document is the browser
+	// suite's job, where a real DOMParser exists for the HTML codec.
+	it.each(listCodecs().map((codec) => codec.id))(
+		"defers to the %s codec rather than reshaping its output",
+		async (id) => {
+			const codec = listCodecs().find((candidate) => candidate.id === id);
+			if (!codec) throw new Error(`${id} is not registered.`);
+
+			await copyCodecToClipboard(codec, document);
+
+			expect(writeClipboardText).toHaveBeenCalledWith(
+				codec.serialize(document),
+			);
+		},
+	);
+
+	it("explains a refusal in terms of the format, not of a pane", async () => {
+		writeClipboardText.mockResolvedValue({ ok: false, reason: "blocked" });
+
+		expect(await copyCodecToClipboard(jiraCodec, document)).toBe(false);
+		expect(severity()).toBe("error");
 	});
 });
 

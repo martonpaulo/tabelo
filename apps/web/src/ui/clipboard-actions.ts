@@ -1,9 +1,10 @@
 import type { ClipboardPayload } from "@/clipboard/parse";
-import { matrixToTsv } from "@/clipboard/serialize";
+import { type CopyScope, matrixToTsv } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import { documentToMatrix } from "@/core/document";
 import type { TableDocument } from "@/core/types";
 import { htmlCodec } from "@/formats";
+import type { TableCodec } from "@/formats/types";
 import {
 	type ClipboardBlock,
 	readClipboardTable,
@@ -18,10 +19,7 @@ import { useTabeloStore } from "@/state/store";
 // cannot grant itself clipboard permission; what it can do is say so and point
 // at the keyboard, which is the path that still works.
 
-// What is being copied. It selects both the confirmation and the recovery
-// advice, because "select it and press the key" means something different in a
-// table than in a text editor.
-export type CopyScope = "selection" | "source" | "preview";
+export type { CopyScope };
 
 export async function copyFormattedTableToClipboard(
 	document: TableDocument,
@@ -29,6 +27,19 @@ export async function copyFormattedTableToClipboard(
 	const html = htmlCodec.serialize(document);
 	const text = matrixToTsv(documentToMatrix(document));
 	return copyToClipboard({ text, html }, "preview");
+}
+
+// The document as one chosen format, plain text and nothing else. No output
+// options are applied: those are choices the download chooser offers about a
+// file, and a copy that quietly honoured a setting made there would put text on
+// the clipboard that no longer reads back as this table. Structured flavours
+// belong to the commands that own them, the preview's rich-text table and the
+// grid's typed payload, so a second HTML writer never appears here.
+export async function copyCodecToClipboard(
+	codec: TableCodec,
+	document: TableDocument,
+): Promise<boolean> {
+	return copyToClipboard({ text: codec.serialize(document) }, "format");
 }
 
 export async function copyToClipboard(
