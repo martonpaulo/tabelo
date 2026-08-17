@@ -6,6 +6,7 @@ import {
 	isDocumentBlank,
 } from "./document";
 import {
+	blockMoveOffset,
 	clearCells,
 	deleteColumns,
 	deleteRows,
@@ -126,6 +127,44 @@ describe("row operations", () => {
 		(block, offset) => {
 			const before = docOf(samplePeopleMatrix());
 			expect(moveRows(before, block, offset)).toBe(before);
+		},
+	);
+});
+
+// A pointer drop names a gap between two rows, while Alt+arrow names an offset
+// directly. These cover the translation between the two, because getting it
+// wrong is invisible until a downward drag lands one short.
+describe("insertion boundaries", () => {
+	it.each([
+		[{ from: 0, count: 1 }, 3, ["Paulo", "Mabel", "Ingrid", "Felix", "Amora"]],
+		[{ from: 3, count: 1 }, 1, ["Ingrid", "Felix", "Paulo", "Mabel", "Amora"]],
+		[{ from: 1, count: 2 }, 5, ["Ingrid", "Felix", "Amora", "Paulo", "Mabel"]],
+		[{ from: 1, count: 2 }, 0, ["Paulo", "Mabel", "Ingrid", "Felix", "Amora"]],
+		[{ from: 4, count: 1 }, 0, ["Amora", "Ingrid", "Paulo", "Mabel", "Felix"]],
+	] as const)("lands block %o at boundary %i", (block, boundary, expected) => {
+		const next = moveRows(
+			docOf(samplePeopleMatrix()),
+			block,
+			blockMoveOffset(boundary, block),
+		);
+		expect(
+			documentToMatrix(next)
+				.slice(1)
+				.map((row) => row[0]),
+		).toEqual(expected);
+	});
+
+	// Every gap the block already touches describes the arrangement the list is
+	// in, so it must move nothing rather than drift by the block's length.
+	it.each([
+		[{ from: 1, count: 2 }, 1],
+		[{ from: 1, count: 2 }, 2],
+		[{ from: 1, count: 2 }, 3],
+		[{ from: 0, count: 1 }, 0],
+	] as const)(
+		"moves nothing for block %o dropped at boundary %i",
+		(block, boundary) => {
+			expect(blockMoveOffset(boundary, block)).toBe(0);
 		},
 	);
 });

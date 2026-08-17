@@ -28,6 +28,29 @@ export interface ContiguousBlock {
 	readonly count: number;
 }
 
+// The `offset` a block move needs to land on an insertion boundary.
+//
+// A boundary counts the items that stay before the block, in the list's own
+// coordinates: 0 is "before everything" and `items.length` is "after
+// everything". That is what a pointer drop resolves to, because a drop names a
+// gap between two items rather than an item. `Alt`+arrow names an offset
+// directly and does not come through here.
+//
+// Two corrections make the arithmetic right. A boundary past the block's start
+// is expressed in coordinates that still count the block itself, so the block's
+// own length comes back off once it is lifted out. And a boundary anywhere
+// inside the block, its two edges included, describes the arrangement the list
+// is already in, so it moves nothing rather than drifting by the block length.
+export function blockMoveOffset(
+	boundary: number,
+	block: ContiguousBlock,
+): number {
+	const { from, count } = block;
+	if (boundary >= from && boundary <= from + count) return 0;
+	const to = boundary < from ? boundary : boundary - count;
+	return to - from;
+}
+
 // `from` names the block's current start, while `offset` names where that
 // start lands in the final list. Removing the whole block before reinserting
 // it keeps downward and rightward moves from drifting by the block's length.

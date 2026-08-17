@@ -8,6 +8,9 @@ const serverUrl = `http://127.0.0.1:${previewServerPort}`;
 // where browser engines materially differ, so cross-browser confidence does not
 // require running every product assertion twice.
 const firefoxContractSpecs = [
+	// Pointer capture, and the order of pointerup against lostpointercapture,
+	// are exactly where reorder would break on one engine and not the other.
+	"**/axis-reorder.spec.ts",
 	"**/clipboard.spec.ts",
 	"**/download.spec.ts",
 	"**/grid-keyboard.spec.ts",
