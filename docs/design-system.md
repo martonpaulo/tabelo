@@ -1354,11 +1354,22 @@ later rule wins and turns the sticky offset into a static shift.
 
 The pane body is the grid's scroll container. Its optimal viewing region uses
 `scroll-padding-top` equal to the strip plus one content line box and
-`scroll-padding-left` equal to the gutter. Native focus scrolling and any
-future `scrollIntoView` caller therefore leave a target fully clear of sticky
-chrome. The strip and gutter remain fixed chrome while the content line box
-follows pane zoom, so the compensation derives from the same tokens as the
-layers it reserves.
+`scroll-padding-left` equal to the gutter. The strip and gutter remain fixed
+chrome while the content line box follows pane zoom, so the compensation derives
+from the same tokens as the layers it reserves. That declaration governs every
+scroll the browser starts on its own.
+
+**The grid moves its own focus, though, and does not rely on it.** Chrome
+honours only part of `scroll-padding-left` when it reveals a focused cell,
+delivering roughly half, so the clearance shrank as the gutter grew and the
+contract survived on a few pixels of slack. The grid therefore focuses with
+`preventScroll` and performs the smallest scroll itself. It measures the two
+boundaries from the elements that draw them, the gutter's trailing edge and the
+header row's bottom edge, rather than recomputing them from tokens: a sticky
+cell's own rectangle already is its stuck position, so those are the boundaries
+the contract is written about at any zoom and any gutter width, with nothing to
+keep in step. The remainder is rounded outwards, because a cell left a fraction
+of a pixel under the gutter has still failed.
 
 Dragging a cell, row number, or column letter past the pane edge autoscrolls the
 grid on the axes that gesture owns and continues extending the selection. One

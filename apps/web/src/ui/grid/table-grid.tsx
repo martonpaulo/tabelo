@@ -35,6 +35,7 @@ import {
 } from "./axis-menu";
 import { CellEditor } from "./cell-editor";
 import { GridContextMenu } from "./grid-context-menu";
+import { revealGridCell } from "./reveal-cell";
 import { moveRefusalMessage } from "./table-actions";
 import {
 	type GridAutoscrollAxis,
@@ -275,7 +276,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		const target = grid.querySelector<HTMLElement>(
 			`[data-cell="${focus.row}:${focus.column}"]`,
 		);
-		target?.focus({ preventScroll: false });
+		if (!target) return;
+		// The grid scrolls the cell into view itself, so focus is told not to:
+		// letting both run would scroll twice, and the browser's own attempt is
+		// the one that leaves the cell under the sticky gutter.
+		target.focus({ preventScroll: true });
+		revealGridCell(grid, target, focus.row);
 	}, [focus.row, focus.column, editing, editingHeader]);
 
 	// A column selection starts on the header row, because a column is its header
