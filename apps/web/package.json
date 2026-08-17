@@ -38,6 +38,7 @@
 	"devDependencies": {
 		"@fast-check/vitest": "^0.4.1",
 		"@playwright/test": "^1.62.0",
+		"@tabelo/config": "workspace:*",
 		"@types/node": "catalog:",
 		"@types/papaparse": "^5.5.2",
 		"@types/react": "catalog:",

@@ -1,14 +1,9 @@
 {
+	"extends": "@tabelo/config/tsconfig.base.json",
 	"compilerOptions": {
-		"strict": true,
-		"esModuleInterop": true,
 		"jsx": "react-jsx",
-		"target": "ESNext",
-		"module": "ESNext",
-		"moduleResolution": "Bundler",
-		"skipLibCheck": true,
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
 		"types": ["vite/client", "vite-plugin-pwa/react"],
-		"rootDirs": ["."],
 		"paths": {
 			"@/*": ["./src/*"],
 			"@tabelo/ui/*": ["../../packages/ui/src/*"]
