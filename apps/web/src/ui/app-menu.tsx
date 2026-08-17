@@ -33,7 +33,7 @@ import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import type { PwaUpdate } from "@/ui/pwa-update";
-import { splitOptions } from "@/workspace/layout";
+import { layoutsForPaneCount, splitOptions } from "@/workspace/layout";
 
 interface AppMenuProps {
 	readonly onImport: () => void;
@@ -62,6 +62,12 @@ export function AppMenu({
 	const activePaneId = useTabeloStore((state) => state.workspace.activePaneId);
 	const canAddView = useTabeloStore(
 		(state) => splitOptions(state.workspace).length > 0,
+	);
+	// One pane and four panes each have a single arrangement, so there is nothing
+	// for the dialog to offer. The command stays in place, disabled and explained,
+	// rather than appearing and disappearing as the pane count changes.
+	const canChangeLayout = useTabeloStore(
+		(state) => layoutsForPaneCount(state.workspace.panes.length).length > 1,
 	);
 	useSyncExternalStore(
 		subscribeHistory,
@@ -211,10 +217,19 @@ export function AppMenu({
 							{copy.workspace.addView}
 						</DropdownMenuItem>
 					</DisabledTooltip>
-					<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onLayout)}>
-						<LayoutGrid aria-hidden />
-						{copy.workspace.layout}
-					</DropdownMenuItem>
+					<DisabledTooltip
+						reason={
+							canChangeLayout ? undefined : copy.disabled.layoutOnlyArrangement
+						}
+					>
+						<DropdownMenuItem
+							disabled={!canChangeLayout}
+							onClick={() => menuDialog.runAfterClose(onLayout)}
+						>
+							<LayoutGrid aria-hidden />
+							{copy.workspace.layout}
+						</DropdownMenuItem>
+					</DisabledTooltip>
 					<DropdownMenuItem
 						onClick={() => menuDialog.runAfterClose(onSettings)}
 					>

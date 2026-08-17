@@ -214,7 +214,7 @@ export const copy = {
 
 	workspace: {
 		layout: "Layout",
-		layoutHint: "Choose how the workspace is divided",
+		layoutHint: "Choose how the open views are arranged",
 		applyLayout: "Apply layout",
 		changeView: "Change view",
 		changeViewHint: (label: string) =>
@@ -243,6 +243,8 @@ export const copy = {
 		viewAlreadyOpen: (label: string) => `${label} is already open.`,
 		chooseAvailableView: "Choose an available view first.",
 		layoutAlreadyApplied: "This layout is already applied.",
+		layoutOnlyArrangement:
+			"This number of views has only one arrangement. Add or close a view to change it.",
 		settingsAlreadyApplied: "These settings are already applied.",
 		viewAlreadyShown: "This view is already shown in this pane.",
 		zoomMinimum: "Zoom is already at 50%.",

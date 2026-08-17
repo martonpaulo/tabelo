@@ -303,6 +303,91 @@ test("changing the view from pane actions keeps the pane working", async ({
 	await expect(tabelo.pane("markdown")).toHaveCount(0);
 });
 
+// Adding, closing, and arranging are three commands with one boundary between
+// them: Layout may change how the open panes are arranged and nothing else.
+test("Layout offers only the arrangements of the current pane count", async ({
+	tabelo,
+}) => {
+	const panes = tabelo.workspace.getByRole("region");
+	const twoPane = await tabelo.openLayoutDialog();
+	await expect(twoPane.getByRole("radio")).toHaveCount(2);
+	for (const id of ["columns", "rows"] as const) {
+		await expect(
+			twoPane.getByRole("radio", { name: copy.layouts[id].label }),
+		).toBeVisible();
+	}
+	await twoPane.getByRole("button", { name: copy.actions.cancel }).click();
+	await expect(twoPane).toBeHidden();
+
+	await tabelo.goToPaneCount(3);
+	const threePane = await tabelo.openLayoutDialog();
+	await expect(threePane.getByRole("radio")).toHaveCount(4);
+	for (const id of [
+		"left-split",
+		"right-split",
+		"top-split",
+		"bottom-split",
+	] as const) {
+		await expect(
+			threePane.getByRole("radio", { name: copy.layouts[id].label }),
+		).toBeVisible();
+	}
+
+	// Applying one of them rearranges the three panes rather than making a
+	// fourth, and the arrangement growing alone cannot reach is among them.
+	await threePane
+		.getByRole("radio", { name: copy.layouts["top-split"].label })
+		.click();
+	await threePane
+		.getByRole("button", { name: copy.workspace.applyLayout })
+		.click();
+	await expect(threePane).toBeHidden();
+	await expect(panes).toHaveCount(3);
+	expect(await tabelo.paneArea("grid")).toMatchObject({
+		rowStart: 1,
+		rowEnd: 2,
+		columnStart: 1,
+		columnEnd: 2,
+	});
+});
+
+test("Layout is disabled and explained where the pane count has one arrangement", async ({
+	page,
+	tabelo,
+}) => {
+	for (const count of [1, 4]) {
+		await tabelo.goToPaneCount(count);
+		const menu = await tabelo.openAppMenu();
+		const command = menu.getByRole("menuitem", { name: copy.workspace.layout });
+		// Fixed rather than hidden: the command keeps its place in the menu and
+		// says why it cannot act.
+		await expect(command).toBeVisible();
+		await expect(command).toBeDisabled();
+		await command.hover();
+		await expect(page.getByRole("tooltip")).toBeVisible();
+		// The tooltip takes the first Escape, the menu the next one.
+		await page.keyboard.press("Escape");
+		await page.keyboard.press("Escape");
+		await expect(menu).toBeHidden();
+	}
+});
+
+test("a same-count arrangement survives a reload", async ({ page, tabelo }) => {
+	// Content of its own, so the reload restores a saved workspace rather than
+	// returning to onboarding.
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.goToPaneCount(3);
+	await tabelo.chooseLayout("bottom-split");
+	const before = await tabelo.paneArea("grid");
+	expect(before).toMatchObject({ rowStart: 1, rowEnd: 2 });
+
+	await page.reload();
+	await tabelo.workspace.waitFor({ state: "visible" });
+
+	await expect(tabelo.workspace.getByRole("region")).toHaveCount(3);
+	expect(await tabelo.paneArea("grid")).toEqual(before);
+});
+
 // §5 requires a pane header to be one row that never wraps, shortening labels
 // instead. The action trigger and Read only badge are the tightest case today.
 test("the pane header keeps its controls at the narrowest four-pane width", async ({

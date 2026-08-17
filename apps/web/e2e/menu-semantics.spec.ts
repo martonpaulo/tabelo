@@ -33,11 +33,16 @@ test("the Layout command opens one dialog and applies its selected preset", asyn
 	const trigger = page.getByRole("button", { name: copy.actions.openAppMenu });
 	const dialog = await tabelo.openLayoutDialog();
 
-	await expectDialogOptionAnatomy(dialog, 8);
+	// Two panes are open, so the dialog offers the two arrangements of two panes
+	// and nothing that would add or close one.
+	await expectDialogOptionAnatomy(dialog, 2);
 	await expect(dialog.getByRole("radio", { checked: true })).toHaveCount(1);
 	await expect(
 		dialog.getByRole("radio", { name: copy.layouts.columns.label }),
 	).toBeChecked();
+	await expect(
+		dialog.getByRole("radio", { name: copy.layouts.quad.label }),
+	).toHaveCount(0);
 	const apply = dialog.getByRole("button", {
 		name: copy.workspace.applyLayout,
 	});
@@ -48,12 +53,20 @@ test("the Layout command opens one dialog and applies its selected preset", asyn
 		page.getByRole("menu", { name: copy.actions.openAppMenu }),
 	).toBeHidden();
 
-	await dialog.getByRole("radio", { name: copy.layouts.quad.label }).click();
+	await dialog.getByRole("radio", { name: copy.layouts.rows.label }).click();
 	await expect(apply).toBeEnabled();
 	await apply.click();
 	await expect(dialog).toBeHidden();
 	await expect(trigger).toBeFocused();
-	await expect(tabelo.workspace.getByRole("region")).toHaveCount(4);
+	// The arrangement changed and the pane count did not, which is the whole
+	// contract of the command.
+	await expect(tabelo.workspace.getByRole("region")).toHaveCount(2);
+	await expect(await tabelo.paneArea("grid")).toMatchObject({
+		rowStart: 1,
+		rowEnd: 2,
+		columnStart: 1,
+		columnEnd: 3,
+	});
 });
 
 test("pane identity is static and Change view is a dialog from pane actions", async ({
@@ -412,7 +425,7 @@ test("dialog radio choices support the keyboard and Cancel restores focus", asyn
 }) => {
 	const trigger = page.getByRole("button", { name: copy.actions.openAppMenu });
 	const dialog = await tabelo.openLayoutDialog();
-	const option = dialog.getByRole("radio", { name: copy.layouts.quad.label });
+	const option = dialog.getByRole("radio", { name: copy.layouts.rows.label });
 	await option.focus();
 	await page.keyboard.press("Space");
 	await expect(option).toBeChecked();

@@ -947,6 +947,11 @@ per keystroke.
 - Download and Layout remain document-level commands in the floating menu and
   keep their dialogs. Add view remains in the floating menu and on splittable
   pane edges; it never moves into the pane actions menu.
+- Layout offers only the arrangements of the pane count that is open: two
+  columns or two rows at two panes, the four asymmetric splits at three. It
+  never adds or closes a pane, which Add view and Close view own. At one and
+  four panes there is a single arrangement, so the command stays in place,
+  disabled with a written reason, rather than disappearing.
 - Move pane sits between Change view and Close view in the final pane group. It
   opens the spatial destination dialog and offers every other occupied position
   in the current preset. Choosing a destination swaps positions while pane id,

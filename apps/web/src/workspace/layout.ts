@@ -139,6 +139,19 @@ export function paneCount(id: LayoutId): number {
 	return getLayout(id).panes.length;
 }
 
+// The arrangements reachable without changing how many panes are open. Layout
+// answers "how are these panes arranged", never "how many are there": growing
+// and closing are separate commands with their own controls, so a rearrangement
+// that added or removed a pane would be one command doing two jobs.
+//
+// Filtered from the canonical presets rather than tabulated, so a new preset
+// joins its pane count the moment it exists and no second layout list can drift
+// from this one. A count outside one to four simply has no preset, which is the
+// same answer as an unsupported count.
+export function layoutsForPaneCount(count: number): readonly LayoutPreset[] {
+	return layoutPresets.filter((preset) => preset.panes.length === count);
+}
+
 // The missing entry for "single" is the floor: a workspace always shows at
 // least one view, so Close view has nowhere to go there and stays disabled.
 // Both two-pane presets shrink to it, because either divider disappearing
@@ -222,7 +235,7 @@ export interface MovePaneDestination {
 
 // Views chosen for panes that a layout change newly created. The order is the
 // product's opinion about what is most useful to see next to the table.
-const FILL_ORDER: readonly ViewId[] = [
+export const FILL_ORDER: readonly ViewId[] = [
 	"grid",
 	"markdown",
 	"csv",

@@ -4,7 +4,12 @@ import { HEADER_ROW } from "@/core/selection";
 import type { NoticeSeverity } from "@/state/notice-queue";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
-import type { LayoutId } from "@/workspace/layout";
+import {
+	FILL_ORDER,
+	type LayoutId,
+	layoutsForPaneCount,
+	paneCount,
+} from "@/workspace/layout";
 
 type AppCommand = "undo" | "redo" | "newTable" | "downloadTable";
 type PaneCommand =
@@ -190,9 +195,65 @@ export class TabeloPage {
 		return this.paneAt(view, index).getByRole("textbox");
 	}
 
+	// Every pane currently on screen, in reading order.
+	panes(): Locator {
+		return this.workspace.getByRole("region");
+	}
+
+	// Reaching a preset the way a user reaches it. Layout only rearranges the
+	// panes that are open, so the pane count is reached first through Add view
+	// and Close view, and the dialog then picks the arrangement, only where the
+	// count offers more than one. Shrinking assumes no pane owns unsaved text,
+	// which is true of the setup this runs in.
+	async goToPaneCount(count: number): Promise<void> {
+		while ((await this.panes().count()) < count) {
+			// The global command, which splits the first pane that can be split in
+			// workspace reading order. The pane-edge control says which edge it
+			// means, which a helper reaching a pane count has no opinion about.
+			const menu = await this.openAppMenu();
+			await menu
+				.getByRole("menuitem", { name: copy.workspace.addView })
+				.click();
+			await menu.waitFor({ state: "hidden" });
+			const dialog = this.page.getByRole("dialog", {
+				name: copy.addView.title,
+			});
+			await dialog.waitFor({ state: "visible" });
+			for (const view of FILL_ORDER) {
+				const option = dialog.getByRole("radio", {
+					name: getView(view).label,
+				});
+				if (!(await option.isEnabled())) continue;
+				await option.click();
+				break;
+			}
+			await dialog
+				.getByRole("button", { name: copy.addView.confirm, exact: true })
+				.click();
+			await dialog.waitFor({ state: "hidden" });
+		}
+		while ((await this.panes().count()) > count) {
+			const panes = this.panes();
+			await panes
+				.nth((await panes.count()) - 1)
+				.getByRole("button", {
+					name: new RegExp(`^${copy.workspace.paneActions}: `),
+				})
+				.click();
+			await this.page
+				.getByRole("menuitem", { name: copy.workspace.closeView, exact: true })
+				.click();
+		}
+	}
+
 	// Layout presets, pane views, and column alignments are radio items: they
 	// are current states rather than one-off actions.
 	async chooseLayout(id: LayoutId): Promise<void> {
+		await this.goToPaneCount(paneCount(id));
+		// One pane and four panes tile the grid one way each, so the command is
+		// disabled there and the pane count alone settles the layout.
+		if (layoutsForPaneCount(paneCount(id)).length < 2) return;
+
 		const dialog = await this.openLayoutDialog();
 		await dialog.getByRole("radio", { name: copy.layouts[id].label }).click();
 		const apply = dialog.getByRole("button", {

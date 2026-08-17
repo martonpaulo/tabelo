@@ -8,6 +8,7 @@ import {
 	layoutPresets,
 	layoutSplitsColumns,
 	layoutSplitsRows,
+	layoutsForPaneCount,
 	movePane,
 	movePaneDestinations,
 	paneCount,
@@ -73,6 +74,55 @@ describe("layout presets", () => {
 		// anything and neither is rendered.
 		expect(layoutSplitsColumns("single")).toBe(false);
 		expect(layoutSplitsRows("single")).toBe(false);
+	});
+});
+
+describe("layouts for a pane count", () => {
+	it("offers only the arrangements of that many panes", () => {
+		expect(layoutsForPaneCount(1).map((preset) => preset.id)).toEqual([
+			"single",
+		]);
+		expect(layoutsForPaneCount(2).map((preset) => preset.id)).toEqual([
+			"columns",
+			"rows",
+		]);
+		expect(layoutsForPaneCount(3).map((preset) => preset.id)).toEqual([
+			"left-split",
+			"right-split",
+			"top-split",
+			"bottom-split",
+		]);
+		expect(layoutsForPaneCount(4).map((preset) => preset.id)).toEqual(["quad"]);
+	});
+
+	it("partitions every preset across the supported counts", () => {
+		const partitioned = [1, 2, 3, 4].flatMap((count) =>
+			layoutsForPaneCount(count).map((preset) => preset.id),
+		);
+		expect([...partitioned].sort()).toEqual(
+			layoutPresets.map((preset) => preset.id).sort(),
+		);
+	});
+
+	it("offers nothing for a count no preset represents", () => {
+		expect(layoutsForPaneCount(0)).toEqual([]);
+		expect(layoutsForPaneCount(5)).toEqual([]);
+		expect(layoutsForPaneCount(-1)).toEqual([]);
+	});
+
+	it("offers a choice only where more than one arrangement exists", () => {
+		// One and four panes tile the grid one way each, which is what leaves the
+		// Layout command disabled there rather than opening an empty dialog.
+		expect(layoutsForPaneCount(1)).toHaveLength(1);
+		expect(layoutsForPaneCount(4)).toHaveLength(1);
+		expect(layoutsForPaneCount(2).length).toBeGreaterThan(1);
+		expect(layoutsForPaneCount(3).length).toBeGreaterThan(1);
+	});
+
+	it.each([1, 2, 3, 4])("agrees with paneCount for %i panes", (count) => {
+		for (const preset of layoutsForPaneCount(count)) {
+			expect(paneCount(preset.id)).toBe(count);
+		}
 	});
 });
 
