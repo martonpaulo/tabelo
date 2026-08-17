@@ -445,12 +445,16 @@ describe("fill", () => {
 
 		expect(next.rows.map((row) => row.id)).toEqual(rowIds);
 		expect(next.columns.map((column) => column.id)).toEqual(columnIds);
+		const firstSourceColumn = next.columns[1];
+		const secondSourceColumn = next.columns[2];
+		assert(firstSourceColumn);
+		assert(secondSourceColumn);
 		expect(
 			next.rows
 				.slice(3, 5)
 				.map((row) => [
-					row.cells[next.columns[1].id],
-					row.cells[next.columns[2].id],
+					row.cells[firstSourceColumn.id],
+					row.cells[secondSourceColumn.id],
 				]),
 		).toEqual([
 			["007", "a|b\n"],

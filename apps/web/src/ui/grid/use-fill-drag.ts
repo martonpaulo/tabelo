@@ -57,7 +57,13 @@ function targetForPoint(
 	);
 	if (!sampled) return null;
 	const [row, column] = sampled.dataset.cell?.split(":").map(Number) ?? [];
-	if (!Number.isInteger(row) || !Number.isInteger(column) || row < 0) {
+	if (
+		row === undefined ||
+		column === undefined ||
+		!Number.isInteger(row) ||
+		!Number.isInteger(column) ||
+		row < 0
+	) {
 		return null;
 	}
 	return axis === "row"
