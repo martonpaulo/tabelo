@@ -1,9 +1,11 @@
+import { cellValueType, expectedCellValueType } from "@/core/cell-value";
 import type {
 	CellValue,
 	CellValueType,
 	ExpectedColumnType,
 } from "@/core/types";
 
+export { cellValueType, expectedCellValueType } from "@/core/cell-value";
 export type { CellValueType } from "@/core/types";
 
 export const CELL_TYPE_MARKS = {
@@ -12,25 +14,6 @@ export const CELL_TYPE_MARKS = {
 	boolean: "bool",
 	null: "null",
 } as const satisfies Record<CellValueType, string>;
-
-export function cellValueType(value: CellValue): CellValueType {
-	switch (typeof value) {
-		case "string":
-			return "string";
-		case "number":
-			return "number";
-		case "boolean":
-			return "boolean";
-		default:
-			return "null";
-	}
-}
-
-export function expectedCellValueType(
-	expectedType: ExpectedColumnType,
-): Exclude<CellValueType, "null"> {
-	return expectedType === "text" ? "string" : expectedType;
-}
 
 export function cellTypeDiverges(
 	value: CellValue,

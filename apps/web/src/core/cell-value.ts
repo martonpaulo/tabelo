@@ -1,4 +1,10 @@
-import type { CellValue, ColumnId, ExpectedColumnType, Row } from "./types";
+import type {
+	CellValue,
+	CellValueType,
+	ColumnId,
+	ExpectedColumnType,
+	Row,
+} from "./types";
 
 // The scalar cell model and its one text projection. Framework-free, and the
 // only place that decides what a native value looks like as text.
@@ -32,6 +38,25 @@ export function cellText(value: CellValue): string {
 		default:
 			return "";
 	}
+}
+
+export function cellValueType(value: CellValue): CellValueType {
+	switch (typeof value) {
+		case "string":
+			return "string";
+		case "number":
+			return "number";
+		case "boolean":
+			return "boolean";
+		default:
+			return "null";
+	}
+}
+
+export function expectedCellValueType(
+	expectedType: ExpectedColumnType,
+): Exclude<CellValueType, "null"> {
+	return expectedType === "text" ? "string" : expectedType;
 }
 
 // A cell key that is not present reads as an empty cell. `??` cannot express

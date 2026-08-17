@@ -352,6 +352,15 @@ focus, and clipping states. A narrow column may clip the compact mark, while
 the full type remains available through the accessible name. Dark, light, and
 forced-colour modes keep the same text treatment.
 
+The column index menu owns one `Expected type` radio group for text, number,
+and boolean. Changing it updates the column expectation only and never converts
+existing cells. A data cell's context menu owns the corresponding `Cell type`
+radio group for string, number, boolean, and null. A valid different choice is
+one explicit conversion and one document-history step. A conversion that the
+current value cannot represent stays visible but disabled with its reason. The
+group requires exactly one selected data cell and never picks one silently from
+a larger or non-contiguous selection.
+
 ### Spacing rhythm
 
 Use Tailwind's scale, restricted to: `0.5`, `1`, `1.5`, `2`, `3`, `4`, `6`.
@@ -451,7 +460,8 @@ this entry:
 ### Menus that carry a choice
 
 A menu option that is one of several **mutually exclusive current states**
-(the layout, a pane's view, or a column's alignment) is a `DropdownMenuRadioItem`
+(the layout, a pane's view, a column's alignment or expected type, or a cell's
+real type) is a `DropdownMenuRadioItem`
 inside a `DropdownMenuRadioGroup`, never a plain item wearing a tick or a tint.
 The primitive supplies `menuitemradio`, `aria-checked`, and the arrow-key
 behaviour. The selected row background is the only visible selection mark.
@@ -490,9 +500,10 @@ A group whose items are *actions* rather than states, such as zoom, add, and
 close, stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
 
 Every action collection uses the menu primitive's semantic Group, in dropdown
-and context menus alike. A visible group title is reserved for Alignment, Edit,
-and Move. It is canonical copy rendered through GroupLabel, and the Group is
-named with `aria-labelledby`. Clipboard, Insert, Remove, and the single
+and context menus alike. A visible group title is reserved for Alignment,
+Expected type, Cell type, Edit, Move, and Fill. It is canonical copy rendered
+through GroupLabel, and the Group is named with `aria-labelledby`. Clipboard,
+Insert, Remove, and the single
 self-explanatory Fit column to content action remain untitled semantic groups,
 without an empty label. Group labels are non-interactive and arrow-key
 navigation skips them. App and pane menus follow the same grouping contract.
@@ -631,6 +642,15 @@ Rename table uses the same transactional boundary for one persisted text value.
 Its labelled input starts with the current name, validates before saving, and
 keeps both the prior name and the dialog open when durable storage refuses the
 change.
+
+Typed grid entry has one deliberate decision dialog. Committing valid number or
+boolean input whose canonical representation differs from the draft asks
+whether to convert it or keep the entered text exactly. Committing invalid
+typed input asks whether to keep editing or store it as text. Dismissal is
+`Keep editing`: after the close transition, focus returns to the same editor
+with the complete draft. Either final choice is one document change and returns
+focus to the same cell. The dialog never advances to the next row or column,
+because no value was committed when navigation was requested.
 
 A dialog is never used to announce something. Notices belong in the notice
 layer described in §5: it floats above the workspace without modal semantics,
@@ -1371,6 +1391,15 @@ has a written accessible value even though its `cellText` projection is empty.
 Opening its editor retains the native-value typeface and includes the real type
 in the editor's accessible name. Neither treatment adds another focus target.
 
+Grid entry follows the column expectation without turning it into inference.
+Text columns store every character as a string, including leading zeroes,
+exponents, boolean words, and apostrophes. Number and boolean columns accept
+canonical input as that native type. One leading apostrophe explicitly stores
+the remainder as a string, so `'hello` stores `hello` and `''hello` stores
+`'hello`. Representation-changing valid input and invalid input use the decision
+dialog above; neither changes the document until the user chooses. Merely
+opening and committing an unchanged editor preserves the existing real type.
+
 **A header cell holds editable text and nothing else.** It is a cell for every
 purpose the user can observe: it is selectable, it answers Enter, F2, and
 typing, and `Backspace` clears it. The one thing it is not is a row that can be
@@ -1420,9 +1449,10 @@ mirrors the row-number gutter on the other axis. Both are chrome:
   available by keyboard without another tab stop. The column menu and the
   resize handle live here, revealed by the same rule as the row affordances
   (§6).
-- **A per-column property follows the selection.** Alignment and width applied
-  to a column that is selected as a column apply to every selected column,
-  adjacent or not. Applied to any other column they stay there, so dragging an
+- **A per-column property follows the selection.** Alignment, expected type,
+  and width applied to a column that is selected as a column apply to every
+  selected column, adjacent or not. Applied to any other column they stay there,
+  so dragging an
   unrelated edge never resizes something elsewhere. For the same reason a menu
   opened on a target already inside the selection keeps the selection instead of
   collapsing onto it: collapsing would silently discard the rest of what the

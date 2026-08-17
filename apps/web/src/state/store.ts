@@ -21,6 +21,8 @@ import {
 	pasteMatrix,
 	setAlignment,
 	setCell,
+	setCellType,
+	setColumnExpectedType,
 	setHeader,
 } from "@/core/operations";
 import {
@@ -48,7 +50,14 @@ import {
 	toggleSelectionRegion,
 	translateSelection,
 } from "@/core/selection";
-import type { Alignment, ColumnId, TableDocument } from "@/core/types";
+import type {
+	Alignment,
+	CellValue,
+	CellValueType,
+	ColumnId,
+	ExpectedColumnType,
+	TableDocument,
+} from "@/core/types";
 import { canSerialize } from "@/formats";
 import type {
 	CodecId,
@@ -252,9 +261,18 @@ export interface TabeloState {
 	markCopiedRanges: () => void;
 	clearCopiedRanges: () => void;
 
-	editCell: (row: number, column: number, value: string) => void;
+	editCell: (row: number, column: number, value: CellValue) => void;
+	setCellType: (
+		row: number,
+		column: number,
+		targetType: CellValueType,
+	) => boolean;
 	editHeader: (column: number, value: string) => void;
 	setColumnAlignment: (column: number, align: Alignment) => void;
+	setColumnExpectedType: (
+		column: number,
+		expectedType: ExpectedColumnType,
+	) => void;
 	resizeColumn: (
 		column: number,
 		width: number | undefined,
@@ -1068,6 +1086,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editCell: (row, column, value) =>
 		get().applyDocument(setCell(get().document, row, column, value)),
 
+	setCellType: (row, column, targetType) => {
+		const state = get();
+		const next = setCellType(state.document, row, column, targetType);
+		if (next === state.document) return false;
+		state.applyDocument(next);
+		return true;
+	},
+
 	editHeader: (column, value) =>
 		get().applyDocument(setHeader(get().document, column, value)),
 
@@ -1081,6 +1107,15 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		let next = state.document;
 		for (const target of columnTargets(state, column)) {
 			next = setAlignment(next, target, align);
+		}
+		state.applyDocument(next);
+	},
+
+	setColumnExpectedType: (column, expectedType) => {
+		const state = get();
+		let next = state.document;
+		for (const target of columnTargets(state, column)) {
+			next = setColumnExpectedType(next, target, expectedType);
 		}
 		state.applyDocument(next);
 	},

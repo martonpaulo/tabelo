@@ -36,6 +36,9 @@ const firefoxContractSpecs = [
 	"**/source-occurrences.spec.ts",
 	"**/source-sync.spec.ts",
 	"**/system-theme.spec.ts",
+	// Typed entry crosses editor blur, menu dismissal, modal focus restoration,
+	// and re-entry into the same cell.
+	"**/typed-cell-editing.spec.ts",
 	"**/typed-cell-presentation.spec.ts",
 	// Rename spans dialog focus, durable storage, tab metadata, and downloads.
 	"**/table-name.spec.ts",

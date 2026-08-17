@@ -299,6 +299,9 @@ export const copy = {
 		// holding several separate areas names several, so the action says so
 		// rather than picking one of them.
 		singleAreaRequired: "This needs one selected area, not several.",
+		singleCellRequired: "Select one data cell to change its type.",
+		cellTypeConversion: (label: string) =>
+			`This value cannot be converted to ${label.toLowerCase()}.`,
 		updateInProgress: "The update is already being applied.",
 		codecPrecondition: (failure: PreconditionFailure) =>
 			preconditionMessage(failure),
@@ -426,6 +429,8 @@ export const copy = {
 		alignRight: "Align right",
 		alignDefault: "No alignment",
 		alignment: "Alignment",
+		expectedType: "Expected type",
+		cellType: "Cell type",
 		edit: "Edit",
 		move: "Move",
 		copy: "Copy",
@@ -453,6 +458,24 @@ export const copy = {
 		// The command that sits beside a choice its codec has refused. The
 		// refusal already says what is wrong; this takes the user to it.
 		fixTable: FIX_TABLE,
+	},
+
+	typedEditing: {
+		choiceTitle: "Choose how to store this value",
+		choiceDescription: (
+			type: ExpectedColumnType,
+			input: string,
+			converted: string,
+		) =>
+			`${JSON.stringify(input)} is valid ${expectedColumnTypeLabels[type].toLowerCase()} input. Converting it stores ${JSON.stringify(converted)}; keeping it as text preserves the exact entry.`,
+		invalidTitle: "Value does not match the column type",
+		invalidDescription: (type: ExpectedColumnType, input: string) =>
+			`${JSON.stringify(input)} is not a valid ${expectedColumnTypeLabels[type].toLowerCase()}. Keep editing it or store it as text.`,
+		keepEditing: "Keep editing",
+		keepAsText: "Keep as text",
+		changeToText: "Change to text",
+		convertTo: (type: ExpectedColumnType) =>
+			`Convert to ${expectedColumnTypeLabels[type]}`,
 	},
 
 	tableName: {

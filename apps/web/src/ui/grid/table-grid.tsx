@@ -14,6 +14,7 @@ import {
 	selectionRect,
 	selectionRects,
 } from "@/core/selection";
+import { parseExpectedValue } from "@/core/typed-input";
 import type {
 	Alignment,
 	Column,
@@ -43,7 +44,7 @@ import {
 	createAxisMenuHandle,
 } from "./axis-menu";
 import { AxisReorderGrip } from "./axis-reorder-grip";
-import { CellEditor } from "./cell-editor";
+import { CellEditor, type EditorExit } from "./cell-editor";
 import {
 	cellTypeDiverges,
 	cellValueType,
@@ -60,6 +61,10 @@ import {
 	moveRefusalMessage,
 	runFillDirection,
 } from "./table-actions";
+import {
+	type TypedCellDecision,
+	TypedCellDecisionDialog,
+} from "./typed-cell-decision-dialog";
 import {
 	type AxisReorderController,
 	type DropIndicatorSetter,
@@ -233,6 +238,26 @@ function adjacentCell(
 	};
 }
 
+function moveAfterCellEdit(position: CellPosition, exit: EditorExit) {
+	const store = useTabeloStore.getState();
+	if (exit === "next-row") {
+		store.selectCell({
+			row: Math.min(position.row + 1, store.document.rows.length - 1),
+			column: position.column,
+		});
+	} else if (exit === "next-column") {
+		store.selectCell({
+			row: position.row,
+			column: Math.min(position.column + 1, store.document.columns.length - 1),
+		});
+	} else if (exit === "previous-column") {
+		store.selectCell({
+			row: position.row,
+			column: Math.max(position.column - 1, 0),
+		});
+	}
+}
+
 export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const document = useTabeloStore((state) => state.document);
 	const selection = useTabeloStore((state) => state.selection);
@@ -258,6 +283,17 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// One handle for the whole grid: every gutter trigger opens the single root
 	// mounted below, because only one axis menu can be open at a time.
 	const [axisMenuHandle] = useState(createAxisMenuHandle);
+	const [typedDecision, setTypedDecision] = useState<TypedCellDecision | null>(
+		null,
+	);
+	const [typedDialogOpen, setTypedDialogOpen] = useState(false);
+	// The synchronous mirror lets pointer capture know that blurring an editor
+	// opened a modal before React has committed the state update. The pointer
+	// must not also select whatever happened to be underneath that dialog.
+	const typedDecisionRef = useRef<TypedCellDecision | null>(null);
+	const typedDecisionOutcomeRef = useRef<"keep-editing" | "resolved" | null>(
+		null,
+	);
 
 	// Everything the user selected, which is what gets painted.
 	const rects = selectionRects(
@@ -485,6 +521,59 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		if (at.row === HEADER_ROW) store.setEditingHeader(at.column, seed);
 		else store.setEditing(at, seed);
 	}, []);
+
+	const finishCellEdit = useCallback(
+		(
+			position: CellPosition,
+			next: string,
+			exit: EditorExit,
+			wasSeeded: boolean,
+		) => {
+			const store = useTabeloStore.getState();
+			if (exit === "cancel") {
+				store.setEditing(null);
+				return;
+			}
+
+			const column = store.document.columns[position.column];
+			const row = store.document.rows[position.row];
+			if (!column || !row) {
+				store.setEditing(null);
+				return;
+			}
+
+			const current = readCell(row, column.id);
+			// Merely opening and committing an unchanged native value is not an
+			// instruction to change its type. A printable-key seed is different: it
+			// replaced the cell, even when its projection happens to look the same.
+			if (!wasSeeded && next === cellText(current)) {
+				store.setEditing(null);
+				moveAfterCellEdit(position, exit);
+				return;
+			}
+
+			const parsed = parseExpectedValue(next, column.expectedType);
+			if (parsed.kind === "lossy-choice" || parsed.kind === "invalid") {
+				const decision: TypedCellDecision = {
+					position,
+					draft: next,
+					expectedType: parsed.expectedType,
+					result: parsed,
+				};
+				store.setEditing(null);
+				typedDecisionOutcomeRef.current = null;
+				typedDecisionRef.current = decision;
+				setTypedDecision(decision);
+				setTypedDialogOpen(true);
+				return;
+			}
+
+			store.editCell(position.row, position.column, parsed.value);
+			store.setEditing(null);
+			moveAfterCellEdit(position, exit);
+		},
+		[],
+	);
 
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLTableElement>) => {
 		const store = useTabeloStore.getState();
@@ -739,6 +828,43 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		(total, column) => total + resolveColumnWidth(columnWidths[column.id]),
 		0,
 	);
+	const keepTypedEditing = () => {
+		typedDecisionOutcomeRef.current = "keep-editing";
+		setTypedDialogOpen(false);
+	};
+	const resolveTypedDecision = (kind: "text" | "typed") => {
+		const decision = typedDecisionRef.current;
+		if (!decision) return;
+		const value =
+			kind === "typed" && decision.result.kind === "lossy-choice"
+				? decision.result.typedValue
+				: decision.draft;
+		useTabeloStore
+			.getState()
+			.editCell(decision.position.row, decision.position.column, value);
+		typedDecisionOutcomeRef.current = "resolved";
+		setTypedDialogOpen(false);
+	};
+	const typedDecisionCell = () => {
+		const position = typedDecisionRef.current?.position;
+		if (!position) return null;
+		return (
+			gridRef.current?.querySelector<HTMLElement>(
+				`[data-cell="${position.row}:${position.column}"]`,
+			) ?? null
+		);
+	};
+	const finishTypedDialogTransition = (open: boolean) => {
+		if (open) return;
+		const decision = typedDecisionRef.current;
+		const outcome = typedDecisionOutcomeRef.current;
+		typedDecisionRef.current = null;
+		typedDecisionOutcomeRef.current = null;
+		setTypedDecision(null);
+		if (decision && outcome === "keep-editing") {
+			useTabeloStore.getState().setEditing(decision.position, decision.draft);
+		}
+	};
 
 	return (
 		<GridContextMenu wrapperRef={wrapperRef}>
@@ -771,6 +897,10 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					// browser can move focus. Drain the editor's one commit owner first,
 					// while it is still mounted, then let the receiving handler continue.
 					activeEditor.blur();
+					if (typedDecisionRef.current) {
+						event.preventDefault();
+						event.stopPropagation();
+					}
 				}}
 				onKeyDown={handleKeyDown}
 				onCopy={(event) => {
@@ -971,6 +1101,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							editingSeed={editing?.row === rowIndex ? editingSeed : null}
 							wrappedColumns={wrappedColumns}
 							selectRow={selectRow}
+							onFinishCellEdit={finishCellEdit}
 							draggingRef={draggingRef}
 							onGripPointerDown={reorder.onGripPointerDown}
 						/>
@@ -998,6 +1129,15 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			    table so it is never a child of a <tr>, and it portals its popup
 			    anyway, so its position in the tree carries no layout. */}
 			<AxisMenuPopupHost handle={axisMenuHandle} />
+			<TypedCellDecisionDialog
+				decision={typedDecision}
+				open={typedDialogOpen}
+				finalFocus={typedDecisionCell}
+				onKeepEditing={keepTypedEditing}
+				onKeepText={() => resolveTypedDecision("text")}
+				onConvert={() => resolveTypedDecision("typed")}
+				onOpenChangeComplete={finishTypedDialogTransition}
+			/>
 		</GridContextMenu>
 	);
 }
@@ -1037,6 +1177,12 @@ interface DataRowProps {
 	readonly editingSeed: string | null;
 	readonly wrappedColumns: readonly ColumnId[];
 	readonly selectRow: (row: number, intent: SelectIntent) => void;
+	readonly onFinishCellEdit: (
+		position: CellPosition,
+		value: string,
+		exit: EditorExit,
+		wasSeeded: boolean,
+	) => void;
 	readonly draggingRef: React.RefObject<GridDragKind | null>;
 	readonly onGripPointerDown: AxisReorderController["onGripPointerDown"];
 }
@@ -1056,6 +1202,7 @@ const DataRow = memo(function DataRow({
 	editingSeed,
 	wrappedColumns,
 	selectRow,
+	onFinishCellEdit,
 	draggingRef,
 	onGripPointerDown,
 }: DataRowProps) {
@@ -1224,34 +1371,14 @@ const DataRow = memo(function DataRow({
 								align={alignClass[column.align]}
 								ariaLabel={`${copy.a11y.cellEditor(rowIndex, columnIndex)}${describesType ? `, ${copy.a11y.realCellType(type)}` : ""}`}
 								monospace={type !== "string"}
-								onFinish={(next, exit) => {
-									const store = useTabeloStore.getState();
-									if (exit !== "cancel")
-										store.editCell(rowIndex, columnIndex, next);
-									store.setEditing(null);
-									if (exit === "next-row") {
-										store.selectCell({
-											row: Math.min(
-												rowIndex + 1,
-												store.document.rows.length - 1,
-											),
-											column: columnIndex,
-										});
-									} else if (exit === "next-column") {
-										store.selectCell({
-											row: rowIndex,
-											column: Math.min(
-												columnIndex + 1,
-												store.document.columns.length - 1,
-											),
-										});
-									} else if (exit === "previous-column") {
-										store.selectCell({
-											row: rowIndex,
-											column: Math.max(columnIndex - 1, 0),
-										});
-									}
-								}}
+								onFinish={(next, exit) =>
+									onFinishCellEdit(
+										{ row: rowIndex, column: columnIndex },
+										next,
+										exit,
+										editingSeed !== null,
+									)
+								}
 							/>
 						) : (
 							<span
