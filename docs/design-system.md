@@ -946,6 +946,16 @@ per keystroke.
   hidden click behavior. The trailing chevron, right-aligned, opens the pane
   actions menu. `Change view` is one entry in that menu and opens the shared
   choice dialog; it never opens a selector from the title.
+- The space between the identity and the trailing trigger is the pane's status
+  slot. What sits there is text: no role, no focus, nothing to press, and never
+  a third action. It reports a temporary condition of the pane's content, such
+  as how many occurrences an incremental selection has gathered, and a healthy
+  idle pane leaves it empty. It grows leftward, so the trigger never moves, and
+  it uses tabular figures so a rising count does not resize itself. Width
+  pressure is absorbed by the identity's own truncation and the registry's
+  short labels, never by shrinking status text below §2's floor. No state owns
+  the slot exclusively: two conditions present at once still keep the header
+  one row, with both meanings readable and no control displaced.
 - The `Read only` badge sits beside the view identity because it reports state.
   The actions trigger names the view it belongs to, because with four panes open
   the view is what says which pane the command affects: "Pane actions:

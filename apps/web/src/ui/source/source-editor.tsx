@@ -12,6 +12,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import {
 	Annotation,
 	Compartment,
+	EditorSelection,
 	EditorState,
 	type Extension,
 	Prec,
@@ -43,6 +44,11 @@ import { syntaxTheme } from "./editor-theme";
 import { htmlLanguage } from "./html-language";
 import { jiraLanguage } from "./jira-language";
 import { minimalChange } from "./minimal-change";
+import {
+	type OccurrenceSummary,
+	occurrenceSummary,
+	selectNextOccurrenceAsPrimary,
+} from "./occurrence-selection";
 import { recordsLanguage } from "./records-language";
 
 // Marks a transaction as coming from synchronization rather than the user.
@@ -288,6 +294,13 @@ interface SourceEditorProps {
 	// that makes undo layered rather than split: see docs/adr/0003.
 	readonly onUndoBeyondLocal: () => void;
 	readonly onRedoBeyondLocal: () => void;
+	// How many equal occurrences are selected, for the pane header to show.
+	// Transient CodeMirror state, reported rather than stored: it reaches
+	// neither the document, the draft, nor workspace persistence.
+	readonly onOccurrencesChange: (summary: OccurrenceSummary | null) => void;
+	// Each successful Mod+D, separately from the summary above, because only the
+	// press is worth speaking: a selection collapsing is not news.
+	readonly onOccurrenceAdded: (summary: OccurrenceSummary) => void;
 }
 
 export function SourceEditor({
@@ -306,14 +319,28 @@ export function SourceEditor({
 	onChange,
 	onUndoBeyondLocal,
 	onRedoBeyondLocal,
+	onOccurrencesChange,
+	onOccurrenceAdded,
 }: SourceEditorProps) {
 	const hostRef = useRef<HTMLDivElement>(null);
 	const viewRef = useRef<EditorView | null>(null);
 
 	// Handlers are read through refs so the editor is created exactly once.
 	// tearing it down on every render would destroy history and cursor state.
-	const handlers = useRef({ onChange, onUndoBeyondLocal, onRedoBeyondLocal });
-	handlers.current = { onChange, onUndoBeyondLocal, onRedoBeyondLocal };
+	const handlers = useRef({
+		onChange,
+		onUndoBeyondLocal,
+		onRedoBeyondLocal,
+		onOccurrencesChange,
+		onOccurrenceAdded,
+	});
+	handlers.current = {
+		onChange,
+		onUndoBeyondLocal,
+		onRedoBeyondLocal,
+		onOccurrencesChange,
+		onOccurrenceAdded,
+	};
 
 	// The editor is created once and lives for the panel's lifetime. Re-running
 	// this on a prop change would tear down CodeMirror and take the undo history
@@ -331,6 +358,10 @@ export function SourceEditor({
 				extensions: [
 					lineNumbers(),
 					historyCompartment.of(history()),
+					// Without this, every range CodeMirror adds collapses back to one.
+					// It is what makes Mod+D, and editing all of its ranges through a
+					// single transaction, possible at all.
+					EditorState.allowMultipleSelections.of(true),
 					drawSelection(),
 					highlightActiveLine(),
 					highlightActiveLineGutter(),
@@ -359,6 +390,19 @@ export function SourceEditor({
 										'[tabindex="0"]',
 									) as HTMLElement | null;
 									if (panel) panel.focus();
+									return true;
+								},
+							},
+							{
+								// Deliberately without `preventDefault`: CodeMirror then
+								// swallows the key only when this returns true, which is
+								// what keeps a caret, a read-only view, or a selection of
+								// differing text from suppressing the browser's own Mod+D.
+								key: "Mod-d",
+								run: (target) => {
+									if (!selectNextOccurrenceAsPrimary(target)) return false;
+									const summary = occurrenceSummary(target.state);
+									if (summary) handlers.current.onOccurrenceAdded(summary);
 									return true;
 								},
 							},
@@ -395,6 +439,15 @@ export function SourceEditor({
 
 					EditorView.updateListener.of((update) => {
 						notifyLocalHistoryChanged();
+						// The header's summary is derived on every update that could
+						// change it, never stored. Collapsing the selection, editing the
+						// ranges apart, or losing a match to a text change all reach the
+						// header through this one path.
+						if (update.selectionSet || update.docChanged) {
+							handlers.current.onOccurrencesChange(
+								occurrenceSummary(update.state),
+							);
+						}
 						if (!update.docChanged) return;
 						if (
 							update.transactions.some((transaction) =>
@@ -475,6 +528,17 @@ export function SourceEditor({
 		if (!view) return;
 		view.dispatch({ effects: historyCompartment.reconfigure([]) });
 		view.dispatch({ effects: historyCompartment.reconfigure(history()) });
+
+		// Occurrences were gathered in the format the pane has left, and the
+		// ranges CodeMirror maps into the new text no longer mean what the user
+		// selected. Ending the multiple selection here is what actually clears
+		// the header, rather than hiding a count the editor still holds. The
+		// primary range survives whole, so the caret and the text under it stay
+		// where a view change has always left them.
+		const selection = view.state.selection;
+		if (selection.ranges.length > 1) {
+			view.dispatch({ selection: EditorSelection.create([selection.main], 0) });
+		}
 	}, [viewId]);
 
 	// Reconfigure the existing editor rather than remounting it. This keeps the
