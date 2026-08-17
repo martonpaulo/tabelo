@@ -63,10 +63,12 @@ describe("draft ownership", () => {
 	// pair would assert nothing but the refusal, which the store tests own.
 	const layoutTransitions = layoutPresets.flatMap((from) =>
 		layoutsForPaneCount(from.panes.length).flatMap((to) =>
-			[
-				["clean", validMarkdown],
-				["invalid", invalidMarkdown],
-			].map(([status, text]) => [from.id, to.id, status, text] as const),
+			(
+				[
+					["clean", validMarkdown],
+					["invalid", invalidMarkdown],
+				] as const
+			).map(([status, text]) => [from.id, to.id, status, text] as const),
 		),
 	);
 

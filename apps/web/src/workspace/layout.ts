@@ -216,6 +216,12 @@ export interface Workspace {
 	readonly activePaneId: string;
 }
 
+export function firstPaneId(panes: readonly WorkspacePane[]): string {
+	const pane = panes[0];
+	if (!pane) throw new Error("Workspace must contain at least one pane.");
+	return pane.id;
+}
+
 export type PanePositionId =
 	| "full"
 	| "top-full-width"
@@ -491,6 +497,6 @@ export function createDefaultWorkspace(): Workspace {
 		columnWidths: {},
 		columnRatio: 0.5,
 		rowRatio: 0.5,
-		activePaneId: panes[0].id,
+		activePaneId: firstPaneId(panes),
 	};
 }

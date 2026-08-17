@@ -26,6 +26,11 @@ import {
 // exactly once. A preset that leaves a hole or overlaps would render panes on
 // top of each other.
 
+function required<T>(value: T | undefined): T {
+	if (value === undefined) throw new Error("Expected test fixture value.");
+	return value;
+}
+
 describe("layout presets", () => {
 	it("contains only layouts with one to four panes", () => {
 		expect(layoutPresets).toHaveLength(8);
@@ -130,14 +135,14 @@ describe("applying a layout", () => {
 	it("carries existing views across in reading order", () => {
 		const before = applyLayout("columns");
 		const chosen = [
-			{ ...before[0], view: "csv" as const },
-			{ ...before[1], view: "jira" as const },
+			{ ...required(before[0]), view: "csv" as const },
+			{ ...required(before[1]), view: "jira" as const },
 		];
 		const after = applyLayout("quad", chosen);
 
 		expect(after).toHaveLength(4);
-		expect(after[0].view).toBe("csv");
-		expect(after[1].view).toBe("jira");
+		expect(required(after[0]).view).toBe("csv");
+		expect(required(after[1]).view).toBe("jira");
 	});
 
 	it("keeps carried pane identifiers stable across shape changes", () => {
@@ -174,7 +179,7 @@ describe("applying a layout", () => {
 			},
 		]);
 		expect(after).toHaveLength(4);
-		expect(after[0].view).toBe("grid");
+		expect(required(after[0]).view).toBe("grid");
 		expect(after.every((pane) => pane.view.length > 0)).toBe(true);
 	});
 
@@ -198,7 +203,7 @@ describe("applying a layout", () => {
 		const wide = applyLayout("quad");
 		const columns = applyLayout("columns", wide);
 		expect(columns).toHaveLength(2);
-		expect(columns[0].view).toBe(wide[0].view);
+		expect(required(columns[0]).view).toBe(required(wide[0]).view);
 	});
 
 	it("gives every pane a distinct id", () => {
@@ -230,7 +235,7 @@ function workspaceFor(id: LayoutId): Workspace {
 		columnWidths: {},
 		columnRatio: 0.5,
 		rowRatio: 0.5,
-		activePaneId: panes[0].id,
+		activePaneId: required(panes[0]).id,
 	};
 }
 
@@ -359,8 +364,7 @@ describe("pane count transitions", () => {
 		let id: LayoutId = "single" as LayoutId;
 		counts.push(paneCount(id));
 		for (let step = 0; step < 3; step += 1) {
-			const next = splitOptions(workspaceFor(id))[0];
-			expect(next).toBeDefined();
+			const next = required(splitOptions(workspaceFor(id))[0]);
 			id = next.layout;
 			counts.push(paneCount(id));
 		}
@@ -384,8 +388,7 @@ describe("pane count transitions", () => {
 	it.each(["single", "columns", "rows", "left-split"] as const)(
 		"closes back to %s after expanding it",
 		(id) => {
-			const larger = splitOptions(workspaceFor(id))[0];
-			expect(larger).toBeDefined();
+			const larger = required(splitOptions(workspaceFor(id))[0]);
 			expect(smallerLayout(larger.layout)).toBe(id);
 		},
 	);
@@ -423,10 +426,17 @@ describe("pane count transitions", () => {
 	it("moves only the corner a top split cannot keep when it shrinks", () => {
 		const before = applyLayout("top-split");
 		const after = applyLayout("rows", before.slice(0, -1));
+		const beforeFirst = required(before[0]);
+		const beforeSecond = required(before[1]);
+		const afterFirst = required(after[0]);
+		const afterSecond = required(after[1]);
 
-		expect(after.map((pane) => pane.id)).toEqual([before[0].id, before[1].id]);
-		expect(cornerOf(after[0])).toBe(cornerOf(before[0]));
-		expect(cornerOf(after[1])).not.toBe(cornerOf(before[1]));
+		expect(after.map((pane) => pane.id)).toEqual([
+			beforeFirst.id,
+			beforeSecond.id,
+		]);
+		expect(cornerOf(afterFirst)).toBe(cornerOf(beforeFirst));
+		expect(cornerOf(afterSecond)).not.toBe(cornerOf(beforeSecond));
 	});
 
 	it("adds the new pane where no surviving pane already sits", () => {
@@ -452,13 +462,18 @@ describe("pane count transitions", () => {
 	it("keeps every other pane in place when one in the middle is closed", () => {
 		// Top-right closes, so the pane below it takes the freed column and the
 		// two on the left do not move at all.
+		const views = ["grid", "markdown", "csv", "jira"] as const;
 		const before = applyLayout("quad").map((pane, index) => ({
 			...pane,
-			view: (["grid", "markdown", "csv", "jira"] as const)[index],
+			view: required(views[index]),
 		}));
+		const first = required(before[0]);
+		const second = required(before[1]);
+		const third = required(before[2]);
+		const fourth = required(before[3]);
 		const after = applyLayout(
 			smallerLayout("quad") as LayoutId,
-			before.filter((pane) => pane.id !== before[1].id),
+			before.filter((pane) => pane.id !== second.id),
 		);
 
 		expect(after.map((pane) => pane.view).sort()).toEqual([
@@ -466,17 +481,17 @@ describe("pane count transitions", () => {
 			"grid",
 			"jira",
 		]);
-		expect(after.some((pane) => pane.id === before[1].id)).toBe(false);
+		expect(after.some((pane) => pane.id === second.id)).toBe(false);
 
 		const placed = new Map(after.map((pane) => [pane.id, cornerOf(pane)]));
-		expect(placed.get(before[0].id)).toBe(cornerOf(before[0]));
-		expect(placed.get(before[2].id)).toBe(cornerOf(before[2]));
+		expect(placed.get(first.id)).toBe(cornerOf(first));
+		expect(placed.get(third.id)).toBe(cornerOf(third));
 		// The survivor that grows keeps the slot it already occupied inside its
 		// larger shape, rather than being shuffled to a different corner.
 		expect(
 			after
-				.find((pane) => pane.id === before[3].id)
-				?.slots.includes(before[3].slots[0]),
+				.find((pane) => pane.id === fourth.id)
+				?.slots.includes(required(fourth.slots[0])),
 		).toBe(true);
 	});
 });
@@ -546,10 +561,11 @@ describe("moving panes", () => {
 
 	it("refuses missing, same, and invalid destinations", () => {
 		const workspace = workspaceFor("columns");
-		const source = workspace.panes[0].id;
+		const source = required(workspace.panes[0]).id;
+		const destination = required(workspace.panes[1]).id;
 		expect(movePane(workspace, source, source)).toBeNull();
 		expect(movePane(workspace, source, "missing")).toBeNull();
-		expect(movePane(workspace, "missing", workspace.panes[1].id)).toBeNull();
+		expect(movePane(workspace, "missing", destination)).toBeNull();
 		expect(
 			movePane(
 				{
@@ -557,7 +573,7 @@ describe("moving panes", () => {
 					panes: workspace.panes.map((pane) => ({ ...pane, slots: ["a"] })),
 				},
 				source,
-				workspace.panes[1].id,
+				destination,
 			),
 		).toBeNull();
 	});
@@ -600,6 +616,6 @@ describe("default workspace", () => {
 			"grid",
 			"markdown",
 		]);
-		expect(workspace.activePaneId).toBe(workspace.panes[0].id);
+		expect(workspace.activePaneId).toBe(required(workspace.panes[0]).id);
 	});
 });

@@ -1,6 +1,14 @@
 // @vitest-environment happy-dom
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	assert,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import { CURRENT_VERSION, STORAGE_KEY } from "@/persistence/schema";
 import { flushPersistence, startAutosave, useTabeloStore } from "./store";
 
@@ -44,10 +52,10 @@ describe("autosave lifecycle", () => {
 		useTabeloStore.getState().hydrate();
 
 		const restored = useTabeloStore.getState();
-		expect(restored.document.columns[0]?.header).toBe("Name");
-		expect(
-			restored.document.rows[0]?.cells[restored.document.columns[0].id],
-		).toBe("Ingrid");
+		const firstColumn = restored.document.columns[0];
+		assert(firstColumn);
+		expect(firstColumn.header).toBe("Name");
+		expect(restored.document.rows[0]?.cells[firstColumn.id]).toBe("Ingrid");
 		expect(restored.draft).toMatchObject({
 			paneId,
 			viewId: "markdown",
