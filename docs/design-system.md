@@ -482,11 +482,21 @@ self-explanatory Fit column to content action remain untitled semantic groups,
 without an empty label. Group labels are non-interactive and arrow-key
 navigation skips them. App and pane menus follow the same grouping contract.
 
-Tabelo does not use cascading menus. A menu item either performs its command or
-opens one dialog for a choice that cannot live in the current menu. In
-particular, the global Layout command opens the layout chooser dialog; it never
-opens a submenu. Keep submenu primitives unused in product code even when the
-component library provides them.
+A submenu is allowed for exactly one shape: **a flat list of immediate,
+self-explanatory commands that needs no explanatory state**. Every row performs
+its command the moment it is chosen, there is nothing to state beforehand, and
+nothing to unwind afterwards. The class has exactly two approved members: the
+global `Copy as`, whose rows are the codec registry and which is the standing
+example, and column `Alignment`, which keeps its radio-group semantics wherever
+it is placed. Nothing else nests, and a submenu never contains a second
+submenu.
+
+Every other choice still opens one dialog, and the two standing examples say
+why. **Add view** carries a consequence the list cannot show, because the same
+seven views mean a different workspace depending on which edge was clicked, and
+its unavailable entries carry reasons worth reading. **Layout** is a visual
+gallery of presets, which a text submenu cannot be. Neither changes: a menu item
+outside the class above either performs its command or opens one dialog.
 
 Every dropdown and context menu uses the shared primitive's one spacing rhythm:
 0.25rem outer padding, 2rem minimum item height, 0.5rem horizontal padding, and

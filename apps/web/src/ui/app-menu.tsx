@@ -6,9 +6,13 @@ import {
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
 import {
+	ClipboardCopy,
 	Download,
 	ExternalLink,
 	FilePlus2,
@@ -20,8 +24,9 @@ import {
 	Undo2,
 	Upload,
 } from "lucide-react";
-import { type RefObject, useSyncExternalStore } from "react";
+import { Fragment, type RefObject, useSyncExternalStore } from "react";
 import { copy } from "@/copy/copy";
+import { canSerialize, listCodecs } from "@/formats";
 import {
 	canRunHistory,
 	getHistoryRevision,
@@ -29,10 +34,14 @@ import {
 	subscribeHistory,
 } from "@/history/coordinator";
 import { useTabeloStore } from "@/state/store";
+import { copyCodecToClipboard } from "@/ui/clipboard-actions";
+import { preconditionRecovery } from "@/ui/precondition-recovery";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
+import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import type { PwaUpdate } from "@/ui/pwa-update";
+import { getView } from "@/views/registry";
 import { layoutsForPaneCount, splitOptions } from "@/workspace/layout";
 
 interface AppMenuProps {
@@ -196,6 +205,7 @@ export function AppMenu({
 						<Upload aria-hidden />
 						{copy.actions.importFile}
 					</DropdownMenuItem>
+					<CopyAsSubmenu runAfterClose={menuDialog.runAfterClose} />
 					<DropdownMenuItem
 						onClick={() => menuDialog.runAfterClose(onDownload)}
 					>
@@ -255,5 +265,69 @@ export function AppMenu({
 				</DropdownMenuGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>
+	);
+}
+
+// Copying the document as a format needs no pane showing that format, so this
+// is a document-level command over codecs rather than over views. The list is
+// the codec registry in its own order; nothing here names a format, so a codec
+// added later gains a row without an edit. See docs/adr/0005.
+//
+// A submenu rather than a dialog because every row performs its command the
+// moment it is chosen and needs nothing stated beforehand, which is the whole
+// of the class docs/design-system.md §3 allows one for.
+function CopyAsSubmenu({
+	runAfterClose,
+}: {
+	readonly runAfterClose: (command: () => void) => void;
+}) {
+	const document = useTabeloStore((state) => state.document);
+
+	return (
+		<DropdownMenuSub>
+			<DropdownMenuSubTrigger>
+				<ClipboardCopy aria-hidden />
+				{copy.actions.copyAs}
+			</DropdownMenuSubTrigger>
+			{/* No width of its own: the primitive already sizes a submenu to its
+			    content above a shared floor, and the shared spacing rhythm comes
+			    with it. */}
+			<DropdownMenuSubContent aria-label={copy.actions.copyAs}>
+				{listCodecs().map((codec) => {
+					const view = getView(codec.id);
+					const failure = canSerialize(codec, document);
+					const recovery = preconditionRecovery(failure);
+					const Icon = view.icon;
+
+					return (
+						// The refusal and its correction are the same pair the download
+						// chooser and the pane menu already show, in the same words: the
+						// row stays disabled and the correction stands beside it.
+						<Fragment key={codec.id}>
+							<DisabledTooltip
+								reason={
+									failure ? copy.disabled.codecPrecondition(failure) : undefined
+								}
+							>
+								<DropdownMenuItem
+									disabled={failure !== null}
+									onClick={() => void copyCodecToClipboard(codec, document)}
+								>
+									<Icon aria-hidden />
+									{view.label}
+								</DropdownMenuItem>
+							</DisabledTooltip>
+							{recovery ? (
+								<RecoveryMenuItem
+									recovery={recovery}
+									target={view.label}
+									onRun={runAfterClose}
+								/>
+							) : null}
+						</Fragment>
+					);
+				})}
+			</DropdownMenuSubContent>
+		</DropdownMenuSub>
 	);
 }
