@@ -18,8 +18,8 @@ describes the migration and its downstream effects.
 - Project and public name: `Tabelo`
 - Description: edit one table visually or through synchronized text formats, entirely in your browser
 - Repository: `martonpaulo/tabelo` (public)
-- Public identifiers: workspace app `web`; internal packages `@tabelo/ui`,
-  `@tabelo/env`, `@tabelo/config`. All workspace packages are private and are
+- Public identifiers: workspace app `web`; internal packages `@tabelo/ui` and
+  `@tabelo/config`. All workspace packages are private and are
   never published to a registry
 - Landing page: the application itself, at
   `https://martonpaulo.github.io/tabelo/`, built from `apps/web` and published

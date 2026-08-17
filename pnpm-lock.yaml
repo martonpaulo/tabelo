@@ -165,25 +165,6 @@ importers:
 
   packages/config: {}
 
-  packages/env:
-    dependencies:
-      '@t3-oss/env-core':
-        specifier: ^0.13.11
-        version: 0.13.11(typescript@6.0.3)(zod@4.4.3)
-      zod:
-        specifier: 'catalog:'
-        version: 4.4.3
-    devDependencies:
-      '@tabelo/config':
-        specifier: workspace:*
-        version: link:../config
-      '@types/node':
-        specifier: 'catalog:'
-        version: 22.20.1
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
-
   packages/ui:
     dependencies:
       '@base-ui/react':
@@ -1677,23 +1658,6 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
-
-  '@t3-oss/env-core@0.13.11':
-    resolution: {integrity: sha512-sM7GYY+KL7H/Hl0BE0inWfk3nRHZOLhmVn7sHGxaZt9FAR6KqREXAE+6TqKfiavfXmpRxO/OZ2QgKRd+oiBYRQ==}
-    peerDependencies:
-      arktype: ^2.1.0
-      typescript: '>=5.0.0'
-      valibot: ^1.0.0-beta.7 || ^1.0.0
-      zod: ^3.24.0 || ^4.0.0
-    peerDependenciesMeta:
-      arktype:
-        optional: true
-      typescript:
-        optional: true
-      valibot:
-        optional: true
-      zod:
-        optional: true
 
   '@tailwindcss/node@4.3.3':
     resolution: {integrity: sha512-/T8IKEsf9VTU6tLjgC7+sv2mOPtQxzE2jMw7u4Tt40Tx+QSZxpzh95/H6cMKoja9XuW7iMdLJYBB0o9G1CaAgg==}
@@ -5559,11 +5523,6 @@ snapshots:
   '@sindresorhus/merge-streams@4.0.0': {}
 
   '@standard-schema/spec@1.1.0': {}
-
-  '@t3-oss/env-core@0.13.11(typescript@6.0.3)(zod@4.4.3)':
-    optionalDependencies:
-      typescript: 6.0.3
-      zod: 4.4.3
 
   '@tailwindcss/node@4.3.3':
     dependencies:
