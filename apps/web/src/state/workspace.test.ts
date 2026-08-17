@@ -33,13 +33,18 @@ function workspace() {
 	return useTabeloStore.getState().workspace;
 }
 
+function required<T>(value: T | undefined): T {
+	if (value === undefined) throw new Error("Expected test fixture value.");
+	return value;
+}
+
 // The workspace opens with the grid beside Markdown, so this is the pane a
 // source draft can be typed into.
 function markdownPaneId(): string {
 	const pane = workspace().panes.find(
 		(candidate) => candidate.view === "markdown",
 	);
-	return pane?.id ?? "";
+	return required(pane).id;
 }
 
 // The first split the current workspace offers. Which one it is does not matter
@@ -57,7 +62,7 @@ function addFirstSplit(view: ViewId = "csv"): void {
 function closeDownToOnePane(): void {
 	while (workspace().panes.length > 1) {
 		const store = useTabeloStore.getState();
-		store.closePane(store.workspace.panes.at(-1)?.id ?? "");
+		store.closePane(required(store.workspace.panes.at(-1)).id);
 	}
 }
 
@@ -65,7 +70,7 @@ function addedPaneId(before: readonly { id: string }[]): string {
 	const added = workspace().panes.find(
 		(pane) => !before.some((candidate) => candidate.id === pane.id),
 	);
-	return added?.id ?? "";
+	return required(added).id;
 }
 
 describe("adding a view", () => {
@@ -84,7 +89,7 @@ describe("adding a view", () => {
 	});
 
 	it("applies the preset the option names", () => {
-		const option = splitOptions(workspace())[0];
+		const option = required(splitOptions(workspace())[0]);
 		useTabeloStore.getState().addPaneBySplit(option, "csv");
 		expect(workspace().layout).toBe(option.layout);
 	});
@@ -92,14 +97,16 @@ describe("adding a view", () => {
 	it("splits either pane of a two-pane preset to its own preset", () => {
 		const options = splitOptions(workspace());
 		expect(options).toHaveLength(2);
-		expect(options[0].layout).not.toBe(options[1].layout);
+		const first = required(options[0]);
+		const second = required(options[1]);
+		expect(first.layout).not.toBe(second.layout);
 
-		useTabeloStore.getState().addPaneBySplit(options[1], "csv");
-		expect(workspace().layout).toBe(options[1].layout);
+		useTabeloStore.getState().addPaneBySplit(second, "csv");
+		expect(workspace().layout).toBe(second.layout);
 	});
 
 	it("refuses an option that no longer describes the workspace", () => {
-		const stale = splitOptions(workspace())[0];
+		const stale = required(splitOptions(workspace())[0]);
 		useTabeloStore.getState().addPaneBySplit(stale, "csv");
 
 		const settled = workspace();
@@ -109,7 +116,9 @@ describe("adding a view", () => {
 	});
 
 	it("keeps every existing pane's view untouched", () => {
-		const before = workspace().panes.map((pane) => [pane.id, pane.view]);
+		const before = workspace().panes.map(
+			(pane) => [pane.id, pane.view] as const,
+		);
 
 		addFirstSplit();
 
@@ -152,7 +161,7 @@ describe("closing a view", () => {
 	it("removes that pane and keeps the others", () => {
 		addFirstSplit();
 		const before = workspace();
-		const target = before.panes[1];
+		const target = required(before.panes[1]);
 
 		useTabeloStore.getState().closePane(target.id);
 
@@ -175,15 +184,18 @@ describe("closing a view", () => {
 			useTabeloStore.getState().setLayout(layout);
 			const twoPanes = workspace();
 			expect(twoPanes.panes).toHaveLength(2);
+			const first = required(twoPanes.panes[0]);
+			const second = required(twoPanes.panes[1]);
 
-			useTabeloStore.getState().closePane(twoPanes.panes[0].id);
+			useTabeloStore.getState().closePane(first.id);
 
 			const after = workspace();
+			const survivor = required(after.panes[0]);
 			expect(after.layout).toBe("single");
 			expect(after.panes).toHaveLength(1);
-			expect(after.panes[0].id).toBe(twoPanes.panes[1].id);
-			expect(after.panes[0].view).toBe(twoPanes.panes[1].view);
-			expect(after.activePaneId).toBe(after.panes[0].id);
+			expect(survivor.id).toBe(second.id);
+			expect(survivor.view).toBe(second.view);
+			expect(after.activePaneId).toBe(survivor.id);
 		},
 	);
 
@@ -192,7 +204,7 @@ describe("closing a view", () => {
 		const onePane = workspace();
 		expect(onePane.panes).toHaveLength(1);
 
-		useTabeloStore.getState().closePane(onePane.panes[0].id);
+		useTabeloStore.getState().closePane(required(onePane.panes[0]).id);
 
 		expect(workspace()).toBe(onePane);
 	});
@@ -200,15 +212,14 @@ describe("closing a view", () => {
 	it("moves the active pane when the active one is closed", () => {
 		addFirstSplit();
 		const before = workspace();
-		useTabeloStore.getState().setActivePane(before.panes[0].id);
+		const active = required(before.panes[0]);
+		useTabeloStore.getState().setActivePane(active.id);
 
-		useTabeloStore.getState().closePane(before.panes[0].id);
+		useTabeloStore.getState().closePane(active.id);
 
 		const after = workspace();
-		expect(after.activePaneId).toBe(after.panes[0].id);
-		expect(after.panes.some((pane) => pane.id === before.panes[0].id)).toBe(
-			false,
-		);
+		expect(after.activePaneId).toBe(required(after.panes[0]).id);
+		expect(after.panes.some((pane) => pane.id === active.id)).toBe(false);
 	});
 
 	it("is reversible: every pane count from one to four is reachable again", () => {
@@ -288,7 +299,7 @@ describe("rearranging at a fixed pane count", () => {
 	it("carries every per-pane preference across a rearrangement", () => {
 		addFirstSplit();
 		const before = workspace();
-		const target = before.panes[0];
+		const target = required(before.panes[0]);
 		const store = useTabeloStore.getState();
 		store.setPaneZoom(target.id, 1.3);
 		store.setPaneWrap(target.id, true);
@@ -487,24 +498,26 @@ describe("per-pane zoom", () => {
 
 	it("scales only the pane it was set on", () => {
 		const [first, second] = workspace().panes;
+		const firstPane = required(first);
+		const secondPane = required(second);
 
-		useTabeloStore.getState().setPaneZoom(first.id, 1.2);
+		useTabeloStore.getState().setPaneZoom(firstPane.id, 1.2);
 
 		const panes = workspace().panes;
-		expect(panes.find((pane) => pane.id === first.id)?.zoom).toBe(1.2);
-		expect(panes.find((pane) => pane.id === second.id)?.zoom).toBe(
+		expect(panes.find((pane) => pane.id === firstPane.id)?.zoom).toBe(1.2);
+		expect(panes.find((pane) => pane.id === secondPane.id)?.zoom).toBe(
 			DEFAULT_PANE_ZOOM,
 		);
 	});
 
 	it("clamps a value outside the ladder", () => {
-		const paneId = workspace().panes[0].id;
+		const paneId = required(workspace().panes[0]).id;
 
 		useTabeloStore.getState().setPaneZoom(paneId, 40);
-		expect(workspace().panes[0].zoom).toBe(MAX_PANE_ZOOM);
+		expect(required(workspace().panes[0]).zoom).toBe(MAX_PANE_ZOOM);
 
 		useTabeloStore.getState().setPaneZoom(paneId, 0);
-		expect(workspace().panes[0].zoom).toBe(MIN_PANE_ZOOM);
+		expect(required(workspace().panes[0]).zoom).toBe(MIN_PANE_ZOOM);
 	});
 
 	it("belongs to the pane, so it survives a view change", () => {
@@ -530,7 +543,7 @@ describe("per-pane zoom", () => {
 	});
 
 	it("does not leak into a pane added afterwards", () => {
-		const paneId = workspace().panes[0].id;
+		const paneId = required(workspace().panes[0]).id;
 		useTabeloStore.getState().setPaneZoom(paneId, 2);
 
 		addFirstSplit();
@@ -553,7 +566,7 @@ describe("per-pane zoom", () => {
 
 	it("is presentation, so it never becomes an undo step", () => {
 		const before = useTabeloStore.getState();
-		const paneId = before.workspace.panes[0].id;
+		const paneId = required(before.workspace.panes[0]).id;
 
 		useTabeloStore.getState().setPaneZoom(paneId, 1.2);
 
@@ -642,7 +655,7 @@ describe("moving panes", () => {
 
 	it("refuses a stale destination without changing state", () => {
 		const before = useTabeloStore.getState();
-		const paneId = before.workspace.panes[0].id;
+		const paneId = required(before.workspace.panes[0]).id;
 
 		expect(before.movePane(paneId, "missing-pane")).toBe(false);
 		expect(useTabeloStore.getState()).toBe(before);

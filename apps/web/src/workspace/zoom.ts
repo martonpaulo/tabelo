@@ -8,13 +8,15 @@
 // two hundred percent for close reading; browser zoom remains available on top
 // when the entire interface, rather than one pane's content, needs to scale.
 
-export const PANE_ZOOM_LEVELS: readonly number[] = [
+export const PANE_ZOOM_LEVELS: readonly [number, ...number[]] = [
 	0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2,
-];
+] as const;
 
 export const DEFAULT_PANE_ZOOM = 1;
 export const MIN_PANE_ZOOM = PANE_ZOOM_LEVELS[0];
-export const MAX_PANE_ZOOM = PANE_ZOOM_LEVELS[PANE_ZOOM_LEVELS.length - 1];
+export const MAX_PANE_ZOOM = PANE_ZOOM_LEVELS.reduce(
+	(_previous, level) => level,
+);
 
 // Snaps to the nearest rung. A value arriving from storage, or from a ladder
 // this version no longer has, still lands somewhere the buttons can move away
@@ -28,9 +30,10 @@ export function clampPaneZoom(zoom: number): number {
 
 export function stepPaneZoom(zoom: number, direction: 1 | -1): number {
 	const index = PANE_ZOOM_LEVELS.indexOf(clampPaneZoom(zoom)) + direction;
-	return PANE_ZOOM_LEVELS[
-		Math.min(Math.max(index, 0), PANE_ZOOM_LEVELS.length - 1)
-	];
+	const next =
+		PANE_ZOOM_LEVELS[Math.min(Math.max(index, 0), PANE_ZOOM_LEVELS.length - 1)];
+	if (next === undefined) throw new Error("Pane zoom ladder is empty.");
+	return next;
 }
 
 // The value assistive technology and the menu label both report.

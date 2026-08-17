@@ -84,6 +84,7 @@ import { clampColumnWidth } from "@/workspace/column-width";
 import {
 	applyLayout,
 	createDefaultWorkspace,
+	firstPaneId,
 	type LayoutId,
 	movePane as moveWorkspacePane,
 	paneCount,
@@ -397,7 +398,7 @@ function closedPaneState(
 				(pane) => pane.id === state.workspace.activePaneId,
 			)
 				? state.workspace.activePaneId
-				: panes[0].id,
+				: firstPaneId(panes),
 		},
 		draft: state.draft?.paneId === paneId ? null : state.draft,
 		pendingPaneAction: null,
@@ -695,7 +696,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 						(pane) => pane.id === state.workspace.activePaneId,
 					)
 						? state.workspace.activePaneId
-						: panes[0].id,
+						: firstPaneId(panes),
 				},
 			};
 		}),
