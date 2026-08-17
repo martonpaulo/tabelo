@@ -3,6 +3,7 @@
 export const product = {
 	name: "Tabelo",
 	tagline: "Edit one table in every view, always in sync",
+	copyright: "© 2026 Marton Paulo",
 	documentTitle: "Tabelo: Edit one table in every view",
 	description:
 		"Edit one table visually or through synchronized text formats, entirely in your browser",

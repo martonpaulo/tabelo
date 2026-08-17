@@ -1099,11 +1099,11 @@ implements the [W3C reduced-motion technique](https://www.w3.org/WAI/WCAG21/Tech
 
 ## 8. Copy
 
-Product identity and browser metadata live in `apps/web/src/product.ts`; all
-other user-visible strings live in `apps/web/src/ui/copy.ts`. A string literal
-in a component is a pattern break. Stable domain IDs, user-entered values, and
-generated document content are data rather than copy and remain owned by their
-domain modules.
+Product identity and browser metadata live in `apps/web/src/copy/product.ts`;
+all other user-visible strings live in `apps/web/src/copy/copy.ts`. A string
+literal in a component is a pattern break. Stable domain IDs, user-entered
+values, and generated document content are data rather than copy and remain
+owned by their domain modules.
 
 Tests choose commands, layouts, and views by semantic IDs and resolve their
 accessible names through the canonical copy or registry. They never repeat a
