@@ -1,5 +1,6 @@
 import { fc } from "@fast-check/vitest";
-import { EXPECTED_COLUMN_TYPES } from "@/core/cell-value";
+import { EXPECTED_COLUMN_TYPES, readCell } from "@/core/cell-value";
+import { documentToMatrix } from "@/core/document";
 import type { CellRect } from "@/core/selection";
 import type {
 	Alignment,
@@ -63,12 +64,18 @@ const expectedColumnTypeArbitrary: fc.Arbitrary<ExpectedColumnType> =
 // Every scalar a cell may hold. Only finite numbers: a non-finite number is
 // not a persistable cell value, so generating one would test a state the
 // product refuses rather than one it has to survive.
-export const cellValueArbitrary: fc.Arbitrary<CellValue> = fc.oneof(
-	cellStringArbitrary,
+export const nativeCellValueArbitrary: fc.Arbitrary<
+	Exclude<CellValue, string>
+> = fc.oneof(
 	fc.double({ noNaN: true, noDefaultInfinity: true }),
 	fc.integer(),
 	fc.boolean(),
 	fc.constant(null),
+);
+
+export const cellValueArbitrary: fc.Arbitrary<CellValue> = fc.oneof(
+	cellStringArbitrary,
+	nativeCellValueArbitrary,
 );
 
 const widthArbitrary = fc.option(
@@ -169,9 +176,9 @@ export const tableDocumentArbitrary = createDocumentArbitrary({
 	titledRows: false,
 });
 
-// Documents whose cells hold every scalar variant. The core model and the
-// pure operations accept these today; no codec does, because a serialized
-// number parses back as its own text rather than as a number.
+// Documents whose cells hold every scalar variant. The core model and pure
+// operations carry these values directly. Text codecs preserve them only when
+// reconciliation has the previous document and sees the same projection.
 export const typedTableDocumentArbitrary = createDocumentArbitrary({
 	keyedHeaders: false,
 	minColumnCount: 1,
@@ -248,6 +255,60 @@ export function codecDocumentArbitrary(
 	codec: TableCodec,
 ): fc.Arbitrary<TableDocument> {
 	return codecDocumentArbitraries[codec.id];
+}
+
+// Start from each codec's existing grammar-safe document, then replace some,
+// but not all, cells with native values. Filtering carriage returns keeps this
+// property on type preservation rather than the separately tracked line-ending
+// normalization contracts.
+export function typedTextCodecDocumentArbitrary(
+	codec: TableCodec,
+): fc.Arbitrary<TableDocument> {
+	if (codec.reconciliation.cellValues !== "text") {
+		throw new Error(`${codec.id} is not a text-only codec`);
+	}
+
+	return codecDocumentArbitrary(codec)
+		.filter(
+			(document) =>
+				document.rows.length * document.columns.length >= 2 &&
+				documentToMatrix(document).every((row) =>
+					row.every((value) => !value.includes("\r")),
+				),
+		)
+		.chain((document) => {
+			const cellCount = document.rows.length * document.columns.length;
+			return fc
+				.array(fc.option(nativeCellValueArbitrary, { nil: undefined }), {
+					minLength: cellCount,
+					maxLength: cellCount,
+				})
+				.filter(
+					(values) =>
+						values.some((value) => value !== undefined) &&
+						values.some((value) => value === undefined),
+				)
+				.map((values) => {
+					let valueIndex = 0;
+					const rows = document.rows.map((row) => ({
+						...row,
+						cells: Object.fromEntries(
+							document.columns.map((column) => {
+								const replacement = values[valueIndex];
+								valueIndex += 1;
+								return [
+									column.id,
+									replacement === undefined
+										? readCell(row, column.id)
+										: replacement,
+								];
+							}),
+						),
+					}));
+					return { ...document, rows };
+				});
+		})
+		.filter((document) => codec.precondition?.(document) == null);
 }
 
 export interface DocumentPosition {

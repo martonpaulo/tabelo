@@ -28,6 +28,13 @@ about the UI. Downloads, clipboard sniffing, and file import all derive from
 this registry, so registering a codec makes a format downloadable, pasteable,
 and importable with no further edit.
 
+A codec also declares the syntax facts reconciliation needs: whether cell
+values are text-only or typed, and whether column alignment is carried or
+unexpressed. An unchanged text projection can then retain the previous native
+value, while alignment a format cannot express stays on the document. Markdown
+and HTML still apply alignment edits because their syntax carries it. This is
+registry data, not a switch on codec ids.
+
 A codec may also declare `outputOptions`: choices that belong to the file it
 writes and to nothing else. CSV declares `includeHeader`, because the table
 always has exactly one header row and whether the file prints it is a property

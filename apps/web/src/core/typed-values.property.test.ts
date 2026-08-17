@@ -2,6 +2,7 @@ import { fc, test } from "@fast-check/vitest";
 import { describe, expect } from "vitest";
 import { cellText, readCell } from "@/core/cell-value";
 import {
+	documentFromMatrix,
 	documentToMatrix,
 	isDocumentBlank,
 	reconcileDocument,
@@ -180,9 +181,55 @@ describe("typed cell value properties", () => {
 		{
 			numRuns: PROPERTY_RUNS,
 		},
-	)("reconciling a document against itself changes nothing", ({ document }) => {
-		expect(reconcileDocument(document, document)).toBe(document);
-	});
+	)(
+		"reconciling the same text projection preserves every value",
+		({ document }) => {
+			const parsed = documentFromMatrix(documentToMatrix(document), {
+				headerRow: true,
+				alignments: document.columns.map((column) => column.align),
+			});
+
+			expect(reconcileDocument(document, parsed)).toBe(document);
+		},
+	);
+
+	test.prop({ case: typedCaseArbitrary() }, { numRuns: PROPERTY_RUNS })(
+		"retyping one projection changes only that cell to a string",
+		({ case: { document, position } }) => {
+			const parsed = documentFromMatrix(documentToMatrix(document), {
+				headerRow: true,
+				alignments: document.columns.map((column) => column.align),
+			});
+			const oldValue =
+				valuesOf(document)[position.rowIndex]?.[position.columnIndex];
+			if (oldValue === undefined)
+				throw new Error("the generated cell must exist");
+			const replacement = `${cellText(oldValue)}!`;
+			const changed = setCell(
+				parsed,
+				position.rowIndex,
+				position.columnIndex,
+				replacement,
+			);
+
+			const next = reconcileDocument(document, changed);
+			const expected = valuesOf(document).map((row) => [...row]);
+			const expectedRow = expected[position.rowIndex];
+			if (!expectedRow) throw new Error("the generated row must exist");
+			expectedRow[position.columnIndex] = replacement;
+
+			expect(valuesOf(next)).toEqual(expected);
+			expect(next.columns.map((column) => column.id)).toEqual(
+				document.columns.map((column) => column.id),
+			);
+			expect(next.rows.map((row) => row.id)).toEqual(
+				document.rows.map((row) => row.id),
+			);
+			expect(next.columns.map((column) => column.expectedType)).toEqual(
+				document.columns.map((column) => column.expectedType),
+			);
+		},
+	);
 
 	test.prop(
 		{

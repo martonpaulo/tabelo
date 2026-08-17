@@ -186,6 +186,10 @@ function serializeJira(document: TableDocument): string {
 
 export const jiraCodec: TableCodec = {
 	id: "jira",
+	reconciliation: {
+		cellValues: "text",
+		columnAlignment: "unexpressed",
+	},
 	extension: "jira.txt",
 	mimeType: "text/plain",
 	parseMatrix: parseJiraMatrix,

@@ -1,3 +1,4 @@
+import type { ReconciliationSource } from "@/core/document";
 import type { Alignment, TableDocument } from "@/core/types";
 
 export type CodecId =
@@ -118,6 +119,10 @@ export const defaultOutputOptions: Required<OutputOptions> = {
 // docs/adr/0005.
 export interface TableCodec {
 	readonly id: CodecId;
+	// Format facts used by structural reconciliation. A text-only syntax can
+	// preserve an unchanged canonical value only with the previous document,
+	// while metadata the syntax cannot express must stay on that document.
+	readonly reconciliation: ReconciliationSource;
 	// Without the leading dot.
 	readonly extension: string;
 	readonly mimeType: string;

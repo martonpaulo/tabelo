@@ -125,7 +125,10 @@ Related to: Cell, Cell text
 A cell value projected to text, owned by one core function. Every view, codec,
 and export reads a cell through it, so there is exactly one answer to what a
 value looks like. `null` and the empty string project alike and remain distinct
-values: text is a projection, never a second home for the data.
+values: text is a projection, never a second home for the data. When a text
+source is reconciled, an exact match with the previous cell text retains the
+previous value. Changed or newly inserted text is a string. Without a previous
+document, empty text cannot identify whether it once represented `null`.
 
 Related to: Cell value, Serializer
 
@@ -311,5 +314,8 @@ Related to: Table document, Import
   document property.
 - A cell value's type is carried, never derived. No view may reinterpret a cell,
   and no format that cannot express a type may invent one.
+- Reconciliation preserves an existing cell value only when a text-only source
+  returns its exact cell-text projection. Changed and newly inserted text stays
+  text. This previous value is what keeps `null` distinct from an empty string.
 - The expected type belongs to the column and the real type belongs to the cell,
   so a column may hold values that disagree with what it expects.

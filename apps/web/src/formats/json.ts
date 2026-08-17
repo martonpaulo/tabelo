@@ -167,6 +167,12 @@ function jsonPrecondition(document: TableDocument): PreconditionFailure | null {
 
 export const jsonCodec: TableCodec = {
 	id: "json",
+	// JSON has native scalar syntax even though accepting it is delivered by
+	// the typed JSON issue. Do not apply text-only preservation here.
+	reconciliation: {
+		cellValues: "typed",
+		columnAlignment: "unexpressed",
+	},
 	extension: "json",
 	mimeType: "application/json",
 	parseMatrix: parseJsonMatrix,

@@ -145,6 +145,10 @@ function serializeHtml(document: TableDocument): string {
 
 export const htmlCodec: TableCodec = {
 	id: "html",
+	reconciliation: {
+		cellValues: "text",
+		columnAlignment: "carried",
+	},
 	extension: "html",
 	mimeType: "text/html",
 	parseMatrix: parseHtmlMatrix,

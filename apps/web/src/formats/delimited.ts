@@ -119,6 +119,10 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 
 	return {
 		id: config.id,
+		reconciliation: {
+			cellValues: "text",
+			columnAlignment: "unexpressed",
+		},
 		extension: config.extension,
 		mimeType: config.mimeType,
 		parseMatrix,

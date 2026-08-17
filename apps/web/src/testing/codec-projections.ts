@@ -4,19 +4,18 @@ import type { CodecId, TableCodec } from "@/formats";
 
 interface CodecProjectionContract {
 	readonly normalizesLineEndings: boolean;
-	readonly preservesAlignment: boolean;
 }
 
 // These are format facts, not weakened assertions. Matrix content is always
 // compared. Only metadata the format cannot encode is projected away.
 const projectionContracts: Record<CodecId, CodecProjectionContract> = {
-	markdown: { normalizesLineEndings: true, preservesAlignment: true },
-	csv: { normalizesLineEndings: false, preservesAlignment: false },
-	tsv: { normalizesLineEndings: false, preservesAlignment: false },
-	html: { normalizesLineEndings: true, preservesAlignment: true },
-	jira: { normalizesLineEndings: true, preservesAlignment: false },
-	json: { normalizesLineEndings: false, preservesAlignment: false },
-	records: { normalizesLineEndings: true, preservesAlignment: false },
+	markdown: { normalizesLineEndings: true },
+	csv: { normalizesLineEndings: false },
+	tsv: { normalizesLineEndings: false },
+	html: { normalizesLineEndings: true },
+	jira: { normalizesLineEndings: true },
+	json: { normalizesLineEndings: false },
+	records: { normalizesLineEndings: true },
 };
 
 function normalizeLineEndings(value: string): string {
@@ -32,9 +31,10 @@ function projectAlignment(
 	codec: TableCodec,
 	document: TableDocument,
 ): readonly Alignment[] {
-	const contract = projectionContracts[codec.id];
 	return document.columns.map((column) =>
-		contract.preservesAlignment ? column.align : "default",
+		codec.reconciliation.columnAlignment === "carried"
+			? column.align
+			: "default",
 	);
 }
 

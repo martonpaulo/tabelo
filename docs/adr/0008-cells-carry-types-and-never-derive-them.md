@@ -62,11 +62,19 @@ Rejected alternatives:
 
 ## Consequences
 
-Text formats keep behaving exactly as they always have. Markdown, CSV, TSV,
-Jira, HTML, and Records have no syntax for a type, so they serialize `cellText`
-and parse back strings. A number that leaves through CSV and returns is a
-string, and that is correct: the format carried no type, so nothing may invent
-one.
+Markdown, CSV, TSV, Jira, HTML, and Records have no syntax for a type, so they
+serialize `cellText` and parse strings. Inside a synchronized source edit,
+reconciliation still has the previous document: when a parsed string exactly
+equals `cellText` of the existing value at that position, it retains that value
+and its type. When the text changes, the parsed string wins as a string. A fresh
+import has no previous value to supply a distinction, so a number that leaves
+through CSV and returns through import is a string. That is correct: the format
+carried no type, and nothing inferred one.
+
+The same rule explains the ambiguous empty projection. `null` and `""` both
+serialize as empty text. Reconciliation preserves either one when the previous
+document identifies it; a newly inserted or freshly imported empty text cell is
+the empty string.
 
 That makes JSON the first and, for now, only source of a native value, and it
 makes the visual table the place a user can state a type deliberately. Both
@@ -74,8 +82,8 @@ arrive after this decision; the model lands first so the migration is
 reviewable on its own.
 
 Round-trip preservation stays the measured signal, and it now has two halves:
-text still survives byte-exact, and a native value must survive as the same
-value rather than as its text.
+text still survives byte-exact, and a native value must survive synchronized
+text reconciliation as the same value rather than as its projection.
 
 Persistence gained a schema version whose migration assigns every existing
 column the `text` expectation and copies every stored value through as the

@@ -583,14 +583,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		);
 		if (!pane) return;
 
-		const parse = getView(viewId).codec?.parse;
-		if (!parse) return;
+		const codec = getView(viewId).codec;
+		if (!codec) return;
 
 		const previousDraft = state.draft;
 		const sameOwner =
 			previousDraft?.paneId === paneId && previousDraft.viewId === viewId;
 		const ownerChanged = previousDraft !== null && !sameOwner;
-		const result = parse(text);
+		const result = codec.parse(text);
 
 		if (!result.ok) {
 			const continuingVisibleError =
@@ -636,7 +636,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		}
 
 		clearInvalidTimer();
-		const document = reconcileDocument(state.document, result.document);
+		const document = reconcileDocument(
+			state.document,
+			result.document,
+			codec.reconciliation,
+		);
 		const documentChanged = document !== state.document;
 		const displacedInvalid = ownerChanged && previousDraft.status !== "clean";
 

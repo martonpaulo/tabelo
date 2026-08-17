@@ -385,6 +385,10 @@ function canSniffRecords(text: string): boolean {
 
 export const recordsCodec: TableCodec = {
 	id: "records",
+	reconciliation: {
+		cellValues: "text",
+		columnAlignment: "unexpressed",
+	},
 	extension: "records.txt",
 	mimeType: "text/plain",
 	parseMatrix: parseRecordsMatrix,
