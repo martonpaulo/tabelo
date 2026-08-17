@@ -5,7 +5,7 @@ import { createEmptyDocument } from "@/core/document";
 import { createDefaultWorkspace } from "@/workspace/layout";
 import v2 from "./fixtures/v2.json";
 import v4 from "./fixtures/v4.json";
-import v5 from "./fixtures/v5.json";
+import v6 from "./fixtures/v6.json";
 import { CURRENT_VERSION, RECOVERY_KEY, STORAGE_KEY } from "./schema";
 import {
 	loadState,
@@ -51,7 +51,7 @@ describe("browser storage outcomes", () => {
 		],
 		[
 			"invalid current schema",
-			JSON.stringify({ ...v5, document: { columns: [] } }),
+			JSON.stringify({ ...v6, document: { columns: [] } }),
 			"current-schema-invalid",
 		],
 		[

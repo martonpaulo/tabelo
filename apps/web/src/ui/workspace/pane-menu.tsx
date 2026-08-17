@@ -29,7 +29,9 @@ import {
 	copyFormattedTableToClipboard,
 	copyToClipboard,
 } from "@/ui/clipboard-actions";
+import { preconditionRecovery } from "@/ui/precondition-recovery";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
+import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import type { ViewDefinition } from "@/views/types";
 import { smallerLayout } from "@/workspace/layout";
@@ -96,6 +98,7 @@ export function PaneMenu({
 	const currentViewFailure = view.codec
 		? canSerialize(view.codec, document)
 		: null;
+	const recovery = preconditionRecovery(currentViewFailure);
 	const canCopy =
 		view.capabilities.textClipboard ||
 		(view.capabilities.structuredClipboard &&
@@ -166,6 +169,16 @@ export function PaneMenu({
 										: copy.actions.copyFormattedTable}
 								</DropdownMenuItem>
 							</DisabledTooltip>
+							{/* Beside the refused command, never in place of it: the copy
+							    item stays disabled and this is a second, ordinary command.
+							    See docs/design-system.md §4. */}
+							{recovery ? (
+								<RecoveryMenuItem
+									recovery={recovery}
+									target={view.label}
+									onRun={menuDialog.runAfterClose}
+								/>
+							) : null}
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 					</>

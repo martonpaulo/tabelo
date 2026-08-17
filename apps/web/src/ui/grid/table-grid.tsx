@@ -2,6 +2,7 @@ import { cn } from "@tabelo/ui/lib/utils";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
+import { cellTextAt } from "@/core/cell-value";
 import {
 	activeRange,
 	type CellPosition,
@@ -473,16 +474,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			const width = store.workspace.columnWidths[column.id];
 			const letter = copy.a11y.columnLetter(focusedColumn);
 			if (event.key === "ArrowLeft" && atMinimumColumnWidth(width)) {
-				store.announceGridStatus(copy.status.columnWidthMinimum(letter));
+				store.announceStatus(copy.status.columnWidthMinimum(letter));
 				return;
 			}
 			if (event.key === "ArrowRight" && atMaximumColumnWidth(width)) {
-				store.announceGridStatus(copy.status.columnWidthMaximum(letter));
+				store.announceStatus(copy.status.columnWidthMaximum(letter));
 				return;
 			}
 			const next = stepColumnWidth(width, event.key === "ArrowLeft" ? -1 : 1);
 			store.resizeColumn(focusedColumn, next, "column");
-			store.announceGridStatus(copy.status.columnWidth(letter, next));
+			store.announceStatus(copy.status.columnWidth(letter, next));
 			return;
 		}
 
@@ -1057,7 +1058,7 @@ const DataRow = memo(function DataRow({
 				const isFocus = columnIndex === focusColumn;
 				const inSelection = coveredBySpans(selectedSpans, columnIndex);
 				const copiedEdges = clipboardEdgesAt(copiedAt, rowIndex, columnIndex);
-				const value = row.cells[column.id] ?? "";
+				const value = cellTextAt(row, column.id);
 				const isEditing = columnIndex === editingColumn;
 				const wrapped = wrappedColumns.includes(column.id);
 

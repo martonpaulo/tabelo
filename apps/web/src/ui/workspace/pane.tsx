@@ -6,6 +6,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
 import { Panel } from "@/ui/primitives/panel";
+import type { OccurrenceSummary } from "@/ui/source/occurrence-selection";
 import { getView } from "@/views/registry";
 import {
 	gridAreaStyle,
@@ -17,6 +18,7 @@ import {
 import { PaneContent } from "./pane-content";
 import { PaneIdentity, PaneMenu } from "./pane-menu";
 import { PaneEntryContext, usePaneEntry } from "./use-pane-entry";
+import { PaneOccurrencesContext } from "./use-pane-occurrences";
 
 // One pane frame for every view. The header carries only what belongs to this
 // pane: which view it shows and the state of that view. Document-level
@@ -83,6 +85,12 @@ export const Pane = memo(function Pane({
 		else setAnnouncement("");
 	}, [entered, justAdded, view.label]);
 
+	// Published by whatever this pane is currently showing, and owned by nothing
+	// else: the summary lives exactly as long as the content that reports it.
+	const [occurrences, setOccurrences] = useState<OccurrenceSummary | null>(
+		null,
+	);
+
 	return (
 		<PaneEntryContext.Provider value={entered}>
 			<Panel
@@ -116,6 +124,22 @@ export const Pane = memo(function Pane({
 				<Panel.Header className="overflow-hidden">
 					<PaneIdentity view={view} compact={compact} />
 					<Panel.Spacer />
+					{/* Passive state, not a third action: text with no role, no focus,
+					    and nothing to press. It grows leftward into the spacer, so the
+					    actions trigger never moves, and tabular figures keep the count
+					    from resizing as it climbs. Secondary status detail, which is
+					    what text-xs is reserved for: see docs/design-system.md §2. */}
+					{occurrences ? (
+						<span
+							data-slot="pane-occurrences"
+							className="shrink-0 whitespace-nowrap text-muted-foreground text-xs tabular-nums"
+						>
+							{copy.workspace.occurrencesSelected(
+								occurrences.selected,
+								occurrences.total,
+							)}
+						</span>
+					) : null}
 					<PaneMenu
 						paneId={pane.id}
 						view={view}
@@ -136,12 +160,14 @@ export const Pane = memo(function Pane({
 							: "bg-surface-readonly",
 					)}
 				>
-					<PaneContent
-						paneId={pane.id}
-						view={view}
-						zoom={pane.zoom}
-						wrap={pane.wrap}
-					/>
+					<PaneOccurrencesContext.Provider value={setOccurrences}>
+						<PaneContent
+							paneId={pane.id}
+							view={view}
+							zoom={pane.zoom}
+							wrap={pane.wrap}
+						/>
+					</PaneOccurrencesContext.Provider>
 				</Panel.Body>
 
 				{splitRight ? (

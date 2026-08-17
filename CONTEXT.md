@@ -53,6 +53,13 @@ Related to: Workspace, Pane
 A named arrangement of panes over the slots, such as "two columns" or "four
 panes". Every preset tiles all four slots exactly once with rectangular panes.
 
+There are eight, grouped by the number of panes they hold: one pane; two
+columns and two rows; split left, split right, split top and split bottom;
+and four panes. The pane count decides which presets exist, so choosing an
+arrangement never changes how many panes are open. Adding and closing a view
+are the commands that do that. One pane and four panes each have a single
+preset, so there is no arrangement to choose there.
+
 Related to: Workspace, Slot
 
 ### Codec
@@ -99,10 +106,37 @@ Related to: Cell, Table document
 
 ### Cell
 
-The value at one row/column intersection. Always an opaque string: Tabelo never
-infers types, coerces numbers, or reformats content.
+The value at one row/column intersection. It holds a **cell value**: a string, a
+number, a boolean, or null. Tabelo never infers a type, coerces a number, or
+reformats content: a type is carried from a source that stated it or chosen
+explicitly, never derived from how the text looks.
 
-Related to: Row, Column
+Related to: Cell value, Cell text, Expected column type, Row, Column
+
+### Cell value
+
+The scalar a cell holds. `null` is one of them, chosen explicitly or carried
+from a typed source, and it is not a column mode or a nullability flag.
+
+Related to: Cell, Cell text
+
+### Cell text
+
+A cell value projected to text, owned by one core function. Every view, codec,
+and export reads a cell through it, so there is exactly one answer to what a
+value looks like. `null` and the empty string project alike and remain distinct
+values: text is a projection, never a second home for the data.
+
+Related to: Cell value, Serializer
+
+### Expected column type
+
+The type a column expects to be typed into it: text, number, or boolean. It
+guides editing and validation and never constrains the cells, because a typed
+source may legitimately carry mixed types in one column. The real type always
+belongs to the cell.
+
+Related to: Column, Cell value
 
 ### Selection
 
@@ -113,6 +147,18 @@ area is the ordinary case; only the platform modifier makes a second one.
 Transient state: never persisted, never a document-timeline step.
 
 Related to: Cell, Row, Column, Table operation
+
+### Occurrence selection
+
+What a source editor is pointing at when several ranges of the same text are
+selected at once, gathered one at a time from the current selection. Matching
+is literal and case-sensitive, and narrows to whole words when the selection is
+exactly a word. The most recently added range is the primary one. Transient
+editor state: never a draft, never document state, never persisted, and never a
+document-timeline step. Editing every selected range at once is one editor
+transaction and therefore one step of the editor's own history.
+
+Related to: Draft, Document timeline, View
 
 ### Alignment
 
@@ -240,6 +286,8 @@ Related to: Table document, Import
   once. Every pane is rectangular; an L-shape is not representable.
 - A registered view appears in at most one pane in the workspace.
 - At most one draft exists at any moment.
+- An occurrence selection ends when its pane changes view or closes. Selecting
+  occurrences changes no text and creates no history step.
 - Every column and every row has a stable identifier that is never shown to the
   user and never reused after deletion.
 - A view is always derived from the table document. Serialized text is
@@ -261,4 +309,7 @@ Related to: Table document, Import
   round trip through Markdown or Jira byte-exact.
 - Header presence is an import-time fact or explicit choice, never a stored
   document property.
-- Cell values are opaque strings; no view may reinterpret them.
+- A cell value's type is carried, never derived. No view may reinterpret a cell,
+  and no format that cannot express a type may invent one.
+- The expected type belongs to the column and the real type belongs to the cell,
+  so a column may hold values that disagree with what it expects.

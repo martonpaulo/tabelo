@@ -1,20 +1,42 @@
+import {
+	cellTextAt,
+	DEFAULT_EXPECTED_TYPE,
+	isBlankCell,
+	readCell,
+} from "./cell-value";
 import { createColumnId, createRowId } from "./ids";
-import type { Alignment, Column, ColumnId, Row, TableDocument } from "./types";
+import type {
+	Alignment,
+	CellValue,
+	Column,
+	ColumnId,
+	Row,
+	TableDocument,
+} from "./types";
 
 export const DEFAULT_COLUMN_COUNT = 3;
 export const DEFAULT_ROW_COUNT = 3;
 
 export function createColumn(header: string): Column {
-	return { id: createColumnId(), header, align: "default" };
+	return {
+		id: createColumnId(),
+		header,
+		align: "default",
+		expectedType: DEFAULT_EXPECTED_TYPE,
+	};
 }
 
+// Accepts any cell value so a typed source can build rows directly, while a
+// value nobody supplied starts as an empty string rather than `null`: an empty
+// cell in the grid is text the user has not typed yet, not a chosen `null`.
 export function createRow(
 	columns: readonly Column[],
-	values: readonly string[] = [],
+	values: readonly CellValue[] = [],
 ): Row {
-	const cells: Record<ColumnId, string> = {};
+	const cells: Record<ColumnId, CellValue> = {};
 	columns.forEach((column, index) => {
-		cells[column.id] = values[index] ?? "";
+		const value = values[index];
+		cells[column.id] = value === undefined ? "" : value;
 	});
 	return { id: createRowId(), cells };
 }
@@ -38,7 +60,7 @@ export function createEmptyDocument(
 export function isDocumentBlank(document: TableDocument): boolean {
 	const headersBlank = document.columns.every((column) => column.header === "");
 	const cellsBlank = document.rows.every((row) =>
-		Object.values(row.cells).every((value) => value === ""),
+		Object.values(row.cells).every(isBlankCell),
 	);
 	return headersBlank && cellsBlank;
 }
@@ -109,22 +131,24 @@ export function reconcileDocument(
 
 		// The id always comes from the existing column. Presentation preferences
 		// are keyed by that id in the workspace and never enter reconciliation.
+		// The expected type comes from the existing column too: a text format
+		// cannot express it, so a parse must not reset it to the default.
 		if (existing.header === column.header && existing.align === column.align) {
 			return existing;
 		}
 
 		columnsUnchanged = false;
-		return { ...column, id: existing.id };
+		return { ...column, id: existing.id, expectedType: existing.expectedType };
 	});
 
 	let rowsUnchanged = parsed.rows.length === current.rows.length;
 
 	const rows = parsed.rows.map((row, rowIndex) => {
 		const existing = current.rows[rowIndex];
-		const cells: Record<ColumnId, string> = {};
+		const cells: Record<ColumnId, CellValue> = {};
 		columns.forEach((column, columnIndex) => {
 			const parsedColumn = parsed.columns[columnIndex];
-			cells[column.id] = parsedColumn ? (row.cells[parsedColumn.id] ?? "") : "";
+			cells[column.id] = parsedColumn ? readCell(row, parsedColumn.id) : "";
 		});
 
 		// The key count has to match as well as the values: a row still carrying a
@@ -151,13 +175,16 @@ export interface DocumentToMatrixOptions {
 	readonly includeHeader?: boolean;
 }
 
+// The one seam where the document becomes text. Every codec that serializes
+// through a matrix inherits `cellText` from here rather than deciding for
+// itself what a number or a boolean looks like.
 export function documentToMatrix(
 	document: TableDocument,
 	options: DocumentToMatrixOptions = {},
 ): string[][] {
 	const { includeHeader = true } = options;
 	const body = document.rows.map((row) =>
-		document.columns.map((column) => row.cells[column.id] ?? ""),
+		document.columns.map((column) => cellTextAt(row, column.id)),
 	);
 	if (!includeHeader) return body;
 	return [document.columns.map((column) => column.header), ...body];

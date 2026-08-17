@@ -8,6 +8,7 @@ import {
 import { useEffect, useId, useState } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
+import { preconditionRecovery } from "@/ui/precondition-recovery";
 import {
 	DialogActions,
 	DialogCancel,
@@ -73,23 +74,31 @@ export function ChangeViewDialog({
 					value={selected ?? ""}
 					onValueChange={(value) => setChosen(value as ViewId)}
 				>
-					{listViews().map((candidate) => (
-						<SingleSelectionOption
-							key={candidate.id}
-							value={candidate.id}
-							selected={selected === candidate.id}
-							icon={<candidate.icon />}
-							label={candidate.label}
-							description={candidate.description}
-							availability={availabilityForView({
-								view: candidate,
-								panes,
-								document,
-								currentPaneId: paneId ?? undefined,
-								currentViewId: current?.id,
-							})}
-						/>
-					))}
+					{listViews().map((candidate) => {
+						const availability = availabilityForView({
+							view: candidate,
+							panes,
+							document,
+							currentPaneId: paneId ?? undefined,
+							currentViewId: current?.id,
+						});
+						return (
+							<SingleSelectionOption
+								key={candidate.id}
+								value={candidate.id}
+								selected={selected === candidate.id}
+								icon={<candidate.icon />}
+								label={candidate.label}
+								description={candidate.description}
+								availability={availability?.availability}
+								recovery={
+									preconditionRecovery(availability?.failure ?? null) ??
+									undefined
+								}
+								onRecover={onClose}
+							/>
+						);
+					})}
 				</SingleSelectionList>
 
 				<DialogActions>

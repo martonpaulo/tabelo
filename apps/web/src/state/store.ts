@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ClipboardPayload } from "@/clipboard/parse";
+import { cellTextAt } from "@/core/cell-value";
 import {
 	createEmptyDocument,
 	isDocumentBlank,
@@ -83,6 +84,7 @@ import {
 	createDefaultWorkspace,
 	type LayoutId,
 	movePane as moveWorkspacePane,
+	paneCount,
 	type SplitOption,
 	smallerLayout,
 	splitOptions,
@@ -142,7 +144,7 @@ export interface PendingImport {
 	readonly prepared: PreparedImport;
 }
 
-export interface GridStatusAnnouncement {
+export interface StatusAnnouncement {
 	readonly id: string;
 	readonly message: string;
 }
@@ -192,7 +194,11 @@ export interface TabeloState {
 	// nothing a producer says may be destroyed by whatever comes after it.
 	notices: readonly TransientNotice[];
 	inputError: ImportError | null;
-	gridStatus: GridStatusAnnouncement | null;
+	// Polite text with no notice behind it: the grid's column width, the source
+	// editor's occurrence count. One slot rather than a queue, because the most
+	// recent one is the only one worth speaking, and it is shared by every
+	// producer so no second live region is ever needed.
+	politeStatus: StatusAnnouncement | null;
 	// A document replacement whose format does not identify row 1. It remains
 	// outside the document and history until the user answers the question.
 	pendingImport: PendingImport | null;
@@ -270,11 +276,11 @@ export interface TabeloState {
 	resetDocument: () => void;
 	dismissNotice: (id: string) => void;
 	pushNotice: (request: NoticeRequest) => void;
-	announceGridStatus: (message: string) => void;
+	announceStatus: (message: string) => void;
 }
 
 let invalidTimer: ReturnType<typeof setTimeout> | null = null;
-let gridStatusSequence = 0;
+let statusSequence = 0;
 
 function snapshotOf(state: TabeloState): HistoryEntry {
 	const draft =
@@ -473,7 +479,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	storageIssue: null,
 	notices: [],
 	inputError: null,
-	gridStatus: null,
+	politeStatus: null,
 	pendingImport: null,
 	pendingPaneAction: null,
 	outputOptions: { ...defaultOutputOptions },
@@ -667,6 +673,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	setLayout: (layout) =>
 		set((state) => {
+			// Rearranging is not resizing the workspace. A selection naming another
+			// pane count is stale or impossible, so it is refused rather than
+			// silently opening or closing a pane behind the user's choice.
+			if (paneCount(layout) !== state.workspace.panes.length) return state;
+
 			const panes = applyLayout(
 				layout,
 				state.workspace.panes,
@@ -1261,7 +1272,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const body = selectionDataRows(state.selection, rowCount, columnCount)
 			.map((index) => state.document.rows[index])
 			.filter((row) => row !== undefined)
-			.map((row) => columns.map((column) => row.cells[column.id] ?? ""));
+			.map((row) => columns.map((column) => cellTextAt(row, column.id)));
 
 		// A selection that covers the header carries it, which is what makes the
 		// result useful when pasted somewhere else. Whole columns always do.
@@ -1395,9 +1406,9 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	pushNotice: (request) =>
 		set((state) => ({ notices: queueNotice(state.notices, request) })),
 
-	announceGridStatus: (message) => {
-		gridStatusSequence += 1;
-		set({ gridStatus: { id: `grid-status-${gridStatusSequence}`, message } });
+	announceStatus: (message) => {
+		statusSequence += 1;
+		set({ politeStatus: { id: `polite-status-${statusSequence}`, message } });
 	},
 }));
 

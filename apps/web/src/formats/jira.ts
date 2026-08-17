@@ -1,3 +1,4 @@
+import { cellTextAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
 import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
@@ -169,7 +170,7 @@ function serializeJira(document: TableDocument): string {
 	const body = document.rows.map(
 		(row) =>
 			`|${document.columns
-				.map((column) => escapeJiraCell(row.cells[column.id] ?? ""))
+				.map((column) => escapeJiraCell(cellTextAt(row, column.id)))
 				.join("|")}|`,
 	);
 

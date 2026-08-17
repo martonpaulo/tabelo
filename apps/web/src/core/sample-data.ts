@@ -12,8 +12,10 @@ export interface SamplePerson {
 	readonly name: string;
 	readonly city: string;
 	readonly role: string;
-	// Kept as a string because a cell value is a string everywhere else in the
-	// product. Tabelo never infers types, so a fixture must not imply it does.
+	// Kept as a string even though a cell may hold a number, because nothing
+	// derives a type from text: a numeric-looking value that arrived as text is
+	// text. A fixture typing this as a number would imply an inference that
+	// does not exist. See docs/adr/0008.
 	readonly age: string;
 }
 

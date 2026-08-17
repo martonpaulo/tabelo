@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { documentFromMatrix, reconcileDocument } from "./document";
+import {
+	createColumn,
+	createEmptyDocument,
+	createRow,
+	documentFromMatrix,
+	documentToMatrix,
+	isDocumentBlank,
+	reconcileDocument,
+} from "./document";
 import type { TableDocument } from "./types";
 
 function docOf(matrix: string[][]): TableDocument {
@@ -12,6 +20,70 @@ const people = [
 	["Paulo", "Madrid", "29"],
 	["Mabel", "Lisbon", "41"],
 ];
+
+describe("the typed document foundation", () => {
+	it("expects text until something says otherwise", () => {
+		expect(createColumn("Name").expectedType).toBe("text");
+		expect(
+			createEmptyDocument().columns.every(
+				(column) => column.expectedType === "text",
+			),
+		).toBe(true);
+		expect(
+			docOf(people).columns.every((column) => column.expectedType === "text"),
+		).toBe(true);
+	});
+
+	// Typed entry belongs to a later change. A new row is empty text even in a
+	// column that expects numbers, so nothing here invents a `0` or a `null`.
+	it("starts a new row as empty text whatever the column expects", () => {
+		const columns = [
+			{ ...createColumn("Age"), expectedType: "number" as const },
+		];
+		expect(Object.values(createRow(columns).cells)).toEqual([""]);
+	});
+
+	it("carries scalars into a row and projects them at the matrix seam", () => {
+		const columns = [createColumn("Name"), createColumn("Age")];
+		const row = createRow(columns, ["Ingrid", 35]);
+		const document: TableDocument = { columns, rows: [row] };
+
+		expect(Object.values(row.cells)).toEqual(["Ingrid", 35]);
+		expect(documentToMatrix(document, { includeHeader: false })).toEqual([
+			["Ingrid", "35"],
+		]);
+	});
+
+	// An explicit `null` projects to nothing and is still content: the guard in
+	// front of the destructive actions must not read it as an untouched table.
+	it("does not count an explicit null as a blank document", () => {
+		const columns = [createColumn("")];
+		expect(isDocumentBlank({ columns, rows: [createRow(columns)] })).toBe(true);
+		expect(
+			isDocumentBlank({ columns, rows: [createRow(columns, [null])] }),
+		).toBe(false);
+	});
+
+	// A text format cannot express an expectation, so a parse must return it
+	// from the current column rather than reset it to the default.
+	it("keeps the expected type through a source edit", () => {
+		const current = docOf(people);
+		const typed: TableDocument = {
+			...current,
+			columns: current.columns.map((column, index) =>
+				index === 2 ? { ...column, expectedType: "number" as const } : column,
+			),
+		};
+		const edited = people.map((row, index) =>
+			index === 0 ? ["Name", "City", "Years"] : row,
+		);
+
+		const next = reconcileDocument(typed, docOf(edited));
+
+		expect(next.columns[2].header).toBe("Years");
+		expect(next.columns[2].expectedType).toBe("number");
+	});
+});
 
 // A source parser builds fresh identifiers every time, so reconciliation is the
 // only thing standing between a keystroke and 200 newly allocated rows. These

@@ -1,7 +1,8 @@
-import { useContext, useMemo } from "react";
+import { useContext, useEffect, useMemo } from "react";
 import { copy } from "@/copy/copy";
 import { textForView, useTabeloStore } from "@/state/store";
 import { PaneEntryContext } from "@/ui/workspace/use-pane-entry";
+import { useReportPaneOccurrences } from "@/ui/workspace/use-pane-occurrences";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import { BlockedState } from "./blocked-state";
@@ -59,6 +60,16 @@ export default function SourceView({
 	const editable = view.capabilities.editable;
 	const feedbackIds = sourceFeedbackIds(paneId);
 
+	// Leaving for the grid or the preview, and the pane closing, both unmount
+	// this component while the header outlives it, so the summary has to be
+	// dropped on the way out. A change to another source view keeps this
+	// component mounted and is the editor's own business: it ends the multiple
+	// selection there, which clears the header through the ordinary path.
+	const reportOccurrences = useReportPaneOccurrences();
+	useEffect(() => {
+		return () => reportOccurrences(null);
+	}, [reportOccurrences]);
+
 	// The editor description exists for the pane's lifetime, so diagnostics
 	// update an element assistive technology already knows. It is not a live
 	// region because aria-describedby is the sole announcement channel here.
@@ -89,6 +100,15 @@ export default function SourceView({
 				}}
 				onUndoBeyondLocal={() => useTabeloStore.getState().undo()}
 				onRedoBeyondLocal={() => useTabeloStore.getState().redo()}
+				onOccurrencesChange={reportOccurrences}
+				onOccurrenceAdded={({ selected, total }) =>
+					// The app's one polite region, shared rather than added to: see
+					// docs/design-system.md §4. The header carries the same sentence
+					// visibly, so this is the spoken half of one piece of feedback.
+					useTabeloStore
+						.getState()
+						.announceStatus(copy.workspace.occurrencesSelected(selected, total))
+				}
 			/>
 		</>
 	);

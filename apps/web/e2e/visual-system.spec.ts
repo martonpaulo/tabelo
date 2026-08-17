@@ -331,11 +331,14 @@ test("multi-pane layouts and themes keep the active boundary on all four edges",
 	tabelo,
 }) => {
 	test.setTimeout(60_000);
-	await tabelo.cell(1, 1).click();
 	for (const colorScheme of ["dark", "light"] as const) {
 		await page.emulateMedia({ colorScheme });
 		for (const preset of layoutPresets) {
 			await tabelo.chooseLayout(preset.id);
+			// Reaching a preset can pass through Add view, which hands the pane it
+			// creates the active state. The subject here is how the boundary is
+			// drawn, so the grid is made active again first.
+			await tabelo.cell(1, 1).click();
 			const pane = tabelo.pane("grid");
 			if (preset.id === "single") {
 				await expect(pane).not.toHaveAttribute("data-pane-active");

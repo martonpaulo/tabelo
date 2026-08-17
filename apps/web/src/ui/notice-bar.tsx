@@ -28,9 +28,10 @@ export function NoticeBar() {
 	const notices = useAppNotices();
 	// The grid's selection extent is polite text with no visible counterpart, so
 	// it joins the notices at the one place that owns the live regions rather
-	// than mounting a region of its own next to the grid.
+	// than mounting a region of its own next to the grid. The same is true of
+	// every other polite status the app produces.
 	const selectionExtent = useSelectionAnnouncement();
-	const gridStatus = useTabeloStore((state) => state.gridStatus);
+	const politeStatus = useTabeloStore((state) => state.politeStatus);
 	const announcements = useMemo(
 		() => [
 			...notices.map((notice) => ({
@@ -38,9 +39,11 @@ export function NoticeBar() {
 				urgency: notice.urgency,
 				message: announcementText(notice),
 			})),
-			...(gridStatus ? [{ ...gridStatus, urgency: "polite" as const }] : []),
+			...(politeStatus
+				? [{ ...politeStatus, urgency: "polite" as const }]
+				: []),
 		],
-		[gridStatus, notices],
+		[politeStatus, notices],
 	);
 
 	return (

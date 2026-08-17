@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { EXPECTED_COLUMN_TYPES } from "@/core/cell-value";
 import { workspacePanesTileLayout } from "@/workspace/layout";
 import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
-export const PERSISTED_VERSION = 5 as const;
+export const PERSISTED_VERSION = 6 as const;
 
 // These schemas mirror the payloads shipped by the commits that introduced
-// versions 1 through 4. Keep them beside their stored fixtures: a migration
+// versions 1 through 5. Keep them beside their stored fixtures: a migration
 // must validate what that release wrote, not what the current model resembles.
 
 const alignmentSchema = z.enum(["default", "left", "center", "right"]);
@@ -27,10 +28,33 @@ const historicalDocumentSchema = z.object({
 	rows: z.array(rowSchema),
 });
 
-const currentColumnSchema = historicalColumnSchema.omit({ width: true });
+const columnWithoutWidthSchema = historicalColumnSchema.omit({ width: true });
+const persistedDocumentV5Schema = z.object({
+	columns: z.array(columnWithoutWidthSchema).min(1),
+	rows: z.array(rowSchema),
+});
+
+// A number that JSON cannot round-trip is not a cell value: `JSON.stringify`
+// writes `NaN` and `Infinity` as `null`, which would silently turn a number
+// into a different type on the next load. Refusing the payload sends it down
+// the recovery path with its bytes intact instead.
+const cellValueSchema = z.union([
+	z.string(),
+	z.number().finite(),
+	z.boolean(),
+	z.null(),
+]);
+
+const currentColumnSchema = columnWithoutWidthSchema.extend({
+	expectedType: z.enum(EXPECTED_COLUMN_TYPES),
+});
+const currentRowSchema = z.object({
+	id: z.string().min(1),
+	cells: z.record(z.string(), cellValueSchema),
+});
 const currentDocumentSchema = z.object({
 	columns: z.array(currentColumnSchema).min(1),
-	rows: z.array(rowSchema),
+	rows: z.array(currentRowSchema),
 });
 
 const historicalViewIdSchema = z.enum([
@@ -164,6 +188,18 @@ export const persistedStateV4Schema = z
 const currentWorkspaceSchema = persistedWorkspaceV4Schema.extend({
 	columnWidths: z.record(z.string().min(1), z.number().positive()),
 });
+
+// Version 6 changed the document alone, so version 5 shares the current
+// workspace shape. A later version that changes the workspace has to pin this
+// one to its own copy rather than let it follow.
+export const persistedStateV5Schema = z
+	.object({
+		version: z.literal(5),
+		document: persistedDocumentV5Schema,
+		workspace: currentWorkspaceSchema,
+		draft: currentDraftSchema.nullable(),
+	})
+	.superRefine((state, context) => refineCurrentRelationships(state, context));
 
 export const persistedStateSchema = z
 	.object({

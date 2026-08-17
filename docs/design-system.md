@@ -305,8 +305,11 @@ Do not implement scale as a transform on the pane. That breaks hit testing and
 text rendering. Scale the type, and scale measured geometry such as the grid's
 column widths in the component that owns it. Zoom is a local preference belonging to
 the pane, never document state and never a history step; it is bounded, and
-browser zoom remains the way to scale the whole interface. `Mod`+`+` and
-`Mod`+`-` step the active pane; `Mod`+`0` resets it.
+browser zoom remains the way to scale the whole interface. `Mod`+`Alt`+`+` and
+`Mod`+`Alt`+`-` step the active pane; `Mod`+`Alt`+`0` resets it. The `Alt` is
+load-bearing: `Mod`+`+`, `Mod`+`-`, and `Mod`+`0` belong to the browser and are
+never intercepted, because a user pressing them wants the chrome, hit targets,
+and focus rings that pane zoom deliberately leaves alone.
 
 ### Syntax and table structure
 
@@ -759,6 +762,20 @@ blocked replaces its content with one keyboard-focusable written status. The
 status is announced to assistive technology and identifies affected rows or
 columns without relying on the grid being visible.
 
+**A refusal that names a position offers the correction beside it.** The
+refused choice stays natively disabled with its reason, and an ordinary enabled
+`Fix table` command sits immediately after it as a sibling: never nested inside
+the disabled option, its label, or its full-row overlay. A control must not
+report itself as disabled while answering to activation, and an enabled control
+must not perform a command other than the one its label states. The correction
+takes the user to the first offending header or cell, raises the same reason
+through the notice channel, and closes the surface it was invoked from without
+changing the view, the panes, or the document. Several refused choices in one
+list each get their own command, so the accessible name opens with the label
+and names the refused choice. A refusal that names no position offers no
+command: the choice stays disabled with its reason rather than gaining a
+control that would do nothing.
+
 The pane frame owns focus for a source view. CodeMirror never draws a second
 inner rectangle: its caret and selection remain visible, while the pane's 0.125rem
 inset edge supplies all four focus sides. The source caret is a 0.125rem accent line
@@ -929,6 +946,16 @@ per keystroke.
   hidden click behavior. The trailing chevron, right-aligned, opens the pane
   actions menu. `Change view` is one entry in that menu and opens the shared
   choice dialog; it never opens a selector from the title.
+- The space between the identity and the trailing trigger is the pane's status
+  slot. What sits there is text: no role, no focus, nothing to press, and never
+  a third action. It reports a temporary condition of the pane's content, such
+  as how many occurrences an incremental selection has gathered, and a healthy
+  idle pane leaves it empty. It grows leftward, so the trigger never moves, and
+  it uses tabular figures so a rising count does not resize itself. Width
+  pressure is absorbed by the identity's own truncation and the registry's
+  short labels, never by shrinking status text below §2's floor. No state owns
+  the slot exclusively: two conditions present at once still keep the header
+  one row, with both meanings readable and no control displaced.
 - The `Read only` badge sits beside the view identity because it reports state.
   The actions trigger names the view it belongs to, because with four panes open
   the view is what says which pane the command affects: "Pane actions:
@@ -947,6 +974,11 @@ per keystroke.
 - Download and Layout remain document-level commands in the floating menu and
   keep their dialogs. Add view remains in the floating menu and on splittable
   pane edges; it never moves into the pane actions menu.
+- Layout offers only the arrangements of the pane count that is open: two
+  columns or two rows at two panes, the four asymmetric splits at three. It
+  never adds or closes a pane, which Add view and Close view own. At one and
+  four panes there is a single arrangement, so the command stays in place,
+  disabled with a written reason, rather than disappearing.
 - Move pane sits between Change view and Close view in the final pane group. It
   opens the spatial destination dialog and offers every other occupied position
   in the current preset. Choosing a destination swaps positions while pane id,

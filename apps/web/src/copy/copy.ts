@@ -12,6 +12,10 @@ import type { PanePositionId, SplitEdge } from "@/workspace/layout";
 // consistent, and the seam a locale would plug into if Tabelo ever ships one.
 // Keep the tone plain and calm: say what happened, not how clever the app is.
 
+// Named once because it is both the visible label of the recovery command and
+// the opening of the accessible name that says which refusal it belongs to.
+const FIX_TABLE = "Fix table";
+
 const views = {
 	grid: {
 		label: "Visual table",
@@ -214,7 +218,7 @@ export const copy = {
 
 	workspace: {
 		layout: "Layout",
-		layoutHint: "Choose how the workspace is divided",
+		layoutHint: "Choose how the open views are arranged",
 		applyLayout: "Apply layout",
 		changeView: "Change view",
 		changeViewHint: (label: string) =>
@@ -235,6 +239,11 @@ export const copy = {
 		zoomIn: "Zoom in",
 		resetZoom: "Reset zoom",
 		wrapSource: "Wrap lines",
+		// Both halves of one piece of feedback: the pane header shows this and
+		// the polite live region speaks it. How many occurrences the user has
+		// gathered, out of how many the source holds.
+		occurrencesSelected: (selected: number, total: number) =>
+			`${selected} of ${total} ${total === 1 ? "match" : "matches"} selected`,
 	},
 
 	disabled: {
@@ -243,6 +252,8 @@ export const copy = {
 		viewAlreadyOpen: (label: string) => `${label} is already open.`,
 		chooseAvailableView: "Choose an available view first.",
 		layoutAlreadyApplied: "This layout is already applied.",
+		layoutOnlyArrangement:
+			"This number of views has only one arrangement. Add or close a view to change it.",
 		settingsAlreadyApplied: "These settings are already applied.",
 		viewAlreadyShown: "This view is already shown in this pane.",
 		zoomMinimum: "Zoom is already at 50%.",
@@ -408,6 +419,9 @@ export const copy = {
 		fitColumnToContent: "Fit column to content",
 		wrapColumnText: "Wrap text",
 		editHeader: "Rename column",
+		// The command that sits beside a choice its codec has refused. The
+		// refusal already says what is wrong; this takes the user to it.
+		fixTable: FIX_TABLE,
 	},
 
 	addView: {
@@ -554,6 +568,11 @@ export const copy = {
 			`Row ${row + 2}, column ${column + 1}`,
 		headerEditor: (header: string, column: number) =>
 			`Rename ${header.trim() === "" ? `column ${columnLetter(column)}` : header}`,
+		// A list can refuse more than one choice at a time, and every recovery
+		// command in it reads "Fix table". The refused choice is what tells them
+		// apart, so it opens the accessible name while the visible label stays
+		// inside it.
+		fixTableFor: (label: string) => `${FIX_TABLE} for ${label}`,
 		sourceEditor: (format: string) => `${format} source`,
 		preview: "Rendered table preview",
 		blockedView: "Blocked view reason",
@@ -584,9 +603,11 @@ export const copy = {
 		copy: "Mod+C",
 		cut: "Mod+X",
 		paste: "Mod+V",
-		zoomOut: "Mod+-",
-		resetZoom: "Mod+0",
-		zoomIn: "Mod++",
+		// Alt keeps these clear of Mod+plus, Mod+minus, and Mod+0, which belong to
+		// the browser and stay the way to scale the whole interface.
+		zoomOut: "Mod+Alt+-",
+		resetZoom: "Mod+Alt+0",
+		zoomIn: "Mod+Alt++",
 		editHeader: "F2",
 		// The keyboard equal of a modifier click. Ctrl is the modifier that
 		// reaches the page on every platform: macOS keeps Cmd+Space for itself.

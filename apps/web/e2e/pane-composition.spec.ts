@@ -1,5 +1,10 @@
+import type { Locator } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
+
+interface ZoomProbe {
+	zoomCancelled: string[];
+}
 
 // Composing the workspace by splitting the pane edge the new view should appear
 // along, rather than by naming a tiling first. The presets still own every
@@ -192,27 +197,111 @@ test("closing a pane that owns an invalid draft asks before discarding it", asyn
 	await expect(tabelo.workspace.getByRole("region")).toHaveCount(2);
 });
 
-test("keyboard zoom changes the active pane and resets with the standard shortcut", async ({
+const contentSize = (pane: Locator) =>
+	pane
+		.locator(".cm-content")
+		.evaluate((element) =>
+			Number.parseFloat(getComputedStyle(element).fontSize),
+		);
+
+test("the pane-zoom chord steps and resets the active pane, including inside a source editor", async ({
 	page,
 	tabelo,
 }) => {
-	const markdownSize = () =>
-		tabelo
-			.pane("markdown")
-			.locator(".cm-content")
-			.evaluate((element) =>
-				Number.parseFloat(getComputedStyle(element).fontSize),
-			);
-	const markdownSizeBefore = await markdownSize();
+	const markdown = tabelo.pane("markdown");
+	const sizeBefore = await contentSize(markdown);
 	await tabelo.source("markdown").click();
-	await page.keyboard.press("ControlOrMeta+=");
-	await expect.poll(markdownSize).toBeGreaterThan(markdownSizeBefore);
+	await page.keyboard.press("ControlOrMeta+Alt+=");
+	await expect.poll(() => contentSize(markdown)).toBeGreaterThan(sizeBefore);
 
-	await page.keyboard.press("ControlOrMeta+0");
+	await page.keyboard.press("ControlOrMeta+Alt+-");
+	await page.keyboard.press("ControlOrMeta+Alt+-");
+	await expect.poll(() => contentSize(markdown)).toBeLessThan(sizeBefore);
+
+	await page.keyboard.press("ControlOrMeta+Alt+0");
+	await expect.poll(() => contentSize(markdown)).toBe(sizeBefore);
 	const menu = await tabelo.openPaneMenu("markdown");
 	await expect(
 		menu.getByRole("menuitem", { name: copy.workspace.resetZoom }),
 	).toBeDisabled();
+});
+
+// The chord is not conditioned on where focus sits: it steps whichever pane is
+// active, so it has to behave the same in the grid and from a control that
+// belongs to no pane at all.
+test("the pane-zoom chord steps the active pane from the grid and from outside every pane", async ({
+	page,
+	tabelo,
+}) => {
+	const cellSize = () =>
+		tabelo
+			.cell(1, 1)
+			.evaluate((element) =>
+				Number.parseFloat(getComputedStyle(element).fontSize),
+			);
+
+	await tabelo.cell(1, 1).click();
+	const sizeBefore = await cellSize();
+	await page.keyboard.press("ControlOrMeta+Alt+=");
+	await expect.poll(cellSize).toBeGreaterThan(sizeBefore);
+	const zoomedInGrid = await cellSize();
+
+	// Focused rather than clicked: opening the menu would take the keystrokes.
+	// The grid stays the active pane, so the chord keeps stepping it from here.
+	await page
+		.getByRole("button", { name: copy.actions.openAppMenu })
+		.first()
+		.focus();
+	await page.keyboard.press("ControlOrMeta+Alt+=");
+	await expect.poll(cellSize).toBeGreaterThan(zoomedInGrid);
+
+	await page.keyboard.press("ControlOrMeta+Alt+-");
+	await expect.poll(cellSize).toBe(zoomedInGrid);
+
+	await page.keyboard.press("ControlOrMeta+Alt+0");
+	await expect.poll(cellSize).toBe(sizeBefore);
+	const menu = await tabelo.openPaneMenu("grid");
+	await expect(
+		menu.getByRole("menuitem", { name: copy.workspace.resetZoom }),
+	).toBeDisabled();
+});
+
+// The browser owns Mod+plus, Mod+minus, and Mod+0. Playwright cannot observe the
+// browser-level zoom those keys drive, but it can prove the two things the
+// application controls: pane zoom does not move, and the event is never
+// cancelled, so whatever the engine does with it still happens.
+test("the browser's own zoom shortcuts reach the browser untouched", async ({
+	page,
+	tabelo,
+}) => {
+	// Registered after the app's own window listener, so it observes the flag the
+	// app either set or left alone.
+	await page.evaluate(() => {
+		const cancelled: string[] = [];
+		(window as unknown as ZoomProbe).zoomCancelled = cancelled;
+		window.addEventListener("keydown", (event) => {
+			if (event.defaultPrevented) cancelled.push(event.key);
+		});
+	});
+
+	const markdown = tabelo.pane("markdown");
+	const sizeBefore = await contentSize(markdown);
+
+	for (const focus of [
+		() => tabelo.source("markdown").click(),
+		() => tabelo.cell(1, 1).click(),
+	]) {
+		await focus();
+		await page.keyboard.press("ControlOrMeta+=");
+		await page.keyboard.press("ControlOrMeta+-");
+		await page.keyboard.press("ControlOrMeta+0");
+	}
+
+	const cancelled = await page.evaluate(
+		() => (window as unknown as ZoomProbe).zoomCancelled,
+	);
+	expect(cancelled).toEqual([]);
+	expect(await contentSize(markdown)).toBe(sizeBefore);
 });
 
 test("zoom resets in one action and survives a reload", async ({ tabelo }) => {
@@ -301,6 +390,91 @@ test("changing the view from pane actions keeps the pane working", async ({
 
 	await expect(tabelo.pane("jira")).toBeVisible();
 	await expect(tabelo.pane("markdown")).toHaveCount(0);
+});
+
+// Adding, closing, and arranging are three commands with one boundary between
+// them: Layout may change how the open panes are arranged and nothing else.
+test("Layout offers only the arrangements of the current pane count", async ({
+	tabelo,
+}) => {
+	const panes = tabelo.workspace.getByRole("region");
+	const twoPane = await tabelo.openLayoutDialog();
+	await expect(twoPane.getByRole("radio")).toHaveCount(2);
+	for (const id of ["columns", "rows"] as const) {
+		await expect(
+			twoPane.getByRole("radio", { name: copy.layouts[id].label }),
+		).toBeVisible();
+	}
+	await twoPane.getByRole("button", { name: copy.actions.cancel }).click();
+	await expect(twoPane).toBeHidden();
+
+	await tabelo.goToPaneCount(3);
+	const threePane = await tabelo.openLayoutDialog();
+	await expect(threePane.getByRole("radio")).toHaveCount(4);
+	for (const id of [
+		"left-split",
+		"right-split",
+		"top-split",
+		"bottom-split",
+	] as const) {
+		await expect(
+			threePane.getByRole("radio", { name: copy.layouts[id].label }),
+		).toBeVisible();
+	}
+
+	// Applying one of them rearranges the three panes rather than making a
+	// fourth, and the arrangement growing alone cannot reach is among them.
+	await threePane
+		.getByRole("radio", { name: copy.layouts["top-split"].label })
+		.click();
+	await threePane
+		.getByRole("button", { name: copy.workspace.applyLayout })
+		.click();
+	await expect(threePane).toBeHidden();
+	await expect(panes).toHaveCount(3);
+	expect(await tabelo.paneArea("grid")).toMatchObject({
+		rowStart: 1,
+		rowEnd: 2,
+		columnStart: 1,
+		columnEnd: 2,
+	});
+});
+
+test("Layout is disabled and explained where the pane count has one arrangement", async ({
+	page,
+	tabelo,
+}) => {
+	for (const count of [1, 4]) {
+		await tabelo.goToPaneCount(count);
+		const menu = await tabelo.openAppMenu();
+		const command = menu.getByRole("menuitem", { name: copy.workspace.layout });
+		// Fixed rather than hidden: the command keeps its place in the menu and
+		// says why it cannot act.
+		await expect(command).toBeVisible();
+		await expect(command).toBeDisabled();
+		await command.hover();
+		await expect(page.getByRole("tooltip")).toBeVisible();
+		// The tooltip takes the first Escape, the menu the next one.
+		await page.keyboard.press("Escape");
+		await page.keyboard.press("Escape");
+		await expect(menu).toBeHidden();
+	}
+});
+
+test("a same-count arrangement survives a reload", async ({ page, tabelo }) => {
+	// Content of its own, so the reload restores a saved workspace rather than
+	// returning to onboarding.
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.goToPaneCount(3);
+	await tabelo.chooseLayout("bottom-split");
+	const before = await tabelo.paneArea("grid");
+	expect(before).toMatchObject({ rowStart: 1, rowEnd: 2 });
+
+	await page.reload();
+	await tabelo.workspace.waitFor({ state: "visible" });
+
+	await expect(tabelo.workspace.getByRole("region")).toHaveCount(3);
+	expect(await tabelo.paneArea("grid")).toEqual(before);
 });
 
 // §5 requires a pane header to be one row that never wraps, shortening labels

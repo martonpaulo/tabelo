@@ -1,7 +1,15 @@
+import { readCell } from "./cell-value";
 import { createColumn, createRow } from "./document";
 import { createRowId } from "./ids";
 import { type CellRect, rectContains, rectCoversHeader } from "./selection";
-import type { Alignment, Column, ColumnId, Row, TableDocument } from "./types";
+import type {
+	Alignment,
+	CellValue,
+	Column,
+	ColumnId,
+	Row,
+	TableDocument,
+} from "./types";
 
 // Pure operations over a table document. Every grid interaction goes through
 // one of these: the grid never mutates the document itself.
@@ -84,12 +92,14 @@ export function setCell(
 	document: TableDocument,
 	rowIndex: number,
 	columnIndex: number,
-	value: string,
+	value: CellValue,
 ): TableDocument {
 	const row = document.rows[rowIndex];
 	const column = document.columns[columnIndex];
 	if (!row || !column) return document;
-	if ((row.cells[column.id] ?? "") === value) return document;
+	// Identity, not text: writing the string "1" over the number 1 is a real
+	// change even though both project to the same text.
+	if (readCell(row, column.id) === value) return document;
 
 	const rows = document.rows.map((candidate, index) =>
 		index === rowIndex
@@ -195,7 +205,7 @@ export function insertColumns(
 		...document.columns.slice(index),
 	];
 	const rows = document.rows.map((row) => {
-		const cells = { ...row.cells };
+		const cells: Record<ColumnId, CellValue> = { ...row.cells };
 		for (const column of created) cells[column.id] = "";
 		return { ...row, cells };
 	});
@@ -216,9 +226,13 @@ export function deleteColumns(
 		.map((c) => c.id);
 
 	const rows = document.rows.map((row) => {
-		const cells: Record<ColumnId, string> = { ...row.cells };
+		const cells: Record<ColumnId, CellValue> = { ...row.cells };
 		for (const id of removedIds) delete cells[id];
-		for (const column of columns) cells[column.id] ??= "";
+		// Only a key that is absent gets one. `??=` would overwrite a stored
+		// `null`, which is a value the user chose rather than a missing cell.
+		for (const column of columns) {
+			if (cells[column.id] === undefined) cells[column.id] = "";
+		}
 		return { ...row, cells };
 	});
 	return { columns, rows };
@@ -238,15 +252,16 @@ export function duplicateColumns(
 		const created = {
 			...createColumn(source.header),
 			align: source.align,
+			expectedType: source.expectedType,
 		};
 		columns.splice(index + 1, 0, created);
 		copies.push({ source: source.id, created });
 	}
 
 	const rows = document.rows.map((row) => {
-		const cells = { ...row.cells };
+		const cells: Record<ColumnId, CellValue> = { ...row.cells };
 		for (const { source, created } of copies)
-			cells[created.id] = row.cells[source] ?? "";
+			cells[created.id] = readCell(row, source);
 		return { ...row, cells };
 	});
 	return { columns, rows };
@@ -290,13 +305,15 @@ export function clearCells(
 	});
 
 	const rows = document.rows.map((row, rowIndex) => {
+		// A cleared cell becomes the empty string whatever it held, so clearing a
+		// number or an explicit `null` is a real change the comparison must see.
 		const cleared = document.columns.filter(
 			(column, columnIndex) =>
-				covers(rowIndex, columnIndex) && (row.cells[column.id] ?? "") !== "",
+				covers(rowIndex, columnIndex) && readCell(row, column.id) !== "",
 		);
 		if (cleared.length === 0) return row;
 		changed = true;
-		const cells = { ...row.cells };
+		const cells: Record<ColumnId, CellValue> = { ...row.cells };
 		for (const column of cleared) cells[column.id] = "";
 		return { ...row, cells };
 	});
@@ -310,7 +327,7 @@ export function clearCells(
 export function pasteMatrix(
 	document: TableDocument,
 	at: { rowIndex: number; columnIndex: number },
-	matrix: readonly (readonly string[])[],
+	matrix: readonly (readonly CellValue[])[],
 ): TableDocument {
 	if (matrix.length === 0) return document;
 
@@ -336,7 +353,7 @@ export function pasteMatrix(
 	const rows = next.rows.map((row, rowIndex) => {
 		const source = matrix[rowIndex - at.rowIndex];
 		if (!source) return row;
-		const cells = { ...row.cells };
+		const cells: Record<ColumnId, CellValue> = { ...row.cells };
 		source.forEach((value, offset) => {
 			const column = next.columns[at.columnIndex + offset];
 			if (column) cells[column.id] = value;

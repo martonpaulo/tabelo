@@ -1,3 +1,4 @@
+import { cellTextAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
 import type {
@@ -282,14 +283,14 @@ function serializeRecords(
 	if (!firstColumn) return "";
 
 	const records = document.rows.map((row) => {
-		const titleValue = escapeValue(row.cells[firstColumn.id] ?? "");
+		const titleValue = escapeValue(cellTextAt(row, firstColumn.id));
 		const title = includeFirstColumnName
 			? `${escapeHeader(firstColumn.header)}: ${titleValue}`
 			: titleValue;
 
 		// Rule 8: the first column is never repeated as a bullet.
 		const bullets = restColumns.flatMap((column) => {
-			const value = row.cells[column.id] ?? "";
+			const value = cellTextAt(row, column.id);
 			if (!includeEmptyValues && value === "") return [];
 			const suffix = value === "" ? "" : ` ${escapeValue(value)}`;
 			return [`- ${escapeHeader(column.header)}:${suffix}`];
@@ -337,7 +338,7 @@ function recordsPrecondition(
 	}
 
 	const emptyRows = document.rows.flatMap((row, index) =>
-		(row.cells[firstColumn.id] ?? "") === "" ? [index] : [],
+		cellTextAt(row, firstColumn.id) === "" ? [index] : [],
 	);
 	if (emptyRows.length > 0) {
 		return { code: "records-empty-first-column", rows: emptyRows };
@@ -345,7 +346,7 @@ function recordsPrecondition(
 
 	const positions = new Map<string, number[]>();
 	document.rows.forEach((row, index) => {
-		const value = row.cells[firstColumn.id] ?? "";
+		const value = cellTextAt(row, firstColumn.id);
 		positions.set(value, [...(positions.get(value) ?? []), index]);
 	});
 	const duplicateRows = [...positions.values()]

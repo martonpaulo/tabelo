@@ -18,7 +18,7 @@ import {
 	SingleSelectionOption,
 	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
-import { type LayoutId, layoutPresets } from "@/workspace/layout";
+import { type LayoutId, layoutsForPaneCount } from "@/workspace/layout";
 import { LayoutGlyph } from "./layout-glyph";
 
 export function LayoutDialog({
@@ -29,6 +29,10 @@ export function LayoutDialog({
 	readonly onOpenChange: (open: boolean) => void;
 }) {
 	const layout = useTabeloStore((state) => state.workspace.layout);
+	const paneCount = useTabeloStore((state) => state.workspace.panes.length);
+	// Only the arrangements of the panes already open. Adding and closing a view
+	// are their own commands, so Layout never changes how many panes there are.
+	const presets = layoutsForPaneCount(paneCount);
 	const [selected, setSelected] = useState<LayoutId>(layout);
 	const titleId = useId();
 	const hintId = useId();
@@ -63,7 +67,7 @@ export function LayoutDialog({
 					value={selected}
 					onValueChange={(value) => setSelected(value as LayoutId)}
 				>
-					{layoutPresets.map((preset) => (
+					{presets.map((preset) => (
 						<SingleSelectionOption
 							key={preset.id}
 							value={preset.id}
