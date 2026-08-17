@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 import {
 	createColumn,
 	createEmptyDocument,
@@ -79,9 +79,11 @@ describe("the typed document foundation", () => {
 		);
 
 		const next = reconcileDocument(typed, docOf(edited));
+		const years = next.columns[2];
+		assert(years);
 
-		expect(next.columns[2].header).toBe("Years");
-		expect(next.columns[2].expectedType).toBe("number");
+		expect(years.header).toBe("Years");
+		expect(years.expectedType).toBe("number");
 	});
 });
 
@@ -103,10 +105,14 @@ describe("reconcileDocument identity preservation", () => {
 		);
 
 		const next = reconcileDocument(current, docOf(edited));
+		const editedRow = next.rows[0];
+		const city = next.columns[1];
+		assert(editedRow);
+		assert(city);
 
 		expect(next).not.toBe(current);
 		expect(next.rows[0]).not.toBe(current.rows[0]);
-		expect(next.rows[0].cells[next.columns[1].id]).toBe("Oslo");
+		expect(editedRow.cells[city.id]).toBe("Oslo");
 		// The rows nobody typed into come back as the very same objects.
 		expect(next.rows[1]).toBe(current.rows[1]);
 		expect(next.rows[2]).toBe(current.rows[2]);
@@ -121,10 +127,12 @@ describe("reconcileDocument identity preservation", () => {
 		);
 
 		const next = reconcileDocument(current, docOf(edited));
+		const town = next.columns[1];
+		assert(town);
 
 		expect(next.columns[0]).toBe(current.columns[0]);
 		expect(next.columns[1]).not.toBe(current.columns[1]);
-		expect(next.columns[1].header).toBe("Town");
+		expect(town.header).toBe("Town");
 		expect(next.columns[2]).toBe(current.columns[2]);
 		// Renaming a column changes no cell, so the rows keep their identity.
 		expect(next.rows).toBe(current.rows);

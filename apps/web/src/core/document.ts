@@ -87,9 +87,10 @@ export function documentFromMatrix(
 	options: MatrixToDocumentOptions,
 ): TableDocument {
 	const matrix = normalizeMatrix(input);
-	if (matrix.length === 0) return createEmptyDocument();
+	const firstRow = matrix[0];
+	if (!firstRow) return createEmptyDocument();
 
-	const headerValues = options.headerRow ? matrix[0] : matrix[0].map(() => "");
+	const headerValues = options.headerRow ? firstRow : firstRow.map(() => "");
 	const bodyRows = options.headerRow ? matrix.slice(1) : matrix;
 
 	// A blank header in the source stays blank. Coercing it to a generated name

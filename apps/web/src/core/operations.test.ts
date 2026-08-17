@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 import {
 	createEmptyDocument,
 	documentFromMatrix,
@@ -47,10 +47,12 @@ describe("row operations", () => {
 
 	it("deletes rows and keeps identifiers stable for the survivors", () => {
 		const before = sample();
-		const survivorId = before.rows[1].id;
+		const survivor = before.rows[1];
+		assert(survivor);
+		const survivorId = survivor.id;
 		const next = deleteRows(before, [0]);
 		expect(next.rows).toHaveLength(1);
-		expect(next.rows[0].id).toBe(survivorId);
+		expect(next.rows[0]?.id).toBe(survivorId);
 	});
 
 	it("never leaves the table without a row", () => {
@@ -68,7 +70,7 @@ describe("row operations", () => {
 			["1", "2"],
 			["3", "4"],
 		]);
-		expect(next.rows[1].id).not.toBe(next.rows[2].id);
+		expect(next.rows[1]?.id).not.toBe(next.rows[2]?.id);
 	});
 
 	it("duplicates several rows without corrupting the order", () => {
@@ -180,7 +182,9 @@ describe("column operations", () => {
 
 	it("deletes a column and drops its cells", () => {
 		const before = sample();
-		const removedId = before.columns[0].id;
+		const removed = before.columns[0];
+		assert(removed);
+		const removedId = removed.id;
 		const next = deleteColumns(before, [0]);
 		expect(next.columns).toHaveLength(1);
 		expect(next.rows.every((row) => !(removedId in row.cells))).toBe(true);
@@ -202,7 +206,7 @@ describe("column operations", () => {
 			),
 		};
 		const next = duplicateColumns(before, [0]);
-		expect(next.columns[1].align).toBe("right");
+		expect(next.columns[1]?.align).toBe("right");
 		expect(documentToMatrix(next)).toEqual([
 			["A", "A", "B"],
 			["1", "1", "2"],
@@ -387,10 +391,12 @@ describe("paste", () => {
 				["b"],
 				["c"],
 			]);
+			const firstColumn = next.columns[0];
+			assert(firstColumn);
 
-			expect(
-				next.rows.map((row) => row.cells[next.columns[0].id] ?? ""),
-			).toEqual(expected);
+			expect(next.rows.map((row) => row.cells[firstColumn.id] ?? "")).toEqual(
+				expected,
+			);
 		},
 	);
 
