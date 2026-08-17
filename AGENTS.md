@@ -127,8 +127,11 @@ vocabulary and `docs/adr/` for the reasoning.
   values that disagree with it. A value becomes typed only because a typed source
   stated the type or the user chose it: no codec, view, paste, or migration may
   read text and conclude a type from it. A format that cannot express a type
-  serializes the projected text and parses strings back. `null` and the empty
-  string project alike and stay distinct values. See `docs/adr/0008`.
+  serializes the projected text and parses strings back. During source
+  reconciliation, an unchanged string projection retains the existing cell
+  value; changed or newly inserted text stays a string. `null` and the empty
+  string project alike and stay distinct only when the previous document
+  supplies that distinction. See `docs/adr/0008`.
 - **Column alignment is document state.** Alignment is Markdown- and
   HTML-specific metadata but belongs to the document, so it survives time spent
   in CSV, TSV, or Jira. None of those formats can express it, and it round-trips

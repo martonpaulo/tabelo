@@ -8,7 +8,7 @@ import {
 	isDocumentBlank,
 	reconcileDocument,
 } from "./document";
-import type { TableDocument } from "./types";
+import type { CellValue, TableDocument } from "./types";
 
 function docOf(matrix: string[][]): TableDocument {
 	return documentFromMatrix(matrix, { headerRow: true });
@@ -82,6 +82,91 @@ describe("the typed document foundation", () => {
 
 		expect(next.columns[2].header).toBe("Years");
 		expect(next.columns[2].expectedType).toBe("number");
+	});
+
+	it("keeps unchanged native values while changed text becomes a string", () => {
+		const columns = [
+			createColumn("Name"),
+			{ ...createColumn("Age"), expectedType: "number" as const },
+			{ ...createColumn("Active"), expectedType: "boolean" as const },
+			createColumn("Notes"),
+		];
+		const current: TableDocument = {
+			columns,
+			rows: [createRow(columns, ["Ingrid", 34, true, null])],
+		};
+		const parsed = docOf([
+			["Name", "Age", "Active", "Notes"],
+			["Mabel", "34", "true", ""],
+		]);
+
+		const next = reconcileDocument(current, parsed);
+		const values = next.columns.map((column) => next.rows[0]?.cells[column.id]);
+
+		expect(values).toEqual(["Mabel", 34, true, null] satisfies CellValue[]);
+		expect(next.columns.map((column) => column.id)).toEqual(
+			current.columns.map((column) => column.id),
+		);
+		expect(next.columns.map((column) => column.expectedType)).toEqual([
+			"text",
+			"number",
+			"boolean",
+			"text",
+		]);
+	});
+
+	it("turns a changed native projection into text", () => {
+		const columns = [
+			{ ...createColumn("Age"), expectedType: "number" as const },
+		];
+		const current: TableDocument = {
+			columns,
+			rows: [createRow(columns, [34])],
+		};
+		const parsed = docOf([["Age"], ["35"]]);
+
+		const next = reconcileDocument(current, parsed);
+
+		expect(next.rows[0]?.cells[columns[0]?.id ?? ""]).toBe("35");
+		expect(typeof next.rows[0]?.cells[columns[0]?.id ?? ""]).toBe("string");
+	});
+
+	it("preserves null separately from empty text only with a previous cell", () => {
+		const columns = [createColumn("Null"), createColumn("Empty")];
+		const current: TableDocument = {
+			columns,
+			rows: [createRow(columns, [null, ""])],
+		};
+		const parsed = docOf([
+			["Null", "Empty"],
+			["", ""],
+			["", ""],
+		]);
+
+		const next = reconcileDocument(current, parsed);
+		const first = next.rows[0];
+		const inserted = next.rows[1];
+
+		expect(first?.cells[columns[0]?.id ?? ""]).toBeNull();
+		expect(first?.cells[columns[1]?.id ?? ""]).toBe("");
+		expect(Object.values(inserted?.cells ?? {})).toEqual(["", ""]);
+	});
+
+	it("keeps alignment when the source syntax cannot express it", () => {
+		const columns = [{ ...createColumn("Age"), align: "right" as const }];
+		const current: TableDocument = {
+			columns,
+			rows: [createRow(columns, [34])],
+		};
+		const parsed = docOf([["Years"], ["34"]]);
+
+		const next = reconcileDocument(current, parsed, {
+			cellValues: "text",
+			columnAlignment: "unexpressed",
+		});
+
+		expect(next.columns[0]?.header).toBe("Years");
+		expect(next.columns[0]?.align).toBe("right");
 	});
 });
 

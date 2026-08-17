@@ -310,6 +310,10 @@ function serializeMarkdown(document: TableDocument): string {
 
 export const markdownCodec: TableCodec = {
 	id: "markdown",
+	reconciliation: {
+		cellValues: "text",
+		columnAlignment: "carried",
+	},
 	extension: "md",
 	mimeType: "text/markdown",
 	parseMatrix: parseMarkdownMatrix,

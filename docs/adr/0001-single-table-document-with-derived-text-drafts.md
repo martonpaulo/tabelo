@@ -30,10 +30,15 @@ The synchronization layer owns the round trip:
 - **Text → document.** Parse every editor document transaction synchronously at
   the supported table scale. On success, structurally reconcile the result
   against the current document and patch it immediately, matching existing rows
-  and columns so identifiers, selection, and column widths stay attached. On
-  failure, keep the document untouched. A short grace timer controls only when
-  error feedback appears; every subsequent transaction is still parsed
-  immediately.
+  and columns so identifiers, selection, and column metadata stay attached. A
+  text-only format reports strings, so reconciliation retains an existing cell
+  value only when its exact `cellText` projection equals the parsed string. A
+  changed or newly inserted cell remains the parsed string; text never creates
+  a number, boolean, or null. This previous-value comparison is also the only
+  way to distinguish `null` from an empty string after both project to empty
+  text. On failure, keep the document untouched. A short grace timer controls
+  only when error feedback appears; every subsequent transaction is still
+  parsed immediately.
 - **Document → text.** A grid edit serializes into the active format and is
   pushed into the editor as a minimal-diff transaction, so the cursor stays put.
   It is pushed only when the draft is clean; if a draft is pending, it is
@@ -56,7 +61,8 @@ never derived from how the text looks.
 - Adding a format later means adding a parser/serializer pair behind the shared
   format contract: no change to synchronization, history, or persistence.
 - The structural diff is the load-bearing part of the design and the place bugs
-  will concentrate. It needs strong round-trip and identity-preservation tests.
+  will concentrate. It needs strong round-trip, type-preservation, and
+  identity-preservation tests.
 - Valid source edits reach every projection in the same interaction turn.
   Healthy panes stay silent; only syntax that remains invalid beyond the grace
   period receives written status feedback.

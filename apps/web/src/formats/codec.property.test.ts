@@ -2,8 +2,11 @@
 
 import { test } from "@fast-check/vitest";
 import { describe, expect } from "vitest";
-import { documentToMatrix } from "@/core/document";
-import { canSerialize, csvCodec, listCodecs } from "@/formats";
+import { cellText, readCell } from "@/core/cell-value";
+import { documentToMatrix, reconcileDocument } from "@/core/document";
+import { setCell } from "@/core/operations";
+import type { CellValue, TableDocument } from "@/core/types";
+import { canSerialize, csvCodec, listCodecs, type TableCodec } from "@/formats";
 import { escapeJiraCell, unescapeJiraCell } from "@/formats/jira";
 import { escapeCell, unescapeCell } from "@/formats/markdown";
 import {
@@ -13,7 +16,9 @@ import {
 import {
 	cellStringArbitrary,
 	codecDocumentArbitrary,
+	documentPositionArbitrary,
 	PROPERTY_RUNS,
+	typedTextCodecDocumentArbitrary,
 	universallySerializableDocumentArbitrary,
 } from "@/testing/property-arbitraries";
 
@@ -28,6 +33,21 @@ function expectSuccessfulParse(
 	expect(result.ok, `${codecId} failed to parse its own output`).toBe(true);
 	if (!result.ok) throw new Error(`${codecId} failed to parse its own output`);
 	return result.document;
+}
+
+function valuesOf(document: TableDocument): CellValue[][] {
+	return document.rows.map((row) =>
+		document.columns.map((column) => readCell(row, column.id)),
+	);
+}
+
+function typedTextCodecCase(codec: TableCodec) {
+	return typedTextCodecDocumentArbitrary(codec).chain((document) =>
+		documentPositionArbitrary(document).map((position) => ({
+			document,
+			position,
+		})),
+	);
 }
 
 describe("codec escape properties", () => {
@@ -90,6 +110,69 @@ describe("registered codec properties", () => {
 				expectedDocumentForCodec(codec, document).matrix,
 			);
 		});
+	}
+
+	for (const codec of listCodecs().filter(
+		(codec) => codec.reconciliation.cellValues === "text",
+	)) {
+		test.prop(
+			{ document: typedTextCodecDocumentArbitrary(codec) },
+			{ numRuns: PROPERTY_RUNS },
+		)(
+			`${codec.id} preserves mixed native values through text reconciliation`,
+			({ document }) => {
+				expect(canSerialize(codec, document)).toBeNull();
+				const parsed = expectSuccessfulParse(
+					codec.id,
+					codec.parse(codec.serialize(document)),
+				);
+
+				expect(reconcileDocument(document, parsed, codec.reconciliation)).toBe(
+					document,
+				);
+			},
+		);
+
+		test.prop({ case: typedTextCodecCase(codec) }, { numRuns: PROPERTY_RUNS })(
+			`${codec.id} turns only a retyped projection into a string`,
+			({ case: { document, position } }) => {
+				const parsed = expectSuccessfulParse(
+					codec.id,
+					codec.parse(codec.serialize(document)),
+				);
+				const oldValue =
+					valuesOf(document)[position.rowIndex]?.[position.columnIndex];
+				if (oldValue === undefined) {
+					throw new Error("the generated cell must exist");
+				}
+				const replacement = `${cellText(oldValue)}!`;
+				const changed = setCell(
+					parsed,
+					position.rowIndex,
+					position.columnIndex,
+					replacement,
+				);
+				const next = reconcileDocument(document, changed, codec.reconciliation);
+				const expected = valuesOf(document).map((row) => [...row]);
+				const expectedRow = expected[position.rowIndex];
+				if (!expectedRow) throw new Error("the generated row must exist");
+				expectedRow[position.columnIndex] = replacement;
+
+				expect(valuesOf(next)).toEqual(expected);
+				expect(next.columns.map((column) => column.id)).toEqual(
+					document.columns.map((column) => column.id),
+				);
+				expect(next.rows.map((row) => row.id)).toEqual(
+					document.rows.map((row) => row.id),
+				);
+				expect(next.columns.map((column) => column.expectedType)).toEqual(
+					document.columns.map((column) => column.expectedType),
+				);
+				expect(next.columns.map((column) => column.align)).toEqual(
+					document.columns.map((column) => column.align),
+				);
+			},
+		);
 	}
 
 	test.prop(

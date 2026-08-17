@@ -1,4 +1,5 @@
 import {
+	cellText,
 	cellTextAt,
 	DEFAULT_EXPECTED_TYPE,
 	isBlankCell,
@@ -115,10 +116,22 @@ export function documentFromMatrix(
 // 200 a fresh object and every memo boundary misses. This mirrors the per-item
 // early return `clearCells` already uses in `operations.ts`.
 //
-// Values are unchanged by this. Only the number of allocations is.
+// Reconciliation also protects canonical values and metadata a source syntax
+// cannot carry. The source capabilities below make that distinction explicit.
+export interface ReconciliationSource {
+	readonly cellValues: "text" | "typed";
+	readonly columnAlignment: "carried" | "unexpressed";
+}
+
+const DEFAULT_RECONCILIATION_SOURCE: ReconciliationSource = {
+	cellValues: "text",
+	columnAlignment: "carried",
+};
+
 export function reconcileDocument(
 	current: TableDocument,
 	parsed: TableDocument,
+	source: ReconciliationSource = DEFAULT_RECONCILIATION_SOURCE,
 ): TableDocument {
 	let columnsUnchanged = parsed.columns.length === current.columns.length;
 
@@ -133,12 +146,19 @@ export function reconcileDocument(
 		// are keyed by that id in the workspace and never enter reconciliation.
 		// The expected type comes from the existing column too: a text format
 		// cannot express it, so a parse must not reset it to the default.
-		if (existing.header === column.header && existing.align === column.align) {
+		const alignment =
+			source.columnAlignment === "unexpressed" ? existing.align : column.align;
+		if (existing.header === column.header && existing.align === alignment) {
 			return existing;
 		}
 
 		columnsUnchanged = false;
-		return { ...column, id: existing.id, expectedType: existing.expectedType };
+		return {
+			...column,
+			id: existing.id,
+			align: alignment,
+			expectedType: existing.expectedType,
+		};
 	});
 
 	let rowsUnchanged = parsed.rows.length === current.rows.length;
@@ -148,7 +168,25 @@ export function reconcileDocument(
 		const cells: Record<ColumnId, CellValue> = {};
 		columns.forEach((column, columnIndex) => {
 			const parsedColumn = parsed.columns[columnIndex];
-			cells[column.id] = parsedColumn ? readCell(row, parsedColumn.id) : "";
+			const parsedValue = parsedColumn ? readCell(row, parsedColumn.id) : "";
+			const existingColumn = current.columns[columnIndex];
+			const existingValue =
+				existing && existingColumn
+					? readCell(existing, existingColumn.id)
+					: undefined;
+
+			// A text format can only report a projection. When that projection is
+			// unchanged, keep the canonical value that supplied it. This is also how
+			// `null` stays distinct from an empty string despite both projecting to
+			// empty text. A changed or newly inserted text cell remains the parsed
+			// string, and a typed source always supplies the canonical value itself.
+			cells[column.id] =
+				source.cellValues === "text" &&
+				typeof parsedValue === "string" &&
+				existingValue !== undefined &&
+				cellText(existingValue) === parsedValue
+					? existingValue
+					: parsedValue;
 		});
 
 		// The key count has to match as well as the values: a row still carrying a
