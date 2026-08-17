@@ -465,16 +465,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			const width = store.workspace.columnWidths[column.id];
 			const letter = copy.a11y.columnLetter(focusedColumn);
 			if (event.key === "ArrowLeft" && atMinimumColumnWidth(width)) {
-				store.announceGridStatus(copy.status.columnWidthMinimum(letter));
+				store.announceStatus(copy.status.columnWidthMinimum(letter));
 				return;
 			}
 			if (event.key === "ArrowRight" && atMaximumColumnWidth(width)) {
-				store.announceGridStatus(copy.status.columnWidthMaximum(letter));
+				store.announceStatus(copy.status.columnWidthMaximum(letter));
 				return;
 			}
 			const next = stepColumnWidth(width, event.key === "ArrowLeft" ? -1 : 1);
 			store.resizeColumn(focusedColumn, next, "column");
-			store.announceGridStatus(copy.status.columnWidth(letter, next));
+			store.announceStatus(copy.status.columnWidth(letter, next));
 			return;
 		}
 
