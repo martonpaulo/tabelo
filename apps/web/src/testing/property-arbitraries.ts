@@ -193,58 +193,39 @@ const keyedTableDocumentArbitrary = createDocumentArbitrary({
 	titledRows: false,
 });
 
-// #217 tracks CSV sniffing its own canonical output as the wrong delimiter and
-// the one-column empty TSV ambiguity. Keep unaffected delimited contracts active
-// until that focused fix restores the full hostile alphabet and one-column range.
-const csvSafeCellStringArbitrary = cellStringArbitrary.filter(
-	(value) => !/[;\t|]/u.test(value),
-);
-const htmlSafeCellStringArbitrary = cellStringArbitrary.filter(
+// The carriage return is the last character any codec still has to be kept
+// away from, and #218 owns that reason. The delimited codecs carry the full
+// hostile alphabet and the one-column range again since #217.
+const returnFreeCellStringArbitrary = cellStringArbitrary.filter(
 	(value) => !value.includes("\r"),
 );
-const crossFormatSafeCellStringArbitrary = csvSafeCellStringArbitrary.filter(
-	(value) => !value.includes("\r"),
+const returnFreeHeaderStringArbitrary = returnFreeCellStringArbitrary.filter(
+	(value) => value.trim().length > 0,
 );
-const crossFormatSafeHeaderStringArbitrary =
-	crossFormatSafeCellStringArbitrary.filter((value) => value.trim().length > 0);
-const delimitedTableDocumentArbitrary = createDocumentArbitrary({
-	keyedHeaders: false,
-	minColumnCount: 2,
-	titledRows: false,
-});
 
-const csvTableDocumentArbitrary = createDocumentArbitrary({
-	keyedHeaders: false,
-	minColumnCount: 2,
-	titledRows: false,
-	valueArbitrary: csvSafeCellStringArbitrary,
-});
-
-// #218 tracks HTML retaining carriage returns instead of applying the
-// documented line-ending normalization.
 const htmlTableDocumentArbitrary = createDocumentArbitrary({
 	keyedHeaders: false,
 	minColumnCount: 1,
 	titledRows: false,
-	valueArbitrary: htmlSafeCellStringArbitrary,
+	valueArbitrary: returnFreeCellStringArbitrary,
 });
 
 // Satisfies both JSON's key restrictions and Records' title restrictions, so
 // one document can travel through every registered codec in sequence.
 export const universallySerializableDocumentArbitrary = createDocumentArbitrary(
 	{
-		headerArbitrary: crossFormatSafeHeaderStringArbitrary,
+		headerArbitrary: returnFreeHeaderStringArbitrary,
 		keyedHeaders: true,
 		minColumnCount: 2,
 		titledRows: true,
-		valueArbitrary: crossFormatSafeCellStringArbitrary,
+		valueArbitrary: returnFreeCellStringArbitrary,
 	},
 );
 
 const codecDocumentArbitraries: Record<CodecId, fc.Arbitrary<TableDocument>> = {
 	markdown: tableDocumentArbitrary,
-	csv: csvTableDocumentArbitrary,
-	tsv: delimitedTableDocumentArbitrary,
+	csv: tableDocumentArbitrary,
+	tsv: tableDocumentArbitrary,
 	html: htmlTableDocumentArbitrary,
 	jira: tableDocumentArbitrary,
 	json: keyedTableDocumentArbitrary,

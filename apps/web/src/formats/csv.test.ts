@@ -74,11 +74,53 @@ describe("csv parsing", () => {
 		]);
 	});
 
-	it("detects a semicolon-delimited file", () => {
-		expect(matrixOf("A;B\n1;2")).toEqual([
+	// #217: Papa Parse's own guess counted fields and picked a separator that
+	// only occurred inside cell data, so canonical output failed to parse back.
+	it("keeps a semicolon that is content rather than structure", () => {
+		const document = documentFromMatrix([["column-1:&#32;&#92;"], ["row-1:"]], {
+			headerRow: true,
+		});
+		expect(matrixOf(csvCodec.serialize(document))).toEqual([
+			["column-1:&#32;&#92;"],
+			["row-1:"],
+		]);
+	});
+
+	it("keeps a tab that is content rather than structure", () => {
+		const document = documentFromMatrix([["h"], ["a\tb\tc"]], {
+			headerRow: true,
+		});
+		expect(matrixOf(csvCodec.serialize(document))).toEqual([
+			["h"],
+			["a\tb\tc"],
+		]);
+	});
+
+	it("reads back canonical output whose header holds semicolons", () => {
+		const original = [
+			["a", "x:&#32;y", "c"],
+			["1", "2", "3"],
+		];
+		const document = documentFromMatrix(original, { headerRow: true });
+		expect(matrixOf(csvCodec.serialize(document))).toEqual(original);
+	});
+
+	// Detecting the separator belongs to the seam that receives text this
+	// product did not write. A source view reads back the codec's own output,
+	// where the separator is always the declared one, and guessing there let
+	// cell data masquerade as structure (#217).
+	it("detects a semicolon-delimited file on import", () => {
+		const result = csvCodec.parseMatrix("A;B\n1;2");
+		expect(result.ok).toBe(true);
+		if (!result.ok) throw new Error("expected a valid parse");
+		expect(result.table.matrix).toEqual([
 			["A", "B"],
 			["1", "2"],
 		]);
+	});
+
+	it("reads its own view as comma-separated", () => {
+		expect(matrixOf("A;B\n1;2")).toEqual([["A;B"], ["1;2"]]);
 	});
 });
 
