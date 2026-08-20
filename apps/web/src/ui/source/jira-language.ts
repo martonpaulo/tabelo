@@ -24,7 +24,14 @@ export const jiraLanguage = StreamLanguage.define<JiraState>({
 			return finishLine(stream, state, "escape");
 		}
 		if (stream.match(/^\|\|?/)) {
-			return finishLine(stream, state, "punctuation");
+			// The header line's own delimiters wear the header treatment, so an
+			// unnamed table still shows which line is the header. See the same
+			// choice in csv-language.ts.
+			return finishLine(
+				stream,
+				state,
+				state.header ? "heading" : "punctuation",
+			);
 		}
 		while (!stream.eol()) {
 			const next = stream.peek();

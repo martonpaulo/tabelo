@@ -8,7 +8,7 @@ import {
 	undoDepth,
 } from "@codemirror/commands";
 import { json } from "@codemirror/lang-json";
-import { markdown } from "@codemirror/lang-markdown";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import {
 	Annotation,
 	Compartment,
@@ -29,7 +29,6 @@ import {
 	hoverTooltip,
 	keymap,
 	lineNumbers,
-	MatchDecorator,
 	ViewPlugin,
 	type ViewUpdate,
 } from "@codemirror/view";
@@ -41,7 +40,7 @@ import {
 import type { HighlightLanguage, ViewId } from "@/views/types";
 import { csvLanguage } from "./csv-language";
 import { syntaxTheme } from "./editor-theme";
-import { htmlLanguage } from "./html-language";
+import { htmlHeaderCells, htmlLanguage } from "./html-language";
 import { jiraLanguage } from "./jira-language";
 import { minimalChange } from "./minimal-change";
 import {
@@ -59,7 +58,6 @@ const fromSync = Annotation.define<boolean>();
 const languageCompartment = new Compartment();
 const editableCompartment = new Compartment();
 const diagnosticsCompartment = new Compartment();
-const headerLineCompartment = new Compartment();
 const attributesCompartment = new Compartment();
 const historyCompartment = new Compartment();
 const metricsCompartment = new Compartment();
@@ -90,32 +88,6 @@ function metricsSignal(zoom: number): Extension {
 function wrapExtension(wrap: boolean) {
 	return wrap ? EditorView.lineWrapping : [];
 }
-
-const markdownTableStructureMatcher = new MatchDecorator({
-	regexp: /\||:?-{3,}:?/g,
-	decoration: (match) =>
-		Decoration.mark({
-			class: match[0] === "|" ? "cm-tableDelimiter" : "cm-tableDivider",
-		}),
-});
-
-const markdownTableStructure = ViewPlugin.fromClass(
-	class {
-		decorations: DecorationSet;
-
-		constructor(view: EditorView) {
-			this.decorations = markdownTableStructureMatcher.createDeco(view);
-		}
-
-		update(update: ViewUpdate) {
-			this.decorations = markdownTableStructureMatcher.updateDeco(
-				update,
-				this.decorations,
-			);
-		}
-	},
-	{ decorations: (plugin) => plugin.decorations },
-);
 
 export interface SourceDiagnostic {
 	readonly line?: number;
@@ -193,50 +165,6 @@ function diagnosticExtension(diagnostics: readonly SourceDiagnostic[]) {
 	return [decorations, tooltip];
 }
 
-function headerLineExtension(language: HighlightLanguage) {
-	// JSON keys the header into every row object instead of writing it as a
-	// first line, so it has no header line to mark. Every other highlighted
-	// format opens with one.
-	if (
-		language !== "markdown" &&
-		language !== "delimited" &&
-		language !== "jira"
-	) {
-		return [];
-	}
-	return ViewPlugin.fromClass(
-		class {
-			decorations: DecorationSet;
-
-			constructor(view: EditorView) {
-				this.decorations = this.build(view);
-			}
-
-			update(update: ViewUpdate) {
-				if (update.docChanged || update.viewportChanged) {
-					this.decorations = this.build(update.view);
-				}
-			}
-
-			build(view: EditorView): DecorationSet {
-				for (let number = 1; number <= view.state.doc.lines; number += 1) {
-					const line = view.state.doc.line(number);
-					// Only a line with no characters at all is skipped. A header row of
-					// empty cells still has its delimiters, and in TSV those are tabs:
-					// trimming would have discarded the header of every unnamed table,
-					// which is what a new table now starts as.
-					if (line.text === "") continue;
-					return Decoration.set([
-						Decoration.line({ class: "cm-tableHeaderLine" }).range(line.from),
-					]);
-				}
-				return Decoration.none;
-			}
-		},
-		{ decorations: (plugin) => plugin.decorations },
-	);
-}
-
 function contentAttributes(
 	ariaLabel: string,
 	invalid: boolean,
@@ -256,11 +184,14 @@ function contentAttributes(
 function languageFor(language: HighlightLanguage) {
 	switch (language) {
 		case "markdown":
-			return [markdown(), markdownTableStructure];
+			// The GFM base is what parses the table itself, so the header cells,
+			// the row pipes, and the alignment divider arrive as grammar tokens
+			// rather than as a project-owned decoration matching them by regexp.
+			return markdown({ base: markdownLanguage });
 		case "delimited":
 			return csvLanguage;
 		case "html":
-			return htmlLanguage;
+			return [htmlLanguage, htmlHeaderCells];
 		case "jira":
 			return jiraLanguage;
 		case "json":
@@ -368,7 +299,6 @@ export function SourceEditor({
 					wrapCompartment.of(wrapExtension(wrap)),
 					languageCompartment.of(languageFor(language)),
 					diagnosticsCompartment.of(diagnosticExtension(diagnostics)),
-					headerLineCompartment.of(headerLineExtension(language)),
 					editableCompartment.of(EditorView.editable.of(editable)),
 					syntaxTheme,
 					attributesCompartment.of(
@@ -556,10 +486,7 @@ export function SourceEditor({
 		const view = viewRef.current;
 		if (!view) return;
 		view.dispatch({
-			effects: [
-				languageCompartment.reconfigure(languageFor(language)),
-				headerLineCompartment.reconfigure(headerLineExtension(language)),
-			],
+			effects: languageCompartment.reconfigure(languageFor(language)),
 		});
 	}, [language]);
 

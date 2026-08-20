@@ -112,7 +112,7 @@ user-issued resizing.
 | `--surface-app` | `bg-surface-app` | The page behind the panes |
 | `--surface-panel` | `bg-surface-panel` | A pane's content area |
 | `--surface-header` | `bg-surface-header` | Pane headers and interface chrome |
-| `--surface-table-header` | `bg-surface-table-header` | The editable table header row in grid, source, and preview views. The grid's sticky row composites it over an opaque base: see §9 |
+| `--surface-table-header` | `bg-surface-table-header` | The editable table header row in the grid and the rendered preview. The source views mark their header in the syntax tokens instead: see "Syntax and table structure". The grid's sticky row composites it over an opaque base: see §9 |
 | `--surface-gutter` | `bg-surface-gutter` | The grid's row-number gutter |
 | `--surface-readonly` | `bg-surface-readonly` | A pane body that cannot be edited |
 | `--surface-floating` | `bg-surface-floating` | Menus, tooltips, and dialogs above panes |
@@ -215,6 +215,13 @@ links do not become blue merely for decoration.
 **Colour never carries meaning alone.** A source diagnostic combines underline
 shape with written tooltip text. This is not optional.
 
+**A status colour means only its status.** Syntax highlighting never borrows
+one: an escaped pipe or an HTML attribute name is not a source that parsed with
+a warning, and lending the amber to either leaves it carrying two meanings at
+once. The only status colour the source editor spends is `--status-warning` on
+the warning diagnostic's own underline, and `--destructive` on markup the
+grammar could not read. See "Syntax and table structure" later in this section.
+
 ### Theme
 
 Theme is one global display preference with three values: System, Light, and
@@ -315,14 +322,35 @@ and focus rings that pane zoom deliberately leaves alone.
 ### Syntax and table structure
 
 Every editable source view uses the existing CodeMirror integration for syntax
-highlighting. Markdown uses its installed language support; CSV and TSV share
-the existing delimiter-aware tokenizer; HTML keeps its existing table-focused
-tokenizer; Jira uses the same small project-owned `StreamLanguage` approach
-because its grammar is narrow and domain-specific; JSON uses CodeMirror's
-official JSON language package. The first row is visually distinct as the table
-header in Markdown, CSV, TSV, and Jira, while HTML receives element,
-attribute, and text treatment. Highlighting must preserve source text
-exactly and must not become another parser or source of truth.
+highlighting. Markdown uses its installed language support with the GFM base,
+so the table itself is parsed rather than matched by pattern; HTML uses the
+maintained XML stream mode from `@codemirror/legacy-modes`, which returns `<`,
+`</`, and `>` as delimiters and the element name on its own, so an opening tag
+never renders as a closing one; JSON uses CodeMirror's official JSON language
+package. CSV and TSV share a delimiter-aware project-owned `StreamLanguage`,
+and Jira and Records use the same small approach, because those grammars are
+narrow and domain-specific. Highlighting must preserve source text exactly and
+must not become another parser or source of truth.
+
+**The header row is marked in the tokens, never as a band behind a line.** A
+line-wide background competed with the selection drawn over it, and it had no
+answer for JSON, where the header names are keys repeated inside every record.
+So the header treatment travels with the tokens instead: bold at the pane's
+plain foreground, weight rather than colour, which keeps it legible in
+forced-colour mode and to anyone who cannot separate the two tones. It reaches
+one line in Markdown, CSV, TSV, and Jira, including that line's own
+delimiters, so an unnamed table still shows which line is the header; the
+header portion of each Records field; every key inside every JSON object; and
+the contents of each `<th>` in HTML, which is the one format whose grammar
+marks no header and therefore gets a narrow project-owned decoration instead.
+
+**Structure recedes, content is left alone, and one accent marks notation.**
+Brackets, pipes, the Markdown alignment divider, markup markers, and HTML
+attribute names are all `--muted-foreground`. The accent marks what is notation
+rather than the literal text it resembles: element names, quoted values,
+escapes and entities, and links. Typed JSON literals stay at the plain
+foreground on purpose, because a cell's type is carried and never read off its
+text: see `docs/adr/0008`. A status colour is never spent on a token.
 
 Source panes scroll horizontally and vertically by default. Soft wrapping is
 an opt-in presentation preference owned and persisted by each pane, never by a
@@ -575,7 +603,7 @@ copy path produces. Decided on #77.
   the header, per §2. No heavier rule under the header row.
 - **Square outer corners.** Table structure is rectilinear, as in the grid.
 - **The header is bold text on `--surface-table-header`**, the same shared
-  editable table-header surface the grid and source views use.
+  editable table-header surface the grid uses.
 - **Tabelo's own type**, at `text-content` so the preview scales with the pane.
 - **Sized to its content, capped at the pane width.** A narrow table is not
   stretched across a wide pane, and a wide one wraps instead of forcing the

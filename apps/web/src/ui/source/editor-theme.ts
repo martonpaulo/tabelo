@@ -20,6 +20,13 @@ const contentFontSize = "calc(var(--pane-zoom, 1) * 0.875rem)";
 // measurement pass having already run.
 const contentLineBox = "calc(var(--pane-zoom, 1) * 2rem)";
 
+// What a header cell looks like in every source view. Formats whose grammar
+// marks its header cells reach this through the `heading` tag below; HTML
+// reaches it through a decoration class, because the HTML mode marks no header.
+// Weight, not colour, carries the distinction, so the header stays legible in
+// forced-colour mode and to anyone who cannot separate the two tones.
+const headerCellStyle = { color: "var(--foreground)", fontWeight: "600" };
+
 export const editorTheme = EditorView.theme({
 	"&": {
 		height: "100%",
@@ -89,12 +96,11 @@ export const editorTheme = EditorView.theme({
 		backgroundColor: "var(--text-selection-fill)",
 	},
 	".cm-selectionMatch": { backgroundColor: "var(--text-selection-fill)" },
-	".cm-tableHeaderLine": {
-		backgroundColor: "var(--surface-table-header)",
-		boxShadow: "inset 0 -0.0625rem 0 var(--line-strong)",
-	},
-	".cm-tableDelimiter": { color: "var(--muted-foreground)" },
-	".cm-tableDivider": { color: "var(--selection-edge)" },
+	// HTML is the one format whose header cells no grammar marks for us, so the
+	// project-owned decorator in html-language.ts supplies them. It wears the
+	// same treatment the `heading` tag carries everywhere else, from the same
+	// definition, so there is one owner for what a header cell looks like.
+	".cm-tableHeaderCell": headerCellStyle,
 	".cm-diagnosticError": {
 		textDecorationLine: "underline",
 		textDecorationStyle: "wavy",
@@ -143,28 +149,59 @@ export const editorTheme = EditorView.theme({
 });
 
 export const highlightStyle = HighlightStyle.define([
-	// Table structure: the pipes, dividers, and delimiters that give the source
-	// its shape. Dimmed so the data reads first.
+	// Table structure: the brackets, pipes, dividers, and markup markers that
+	// give the source its shape. Dimmed so the data reads first. `punctuation`
+	// is the parent of every bracket tag, so JSON's braces and square brackets
+	// and HTML's angle brackets are all covered by that one entry.
 	{ tag: tags.punctuation, color: "var(--muted-foreground)" },
 	{ tag: tags.separator, color: "var(--muted-foreground)" },
-	{ tag: tags.contentSeparator, color: "var(--selection-edge)" },
-	// Header cells and anything the user marked up inside a cell.
-	{ tag: tags.heading, color: "var(--foreground)", fontWeight: "600" },
+	// Markdown's own markers: the pipes of a table row, the alignment divider
+	// under the header, and the `#`, `*`, `>`, and `-` that open a construct.
+	// The divider is structure like any other delimiter and recedes with them.
+	{ tag: tags.processingInstruction, color: "var(--muted-foreground)" },
+	{ tag: tags.contentSeparator, color: "var(--muted-foreground)" },
+	// Header cells, wherever the format puts them: one line in Markdown, CSV,
+	// TSV, Jira, and Records; a repeated key inside every JSON object; a `<th>`
+	// element in HTML.
+	{ tag: tags.heading, ...headerCellStyle },
+	{ tag: tags.propertyName, ...headerCellStyle },
+	// Anything the user marked up inside a cell.
 	{ tag: tags.strong, fontWeight: "600" },
 	{ tag: tags.emphasis, fontStyle: "italic" },
+	{ tag: tags.strikethrough, textDecoration: "line-through" },
 	{
 		tag: tags.link,
 		color: "var(--selection-edge)",
 		textDecoration: "underline",
 	},
+	// The address inside a link, and a bare autolink. The accent already says
+	// this is a link; the underline belongs to the text that carries it.
+	{ tag: tags.url, color: "var(--selection-edge)" },
 	{ tag: tags.monospace, color: "var(--foreground)" },
-	// Quoted CSV fields: the case where punctuation inside a value is data.
+	// Quoted CSV fields, JSON string values, and HTML attribute values: the case
+	// where punctuation inside a value is data rather than structure.
 	{ tag: tags.string, color: "var(--selection-edge)" },
-	{ tag: tags.escape, color: "var(--status-warning)" },
+	// A character standing in for one it cannot spell directly: a Markdown or
+	// Jira backslash escape, an HTML entity, a Markdown task marker. The accent
+	// marks it as notation rather than the literal text it looks like. It is
+	// deliberately not `--status-warning`: that token means one thing, a source
+	// that parsed with a non-blocking warning, and an escaped pipe is not one.
+	{ tag: tags.escape, color: "var(--selection-edge)" },
+	{ tag: tags.character, color: "var(--selection-edge)" },
+	{ tag: tags.atom, color: "var(--selection-edge)" },
 	{ tag: tags.tagName, color: "var(--selection-edge)" },
-	{ tag: tags.attributeName, color: "var(--status-warning)" },
+	// An attribute name is tag machinery, not content, so it recedes with the
+	// brackets around it rather than competing with the element name.
+	{ tag: tags.attributeName, color: "var(--muted-foreground)" },
 	{ tag: tags.comment, color: "var(--muted-foreground)", fontStyle: "italic" },
 	{ tag: tags.invalid, color: "var(--destructive)" },
+	// Deliberately unstyled, and left at the pane's plain foreground:
+	// - `number`, `bool`, and `null`, the typed JSON literals. A cell's type is
+	//   carried, never read off its text (docs/adr/0008), and colouring the
+	//   literals would invite reading a type out of the source. The accent on
+	//   `string` already separates a quoted value from an unquoted one.
+	// - `content`, `list`, `quote`, and `labelName`, which are the user's own
+	//   text. Structure is emphasised here; content is left alone.
 ]);
 
 export const syntaxTheme = [editorTheme, syntaxHighlighting(highlightStyle)];

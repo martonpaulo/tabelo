@@ -1,35 +1,94 @@
 import { copy } from "@/copy/copy";
+import { samplePerson } from "@/core/sample-data";
 import type { ViewId } from "@/views/types";
 import { expect, test } from "./fixtures";
+import type { TabeloPage } from "./helpers";
 
-test("every source format highlights its table structure", async ({
+// The weight the header treatment carries, so a header cell stays distinct
+// without depending on colour. The value lives in the editor theme; this is
+// only the threshold that separates "emphasised" from "normal".
+const HEADER_WEIGHT = 600;
+
+const first = samplePerson(0);
+
+// JSON keys every record on the headers, so it refuses a table with an unnamed
+// column. Naming all three is what lets one seeded table serve every view.
+async function nameColumns(tabelo: TabeloPage): Promise<void> {
+	for (const [index, header] of ["name", "city", "role"].entries()) {
+		await tabelo.editHeader(index + 1, header);
+	}
+	await tabelo.editCell(1, 1, first.name);
+}
+
+test("every source format marks its header cells in the tokens", async ({
 	tabelo,
 }) => {
-	const expectHeaderLine = async (view: ViewId) => {
+	await nameColumns(tabelo);
+
+	// The header used to be a background band on one line, which competed with
+	// the selection tint drawn over it and had no answer for JSON, where the
+	// header names are keys repeated inside every record.
+	const expectHeaderTokens = async (view: ViewId) => {
 		const pane = tabelo.pane(view);
-		await expect(pane.locator(".cm-tableHeaderLine")).toHaveCount(1);
 		await expect(pane.locator(".cm-line span").first()).toBeVisible();
+		const weights = await pane.locator(".cm-line span").evaluateAll((spans) =>
+			spans.map((span) => ({
+				text: span.textContent ?? "",
+				weight: Number.parseInt(getComputedStyle(span).fontWeight, 10),
+			})),
+		);
+		const emphasised = weights.filter(({ weight }) => weight >= HEADER_WEIGHT);
+		expect(emphasised.length).toBeGreaterThan(0);
+		expect(emphasised.some(({ text }) => text.includes("name"))).toBe(true);
 	};
 
-	await expectHeaderLine("markdown");
+	await expectHeaderTokens("markdown");
 
 	await tabelo.choosePaneView("markdown", "csv");
-	await expectHeaderLine("csv");
+	await expectHeaderTokens("csv");
 
 	await tabelo.choosePaneView("csv", "tsv");
-	await expectHeaderLine("tsv");
+	await expectHeaderTokens("tsv");
 
 	await tabelo.choosePaneView("tsv", "jira");
-	await expectHeaderLine("jira");
+	await expectHeaderTokens("jira");
 
-	await tabelo.choosePaneView("jira", "html");
-	const html = tabelo.pane("html");
-	const headerCellLine = html
-		.locator(".cm-line")
-		.filter({ hasText: "<th" })
-		.first();
-	await expect(headerCellLine).toBeVisible();
-	await expect(headerCellLine.locator("span")).not.toHaveCount(0);
+	await tabelo.choosePaneView("jira", "json");
+	await expectHeaderTokens("json");
+
+	await tabelo.choosePaneView("json", "html");
+	await expect(
+		tabelo.pane("html").locator(".cm-tableHeaderCell").first(),
+	).toBeVisible();
+});
+
+test("an HTML closing tag does not read as an opening one", async ({
+	tabelo,
+}) => {
+	await nameColumns(tabelo);
+	await tabelo.choosePaneView("markdown", "html");
+	const pane = tabelo.pane("html");
+	await expect(pane.locator(".cm-line span").first()).toBeVisible();
+
+	const spans = await pane.locator(".cm-line span").evaluateAll((nodes) =>
+		nodes.map((node) => ({
+			text: node.textContent ?? "",
+			color: getComputedStyle(node).color,
+		})),
+	);
+
+	// The delimiters are their own tokens: no span may carry a bracket and an
+	// element name together, which is exactly what made `<th>` and `</th>`
+	// render identically.
+	expect(
+		spans.filter(({ text }) => /[<>]/.test(text) && /\w/.test(text)),
+	).toEqual([]);
+
+	const delimiter = spans.find(({ text }) => text.includes("</"));
+	const name = spans.find(({ text }) => text === "th");
+	expect(delimiter).toBeDefined();
+	expect(name).toBeDefined();
+	expect(delimiter?.color).not.toBe(name?.color);
 });
 
 test("the first grid row is the numbered header row", async ({ tabelo }) => {

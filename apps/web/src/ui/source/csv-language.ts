@@ -58,7 +58,15 @@ export const csvLanguage = StreamLanguage.define<CsvState>({
 		}
 
 		if (stream.eat(",") || stream.eat(";") || stream.eat("\t")) {
-			return finishToken(stream, state, "punctuation");
+			// On the header line the delimiters carry the header treatment too, so
+			// the whole line reads as the header even when its cells are empty,
+			// which is what a table starts as. Markdown's own grammar marks its
+			// header row the same way.
+			return finishToken(
+				stream,
+				state,
+				state.header ? "heading" : "punctuation",
+			);
 		}
 
 		while (!stream.eol()) {
