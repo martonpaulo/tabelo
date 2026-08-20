@@ -27,6 +27,15 @@ export const samplePeople: readonly SamplePerson[] = [
 	{ name: "Amora", city: "Tokyo", role: "Doctor", age: 25 },
 ];
 
+// One person by position, for a fixture that needs a named member of the
+// roster rather than the whole matrix. It refuses an index the roster does not
+// hold, so a test can never quietly assert against a missing name.
+export function samplePerson(index: number): SamplePerson {
+	const person = samplePeople[index];
+	if (!person) throw new Error(`No sample person at index ${index}`);
+	return person;
+}
+
 export const samplePeopleHeaders = ["name", "city", "role", "age"] as const;
 
 // The roster as a plain matrix, header row first, which is the shape the
