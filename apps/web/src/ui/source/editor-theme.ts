@@ -141,7 +141,11 @@ export const editorTheme = EditorView.theme({
 		left: "0",
 		right: "0",
 		textAlign: "center",
+		// Drawn over the character, never in place of it: no pointer, no
+		// selection, no width. The space or tab underneath stays the selectable,
+		// copyable thing it always was.
 		pointerEvents: "none",
+		userSelect: "none",
 	},
 	// Which spans actually carry a glyph is the reader's choice, arriving as a
 	// class on the editor for the two whole-document answers and as a scope mark
@@ -164,6 +168,25 @@ export const editorTheme = EditorView.theme({
 		// screen reader, or a copy could pick up. The word itself has one owner
 		// in the copy module, like every other visible string.
 		content: `"${copy.source.emptyValue}"`,
+	},
+	// Holds the width a column needs for a placeholder that the file itself does
+	// not carry. Inline-block because a width is the whole point of it, and on
+	// the divider row it draws the dashes that row is made of.
+	// Holds the width a column needs for a placeholder the file itself does not
+	// carry. A width and nothing else: `line-height: 0` keeps the box out of the
+	// line's own height, so a spacer can never make one row taller than the rest.
+	".cm-tabeloColumnSpacer": {
+		display: "inline-block",
+		lineHeight: "0",
+		verticalAlign: "baseline",
+		userSelect: "none",
+	},
+	// The same width on the alignment divider, drawn out of the dashes that row
+	// is made of rather than opening a gap in the middle of a rule. Ordinary
+	// inline text, so it measures and sits itself.
+	".cm-tabeloDividerSpacer": {
+		color: "var(--muted-foreground)",
+		userSelect: "none",
 	},
 	".cm-tabeloEmptyValue": {
 		...annotationStyle,

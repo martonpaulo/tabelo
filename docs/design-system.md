@@ -381,11 +381,12 @@ follows along exactly as a typed value would, so a reader can see what the
 field costs. Everything else about it says otherwise: it holds no document
 position, the caret steps over it rather than into it, it cannot be selected or
 typed through, and it never reaches the text, the clipboard, a download, or
-storage. Markdown pads its columns from the values a table actually holds, so a
-row carrying a placeholder is wider on screen than the rows around it; that is
-the honest consequence of a marker that is drawn rather than written, and
-widening the column instead would mean writing padding into the file for
-something the file does not contain.
+storage. Markdown pads its columns from the values a table actually holds, and the
+placeholder is not one of them, so the column is widened for every row of the
+table instead: in the editor, as drawn width, and never in the file. The
+alignment divider is widened with the dashes it is made of, so the rule it
+draws stays unbroken. Writing that padding into the source would size a file by
+the length of an interface string, which is why it is drawn.
 
 **Three choices, because they answer three questions.** Tabs are a delimiter, so
 seeing them is structural; the placeholder reports a value rather than a
