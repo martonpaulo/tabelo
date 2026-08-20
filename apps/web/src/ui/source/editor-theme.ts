@@ -27,6 +27,17 @@ const contentLineBox = "calc(var(--pane-zoom, 1) * 2rem)";
 // forced-colour mode and to anyone who cannot separate the two tones.
 const headerCellStyle = { color: "var(--foreground)", fontWeight: "600" };
 
+// One tone for every non-content annotation the editor draws: the whitespace
+// glyphs, the trailing-whitespace line, and the empty-field marker. The muted
+// tone that structure already uses, at half strength, because an annotation
+// answers a question the reader has to ask before it matters and must not
+// compete with the text it describes. Mixed rather than applied as an opacity,
+// so nesting two of these marks over the same characters cannot fade one of
+// them twice.
+const annotationColor =
+	"color-mix(in oklab, var(--muted-foreground) 50%, transparent)";
+const annotationStyle = { color: annotationColor };
+
 export const editorTheme = EditorView.theme({
 	"&": {
 		height: "100%",
@@ -102,28 +113,31 @@ export const editorTheme = EditorView.theme({
 	// definition, so there is one owner for what a header cell looks like.
 	".cm-tableHeaderCell": headerCellStyle,
 	// Non-content annotation: whitespace and empty-value indicators. They are
-	// decorations over text the user typed, never text themselves, so they are
-	// drawn in the muted tone structure already uses and never in a status
-	// colour. CodeMirror's own extensions supply the dot and the tab arrow; only
-	// their colour changes here, because Tabelo's palette owns it in both
-	// themes. Each marker is a distinct shape, so none of them depends on colour
-	// alone to be told apart from content.
-	".cm-highlightSpace": {
-		// The same faint dot CodeMirror draws, painted from the product token.
-		backgroundImage:
-			"radial-gradient(circle at 50% 55%, var(--muted-foreground) 20%, transparent 5%)",
-		backgroundPosition: "center",
+	// decorations over text the user typed, never text themselves, and they
+	// answer a question the reader has to ask before they matter, so they sit
+	// below the content rather than beside it: the muted tone at half strength,
+	// findable when looked for and ignorable when not. Each one is a distinct
+	// glyph, so none depends on colour alone to be told apart from content.
+	// CodeMirror draws its own dot and arrow as background images; those are
+	// cleared, because the glyphs below are the ones this product chose.
+	".cm-highlightSpace, .cm-highlightTab": {
+		backgroundImage: "none",
+		// The anchor for the glyph below. Painting it in an absolutely
+		// positioned pseudo-element is what keeps it free of advance width, so
+		// the annotated character stays exactly one character wide and the text
+		// beside it never moves.
+		position: "relative",
 	},
-	".cm-highlightTab": {
-		// CodeMirror paints its arrow as a background image, which cannot carry a
-		// custom property. Masking the same drawing lets the fill come from the
-		// token instead, so the arrow follows the theme like everything else.
-		maskImage: `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20"><path stroke="black" stroke-width="1" fill="none" d="M1 10H196L190 5M190 15L196 10M197 4L197 16"/></svg>')`,
-		maskSize: "auto 100%",
-		maskPosition: "right 90%",
-		maskRepeat: "no-repeat",
-		backgroundColor: "var(--muted-foreground)",
+	".cm-highlightSpace::before, .cm-highlightTab::before": {
+		...annotationStyle,
+		position: "absolute",
+		left: "0",
+		right: "0",
+		textAlign: "center",
+		pointerEvents: "none",
 	},
+	".cm-highlightSpace::before": { content: '"·"' },
+	".cm-highlightTab::before": { content: '"→"' },
 	// Trailing whitespace is the one kind that is almost always accidental, so
 	// it carries a second cue on top of the dots. CodeMirror's own base theme
 	// tints it red, which here would spend a status colour on a token and claim
@@ -132,7 +146,7 @@ export const editorTheme = EditorView.theme({
 	// the text beside it.
 	".cm-trailingSpace": {
 		backgroundColor: "transparent",
-		boxShadow: "inset 0 -0.0625rem 0 var(--muted-foreground)",
+		boxShadow: `inset 0 -0.0625rem 0 ${annotationColor}`,
 	},
 	// The empty-field marker the editor draws itself. It is a widget, so it
 	// holds no document position: the caret, the selection, and the diagnostic
@@ -144,15 +158,10 @@ export const editorTheme = EditorView.theme({
 	".cm-tabeloEmptyValue::before": {
 		// Generated content, so the glyph is never a text node the DOM, a
 		// screen reader, or a copy could pick up.
-		content: '"∅"',
+		content: '"⌴"',
 	},
 	".cm-tabeloEmptyValue": {
-		color: "var(--muted-foreground)",
-		fontSize: "0.8em",
-		lineHeight: "1",
-		padding: "0 0.125rem",
-		border: "0.0625rem solid var(--control-outline)",
-		borderRadius: "var(--control-radius)",
+		...annotationStyle,
 		userSelect: "none",
 	},
 	".cm-diagnosticError": {

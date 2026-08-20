@@ -355,21 +355,27 @@ text: see `docs/adr/0008`. A status colour is never spent on a token.
 **Whitespace and empty values are annotated, never written.** The formats
 Tabelo edits are whitespace-significant and full of positions that hold a value
 the user cannot see: a tab and a run of spaces look alike in TSV, `a,,b` has a
-middle field, and `||a|||b||` is hard to count. Three markers answer that, all
-of them CodeMirror decorations over unchanged text: a faint dot for a space and
-an arrow for a tab, both from CodeMirror's own `highlightWhitespace()`; a second
-underline cue on trailing whitespace from `highlightTrailingWhitespace()`; and
-a boxed `∅` where a delimited syntax hides an empty field, which is the one
-marker this project draws itself, because no editor has a concept of a field.
-It appears in Markdown, CSV, TSV, and Jira; JSON, Records, and HTML spell an
-empty value out and get none.
+middle field, and `||a|||b||` is hard to count. Three glyphs answer that, all
+of them CodeMirror decorations over unchanged text: `·` for a space and `→` for
+a tab, on the marks `highlightWhitespace()` provides; a second underline cue on
+trailing whitespace from `highlightTrailingWhitespace()`; and `⌴` where a
+delimited syntax hides an empty field, which is the one marker this project
+draws itself, because no editor has a concept of a field. It appears in
+Markdown, CSV, TSV, and Jira; JSON, Records, and HTML spell an empty value out
+and get none.
 
-Every marker is `--muted-foreground`, never a status colour, and each is a
-distinct shape, so none of them is told apart from content by colour alone.
-The glyph is generated content and the empty-value marker is a zero-length
-widget, so no marker is ever a text node: it cannot be read out, copied,
-downloaded, parsed, or persisted, and the caret, the selection, and the
-diagnostic underlines stay measured in the characters the user typed. The
+**An annotation sits below the content, never beside it.** All three share one
+tone, `--muted-foreground` mixed to half strength, never a status colour and
+never the full text tone: a marker answers a question the reader has to ask
+before it matters, so it must be findable when looked for and ignorable when
+not. Each is a distinct glyph, so none is told apart from content by colour
+alone, and the space and tab glyphs are painted in an absolutely positioned
+pseudo-element so they carry no advance width and the annotated character stays
+exactly one character wide. Every glyph is generated content and the
+empty-value marker is a zero-length widget, so no marker is ever a text node:
+it cannot be read out, copied, downloaded, parsed, or persisted, and the caret,
+the selection, and the diagnostic underlines stay measured in the characters
+the user typed. The
 empty-value marker is the one that takes horizontal room, because the gap it
 reports is usually zero characters wide; that is accepted deliberately, since
 it changes no pane's height and the pane scrolls horizontally either way.
