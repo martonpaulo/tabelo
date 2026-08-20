@@ -87,6 +87,25 @@ native projection would change the entered representation, and invalid input,
 requires a user choice before the document changes. The model landed first so
 its migration stayed reviewable on its own.
 
+The clipboard carries the model between two Tabelo tabs without becoming a
+source of authority over it. TSV and HTML have no syntax for a type, so a
+private payload rides inertly inside the HTML flavour holding the selected
+values and each selected column's expectation. It is preferred only when it
+validates and projects to exactly the table the public flavours are visibly
+carrying, so external content still arrives as text and nothing gains a type in
+transit. Its schema is versioned on its own: bytes in flight between two tabs
+have a different compatibility window from a stored document, and tying the two
+versions together would make either one unable to change alone. The transport
+was measured rather than chosen: a custom MIME flavour survives DataTransfer in
+both engines, but Firefox refuses to write one through the asynchronous
+clipboard API and takes the public flavours down with it, while an inert HTML
+comment survived every path in both engines.
+
+Pasting values into columns that already exist writes values and nothing else.
+An expectation travels only where the paste creates the columns, because
+rewriting what an existing column expects would restructure rows the paste
+never touched.
+
 Round-trip preservation stays the measured signal, and it now has two halves:
 text still survives byte-exact, and a native value must survive synchronized
 text reconciliation as the same value rather than as its projection.

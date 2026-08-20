@@ -11,6 +11,7 @@ import type {
 	CellValue,
 	Column,
 	ColumnId,
+	ExpectedColumnType,
 	Row,
 	TableDocument,
 } from "./types";
@@ -90,6 +91,10 @@ export interface MatrixToDocumentOptions {
 	// still has exactly one header row: it simply has no text in it yet.
 	readonly headerRow: boolean;
 	readonly alignments?: readonly Alignment[];
+	// What each new column should expect to be typed into it. Only a source that
+	// states it supplies this; a column nobody spoke for expects text. It is an
+	// editing expectation, so it never reaches the values themselves.
+	readonly expectedTypes?: readonly ExpectedColumnType[];
 }
 
 export function documentFromMatrix(
@@ -113,6 +118,7 @@ export function documentFromMatrix(
 	const columns = headerValues.map((header, index) => ({
 		...createColumn(header),
 		align: options.alignments?.[index] ?? "default",
+		expectedType: options.expectedTypes?.[index] ?? DEFAULT_EXPECTED_TYPE,
 	}));
 	const rows = bodyRows.map((values) => createRow(columns, values));
 

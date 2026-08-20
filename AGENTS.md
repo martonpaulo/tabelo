@@ -232,7 +232,11 @@ depend on the core, never the reverse.
   current-schema policy does not narrow the valid syntax accepted by import
   codecs.
 - **Clipboard**: format sniffing for paste and payload construction for
-  copy/cut, independent of both the grid and the text panel.
+  copy/cut, independent of both the grid and the text panel. It owns one
+  private payload schema, versioned separately from persistence because the two
+  have different owners and compatibility windows, and validated at paste like
+  any other untrusted input. It carries what the interoperable flavours cannot
+  spell and never overrides what they visibly say.
 - **Visual grid**: selection, focus, keyboard model, and rendering. Presentation
   only; it calls table operations rather than mutating the document itself.
 

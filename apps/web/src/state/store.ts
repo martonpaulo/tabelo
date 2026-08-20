@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import type { ClipboardPayload } from "@/clipboard/parse";
+import type { ClipboardSelection } from "@/clipboard/payload";
 import { DEFAULT_TABLE_NAME, validateTableName } from "@/copy/product";
-import { cellTextAt } from "@/core/cell-value";
+import { readCell } from "@/core/cell-value";
 import {
 	createEmptyDocument,
 	isDocumentBlank,
@@ -294,7 +295,7 @@ export interface TabeloState {
 
 	clearSelection: () => void;
 	deleteSelectedStructure: () => StructureDeletionRefusal | null;
-	selectedMatrix: () => string[][];
+	clipboardSelection: () => ClipboardSelection;
 	pasteClipboard: (payload: ClipboardPayload) => PasteRefusal | null;
 	importText: (text: string, format?: CodecId) => void;
 	reportInputError: (error: ImportError) => void;
@@ -1367,7 +1368,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// between two selected columns closes rather than travelling to the
 	// clipboard as a ragged payload, so pasting the result back produces exactly
 	// the columns that were selected. Excel and Google Sheets do the same.
-	selectedMatrix: () => {
+	//
+	// Values leave with their types rather than as text. Projecting them here
+	// would decide, on the way out, that a number is the digits it happens to
+	// look like, and nothing downstream could tell the two apart again.
+	clipboardSelection: () => {
 		const state = get();
 		const rowCount = state.document.rows.length;
 		const columnCount = state.document.columns.length;
@@ -1378,13 +1383,20 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const body = selectionDataRows(state.selection, rowCount, columnCount)
 			.map((index) => state.document.rows[index])
 			.filter((row) => row !== undefined)
-			.map((row) => columns.map((column) => cellTextAt(row, column.id)));
+			.map((row) => columns.map((column) => readCell(row, column.id)));
 
 		// A selection that covers the header carries it, which is what makes the
 		// result useful when pasted somewhere else. Whole columns always do.
-		return selectionCoversHeader(state.selection, rowCount, columnCount)
+		const matrix = selectionCoversHeader(state.selection, rowCount, columnCount)
 			? [columns.map((column) => column.header), ...body]
 			: body;
+
+		// Headers are names rather than typed cells, so the expectations describe
+		// the columns themselves and stay aligned with them either way.
+		return {
+			matrix,
+			expectedTypes: columns.map((column) => column.expectedType),
+		};
 	},
 
 	pasteClipboard: (payload) => {

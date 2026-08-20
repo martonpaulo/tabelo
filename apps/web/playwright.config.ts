@@ -36,6 +36,9 @@ const firefoxContractSpecs = [
 	"**/source-occurrences.spec.ts",
 	"**/source-sync.spec.ts",
 	"**/system-theme.spec.ts",
+	// The private clipboard payload exists because the two engines disagree
+	// about custom clipboard formats, so both have to prove the round trip.
+	"**/typed-clipboard.spec.ts",
 	// Typed entry crosses editor blur, menu dismissal, modal focus restoration,
 	// and re-entry into the same cell.
 	"**/typed-cell-editing.spec.ts",

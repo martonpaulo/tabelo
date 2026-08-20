@@ -774,12 +774,15 @@ describe("operations over several selected regions", () => {
 			selection: scatteredColumns(),
 		});
 
-		expect(useTabeloStore.getState().selectedMatrix()).toEqual([
-			["name", "role"],
-			["Ingrid", "Designer"],
-			["Paulo", "Developer"],
-			["Mabel", "Writer"],
-		]);
+		expect(useTabeloStore.getState().clipboardSelection()).toEqual({
+			matrix: [
+				["name", "role"],
+				["Ingrid", "Designer"],
+				["Paulo", "Developer"],
+				["Mabel", "Writer"],
+			],
+			expectedTypes: ["text", "text"],
+		});
 	});
 
 	it("copies scattered cells as the rows and columns they cover", () => {
@@ -799,9 +802,12 @@ describe("operations over several selected regions", () => {
 			),
 		});
 
-		expect(useTabeloStore.getState().selectedMatrix()).toEqual([
-			["Ingrid", "35"],
-			["Mabel", "45"],
+		// The roster's ages are numbers, and they leave the selection as numbers.
+		// Projecting them to text here is what would make the clipboard the place
+		// a type is lost.
+		expect(useTabeloStore.getState().clipboardSelection().matrix).toEqual([
+			["Ingrid", 35],
+			["Mabel", 45],
 		]);
 	});
 

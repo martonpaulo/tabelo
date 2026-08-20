@@ -1,6 +1,6 @@
 import { cn } from "@tabelo/ui/lib/utils";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
+import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import { cellText, readCell } from "@/core/cell-value";
 import {
@@ -816,12 +816,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		}
 	};
 
-	const selectedMatrix = () => useTabeloStore.getState().selectedMatrix();
-
 	const writeClipboard = (event: React.ClipboardEvent) => {
-		const matrix = selectedMatrix();
-		event.clipboardData.setData("text/plain", matrixToTsv(matrix));
-		event.clipboardData.setData("text/html", matrixToHtml(matrix));
+		const payload = selectionClipboardPayload(
+			useTabeloStore.getState().clipboardSelection(),
+		);
+		event.clipboardData.setData("text/plain", payload.text);
+		event.clipboardData.setData("text/html", payload.html);
 		event.preventDefault();
 	};
 	const contentWidth = document.columns.reduce(
