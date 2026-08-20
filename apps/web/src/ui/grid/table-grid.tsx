@@ -1006,7 +1006,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							// Before the strip existed this lookup found nothing and the
 							// menu fell through to cell actions on a non-cell.
 							data-row-header={HEADER_ROW}
-							className="sticky top-grid-strip left-0 z-30 border-line-strong border-r border-b bg-surface-gutter px-1 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums"
+							className="sticky top-grid-strip left-0 z-30 border-line-strong border-r border-b border-b-line-subtle bg-surface-gutter px-1 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums"
 							onPointerEnter={() => {
 								if (draggingRef.current !== "row") return;
 								selectRow(HEADER_ROW, "extend");
@@ -1690,7 +1690,11 @@ function HeaderCell({
 				// absolutely positioned: `sticky` is already the containing block it
 				// resolves against, and the later rule would win and turn the sticky
 				// offset into a static shift. Same rule as the column resize handle.
-				"sticky z-20 border-line-strong border-r border-b align-top",
+				//
+				// The boundary under the header row is a row boundary like any other,
+				// so it takes the subtle line while the sides keep the strong one the
+				// chrome around them draws.
+				"sticky z-20 border-line-strong border-r border-b border-b-line-subtle align-top",
 				"cursor-cell select-none px-2 font-semibold",
 				// Sticks below the index strip rather than at the very top, so the
 				// two chrome layers stack instead of covering one another.

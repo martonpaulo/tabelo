@@ -1407,6 +1407,12 @@ deleted, because every table keeps exactly one header row. Everything that acts
 on the column as a whole (selecting it, its menu, its resize handle) belongs to
 the column index strip, not to the header cell.
 
+Because it is a row, **the boundary under the header row is an ordinary row
+boundary**: `--line-subtle`, the same one every pair of data rows draws, across
+the gutter and the cells alike. `--line-strong` stays on the boundaries between
+the grid's chrome and its table, which is what the column index strip, the two
+corners, and the gutter's outer edge draw.
+
 The numbered row gutter is interface chrome, not selected data. It never takes
 `--selection-fill`, even when its row or the whole table is selected. Every
 number is right-aligned and normal weight, including row 1, matching source and
