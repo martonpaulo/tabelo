@@ -778,11 +778,16 @@ transient: never document state, never a history step, never persisted.
 
 A dialog confirm is disabled when it would produce no state change. The shared
 confirm wrapper owns its required disabled tooltip, so feature dialogs cannot
-create an unexplained inactive primary button. This applies to the current
-layout in Layout and the current pane view in Change view. Download remains
-enabled because producing a file is an action even when its format choice did
-not change; destructive New table and first-visit creation also still perform
-real actions.
+create an unexplained inactive primary button. It is **explained unavailable**
+rather than natively disabled: the button keeps its place in the tab order,
+reports `aria-disabled`, and swallows pointer click, `Enter`, and `Space`, so
+the written reason opens from focus and not from hover alone. A native
+`disabled` attribute is for a control that promises no interaction and carries
+no reason to read; the moment a reason exists, it must be reachable without a
+pointer. This applies to the current layout in Layout and the current pane
+view in Change view. Download remains enabled because producing a file is an
+action even when its format choice did not change; destructive New table and
+first-visit creation also still perform real actions.
 
 Destructive menu actions use one shared state treatment. Their label, icon, and
 any secondary anatomy inherit the same destructive foreground at rest, on
