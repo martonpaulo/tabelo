@@ -470,6 +470,28 @@ export function rectDataRows(rect: CellRect): number[] {
 	return rectRows(rect).filter((row) => row !== HEADER_ROW);
 }
 
+// Whether a rect names a real block of data cells. The header row, an inverted
+// pair of corners, and anything past the table's edge all fail here. Shared by
+// every operation that writes into a rectangle rather than into one cell.
+export function isDataRect(
+	rect: CellRect,
+	rowCount: number,
+	columnCount: number,
+): boolean {
+	return (
+		Number.isInteger(rect.top) &&
+		Number.isInteger(rect.bottom) &&
+		Number.isInteger(rect.left) &&
+		Number.isInteger(rect.right) &&
+		rect.top >= 0 &&
+		rect.left >= 0 &&
+		rect.top <= rect.bottom &&
+		rect.left <= rect.right &&
+		rect.bottom < rowCount &&
+		rect.right < columnCount
+	);
+}
+
 export function rectCoversHeader(rect: CellRect): boolean {
 	return rect.top === HEADER_ROW;
 }
