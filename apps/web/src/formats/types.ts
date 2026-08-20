@@ -141,6 +141,11 @@ export interface TableCodec {
 	// has nothing to ask, which is what keeps the chooser from offering an
 	// option that would do nothing.
 	readonly outputOptions?: readonly OutputOptionId[];
+	// The separator this format writes between fields, for the formats that
+	// have one. Declared rather than sniffed, because a source view only ever
+	// reads back this codec's own output. Presentation reads it to place
+	// empty-value markers; parsing never consults it.
+	readonly fieldSeparator?: string;
 	// Text clipboard sniffing is format-owned. Lower priorities run first.
 	readonly sniffPriority?: number;
 	readonly canSniff?: (text: string) => boolean;

@@ -193,6 +193,7 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 		},
 		extension: config.extension,
 		mimeType: config.mimeType,
+		fieldSeparator: config.delimiter,
 		// Import and the clipboard carry text this product did not write, so a
 		// European semicolon file still has to open.
 		parseMatrix: (text) => readMatrix(text, config.sniffDelimiter),

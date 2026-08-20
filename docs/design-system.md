@@ -352,6 +352,34 @@ escapes and entities, and links. Typed JSON literals stay at the plain
 foreground on purpose, because a cell's type is carried and never read off its
 text: see `docs/adr/0008`. A status colour is never spent on a token.
 
+**Whitespace and empty values are annotated, never written.** The formats
+Tabelo edits are whitespace-significant and full of positions that hold a value
+the user cannot see: a tab and a run of spaces look alike in TSV, `a,,b` has a
+middle field, and `||a|||b||` is hard to count. Three markers answer that, all
+of them CodeMirror decorations over unchanged text: a faint dot for a space and
+an arrow for a tab, both from CodeMirror's own `highlightWhitespace()`; a second
+underline cue on trailing whitespace from `highlightTrailingWhitespace()`; and
+a boxed `∅` where a delimited syntax hides an empty field, which is the one
+marker this project draws itself, because no editor has a concept of a field.
+It appears in Markdown, CSV, TSV, and Jira; JSON, Records, and HTML spell an
+empty value out and get none.
+
+Every marker is `--muted-foreground`, never a status colour, and each is a
+distinct shape, so none of them is told apart from content by colour alone.
+The glyph is generated content and the empty-value marker is a zero-length
+widget, so no marker is ever a text node: it cannot be read out, copied,
+downloaded, parsed, or persisted, and the caret, the selection, and the
+diagnostic underlines stay measured in the characters the user typed. The
+empty-value marker is the one that takes horizontal room, because the gap it
+reports is usually zero characters wide; that is accepted deliberately, since
+it changes no pane's height and the pane scrolls horizontally either way.
+
+One global display preference, stored beside the theme in `tabelo.preferences`
+and on by default, turns all three on or off for every pane at once. It is
+never pane state: reconfigure the live editor through its own compartment, so
+switching it keeps each pane's caret, selection, draft, local undo history, and
+wrapping choice exactly as they were.
+
 Source panes scroll horizontally and vertically by default. Soft wrapping is
 an opt-in presentation preference owned and persisted by each pane, never by a
 format, the document, a draft, or the history timeline. The pane actions menu
