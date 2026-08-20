@@ -77,6 +77,15 @@ class EmptyValueWidget extends WidgetType {
 	eq() {
 		return true;
 	}
+
+	// A widget ignores pointer events by default, which would leave a click on
+	// the placeholder mapping to no document position at all and drop the caret
+	// at the start of the pane. Clicking a field is how anyone would begin
+	// filling it in, so the editor handles the click and puts the caret in the
+	// field the placeholder speaks for.
+	ignoreEvent() {
+		return false;
+	}
 }
 
 const emptyValueDecoration = Decoration.widget({
@@ -276,6 +285,12 @@ class ColumnSpacerWidget extends WidgetType {
 	eq(other: ColumnSpacerWidget) {
 		return other.columns === this.columns && other.divider === this.divider;
 	}
+
+	// Padding is part of the line, so clicking it lands in the line rather than
+	// nowhere. See the placeholder above.
+	ignoreEvent() {
+		return false;
+	}
 }
 
 function markdownDecorations(
@@ -288,15 +303,26 @@ function markdownDecorations(
 
 	const isEmpty = (cell: { from: number; to: number }) =>
 		view.state.doc.sliceString(cell.from, cell.to).trim() === "";
-	// What a cell ends up looking like: its own characters, plus the
-	// placeholder's word where one is drawn on top of them.
+	// A cell holds its value between one space and another: `| value |`. Those
+	// two spaces belong to the column and are kept, and everything between them
+	// is the padding the placeholder is drawn instead of, so an empty cell reads
+	// as `| (empty) |` with nothing left over behind the word.
+	const padding = (cell: { from: number; to: number }) => {
+		const text = view.state.doc.sliceString(cell.from, cell.to);
+		const from = text.startsWith(" ") ? cell.from + 1 : cell.from;
+		const to = text.length > 1 && text.endsWith(" ") ? cell.to - 1 : cell.to;
+		return { from, to: Math.max(from, to) };
+	};
+	// What a cell ends up looking like: its own characters, or, where the
+	// placeholder speaks for it, the two spaces plus the word.
 	const drawnWidth = (
 		row: MarkdownRow,
 		cell: { from: number; to: number },
-	): number =>
-		cell.to -
-		cell.from +
-		(!row.divider && isEmpty(cell) ? copy.source.emptyValue.length : 0);
+	): number => {
+		if (row.divider || !isEmpty(cell)) return cell.to - cell.from;
+		const kept = cell.to - cell.from - (padding(cell).to - padding(cell).from);
+		return kept + copy.source.emptyValue.length;
+	};
 
 	// What each column has to be worth: the widest thing drawn in it.
 	const widths: number[] = [];
@@ -310,16 +336,16 @@ function markdownDecorations(
 	for (const row of rows) {
 		for (const [index, cell] of row.cells.entries()) {
 			if (!row.divider && isEmpty(cell)) {
-				// Markdown writes a cell as `| value |`, so the space after the
-				// delimiter belongs to the column. Starting after it puts the
-				// placeholder exactly where the value it stands for would have
-				// started.
-				const opensWithSpace =
-					view.state.doc.sliceString(cell.from, cell.from + 1) === " ";
+				const inner = padding(cell);
 				ranges.push(
-					emptyValueDecoration.range(
-						opensWithSpace ? cell.from + 1 : cell.from,
-					),
+					inner.to > inner.from
+						? // Drawn instead of the padding, so the word starts where the
+							// value would have and nothing trails behind it.
+							Decoration.replace({ widget: new EmptyValueWidget() }).range(
+								inner.from,
+								inner.to,
+							)
+						: emptyValueDecoration.range(inner.from),
 				);
 			}
 			const missing = (widths[index] ?? 0) - drawnWidth(row, cell);
