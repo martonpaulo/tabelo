@@ -549,10 +549,12 @@ here:
   one or two for a small fixture and more only when the case needs them, and
   add a person to that file rather than inventing one at the call site. The
   roster carries an age column because numeric-looking values are the case
-  most likely to be mishandled: they stay strings, because nothing derives a
-  type from text and a fixture must not imply otherwise. Public identifiers
-  required for the repository link, the licence attribution, or deployment
-  configuration are not test data and stay as they are.
+  most likely to be mishandled: it holds real numbers, because the roster
+  declares that type and not because the values look like digits. A fixture
+  states a type or has none; it never implies one can be read off the text.
+  Public identifiers required for the repository link, the licence
+  attribution, or deployment configuration are not test data and stay as they
+  are.
 - A test asserting a platform-dependent result derives its expectation from the
   host, never from a hard-coded guess about which machine runs it. A keyboard
   legend, path separator, or line ending that is correct on a maintainer's
