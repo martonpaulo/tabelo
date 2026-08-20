@@ -1,4 +1,5 @@
 import { copy } from "@/copy/copy";
+import type { FillSeriesOffer } from "@/core/series";
 import { getCodec } from "@/formats";
 import type { ImportError } from "@/import/prepare";
 import { downloadText, tableDownloadFilename } from "@/platform/files";
@@ -48,6 +49,7 @@ export interface NoticeSources {
 	readonly storageIssue: StorageIssue | null;
 	readonly inputError: ImportError | null;
 	readonly pendingPaneAction: PendingPaneAction | null;
+	readonly fillSeriesOffer: FillSeriesOffer | null;
 	readonly notices: readonly TransientNotice[];
 }
 
@@ -115,7 +117,48 @@ function projectedNotices(sources: NoticeSources): readonly AppNotice[] {
 		});
 	}
 
+	if (sources.fillSeriesOffer) {
+		// A question, not a problem: the fill already did what it was asked to.
+		// Info severity and a polite announcement keep it out of the way of the
+		// work, and its two actions stop it expiring unanswered.
+		projected.push({
+			id: conditionNoticeIds.fillSeries,
+			severity: "info",
+			urgency: "polite",
+			message: copy.notices.fillSeriesOffer,
+			actions: [
+				{
+					id: "fill-series",
+					label: copy.notices.fillSeries,
+					run: applyFillSeries,
+				},
+				{
+					id: "keep-copied-values",
+					label: copy.notices.keepCopiedValues,
+					run: () => useTabeloStore.getState().dismissFillSeriesOffer(),
+				},
+			],
+			dismissible: true,
+		});
+	}
+
 	return projected;
+}
+
+// Choosing the series is a second document operation, so it can find that the
+// table moved on since the offer was made. It says so and changes nothing,
+// rather than writing part of a sequence into cells that no longer match.
+function applyFillSeries(): void {
+	const store = useTabeloStore.getState();
+	const outcome = store.applyFillSeries();
+	if (!outcome.ok) {
+		store.pushNotice({
+			severity: "warning",
+			message: copy.notices.fillSeriesUnavailable(outcome.refusal),
+		});
+		return;
+	}
+	store.announceStatus(copy.status.seriesFilled(outcome.count));
 }
 
 function storageNotice(issue: StorageIssue | null): AppNotice | null {

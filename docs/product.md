@@ -65,7 +65,12 @@ Each of these is a decision, not a gap waiting to be filled.
   table faster or safer. It does not adopt formulas, multiple sheets, charts,
   macros, aggregation, or hidden type inference. A cell may carry a native
   number, boolean, or null, but only because a typed source stated it or the
-  user chose it; nothing reads text and decides what it must be.
+  user chose it; nothing reads text and decides what it must be. The one
+  sequence Tabelo will extend, on explicit request after a fill, is a row or
+  column of typed numbers with one constant step. Dates, weekdays, custom
+  lists, text patterns, a step guessed from a single value, and series running
+  two ways at once are all excluded: each is an inference about intent, and
+  guessing wrong quietly rewrites the user's data.
 - **No large-document machinery.** Target scale is roughly 200 rows.
   Virtualization, Web Workers, and IndexedDB are all excluded. Input outside
   the supported bounds must be refused clearly instead of freezing or crashing

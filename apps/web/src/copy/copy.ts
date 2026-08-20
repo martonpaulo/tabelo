@@ -1,6 +1,7 @@
 import { modShortcut } from "@tabelo/ui/lib/platform";
 import type { CopyScope } from "@/clipboard/serialize";
 import { product } from "@/copy/product";
+import type { FillSeriesRefusal } from "@/core/series";
 import type { CellValueType, ExpectedColumnType } from "@/core/types";
 import type {
 	OutputOptionId,
@@ -544,6 +545,8 @@ export const copy = {
 			`Column ${column} is already at its maximum width.`,
 		cellsFilled: (count: number) =>
 			`${count} ${count === 1 ? "cell" : "cells"} filled.`,
+		seriesFilled: (count: number) =>
+			`${count} ${count === 1 ? "cell" : "cells"} continued as a series.`,
 		loading: "Loading…",
 	},
 
@@ -604,6 +607,26 @@ export const copy = {
 			"The saved table could not be opened. The original data was kept.",
 		storageRecoveryUnavailable: "No recovery copy: storage is unavailable.",
 		storageRecoveryQuota: "No recovery copy: storage is full.",
+		// The fill already happened and the table is correct as it stands. This
+		// offers the other reading of the same selection; it never says the
+		// repeat was a mistake.
+		fillSeriesOffer:
+			"The selected numbers were repeated. Continue them instead?",
+		fillSeries: "Fill series",
+		keepCopiedValues: "Keep copied values",
+		fillSeriesUnavailable: (refusal: FillSeriesRefusal) => {
+			switch (refusal) {
+				case "stale":
+				case "nothing-to-extend":
+					return "The table has changed. Fill again to continue the numbers.";
+				case "not-representable":
+					return "The series would run past the numbers this table can hold.";
+				case "expected-type":
+					return "These cells expect true or false, not numbers.";
+				default:
+					return "These cells can no longer continue as a series.";
+			}
+		},
 		downloadCopy: "Download a copy",
 		downloadOriginal: "Download original",
 		replaceSavedData: "Replace saved data",
