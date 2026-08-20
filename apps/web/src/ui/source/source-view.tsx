@@ -30,10 +30,11 @@ export default function SourceView({
 	const view = getView(viewId);
 	const document = useTabeloStore((state) => state.document);
 	const entered = useContext(PaneEntryContext);
-	// One global preference drives every marker in every pane: see #93. Nothing
-	// about it is pane state, so it neither reaches the workspace nor survives
-	// as a copy here.
-	const { showWhitespaceIndicators } = usePreferences();
+	// The indicator preferences drive every marker in every pane: see #93.
+	// Nothing about them is pane state, so they neither reach the workspace nor
+	// survive as a copy here.
+	const { spaceIndicators, tabIndicators, emptyValueIndicators } =
+		usePreferences();
 
 	// The projection recomputes only when the document changes, not when some
 	// other pane is being typed into.
@@ -93,7 +94,9 @@ export default function SourceView({
 				wrap={wrap}
 				value={draft?.text ?? projected.text}
 				language={view.highlight}
-				showIndicators={showWhitespaceIndicators}
+				spaceIndicators={spaceIndicators}
+				tabIndicators={tabIndicators}
+				emptyValueIndicators={emptyValueIndicators}
 				fieldSeparator={view.codec?.fieldSeparator}
 				diagnostics={diagnostics}
 				invalid={invalid}

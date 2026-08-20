@@ -3,7 +3,7 @@ import type { Range } from "@codemirror/state";
 import {
 	Decoration,
 	type DecorationSet,
-	type EditorView,
+	EditorView,
 	ViewPlugin,
 	type ViewUpdate,
 	WidgetType,
@@ -15,13 +15,13 @@ import type { HighlightLanguage } from "@/views/types";
 // and `|x||z|` all hold a value the user cannot see. CodeMirror has no concept
 // of a field, so this is the one marker the editor draws itself.
 //
-// It is a decoration and nothing else. The widget occupies no document
-// position, so the text, the caret, the selection, the clipboard, downloads,
-// drafts, history, and persistence are byte-identical with markers on and off.
-// This is emphatically not a parser: it never produces cells, it never decides
-// what a document contains, and where a line's structure is ambiguous it draws
-// nothing rather than guessing. See docs/design-system.md, "Syntax and table
-// structure".
+// It is a decoration and nothing else. Drawing over a cell's padding changes
+// what that run looks like and never what it is, so the text, the caret, the
+// selection, the clipboard, downloads, drafts, history, and persistence are
+// byte-identical with the placeholder on and off. This is emphatically not a
+// parser: it never produces cells, it never decides what a document contains,
+// and where a line's structure is ambiguous it draws nothing rather than
+// guessing. See docs/design-system.md, "Syntax and table structure".
 
 // Which syntax a source view's empty fields follow, derived from registry data
 // rather than from a view's identity: see docs/adr/0005.
@@ -53,21 +53,26 @@ export function emptyValueSyntax(
 	}
 }
 
+// The placeholder reads as text: it takes the width of its own word, sits where
+// the cell's value would have started, and pushes what follows along exactly as
+// a typed value would. What it is not is content. It occupies no document
+// position, the caret steps over it rather than into it, and it cannot be
+// selected, copied, or typed through.
 class EmptyValueWidget extends WidgetType {
 	toDOM() {
 		const marker = document.createElement("span");
 		marker.className = "cm-tabeloEmptyValue";
-		// The marker is drawn for the eye only. The accessible text of a source
-		// view is its source text, and a glyph the user did not type must never
-		// join it. The glyph itself is generated content in the editor theme, so
-		// it is not a text node at all: it cannot be read out, cannot reach a DOM
-		// text extraction, and cannot survive a copy that falls back to the DOM.
+		// Drawn for the eye only. The accessible text of a source view is its
+		// source text, and a word the user did not type must never join it. The
+		// word itself is generated content in the editor theme, so it is not a
+		// text node at all: it cannot be read out, cannot reach a DOM text
+		// extraction, and cannot survive a copy that falls back to the DOM.
 		marker.setAttribute("aria-hidden", "true");
 		return marker;
 	}
 
-	// Every marker means the same thing, so CodeMirror may reuse one instance
-	// rather than rebuilding DOM as the viewport moves.
+	// Every placeholder is the same drawing, so CodeMirror may reuse the DOM
+	// rather than rebuilding it as the viewport moves.
 	eq() {
 		return true;
 	}
@@ -207,7 +212,13 @@ function markdownEmptyPositions(
 				previousLine === line &&
 				view.state.doc.sliceString(previousEnd, node.from).trim() === ""
 			) {
-				positions.push(previousEnd);
+				// Markdown writes a cell as `| value |`, so the space after the
+				// delimiter belongs to the column. Starting after it puts the
+				// placeholder exactly where the value it stands for would have
+				// started.
+				const opensWithSpace =
+					view.state.doc.sliceString(previousEnd, previousEnd + 1) === " ";
+				positions.push(opensWithSpace ? previousEnd + 1 : previousEnd);
 			}
 			previousEnd = node.to;
 			previousLine = view.state.doc.lineAt(node.to).number;
@@ -265,7 +276,7 @@ function buildDecorations(
 }
 
 export function emptyValueMarkers(syntax: EmptyValueSyntax) {
-	return ViewPlugin.fromClass(
+	const plugin = ViewPlugin.fromClass(
 		class {
 			decorations: DecorationSet;
 
@@ -279,6 +290,17 @@ export function emptyValueMarkers(syntax: EmptyValueSyntax) {
 				}
 			}
 		},
-		{ decorations: (plugin) => plugin.decorations },
+		{ decorations: (instance) => instance.decorations },
 	);
+
+	// The placeholder is drawn, not typed, so the caret has no business inside
+	// it: cursor motion steps over the whole thing, and a selection dragged
+	// across it takes the field as one piece rather than landing between two
+	// characters of a word nobody wrote.
+	return [
+		plugin,
+		EditorView.atomicRanges.of(
+			(view) => view.plugin(plugin)?.decorations ?? Decoration.none,
+		),
+	];
 }

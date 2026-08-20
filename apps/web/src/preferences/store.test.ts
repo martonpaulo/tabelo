@@ -12,7 +12,9 @@ describe("preferences store", () => {
 		const saved = {
 			version: PREFERENCES_VERSION,
 			theme: "light",
-			showWhitespaceIndicators: false,
+			spaceIndicators: "none",
+			tabIndicators: false,
+			emptyValueIndicators: false,
 		} as const;
 		const storage = {
 			getItem: vi.fn((key: string) =>
@@ -36,7 +38,9 @@ describe("preferences store", () => {
 		const next = {
 			version: PREFERENCES_VERSION,
 			theme: "dark",
-			showWhitespaceIndicators: false,
+			spaceIndicators: "all",
+			tabIndicators: true,
+			emptyValueIndicators: false,
 		} as const;
 
 		expect(store.commit(next)).toEqual({ status: "saved" });

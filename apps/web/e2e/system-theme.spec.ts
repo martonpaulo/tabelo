@@ -1,31 +1,28 @@
 import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import {
+	DEFAULT_PREFERENCES,
 	PREFERENCES_STORAGE_KEY,
-	PREFERENCES_VERSION,
+	type Preferences,
 	type ThemePreference,
 } from "@/preferences/contract";
 import { expect, test } from "./fixtures";
 
 const storedPreferences = (
 	theme: ThemePreference,
-	showWhitespaceIndicators = true,
-) => ({
-	version: PREFERENCES_VERSION,
-	theme,
-	showWhitespaceIndicators,
-});
+	changes: Partial<Preferences> = {},
+): Preferences => ({ ...DEFAULT_PREFERENCES, theme, ...changes });
 
 async function seedPreferences(
 	page: Page,
 	theme: ThemePreference,
-	showWhitespaceIndicators = true,
+	changes: Partial<Preferences> = {},
 ) {
 	await page.addInitScript(
 		({ key, value }) => localStorage.setItem(key, JSON.stringify(value)),
 		{
 			key: PREFERENCES_STORAGE_KEY,
-			value: storedPreferences(theme, showWhitespaceIndicators),
+			value: storedPreferences(theme, changes),
 		},
 	);
 }
@@ -173,9 +170,7 @@ test("Apply writes the whole draft once and restores it before React on reload",
 		.getByRole("radio", { name: copy.settings.theme.options.light.label })
 		.click();
 	await dialog
-		.getByRole("checkbox", {
-			name: copy.settings.whitespaceIndicators.label,
-		})
+		.getByRole("checkbox", { name: copy.settings.tabIndicators.label })
 		.uncheck();
 	await dialog.getByRole("button", { name: copy.settings.apply }).click();
 	await expect(dialog).toBeHidden();
@@ -186,7 +181,7 @@ test("Apply writes the whole draft once and restores it before React on reload",
 			(key) => localStorage.getItem(key),
 			PREFERENCES_STORAGE_KEY,
 		),
-	).toBe(JSON.stringify(storedPreferences("light", false)));
+	).toBe(JSON.stringify(storedPreferences("light", { tabIndicators: false })));
 	expect((await renderedTheme(page)).attribute).toBe("light");
 
 	await page.reload();
@@ -196,7 +191,7 @@ test("Apply writes the whole draft once and restores it before React on reload",
 	const reopened = await openSettings(page);
 	await expect(
 		reopened.dialog.getByRole("checkbox", {
-			name: copy.settings.whitespaceIndicators.label,
+			name: copy.settings.tabIndicators.label,
 		}),
 	).not.toBeChecked();
 });

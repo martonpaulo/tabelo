@@ -355,14 +355,13 @@ text: see `docs/adr/0008`. A status colour is never spent on a token.
 **Whitespace and empty values are annotated, never written.** The formats
 Tabelo edits are whitespace-significant and full of positions that hold a value
 the user cannot see: a tab and a run of spaces look alike in TSV, `a,,b` has a
-middle field, and `||a|||b||` is hard to count. Three glyphs answer that, all
-of them CodeMirror decorations over unchanged text: `·` for a space and `→` for
-a tab, on the marks `highlightWhitespace()` provides; a second underline cue on
-trailing whitespace from `highlightTrailingWhitespace()`; and `⌴` where a
-delimited syntax hides an empty field, which is the one marker this project
-draws itself, because no editor has a concept of a field. It appears in
-Markdown, CSV, TSV, and Jira; JSON, Records, and HTML spell an empty value out
-and get none.
+middle field, and `||a|||b||` is hard to count. Three glyphs answer that, all of
+them CodeMirror decorations over unchanged text: `·` for a space and `→` for a
+tab, on the per-character marks `highlightWhitespace()` provides, and `(empty)`
+where a delimited syntax hides an empty field. The placeholder is the one this
+project draws itself, because no editor has a concept of a field; it appears in
+Markdown, CSV, TSV, and Jira, while JSON, Records, and HTML spell an empty value
+out and get none.
 
 **An annotation sits below the content, never beside it.** All three share one
 tone, `--muted-foreground` mixed to half strength, never a status colour and
@@ -371,20 +370,45 @@ before it matters, so it must be findable when looked for and ignorable when
 not. Each is a distinct glyph, so none is told apart from content by colour
 alone, and the space and tab glyphs are painted in an absolutely positioned
 pseudo-element so they carry no advance width and the annotated character stays
-exactly one character wide. Every glyph is generated content and the
-empty-value marker is a zero-length widget, so no marker is ever a text node:
-it cannot be read out, copied, downloaded, parsed, or persisted, and the caret,
-the selection, and the diagnostic underlines stay measured in the characters
-the user typed. The
-empty-value marker is the one that takes horizontal room, because the gap it
-reports is usually zero characters wide; that is accepted deliberately, since
-it changes no pane's height and the pane scrolls horizontally either way.
+exactly one character wide. Every glyph is generated content, so no marker is
+ever a text node: none of them can be read out, copied, downloaded, parsed, or
+persisted, and the caret, the selection, and the diagnostic underlines stay
+measured in the characters the user typed.
 
-One global display preference, stored beside the theme in `tabelo.preferences`
-and on by default, turns all three on or off for every pane at once. It is
-never pane state: reconfigure the live editor through its own compartment, so
-switching it keeps each pane's caret, selection, draft, local undo history, and
-wrapping choice exactly as they were.
+**The placeholder reads as text and is not text.** It sits where the cell's
+value would have started, takes the width of its own word, and pushes what
+follows along exactly as a typed value would, so a reader can see what the
+field costs. Everything else about it says otherwise: it holds no document
+position, the caret steps over it rather than into it, it cannot be selected or
+typed through, and it never reaches the text, the clipboard, a download, or
+storage. Markdown pads its columns from the values a table actually holds, so a
+row carrying a placeholder is wider on screen than the rows around it; that is
+the honest consequence of a marker that is drawn rather than written, and
+widening the column instead would mean writing padding into the file for
+something the file does not contain.
+
+**Three choices, because they answer three questions.** Tabs are a delimiter, so
+seeing them is structural; the placeholder reports a value rather than a
+character; and spaces are the one a reader has an opinion about. Tabs and the
+placeholder are each on or off. Spaces take the modes VS Code's
+`editor.renderWhitespace` settled on, under its names, so a reader who knows
+that setting does not learn a second vocabulary: `none`, `boundary` (runs of
+spaces and the spaces at a line's edges), `trailing`, and `all`. Its
+`selection` is deliberately absent, because it answers nothing until the reader
+has already selected the text they were trying to inspect. The default is
+`trailing`, with tabs and the placeholder on: a space at the end of a line is
+the one nobody meant to type, and dotting every space instead answers a
+question nobody asked.
+
+All three live beside the theme in the versioned `tabelo.preferences` payload
+and are global, never pane state. A schema change here gets a migration like
+any other, so a reader who had turned the markers off keeps them off. Which
+spans exist is decided by the extensions, and which of them carry a glyph is
+decided in the theme, from a class the editor wears and a scope mark around the
+qualifying spaces: one owner for what a marker looks like, and a mode change
+that repaints without touching the document. Reconfigure the live editor
+through its own compartment, so switching any of them keeps each pane's caret,
+selection, draft, local undo history, and wrapping choice exactly as they were.
 
 Source panes scroll horizontally and vertically by default. Soft wrapping is
 an opt-in presentation preference owned and persisted by each pane, never by a

@@ -26,7 +26,6 @@ import {
 	EditorView,
 	highlightActiveLine,
 	highlightActiveLineGutter,
-	highlightTrailingWhitespace,
 	highlightWhitespace,
 	hoverTooltip,
 	keymap,
@@ -39,6 +38,7 @@ import {
 	notifyLocalHistoryChanged,
 	registerLocalHistory,
 } from "@/history/coordinator";
+import type { SpaceIndicators } from "@/preferences/contract";
 import type { HighlightLanguage, ViewId } from "@/views/types";
 import { csvLanguage } from "./csv-language";
 import { syntaxTheme } from "./editor-theme";
@@ -52,6 +52,7 @@ import {
 	selectNextOccurrenceAsPrimary,
 } from "./occurrence-selection";
 import { recordsLanguage } from "./records-language";
+import { indicatorClasses, spaceScope } from "./whitespace-indicators";
 
 // Marks a transaction as coming from synchronization rather than the user.
 // This is the loop guard required by docs/adr/0001: sync-originated changes
@@ -93,23 +94,34 @@ function wrapExtension(wrap: boolean) {
 	return wrap ? EditorView.lineWrapping : [];
 }
 
-// Whitespace and empty-value indicators, all three from one global preference.
-// The two whitespace extensions are CodeMirror's own, restyled from Tabelo
-// tokens in editor-theme.ts; only the empty-value marker is project-owned,
-// because no editor has a concept of a field. Every one of them is a
-// decoration, so turning them on or off cannot touch the document, the draft,
-// the clipboard, a download, or the history timeline.
+// The indicators, from the three global preferences that own them. Spaces,
+// tabs, and empty values answer different questions and are chosen separately.
+//
+// `highlightWhitespace()` supplies one span per space and per tab; which of
+// those spans actually shows a glyph is decided in editor-theme.ts, from the
+// classes below and from the scope a space mode marks. Splitting it that way
+// keeps one owner for what a marker looks like, and means changing a mode
+// never changes what is in the document: every one of these is a decoration,
+// so none of them can reach the text, the draft, the clipboard, a download,
+// or the history timeline.
 function indicatorExtensions(
-	show: boolean,
+	spaces: SpaceIndicators,
+	tabs: boolean,
+	emptyValues: boolean,
 	language: HighlightLanguage,
 	fieldSeparator: string | undefined,
 ): Extension {
-	if (!show) return [];
-	const syntax = emptyValueSyntax(language, fieldSeparator);
+	const marksWhitespace = tabs || spaces !== "none";
+	const syntax = emptyValues
+		? emptyValueSyntax(language, fieldSeparator)
+		: null;
+	const classes = indicatorClasses(spaces, tabs);
+
 	return [
-		highlightWhitespace(),
-		highlightTrailingWhitespace(),
+		marksWhitespace ? highlightWhitespace() : [],
+		spaceScope(spaces),
 		syntax ? emptyValueMarkers(syntax) : [],
+		classes ? EditorView.editorAttributes.of({ class: classes }) : [],
 	];
 }
 
@@ -237,10 +249,13 @@ interface SourceEditorProps {
 	readonly wrap: boolean;
 	readonly value: string;
 	readonly language: HighlightLanguage;
-	// The global display preference from #93, and the separator this view's
-	// format writes, which is what tells the empty-value marker where a field
-	// ends. Both are read here rather than stored: no pane owns either.
-	readonly showIndicators: boolean;
+	// The three global display preferences from #93, and the separator this
+	// view's format writes, which is what tells the empty-value marker where a
+	// field ends. All of them are read here rather than stored: no pane owns
+	// any of them.
+	readonly spaceIndicators: SpaceIndicators;
+	readonly tabIndicators: boolean;
+	readonly emptyValueIndicators: boolean;
 	readonly fieldSeparator?: string;
 	readonly diagnostics: readonly SourceDiagnostic[];
 	readonly invalid: boolean;
@@ -270,7 +285,9 @@ export function SourceEditor({
 	wrap,
 	value,
 	language,
-	showIndicators,
+	spaceIndicators,
+	tabIndicators,
+	emptyValueIndicators,
 	fieldSeparator,
 	diagnostics,
 	invalid,
@@ -329,7 +346,13 @@ export function SourceEditor({
 					highlightActiveLineGutter(),
 					wrapCompartment.of(wrapExtension(wrap)),
 					indicatorCompartment.of(
-						indicatorExtensions(showIndicators, language, fieldSeparator),
+						indicatorExtensions(
+							spaceIndicators,
+							tabIndicators,
+							emptyValueIndicators,
+							language,
+							fieldSeparator,
+						),
 					),
 					languageCompartment.of(languageFor(language)),
 					diagnosticsCompartment.of(diagnosticExtension(diagnostics)),
@@ -532,10 +555,22 @@ export function SourceEditor({
 		if (!view) return;
 		view.dispatch({
 			effects: indicatorCompartment.reconfigure(
-				indicatorExtensions(showIndicators, language, fieldSeparator),
+				indicatorExtensions(
+					spaceIndicators,
+					tabIndicators,
+					emptyValueIndicators,
+					language,
+					fieldSeparator,
+				),
 			),
 		});
-	}, [showIndicators, language, fieldSeparator]);
+	}, [
+		spaceIndicators,
+		tabIndicators,
+		emptyValueIndicators,
+		language,
+		fieldSeparator,
+	]);
 
 	useEffect(() => {
 		const view = viewRef.current;
