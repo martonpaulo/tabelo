@@ -3,8 +3,14 @@ import {
 	type ClipboardSource,
 	readClipboardTable,
 } from "@/clipboard/parse";
+import { stripTabeloPayload } from "@/clipboard/payload";
 import { documentFromMatrix, normalizeMatrix } from "@/core/document";
-import type { Alignment, CellValue, TableDocument } from "@/core/types";
+import type {
+	Alignment,
+	CellValue,
+	ExpectedColumnType,
+	TableDocument,
+} from "@/core/types";
 import { getCodec } from "@/formats";
 import type { CodecId, ParseIssue } from "@/formats/types";
 
@@ -48,6 +54,7 @@ export interface PreparedImport {
 	readonly source: ClipboardSource;
 	readonly headerRow?: boolean;
 	readonly alignments?: readonly Alignment[];
+	readonly expectedTypes?: readonly ExpectedColumnType[];
 	readonly warnings: readonly ParseIssue[];
 }
 
@@ -62,9 +69,13 @@ export interface PrepareImportRequest {
 
 function payloadBytes(payload: ClipboardPayload): number {
 	const encoder = new TextEncoder();
+	// Tabelo's own private flavour rides inside the HTML, and it is metadata
+	// rather than content the user is importing. It carries its own bound, so
+	// charging it to this budget would shrink the table a Tabelo copy can be
+	// pasted back into for bytes the destination never has to hold.
+	const html = payload.html ? stripTabeloPayload(payload.html) : "";
 	return (
-		encoder.encode(payload.text).byteLength +
-		(payload.html ? encoder.encode(payload.html).byteLength : 0)
+		encoder.encode(payload.text).byteLength + encoder.encode(html).byteLength
 	);
 }
 
@@ -120,6 +131,7 @@ export function prepareImport(
 		readonly source: ClipboardSource;
 		readonly headerRow?: boolean;
 		readonly alignments?: readonly Alignment[];
+		readonly expectedTypes?: readonly ExpectedColumnType[];
 		readonly warnings?: readonly ParseIssue[];
 	};
 
@@ -167,6 +179,7 @@ export function prepareImport(
 			source: table.source,
 			headerRow: table.headerRow,
 			alignments: table.alignments,
+			expectedTypes: table.expectedTypes,
 			warnings: table.warnings ?? [],
 		},
 	};
@@ -179,5 +192,6 @@ export function createImportedDocument(
 	return documentFromMatrix(prepared.matrix, {
 		headerRow,
 		alignments: prepared.alignments,
+		expectedTypes: prepared.expectedTypes,
 	});
 }

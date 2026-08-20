@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it } from "vitest";
+import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { readCell } from "@/core/cell-value";
 import type { CodecId } from "@/formats";
 import {
@@ -69,6 +70,61 @@ describe("named format validation", () => {
 			null,
 			"007",
 		]);
+	});
+});
+
+describe("a Tabelo clipboard selection", () => {
+	const selection = {
+		matrix: [
+			["Ingrid", 35, true, null],
+			["Paulo", 35, false, ""],
+		],
+		expectedTypes: ["text", "number", "boolean", "text"],
+	} as const;
+
+	it("builds a document holding the values and the expectations it carried", () => {
+		const result = prepareImport({
+			payload: selectionClipboardPayload(selection),
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.value.source).toBe("tabelo");
+
+		const document = createImportedDocument(result.value, false);
+		expect(document.columns.map((column) => column.expectedType)).toEqual([
+			"text",
+			"number",
+			"boolean",
+			"text",
+		]);
+		expect(
+			document.rows.map((row) =>
+				document.columns.map((column) => readCell(row, column.id)),
+			),
+		).toEqual([
+			["Ingrid", 35, true, null],
+			["Paulo", 35, false, ""],
+		]);
+	});
+
+	// The private payload is metadata rather than content being imported, so a
+	// selection that fits the budget on its way out still fits on its way back
+	// in. Charging both would shrink what a Tabelo copy can be pasted into.
+	it("is not charged to the import byte budget", () => {
+		const long = "x".repeat(400_000);
+		const payload = selectionClipboardPayload({
+			matrix: [[long]],
+			expectedTypes: ["text"],
+		});
+
+		const rawBytes = new TextEncoder().encode(
+			payload.text + payload.html,
+		).byteLength;
+		expect(payload.html).toContain("tabelo:");
+		expect(rawBytes).toBeGreaterThan(IMPORT_LIMITS.payloadBytes);
+
+		expect(prepareImport({ payload }).ok).toBe(true);
 	});
 });
 

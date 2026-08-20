@@ -10,7 +10,7 @@ import {
 	Scissors,
 	Trash2,
 } from "lucide-react";
-import { matrixToHtml, matrixToTsv } from "@/clipboard/serialize";
+import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import {
 	type FillDirection,
@@ -111,9 +111,9 @@ export function runFillDirection(
 export async function copySelectionToClipboard(
 	intent: "copy" | "cut",
 ): Promise<boolean> {
-	const matrix = useTabeloStore.getState().selectedMatrix();
+	const selection = useTabeloStore.getState().clipboardSelection();
 	const ok = await copyToClipboard(
-		{ text: matrixToTsv(matrix), html: matrixToHtml(matrix) },
+		selectionClipboardPayload(selection),
 		"selection",
 	);
 	if (!ok) return false;

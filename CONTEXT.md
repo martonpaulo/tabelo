@@ -261,12 +261,29 @@ Related to: Header decision, Format sniffing
 
 ### Format sniffing
 
-Inspecting pasted content to decide how to parse it, in priority order: HTML
-table, JSON matrix, TSV, Markdown table, Records, Jira table, CSV, then plain
-text. Records sorts after Markdown on purpose, so a paste that could be read
-either way is always read as Markdown.
+Inspecting pasted content to decide how to parse it, in priority order: the
+private clipboard payload, HTML table, JSON matrix, TSV, Markdown table,
+Records, Jira table, CSV, then plain text. Records sorts after Markdown on
+purpose, so a paste that could be read either way is always read as Markdown.
 
-Related to: Import, Parser
+Related to: Import, Parser, Private clipboard payload
+
+### Private clipboard payload
+
+Tabelo's own clipboard representation, carried inertly inside the public HTML
+flavour beside the interoperable text and HTML every other application reads.
+It holds the selected cell values with their types and the expected type of
+each selected column, which no interoperable format can spell. It is versioned
+independently of the persistence schema, because bytes in flight between two
+tabs have a different compatibility window from a stored document.
+
+It is preferred only when it validates, matches its own fingerprint, and
+projects to exactly the table the public flavour is carrying. Anything else,
+including content from another application, is read through format sniffing as
+text. Nothing in it can reach a cell as content, and it is not charged to the
+import size limits.
+
+Related to: Format sniffing, Import, Cell value, Expected column type
 
 ### Empty state
 

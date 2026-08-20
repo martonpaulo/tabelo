@@ -600,13 +600,27 @@ export class TabeloPage {
 		await this.clipboardEvent("cut");
 	}
 
-	private async clipboardEvent(type: "copy" | "cut"): Promise<void> {
-		await this.grid().evaluate((grid, name) => {
+	// What the copy actually wrote, read back out of the same DataTransfer the
+	// browser hands the event. Feeding the result to `paste` is a real Tabelo to
+	// Tabelo round trip through both the writer and the reader, on whichever
+	// engine is running. That the system clipboard carries these flavours
+	// between two tabs is the browser's contract, not the product's.
+	async copyFlavours(): Promise<Required<CopiedFlavours>> {
+		return this.clipboardEvent("copy");
+	}
+
+	private async clipboardEvent(
+		type: "copy" | "cut",
+	): Promise<Required<CopiedFlavours>> {
+		return this.grid().evaluate((grid, name) => {
+			const data = new DataTransfer();
 			const event = new Event(name, { bubbles: true, cancelable: true });
-			Object.defineProperty(event, "clipboardData", {
-				value: new DataTransfer(),
-			});
+			Object.defineProperty(event, "clipboardData", { value: data });
 			grid.dispatchEvent(event);
+			return {
+				text: data.getData("text/plain"),
+				html: data.getData("text/html"),
+			};
 		}, type);
 	}
 
