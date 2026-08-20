@@ -35,6 +35,7 @@ export const conditionNoticeIds = {
 	storage: "condition-storage",
 	inputError: "condition-input-error",
 	pendingPaneAction: "condition-pending-pane-action",
+	fillSeries: "condition-fill-series",
 } as const;
 
 // Enough to hold a burst, such as a refused copy followed by a refused paste,

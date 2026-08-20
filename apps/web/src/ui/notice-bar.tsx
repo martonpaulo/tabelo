@@ -76,6 +76,7 @@ function useAppNotices(): readonly AppNotice[] {
 	const storageIssue = useTabeloStore((state) => state.storageIssue);
 	const inputError = useTabeloStore((state) => state.inputError);
 	const pendingPaneAction = useTabeloStore((state) => state.pendingPaneAction);
+	const fillSeriesOffer = useTabeloStore((state) => state.fillSeriesOffer);
 	const notices = useTabeloStore((state) => state.notices);
 
 	return useMemo(
@@ -84,9 +85,10 @@ function useAppNotices(): readonly AppNotice[] {
 				storageIssue,
 				inputError,
 				pendingPaneAction,
+				fillSeriesOffer,
 				notices,
 			}),
-		[storageIssue, inputError, pendingPaneAction, notices],
+		[storageIssue, inputError, pendingPaneAction, fillSeriesOffer, notices],
 	);
 }
 

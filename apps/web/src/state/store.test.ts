@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { readCell } from "@/core/cell-value";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
+import { setColumnExpectedType } from "@/core/operations";
 import { samplePeopleMatrix } from "@/core/sample-data";
 import {
 	createSelection,
@@ -7,9 +9,26 @@ import {
 	HEADER_ROW,
 	type SelectionRange,
 } from "@/core/selection";
+import type { CellValue, TableDocument } from "@/core/types";
 import { hasSessionWork, useTabeloStore } from "./store";
 
 const initialState = useTabeloStore.getInitialState();
+
+// One column that expects numbers, holding the given data values. Series work
+// needs both halves: cells that already carry numbers, and a column that
+// accepts them.
+function numericColumn(values: readonly CellValue[]): TableDocument {
+	const document = documentFromMatrix(
+		[["Count"], ...values.map((value) => [value])],
+		{ headerRow: true },
+	);
+	return setColumnExpectedType(document, 0, "number");
+}
+
+function columnValues(document: TableDocument): readonly CellValue[] {
+	const first = document.columns[0];
+	return first ? document.rows.map((row) => readCell(row, first.id)) : [];
+}
 
 // A selection of exactly the given regions, with the last one active. Written
 // out here because these tests set a multi-cell region directly rather than
@@ -958,6 +977,131 @@ describe("fill history", () => {
 
 		filled.undo();
 		expect(useTabeloStore.getState().document).toBe(document);
+	});
+
+	it("offers the series a typed numeric fill could become, and applies it as a second step", () => {
+		const document = numericColumn([1, 2, "", ""]);
+		useTabeloStore.setState({
+			document,
+			selection: selectionOf({
+				anchor: { row: 0, column: 0 },
+				focus: { row: 1, column: 0 },
+				mode: "cell",
+			}),
+		});
+
+		useTabeloStore
+			.getState()
+			.fillSelection({ top: 0, bottom: 3, left: 0, right: 0 });
+		const filled = useTabeloStore.getState();
+		expect(columnValues(filled.document)).toEqual([1, 2, 1, 2]);
+		expect(filled.fillSeriesOffer).not.toBeNull();
+
+		expect(filled.applyFillSeries()).toEqual({ ok: true, count: 2 });
+		const series = useTabeloStore.getState();
+		expect(columnValues(series.document)).toEqual([1, 2, 3, 4]);
+		// The offer belonged to the fill it was made from, not to the series.
+		expect(series.fillSeriesOffer).toBeNull();
+		expect(series.past).toHaveLength(2);
+		// The filled rectangle is still what the user has selected.
+		expect(series.selection).toEqual(filled.selection);
+
+		series.undo();
+		expect(columnValues(useTabeloStore.getState().document)).toEqual([
+			1, 2, 1, 2,
+		]);
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().document).toBe(document);
+	});
+
+	it("offers nothing when the filled numbers are text", () => {
+		useTabeloStore.setState({
+			document: numericColumn(["1", "2", "", ""]),
+			selection: selectionOf({
+				anchor: { row: 0, column: 0 },
+				focus: { row: 1, column: 0 },
+				mode: "cell",
+			}),
+		});
+
+		useTabeloStore
+			.getState()
+			.fillSelection({ top: 0, bottom: 3, left: 0, right: 0 });
+
+		expect(useTabeloStore.getState().fillSeriesOffer).toBeNull();
+	});
+
+	it("drops the offer on the next document change and refuses to apply it", () => {
+		useTabeloStore.setState({
+			document: numericColumn([1, 2, "", ""]),
+			selection: selectionOf({
+				anchor: { row: 0, column: 0 },
+				focus: { row: 1, column: 0 },
+				mode: "cell",
+			}),
+		});
+		useTabeloStore
+			.getState()
+			.fillSelection({ top: 0, bottom: 3, left: 0, right: 0 });
+
+		useTabeloStore.getState().editCell(0, 0, 5);
+		const edited = useTabeloStore.getState();
+		expect(edited.fillSeriesOffer).toBeNull();
+		expect(edited.applyFillSeries()).toEqual({ ok: false, refusal: "stale" });
+		expect(useTabeloStore.getState().document).toBe(edited.document);
+		expect(useTabeloStore.getState().past).toBe(edited.past);
+	});
+
+	it("drops the offer when the last grid pane is replaced", () => {
+		useTabeloStore.setState({
+			document: numericColumn([1, 2, "", ""]),
+			selection: selectionOf({
+				anchor: { row: 0, column: 0 },
+				focus: { row: 1, column: 0 },
+				mode: "cell",
+			}),
+		});
+		useTabeloStore
+			.getState()
+			.fillSelection({ top: 0, bottom: 3, left: 0, right: 0 });
+
+		const filled = useTabeloStore.getState();
+		const gridPane = filled.workspace.panes.find(
+			(pane) => pane.view === "grid",
+		);
+		expect(gridPane).toBeDefined();
+		expect(filled.fillSeriesOffer).not.toBeNull();
+
+		filled.setPaneView(gridPane?.id ?? "", "csv");
+
+		const replaced = useTabeloStore.getState();
+		expect(replaced.workspace.panes.some((pane) => pane.view === "grid")).toBe(
+			false,
+		);
+		expect(replaced.fillSeriesOffer).toBeNull();
+		// Replacing a view is not an edit: the filled document is untouched.
+		expect(replaced.document).toBe(filled.document);
+	});
+
+	it("keeps the copied values when the offer is dismissed", () => {
+		useTabeloStore.setState({
+			document: numericColumn([1, 2, "", ""]),
+			selection: selectionOf({
+				anchor: { row: 0, column: 0 },
+				focus: { row: 1, column: 0 },
+				mode: "cell",
+			}),
+		});
+		useTabeloStore
+			.getState()
+			.fillSelection({ top: 0, bottom: 3, left: 0, right: 0 });
+
+		const filled = useTabeloStore.getState();
+		filled.dismissFillSeriesOffer();
+		const dismissed = useTabeloStore.getState();
+		expect(dismissed.fillSeriesOffer).toBeNull();
+		expect(dismissed.document).toBe(filled.document);
+		expect(dismissed.past).toBe(filled.past);
 	});
 
 	it("refuses a fill from a header or several areas without changing history", () => {

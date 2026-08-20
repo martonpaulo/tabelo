@@ -1310,6 +1310,34 @@ because §7 never animates grid geometry. `Escape`, pointer cancellation, lost
 capture, window blur, or a release back inside the source clears the preview and
 changes nothing.
 
+**A series is a second command, never a reading of the first.** A fill repeats
+what was selected and stops there. When the repeated cells were a single row or
+column of at least two cells that already held numbers, separated by one
+constant step, the fill leaves behind an offer: an info notice carrying `Fill
+series` and `Keep copied values`. It says what a series would do and does
+nothing until the user picks one. Choosing the series is a second document
+operation and therefore a second undo step, so undo returns the copied result
+before it returns the table the fill replaced. Dismissing it, answering `Keep
+copied values`, or any change to the document clears it, and it is never
+persisted, never history, and never document state.
+
+The offer is a notice rather than a dialog because the fill already did what it
+was asked to: nothing is pending, the table is correct as it stands, and §3
+allows a dialog only for a choice the user's own command requires. That is also
+why activation revalidates rather than trusting the offer. If the rows or
+columns it named have moved, or the numbers would leave the range the arithmetic
+stays exact in, it says so in a warning and writes nothing rather than applying
+part of a sequence.
+
+What is offered is deliberately narrow, and each exclusion is a decision rather
+than an unimplemented case. Text that looks like a number is text and is never
+read as one, because a type is carried and never derived: see `docs/adr/0008`.
+A single value implies no step, so it offers nothing rather than assuming one.
+Dates, weekdays, custom lists, text patterns, formulas, and series in two
+directions at once are not offered at all: this is a table editor, not a
+spreadsheet, and each of those is a guess about intent dressed as a
+convenience.
+
 **A gesture means one thing on one target.** The three drag targets in the grid
 chrome are distinct elements, not three readings of the same press: the row
 number and the column letter select, and drag-select along their axis; the

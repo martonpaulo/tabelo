@@ -50,6 +50,14 @@ import {
 	toggleSelectionRegion,
 	translateSelection,
 } from "@/core/selection";
+import {
+	applyFillSeries as applySeriesPlan,
+	captureFillSeriesOffer,
+	type FillSeriesOffer,
+	type FillSeriesRefusal,
+	planFillSeries,
+	planOfferedSeries,
+} from "@/core/series";
 import type {
 	Alignment,
 	CellValue,
@@ -157,6 +165,14 @@ export interface PendingImport {
 	readonly prepared: PreparedImport;
 }
 
+// What choosing the series did. The count is what the announcement reports, and
+// a refusal is why nothing was written.
+export type FillSeriesOutcome =
+	| { readonly ok: true; readonly count: number }
+	| { readonly ok: false; readonly refusal: FillSeriesRefusal };
+
+const STALE_SERIES: FillSeriesOutcome = { ok: false, refusal: "stale" };
+
 export interface StatusAnnouncement {
 	readonly id: string;
 	readonly message: string;
@@ -202,6 +218,13 @@ export interface TabeloState {
 	// Transient by construction: it is never a history step, never persisted,
 	// and never document state. A copy is not an edit.
 	copiedRanges: readonly CellRect[];
+
+	// The one offer a completed copy fill may leave behind: the numbers it
+	// repeated could also be continued. Transient by construction, exactly like
+	// `copiedRanges`: never a history step, never persisted, never document
+	// state, and cleared by the next change to the document. The user has to
+	// ask for the series, so until they do the copied result is the result.
+	fillSeriesOffer: FillSeriesOffer | null;
 
 	storageIssue: StorageIssue | null;
 	// Messages waiting to be read, oldest first. A queue rather than one slot:
@@ -291,6 +314,8 @@ export interface TabeloState {
 	duplicateSelectedColumns: () => void;
 	moveSelectedColumn: (offset: number) => SelectionMoveRefusal | null;
 	fillSelection: (target: CellRect) => number;
+	applyFillSeries: () => FillSeriesOutcome;
+	dismissFillSeriesOffer: () => void;
 
 	clearSelection: () => void;
 	deleteSelectedStructure: () => StructureDeletionRefusal | null;
@@ -403,28 +428,44 @@ function restoreDraft(draft: Draft | null, workspace: Workspace): Draft | null {
 // Removing one pane, expressed as the smaller preset that keeps every other
 // pane where it is. Returns nothing when there is no smaller shape to move to,
 // which is what leaves Close view disabled at one pane.
+// The offer names cells in the visual grid, so it belongs to a workspace that
+// still shows one. Once the last grid pane is gone the choice has nowhere to
+// land, and a notice offering it would outlive the surface it describes.
+function offerSurvivingWorkspace(
+	state: TabeloState,
+	workspace: Workspace,
+): FillSeriesOffer | null {
+	if (!state.fillSeriesOffer) return null;
+	return workspace.panes.some((pane) => getView(pane.view).kind === "grid")
+		? state.fillSeriesOffer
+		: null;
+}
+
 function closedPaneState(
 	state: TabeloState,
 	paneId: string,
-): Pick<TabeloState, "workspace" | "draft" | "pendingPaneAction"> | null {
+): Pick<
+	TabeloState,
+	"workspace" | "draft" | "pendingPaneAction" | "fillSeriesOffer"
+> | null {
 	const layout = smallerLayout(state.workspace.layout);
 	const remaining = state.workspace.panes.filter((pane) => pane.id !== paneId);
 	if (!layout || remaining.length === state.workspace.panes.length) return null;
 
 	const panes = applyLayout(layout, remaining, state.draft?.paneId);
+	const workspace = {
+		...state.workspace,
+		layout,
+		panes,
+		activePaneId: panes.some((pane) => pane.id === state.workspace.activePaneId)
+			? state.workspace.activePaneId
+			: firstPaneId(panes),
+	};
 	return {
-		workspace: {
-			...state.workspace,
-			layout,
-			panes,
-			activePaneId: panes.some(
-				(pane) => pane.id === state.workspace.activePaneId,
-			)
-				? state.workspace.activePaneId
-				: firstPaneId(panes),
-		},
+		workspace,
 		draft: state.draft?.paneId === paneId ? null : state.draft,
 		pendingPaneAction: null,
+		fillSeriesOffer: offerSurvivingWorkspace(state, workspace),
 	};
 }
 
@@ -504,6 +545,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editingSeed: null,
 	editingHeader: null,
 	copiedRanges: NO_COPIED_RANGES,
+	fillSeriesOffer: null,
 
 	storageIssue: null,
 	notices: [],
@@ -594,6 +636,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			// reconciled, which is also what a paste needs, since a paste is one of
 			// these changes.
 			copiedRanges: NO_COPIED_RANGES,
+			fillSeriesOffer: null,
 			selection: clampSelection(
 				state.selection,
 				next.rows.length,
@@ -692,6 +735,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			inputError: null,
 			pendingPaneAction: null,
 			copiedRanges: NO_COPIED_RANGES,
+			fillSeriesOffer: null,
 			selection: clampSelection(
 				current.selection,
 				document.rows.length,
@@ -757,16 +801,20 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			state.discardDraft();
 		}
 
-		set((current) => ({
-			workspace: {
+		set((current) => {
+			const workspace = {
 				...current.workspace,
 				panes: current.workspace.panes.map((candidate) =>
 					candidate.id === paneId ? { ...candidate, view } : candidate,
 				),
 				activePaneId: paneId,
-			},
-			pendingPaneAction: null,
-		}));
+			};
+			return {
+				workspace,
+				pendingPaneAction: null,
+				fillSeriesOffer: offerSurvivingWorkspace(current, workspace),
+			};
+		});
 	},
 
 	// Growing the workspace never displaces a pane, so unlike a view change or a
@@ -992,6 +1040,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				inputError: null,
 				pendingPaneAction: null,
 				copiedRanges: NO_COPIED_RANGES,
+				fillSeriesOffer: null,
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -1018,6 +1067,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				inputError: null,
 				pendingPaneAction: null,
 				copiedRanges: NO_COPIED_RANGES,
+				fillSeriesOffer: null,
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -1316,6 +1366,12 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		if (next === state.document) return 0;
 
 		state.applyDocument(next);
+		// The offer rides along with the fill's own `set`, after
+		// `applyDocument` has cleared whatever an earlier fill left, so the
+		// document and the offer describing it are never one step apart.
+		// A source that is not typed numbers leaves it null and the copied
+		// result is simply the result.
+		const series = planFillSeries(next, source, target);
 		set({
 			selection: {
 				ranges: [
@@ -1327,6 +1383,9 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				],
 				activeIndex: 0,
 			},
+			fillSeriesOffer: series.ok
+				? captureFillSeriesOffer(next, source, target)
+				: null,
 		});
 		const targetSize =
 			(target.bottom - target.top + 1) * (target.right - target.left + 1);
@@ -1334,6 +1393,35 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			(source.bottom - source.top + 1) * (source.right - source.left + 1);
 		return targetSize - sourceSize;
 	},
+
+	// The second step, and only when the user asks for it. Eligibility is checked
+	// again here rather than trusted from the offer: the answer belongs to the
+	// document as it is now, not as it was when the fill finished.
+	applyFillSeries: () => {
+		const state = get();
+		const offer = state.fillSeriesOffer;
+		if (!offer) return STALE_SERIES;
+
+		const series = planOfferedSeries(state.document, offer);
+		if (!series.ok) {
+			set({ fillSeriesOffer: null });
+			return { ok: false, refusal: series.refusal };
+		}
+
+		const next = applySeriesPlan(state.document, series.plan);
+		if (next === state.document) {
+			set({ fillSeriesOffer: null });
+			return STALE_SERIES;
+		}
+
+		// Its own `applyDocument` call, so undo returns to the copied result
+		// before it returns to the table before the fill. The same call clears
+		// the offer, and the selection the fill left behind survives it.
+		state.applyDocument(next);
+		return { ok: true, count: series.plan.writes.length };
+	},
+
+	dismissFillSeriesOffer: () => set({ fillSeriesOffer: null }),
 
 	clearSelection: () => {
 		const state = get();
@@ -1506,6 +1594,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 					return { inputError: null };
 				case conditionNoticeIds.pendingPaneAction:
 					return { pendingPaneAction: null };
+				case conditionNoticeIds.fillSeries:
+					return { fillSeriesOffer: null };
 				default:
 					return { notices: removeNotice(state.notices, id) };
 			}
