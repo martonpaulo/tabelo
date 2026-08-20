@@ -1,7 +1,12 @@
 import { readCell } from "./cell-value";
 import { createColumn, createRow } from "./document";
 import { createRowId } from "./ids";
-import { type CellRect, rectContains, rectCoversHeader } from "./selection";
+import {
+	type CellRect,
+	isDataRect,
+	rectContains,
+	rectCoversHeader,
+} from "./selection";
 import { convertCellValue } from "./typed-input";
 import type {
 	Alignment,
@@ -308,25 +313,6 @@ export function moveColumns(
 	return { ...document, columns };
 }
 
-function validDataRect(
-	rect: CellRect,
-	rowCount: number,
-	columnCount: number,
-): boolean {
-	return (
-		Number.isInteger(rect.top) &&
-		Number.isInteger(rect.bottom) &&
-		Number.isInteger(rect.left) &&
-		Number.isInteger(rect.right) &&
-		rect.top >= 0 &&
-		rect.left >= 0 &&
-		rect.top <= rect.bottom &&
-		rect.left <= rect.right &&
-		rect.bottom < rowCount &&
-		rect.right < columnCount
-	);
-}
-
 function positiveModulo(value: number, divisor: number): number {
 	return ((value % divisor) + divisor) % divisor;
 }
@@ -342,8 +328,8 @@ export function fillRange(
 	target: CellRect,
 ): TableDocument {
 	if (
-		!validDataRect(source, document.rows.length, document.columns.length) ||
-		!validDataRect(target, document.rows.length, document.columns.length) ||
+		!isDataRect(source, document.rows.length, document.columns.length) ||
+		!isDataRect(target, document.rows.length, document.columns.length) ||
 		target.top > source.top ||
 		target.bottom < source.bottom ||
 		target.left > source.left ||
