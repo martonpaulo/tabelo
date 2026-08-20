@@ -8,6 +8,7 @@ import {
 	type ViewUpdate,
 	WidgetType,
 } from "@codemirror/view";
+import { copy } from "@/copy/copy";
 import { isJiraHeaderLine } from "@/formats/jira";
 import type { HighlightLanguage } from "@/views/types";
 
@@ -188,44 +189,161 @@ export function jiraEmptyOffsets(line: string): readonly number[] {
 	return offsets;
 }
 
-function markdownEmptyPositions(
+// Markdown's cells, per line, as the ranges between one delimiter and the next.
+// The GFM grammar parses the table itself, so these boundaries come from the
+// same parse that highlights it; the alignment divider is the one row the
+// grammar hands over whole, and its own delimiters are read off its text.
+interface MarkdownRow {
+	readonly divider: boolean;
+	readonly cells: readonly { readonly from: number; readonly to: number }[];
+}
+
+function markdownRows(
 	view: EditorView,
 	from: number,
 	to: number,
-): readonly number[] {
-	const positions: number[] = [];
-	let previousEnd: number | null = null;
-	let previousLine: number | null = null;
+): readonly MarkdownRow[] {
+	const byLine = new Map<number, { divider: boolean; edges: number[][] }>();
 
-	// The GFM grammar parses the table itself, so the cell boundaries come from
-	// the same parse that highlights them. An empty cell produces no `TableCell`
-	// node at all: what marks it is two delimiters with only alignment padding
-	// between them.
 	syntaxTree(view.state).iterate({
 		from,
 		to,
 		enter: (node) => {
 			if (node.name !== "TableDelimiter") return;
-			const line = view.state.doc.lineAt(node.from).number;
-			if (
-				previousEnd !== null &&
-				previousLine === line &&
-				view.state.doc.sliceString(previousEnd, node.from).trim() === ""
-			) {
+			const line = view.state.doc.lineAt(node.from);
+			const entry = byLine.get(line.number) ?? { divider: false, edges: [] };
+			// One node covering more than a single pipe is the divider row, handed
+			// over whole. Its own pipes are the only structure it has.
+			if (node.to - node.from > 1) {
+				entry.divider = true;
+				const text = view.state.doc.sliceString(node.from, node.to);
+				for (let index = 0; index < text.length; index += 1) {
+					if (text[index] === "|") {
+						entry.edges.push([node.from + index, node.from + index + 1]);
+					}
+				}
+			} else {
+				entry.edges.push([node.from, node.to]);
+			}
+			byLine.set(line.number, entry);
+		},
+	});
+
+	const rows: MarkdownRow[] = [];
+	for (const { divider, edges } of byLine.values()) {
+		const cells: { from: number; to: number }[] = [];
+		for (let index = 0; index + 1 < edges.length; index += 1) {
+			const openingEnd = edges[index]?.[1];
+			const closingStart = edges[index + 1]?.[0];
+			if (openingEnd === undefined || closingStart === undefined) continue;
+			cells.push({ from: openingEnd, to: closingStart });
+		}
+		if (cells.length > 0) rows.push({ divider, cells });
+	}
+	return rows;
+}
+
+// Markdown pads its columns from the values the table holds, and the
+// placeholder is not one of them: a row carrying it would otherwise be wider
+// than the rows around it and the column would come apart exactly where the
+// reader is looking. So the column is widened for every row instead, in the
+// editor and never in the file. The spacer holds width and nothing else, except
+// on the divider row, where the column is drawn with the dashes it is made of.
+class ColumnSpacerWidget extends WidgetType {
+	constructor(
+		readonly columns: number,
+		readonly divider: boolean,
+	) {
+		super();
+	}
+
+	toDOM() {
+		const spacer = document.createElement("span");
+		spacer.setAttribute("aria-hidden", "true");
+		if (this.divider) {
+			// Dashes are characters, so they measure themselves: an ordinary
+			// inline span of them is exactly as wide as it needs to be, and sits
+			// on the line's own baseline like the rule it continues.
+			spacer.className = "cm-tabeloDividerSpacer";
+			spacer.textContent = "-".repeat(this.columns);
+			return spacer;
+		}
+		spacer.className = "cm-tabeloColumnSpacer";
+		spacer.style.width = `${this.columns}ch`;
+		return spacer;
+	}
+
+	eq(other: ColumnSpacerWidget) {
+		return other.columns === this.columns && other.divider === this.divider;
+	}
+}
+
+function markdownDecorations(
+	view: EditorView,
+	from: number,
+	to: number,
+): readonly Range<Decoration>[] {
+	const rows = markdownRows(view, from, to);
+	if (rows.length === 0) return [];
+
+	const isEmpty = (cell: { from: number; to: number }) =>
+		view.state.doc.sliceString(cell.from, cell.to).trim() === "";
+	// What a cell ends up looking like: its own characters, plus the
+	// placeholder's word where one is drawn on top of them.
+	const drawnWidth = (
+		row: MarkdownRow,
+		cell: { from: number; to: number },
+	): number =>
+		cell.to -
+		cell.from +
+		(!row.divider && isEmpty(cell) ? copy.source.emptyValue.length : 0);
+
+	// What each column has to be worth: the widest thing drawn in it.
+	const widths: number[] = [];
+	for (const row of rows) {
+		for (const [index, cell] of row.cells.entries()) {
+			widths[index] = Math.max(widths[index] ?? 0, drawnWidth(row, cell));
+		}
+	}
+
+	const ranges: Range<Decoration>[] = [];
+	for (const row of rows) {
+		for (const [index, cell] of row.cells.entries()) {
+			if (!row.divider && isEmpty(cell)) {
 				// Markdown writes a cell as `| value |`, so the space after the
 				// delimiter belongs to the column. Starting after it puts the
 				// placeholder exactly where the value it stands for would have
 				// started.
 				const opensWithSpace =
-					view.state.doc.sliceString(previousEnd, previousEnd + 1) === " ";
-				positions.push(opensWithSpace ? previousEnd + 1 : previousEnd);
+					view.state.doc.sliceString(cell.from, cell.from + 1) === " ";
+				ranges.push(
+					emptyValueDecoration.range(
+						opensWithSpace ? cell.from + 1 : cell.from,
+					),
+				);
 			}
-			previousEnd = node.to;
-			previousLine = view.state.doc.lineAt(node.to).number;
-		},
-	});
-
-	return positions;
+			const missing = (widths[index] ?? 0) - drawnWidth(row, cell);
+			if (missing > 0) {
+				// At the end of the cell, which is where Markdown's own padding
+				// sits. The divider's added dashes go one character earlier, inside
+				// the space that row keeps before its closing delimiter, so the
+				// rule they continue stays unbroken.
+				const closesWithSpace =
+					view.state.doc.sliceString(cell.to - 1, cell.to) === " ";
+				const at =
+					row.divider && closesWithSpace && cell.to - 1 > cell.from
+						? cell.to - 1
+						: cell.to;
+				ranges.push(
+					Decoration.widget({
+						widget: new ColumnSpacerWidget(missing, row.divider),
+						side: -1,
+					}).range(at),
+				);
+			}
+		}
+	}
+	return ranges;
 }
 
 function buildDecorations(
@@ -236,9 +354,7 @@ function buildDecorations(
 
 	for (const { from, to } of view.visibleRanges) {
 		if (syntax.kind === "markdown") {
-			for (const position of markdownEmptyPositions(view, from, to)) {
-				ranges.push(emptyValueDecoration.range(position));
-			}
+			ranges.push(...markdownDecorations(view, from, to));
 			continue;
 		}
 
