@@ -101,6 +101,60 @@ export const editorTheme = EditorView.theme({
 	// same treatment the `heading` tag carries everywhere else, from the same
 	// definition, so there is one owner for what a header cell looks like.
 	".cm-tableHeaderCell": headerCellStyle,
+	// Non-content annotation: whitespace and empty-value indicators. They are
+	// decorations over text the user typed, never text themselves, so they are
+	// drawn in the muted tone structure already uses and never in a status
+	// colour. CodeMirror's own extensions supply the dot and the tab arrow; only
+	// their colour changes here, because Tabelo's palette owns it in both
+	// themes. Each marker is a distinct shape, so none of them depends on colour
+	// alone to be told apart from content.
+	".cm-highlightSpace": {
+		// The same faint dot CodeMirror draws, painted from the product token.
+		backgroundImage:
+			"radial-gradient(circle at 50% 55%, var(--muted-foreground) 20%, transparent 5%)",
+		backgroundPosition: "center",
+	},
+	".cm-highlightTab": {
+		// CodeMirror paints its arrow as a background image, which cannot carry a
+		// custom property. Masking the same drawing lets the fill come from the
+		// token instead, so the arrow follows the theme like everything else.
+		maskImage: `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20"><path stroke="black" stroke-width="1" fill="none" d="M1 10H196L190 5M190 15L196 10M197 4L197 16"/></svg>')`,
+		maskSize: "auto 100%",
+		maskPosition: "right 90%",
+		maskRepeat: "no-repeat",
+		backgroundColor: "var(--muted-foreground)",
+	},
+	// Trailing whitespace is the one kind that is almost always accidental, so
+	// it carries a second cue on top of the dots. CodeMirror's own base theme
+	// tints it red, which here would spend a status colour on a token and claim
+	// an error the parser never reported: cleared, and replaced by an inset line
+	// rather than a border, because a border would grow the inline box and move
+	// the text beside it.
+	".cm-trailingSpace": {
+		backgroundColor: "transparent",
+		boxShadow: "inset 0 -0.0625rem 0 var(--muted-foreground)",
+	},
+	// The empty-field marker the editor draws itself. It is a widget, so it
+	// holds no document position: the caret, the selection, and the diagnostic
+	// underlines are all still measured in the characters the user typed. It is
+	// the one indicator that takes horizontal room, because the gap it reports
+	// is often zero characters wide and nothing can be drawn inside nothing.
+	// That is accepted deliberately: it changes no pane's height, and the pane
+	// scrolls horizontally either way.
+	".cm-tabeloEmptyValue::before": {
+		// Generated content, so the glyph is never a text node the DOM, a
+		// screen reader, or a copy could pick up.
+		content: '"∅"',
+	},
+	".cm-tabeloEmptyValue": {
+		color: "var(--muted-foreground)",
+		fontSize: "0.8em",
+		lineHeight: "1",
+		padding: "0 0.125rem",
+		border: "0.0625rem solid var(--control-outline)",
+		borderRadius: "var(--control-radius)",
+		userSelect: "none",
+	},
 	".cm-diagnosticError": {
 		textDecorationLine: "underline",
 		textDecorationStyle: "wavy",

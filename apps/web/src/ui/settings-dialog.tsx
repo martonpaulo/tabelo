@@ -8,7 +8,7 @@ import {
 } from "@tabelo/ui/components/dialog";
 import { Label } from "@tabelo/ui/components/label";
 import { Monitor, Moon, Sun } from "lucide-react";
-import { useEffect, useId, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useState } from "react";
 import { copy } from "@/copy/copy";
 import {
 	type Preferences,
@@ -17,6 +17,7 @@ import {
 } from "@/preferences/contract";
 import { preferencesStore } from "@/preferences/store";
 import { applyThemePreference } from "@/preferences/theme";
+import { usePreferences } from "@/preferences/use-preferences";
 import {
 	DialogActions,
 	DialogCancel,
@@ -47,11 +48,7 @@ export function SettingsDialog({
 	readonly open: boolean;
 	readonly onOpenChange: (open: boolean) => void;
 }) {
-	const committed = useSyncExternalStore(
-		preferencesStore.subscribe,
-		preferencesStore.getSnapshot,
-		preferencesStore.getSnapshot,
-	);
+	const committed = usePreferences();
 	const [draft, setDraft] = useState<Preferences>(committed);
 	const [saveError, setSaveError] = useState(false);
 	const titleId = useId();

@@ -26,6 +26,8 @@ import {
 	EditorView,
 	highlightActiveLine,
 	highlightActiveLineGutter,
+	highlightTrailingWhitespace,
+	highlightWhitespace,
 	hoverTooltip,
 	keymap,
 	lineNumbers,
@@ -40,6 +42,7 @@ import {
 import type { HighlightLanguage, ViewId } from "@/views/types";
 import { csvLanguage } from "./csv-language";
 import { syntaxTheme } from "./editor-theme";
+import { emptyValueMarkers, emptyValueSyntax } from "./empty-values";
 import { htmlHeaderCells, htmlLanguage } from "./html-language";
 import { jiraLanguage } from "./jira-language";
 import { minimalChange } from "./minimal-change";
@@ -62,6 +65,7 @@ const attributesCompartment = new Compartment();
 const historyCompartment = new Compartment();
 const metricsCompartment = new Compartment();
 const wrapCompartment = new Compartment();
+const indicatorCompartment = new Compartment();
 
 // Everything the editor draws at the pane's scale, the text, the gutter width,
 // and the caret, reads `--pane-zoom` from the cascade, and the pane body is the
@@ -87,6 +91,26 @@ function metricsSignal(zoom: number): Extension {
 
 function wrapExtension(wrap: boolean) {
 	return wrap ? EditorView.lineWrapping : [];
+}
+
+// Whitespace and empty-value indicators, all three from one global preference.
+// The two whitespace extensions are CodeMirror's own, restyled from Tabelo
+// tokens in editor-theme.ts; only the empty-value marker is project-owned,
+// because no editor has a concept of a field. Every one of them is a
+// decoration, so turning them on or off cannot touch the document, the draft,
+// the clipboard, a download, or the history timeline.
+function indicatorExtensions(
+	show: boolean,
+	language: HighlightLanguage,
+	fieldSeparator: string | undefined,
+): Extension {
+	if (!show) return [];
+	const syntax = emptyValueSyntax(language, fieldSeparator);
+	return [
+		highlightWhitespace(),
+		highlightTrailingWhitespace(),
+		syntax ? emptyValueMarkers(syntax) : [],
+	];
 }
 
 export interface SourceDiagnostic {
@@ -213,6 +237,11 @@ interface SourceEditorProps {
 	readonly wrap: boolean;
 	readonly value: string;
 	readonly language: HighlightLanguage;
+	// The global display preference from #93, and the separator this view's
+	// format writes, which is what tells the empty-value marker where a field
+	// ends. Both are read here rather than stored: no pane owns either.
+	readonly showIndicators: boolean;
+	readonly fieldSeparator?: string;
 	readonly diagnostics: readonly SourceDiagnostic[];
 	readonly invalid: boolean;
 	readonly entered: boolean;
@@ -241,6 +270,8 @@ export function SourceEditor({
 	wrap,
 	value,
 	language,
+	showIndicators,
+	fieldSeparator,
 	diagnostics,
 	invalid,
 	entered,
@@ -297,6 +328,9 @@ export function SourceEditor({
 					highlightActiveLine(),
 					highlightActiveLineGutter(),
 					wrapCompartment.of(wrapExtension(wrap)),
+					indicatorCompartment.of(
+						indicatorExtensions(showIndicators, language, fieldSeparator),
+					),
 					languageCompartment.of(languageFor(language)),
 					diagnosticsCompartment.of(diagnosticExtension(diagnostics)),
 					editableCompartment.of(EditorView.editable.of(editable)),
@@ -489,6 +523,19 @@ export function SourceEditor({
 			effects: languageCompartment.reconfigure(languageFor(language)),
 		});
 	}, [language]);
+
+	// Reconfigured rather than remounted, so switching the preference keeps the
+	// caret, the selection, the pane's own wrap choice, and the local undo
+	// history exactly where they were.
+	useEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: indicatorCompartment.reconfigure(
+				indicatorExtensions(showIndicators, language, fieldSeparator),
+			),
+		});
+	}, [showIndicators, language, fieldSeparator]);
 
 	useEffect(() => {
 		const view = viewRef.current;

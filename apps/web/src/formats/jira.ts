@@ -111,6 +111,13 @@ function splitJiraRow(line: string): string[] {
 
 const HEADER_LINE = /^\s*\|\|/;
 
+// A Jira header line opens with a doubled pipe, which is also what makes its
+// delimiters double rather than single. One owner for that rule, because the
+// source editor reads the same structure to place empty-value markers.
+export function isJiraHeaderLine(line: string): boolean {
+	return HEADER_LINE.test(line);
+}
+
 function parseJiraMatrix(text: string): MatrixParseResult {
 	const lines = text.split(/\r?\n/);
 	const start = lines.findIndex((line) => line.trim() !== "");
@@ -128,7 +135,7 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 	const block = lines.slice(start, end);
 	const headerLine = block[0];
 
-	if (headerLine === undefined || !HEADER_LINE.test(headerLine)) {
+	if (headerLine === undefined || !isJiraHeaderLine(headerLine)) {
 		return {
 			ok: false,
 			issues: [
@@ -196,5 +203,5 @@ export const jiraCodec: TableCodec = {
 	parse: (text) => toDocumentParseResult(parseJiraMatrix(text)),
 	serialize: serializeJira,
 	sniffPriority: 30,
-	canSniff: (text) => HEADER_LINE.test(text),
+	canSniff: (text) => isJiraHeaderLine(text),
 };

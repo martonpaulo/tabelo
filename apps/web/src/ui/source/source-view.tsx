@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo } from "react";
 import { copy } from "@/copy/copy";
+import { usePreferences } from "@/preferences/use-preferences";
 import { textForView, useTabeloStore } from "@/state/store";
 import { PaneEntryContext } from "@/ui/workspace/use-pane-entry";
 import { useReportPaneOccurrences } from "@/ui/workspace/use-pane-occurrences";
@@ -29,6 +30,10 @@ export default function SourceView({
 	const view = getView(viewId);
 	const document = useTabeloStore((state) => state.document);
 	const entered = useContext(PaneEntryContext);
+	// One global preference drives every marker in every pane: see #93. Nothing
+	// about it is pane state, so it neither reaches the workspace nor survives
+	// as a copy here.
+	const { showWhitespaceIndicators } = usePreferences();
 
 	// The projection recomputes only when the document changes, not when some
 	// other pane is being typed into.
@@ -88,6 +93,8 @@ export default function SourceView({
 				wrap={wrap}
 				value={draft?.text ?? projected.text}
 				language={view.highlight}
+				showIndicators={showWhitespaceIndicators}
+				fieldSeparator={view.codec?.fieldSeparator}
 				diagnostics={diagnostics}
 				invalid={invalid}
 				entered={entered}
