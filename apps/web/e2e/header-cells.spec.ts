@@ -45,18 +45,23 @@ test("the strip selects the column and the header cell selects itself", async ({
 	await expect(tabelo.cell(1, 1)).toHaveAttribute("aria-selected", "true");
 	await expect(tabelo.cell(1, 2)).toHaveAttribute("aria-selected", "false");
 
-	const unselectedFill = await tabelo
-		.header(2)
-		.evaluate((element) => getComputedStyle(element).backgroundColor);
+	// The sticky header composites its tint over an opaque base, so the fill is
+	// the pair and not the colour alone: both states share that base and differ
+	// only in the layer painted on it.
+	const fillOf = (column: number) =>
+		tabelo.header(column).evaluate((element) => {
+			const style = getComputedStyle(element);
+			return `${style.backgroundColor} ${style.backgroundImage}`;
+		});
+
+	const unselectedFill = await fillOf(2);
 
 	// Clicking the header text selects that one cell rather than the column,
 	// because the header cell is no longer the column's handle.
 	await tabelo.header(2).click();
 	await expect(tabelo.header(2)).toHaveAttribute("aria-selected", "true");
 	await expect(tabelo.cell(1, 2)).toHaveAttribute("aria-selected", "false");
-	const selectedFill = await tabelo
-		.header(2)
-		.evaluate((element) => getComputedStyle(element).backgroundColor);
+	const selectedFill = await fillOf(2);
 	expect(selectedFill).not.toBe(unselectedFill);
 });
 

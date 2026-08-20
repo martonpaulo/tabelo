@@ -112,7 +112,7 @@ user-issued resizing.
 | `--surface-app` | `bg-surface-app` | The page behind the panes |
 | `--surface-panel` | `bg-surface-panel` | A pane's content area |
 | `--surface-header` | `bg-surface-header` | Pane headers and interface chrome |
-| `--surface-table-header` | `bg-surface-table-header` | The editable table header row in grid, source, and preview views |
+| `--surface-table-header` | `bg-surface-table-header` | The editable table header row in grid, source, and preview views. The grid's sticky row composites it over an opaque base: see §9 |
 | `--surface-gutter` | `bg-surface-gutter` | The grid's row-number gutter |
 | `--surface-readonly` | `bg-surface-readonly` | A pane body that cannot be edited |
 | `--surface-floating` | `bg-surface-floating` | Menus, tooltips, and dialogs above panes |
@@ -1440,6 +1440,16 @@ boundary**: `--line-subtle`, the same one every pair of data rows draws, across
 the gutter and the cells alike. `--line-strong` stays on the boundaries between
 the grid's chrome and its table, which is what the column index strip, the two
 corners, and the gutter's outer edge draw.
+
+Because it is sticky, **its fill is composited over an opaque base**. Body rows
+scroll under the header, and both fills it can wear, the header surface and
+`--selection-fill`, are translucent tints, so on their own they would let the
+scrolling text read through. The tints keep their values: `index.css` paints
+each one as a background layer over `--surface-panel` in a utility the header
+cell uses instead of the bare `bg-` utility, so the rendered colour at rest is
+unchanged and the non-sticky users of the same tokens are untouched. Any other
+sticky cell that carries a tint reuses that utility rather than raising a token
+to full opacity.
 
 The numbered row gutter is interface chrome, not selected data. It never takes
 `--selection-fill`, even when its row or the whole table is selected. Every
