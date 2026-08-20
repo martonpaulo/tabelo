@@ -1704,7 +1704,10 @@ function HeaderCell({
 				// typed, without changing the column's wrap preference.
 				editing ? "overflow-visible" : "overflow-hidden",
 				alignClass[align],
-				selected ? "bg-selection-fill" : "bg-surface-table-header",
+				// Both fills are the sticky compositions rather than the bare tints:
+				// body rows scroll under this cell, and a translucent fill would let
+				// their text read through it. See index.css.
+				selected ? "bg-sticky-selection-fill" : "bg-sticky-table-header",
 				focus && "outline-2 outline-selection-edge -outline-offset-2",
 			)}
 			onPointerDown={(event) => {

@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { layoutPresets } from "@/workspace/layout";
 import { expect, test } from "./fixtures";
@@ -185,6 +185,65 @@ test("every rounded boundary is drawn as one filled stroke", async ({
 	);
 	await expect(tabelo.notice().first()).toBeVisible();
 	expect(await roundedOffenders(page)).toEqual([]);
+});
+
+// A computed colour arrives in whichever notation the engine prefers, and the
+// only channel this contract reads is alpha: the modern notations put it after
+// a slash, and the legacy rgba() form puts it fourth. An unrecognised notation
+// throws rather than defaulting to opaque, so the check cannot pass by failing
+// to parse a translucent value.
+function alphaOf(color: string): number {
+	const value = color.trim();
+	if (value === "transparent") return 0;
+	const modern = /^[a-z]+\([^)]*\/\s*([\d.]+)(%?)\s*\)$/.exec(value);
+	if (modern?.[1] !== undefined) {
+		const amount = Number.parseFloat(modern[1]);
+		return modern[2] === "%" ? amount / 100 : amount;
+	}
+	const legacy = /^rgba\(([^)]*)\)$/
+		.exec(value)?.[1]
+		?.split(",")
+		.map((channel) => channel.trim());
+	if (legacy?.length === 4) return Number.parseFloat(legacy[3] ?? "");
+	if (!/^(rgba?|hsla?|oklch|oklab|lch|lab|color)\(/.test(value))
+		throw new Error(`Unrecognised colour: ${color}`);
+	return 1;
+}
+
+function backgroundAlpha(target: Locator): Promise<number> {
+	return target
+		.evaluate((element) => getComputedStyle(element).backgroundColor)
+		.then(alphaOf);
+}
+
+// A sticky cell has live content passing underneath it, so a translucent fill
+// is not a tint there: it is a window onto the rows scrolling below. The fix
+// composites the tint over an opaque base rather than raising the token, so the
+// contract is an alpha threshold on the header cell and, just as importantly,
+// the surviving translucency of the same token on a data cell.
+test("the sticky header row is opaque in both of its fills", async ({
+	page,
+	tabelo,
+}) => {
+	for (const colorScheme of ["dark", "light"] as const) {
+		await page.emulateMedia({ colorScheme });
+
+		expect(await backgroundAlpha(tabelo.header(1))).toBe(1);
+		expect(await backgroundAlpha(tabelo.rowIndex(1))).toBe(1);
+
+		// Selecting the header swaps its fill for the selection tint, which is
+		// translucent for the same reason, and is equally a window while sticky.
+		await tabelo.header(1).click();
+		await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "true");
+		expect(await backgroundAlpha(tabelo.header(1))).toBe(1);
+
+		// The token itself stays a tint: a selected data cell does not scroll
+		// over anything, and flattening it there would have been a visual change
+		// made to fix a defect that only exists on the sticky row.
+		await tabelo.cell(2, 1).click();
+		await expect(tabelo.cell(2, 1)).toHaveAttribute("aria-selected", "true");
+		expect(await backgroundAlpha(tabelo.cell(2, 1))).toBeLessThan(1);
+	}
 });
 
 test("shared motion stays brief, cancellable, and reduced-motion safe", async ({

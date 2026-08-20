@@ -257,6 +257,33 @@ body {
 	scroll-padding-left: var(--grid-gutter-w);
 }
 
+/* Fills for the grid's sticky header row. Live body cells scroll underneath it,
+   so a translucent fill would composite against whatever is passing below and
+   let that text read through the header. The tints stay translucent tokens,
+   because the source editor, the rendered preview, and every selected data cell
+   share them and none of those is sticky; here each one is painted as a
+   background layer over the pane's own surface instead, so the colour at rest is
+   unchanged. The base is `--surface-panel` rather than `--background`: the
+   vendored shadcn tokens declare their own `--background` under a
+   `[data-theme]` selector, which outranks this file's plain `:root`, so the
+   pane surface is the only unambiguous name for what a grid cell sits on.
+   Reuse this for any other sticky cell that carries a tint. */
+@utility bg-sticky-table-header {
+	background-color: var(--surface-panel);
+	background-image: linear-gradient(
+		var(--surface-table-header),
+		var(--surface-table-header)
+	);
+}
+
+@utility bg-sticky-selection-fill {
+	background-color: var(--surface-panel);
+	background-image: linear-gradient(
+		var(--selection-fill),
+		var(--selection-fill)
+	);
+}
+
 ::selection {
 	background-color: var(--text-selection-fill);
 }
