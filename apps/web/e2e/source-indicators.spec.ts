@@ -229,6 +229,79 @@ test("the placeholder is drawn beside the source without joining it", async ({
 	expect(await renderedSource(pane)).toBe(`${source}x`);
 });
 
+// What the reader actually sees is a glyph, not a class, so the glyphs are what
+// these assert: the dot over a space, the arrow over a tab, and the word in an
+// empty field, all three at once and all three from the same source text.
+test("the space, tab, and empty glyphs are drawn together", async ({
+	tabelo,
+	page,
+}) => {
+	await tabelo.paste(
+		[
+			["Name", "City", "Role"].join("\t"),
+			[first.name, "", `${first.role} `].join("\t"),
+		].join("\n"),
+	);
+	await tabelo.choosePaneView("markdown", "tsv");
+	const pane = tabelo.pane("tsv");
+	await setIndicators(page, { spaces: "all", tabs: true, emptyValues: true });
+
+	const drawn = async (selector: string) =>
+		pane.evaluate(
+			(element, css) =>
+				Array.from(element.querySelectorAll(css))
+					.map((span) => getComputedStyle(span, "::before").content)
+					.filter((content) => content !== "none"),
+			selector,
+		);
+
+	// A space carries a middle dot, a tab carries an arrow, and an empty field
+	// carries the word. Quotation marks are how a computed `content` comes back.
+	expect(await drawn(".cm-highlightSpace")).toContain('"·"');
+	expect(await drawn(".cm-highlightTab")).toContain('"→"');
+	expect(await drawn(marker)).toContain(`"${copy.source.emptyValue}"`);
+
+	// None of the three reached the text they were drawn over.
+	const source = await renderedSource(pane);
+	expect(source).not.toContain(copy.source.emptyValue);
+	expect(source).not.toContain("·");
+	expect(source).not.toContain("→");
+});
+
+// The placeholder stands in for a value, so it has to get out of the way the
+// moment there is one.
+test("typing into an empty field replaces the placeholder with the value", async ({
+	tabelo,
+	page,
+}) => {
+	await tabelo.paste(
+		[
+			["Name", "City"].join("\t"),
+			[first.name, ""].join("\t"),
+			["Mabel", "Lisbon"].join("\t"),
+		].join("\n"),
+	);
+	const pane = tabelo.pane("markdown");
+	await expect(pane.locator(marker)).toHaveCount(1);
+
+	// Clicking the placeholder puts the caret in the field it speaks for, and
+	// what is typed there is an ordinary edit that reaches the table.
+	await pane.locator(marker).click();
+	await page.keyboard.type(first.city);
+
+	await expect(pane.locator(marker)).toHaveCount(0);
+	expect(await renderedSource(pane)).toContain(first.city);
+	// The grid is the table itself, so this is the value arriving rather than
+	// the pane merely redrawing.
+	await expect(tabelo.cell(1, 2)).toHaveText(first.city);
+
+	// And removing it again brings the placeholder back.
+	for (let index = 0; index < first.city.length; index += 1) {
+		await page.keyboard.press("Backspace");
+	}
+	await expect(pane.locator(marker)).toHaveCount(1);
+});
+
 test("turning indicators off changes what is drawn and nothing else", async ({
 	tabelo,
 	page,
