@@ -32,18 +32,25 @@ export function DialogConfirm({
 	...props
 }: Omit<
 	React.ComponentProps<typeof Button>,
-	"variant" | "size" | "disabled"
+	"variant" | "size" | "disabled" | "focusableWhenDisabled"
 > & {
 	readonly destructive?: boolean;
 	readonly disabledReason?: string;
 }) {
 	const variant = destructive ? "destructive" : "default";
+	const unavailable = disabledReason !== undefined;
 
 	return (
 		<DisabledTooltip reason={disabledReason}>
 			<Button
 				{...props}
-				disabled={disabledReason !== undefined}
+				disabled={unavailable}
+				// A native `disabled` button is unfocusable, so its reason would
+				// only ever reach a pointer. Base UI keeps the element in the tab
+				// order, reports `aria-disabled`, and still swallows click, Enter,
+				// and Space, so the shared tooltip opens from the keyboard too.
+				// https://base-ui.com/react/components/button
+				focusableWhenDisabled={unavailable}
 				data-slot="dialog-confirm"
 				data-variant={variant}
 				variant={variant}
