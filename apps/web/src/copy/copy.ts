@@ -229,9 +229,32 @@ export const copy = {
 				dark: { label: "Dark", description: "Always use the dark palette" },
 			},
 		},
-		whitespaceIndicators: {
-			label: "Whitespace and empty-value indicators",
-			description: "Show non-content markers in source views",
+		indicators: {
+			label: "Source indicators",
+			description: "Show what the text itself cannot",
+		},
+		spaceIndicators: {
+			label: "Spaces",
+			options: {
+				none: { label: "Never", description: "Leave every space unmarked" },
+				boundary: {
+					label: "Around values",
+					description: "Runs of spaces, and spaces at a line's edges",
+				},
+				trailing: {
+					label: "At the end of a line",
+					description: "The spaces nobody meant to type",
+				},
+				all: { label: "Always", description: "Every space in the source" },
+			},
+		},
+		tabIndicators: {
+			label: "Tabs",
+			description: "The delimiter a TSV row is built from",
+		},
+		emptyValueIndicators: {
+			label: "Empty values",
+			description: "A placeholder where a field holds nothing",
 		},
 		saveError:
 			"Settings could not be saved. Allow browser storage or free some space, then try again.",
@@ -310,6 +333,11 @@ export const copy = {
 
 	source: {
 		blocked: (failure: PreconditionFailure) => preconditionMessage(failure),
+		// The placeholder standing where a delimited syntax hides an empty
+		// field. Parenthesised so it reads as an annotation rather than as text
+		// the user typed, and centralized here because it is a visible word even
+		// though the editor theme paints it as generated content.
+		emptyValue: "(empty)",
 		issue: (issue: ParseIssue) => {
 			let message: string;
 			switch (issue.code) {

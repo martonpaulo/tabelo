@@ -1,6 +1,12 @@
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
+import { copy } from "@/copy/copy";
+import {
+	ALL_SPACES_CLASS,
+	SPACE_SCOPE_CLASS,
+	TAB_INDICATOR_CLASS,
+} from "./whitespace-indicators";
 
 // The editor is styled entirely from Tabelo's tokens so it stays part of the
 // product rather than looking like an embedded IDE. Colour here is restrained
@@ -27,16 +33,15 @@ const contentLineBox = "calc(var(--pane-zoom, 1) * 2rem)";
 // forced-colour mode and to anyone who cannot separate the two tones.
 const headerCellStyle = { color: "var(--foreground)", fontWeight: "600" };
 
-// One tone for every non-content annotation the editor draws: the whitespace
-// glyphs, the trailing-whitespace line, and the empty-field marker. The muted
-// tone that structure already uses, at half strength, because an annotation
-// answers a question the reader has to ask before it matters and must not
-// compete with the text it describes. Mixed rather than applied as an opacity,
-// so nesting two of these marks over the same characters cannot fade one of
-// them twice.
-const annotationColor =
-	"color-mix(in oklab, var(--muted-foreground) 50%, transparent)";
-const annotationStyle = { color: annotationColor };
+// One tone for every non-content annotation the editor draws: the tab arrow,
+// the trailing-space dots, and the empty-field placeholder. The muted tone that
+// structure already uses, at half strength, because an annotation answers a
+// question the reader has to ask before it matters and must not compete with
+// the text it describes. Mixed rather than applied as an opacity, so nesting
+// two of these marks over the same characters cannot fade one of them twice.
+const annotationStyle = {
+	color: "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
+};
 
 export const editorTheme = EditorView.theme({
 	"&": {
@@ -119,7 +124,9 @@ export const editorTheme = EditorView.theme({
 	// findable when looked for and ignorable when not. Each one is a distinct
 	// glyph, so none depends on colour alone to be told apart from content.
 	// CodeMirror draws its own dot and arrow as background images; those are
-	// cleared, because the glyphs below are the ones this product chose.
+	// cleared, because the glyphs below are the ones this product chose. A rule
+	// here with no `content` generates nothing, which is what leaves an ordinary
+	// space unmarked.
 	".cm-highlightSpace, .cm-highlightTab": {
 		backgroundImage: "none",
 		// The anchor for the glyph below. Painting it in an absolutely
@@ -136,32 +143,34 @@ export const editorTheme = EditorView.theme({
 		textAlign: "center",
 		pointerEvents: "none",
 	},
-	".cm-highlightSpace::before": { content: '"·"' },
-	".cm-highlightTab::before": { content: '"→"' },
-	// Trailing whitespace is the one kind that is almost always accidental, so
-	// it carries a second cue on top of the dots. CodeMirror's own base theme
-	// tints it red, which here would spend a status colour on a token and claim
-	// an error the parser never reported: cleared, and replaced by an inset line
-	// rather than a border, because a border would grow the inline box and move
-	// the text beside it.
-	".cm-trailingSpace": {
-		backgroundColor: "transparent",
-		boxShadow: `inset 0 -0.0625rem 0 ${annotationColor}`,
-	},
-	// The empty-field marker the editor draws itself. It is a widget, so it
-	// holds no document position: the caret, the selection, and the diagnostic
-	// underlines are all still measured in the characters the user typed. It is
-	// the one indicator that takes horizontal room, because the gap it reports
-	// is often zero characters wide and nothing can be drawn inside nothing.
-	// That is accepted deliberately: it changes no pane's height, and the pane
-	// scrolls horizontally either way.
+	// Which spans actually carry a glyph is the reader's choice, arriving as a
+	// class on the editor for the two whole-document answers and as a scope mark
+	// around the qualifying spaces for the rest. The spans themselves always
+	// exist while anything is marked, so switching a mode repaints and nothing
+	// more.
+	// `&` is the editor root, which is what carries these two: a rule written
+	// as a plain descendant would be scoped under the root and could never
+	// match the root itself.
+	[`&.${TAB_INDICATOR_CLASS} .cm-highlightTab::before`]: { content: '"→"' },
+	[`&.${ALL_SPACES_CLASS} .cm-highlightSpace::before`]: { content: '"·"' },
+	[`.${SPACE_SCOPE_CLASS} .cm-highlightSpace::before`]: { content: '"·"' },
+	// The empty-field placeholder, the one marker this product draws itself.
+	// It is drawn over the padding an empty cell already has, and takes width of
+	// its own only where the syntax leaves none. Either way it edits nothing:
+	// the caret, the selection, and the diagnostic underlines are all still
+	// measured in the characters the user typed.
 	".cm-tabeloEmptyValue::before": {
-		// Generated content, so the glyph is never a text node the DOM, a
-		// screen reader, or a copy could pick up.
-		content: '"⌴"',
+		// Generated content, so the placeholder is never a text node the DOM, a
+		// screen reader, or a copy could pick up. The word itself has one owner
+		// in the copy module, like every other visible string.
+		content: `"${copy.source.emptyValue}"`,
 	},
 	".cm-tabeloEmptyValue": {
 		...annotationStyle,
+		// Nothing that would make it read as anything but text in the line: no
+		// box, no size of its own, no alignment of its own. What separates it
+		// from content is the tone, the parentheses, and the fact that it cannot
+		// be selected or typed through.
 		userSelect: "none",
 	},
 	".cm-diagnosticError": {
