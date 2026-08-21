@@ -19,6 +19,7 @@ import {
 	type SelectionFillRefusal,
 	type SelectionMoveRefusal,
 	selectionColumns,
+	selectionCoversHeader,
 	selectionDataRows,
 	selectionFillRefusal,
 	selectionMoveRefusal,
@@ -155,6 +156,11 @@ export function buildTableActions(
 	const columnCount = selectedColumns.length;
 	// Nothing to act on when the selection sits on the header row alone.
 	const noDataRows = rowCount === 0;
+	// Removal is the one row action the header row takes part in: it goes with
+	// the rows under it and the first survivor is promoted into it. So it counts
+	// here, and only here.
+	const coversHeader = selectionCoversHeader(selection, rows, columns);
+	const removableRowCount = rowCount + (coversHeader ? 1 : 0);
 	// Inserting, moving, and pasting each need one place to act, and several
 	// separate areas name several. Disabled with the reason written out, never
 	// hidden: see docs/design-system.md §4.
@@ -376,14 +382,14 @@ export function buildTableActions(
 	if (showRows) {
 		remove.push({
 			id: "delete-rows",
-			label: copy.actions.deleteRows(rowCount),
+			label: copy.actions.deleteRows(removableRowCount),
 			icon: Trash2,
 			shortcut: copy.shortcuts.deleteStructure,
 			danger: true,
-			disabled: noDataRows || deletionGuard.wouldRemoveAllRows,
-			disabledReason: noDataRows
-				? copy.disabled.headerRowRequired
-				: copy.disabled.lastRemainingRow,
+			// A selection covering the header promotes rather than empties the
+			// table, so the last-row guard has nothing to protect against there.
+			disabled: !coversHeader && deletionGuard.wouldRemoveAllRows,
+			disabledReason: copy.disabled.lastRemainingRow,
 			run: () => store.removeSelectedRows(),
 		});
 	}

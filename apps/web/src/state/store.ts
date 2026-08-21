@@ -20,6 +20,7 @@ import {
 	moveColumns,
 	moveRows,
 	pasteMatrix,
+	promoteFirstRowToHeader,
 	setAlignment,
 	setCell,
 	setCellType,
@@ -128,10 +129,7 @@ const NO_COPIED_RANGES: readonly CellRect[] = [];
 const INVALID_GRACE_MS = 300;
 
 export type DraftStatus = "clean" | "invalid-grace" | "invalid";
-export type StructureDeletionRefusal =
-	| "last-row"
-	| "last-column"
-	| "header-row";
+export type StructureDeletionRefusal = "last-row" | "last-column";
 // Why a paste was refused. Like the refusal above, the store names the reason
 // and the interface owns the words for it.
 export type PasteRefusal = "single-area";
@@ -1231,11 +1229,30 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		});
 	},
 
+	// Removing the header row is not a refusal: the row below it is promoted
+	// into it. Both the menu and the keyboard come through here, so promotion is
+	// a rule of the operation rather than a special case one entry point knows.
+	//
+	// Removal runs before promotion, and the order is the whole behaviour for a
+	// range covering the header and the rows under it: the row that becomes the
+	// header is the first row the selection did not take, not the first row it
+	// did. One document reaches `applyDocument`, so the pair is one undo step.
 	removeSelectedRows: () => {
 		const state = get();
 		const rows = currentDataRows(state);
-		if (rows.length === 0) return;
-		state.applyDocument(deleteRows(state.document, rows));
+		const promotes = currentCoversHeader(state);
+		if (rows.length === 0 && !promotes) return;
+
+		const remaining = deleteRows(state.document, rows);
+		const next = promotes ? promoteFirstRowToHeader(remaining) : remaining;
+		if (next === state.document) return;
+
+		const column = currentRect(state).left;
+		state.applyDocument(next);
+		// The rows the selection named are gone and the header now holds what the
+		// user deleted their way to, so the selection lands on the first data row
+		// rather than on the header it just replaced.
+		if (promotes) set({ selection: createSelection({ row: 0, column }) });
 	},
 
 	duplicateSelectedRows: () => {
@@ -1443,11 +1460,13 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			state.removeSelectedColumns();
 			return null;
 		}
-		// The header row is reachable by the selection now, so it is reachable by
-		// a structural delete for the first time. It stays: every table has
-		// exactly one header row, and emptying it is what Backspace is for.
-		if (currentDataRows(state).length === 0) return "header-row";
-		if (guard.wouldRemoveAllRows) return "last-row";
+		// The last-row guard protects a table from losing every row it has. A
+		// selection covering the header row is not that: it promotes, and
+		// promotion always leaves a header over a row, so the guard would refuse
+		// an operation that cannot reach the state it exists to prevent.
+		if (!currentCoversHeader(state) && guard.wouldRemoveAllRows) {
+			return "last-row";
+		}
 		state.removeSelectedRows();
 		return null;
 	},
@@ -1644,6 +1663,14 @@ function currentRects(state: TabeloState) {
 
 function currentDataRows(state: TabeloState) {
 	return selectionDataRows(
+		state.selection,
+		state.document.rows.length,
+		state.document.columns.length,
+	);
+}
+
+function currentCoversHeader(state: TabeloState) {
+	return selectionCoversHeader(
 		state.selection,
 		state.document.rows.length,
 		state.document.columns.length,

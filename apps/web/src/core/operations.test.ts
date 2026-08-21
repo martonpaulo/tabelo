@@ -18,6 +18,8 @@ import {
 	moveColumns,
 	moveRows,
 	pasteMatrix,
+	promoteFirstRowToHeader,
+	setAlignment,
 	setCell,
 	setCellType,
 	setColumnExpectedType,
@@ -607,6 +609,73 @@ describe("header handling", () => {
 		expect(document.columns.map((column) => column.header)).toEqual([
 			"Name",
 			"",
+		]);
+	});
+});
+
+describe("promoting a row into the header", () => {
+	it("moves the first row's values up and removes that row", () => {
+		const document = promoteFirstRowToHeader(sample());
+
+		expect(document.columns.map((column) => column.header)).toEqual(["1", "2"]);
+		expect(documentToMatrix(document)).toEqual([
+			["1", "2"],
+			["3", "4"],
+		]);
+	});
+
+	// The header holds text, so a typed value arrives as its projection. What
+	// must not happen is the column keeping the type of a value that is gone.
+	it("projects a typed value into the header and takes its row with it", () => {
+		const document = promoteFirstRowToHeader(
+			docOf([
+				["name", "age"],
+				["Ingrid", 35],
+				["Paulo", 35],
+			]),
+		);
+
+		expect(document.columns.map((column) => column.header)).toEqual([
+			"Ingrid",
+			"35",
+		]);
+		expect(document.rows).toHaveLength(1);
+	});
+
+	it("leaves column identity and metadata with the column", () => {
+		const before = setColumnExpectedType(
+			setAlignment(sample(), 1, "right"),
+			1,
+			"number",
+		);
+		const after = promoteFirstRowToHeader(before);
+
+		expect(after.columns.map((column) => column.id)).toEqual(
+			before.columns.map((column) => column.id),
+		);
+		expect(after.columns.map((column) => column.align)).toEqual(
+			before.columns.map((column) => column.align),
+		);
+		expect(after.columns.map((column) => column.expectedType)).toEqual(
+			before.columns.map((column) => column.expectedType),
+		);
+	});
+
+	// The invariant the whole feature rests on: one header row before, one
+	// header row after, and a row under it in every case. Promoting the only
+	// data row leaves the blank survivor `withRows` guarantees.
+	it("keeps a row under the header when it consumed the only one", () => {
+		const document = promoteFirstRowToHeader(
+			docOf([
+				["A", "B"],
+				["1", "2"],
+			]),
+		);
+
+		expect(document.columns.map((column) => column.header)).toEqual(["1", "2"]);
+		expect(documentToMatrix(document)).toEqual([
+			["1", "2"],
+			["", ""],
 		]);
 	});
 });

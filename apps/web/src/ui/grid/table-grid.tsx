@@ -162,7 +162,6 @@ function clipboardEdgesAt(
 const structureRefusalMessage: Record<StructureDeletionRefusal, string> = {
 	"last-row": copy.disabled.lastRemainingRow,
 	"last-column": copy.disabled.lastRemainingColumn,
-	"header-row": copy.disabled.headerRowRequired,
 };
 
 const pasteRefusalMessage: Record<PasteRefusal, string> = {

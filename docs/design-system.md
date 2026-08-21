@@ -1463,10 +1463,12 @@ opening and committing an unchanged editor preserves the existing real type.
 
 **A header cell holds editable text and nothing else.** It is a cell for every
 purpose the user can observe: it is selectable, it answers Enter, F2, and
-typing, and `Backspace` clears it. The one thing it is not is a row that can be
-deleted, because every table keeps exactly one header row. Everything that acts
-on the column as a whole (selecting it, its menu, its resize handle) belongs to
-the column index strip, not to the header cell.
+typing, and `Backspace` clears it. Deleting its row is not a refusal either:
+`Mod`+`Backspace` and the Delete rows menu item remove it and promote the first
+surviving row into the header, so the table passes from one header row to one
+header row and the gesture means the same thing on row 1 as on any other row.
+Everything that acts on the column as a whole (selecting it, its menu, its
+resize handle) belongs to the column index strip, not to the header cell.
 
 Because it is a row, **the boundary under the header row is an ordinary row
 boundary**: `--line-subtle`, the same one every pair of data rows draws, across

@@ -193,17 +193,45 @@ test("arrows stop at the header row rather than leaving the grid", async ({
 	await expect(tabelo.header(1)).toBeFocused();
 });
 
-test("Mod+Backspace refuses to remove the header row", async ({ tabelo }) => {
-	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
+// Removing the header row is the one row action that used to refuse. It no
+// longer does: the row under it moves up, so the table goes from one header row
+// to one header row without ever being headerless.
+test("Mod+Backspace on the header row promotes the row below it", async ({
+	tabelo,
+}) => {
+	await tabelo.paste("Name\tRole\nIngrid\tDesigner\nPaulo\tDeveloper");
 
 	await tabelo.header(1).click();
 	await tabelo.page.keyboard.press("Shift+ArrowRight");
 	await tabelo.page.keyboard.press(`${modifier}+Backspace`);
 
-	await expect(tabelo.notice("warning")).toBeVisible();
-	// The header row is still there and still holds its text.
+	await expect(tabelo.header(1)).toHaveText("Ingrid");
+	await expect(tabelo.header(2)).toHaveText("Designer");
+	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
+	await expect(tabelo.notice("warning")).toBeHidden();
+
+	// One gesture, one step back.
+	await tabelo.runAppCommand("undo");
 	await expect(tabelo.header(1)).toHaveText("Name");
 	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect(tabelo.cell(2, 1)).toHaveText("Paulo");
+});
+
+test("deleting a range that starts at the header promotes the first survivor", async ({
+	tabelo,
+}) => {
+	await tabelo.paste("Name\tRole\nIngrid\tDesigner\nPaulo\tDeveloper");
+
+	// One range covering the header cell and the first data cell under it.
+	await tabelo.header(1).click();
+	await tabelo.page.keyboard.press("Shift+ArrowDown");
+	await tabelo.page.keyboard.press(`${modifier}+Backspace`);
+
+	// Paulo survives the range and becomes the header, rather than Ingrid, who
+	// was inside it.
+	await expect(tabelo.header(1)).toHaveText("Paulo");
+	await expect(tabelo.header(2)).toHaveText("Developer");
+	await expect(tabelo.cell(1, 1)).toHaveText("");
 });
 
 test("right-clicking the header row's gutter offers row actions", async ({
@@ -219,10 +247,28 @@ test("right-clicking the header row's gutter offers row actions", async ({
 	await expect(
 		menu.getByRole("menuitem", { name: copy.actions.insertRowsBelow(1) }),
 	).toBeVisible();
-	// Removing it is offered but refused, with the reason given.
+	// Removing it is offered, and offered as the one row it removes.
 	await expect(
 		menu.getByRole("menuitem", { name: copy.actions.deleteRows(1) }),
-	).toBeDisabled();
+	).toBeEnabled();
+});
+
+// The menu and the keyboard reach the same rule, so the row menu promotes too.
+test("the header row's menu deletes it and promotes the row below", async ({
+	tabelo,
+}) => {
+	await tabelo.paste("Name\tRole\nIngrid\tDesigner\nPaulo\tDeveloper");
+
+	await tabelo.grid().locator('[data-row-header="-1"]').click({
+		button: "right",
+	});
+	await tabelo.page
+		.getByRole("menu")
+		.getByRole("menuitem", { name: copy.actions.deleteRows(1) })
+		.click();
+
+	await expect(tabelo.header(1)).toHaveText("Ingrid");
+	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
 });
 
 test("a new table starts unnamed and stays clearable without confirmation", async ({

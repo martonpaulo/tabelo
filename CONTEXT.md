@@ -299,9 +299,11 @@ Related to: Table document, Import
 - Row numbering includes that header row as row 1; data rows begin at row 2. The
   header row's selection coordinate is therefore below the first data row's, so
   that adding it addressed no renumbering of the data rows.
-- A header cell is an ordinary cell for selection, editing, and clearing. It
-  differs from a data cell in exactly one way: the header row can never be
-  deleted as a row.
+- A header cell is an ordinary cell for selection, editing, and clearing, and
+  the header row can be deleted like any other row. Deleting it promotes the
+  first surviving data row into the header, which is why the document never has
+  zero header rows or two. It differs from a data cell in that it holds text
+  only, and in that it is never duplicated or reordered as a row.
 - A selection holds at least one area and may hold several. Areas may overlap,
   and every count over them is a set, so the same row or column is never acted
   on twice. An operation needing one insertion point or one origin acts on the
