@@ -23,6 +23,7 @@ import type {
 	Row,
 } from "@/core/types";
 import {
+	currentMatch,
 	type PasteRefusal,
 	type StructureDeletionRefusal,
 	useTabeloStore,
@@ -130,6 +131,33 @@ function ClipboardSourceEdge({ top, right, bottom, left }: ClipboardEdges) {
 				left && "border-l-2",
 			)}
 		/>
+	);
+}
+
+// The half-open range of one cell's text the current find match covers, or
+// nothing. Passed to a row as three primitives for the same reason the copied
+// areas are: the memo boundary compares by value, and only the row holding the
+// current match may re-render when the user steps to it.
+const NO_MARK = 0;
+
+// The current find occurrence, drawn inside the value the cell already shows.
+//
+// Three spans carrying exactly the characters the cell carries, so the
+// accessible name, the native tooltip, and every copy path still see one
+// unbroken value: nothing is inserted, replaced, or hidden. Presentation only,
+// and deliberately not a `<mark>`: its implicit semantics would announce a
+// highlight, and which occurrence this is belongs to the written count in the
+// find bar rather than to the cell. See docs/design-system.md §9.
+function markedValue(value: string, start: number, end: number) {
+	if (start >= end) return value;
+	return (
+		<>
+			{value.slice(0, start)}
+			<span data-find-current className="bg-primary text-primary-foreground">
+				{value.slice(start, end)}
+			</span>
+			{value.slice(end)}
+		</>
 	);
 }
 
@@ -264,6 +292,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const editingSeed = useTabeloStore((state) => state.editingSeed);
 	const editingHeader = useTabeloStore((state) => state.editingHeader);
 	const copiedRanges = useTabeloStore((state) => state.copiedRanges);
+	const match = useTabeloStore((state) => currentMatch(state.find));
 	const copiedAt = (row: number, column: number) =>
 		coveredByRects(copiedRanges, row, column);
 	const wrappedColumns = useTabeloStore(
@@ -336,6 +365,19 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		target.focus({ preventScroll: true });
 		revealGridCell(grid, target, focus.row);
 	}, [focus.row, focus.column, editing, editingHeader]);
+
+	// Stepping to a match moves the selection while the find bar keeps the
+	// caret, so the effect above stands down: focus is not in the grid. The
+	// match still has to be brought into view, and clear of the sticky chrome
+	// rather than merely on screen, which is the contract #141 established.
+	useEffect(() => {
+		const grid = gridRef.current;
+		if (!grid || !match) return;
+		const target = grid.querySelector<HTMLElement>(
+			`[data-cell="${match.row}:${match.column}"]`,
+		);
+		if (target) revealGridCell(grid, target, match.row);
+	}, [match]);
 
 	// A column selection starts on the header row, because a column is its header
 	// plus its cells.
@@ -589,6 +631,19 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 		const mod = event.metaKey || event.ctrlKey;
 		const active = activeRange(selection);
+
+		// Find opens from the grid surface and nowhere else. The early return
+		// above already stood the whole handler down while a cell or header
+		// editor is open, and a source editor never routes its keys through
+		// here, so both keep whatever find behaviour they have. Taken from the
+		// browser deliberately: its own find would search the rendered chrome
+		// rather than the table, and would miss every value scrolled out of the
+		// DOM's view.
+		if (mod && event.key.toLowerCase() === "f") {
+			event.preventDefault();
+			store.openFind();
+			return;
+		}
 
 		// Shift distinguishes keyboard resizing from the existing Alt+arrow reorder
 		// path. The focused column owns the gesture even when the selection spans
@@ -1061,6 +1116,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								focus={focus.row === HEADER_ROW && focus.column === columnIndex}
 								editing={editingHeader === columnIndex}
 								seed={editingSeed}
+								markStart={
+									match?.row === HEADER_ROW && match.column === columnIndex
+										? match.start
+										: NO_MARK
+								}
+								markEnd={
+									match?.row === HEADER_ROW && match.column === columnIndex
+										? match.end
+										: NO_MARK
+								}
 							/>
 						))}
 					</tr>
@@ -1094,6 +1159,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							copiedSpans={spansOf(copiedRanges, rowIndex)}
 							copiedSpansAbove={spansOf(copiedRanges, rowIndex - 1)}
 							copiedSpansBelow={spansOf(copiedRanges, rowIndex + 1)}
+							// The current find match, narrowed to this row: at most one
+							// row in the table carries it, so every other row keeps the
+							// same three values and is reconciled away.
+							markColumn={match?.row === rowIndex ? match.column : NO_COLUMN}
+							markStart={match?.row === rowIndex ? match.start : NO_MARK}
+							markEnd={match?.row === rowIndex ? match.end : NO_MARK}
 							editingColumn={
 								editing?.row === rowIndex ? editing.column : NO_COLUMN
 							}
@@ -1171,6 +1242,11 @@ interface DataRowProps {
 	readonly copiedSpans: string;
 	readonly copiedSpansAbove: string;
 	readonly copiedSpansBelow: string;
+	// The column holding the current find match, or NO_COLUMN, and the half-open
+	// range of that cell's text it covers.
+	readonly markColumn: number;
+	readonly markStart: number;
+	readonly markEnd: number;
 	readonly editingColumn: number;
 	// The character that opened the editor, when typing is what opened it.
 	readonly editingSeed: string | null;
@@ -1197,6 +1273,9 @@ const DataRow = memo(function DataRow({
 	copiedSpans,
 	copiedSpansAbove,
 	copiedSpansBelow,
+	markColumn,
+	markStart,
+	markEnd,
 	editingColumn,
 	editingSeed,
 	wrappedColumns,
@@ -1399,7 +1478,9 @@ const DataRow = memo(function DataRow({
 										type !== "string" && "font-value",
 									)}
 								>
-									{value}
+									{columnIndex === markColumn
+										? markedValue(value, markStart, markEnd)
+										: value}
 									{describesType ? (
 										<span className="sr-only">
 											{`, ${copy.a11y.realCellType(type)}`}
@@ -1652,6 +1733,10 @@ interface HeaderCellProps {
 	readonly editing: boolean;
 	// The character that opened the editor, when typing is what opened it.
 	readonly seed: string | null;
+	// The half-open range of this header's text the current find match covers.
+	// Equal bounds mean it holds no match.
+	readonly markStart: number;
+	readonly markEnd: number;
 }
 
 function HeaderCell({
@@ -1664,6 +1749,8 @@ function HeaderCell({
 	focus,
 	editing,
 	seed,
+	markStart,
+	markEnd,
 }: HeaderCellProps) {
 	const entered = usePaneEntered();
 
@@ -1748,7 +1835,7 @@ function HeaderCell({
 							: "h-content-line-box overflow-hidden whitespace-pre",
 					)}
 				>
-					{header}
+					{markedValue(header, markStart, markEnd)}
 				</span>
 			)}
 			{copiedEdges ? <ClipboardSourceEdge {...copiedEdges} /> : null}

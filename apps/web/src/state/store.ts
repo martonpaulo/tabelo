@@ -9,6 +9,13 @@ import {
 	reconcileDocument,
 } from "@/core/document";
 import {
+	type CellMatch,
+	findMatches,
+	matchIndexFrom,
+	positionAfterReplacement,
+	replaceMatches,
+} from "@/core/find";
+import {
 	clearCells,
 	deleteColumns,
 	deleteRows,
@@ -32,6 +39,7 @@ import {
 	type CellPosition,
 	type CellRect,
 	clampSelection,
+	createRange,
 	createSelection,
 	extendActiveRange,
 	type GridSelection,
@@ -134,6 +142,27 @@ export type StructureDeletionRefusal = "last-row" | "last-column";
 // and the interface owns the words for it.
 export type PasteRefusal = "single-area";
 
+// What the grid's find bar is looking for and what it found.
+//
+// Transient by construction, exactly like `copiedRanges` and
+// `fillSeriesOffer`: never a history step, never persisted, and never document
+// state. `null` is the bar closed; opening it is the only thing that creates
+// one, and closing it is the only thing that drops one.
+//
+// `matches` is recomputed from the document rather than patched, so it can
+// never describe cells the table no longer holds. `index` is which occurrence
+// is current, and `-1` when there are none.
+export interface FindState {
+	readonly query: string;
+	readonly replacement: string;
+	readonly caseSensitive: boolean;
+	// Whether the replace row is showing. Finding is the errand the bar exists
+	// for and gets a row to itself; replacing is asked for and costs a second.
+	readonly replacing: boolean;
+	readonly matches: readonly CellMatch[];
+	readonly index: number;
+}
+
 // The exact pane and format holding an editor buffer. A clean buffer has
 // already committed its meaning to the document but stays here so
 // synchronization never rewrites the user's formatting, cursor, or history.
@@ -224,6 +253,9 @@ export interface TabeloState {
 	// state, and cleared by the next change to the document. The user has to
 	// ask for the series, so until they do the copied result is the result.
 	fillSeriesOffer: FillSeriesOffer | null;
+
+	// The find bar's own state, or null while it is closed. See `FindState`.
+	find: FindState | null;
 
 	storageIssue: StorageIssue | null;
 	// Messages waiting to be read, oldest first. A queue rather than one slot:
@@ -316,6 +348,24 @@ export interface TabeloState {
 	applyFillSeries: () => FillSeriesOutcome;
 	dismissFillSeriesOffer: () => void;
 
+	openFind: () => void;
+	closeFind: () => void;
+	setFindQuery: (query: string) => void;
+	setFindReplacement: (replacement: string) => void;
+	setFindCaseSensitive: (caseSensitive: boolean) => void;
+	setFindReplacing: (replacing: boolean) => void;
+	// Turn every matching cell into the grid selection, one area per cell.
+	// Returns how many cells that came to.
+	selectAllMatches: () => number;
+	// Walk the match list, wrapping at either end. Returns the match now
+	// current, so the caller can say which occurrence it reached.
+	stepFindMatch: (offset: 1 | -1) => CellMatch | null;
+	// Replace the current occurrence and resume past what was written. False
+	// means there was nothing current to replace.
+	replaceCurrentMatch: () => boolean;
+	// Replace every occurrence as one document change, and say how many.
+	replaceAllMatches: () => number;
+
 	clearSelection: () => void;
 	deleteSelectedStructure: () => StructureDeletionRefusal | null;
 	clipboardSelection: () => ClipboardSelection;
@@ -339,6 +389,66 @@ function snapshotOf(state: TabeloState): HistoryEntry {
 			? { ...state.draft, status: "invalid" as const }
 			: state.draft;
 	return { document: state.document, draft };
+}
+
+// The match list after the document moved underneath it. Recomputing is the
+// whole contract: patching offsets is how a mark ends up on the wrong
+// characters, and a stale range is what makes a replace write into a cell the
+// user never saw highlighted.
+//
+// The position is kept where it was, clamped into the new list, so an edit
+// elsewhere in the table does not send the user back to the first occurrence.
+function refreshFind(
+	find: FindState | null,
+	document: TableDocument,
+): FindState | null {
+	if (!find) return null;
+	const matches = findMatches(document, find.query, find.caseSensitive);
+	return { ...find, matches, index: clampMatchIndex(matches, find.index) };
+}
+
+// Changing what is being looked for starts the walk again at the first
+// occurrence, and moves the grid there. The previous position was about a
+// different query, so carrying it over would report a place the user never
+// navigated to.
+function searchedState(
+	state: TabeloState,
+	change: Partial<Pick<FindState, "query" | "caseSensitive">>,
+): Partial<TabeloState> {
+	const find = state.find;
+	if (!find) return {};
+	const next = { ...find, ...change };
+	const matches = findMatches(state.document, next.query, next.caseSensitive);
+	const match = matches[0];
+	return {
+		find: { ...next, matches, index: match ? 0 : -1 },
+		// Navigation replaces the selection while the bar keeps DOM focus, so
+		// the grid follows without the input losing the caret.
+		...(match
+			? {
+					selection: createSelection(matchPosition(match)),
+					editing: null,
+					editingSeed: null,
+					editingHeader: null,
+				}
+			: {}),
+	};
+}
+
+function clampMatchIndex(matches: readonly CellMatch[], index: number): number {
+	if (matches.length === 0) return -1;
+	return Math.min(Math.max(index, 0), matches.length - 1);
+}
+
+// The occurrence the bar is on, or null when the query found nothing.
+export function currentMatch(find: FindState | null): CellMatch | null {
+	return find?.matches[find.index] ?? null;
+}
+
+// Where the match sits in the grid's own coordinate space. The header row is
+// already `HEADER_ROW` in a match, so the two spaces are the same one.
+function matchPosition(match: CellMatch): CellPosition {
+	return { row: match.row, column: match.column };
 }
 
 function clearInvalidTimer(): void {
@@ -545,6 +655,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editingHeader: null,
 	copiedRanges: NO_COPIED_RANGES,
 	fillSeriesOffer: null,
+	find: null,
 
 	storageIssue: null,
 	notices: [],
@@ -575,6 +686,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				pendingImport: null,
 				inputError: null,
 				pendingPaneAction: null,
+				find: null,
 				selection: createSelection({ row: 0, column: 0 }),
 			});
 			return;
@@ -636,6 +748,9 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			// these changes.
 			copiedRanges: NO_COPIED_RANGES,
 			fillSeriesOffer: null,
+			// The bar stays open across an edit: the query is still what the user
+			// is looking for. Only what it found is recomputed.
+			find: refreshFind(state.find, next),
 			selection: clampSelection(
 				state.selection,
 				next.rows.length,
@@ -1040,6 +1155,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				pendingPaneAction: null,
 				copiedRanges: NO_COPIED_RANGES,
 				fillSeriesOffer: null,
+				find: refreshFind(state.find, entry.document),
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -1067,6 +1183,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				pendingPaneAction: null,
 				copiedRanges: NO_COPIED_RANGES,
 				fillSeriesOffer: null,
+				find: refreshFind(state.find, entry.document),
 				selection: clampSelection(
 					state.selection,
 					entry.document.rows.length,
@@ -1440,6 +1557,147 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	},
 
 	dismissFillSeriesOffer: () => set({ fillSeriesOffer: null }),
+
+	// Opening an already-open bar changes nothing: the query the user built is
+	// what they came back to, and the surface focuses its own input.
+	openFind: () =>
+		set((state) =>
+			state.find
+				? {}
+				: {
+						find: {
+							query: "",
+							replacement: "",
+							caseSensitive: false,
+							replacing: false,
+							matches: [],
+							index: -1,
+						},
+					},
+		),
+
+	// The selection stays where the last match left it. Restoring what was
+	// selected before the bar opened would put the user back somewhere they
+	// have since navigated away from.
+	closeFind: () => set({ find: null }),
+
+	setFindQuery: (query) => set((state) => searchedState(state, { query })),
+	setFindCaseSensitive: (caseSensitive) =>
+		set((state) => searchedState(state, { caseSensitive })),
+
+	setFindReplacement: (replacement) =>
+		set((state) =>
+			state.find ? { find: { ...state.find, replacement } } : {},
+		),
+
+	setFindReplacing: (replacing) =>
+		set((state) => (state.find ? { find: { ...state.find, replacing } } : {})),
+
+	// One area per matching cell, not per occurrence: a cell holding the query
+	// twice is still one cell, and the grid counts coverage rather than overlap.
+	// The cell the bar was on stays the focused one, so selecting everything
+	// does not also move the user somewhere else.
+	selectAllMatches: () => {
+		const state = get();
+		const find = state.find;
+		if (!find || find.matches.length === 0) return 0;
+
+		const cells = new Map<string, CellPosition>();
+		for (const match of find.matches) {
+			cells.set(`${match.row}:${match.column}`, matchPosition(match));
+		}
+		const positions = [...cells.values()];
+		const ranges = positions.map((position) => createRange(position, "cell"));
+		const current = currentMatch(find);
+		const activeIndex = current
+			? Math.max(
+					0,
+					positions.findIndex(
+						(position) =>
+							position.row === current.row &&
+							position.column === current.column,
+					),
+				)
+			: 0;
+
+		set({
+			selection: { ranges, activeIndex },
+			editing: null,
+			editingSeed: null,
+			editingHeader: null,
+		});
+		return ranges.length;
+	},
+
+	stepFindMatch: (offset) => {
+		const state = get();
+		const find = state.find;
+		if (!find || find.matches.length === 0) return null;
+		// Wrapping in both directions, so the ends of the table are not dead
+		// stops: the count is what says where the user is.
+		const total = find.matches.length;
+		const index = (find.index + offset + total) % total;
+		const match = find.matches[index];
+		if (!match) return null;
+		set({
+			find: { ...find, index },
+			selection: createSelection(matchPosition(match)),
+			editing: null,
+			editingSeed: null,
+			editingHeader: null,
+		});
+		return match;
+	},
+
+	// One occurrence, through the same document funnel every other cell edit
+	// uses, so it is one history step. What comes back is recomputed from the
+	// new document, and the position resumes past the text just written: a
+	// replacement that contains the query must not leave Replace pressing on
+	// top of itself.
+	replaceCurrentMatch: () => {
+		const state = get();
+		const find = state.find;
+		const match = currentMatch(find);
+		if (!find || !match) return false;
+
+		const next = replaceMatches(state.document, [match], find.replacement);
+		if (next === state.document) return false;
+		state.applyDocument(next);
+
+		const applied = get().find;
+		if (!applied) return true;
+		const index = matchIndexFrom(
+			applied.matches,
+			positionAfterReplacement(match, find.replacement),
+		);
+		const resumed = applied.matches[index];
+		set({
+			find: { ...applied, index },
+			...(resumed
+				? {
+						selection: createSelection(matchPosition(resumed)),
+						editing: null,
+						editingSeed: null,
+						editingHeader: null,
+					}
+				: {}),
+		});
+		return true;
+	},
+
+	// Every occurrence in one document change, so undo returns the whole table
+	// rather than unwinding the replacements one at a time.
+	replaceAllMatches: () => {
+		const state = get();
+		const find = state.find;
+		if (!find || find.matches.length === 0) return 0;
+
+		const count = find.matches.length;
+		const next = replaceMatches(state.document, find.matches, find.replacement);
+		if (next === state.document) return 0;
+		state.applyDocument(next);
+		return count;
+	},
 
 	clearSelection: () => {
 		const state = get();

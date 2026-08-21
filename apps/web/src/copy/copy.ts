@@ -276,6 +276,38 @@ export const copy = {
 			`${selected} of ${total} ${total === 1 ? "match" : "matches"} selected`,
 	},
 
+	find: {
+		// The bar's own accessible name, and the label of the command that opens
+		// it. One value, so the menu item and the surface it reveals cannot drift
+		// apart.
+		title: "Find and replace",
+		// Each field's label and its placeholder are the same word: the bar
+		// floats over the table, so a visible label beside every control would
+		// cost the rows underneath it for nothing a programmer needs told twice.
+		query: "Find",
+		replacement: "Replace with",
+		matchCase: "Match case",
+		// Replacing costs a second row, so it is asked for rather than assumed.
+		showReplace: "Show replace",
+		hideReplace: "Hide replace",
+		selectAll: "Select every matching cell",
+		previous: "Previous match",
+		next: "Next match",
+		replace: "Replace match",
+		replaceAll: "Replace every match",
+		close: "Close find",
+		// The count reads compactly on screen and in full when it is spoken. The
+		// same number either way: one is a legend beside the controls, the other
+		// is a sentence with no controls around it to give it context.
+		count: (index: number, total: number) => `${index}/${total}`,
+		position: (index: number, total: number) =>
+			`${index} of ${total} ${total === 1 ? "match" : "matches"}`,
+		noMatches: "No matches",
+		replaced: (count: number) =>
+			`${count} ${count === 1 ? "match" : "matches"} replaced.`,
+		nothingReplaced: "Nothing was replaced.",
+	},
+
 	disabled: {
 		inUseStatus: "In use",
 		unavailableStatus: "Blocked",
@@ -310,6 +342,10 @@ export const copy = {
 		// rather than picking one of them.
 		singleAreaRequired: "This needs one selected area, not several.",
 		singleCellRequired: "Select one data cell to change its type.",
+		noQuery: "Type something to find first.",
+		// Both the step and the replace controls refuse for the same reason, so
+		// they say the same thing rather than inventing two wordings for it.
+		noMatchingCell: "No cell holds that text.",
 		cellTypeConversion: (label: string) =>
 			`This value cannot be converted to ${label.toLowerCase()}.`,
 		updateInProgress: "The update is already being applied.",
@@ -718,6 +754,7 @@ export const copy = {
 	},
 
 	shortcuts: {
+		find: "Mod+F",
 		undo: "Mod+Z",
 		redo: "Mod+Shift+Z",
 		addRow: "Mod+Enter",

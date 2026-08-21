@@ -196,6 +196,14 @@ and is not what the rule asks for.
 | `--selection-fill` | `bg-selection-fill` | Background of selected cells |
 | `--selection-edge` | `outline-selection-edge` | The focused cell's outline, focus rings, resize affordance |
 | `--text-selection-fill` | CSS selection | Native and source-editor text selection |
+| `--primary` / `--primary-foreground` | `bg-primary text-primary-foreground` | The solid accent with a contrast-paired label: the primary decision button, a checked control, and the grid's current find match |
+
+The find match is the one place the solid accent fills a run of text rather than
+outlining a control. It earns it: the cell underneath already wears
+`--selection-fill`, so a second translucent tint over the first is the weakest
+possible way to say "these characters", and the pale tone is reserved for fills
+that sit under content rather than replace its ground. The paired foreground is
+what keeps the marked characters readable in both themes.
 | `--active-line-fill` | Source editor theme | Current source line without competing with selected text |
 
 The accent family is blue in both themes. Use its solid tone only for focus,
@@ -698,6 +706,45 @@ one horizontal row at every supported width. Ordinary alternatives come first
 and the primary starting action comes last, at the far right. Their DOM and
 focus order follows that same semantic priority. The surface grows to the row's
 intrinsic width and the action row never becomes a scroll container.
+
+### A pane's own tool bar
+
+The grid's find bar is the one surface of this shape, and adding a second one is
+a pattern break under §0. It is not a dialog and not a floating layer: it is a
+tool the user works **alongside** the table for as long as the errand lasts, so
+it belongs to the pane the way the header does.
+
+- **Docked at the foot of the pane, outside its scroller.** It covers no cell,
+  scrolls with nothing, and its field can take the pane's full width, which is
+  what a search string longer than a word needs. A floating pill over the table
+  was tried and rejected: it hid the rows the user was searching and bought
+  nothing, because the pane already has an edge to attach to.
+- **One row for the errand, a second only when asked.** Finding is why the bar
+  exists and gets the row to itself. Replacing is a different job, so it sits
+  behind one disclosure control at the leading edge, and the two fields line up
+  on that edge rather than stepping. The disclosure is transient state like
+  everything else in the bar.
+- **Dense, and labelled by placeholder.** Every control is one field or one icon
+  at the 1.75rem dense-toolbar size, and each field's placeholder is also its
+  accessible name. A row of written labels would cost the width the fields
+  exist to have, and the audience already knows what a find bar is. This is a
+  licence for this surface, not for the product: a control anywhere else still
+  carries its visible label.
+- **Its fields grow with what they hold, to three rows.** A cell may legitimately
+  contain a line break, so a query may too, and a single-line input would
+  silently flatten what was pasted into it. Each field is a textarea that starts
+  one row tall, grows through the browser's own `field-sizing: content` that the
+  shared primitive already declares, and scrolls once it reaches three rows.
+  Enter navigates and replaces, so a line break reaches a field by paste rather
+  than by keystroke. The controls beside a field stay on its first row.
+- **Its one piece of state is passive text.** The match count is a legend beside
+  the controls with no role and nothing to press, and it reads compactly
+  (`3/14`) while the same number is spoken in full through the shared polite
+  channel, because a sentence read on its own has no controls beside it to give
+  a compact legend its meaning.
+- **A keyboard-first tool still needs a way in.** Its shortcut is the discovery
+  problem, not the surface, so the owning pane's menu carries the command that
+  opens it, with the shortcut beside it. See §9.
 
 ### Dialog
 
@@ -1362,6 +1409,7 @@ container, so the arrow keys still work.
 | `Backspace` | Clear the contents of the selection |
 | `Mod`+`Backspace` | Remove the selected rows or columns |
 | `Mod`+`Enter` | Add a row below |
+| `Mod`+`F` | Open the find bar and put the caret in it. Taken from the browser deliberately: its own find searches the rendered chrome rather than the table |
 | Any printable character | Replace the cell and start editing |
 
 The two `Space` chords are the one place the key table names `Ctrl` rather than
@@ -1480,6 +1528,55 @@ case: every gesture except the modifier produces exactly one.
   focus sits on is provisional: moving it moves that cell rather than leaving a
   trail of one-cell areas, and turning its column or row into an area replaces
   it instead of painting it twice.
+
+**Find is a second way of moving the selection, never a second highlight.**
+`Mod`+`F` opens the grid pane's find bar (§3) and `Escape` closes it,
+returning the caret to the grid. The chord fires from the grid surface only: a
+cell or header editor owns every key while it is open, and a source editor keeps
+whatever find behaviour it has. The pane menu carries the same command, because
+a capability whose only entry point is a chord nobody was told about fails the
+progressive-disclosure rule above.
+
+Matching is literal, left to right, non-overlapping, and case-insensitive until
+the toggle says otherwise. It runs over the canonical table in document order,
+the header row first, because a header cell is an ordinary cell for every
+purpose the user can observe. Cell values are opaque strings: nothing is
+trimmed, normalized, unescaped, or read as a type, so a value holding `|` or a
+newline is matched as exactly those characters and never as the syntax some
+other format would wrap them in.
+
+Stepping to a match **replaces the grid selection** with that cell and reveals
+it clear of the sticky chrome, the same contract every other focus move honours.
+The bar keeps the caret while this happens, so the walk is announced through the
+shared polite channel rather than by the cell taking focus. Closing keeps the
+cell the last match reached selected; restoring a selection the user has since
+navigated away from would be a second surprise.
+
+Only the **current** occurrence is marked, and only the characters that matched:
+the product's solid accent with its paired foreground, drawn inside the value
+the cell already shows. Every other match receives no second grid highlight,
+because a second kind of highlight is a second visual language and §1 commits to
+one. The mark is presentation and nothing else: the cell's accessible value, its
+native tooltip, and every copy path still see one unbroken value, and which
+occurrence it is comes from the written count rather than from the colour.
+
+Select every matching cell turns the result into an ordinary grid selection,
+one area per cell rather than per occurrence, which hands it straight to the
+operations that already act on a selection: clear, copy, delete, alignment. It
+counts coverage like every other selection, so a cell holding the query twice is
+still one cell, and the grid's own extent announcement says how many, so nothing
+is announced twice. The cell the bar was on stays the focused one.
+
+Replace acts through the ordinary cell and header edit path, so one replacement
+is one history step and Replace all is exactly one, whatever it touched.
+Replaced text is written back as a string: a projection that was rewritten is
+text, and nothing reads a type off it. A replacement equal to what was already
+there writes nothing at all, so a native value keeps its type. Replace resumes
+past what it just wrote, so a replacement containing the query cannot press back
+on top of itself. The whole of it is transient: the query, the match list, and
+the position never reach the document, the history timeline, or `localStorage`,
+and the list is recomputed after every document change rather than having its
+offsets patched.
 
 **Operations that need one place to act say so.** Insert above, below, left and
 right, the four moves, fill, and paste each need a single insertion point or
