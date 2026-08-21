@@ -210,6 +210,9 @@ Do not add without an explicit, demonstrated need:
 - a second component library, state library, validation library, or formatter
 - an animation library, CSS-in-JS, or Storybook
 - analytics or telemetry of any kind
+- a second implementation language, including WebAssembly. Measured and
+  declined in `docs/adr/0009`: the tuned TypeScript serializer is faster than
+  the floor cost of getting the table across the Wasm boundary at all
 - Turborepo or Nx
 
 ## Architecture boundaries
