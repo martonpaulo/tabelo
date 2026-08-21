@@ -56,7 +56,7 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
             echo "run_e2e=true" >> "$GITHUB_OUTPUT"
-            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":2,"test_args":""},{"project":"chromium","shard":2,"shard_total":2,"test_args":""},{"project":"firefox","shard":1,"shard_total":2,"test_args":""},{"project":"firefox","shard":2,"shard_total":2,"test_args":""}]}' >> "$GITHUB_OUTPUT"
+            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":2,"test_args":""},{"project":"chromium","shard":2,"shard_total":2,"test_args":""}]}' >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -118,7 +118,7 @@ jobs:
 
           if [ $LEVEL -eq 5 ]; then
             echo "run_e2e=true" >> "$GITHUB_OUTPUT"
-            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":2,"test_args":""},{"project":"chromium","shard":2,"shard_total":2,"test_args":""},{"project":"firefox","shard":1,"shard_total":2,"test_args":""},{"project":"firefox","shard":2,"shard_total":2,"test_args":""}]}' >> "$GITHUB_OUTPUT"
+            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":2,"test_args":""},{"project":"chromium","shard":2,"shard_total":2,"test_args":""}]}' >> "$GITHUB_OUTPUT"
           elif [ $LEVEL -eq 4 ]; then
             echo "run_e2e=true" >> "$GITHUB_OUTPUT"
             echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":1,"test_args":""}]}' >> "$GITHUB_OUTPUT"
@@ -151,8 +151,8 @@ jobs:
         run: pnpm test
 
   # Browser coverage now waits for lint, types, and unit tests. That costs a
-  # minute of latency and buys back four runners on a commit that was already
-  # broken before any browser started.
+  # minute of latency and buys back every browser runner on a commit that was
+  # already broken before any browser started.
   e2e:
     name: E2E (${{ matrix.project }}, shard ${{ matrix.shard }}/${{ matrix.shard_total }})
     needs: check

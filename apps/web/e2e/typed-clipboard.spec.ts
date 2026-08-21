@@ -6,9 +6,9 @@ import { lastCopied, recordingClipboard, type TabeloPage } from "./helpers";
 
 // Types survive between two Tabelo tabs because a private payload rides inside
 // the HTML flavour, and they never appear from outside because that payload has
-// to validate and match the visible table before it is believed. Both engines
-// run these: Firefox refuses to write a custom clipboard format at all, which
-// is why the payload travels this way rather than as its own MIME type.
+// to validate and match the visible table before it is believed. The payload
+// travels inside the HTML flavour rather than as its own MIME type: see
+// docs/adr/0008.
 
 const TYPED_ROWS =
 	'[{"qty":1,"ok":true,"note":null,"code":"1"},{"qty":2,"ok":false,"note":"x","code":"2"}]';

@@ -189,9 +189,9 @@ test("a pending draft survives the responsive change", async ({
 			).join("\n"),
 		);
 
-	// Use the editor's keyboard path here. Firefox can reduce Playwright's direct
-	// contenteditable fill to a partial deletion under parallel test load, which
-	// would make this test measure an unfinished setup action instead.
+	// Use the editor's keyboard path here. A direct contenteditable fill has been
+	// seen to land as a partial deletion under parallel test load, which would
+	// make this test measure an unfinished setup action instead.
 	await source.focus();
 	await source.press("ControlOrMeta+a");
 	await source.press("Backspace");

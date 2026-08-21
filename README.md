@@ -172,9 +172,8 @@ other's build. `TABELO_DEV_PORT` and `TABELO_PREVIEW_PORT` override them.
 | `pnpm build`            | Production build                                   |
 | `pnpm test`             | Unit tests                                         |
 | `pnpm test:watch`       | Unit tests, re-running on change                   |
-| `pnpm test:e2e:install` | Install Chromium and Firefox for browser tests     |
+| `pnpm test:e2e:install` | Install Chromium for browser tests                 |
 | `pnpm test:e2e`         | Browser tests in Chromium                          |
-| `pnpm test:e2e:all`     | Browser tests in Chromium and Firefox              |
 | `pnpm test:e2e:failed`  | Only the tests that failed last time               |
 | `pnpm test:e2e:changed` | Only the specs affected by uncommitted changes     |
 | `pnpm test:e2e:ui`      | Playwright's watch and time-travel interface       |
@@ -194,10 +193,9 @@ focused spec. Keep the property after the fix. Add the shrunk example as an
 ordinary regression test only when it communicates a distinct contract more
 clearly than the property itself.
 
-Firefox repeats only the contracts where browser engines differ, and CI runs it
-on every push, so the local default stays on Chromium. Run `pnpm test:e2e:all`
-before opening a pull request that touches clipboard, download, focus,
-persistence, or responsive behaviour.
+Chromium is the only browser the suite runs, locally and in CI, because it is
+the only browser Tabelo supports. There is no second project to opt into and no
+cross-browser command to remember before opening a pull request.
 
 <br />
 
@@ -249,6 +247,10 @@ including with us.
 - **Markdown output contains `<br>`** where a cell has a line break. That is the
   price of not losing the line break. Strict CommonMark renderers that escape
   raw HTML will show it literally.
+- **Chromium only.** Tabelo is developed, tested, and verified in Chrome and
+  other Chromium-based browsers. It may well work elsewhere, but nothing is
+  checked there, and a bug that only appears in another browser is not something
+  this project fixes.
 - **One document at a time.** Four views of it, but one table.
 - **Reordering is keyboard and menu, not drag.** This was a choice: the keyboard
   path works for everyone, and drag-only reordering does not.

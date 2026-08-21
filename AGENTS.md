@@ -31,6 +31,16 @@ describes the migration and its downstream effects.
   configuration, developer docs)
 - Product copy: English only, single locale, no i18n framework. Dates and
   numbers inside table cells are never localized or reformatted
+- Supported browser: **Chromium only.** Chrome and other Chromium-based
+  browsers are the single target the product is developed against, tested in,
+  and verified on. Nothing deliberately blocks another engine, and the app may
+  well work in one, but no other engine is tested, no behaviour is verified
+  there, and a defect that reproduces only outside Chromium is not a blocker.
+  This is the canonical statement of that policy: everything else, the
+  Playwright configuration, the CI matrix, and the testing rules below, is a
+  consequence of it rather than a second owner. Do not add a browser-specific
+  workaround, a polyfill, or a fallback for a non-Chromium engine, and do not
+  keep one whose only reason was such an engine
 - Branch workflow: **branch and pull request by default.** A task or issue gets
   its own branch named under the scheme below; direct commits to `main` are
   reserved for quick, low-risk fixes, most often made by the maintainer
@@ -176,7 +186,8 @@ Use the scaffolded versions unless a task explicitly requires an upgrade.
 - Vitest for unit tests, with happy-dom for the codec that uses `DOMParser`
 - Playwright for the browser suite, covering the cross-view, history,
   persistence, import, responsive, and keyboard contracts that unit tests
-  cannot reach. Chromium and Firefox both run locally and in CI
+  cannot reach. One project, Chromium, locally and in CI, per the supported
+  browser policy above
 - pnpm workspaces
 - `vite-plugin-pwa` in `generateSW` mode for offline capability
 
@@ -269,9 +280,6 @@ Prefer the smallest relevant check.
   and `pnpm test:e2e:failed` after a fix, or narrow with a spec name or
   `-g "<title>"`; neither is a gate, so run the suite whole before reporting.
   `pnpm test:e2e:serve` keeps a warm preview server across those rounds
-- `pnpm test:e2e:all`: adds Firefox. CI owns the cross-browser matrix, so this
-  is for changes to clipboard, download, focus, persistence, responsive layout,
-  or source editor synchronization
 - Pass a focused spec path or Playwright option directly after the root script.
   Never add a standalone `--` after `pnpm test:e2e`: it ends option parsing and
   can turn a focused command into the configured project matrix. Before a new
@@ -280,22 +288,18 @@ Prefer the smallest relevant check.
 
   ```sh
   pnpm test:e2e e2e/import.spec.ts --list
-  pnpm test:e2e:all e2e/import.spec.ts --list
   ```
 
-  Then run Chromium, the configured two-browser coverage, or one named behavior
-  explicitly:
+  Then run the focused spec, or one named behavior explicitly:
 
   ```sh
   TABELO_E2E_WORKERS=1 pnpm test:e2e e2e/import.spec.ts
-  TABELO_E2E_WORKERS=1 pnpm test:e2e:all e2e/import.spec.ts
   pnpm test:e2e e2e/import.spec.ts -g "<title>"
   ```
 
-  If execution announces an unexpected project or materially larger test count,
+  If execution announces a materially larger test count than the intent,
   interrupt it immediately and correct the command. Do not let a focused run
-  silently become a full gate. Run `pnpm test:e2e:all` without a spec path only
-  when the task's risk explicitly requires the complete cross-browser matrix
+  silently become a full gate
 - Several worktrees share one machine. Set `TABELO_E2E_WORKERS=1` when another
   checkout is running its own suite. Before a full browser gate, check whether
   another worktree is already running Playwright; wait or keep one worker rather
@@ -308,8 +312,9 @@ changed path: unit tests, fixtures, and unit-test tooling need no browser run;
 product identity and interface copy run the Chromium smoke suite; the global
 stylesheet runs the smoke and visual-system suites; all other application
 changes and unknown paths run the full Chromium suite; workflow or Playwright
-configuration runs the sharded Chromium and Firefox matrix. Pushes to `main`
-and manual runs also use that full matrix. Renames classify both the old and
+configuration runs that same suite sharded across two runners, which is what
+proves sharding still works when the harness itself changed. Pushes to `main`
+and manual runs also use that sharded matrix. Renames classify both the old and
 new path, so moving a file cannot reduce coverage. Mixed changes always use the
 highest applicable level.
 
@@ -572,11 +577,11 @@ here:
   during implementation. Automated geometry checks are limited to meaningful
   thresholds and direction changes, such as minimum interaction targets,
   overflow, breakpoints, contrast, and a resize action making a column wider.
-- Run the complete browser suite in Chromium. Reserve Firefox for flows that
-  are genuinely sensitive to browser-engine differences, such as clipboard and
-  download APIs, keyboard focus, persistence, responsive layout, and source
-  editor synchronization. Keep that selection centralized in the Playwright
-  configuration instead of duplicating the full suite across browsers.
+- Run the complete browser suite in Chromium, the only supported browser. A
+  flow that would once have been repeated for a second engine, such as clipboard
+  and download APIs, keyboard focus, persistence, responsive layout, and source
+  editor synchronization, is covered once. Do not reintroduce a second project
+  to the Playwright configuration.
 - Run the smallest relevant check repeatedly until it passes. Only then move to
   the next broader relevant validation, and finish with coverage proportional to
   the risk.

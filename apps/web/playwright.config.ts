@@ -4,49 +4,6 @@ import { previewServerPort } from "./worktree-ports";
 
 const serverUrl = `http://127.0.0.1:${previewServerPort}`;
 
-// Chromium owns the complete behavioural suite. Firefox repeats only contracts
-// where browser engines materially differ, so cross-browser confidence does not
-// require running every product assertion twice.
-const firefoxContractSpecs = [
-	// Pointer capture, and the order of pointerup against lostpointercapture,
-	// are exactly where reorder would break on one engine and not the other.
-	"**/axis-reorder.spec.ts",
-	"**/clipboard.spec.ts",
-	// The plain-text half of the clipboard API, which the grid's rich write
-	// never reaches. Firefox implements the two separately.
-	"**/copy-as.spec.ts",
-	"**/download.spec.ts",
-	"**/fill.spec.ts",
-	"**/grid-keyboard.spec.ts",
-	"**/header-import.spec.ts",
-	"**/history.spec.ts",
-	"**/import.spec.ts",
-	"**/new-table.spec.ts",
-	"**/overscroll.spec.ts",
-	"**/pane-move.spec.ts",
-	"**/persistence.spec.ts",
-	// Recovery places focus in the grid across a closing dialog or menu, which
-	// races each engine's own focus restoration.
-	"**/precondition-recovery.spec.ts",
-	"**/responsive.spec.ts",
-	"**/smoke.spec.ts",
-	"**/source-geometry.spec.ts",
-	// Multiple selection, the primary range, and where focus stays after a
-	// command are exactly where the two engines' selection handling differs.
-	"**/source-occurrences.spec.ts",
-	"**/source-sync.spec.ts",
-	"**/system-theme.spec.ts",
-	// The private clipboard payload exists because the two engines disagree
-	// about custom clipboard formats, so both have to prove the round trip.
-	"**/typed-clipboard.spec.ts",
-	// Typed entry crosses editor blur, menu dismissal, modal focus restoration,
-	// and re-entry into the same cell.
-	"**/typed-cell-editing.spec.ts",
-	"**/typed-cell-presentation.spec.ts",
-	// Rename spans dialog focus, durable storage, tab metadata, and downloads.
-	"**/table-name.spec.ts",
-];
-
 export default defineConfig({
 	testDir: "./e2e",
 	fullyParallel: true,
@@ -66,15 +23,13 @@ export default defineConfig({
 		screenshot: "only-on-failure",
 		trace: "retain-on-failure",
 	},
+	// Chromium is the only engine the project supports, and the only one the
+	// suite runs. The project stays named because the workspace scripts and the
+	// CI matrix both select it with `--project=chromium`.
 	projects: [
 		{
 			name: "chromium",
 			use: { ...devices["Desktop Chrome"] },
-		},
-		{
-			name: "firefox",
-			testMatch: firefoxContractSpecs,
-			use: { ...devices["Desktop Firefox"] },
 		},
 	],
 	webServer: {
