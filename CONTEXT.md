@@ -310,7 +310,11 @@ Related to: Table document, Import
   active area and refuses a selection holding more than one.
 - A header may be empty, and an empty header stays empty. No `Column N` name is
   ever generated. An unnamed column is identified positionally by its letter on
-  the column index strip, which is chrome and not part of the table.
+  the column index strip, which is chrome and not part of the table. A format
+  whose output is keyed rather than positional may use that same letter as its
+  own key for an unnamed column: that key is format-local, is never written back
+  into the document, and is the reason JSON round-trips its own text exactly
+  while turning an unnamed column into a letter-named one on the way back.
 - A workspace holds one to four panes, and its panes tile all four slots exactly
   once. Every pane is rectangular; an L-shape is not representable.
 - A registered view appears in at most one pane in the workspace.

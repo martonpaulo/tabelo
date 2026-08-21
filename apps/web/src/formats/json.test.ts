@@ -1,5 +1,6 @@
 import { fc, test } from "@fast-check/vitest";
 import { describe, expect, it } from "vitest";
+import { copy } from "@/copy/copy";
 import { readCell } from "@/core/cell-value";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
 import type { CellValue, TableDocument } from "@/core/types";
@@ -118,6 +119,61 @@ describe("json serialization", () => {
 		);
 	});
 
+	it("keys an unnamed column by its column letter", () => {
+		const document = documentFromMatrix(
+			[
+				["", "Role", ""],
+				["Ingrid", "Designer", "Rio"],
+			],
+			{ headerRow: true },
+		);
+		expect(jsonCodec.serialize(document)).toBe(
+			'[\n  {"A":"Ingrid","Role":"Designer","C":"Rio"}\n]',
+		);
+	});
+
+	it("uses the same letters the index strip does past Z", () => {
+		const headers = Array.from({ length: 28 }, () => "");
+		const document = documentFromMatrix(
+			[headers, headers.map((_, index) => String(index))],
+			{ headerRow: true },
+		);
+		const parsed = JSON.parse(jsonCodec.serialize(document)) as Record<
+			string,
+			unknown
+		>[];
+		const keys = Object.keys(parsed[0] ?? {});
+		expect(keys.at(-3)).toBe("Z");
+		expect(keys.at(-2)).toBe("AA");
+		expect(keys.at(-1)).toBe("AB");
+		expect(keys).toEqual(
+			headers.map((_, index) => copy.a11y.columnLetter(index)),
+		);
+	});
+
+	// The decided asymmetry (#145): JSON to document to JSON is exact, while
+	// document to JSON to document turns an unnamed column into one named after
+	// its letter. Asserted so the price stays visible rather than discovered.
+	it("round-trips its own output exactly and the document asymmetrically", () => {
+		const document = documentFromMatrix(
+			[
+				["", "Role"],
+				["Ingrid", "Designer"],
+			],
+			{ headerRow: true },
+		);
+		const text = jsonCodec.serialize(document);
+
+		const parsed = jsonCodec.parse(text);
+		expect(parsed.ok).toBe(true);
+		if (!parsed.ok) return;
+		expect(jsonCodec.serialize(parsed.document)).toBe(text);
+		expect(parsed.document.columns.map((column) => column.header)).toEqual([
+			"A",
+			"Role",
+		]);
+	});
+
 	it("serializes canonical values as their native JSON scalars", () => {
 		const document = documentFromMatrix(
 			[
@@ -193,14 +249,26 @@ describe("json header precondition", () => {
 		expect(preconditionFor(["Name", "Role"])).toBeNull();
 	});
 
-	it("declines empty and whitespace-only headers", () => {
-		expect(preconditionFor(["", "Valid"])).toEqual({
-			code: "json-empty-header",
-			columns: [0],
+	it("accepts empty and whitespace-only headers, which key on their letter", () => {
+		expect(preconditionFor(["", "Valid"])).toBeNull();
+		expect(preconditionFor(["Valid", "   "])).toBeNull();
+		expect(preconditionFor(["", "", ""])).toBeNull();
+	});
+
+	// The collision the letter fallback creates and must not paper over: two
+	// columns cannot share one key, however each of them came by it.
+	it("declines a named column colliding with an unnamed column's letter", () => {
+		expect(preconditionFor(["A", "B", "C", "", "D"])).toEqual({
+			code: "json-duplicate-header",
+			columns: [3, 4],
 		});
-		expect(preconditionFor(["Valid", "   "])).toEqual({
-			code: "json-empty-header",
-			columns: [1],
+	});
+
+	it("declines a repeated letter fallback only when a header claims it", () => {
+		expect(preconditionFor(["", "", "", "", ""])).toBeNull();
+		expect(preconditionFor(["Name", "", "B"])).toEqual({
+			code: "json-duplicate-header",
+			columns: [1, 2],
 		});
 	});
 

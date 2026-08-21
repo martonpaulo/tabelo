@@ -108,9 +108,9 @@ test("disabled view choices distinguish in-use and unavailable states", async ({
 	);
 
 	await expect(inUseRow).toHaveCount(1);
-	// A new table's blank headers and empty cells fail both json's and
-	// records' preconditions.
-	await expect(unavailableRow).toHaveCount(2);
+	// A new table's blank first column fails records' precondition. JSON keys
+	// an unnamed column by its letter, so it is available.
+	await expect(unavailableRow).toHaveCount(1);
 	await expect(inUseRow.getByRole("radio")).toBeDisabled();
 	for (const row of await unavailableRow.all()) {
 		await expect(row.getByRole("radio")).toBeDisabled();

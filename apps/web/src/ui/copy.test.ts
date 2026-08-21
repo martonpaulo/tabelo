@@ -1,19 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { copy } from "@/copy/copy";
 
+// The letter sequence itself is covered where it lives, in
+// core/column-letter.test.ts. What matters here is the announcement built on
+// top of it.
 describe("column positional names", () => {
-	// The boundaries are where a letter sequence goes wrong: 26 to 27 rolls over
-	// to two letters, and 52 to 53 rolls the first letter on.
-	it.each([
-		[0, "A"],
-		[25, "Z"],
-		[26, "AA"],
-		[51, "AZ"],
-		[52, "BA"],
-	])("names column index %i as %s", (index, expected) => {
-		expect(copy.a11y.columnLetter(index)).toBe(expected);
-	});
-
 	// An unnamed column has to announce something, and its letter is the only
 	// identity it has. It must not become document content to get one.
 	it("falls back to the letter for an empty header", () => {

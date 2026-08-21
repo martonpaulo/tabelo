@@ -1,6 +1,7 @@
 import { modShortcut } from "@tabelo/ui/lib/platform";
 import type { CopyScope } from "@/clipboard/serialize";
 import { product } from "@/copy/product";
+import { columnLetter } from "@/core/column-letter";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import type { FillSeriesRefusal } from "@/core/series";
 import type { CellValueType, ExpectedColumnType } from "@/core/types";
@@ -82,20 +83,6 @@ const views = {
 	},
 } as const;
 
-// A column's positional name, in the spreadsheet sequence A..Z, AA, AB, and so
-// on. This is the only identity an unnamed column has, so it is what the index
-// strip displays and what an empty header announces.
-function columnLetter(index: number): string {
-	let value = index + 1;
-	let result = "";
-	while (value > 0) {
-		value -= 1;
-		result = String.fromCharCode(65 + (value % 26)) + result;
-		value = Math.floor(value / 26);
-	}
-	return result;
-}
-
 function joinedPositions(values: readonly string[]): string {
 	if (values.length <= 1) return values[0] ?? "";
 	if (values.length === 2) return `${values[0]} and ${values[1]}`;
@@ -109,8 +96,6 @@ function preconditionMessage(failure: PreconditionFailure): string {
 		: "the affected columns";
 
 	switch (failure.code) {
-		case "json-empty-header":
-			return `JSON uses every header as an object key. Name ${columnSubject} to use this view.`;
 		case "json-duplicate-header":
 			return `JSON uses every header as a unique object key. Rename ${columnSubject} so no keys repeat.`;
 		case "json-numeric-header":

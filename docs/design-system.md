@@ -1576,8 +1576,14 @@ column wraps, with a written reason to turn wrapping off first.
 **An empty header stays empty.** Nothing generates a name for a column the user
 has not named. An unnamed column is identified by its letter on the index strip,
 and that letter is what its accessible name falls back to, so the announcement
-is never silent and no invented text ever reaches the document or a downloaded
-file.
+is never silent and no invented text ever reaches the document.
+
+That one letter is the column's identity in three places, from one shared
+helper so they can never disagree: the index strip shows it, the accessible name
+falls back to it, and the JSON view keys an unnamed column by it. The last is a
+deliberate format-local exception, not generated document content: the header
+stays empty, no other format ever sees a letter, and the cost is that reading
+that JSON back produces a column actually named after the letter.
 
 ### The column index strip
 
