@@ -271,6 +271,11 @@ Prefer the smallest relevant check.
 - `pnpm build`: production build for every workspace
 - `pnpm check-types`: TypeScript across the workspace
 - `pnpm check`: Biome format and lint with `--write`
+- `pnpm bench`: the performance harness, on fixed synthetic tables at the
+  target scale and one step past it. It prints numbers and never gates:
+  there is no threshold and no CI job. `docs/performance.md` owns the
+  method, the standing baseline, and the register of suspicions already
+  answered
 - `pnpm check:dead-code`: Knip, reporting unused files, exports, dependencies,
   and catalog entries. It needs an installed workspace, because without
   `node_modules` it cannot load the Vite, Vitest, and Playwright configuration
