@@ -187,8 +187,8 @@ export class TabeloPage {
 
 	async open(): Promise<void> {
 		// Playwright gives every test a fresh BrowserContext, so storage is already
-		// isolated. A clear-and-reload cycle duplicated that guarantee and Firefox
-		// could abort the second navigation while the PWA finished registering.
+		// isolated. A clear-and-reload cycle duplicated that guarantee and risked
+		// aborting the second navigation while the PWA finished registering.
 		await this.page.goto("/");
 		await this.dismissWelcome();
 		await this.workspace.waitFor({ state: "visible" });
@@ -590,8 +590,8 @@ export class TabeloPage {
 
 	// The grid implements no Mod+C or Mod+X of its own: those are the browser's
 	// own key bindings, and what Tabelo owns is the clipboard event they raise.
-	// That event is what these dispatch, which is also the only way to reach it
-	// on every engine, because a synthetic Control+C raises none in Firefox.
+	// That event is what these dispatch, so the test exercises the contract the
+	// product owns rather than the key binding the browser owns.
 	async copy(): Promise<void> {
 		await this.clipboardEvent("copy");
 	}

@@ -60,17 +60,9 @@ test("every scroll boundary prevents scroll chaining on both axes", async ({
 });
 
 test("wheel input at a pane boundary does not move its parent or the page", async ({
-	browserName,
 	page,
 	tabelo,
 }) => {
-	// Firefox WebDriver wheel actions can collapse into one APZ transaction:
-	// https://bugzilla.mozilla.org/show_bug.cgi?id=1918806
-	test.skip(
-		browserName === "firefox",
-		"Firefox WebDriver wheel transactions cannot reliably exercise this boundary.",
-	);
-
 	const columns = Array.from(
 		{ length: 20 },
 		(_, index) => `Column ${index + 1}`,

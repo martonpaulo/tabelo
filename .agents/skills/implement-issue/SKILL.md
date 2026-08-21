@@ -56,7 +56,7 @@ Keep issue ownership here when another skill supplies a method. Do not expand th
 ## Validate and publish
 
 1. Run the narrowest relevant check first. Inspect a failure before rerunning it.
-2. Expand to the broader checks required by risk and `AGENTS.md`. Run Chromium for the complete browser suite; use Firefox only for the centrally selected engine-sensitive flows.
+2. Expand to the broader checks required by risk and `AGENTS.md`. Run the complete browser suite in Chromium, which is the only supported browser.
 3. Inspect the diff, confirm requested issue numbers still control it, and verify no temporary output or unrelated file is included.
 4. Commit on the task branch with one Conventional Commit concern per
    commit, each subject ending `(#<issue number>)`, then push the branch and
