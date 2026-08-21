@@ -396,6 +396,7 @@ preference to exercise per task.
 - Domain glossary: `CONTEXT.md`
 - Sample people for fixtures, examples, and manual checks:
   `apps/web/src/core/sample-data.ts`
+- Performance method, baseline, and answered suspicions: `docs/performance.md`
 - ADRs: `docs/adr/`
 - Research notes: `docs/research/` (create only when persisting research)
 - Handoffs: `.scratch/handoffs/`
@@ -498,7 +499,9 @@ here:
   `rem`, using the shared tokens whenever one exists. Treat pixel-valued browser
   APIs as boundaries and convert their values before storing presentation state.
 - Keep expensive work out of render paths. Measure before claiming a performance
-  problem.
+  problem: `pnpm bench` is the instrument and `docs/performance.md` is where
+  the numbers and the already-answered suspicions live. Read its register
+  before investigating a suspicion, and add an entry after measuring one.
 
 ## Code, comments, and documentation
 
