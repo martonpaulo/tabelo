@@ -60,6 +60,13 @@ describe("a wholly unnamed table survives every codec", () => {
 	];
 	const document = documentFromMatrix(blankHeaders, { headerRow: true });
 
+	// JSON is the one format that cannot carry an unnamed column back. It keys
+	// on the column's letter so the view can open at all, and parsing that key
+	// necessarily produces a column named after the letter (#145). The
+	// asymmetry is asserted below rather than skipped, because it is a decided
+	// contract and not a gap.
+	const asymmetric = new Set(["json"]);
+
 	for (const codec of listCodecs()) {
 		const refusal = canSerialize(codec, document);
 		const run = refusal === null ? it : it.skip;
@@ -71,7 +78,20 @@ describe("a wholly unnamed table survives every codec", () => {
 			);
 			if (!parsed.ok) return;
 
-			expect(documentToMatrix(parsed.document)).toEqual(blankHeaders);
+			expect(documentToMatrix(parsed.document)).toEqual(
+				asymmetric.has(codec.id)
+					? [["A", "B", "C"], ...blankHeaders.slice(1)]
+					: blankHeaders,
+			);
+		});
+
+		run(`${codec.id} re-serializes its own output unchanged`, () => {
+			const text = codec.serialize(document, {});
+			const parsed = codec.parse(text);
+			expect(parsed.ok).toBe(true);
+			if (!parsed.ok) return;
+
+			expect(codec.serialize(parsed.document, {})).toBe(text);
 		});
 	}
 });

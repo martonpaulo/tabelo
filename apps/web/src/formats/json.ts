@@ -1,6 +1,6 @@
 import { readCell } from "@/core/cell-value";
-import { documentToMatrix } from "@/core/document";
-import type { CellValue, TableDocument } from "@/core/types";
+import { columnLetter } from "@/core/column-letter";
+import type { CellValue, Column, TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
 import type {
 	MatrixParseResult,
@@ -105,17 +105,48 @@ function parseJsonMatrix(text: string): MatrixParseResult {
 	};
 }
 
+// The key every column is written under. A named column keys on its header
+// exactly as typed, because the raw header is what round-trips back: "Name" and
+// "Name " are two distinct keys and two distinct columns. A column the user has
+// not named keys on its column letter, which is the identity that column
+// already has on the index strip and in its accessible name, so JSON borrows it
+// rather than inventing anything.
+//
+// The fallback is format-local and writes nothing to the document: the header
+// stays empty, and no other format ever sees a letter. The cost is that the
+// round trip stops being symmetric in one direction. A document whose column D
+// is unnamed serializes to {"D": ...}, and parsing that back produces a column
+// whose header IS the string "D". JSON to document to JSON is still exact;
+// document to JSON to document is not, for an unnamed column. That asymmetry is
+// the decided price of the view opening at all (#145), not an oversight.
+//
+// The precondition and the serializer both read these keys, so a collision can
+// never slip through one path and not the other.
+function resolvedJsonKeys(
+	document: TableDocument,
+): { readonly column: Column; readonly key: string }[] {
+	// Blankness is judged after trimming, because a header that renders as
+	// nothing is no more usable as a key than "" is. Nothing else about the
+	// header is trimmed: the fallback is chosen by blankness, and a named
+	// header is written out untouched.
+	return document.columns.map((column, index) => ({
+		column,
+		key: column.header.trim() ? column.header : columnLetter(index),
+	}));
+}
+
 // JSON is the one format whose output is keyed rather than positional, so the
 // headers leave the document as object keys instead of as a first row. The
 // precondition below is what guarantees they can be.
 function serializeJson(document: TableDocument): string {
 	if (document.rows.length === 0) return "[]";
 
+	const resolved = resolvedJsonKeys(document);
 	const records = document.rows.map((row) => {
 		const record: Record<string, CellValue> = {};
-		document.columns.forEach((column) => {
-			record[column.header] = readCell(row, column.id);
-		});
+		for (const { column, key } of resolved) {
+			record[key] = readCell(row, column.id);
+		}
 		return `  ${JSON.stringify(record)}`;
 	});
 	return `[\n${records.join(",\n")}\n]`;
@@ -139,20 +170,14 @@ function isArrayIndexKey(header: string): boolean {
 }
 
 function jsonPrecondition(document: TableDocument): PreconditionFailure | null {
-	const headers = documentToMatrix(document)[0] ?? [];
-
-	// Emptiness is judged after trimming, because a header that renders as
-	// nothing is no more usable as a key than "" is. Everything else is judged
-	// on the raw header, because the raw header is exactly what gets written
-	// out: "Name" and "Name " are two distinct keys and round-trip as two
-	// columns.
-	const empty = headers.flatMap((header, index) =>
-		header.trim() ? [] : [index],
-	);
-	if (empty.length > 0) return { code: "json-empty-header", columns: empty };
+	// Both remaining refusals are judged on the resolved keys, not the raw
+	// headers, because the resolved keys are what actually gets written. A
+	// column named "D" sitting beside an unnamed fourth column is a duplicate,
+	// and must be refused rather than collapsing two columns into one key.
+	const keys = resolvedJsonKeys(document).map(({ key }) => key);
 
 	const positions = new Map<string, number[]>();
-	headers.forEach((header, index) => {
+	keys.forEach((header, index) => {
 		positions.set(header, [...(positions.get(header) ?? []), index]);
 	});
 	// Every position of a repeated header, not only the later ones, because the
@@ -165,7 +190,7 @@ function jsonPrecondition(document: TableDocument): PreconditionFailure | null {
 		return { code: "json-duplicate-header", columns: duplicate };
 	}
 
-	const numeric = headers.flatMap((header, index) =>
+	const numeric = keys.flatMap((header, index) =>
 		isArrayIndexKey(header) ? [index] : [],
 	);
 	if (numeric.length > 0) {

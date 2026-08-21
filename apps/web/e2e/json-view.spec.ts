@@ -39,18 +39,37 @@ test("serializes as an array of row objects keyed by the headers", async ({
 	await expect(source).not.toContainText('"Name":"Name"');
 });
 
-test("an unnamed table cannot be converted to the view at all", async ({
+test("an unnamed table opens the view, keyed by column letters", async ({
 	tabelo,
 }) => {
-	// A new table starts with no header text, which is exactly what JSON cannot
-	// key on, so the choice is refused before the pane ever shows it.
+	// A new table starts with no header text. JSON keys those columns by the
+	// letter the index strip already shows for them, so the view opens instead
+	// of refusing a perfectly ordinary table.
 	const dialog = await tabelo.openChangeViewDialog("markdown");
-	await expect(
-		dialog.getByRole("radio", { name: copy.views.json.label }),
-	).toBeDisabled();
-	await expect(
-		dialog.getByRole("radio", { name: copy.views.csv.label }),
-	).toBeEnabled();
+	const json = dialog.getByRole("radio", { name: copy.views.json.label });
+	await expect(json).toBeEnabled();
+	await json.click();
+	await dialog.getByRole("button", { name: copy.workspace.changeView }).click();
+	await dialog.waitFor({ state: "hidden" });
+
+	await tabelo.editCell(1, 1, "Ingrid");
+	await expect(tabelo.source("json")).toContainText('"A":"Ingrid"');
+});
+
+test("a partly named table mixes header keys and letter keys", async ({
+	tabelo,
+}) => {
+	// Only the second column is named, so the first keys on its letter and the
+	// second on its header, side by side in the same record.
+	await tabelo.editHeader(2, "Role");
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.editCell(1, 2, "Designer");
+
+	await tabelo.choosePaneView("markdown", "json");
+
+	const source = tabelo.source("json");
+	await expect(source).toContainText('"A":"Ingrid"');
+	await expect(source).toContainText('"Role":"Designer"');
 });
 
 test("a duplicate header blocks the open view and names both columns", async ({
@@ -99,6 +118,26 @@ test("correcting the header restores the view in place", async ({ tabelo }) => {
 
 	await expect(blockedReason(tabelo)).toHaveCount(0);
 	await expect(tabelo.source("json")).toContainText('"City"');
+});
+
+test("the download chooser offers JSON for a table with no headers", async ({
+	page,
+	tabelo,
+}) => {
+	// The view, Copy source, and the download all read the same precondition,
+	// so an unnamed table must reach every one of them.
+	await tabelo.editCell(1, 1, "Ingrid");
+
+	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
+	await page
+		.getByRole("menuitem", { name: copy.actions.downloadTable })
+		.click();
+
+	await expect(
+		page
+			.getByRole("dialog")
+			.getByRole("radio", { name: copy.views.json.shortLabel }),
+	).toBeEnabled();
 });
 
 test("the download chooser refuses JSON while the headers conflict", async ({
