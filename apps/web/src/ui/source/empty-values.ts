@@ -8,7 +8,6 @@ import {
 	type ViewUpdate,
 	WidgetType,
 } from "@codemirror/view";
-import { copy } from "@/copy/copy";
 import { isJiraHeaderLine } from "@/formats/jira";
 import type { HighlightLanguage } from "@/views/types";
 
@@ -54,12 +53,23 @@ export function emptyValueSyntax(
 	}
 }
 
-// The placeholder reads as text: it takes the width of its own word, sits where
-// the cell's value would have started, and pushes what follows along exactly as
-// a typed value would. What it is not is content. It occupies no document
-// position, the caret steps over it rather than into it, and it cannot be
-// selected, copied, or typed through.
+// The placeholder reads as text and sits where the cell's value would have
+// started. Markdown's serializer reserves the room for it, so the padding it is
+// drawn instead of is already at least as wide as the word: taking exactly that
+// width is what keeps every row of the column aligned around it, without a
+// single character of the file changing. Where a syntax writes no padding at
+// all, as `a,,b` does, it takes the width of the word itself.
+//
+// What it is not is content. It holds no document position, the caret steps
+// over it rather than into it, and it can never be selected, copied, or typed
+// through.
 class EmptyValueWidget extends WidgetType {
+	// How wide the run it replaces is, in characters of the editor's monospaced
+	// font. Zero where there is no run to replace.
+	constructor(readonly columns: number) {
+		super();
+	}
+
 	toDOM() {
 		const marker = document.createElement("span");
 		marker.className = "cm-tabeloEmptyValue";
@@ -69,13 +79,17 @@ class EmptyValueWidget extends WidgetType {
 		// text node at all: it cannot be read out, cannot reach a DOM text
 		// extraction, and cannot survive a copy that falls back to the DOM.
 		marker.setAttribute("aria-hidden", "true");
+		// A minimum rather than a width, so a run too narrow to hold the word,
+		// which is what a half-typed line looks like, gives way instead of
+		// clipping it.
+		if (this.columns > 0) marker.style.minWidth = `${this.columns}ch`;
 		return marker;
 	}
 
-	// Every placeholder is the same drawing, so CodeMirror may reuse the DOM
-	// rather than rebuilding it as the viewport moves.
-	eq() {
-		return true;
+	// Two placeholders of the same width are the same drawing, so CodeMirror
+	// may reuse the DOM rather than rebuilding it as the viewport moves.
+	eq(other: EmptyValueWidget) {
+		return other.columns === this.columns;
 	}
 
 	// A widget ignores pointer events by default, which would leave a click on
@@ -88,10 +102,20 @@ class EmptyValueWidget extends WidgetType {
 	}
 }
 
-const emptyValueDecoration = Decoration.widget({
-	widget: new EmptyValueWidget(),
-	side: 1,
-});
+// A field with no room of its own: a point, so every document offset stays
+// exactly where it was. A field with padding: that padding, drawn instead of.
+function emptyValueRange(from: number, to: number): Range<Decoration> {
+	if (to <= from) {
+		return Decoration.widget({
+			widget: new EmptyValueWidget(0),
+			side: 1,
+		}).range(from);
+	}
+	return Decoration.replace({ widget: new EmptyValueWidget(to - from) }).range(
+		from,
+		to,
+	);
+}
 
 // Delimited fields, with the quoting rule the delimited codec parses back.
 // Quote state carries across lines because RFC 4180 lets a quoted value hold a
@@ -198,177 +222,44 @@ export function jiraEmptyOffsets(line: string): readonly number[] {
 	return offsets;
 }
 
-// Markdown's cells, per line, as the ranges between one delimiter and the next.
+// Markdown's empty cells, as the padding between one delimiter and the next.
 // The GFM grammar parses the table itself, so these boundaries come from the
-// same parse that highlights it; the alignment divider is the one row the
-// grammar hands over whole, and its own delimiters are read off its text.
-interface MarkdownRow {
-	readonly divider: boolean;
-	readonly cells: readonly { readonly from: number; readonly to: number }[];
-}
-
-function markdownRows(
+// same parse that highlights it, and an empty cell produces no `TableCell` node
+// at all: what marks it is two delimiters with only padding between them.
+function markdownEmptyCells(
 	view: EditorView,
 	from: number,
 	to: number,
-): readonly MarkdownRow[] {
-	const byLine = new Map<number, { divider: boolean; edges: number[][] }>();
+): readonly Range<Decoration>[] {
+	const ranges: Range<Decoration>[] = [];
+	let previousEnd: number | null = null;
+	let previousLine: number | null = null;
 
 	syntaxTree(view.state).iterate({
 		from,
 		to,
 		enter: (node) => {
 			if (node.name !== "TableDelimiter") return;
-			const line = view.state.doc.lineAt(node.from);
-			const entry = byLine.get(line.number) ?? { divider: false, edges: [] };
-			// One node covering more than a single pipe is the divider row, handed
-			// over whole. Its own pipes are the only structure it has.
-			if (node.to - node.from > 1) {
-				entry.divider = true;
-				const text = view.state.doc.sliceString(node.from, node.to);
-				for (let index = 0; index < text.length; index += 1) {
-					if (text[index] === "|") {
-						entry.edges.push([node.from + index, node.from + index + 1]);
-					}
-				}
-			} else {
-				entry.edges.push([node.from, node.to]);
+			const line = view.state.doc.lineAt(node.from).number;
+			const gap =
+				previousEnd === null
+					? ""
+					: view.state.doc.sliceString(previousEnd, node.from);
+			if (previousEnd !== null && previousLine === line && gap.trim() === "") {
+				// Markdown writes a cell as `| value |`, so the space on each side
+				// of the value belongs to the column. Everything between them is
+				// the padding the placeholder is drawn instead of, which starts it
+				// exactly where the value it stands for would have started.
+				const cellFrom = gap.startsWith(" ") ? previousEnd + 1 : previousEnd;
+				const cellTo =
+					gap.length > 1 && gap.endsWith(" ") ? node.from - 1 : node.from;
+				ranges.push(emptyValueRange(cellFrom, Math.max(cellFrom, cellTo)));
 			}
-			byLine.set(line.number, entry);
+			previousEnd = node.to;
+			previousLine = view.state.doc.lineAt(node.to).number;
 		},
 	});
 
-	const rows: MarkdownRow[] = [];
-	for (const { divider, edges } of byLine.values()) {
-		const cells: { from: number; to: number }[] = [];
-		for (let index = 0; index + 1 < edges.length; index += 1) {
-			const openingEnd = edges[index]?.[1];
-			const closingStart = edges[index + 1]?.[0];
-			if (openingEnd === undefined || closingStart === undefined) continue;
-			cells.push({ from: openingEnd, to: closingStart });
-		}
-		if (cells.length > 0) rows.push({ divider, cells });
-	}
-	return rows;
-}
-
-// Markdown pads its columns from the values the table holds, and the
-// placeholder is not one of them: a row carrying it would otherwise be wider
-// than the rows around it and the column would come apart exactly where the
-// reader is looking. So the column is widened for every row instead, in the
-// editor and never in the file. The spacer holds width and nothing else, except
-// on the divider row, where the column is drawn with the dashes it is made of.
-class ColumnSpacerWidget extends WidgetType {
-	constructor(
-		readonly columns: number,
-		readonly divider: boolean,
-	) {
-		super();
-	}
-
-	toDOM() {
-		const spacer = document.createElement("span");
-		spacer.setAttribute("aria-hidden", "true");
-		if (this.divider) {
-			// Dashes are characters, so they measure themselves: an ordinary
-			// inline span of them is exactly as wide as it needs to be, and sits
-			// on the line's own baseline like the rule it continues.
-			spacer.className = "cm-tabeloDividerSpacer";
-			spacer.textContent = "-".repeat(this.columns);
-			return spacer;
-		}
-		spacer.className = "cm-tabeloColumnSpacer";
-		spacer.style.width = `${this.columns}ch`;
-		return spacer;
-	}
-
-	eq(other: ColumnSpacerWidget) {
-		return other.columns === this.columns && other.divider === this.divider;
-	}
-
-	// Padding is part of the line, so clicking it lands in the line rather than
-	// nowhere. See the placeholder above.
-	ignoreEvent() {
-		return false;
-	}
-}
-
-function markdownDecorations(
-	view: EditorView,
-	from: number,
-	to: number,
-): readonly Range<Decoration>[] {
-	const rows = markdownRows(view, from, to);
-	if (rows.length === 0) return [];
-
-	const isEmpty = (cell: { from: number; to: number }) =>
-		view.state.doc.sliceString(cell.from, cell.to).trim() === "";
-	// A cell holds its value between one space and another: `| value |`. Those
-	// two spaces belong to the column and are kept, and everything between them
-	// is the padding the placeholder is drawn instead of, so an empty cell reads
-	// as `| (empty) |` with nothing left over behind the word.
-	const padding = (cell: { from: number; to: number }) => {
-		const text = view.state.doc.sliceString(cell.from, cell.to);
-		const from = text.startsWith(" ") ? cell.from + 1 : cell.from;
-		const to = text.length > 1 && text.endsWith(" ") ? cell.to - 1 : cell.to;
-		return { from, to: Math.max(from, to) };
-	};
-	// What a cell ends up looking like: its own characters, or, where the
-	// placeholder speaks for it, the two spaces plus the word.
-	const drawnWidth = (
-		row: MarkdownRow,
-		cell: { from: number; to: number },
-	): number => {
-		if (row.divider || !isEmpty(cell)) return cell.to - cell.from;
-		const kept = cell.to - cell.from - (padding(cell).to - padding(cell).from);
-		return kept + copy.source.emptyValue.length;
-	};
-
-	// What each column has to be worth: the widest thing drawn in it.
-	const widths: number[] = [];
-	for (const row of rows) {
-		for (const [index, cell] of row.cells.entries()) {
-			widths[index] = Math.max(widths[index] ?? 0, drawnWidth(row, cell));
-		}
-	}
-
-	const ranges: Range<Decoration>[] = [];
-	for (const row of rows) {
-		for (const [index, cell] of row.cells.entries()) {
-			if (!row.divider && isEmpty(cell)) {
-				const inner = padding(cell);
-				ranges.push(
-					inner.to > inner.from
-						? // Drawn instead of the padding, so the word starts where the
-							// value would have and nothing trails behind it.
-							Decoration.replace({ widget: new EmptyValueWidget() }).range(
-								inner.from,
-								inner.to,
-							)
-						: emptyValueDecoration.range(inner.from),
-				);
-			}
-			const missing = (widths[index] ?? 0) - drawnWidth(row, cell);
-			if (missing > 0) {
-				// At the end of the cell, which is where Markdown's own padding
-				// sits. The divider's added dashes go one character earlier, inside
-				// the space that row keeps before its closing delimiter, so the
-				// rule they continue stays unbroken.
-				const closesWithSpace =
-					view.state.doc.sliceString(cell.to - 1, cell.to) === " ";
-				const at =
-					row.divider && closesWithSpace && cell.to - 1 > cell.from
-						? cell.to - 1
-						: cell.to;
-				ranges.push(
-					Decoration.widget({
-						widget: new ColumnSpacerWidget(missing, row.divider),
-						side: -1,
-					}).range(at),
-				);
-			}
-		}
-	}
 	return ranges;
 }
 
@@ -380,7 +271,7 @@ function buildDecorations(
 
 	for (const { from, to } of view.visibleRanges) {
 		if (syntax.kind === "markdown") {
-			ranges.push(...markdownDecorations(view, from, to));
+			ranges.push(...markdownEmptyCells(view, from, to));
 			continue;
 		}
 
@@ -391,7 +282,8 @@ function buildDecorations(
 			for (let number = firstLine; number <= lastLine; number += 1) {
 				const line = view.state.doc.line(number);
 				for (const offset of jiraEmptyOffsets(line.text)) {
-					ranges.push(emptyValueDecoration.range(line.from + offset));
+					const at = line.from + offset;
+					ranges.push(emptyValueRange(at, at));
 				}
 			}
 			continue;
@@ -407,7 +299,8 @@ function buildDecorations(
 			const scan = scanDelimitedLine(line.text, syntax.separator, inQuotes);
 			if (number >= firstLine) {
 				for (const offset of scan.offsets) {
-					ranges.push(emptyValueDecoration.range(line.from + offset));
+					const at = line.from + offset;
+					ranges.push(emptyValueRange(at, at));
 				}
 			}
 			inQuotes = scan.endsInQuotes;

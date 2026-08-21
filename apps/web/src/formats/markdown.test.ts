@@ -1,5 +1,6 @@
 import { assert, describe, expect, it } from "vitest";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
+import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import { csvCodec } from "./csv";
 import { escapeCell, markdownCodec, unescapeCell } from "./markdown";
 
@@ -284,6 +285,47 @@ describe("markdown serialization", () => {
 		expect(documentToMatrix(reparsed.document)).toEqual(
 			documentToMatrix(document),
 		);
+	});
+});
+
+describe("markdown padding for empty cells", () => {
+	// A source view draws a placeholder where a cell holds nothing, so the file
+	// reserves the room for it and the column stays aligned around it. See
+	// core/empty-value.ts.
+	it("pads an empty cell to hold the empty-value placeholder", () => {
+		const parsed = markdownCodec.parse(
+			"| Name | City | Role |\n| --- | --- | --- |\n| Ingrid |  | Designer |",
+		);
+		expect(parsed.ok).toBe(true);
+		if (!parsed.ok) return;
+
+		const lines = markdownCodec.serialize(parsed.document).split("\n");
+		const cellsOf = (line: string) => line.split("|").slice(1, -1);
+		const widths = lines.map((line) =>
+			cellsOf(line).map((cell) => cell.length),
+		);
+
+		// Every row agrees on every column, which is the point of the padding.
+		expect(widths[1]).toEqual(widths[0]);
+		expect(widths[2]).toEqual(widths[0]);
+		// The empty column is wide enough for the placeholder, where a column
+		// sized by its values alone would have stopped at "City".
+		const emptyColumn = cellsOf(lines[2] ?? "")[1] ?? "";
+		expect(emptyColumn.trim()).toBe("");
+		expect(emptyColumn.length).toBeGreaterThanOrEqual(
+			EMPTY_VALUE_PLACEHOLDER.length,
+		);
+	});
+
+	it("leaves a column with values sized by those values", () => {
+		const parsed = markdownCodec.parse(
+			"| Name |\n| --- |\n| A table header longer than the placeholder |",
+		);
+		expect(parsed.ok).toBe(true);
+		if (!parsed.ok) return;
+
+		const [, , row] = markdownCodec.serialize(parsed.document).split("\n");
+		expect(row).toBe("| A table header longer than the placeholder |");
 	});
 });
 

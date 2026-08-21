@@ -229,7 +229,10 @@ test("a new table starts unnamed and stays clearable without confirmation", asyn
 	tabelo,
 }) => {
 	await expect(tabelo.header(1)).toHaveText("");
-	await expect(tabelo.source("markdown")).toContainText("|  |");
+	// An empty cell, matched by its shape rather than by a count of spaces:
+	// Markdown pads a column to hold the empty-value placeholder, so the width
+	// of that padding belongs to the serializer rather than to this test.
+	await expect(tabelo.source("markdown")).toContainText(/\|\s+\|/);
 });
 
 // Four layers stick now: the strip, the header row, the row gutter, and the two
