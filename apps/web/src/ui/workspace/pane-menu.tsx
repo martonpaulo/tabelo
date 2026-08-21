@@ -16,6 +16,7 @@ import {
 	Move as MoveIcon,
 	Replace,
 	RotateCcw,
+	Search,
 	WrapText,
 	X,
 	ZoomIn,
@@ -246,6 +247,28 @@ export function PaneMenu({
 						</DropdownMenuItem>
 					</DisabledTooltip>
 				</DropdownMenuGroup>
+
+				{/* Find is keyboard-first, and this is the affordance that keeps it
+				    discoverable: §9 does not allow a capability whose only entry point
+				    is a chord nobody was told about. It belongs to the pane rather
+				    than the app menu because the bar it opens is attached to this
+				    pane, and it is offered by view kind, never by view id. */}
+				{view.kind === "grid" ? (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuItem
+								onClick={() => useTabeloStore.getState().openFind()}
+							>
+								<Search aria-hidden />
+								{copy.find.title}
+								<DropdownMenuShortcut aria-hidden>
+									{copy.shortcuts.find}
+								</DropdownMenuShortcut>
+							</DropdownMenuItem>
+						</DropdownMenuGroup>
+					</>
+				) : null}
 
 				{view.kind === "source" ? (
 					<>

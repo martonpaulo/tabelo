@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
+import { GridFindBar } from "@/ui/grid/find-bar";
 import { Panel } from "@/ui/primitives/panel";
 import type { OccurrenceSummary } from "@/ui/source/occurrence-selection";
 import { getView } from "@/views/registry";
@@ -153,7 +154,9 @@ export const Pane = memo(function Pane({
 				<Panel.Body
 					style={{ "--pane-zoom": pane.zoom } as React.CSSProperties}
 					className={cn(
-						view.kind === "grid" && "tabelo-grid-scroller",
+						// A column, so the grid's find bar can be pushed to the foot of
+						// the scrollport by the space the table does not use.
+						view.kind === "grid" && "tabelo-grid-scroller flex flex-col",
 						view.kind === "source" && "overflow-hidden",
 						view.capabilities.editable
 							? "bg-surface-panel"
@@ -168,6 +171,14 @@ export const Pane = memo(function Pane({
 							wrap={pane.wrap}
 						/>
 					</PaneOccurrencesContext.Provider>
+					{/* Inside the scroller rather than below it, so the pane's own
+					    horizontal scrollbar stays at the very bottom edge instead of
+					    running between the table and the bar. It sticks to both the
+					    bottom and the leading edge, so it neither scrolls away nor
+					    slides sideways with the table. Chosen by the view's kind, like
+					    every other decision about what a pane shows, and it renders
+					    nothing until the grid's find state exists. */}
+					{view.kind === "grid" ? <GridFindBar /> : null}
 				</Panel.Body>
 
 				{splitRight ? (

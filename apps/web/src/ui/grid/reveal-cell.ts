@@ -34,15 +34,22 @@ export function revealGridCell(
 			: `[data-cell="${HEADER_ROW}:0"]`,
 	);
 
+	// The find bar sticks to the foot of the same scroller, so while it is open
+	// it is the bottom of the content region rather than the scroller's edge. It
+	// is measured like the two above it: the element that draws the boundary is
+	// the boundary, at any zoom and whatever the bar's rows come to.
+	const below = scroller.querySelector<HTMLElement>('[data-slot="find-bar"]');
+
 	const view = scroller.getBoundingClientRect();
 	const box = cell.getBoundingClientRect();
 	// Where the content region begins on each axis, once the sticky chrome that
 	// paints over it is taken off.
 	const clearLeft = gutter ? gutter.getBoundingClientRect().right : view.left;
 	const clearTop = above ? above.getBoundingClientRect().bottom : view.top;
+	const clearBottom = below ? below.getBoundingClientRect().top : view.bottom;
 
 	const left = clearingScroll(box.left, box.right, clearLeft, view.right);
-	const top = clearingScroll(box.top, box.bottom, clearTop, view.bottom);
+	const top = clearingScroll(box.top, box.bottom, clearTop, clearBottom);
 
 	if (left === 0 && top === 0) return;
 	scroller.scrollBy({ left, top, behavior: "auto" });
