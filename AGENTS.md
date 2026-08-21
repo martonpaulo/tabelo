@@ -210,6 +210,9 @@ Do not add without an explicit, demonstrated need:
 - a second component library, state library, validation library, or formatter
 - an animation library, CSS-in-JS, or Storybook
 - analytics or telemetry of any kind
+- a second implementation language, including WebAssembly. Measured and
+  declined in `docs/adr/0009`: the tuned TypeScript serializer is faster than
+  the floor cost of getting the table across the Wasm boundary at all
 - Turborepo or Nx
 
 ## Architecture boundaries
@@ -271,6 +274,11 @@ Prefer the smallest relevant check.
 - `pnpm build`: production build for every workspace
 - `pnpm check-types`: TypeScript across the workspace
 - `pnpm check`: Biome format and lint with `--write`
+- `pnpm bench`: the performance harness, on fixed synthetic tables at the
+  target scale and one step past it. It prints numbers and never gates:
+  there is no threshold and no CI job. `docs/performance.md` owns the
+  method, the standing baseline, and the register of suspicions already
+  answered
 - `pnpm check:dead-code`: Knip, reporting unused files, exports, dependencies,
   and catalog entries. It needs an installed workspace, because without
   `node_modules` it cannot load the Vite, Vitest, and Playwright configuration
@@ -391,6 +399,7 @@ preference to exercise per task.
 - Domain glossary: `CONTEXT.md`
 - Sample people for fixtures, examples, and manual checks:
   `apps/web/src/core/sample-data.ts`
+- Performance method, baseline, and answered suspicions: `docs/performance.md`
 - ADRs: `docs/adr/`
 - Research notes: `docs/research/` (create only when persisting research)
 - Handoffs: `.scratch/handoffs/`
@@ -493,7 +502,9 @@ here:
   `rem`, using the shared tokens whenever one exists. Treat pixel-valued browser
   APIs as boundaries and convert their values before storing presentation state.
 - Keep expensive work out of render paths. Measure before claiming a performance
-  problem.
+  problem: `pnpm bench` is the instrument and `docs/performance.md` is where
+  the numbers and the already-answered suspicions live. Read its register
+  before investigating a suspicion, and add an entry after measuring one.
 
 ## Code, comments, and documentation
 

@@ -8,6 +8,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "pnpm -r dev",
+		"bench": "pnpm --filter web run bench",
 		"build": "pnpm -r build",
 		"check-types": "pnpm -r check-types",
 		"test": "pnpm -r test",
