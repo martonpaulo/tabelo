@@ -376,17 +376,24 @@ persisted, and the caret, the selection, and the diagnostic underlines stay
 measured in the characters the user typed.
 
 **The placeholder reads as text and is not text.** It sits where the cell's
-value would have started, takes the width of its own word, and pushes what
-follows along exactly as a typed value would, so a reader can see what the
-field costs. Everything else about it says otherwise: it holds no document
-position, the caret steps over it rather than into it, it cannot be selected or
-typed through, and it never reaches the text, the clipboard, a download, or
-storage. Markdown pads its columns from the values a table actually holds, and the
-placeholder is not one of them, so the column is widened for every row of the
-table instead: in the editor, as drawn width, and never in the file. The
-alignment divider is widened with the dashes it is made of, so the rule it
-draws stays unbroken. Writing that padding into the source would size a file by
-the length of an interface string, which is why it is drawn.
+value would have started and takes the width of the padding it is drawn instead
+of, so a reader sees what the field costs. Everything else about it says
+otherwise: it holds no document position, the caret steps over it rather than
+into it, it cannot be selected or typed through, and it never reaches the text,
+the clipboard, a download, or storage.
+
+**The file carries the room, so the file decides the layout.** Markdown pads its
+columns for readability, and an empty cell is padded to hold the placeholder,
+which is why `core/empty-value.ts` owns the word rather than the copy module:
+its length is a fact about the format's output, not only a string on screen. The
+column, the divider, and every row are then already the right width, the
+placeholder lands inside padding the source already has, and the editor computes
+no layout of its own. That padding does not depend on whether the reader has the
+indicator switched on, so the bytes are the same either way. The trade is
+deliberate and worth naming: a downloaded table reserves that room for an empty
+cell whether or not anyone will see a placeholder in it. Where a syntax writes
+no padding at all, as `a,,b` does, the placeholder takes the width of the word
+itself.
 
 **Three choices, because they answer three questions.** Tabs are a delimiter, so
 seeing them is structural; the placeholder reports a value rather than a
@@ -403,11 +410,15 @@ question nobody asked.
 
 All three live beside the theme in the versioned `tabelo.preferences` payload
 and are global, never pane state. A schema change here gets a migration like
-any other, so a reader who had turned the markers off keeps them off. Which
-spans exist is decided by the extensions, and which of them carry a glyph is
-decided in the theme, from a class the editor wears and a scope mark around the
-qualifying spaces: one owner for what a marker looks like, and a mode change
-that repaints without touching the document. Reconfigure the live editor
+any other, so a reader who had turned the markers off keeps them off.
+CodeMirror's own extensions carry as much of this as they can:
+`highlightWhitespace()` supplies the per-character span under every glyph, and
+`highlightTrailingWhitespace()` is the whole of the `trailing` mode. Only
+`boundary` has no built-in to stand on and is marked here. Which spans exist is
+decided by those extensions, and which of them carry a glyph is decided in the
+theme, from a class the editor wears and a mark around the qualifying spaces:
+one owner for what a marker looks like, and a mode change that repaints without
+touching the document. Reconfigure the live editor
 through its own compartment, so switching any of them keeps each pane's caret,
 selection, draft, local undo history, and wrapping choice exactly as they were.
 

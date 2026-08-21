@@ -157,43 +157,36 @@ export const editorTheme = EditorView.theme({
 	// match the root itself.
 	[`&.${TAB_INDICATOR_CLASS} .cm-highlightTab::before`]: { content: '"→"' },
 	[`&.${ALL_SPACES_CLASS} .cm-highlightSpace::before`]: { content: '"·"' },
+	// The two narrower modes: CodeMirror's own trailing-whitespace mark, and the
+	// one scope this project marks itself, because no built-in describes it.
+	".cm-trailingSpace .cm-highlightSpace::before": { content: '"·"' },
 	[`.${SPACE_SCOPE_CLASS} .cm-highlightSpace::before`]: { content: '"·"' },
-	// The empty-field placeholder, the one marker this product draws itself.
-	// It is drawn over the padding an empty cell already has, and takes width of
-	// its own only where the syntax leaves none. Either way it edits nothing:
-	// the caret, the selection, and the diagnostic underlines are all still
-	// measured in the characters the user typed.
+	".cm-trailingSpace": {
+		// CodeMirror's base theme tints this red, which here would spend a status
+		// colour on a token and claim an error the parser never reported. The
+		// dots are the whole cue.
+		backgroundColor: "transparent",
+	},
+	// The empty-field placeholder, the one marker this product draws itself. It
+	// is drawn instead of the padding Markdown already reserved for it, so the
+	// column stays aligned around it, and it edits nothing: the caret, the
+	// selection, and the diagnostic underlines are all still measured in the
+	// characters the user typed.
 	".cm-tabeloEmptyValue::before": {
 		// Generated content, so the placeholder is never a text node the DOM, a
 		// screen reader, or a copy could pick up. The word itself has one owner
 		// in the copy module, like every other visible string.
 		content: `"${copy.source.emptyValue}"`,
 	},
-	// Holds the width a column needs for a placeholder that the file itself does
-	// not carry. Inline-block because a width is the whole point of it, and on
-	// the divider row it draws the dashes that row is made of.
-	// Holds the width a column needs for a placeholder the file itself does not
-	// carry. A width and nothing else: `line-height: 0` keeps the box out of the
-	// line's own height, so a spacer can never make one row taller than the rest.
-	".cm-tabeloColumnSpacer": {
-		display: "inline-block",
-		lineHeight: "0",
-		verticalAlign: "baseline",
-		userSelect: "none",
-	},
-	// The same width on the alignment divider, drawn out of the dashes that row
-	// is made of rather than opening a gap in the middle of a rule. Ordinary
-	// inline text, so it measures and sits itself.
-	".cm-tabeloDividerSpacer": {
-		color: "var(--muted-foreground)",
-		userSelect: "none",
-	},
 	".cm-tabeloEmptyValue": {
 		...annotationStyle,
-		// Nothing that would make it read as anything but text in the line: no
-		// box, no size of its own, no alignment of its own. What separates it
-		// from content is the tone, the parentheses, and the fact that it cannot
-		// be selected or typed through.
+		// Inline-block so the minimum width the widget carries applies at all:
+		// that width is the padding Markdown already reserved for it, which is
+		// what holds the column together. Its text is left to the line's own
+		// alignment rather than centred inside that width, because Markdown
+		// writes every cell against the left of its column and pads to the right
+		// of it whatever the column declares.
+		display: "inline-block",
 		userSelect: "none",
 	},
 	".cm-diagnosticError": {

@@ -2,6 +2,7 @@ import {
 	Decoration,
 	type DecorationSet,
 	type EditorView,
+	highlightTrailingWhitespace,
 	MatchDecorator,
 	ViewPlugin,
 	type ViewUpdate,
@@ -10,19 +11,23 @@ import type { SpaceIndicators } from "@/preferences/contract";
 
 // Which spaces are marked is the reader's choice, offered as the modes
 // VS Code's `editor.renderWhitespace` settled on, minus its `selection`, which
-// asks the reader to make a selection before it answers anything. Two of the
-// rest need no scope at all: `none` marks nothing and `all` marks every space.
-// The other two wrap the spaces that qualify in one shared class, which the
-// editor theme then uses to decide where a dot is drawn.
+// asks the reader to make a selection before it answers anything.
 //
-// Marking rather than drawing is what keeps one owner for the glyph. These
-// plugins never say what a space looks like; they only say which spaces are
-// worth looking at. `highlightWhitespace()` supplies the per-character spans
+// Three of the four need nothing written here. `none` marks nothing, `all`
+// marks every space, and `trailing` is exactly what CodeMirror's own
+// `highlightTrailingWhitespace()` already marks. Only `boundary` has no
+// built-in to stand on, so it is the one scope this file describes: a mark
+// around the spaces that qualify, which the editor theme then reads to decide
+// where a dot is drawn.
+//
+// Marking rather than drawing is what keeps one owner for the glyph. Nothing
+// here says what a space looks like; it only says which spaces are worth
+// looking at. `highlightWhitespace()` supplies the per-character spans
 // underneath, which is what keeps a run of dots countable.
 
 // The two answers that hold for the whole document arrive as a class on the
 // editor rather than as a decoration, because there is nothing to select: every
-// tab, or every space. The theme reads all three of these.
+// tab, or every space.
 export const TAB_INDICATOR_CLASS = "cm-tabeloTabs";
 export const ALL_SPACES_CLASS = "cm-tabeloAllSpaces";
 export const SPACE_SCOPE_CLASS = "cm-tabeloSpaceScope";
@@ -37,34 +42,20 @@ const boundaryMatcher = new MatchDecorator({
 	decoration: scopeDecoration,
 });
 
-// VS Code's `trailing`: the spaces after the last thing on a line. Matched
-// here rather than taken from `highlightTrailingWhitespace()`, so both scoped
-// modes reach the theme through one class, and so a trailing tab keeps
-// answering to the tab switch instead of this one.
-const trailingMatcher = new MatchDecorator({
-	regexp: / +$/g,
-	decoration: scopeDecoration,
-});
+const boundarySpaces = ViewPlugin.fromClass(
+	class {
+		decorations: DecorationSet;
 
-function matchedSpaces(matcher: MatchDecorator) {
-	return ViewPlugin.fromClass(
-		class {
-			decorations: DecorationSet;
+		constructor(view: EditorView) {
+			this.decorations = boundaryMatcher.createDeco(view);
+		}
 
-			constructor(view: EditorView) {
-				this.decorations = matcher.createDeco(view);
-			}
-
-			update(update: ViewUpdate) {
-				this.decorations = matcher.updateDeco(update, this.decorations);
-			}
-		},
-		{ decorations: (plugin) => plugin.decorations },
-	);
-}
-
-const boundarySpaces = matchedSpaces(boundaryMatcher);
-const trailingSpaces = matchedSpaces(trailingMatcher);
+		update(update: ViewUpdate) {
+			this.decorations = boundaryMatcher.updateDeco(update, this.decorations);
+		}
+	},
+	{ decorations: (plugin) => plugin.decorations },
+);
 
 // The classes the editor carries for the choices that need no scope.
 export function indicatorClasses(
@@ -86,8 +77,11 @@ export function spaceScope(mode: SpaceIndicators) {
 	switch (mode) {
 		case "boundary":
 			return boundarySpaces;
+		// CodeMirror's own, wrapping a line's trailing run in `.cm-trailingSpace`.
+		// Nothing is written here for it: the built-in already marks exactly the
+		// spaces this mode means.
 		case "trailing":
-			return trailingSpaces;
+			return highlightTrailingWhitespace();
 		default:
 			return [];
 	}

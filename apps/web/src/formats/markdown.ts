@@ -1,5 +1,6 @@
 import stringWidth from "string-width";
 import { cellTextAt } from "@/core/cell-value";
+import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import type { Alignment, TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
 import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
@@ -293,11 +294,20 @@ function serializeMarkdown(document: TableDocument): string {
 		document.columns.map((column) => escapeCell(cellTextAt(row, column.id))),
 	);
 
-	// Pad columns to a common width so the source stays readable by hand.
+	// Pad columns to a common width so the source stays readable by hand. An
+	// empty cell is padded to hold the empty-value placeholder, because a source
+	// view draws that word where the cell's value would be: reserving the room
+	// here is what keeps the column aligned around it, and keeps the file the
+	// one place a table's layout is decided. The padding does not depend on
+	// whether anyone has that indicator switched on, so the bytes are the same
+	// either way. See core/empty-value.ts.
+	const reserved = (value: string) =>
+		value === "" ? EMPTY_VALUE_PLACEHOLDER.length : stringWidth(value);
+
 	const widths = document.columns.map((_, index) => {
-		let width = Math.max(stringWidth(headers[index] ?? ""), 3);
+		let width = Math.max(reserved(headers[index] ?? ""), 3);
 		for (const cells of body) {
-			const cellWidth = stringWidth(cells[index] ?? "");
+			const cellWidth = reserved(cells[index] ?? "");
 			if (cellWidth > width) width = cellWidth;
 		}
 		return width;

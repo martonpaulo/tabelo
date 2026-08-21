@@ -1,6 +1,7 @@
 import { modShortcut } from "@tabelo/ui/lib/platform";
 import type { CopyScope } from "@/clipboard/serialize";
 import { product } from "@/copy/product";
+import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import type { FillSeriesRefusal } from "@/core/series";
 import type { CellValueType, ExpectedColumnType } from "@/core/types";
 import type {
@@ -335,9 +336,9 @@ export const copy = {
 		blocked: (failure: PreconditionFailure) => preconditionMessage(failure),
 		// The placeholder standing where a delimited syntax hides an empty
 		// field. Parenthesised so it reads as an annotation rather than as text
-		// the user typed, and centralized here because it is a visible word even
-		// though the editor theme paints it as generated content.
-		emptyValue: "(empty)",
+		// the user typed. Defined in the core because Markdown's serializer
+		// reserves room for it: see core/empty-value.ts.
+		emptyValue: EMPTY_VALUE_PLACEHOLDER,
 		issue: (issue: ParseIssue) => {
 			let message: string;
 			switch (issue.code) {
