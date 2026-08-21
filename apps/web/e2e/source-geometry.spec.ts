@@ -192,3 +192,36 @@ test("a zoom step carries the line numbers and the caret onto the resized lines"
 	expect(resized.gutterWidth).toBeGreaterThan(before.gutterWidth);
 	expect(resized.onTheirLines).toBe(true);
 });
+
+// The band between the gutter and the first character used to belong to
+// `.cm-line`'s left padding, which `drawSelection` never paints over: a
+// selected line was highlighted from its first character while the active line
+// beside it was highlighted from the gutter. Containment rather than a
+// distance, for the same reason as the checks above: what matters is that the
+// highlight starts no later than the line it covers, not how wide either is.
+test("a selected line is highlighted from the same edge the line starts at", async ({
+	tabelo,
+}) => {
+	const source = tabelo.source("markdown");
+	await source.fill(peopleTable);
+	await expect(tabelo.cell(5, 1)).toHaveText("Amora");
+
+	await source.focus();
+	await source.press("ControlOrMeta+A");
+
+	const highlightReachesTheLineStart = () =>
+		tabelo.pane("markdown").evaluate((node) => {
+			const editor = node.querySelector(".cm-editor");
+			const line = editor?.querySelector(".cm-content .cm-line");
+			const highlights = editor
+				? [...editor.querySelectorAll(".cm-selectionBackground")]
+				: [];
+			if (!line || highlights.length === 0) return false;
+			const start = line.getBoundingClientRect().left;
+			return highlights.every(
+				(highlight) => highlight.getBoundingClientRect().left <= start,
+			);
+		});
+
+	await expect.poll(highlightReachesTheLineStart).toBe(true);
+});

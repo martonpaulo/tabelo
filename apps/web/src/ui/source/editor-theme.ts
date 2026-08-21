@@ -64,12 +64,20 @@ export const editorTheme = EditorView.theme({
 		outline: "none",
 		userSelect: "text",
 	},
-	// Horizontal only. A source line's vertical rhythm has to come from the
-	// line height above, never from padding here: the app's base reset zeroes
-	// padding on this element with a precedence a theme rule does not beat, so
-	// a vertical value written here is silently dropped and the numbers beside
-	// it end up measuring a different row than the text does.
-	".cm-line": { padding: "0 calc(var(--spacing) * 3)" },
+	// Trailing only, and horizontal only. A source line's vertical rhythm has to
+	// come from the line height above, never from padding here: the app's base
+	// reset zeroes padding on this element with a precedence a theme rule does
+	// not beat, so a vertical value written here is silently dropped and the
+	// numbers beside it end up measuring a different row than the text does.
+	// There is deliberately no leading value. `drawSelection` measures its layer
+	// from the line's content box, so a left padding here leaves a band between
+	// the gutter and the highlight that nothing paints, while `.cm-activeLine`
+	// below fills the whole line box and does reach the gutter: the two would
+	// disagree on one element. The leading space lives on the gutter's trailing
+	// edge instead, so character zero starts where the selection does. Moving it
+	// back here, or onto `.cm-content`, reopens the gap, because both leave
+	// character zero the same distance from the gutter.
+	".cm-line": { padding: "0 calc(var(--spacing) * 3) 0 0" },
 	".cm-gutters": {
 		backgroundColor: "var(--surface-gutter)",
 		color: "var(--muted-foreground)",
@@ -86,7 +94,12 @@ export const editorTheme = EditorView.theme({
 		userSelect: "none",
 	},
 	".cm-lineNumbers .cm-gutterElement": {
-		padding: "0 calc(var(--spacing) * 2)",
+		// The trailing value carries the source text's leading space as well as
+		// the gutter's own, because the line itself cannot hold it without
+		// unpainting the selection there. See the note on `.cm-line` above. The
+		// distance a reader sees between a number and its text is unchanged; only
+		// which side of the divider owns it moved.
+		padding: "0 calc(var(--spacing) * 5) 0 calc(var(--spacing) * 2)",
 		// Grows with the digits it holds, so a zoomed-in editor does not clip
 		// three-figure line numbers.
 		minWidth: "calc(var(--pane-zoom, 1) * 2.5rem)",
