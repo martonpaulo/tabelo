@@ -114,7 +114,10 @@ vocabulary and `docs/adr/` for the reasoning.
   1 is the header before replacing the document. Choosing data creates empty
   headers; nothing infers from cell values. Paste into an existing selection is
   a matrix write and never asks. CSV export offers an "include header row"
-  option. That is an output preference, never document state.
+  option. That is an output preference, never document state. Deleting the
+  header row is allowed and preserves the invariant rather than breaking it: the
+  first surviving data row is promoted into the header in the same step, so the
+  document is never headerless, not even transiently.
 - **Escaping is reversible in every codec that owns it.** Markdown escapes `|`
   as `\|` and newlines as `<br>`, and encodes meaningful boundary whitespace
   before adding readable alignment padding. Jira escapes pipes, newlines,

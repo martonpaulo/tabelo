@@ -379,6 +379,102 @@ describe("structure deletion", () => {
 	});
 });
 
+describe("deleting the header row", () => {
+	const people = (rows: number) =>
+		documentFromMatrix(samplePeopleMatrix(rows), { headerRow: true });
+
+	// `documentToMatrix` is the text projection of the document, so the roster's
+	// numeric ages read back as their digits on both sides of the comparison.
+	const asText = (matrix: readonly (readonly CellValue[])[]) =>
+		matrix.map((row) => row.map(String));
+
+	const headerRange = (bottom: number): SelectionRange => ({
+		anchor: { row: HEADER_ROW, column: 0 },
+		focus: { row: bottom, column: 0 },
+		mode: "row",
+	});
+
+	it("promotes the next row into the header in one undoable step", () => {
+		const document = people(3);
+		useTabeloStore.setState({
+			document,
+			selection: createSelection({ row: HEADER_ROW, column: 0 }, "row"),
+		});
+
+		expect(useTabeloStore.getState().deleteSelectedStructure()).toBeNull();
+		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual(
+			asText(samplePeopleMatrix(3).slice(1)),
+		);
+		expect(useTabeloStore.getState().past).toHaveLength(1);
+
+		useTabeloStore.getState().undo();
+		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual(
+			asText(samplePeopleMatrix(3)),
+		);
+	});
+
+	// The ordering rule, stated as a test: the row that becomes the header is
+	// the first row the selection did not take. Promoting before removing would
+	// leave Ingrid in the header, which is the plausible wrong answer.
+	it("promotes the first surviving row when the range covers rows too", () => {
+		useTabeloStore.setState({
+			document: people(5),
+			selection: selectionOf(headerRange(1)),
+		});
+
+		useTabeloStore.getState().deleteSelectedStructure();
+
+		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual(
+			asText(samplePeopleMatrix(5).slice(3)),
+		);
+	});
+
+	it("leaves a blank header over one blank row when nothing survives", () => {
+		useTabeloStore.setState({
+			document: people(3),
+			selection: selectionOf(headerRange(2)),
+		});
+
+		expect(useTabeloStore.getState().deleteSelectedStructure()).toBeNull();
+		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
+			["", "", "", ""],
+			["", "", "", ""],
+		]);
+	});
+
+	// The guard the promotion path bypasses still owns ordinary deletion.
+	it("still refuses to remove every data row on its own", () => {
+		const document = people(3);
+		useTabeloStore.setState({
+			document,
+			selection: selectionOf({
+				anchor: { row: 0, column: 0 },
+				focus: { row: 2, column: 0 },
+				mode: "row",
+			}),
+		});
+
+		expect(useTabeloStore.getState().deleteSelectedStructure()).toBe(
+			"last-row",
+		);
+		expect(useTabeloStore.getState().document).toBe(document);
+	});
+
+	it("leaves the selection on the first data row, in its own column", () => {
+		useTabeloStore.setState({
+			document: people(3),
+			selection: createSelection({ row: HEADER_ROW, column: 1 }),
+		});
+
+		useTabeloStore.getState().removeSelectedRows();
+
+		expect(useTabeloStore.getState().selection.ranges[0]?.focus).toEqual({
+			row: 0,
+			column: 1,
+		});
+	});
+});
+
 describe("structure insertion", () => {
 	it("inserts as many rows or columns as the selection covers", () => {
 		const document = documentFromMatrix(

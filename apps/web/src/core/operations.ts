@@ -1,4 +1,4 @@
-import { readCell } from "./cell-value";
+import { cellTextAt, readCell } from "./cell-value";
 import { createColumn, createRow } from "./document";
 import { createRowId } from "./ids";
 import {
@@ -196,6 +196,30 @@ export function deleteRows(
 	if (remove.size === 0) return document;
 	const rows = document.rows.filter((_, index) => !remove.has(index));
 	return withRows(document, rows);
+}
+
+// Deleting the header row does not leave the table without one: the first
+// surviving data row moves up into it, so the document passes from exactly one
+// header row to exactly one header row with no headerless state in between.
+//
+// Only values move. A column's identity, alignment, expected type, and the
+// workspace preferences keyed by its id belong to the column rather than to the
+// row that happens to be showing in the header, so they stay where they are. A
+// header holds text, so a promoted value arrives through the one projection
+// every view reads a cell through, and the value it came from is gone with its
+// row.
+export function promoteFirstRowToHeader(
+	document: TableDocument,
+): TableDocument {
+	const promoted = document.rows[0];
+	if (!promoted) return document;
+
+	const columns = document.columns.map((column) => ({
+		...column,
+		header: cellTextAt(promoted, column.id),
+	}));
+	const rows = document.rows.slice(1);
+	return withRows({ columns, rows }, rows);
 }
 
 export function duplicateRows(
