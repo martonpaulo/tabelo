@@ -3,10 +3,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { product } from "./src/copy/product";
-import {
-	createThemeBootstrapScript,
-	THEME_COLORS,
-} from "./src/preferences/contract";
+import { THEME_COLOR } from "./src/preferences/contract";
 import { createProductMetadata } from "./src/product-metadata";
 import { devServerPort, previewServerPort } from "./worktree-ports";
 
@@ -65,8 +62,7 @@ export default defineConfig({
 					.replaceAll("__TABELO_DOCUMENT_TITLE__", product.documentTitle)
 					.replaceAll("__TABELO_DESCRIPTION__", product.description)
 					.replace("__TABELO_PRODUCT_METADATA__", productMetadata)
-					.replace("__TABELO_THEME_COLOR_FALLBACK__", THEME_COLORS.dark)
-					.replace("__TABELO_THEME_BOOTSTRAP__", createThemeBootstrapScript()),
+					.replace("__TABELO_THEME_COLOR__", THEME_COLOR),
 		},
 		tailwindcss(),
 		react(),
@@ -79,8 +75,10 @@ export default defineConfig({
 				name: product.name,
 				short_name: product.name,
 				description: product.description,
-				theme_color: "#0f6cbd",
-				background_color: "#f0f0f0",
+				// The installed application and its splash wear the only palette
+				// the product has. Both of these previously carried light values.
+				theme_color: THEME_COLOR,
+				background_color: THEME_COLOR,
 				start_url: base,
 				scope: base,
 			},

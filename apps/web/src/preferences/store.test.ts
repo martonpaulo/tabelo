@@ -11,7 +11,6 @@ describe("preferences store", () => {
 	it("loads valid preferences independently from table persistence", () => {
 		const saved = {
 			version: PREFERENCES_VERSION,
-			theme: "light",
 			spaceIndicators: "none",
 			tabIndicators: false,
 			emptyValueIndicators: false,
@@ -37,7 +36,6 @@ describe("preferences store", () => {
 		store.subscribe(listener);
 		const next = {
 			version: PREFERENCES_VERSION,
-			theme: "dark",
 			spaceIndicators: "all",
 			tabIndicators: true,
 			emptyValueIndicators: false,
@@ -64,7 +62,9 @@ describe("preferences store", () => {
 		const listener = vi.fn();
 		store.subscribe(listener);
 
-		expect(store.commit({ ...DEFAULT_PREFERENCES, theme: "dark" })).toEqual({
+		expect(
+			store.commit({ ...DEFAULT_PREFERENCES, spaceIndicators: "all" }),
+		).toEqual({
 			status: "unavailable",
 		});
 		expect(store.getSnapshot()).toEqual(DEFAULT_PREFERENCES);

@@ -185,7 +185,7 @@ test("a mixed column distinguishes real type from its number expectation", async
 	).toBeVisible();
 });
 
-test("type marks remain legible across themes, forced colours, zoom, and wrapping", async ({
+test("type marks remain legible under forced colours, zoom, and wrapping", async ({
 	browserName,
 	page,
 	tabelo,
@@ -193,14 +193,10 @@ test("type marks remain legible across themes, forced colours, zoom, and wrappin
 	await importTypedRow(tabelo);
 	const cell = tabelo.cell(1, 1);
 	const mark = cell.locator('[data-cell-type-mark="number"]');
-
-	for (const colorScheme of ["dark", "light"] as const) {
-		await page.emulateMedia({ colorScheme });
-		await expect(mark).toBeVisible();
-		expect(
-			await mark.evaluate((element) => getComputedStyle(element).color),
-		).not.toBe("rgba(0, 0, 0, 0)");
-	}
+	await expect(mark).toBeVisible();
+	expect(
+		await mark.evaluate((element) => getComputedStyle(element).color),
+	).not.toBe("rgba(0, 0, 0, 0)");
 
 	const sizeBeforeZoom = await mark.evaluate((element) =>
 		Number.parseFloat(getComputedStyle(element).fontSize),

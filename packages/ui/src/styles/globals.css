@@ -6,23 +6,14 @@
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
-@custom-variant dark {
-	&:where([data-theme="dark"], [data-theme="dark"] *) {
-		@slot;
-	}
-
-	@media (prefers-color-scheme: dark) {
-		&:where(:root:not([data-theme]), :root:not([data-theme]) *) {
-			@slot;
-		}
-	}
-
-	@media not ((prefers-color-scheme: light) or (prefers-color-scheme: dark)) {
-		&:where(:root:not([data-theme]), :root:not([data-theme]) *) {
-			@slot;
-		}
-	}
-}
+/* Tabelo ships a single dark palette (docs/adr/0010), so there is no
+   condition left to select on and `dark:` always applies. The variant
+   keeps its name because the utilities that use it are upstream shadcn's,
+   spread across the vendored primitives; renaming it would mean editing
+   all of them to no effect. Removing it would be worse: a `dark:` class
+   with no matching variant compiles to nothing and raises no error, so
+   every primitive's dark refinement would drop silently. */
+@custom-variant dark (&);
 
 :root {
 	--background: oklch(0.145 0 0);
@@ -57,76 +48,6 @@
 	--sidebar-accent-foreground: oklch(0.985 0 0);
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.556 0 0);
-}
-
-:root[data-theme="light"] {
-	--background: oklch(1 0 0);
-	--foreground: oklch(0.145 0 0);
-	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.145 0 0);
-	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.145 0 0);
-	--primary: oklch(0.205 0 0);
-	--primary-foreground: oklch(0.985 0 0);
-	--secondary: oklch(0.97 0 0);
-	--secondary-foreground: oklch(0.205 0 0);
-	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
-	--accent: oklch(0.97 0 0);
-	--accent-foreground: oklch(0.205 0 0);
-	--destructive: oklch(0.58 0.22 27);
-	--border: oklch(0.922 0 0);
-	--input: oklch(0.922 0 0);
-	--ring: oklch(0.708 0 0);
-	--chart-1: oklch(0.809 0.105 251.813);
-	--chart-2: oklch(0.623 0.214 259.815);
-	--chart-3: oklch(0.546 0.245 262.881);
-	--chart-4: oklch(0.488 0.243 264.376);
-	--chart-5: oklch(0.424 0.199 265.638);
-	--sidebar: oklch(0.985 0 0);
-	--sidebar-foreground: oklch(0.145 0 0);
-	--sidebar-primary: oklch(0.205 0 0);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.97 0 0);
-	--sidebar-accent-foreground: oklch(0.205 0 0);
-	--sidebar-border: oklch(0.922 0 0);
-	--sidebar-ring: oklch(0.708 0 0);
-}
-
-@media (prefers-color-scheme: light) {
-	:root:not([data-theme]) {
-		--background: oklch(1 0 0);
-		--foreground: oklch(0.145 0 0);
-		--card: oklch(1 0 0);
-		--card-foreground: oklch(0.145 0 0);
-		--popover: oklch(1 0 0);
-		--popover-foreground: oklch(0.145 0 0);
-		--primary: oklch(0.205 0 0);
-		--primary-foreground: oklch(0.985 0 0);
-		--secondary: oklch(0.97 0 0);
-		--secondary-foreground: oklch(0.205 0 0);
-		--muted: oklch(0.97 0 0);
-		--muted-foreground: oklch(0.556 0 0);
-		--accent: oklch(0.97 0 0);
-		--accent-foreground: oklch(0.205 0 0);
-		--destructive: oklch(0.58 0.22 27);
-		--border: oklch(0.922 0 0);
-		--input: oklch(0.922 0 0);
-		--ring: oklch(0.708 0 0);
-		--chart-1: oklch(0.809 0.105 251.813);
-		--chart-2: oklch(0.623 0.214 259.815);
-		--chart-3: oklch(0.546 0.245 262.881);
-		--chart-4: oklch(0.488 0.243 264.376);
-		--chart-5: oklch(0.424 0.199 265.638);
-		--sidebar: oklch(0.985 0 0);
-		--sidebar-foreground: oklch(0.145 0 0);
-		--sidebar-primary: oklch(0.205 0 0);
-		--sidebar-primary-foreground: oklch(0.985 0 0);
-		--sidebar-accent: oklch(0.97 0 0);
-		--sidebar-accent-foreground: oklch(0.205 0 0);
-		--sidebar-border: oklch(0.922 0 0);
-		--sidebar-ring: oklch(0.708 0 0);
-	}
 }
 
 @theme inline {

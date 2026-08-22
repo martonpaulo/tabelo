@@ -141,82 +141,6 @@
 	--font-family-index: var(--font-family-source);
 }
 
-:root[data-theme="light"] {
-	color-scheme: light;
-
-	--surface-app: #f0f0f0;
-	--surface-panel: #ffffff;
-	--surface-header: #f5f5f5;
-	--surface-table-header: rgb(15 108 189 / 6%);
-	--surface-gutter: #f5f5f5;
-	--surface-readonly: #f5f5f5;
-	--surface-floating: #fafafa;
-
-	--line-subtle: #d6d6d6;
-	--line-strong: #c4c4c4;
-	--line-floating: #8a8a8a;
-
-	--selection-fill: rgb(15 108 189 / 14%);
-	--text-selection-fill: rgb(15 108 189 / 24%);
-	--active-line-fill: rgb(15 108 189 / 7%);
-	--selection-edge: #0f6cbd;
-
-	--status-warning: #b45309;
-
-	--foreground: #242424;
-	--card-foreground: var(--foreground);
-	--popover-foreground: var(--foreground);
-	--primary: #0f6cbd;
-	--primary-foreground: #ffffff;
-	--secondary-foreground: var(--foreground);
-	--muted-foreground: #616161;
-	--accent: #eff6fc;
-	--accent-foreground: #0f6cbd;
-	--destructive: #b91c1c;
-}
-
-/* Dark is the final fallback. System Light replaces it only when the platform
-   exposes a usable Light result. */
-:root[data-theme="dark"] {
-	color-scheme: dark;
-}
-
-@media (prefers-color-scheme: light) {
-	:root:not([data-theme]) {
-		color-scheme: light;
-
-		--surface-app: #f0f0f0;
-		--surface-panel: #ffffff;
-		--surface-header: #f5f5f5;
-		--surface-table-header: rgb(15 108 189 / 6%);
-		--surface-gutter: #f5f5f5;
-		--surface-readonly: #f5f5f5;
-		--surface-floating: #fafafa;
-
-		--line-subtle: #d6d6d6;
-		--line-strong: #c4c4c4;
-		--line-floating: #8a8a8a;
-
-		--selection-fill: rgb(15 108 189 / 14%);
-		--text-selection-fill: rgb(15 108 189 / 24%);
-		--active-line-fill: rgb(15 108 189 / 7%);
-		--selection-edge: #0f6cbd;
-
-		--status-warning: #b45309;
-
-		--foreground: #242424;
-		--card-foreground: var(--foreground);
-		--popover-foreground: var(--foreground);
-		--primary: #0f6cbd;
-		--primary-foreground: #ffffff;
-		--secondary-foreground: var(--foreground);
-		--muted-foreground: #616161;
-		--accent: #eff6fc;
-		--accent-foreground: #0f6cbd;
-		--destructive: #b91c1c;
-	}
-}
-
 /* The editor owns the viewport: the page never scrolls, only the panels do.
    This is what keeps the layout from shifting while the user types. */
 html,
@@ -263,10 +187,10 @@ body {
    because the source editor, the rendered preview, and every selected data cell
    share them and none of those is sticky; here each one is painted as a
    background layer over the pane's own surface instead, so the colour at rest is
-   unchanged. The base is `--surface-panel` rather than `--background`: the
-   vendored shadcn tokens declare their own `--background` under a
-   `[data-theme]` selector, which outranks this file's plain `:root`, so the
-   pane surface is the only unambiguous name for what a grid cell sits on.
+   unchanged. The base is `--surface-panel` rather than `--background`, because
+   the vendored shadcn tokens declare their own `--background` and this file
+   only wins by import order; the pane surface is the unambiguous name for what
+   a grid cell sits on.
    Reuse this for any other sticky cell that carries a tint. */
 @utility bg-sticky-table-header {
 	background-color: var(--surface-panel);
@@ -337,12 +261,4 @@ textarea,
 		   yield to the global accessibility preference. */
 		animation: none !important;
 	}
-}
-
-:root[data-theme-changing] *,
-:root[data-theme-changing] *::before,
-:root[data-theme-changing] *::after {
-	/* biome-ignore lint/complexity/noImportantStyles: a theme transaction must
-	   beat component utility transitions so the palette changes atomically. */
-	transition: none !important;
 }

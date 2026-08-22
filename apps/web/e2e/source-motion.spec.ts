@@ -102,10 +102,7 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	page,
 	tabelo,
 }) => {
-	await page.emulateMedia({
-		colorScheme: "light",
-		reducedMotion: "no-preference",
-	});
+	await page.emulateMedia({ reducedMotion: "no-preference" });
 
 	const pane = tabelo.pane("markdown");
 	const editor = tabelo.source("markdown");
@@ -119,7 +116,7 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	expect(normalCursorAnimation.name).not.toBe("none");
 	expect(normalCursorAnimation.duration).not.toBe("0.00001s");
 
-	const lightFocus = await paneIndicator.evaluate((element) => {
+	const focusBorder = await paneIndicator.evaluate((element) => {
 		const style = getComputedStyle(element);
 		return {
 			color: style.borderTopColor,
@@ -127,11 +124,11 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 			width: Number.parseFloat(style.borderTopWidth),
 		};
 	});
-	expect(lightFocus.style).toBe("solid");
-	expect(lightFocus.width).toBeGreaterThan(0);
+	expect(focusBorder.style).toBe("solid");
+	expect(focusBorder.width).toBeGreaterThan(0);
 	await expect(pane.locator(".cm-content")).toHaveCSS("outline-style", "none");
 
-	await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+	await page.emulateMedia({ reducedMotion: "reduce" });
 	await expect
 		.poll(() =>
 			cursorLayer.evaluate(
@@ -149,13 +146,14 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 		)
 		.toBeLessThan(0.001);
 
-	await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+	// Focus has to stay visible when motion is reduced, which is a different
+	// question from whether it is visible at rest.
 	await editor.focus();
-	const darkFocus = await paneIndicator.evaluate((element) => {
+	const reducedMotionFocus = await paneIndicator.evaluate((element) => {
 		const style = getComputedStyle(element);
 		return {
 			style: style.borderTopStyle,
 		};
 	});
-	expect(darkFocus.style).toBe("solid");
+	expect(reducedMotionFocus.style).toBe("solid");
 });
