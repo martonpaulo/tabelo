@@ -485,9 +485,10 @@ here:
   and preserve the user's context when the layout or a view changes.
 - Define layout, hierarchy, controls, loading, empty, error, retry, disabled,
   and destructive states when applicable.
-- Dark mode is the reference interface. Implement, screenshot, verify, and
-  audit there first, and confirm light before reporting the work as done. When
-  a check, a sample, or a decision has to pick one theme, it picks dark.
+- Dark is the only interface. There is no light palette and no theme
+  preference: see `docs/adr/0010`. Implement, screenshot, verify, and audit
+  there, and do not add a second palette, a `prefers-color-scheme` branch, or a
+  `data-theme` selector back. Forced-colour support is separate and stays.
 - Include keyboard navigation, focus order, screen-reader labels, scalable text,
   contrast, reduced motion, and non-color status cues in the same change. The
   grid must be fully operable from the keyboard. This is not follow-up work.

@@ -7,26 +7,15 @@ import {
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { Label } from "@tabelo/ui/components/label";
-import {
-	Brackets,
-	Ellipsis,
-	EyeOff,
-	Monitor,
-	Moon,
-	PilcrowRight,
-	Sun,
-} from "lucide-react";
+import { Brackets, Ellipsis, EyeOff, PilcrowRight } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { copy } from "@/copy/copy";
 import {
 	type Preferences,
 	SPACE_INDICATOR_VALUES,
 	type SpaceIndicators,
-	THEME_VALUES,
-	type ThemePreference,
 } from "@/preferences/contract";
 import { preferencesStore } from "@/preferences/store";
-import { applyThemePreference } from "@/preferences/theme";
 import { usePreferences } from "@/preferences/use-preferences";
 import {
 	DialogActions,
@@ -37,12 +26,6 @@ import {
 	SingleSelectionList,
 	SingleSelectionOption,
 } from "@/ui/primitives/single-selection-list";
-
-const themeIcons = {
-	system: Monitor,
-	light: Sun,
-	dark: Moon,
-} as const;
 
 const spaceIndicatorIcons = {
 	none: EyeOff,
@@ -79,7 +62,6 @@ function IndicatorToggle({
 
 function preferencesMatch(left: Preferences, right: Preferences): boolean {
 	return (
-		left.theme === right.theme &&
 		left.spaceIndicators === right.spaceIndicators &&
 		left.tabIndicators === right.tabIndicators &&
 		left.emptyValueIndicators === right.emptyValueIndicators
@@ -98,7 +80,6 @@ export function SettingsDialog({
 	const [saveError, setSaveError] = useState(false);
 	const titleId = useId();
 	const descriptionId = useId();
-	const themeLabelId = useId();
 	const indicatorsLabelId = useId();
 	const spaceLabelId = useId();
 
@@ -106,7 +87,6 @@ export function SettingsDialog({
 		if (!open) return;
 		setDraft(committed);
 		setSaveError(false);
-		applyThemePreference(committed.theme, { suppressTransitions: true });
 	}, [committed, open]);
 
 	const updateDraft = (change: Partial<Preferences>) => {
@@ -114,17 +94,8 @@ export function SettingsDialog({
 		setDraft((current) => ({ ...current, ...change }));
 	};
 
-	const updateTheme = (theme: ThemePreference) => {
-		setSaveError(false);
-		setDraft((current) => ({ ...current, theme }));
-		applyThemePreference(theme, { suppressTransitions: true });
-	};
-
 	const close = (nextOpen: boolean) => {
 		if (nextOpen) return;
-		applyThemePreference(preferencesStore.getSnapshot().theme, {
-			suppressTransitions: true,
-		});
 		setSaveError(false);
 		onOpenChange(false);
 	};
@@ -135,9 +106,7 @@ export function SettingsDialog({
 			onOpenChange(false);
 			return;
 		}
-		const previous = preferencesStore.getSnapshot();
-		setDraft(previous);
-		applyThemePreference(previous.theme, { suppressTransitions: true });
+		setDraft(preferencesStore.getSnapshot());
 		setSaveError(true);
 	};
 
@@ -156,40 +125,8 @@ export function SettingsDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="min-h-0 divide-y divide-line-subtle overflow-y-auto">
-					<section className="grid gap-2 pb-4" aria-labelledby={themeLabelId}>
-						<div>
-							<h3 id={themeLabelId} className="font-medium text-sm">
-								{copy.settings.theme.label}
-							</h3>
-							<p className="text-muted-foreground text-xs">
-								{copy.settings.theme.description}
-							</p>
-						</div>
-						<SingleSelectionList
-							aria-labelledby={themeLabelId}
-							value={draft.theme}
-							onValueChange={(value) => updateTheme(value as ThemePreference)}
-						>
-							{THEME_VALUES.map((theme) => {
-								const Icon = themeIcons[theme];
-								return (
-									<SingleSelectionOption
-										key={theme}
-										value={theme}
-										selected={draft.theme === theme}
-										icon={<Icon />}
-										{...copy.settings.theme.options[theme]}
-									/>
-								);
-							})}
-						</SingleSelectionList>
-					</section>
-
-					<section
-						className="grid gap-4 pt-4"
-						aria-labelledby={indicatorsLabelId}
-					>
+				<div className="min-h-0 overflow-y-auto">
+					<section className="grid gap-4" aria-labelledby={indicatorsLabelId}>
 						<div>
 							<h3 id={indicatorsLabelId} className="font-medium text-sm">
 								{copy.settings.indicators.label}

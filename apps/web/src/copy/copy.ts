@@ -206,15 +206,6 @@ export const copy = {
 		title: "Settings",
 		description: "Choose display preferences for Tabelo",
 		apply: "Apply settings",
-		theme: {
-			label: "Theme",
-			description: "Choose a palette or follow this device",
-			options: {
-				system: { label: "System", description: "Follow this device" },
-				light: { label: "Light", description: "Always use the light palette" },
-				dark: { label: "Dark", description: "Always use the dark palette" },
-			},
-		},
 		indicators: {
 			label: "Source indicators",
 			description: "Show what the text itself cannot",

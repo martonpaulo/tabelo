@@ -203,10 +203,10 @@ outlining a control. It earns it: the cell underneath already wears
 `--selection-fill`, so a second translucent tint over the first is the weakest
 possible way to say "these characters", and the pale tone is reserved for fills
 that sit under content rather than replace its ground. The paired foreground is
-what keeps the marked characters readable in both themes.
+what keeps the marked characters readable.
 | `--active-line-fill` | Source editor theme | Current source line without competing with selected text |
 
-The accent family is blue in both themes. Use its solid tone only for focus,
+The accent family is blue. Use its solid tone only for focus,
 selection, and checked or active controls; use the pale tone for hover or
 selection fills. Text selection is intentionally stronger than an active line
 and is a separate token from structural cell selection, so the two meanings do
@@ -230,46 +230,27 @@ once. The only status colour the source editor spends is `--status-warning` on
 the warning diagnostic's own underline, and `--destructive` on markup the
 grammar could not read. See "Syntax and table structure" later in this section.
 
-### Theme
+### Palette
 
-Theme is one global display preference with three values: System, Light, and
-Dark. System is the default. Resolve the effective theme in this order:
+**Tabelo has one palette, and it is dark.** There is no light palette, no theme
+preference, and no following of the operating system: the product renders the
+same interface whatever `prefers-color-scheme` reports, and no `data-theme`
+attribute selects anything. See `docs/adr/0010`.
 
-1. an explicit Light or Dark choice;
-2. a usable Light or Dark result from the system or browser;
-3. Dark when the platform exposes neither usable result.
+Two consequences are load-bearing and are not part of that removal:
 
-System follows `prefers-color-scheme` on first paint and whenever the operating
-system changes. The media feature exposes only Light or Dark and treats no
-active preference as Light, so a Light result is always used as Light; Tabelo
-does not try to detect a separate `no-preference` state. See
-[Media Queries Level 5](https://www.w3.org/TR/mediaqueries-5/#prefers-color-scheme).
-System is represented by the absence of a root `data-theme` attribute; explicit
-Light or Dark uses `data-theme="light"` or `data-theme="dark"`. System media
-branches apply only when that attribute is absent, so either stored override
-wins against the opposing operating-system palette.
+- `color-scheme: dark` on `:root` is what makes native controls, scrollbars, and
+  the caret match the interface. It is the only thing left saying so, so it must
+  stay.
+- Forced-colours support is untouched. Windows High Contrast is an assistive
+  path rather than a palette preference, and the product still answers it.
 
-The versioned `tabelo.preferences` payload owns the stored value independently
-from table persistence. A generated synchronous script in the document head
-validates and applies it before application styles can paint. Invalid,
-inaccessible, unsupported-version, and unsupported-value preference storage
-falls back to System, then to Dark only when the platform has no usable result,
-without changing the saved table. The same effective theme owns browser
-`theme-color` metadata at startup and at runtime.
+The browser `theme-color` metadata and the installed application's manifest both
+carry the one palette's value, set at build time rather than at runtime.
 
-Settings previews a draft theme immediately, without writing storage. Apply
-persists the complete preferences draft once; Cancel, Escape, and a failed write
-restore the committed theme and browser colour. Palette changes never animate.
-The App menu is the only global theme entry point; the primary workspace keeps
-no persistent theme control.
-
-**Dark is the reference interface.** Both themes are supported and neither may
-regress, but when something has to be looked at, measured, or decided in one
-theme first, it is dark: it is what this product's users work in. Design a
-change in dark, verify it in dark, and screenshot it in dark; then confirm
-light before calling the change done. A contrast or colour decision that works
-in dark and fails in light is not finished, and the reverse is not finished
-either.
+A contrast or colour decision is made, measured, and screenshotted in that one
+interface. There is no second theme to confirm afterwards, which is the point:
+what used to be two passes over every visual change is now one.
 
 ### Geometry
 
@@ -416,8 +397,8 @@ has already selected the text they were trying to inspect. The default is
 the one nobody meant to type, and dotting every space instead answers a
 question nobody asked.
 
-All three live beside the theme in the versioned `tabelo.preferences` payload
-and are global, never pane state. A schema change here gets a migration like
+All three live in the versioned `tabelo.preferences` payload and are global,
+never pane state. A schema change here gets a migration like
 any other, so a reader who had turned the markers off keeps them off.
 CodeMirror's own extensions carry as much of this as they can:
 `highlightWhitespace()` supplies the per-character span under every glyph, and
@@ -455,8 +436,8 @@ boolean, or `null` for null. The word, not its colour, carries the distinction.
 It uses the product sans stack at `--text-cell-type-mark`, does not take focus
 or pointer events, and shares the cell's scaling, wrapping, selection, copied,
 focus, and clipping states. A narrow column may clip the compact mark, while
-the full type remains available through the accessible name. Dark, light, and
-forced-colour modes keep the same text treatment.
+the full type remains available through the accessible name. Forced-colour mode
+keeps the same text treatment.
 
 The column index menu owns one `Expected type` radio group for text, number,
 and boolean. Changing it updates the column expectation only and never converts

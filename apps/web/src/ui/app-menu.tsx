@@ -120,7 +120,7 @@ export function AppMenu({
 						// because outline carries a resting border and fill of its own in
 						// dark mode, which no transparent override on this element can
 						// win against.
-						className="fixed right-3 bottom-3 z-40 size-fab hover:bg-surface-floating hover:shadow-lg dark:hover:bg-surface-floating"
+						className="fixed right-3 bottom-3 z-40 size-fab hover:bg-surface-floating hover:shadow-lg"
 					/>
 				}
 			>

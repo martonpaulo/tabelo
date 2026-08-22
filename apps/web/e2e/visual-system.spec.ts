@@ -167,7 +167,6 @@ test("every rounded boundary is drawn as one filled stroke", async ({
 	page,
 	tabelo,
 }) => {
-	await page.emulateMedia({ colorScheme: "dark" });
 	expect(await roundedOffenders(page)).toEqual([]);
 
 	const menu = await tabelo.openPaneMenu("markdown");
@@ -222,28 +221,23 @@ function backgroundAlpha(target: Locator): Promise<number> {
 // contract is an alpha threshold on the header cell and, just as importantly,
 // the surviving translucency of the same token on a data cell.
 test("the sticky header row is opaque in both of its fills", async ({
-	page,
 	tabelo,
 }) => {
-	for (const colorScheme of ["dark", "light"] as const) {
-		await page.emulateMedia({ colorScheme });
+	expect(await backgroundAlpha(tabelo.header(1))).toBe(1);
+	expect(await backgroundAlpha(tabelo.rowIndex(1))).toBe(1);
 
-		expect(await backgroundAlpha(tabelo.header(1))).toBe(1);
-		expect(await backgroundAlpha(tabelo.rowIndex(1))).toBe(1);
+	// Selecting the header swaps its fill for the selection tint, which is
+	// translucent for the same reason, and is equally a window while sticky.
+	await tabelo.header(1).click();
+	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "true");
+	expect(await backgroundAlpha(tabelo.header(1))).toBe(1);
 
-		// Selecting the header swaps its fill for the selection tint, which is
-		// translucent for the same reason, and is equally a window while sticky.
-		await tabelo.header(1).click();
-		await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "true");
-		expect(await backgroundAlpha(tabelo.header(1))).toBe(1);
-
-		// The token itself stays a tint: a selected data cell does not scroll
-		// over anything, and flattening it there would have been a visual change
-		// made to fix a defect that only exists on the sticky row.
-		await tabelo.cell(2, 1).click();
-		await expect(tabelo.cell(2, 1)).toHaveAttribute("aria-selected", "true");
-		expect(await backgroundAlpha(tabelo.cell(2, 1))).toBeLessThan(1);
-	}
+	// The token itself stays a tint: a selected data cell does not scroll
+	// over anything, and flattening it there would have been a visual change
+	// made to fix a defect that only exists on the sticky row.
+	await tabelo.cell(2, 1).click();
+	await expect(tabelo.cell(2, 1)).toHaveAttribute("aria-selected", "true");
+	expect(await backgroundAlpha(tabelo.cell(2, 1))).toBeLessThan(1);
 });
 
 test("shared motion stays brief, cancellable, and reduced-motion safe", async ({
@@ -336,10 +330,8 @@ test("only view content participates in native text selection", async ({
 // stroke inside it: one stroke, so the rounded corners stay one arc, and the
 // same width in both states, so activating a pane moves nothing.
 test("the active pane boundary replaces the resting one", async ({
-	page,
 	tabelo,
 }) => {
-	await page.emulateMedia({ colorScheme: "dark" });
 	await tabelo.cell(1, 1).click();
 	const active = tabelo.pane("grid");
 	const inactive = tabelo.pane("markdown");
@@ -389,42 +381,38 @@ test("the active pane boundary replaces the resting one", async ({
 	await expect(active).toHaveCSS("overflow", "hidden");
 });
 
-test("multi-pane layouts and themes keep the active boundary on all four edges", async ({
-	page,
+test("multi-pane layouts keep the active boundary on all four edges", async ({
 	tabelo,
 }) => {
 	test.setTimeout(60_000);
-	for (const colorScheme of ["dark", "light"] as const) {
-		await page.emulateMedia({ colorScheme });
-		for (const preset of layoutPresets) {
-			await tabelo.chooseLayout(preset.id);
-			// Reaching a preset can pass through Add view, which hands the pane it
-			// creates the active state. The subject here is how the boundary is
-			// drawn, so the grid is made active again first.
-			await tabelo.cell(1, 1).click();
-			const pane = tabelo.pane("grid");
-			if (preset.id === "single") {
-				await expect(pane).not.toHaveAttribute("data-pane-active");
-				continue;
-			}
-			await expect(pane).toHaveAttribute("data-pane-active", "true");
-			const edge = await pane.evaluate((element) => {
-				const style = getComputedStyle(element);
-				return {
-					widths: [
-						style.borderTopWidth,
-						style.borderRightWidth,
-						style.borderBottomWidth,
-						style.borderLeftWidth,
-					],
-					stroke: style.getPropertyValue("--hairline-color").trim(),
-					accent: style.getPropertyValue("--selection-edge").trim(),
-				};
-			});
-			expect(new Set(edge.widths).size).toBe(1);
-			expect(edge.widths[0]).not.toBe("0px");
-			expect(edge.stroke).toBe(edge.accent);
+	for (const preset of layoutPresets) {
+		await tabelo.chooseLayout(preset.id);
+		// Reaching a preset can pass through Add view, which hands the pane it
+		// creates the active state. The subject here is how the boundary is
+		// drawn, so the grid is made active again first.
+		await tabelo.cell(1, 1).click();
+		const pane = tabelo.pane("grid");
+		if (preset.id === "single") {
+			await expect(pane).not.toHaveAttribute("data-pane-active");
+			continue;
 		}
+		await expect(pane).toHaveAttribute("data-pane-active", "true");
+		const edge = await pane.evaluate((element) => {
+			const style = getComputedStyle(element);
+			return {
+				widths: [
+					style.borderTopWidth,
+					style.borderRightWidth,
+					style.borderBottomWidth,
+					style.borderLeftWidth,
+				],
+				stroke: style.getPropertyValue("--hairline-color").trim(),
+				accent: style.getPropertyValue("--selection-edge").trim(),
+			};
+		});
+		expect(new Set(edge.widths).size).toBe(1);
+		expect(edge.widths[0]).not.toBe("0px");
+		expect(edge.stroke).toBe(edge.accent);
 	}
 });
 
@@ -487,7 +475,7 @@ test("an empty first visit shows one centered start surface over an inert blurre
 	).toBeVisible();
 });
 
-test("source focus belongs to the pane and selection follows the theme", async ({
+test("source focus belongs to the pane and its selection matches the native one", async ({
 	tabelo,
 }) => {
 	const pane = tabelo.pane("markdown");
@@ -520,16 +508,11 @@ test("source focus belongs to the pane and selection follows the theme", async (
 			return colours.drawn === "" ? null : colours;
 		})
 		.not.toBeNull();
-	const lightColours = await selectionColours();
-	expect(lightColours.drawn).toBe(lightColours.native);
-
-	await tabelo.page.emulateMedia({ colorScheme: "dark" });
-	await expect
-		.poll(async () => (await selectionColours()).drawn)
-		.not.toBe(lightColours.drawn);
-	const darkColours = await selectionColours();
-	expect(darkColours.drawn).toBe(darkColours.native);
-	expect(darkColours.drawn).not.toBe(lightColours.drawn);
+	// CodeMirror paints its own selection layer over the text. It has to agree
+	// with what the browser would have drawn, or a selection that crosses out of
+	// the editor reads as two different selections.
+	const colours = await selectionColours();
+	expect(colours.drawn).toBe(colours.native);
 });
 
 test("read-only panes use a written cue and a distinct surface", async ({
@@ -611,21 +594,11 @@ test("critical document controls remain available at 200% text size", async ({
 	).toBe(true);
 });
 
-// Dark first, because dark is the interface this product is used in and the
-// one a contrast regression has to be caught in soonest. Light follows in the
-// same run, since neither theme may regress.
-test("dark and light text and focus tokens meet their contrast floors", async ({
-	page,
-}) => {
+// Tabelo has one palette (docs/adr/0010), so these floors are checked once,
+// against the only interface the product has.
+test("text and focus tokens meet their contrast floors", async ({ page }) => {
 	await page.goto("/");
-	const backgrounds: string[] = [];
-	for (const colorScheme of ["dark", "light"] as const) {
-		await page.emulateMedia({ colorScheme });
-		backgrounds.push(
-			await page
-				.locator("body")
-				.evaluate((element) => getComputedStyle(element).backgroundColor),
-		);
+	{
 		expect(
 			await contrastBetween(page, "--foreground", "--surface-panel"),
 		).toBeGreaterThanOrEqual(4.5);
@@ -679,7 +652,33 @@ test("dark and light text and focus tokens meet their contrast floors", async ({
 		});
 		expect(new Set(selectionFills).size).toBe(3);
 	}
-	expect(new Set(backgrounds).size).toBe(2);
+});
+
+// The inverse of what this file used to assert. Removing light mode means the
+// operating system's colour scheme no longer selects anything, so the palette
+// has to come out identical under both, with no `data-theme` attribute deciding
+// it. This is the regression test for that removal.
+test("the palette ignores the operating system colour scheme", async ({
+	page,
+}) => {
+	await page.goto("/");
+	const samples: string[] = [];
+	for (const colorScheme of ["dark", "light"] as const) {
+		await page.emulateMedia({ colorScheme });
+		samples.push(
+			await page.evaluate(() => {
+				const root = getComputedStyle(document.documentElement);
+				return JSON.stringify({
+					background: getComputedStyle(document.body).backgroundColor,
+					foreground: root.getPropertyValue("--foreground").trim(),
+					panel: root.getPropertyValue("--surface-panel").trim(),
+					attribute: document.documentElement.getAttribute("data-theme"),
+				});
+			}),
+		);
+	}
+	expect(new Set(samples).size).toBe(1);
+	expect(samples[0]).toContain('"attribute":null');
 });
 
 for (const viewport of [
