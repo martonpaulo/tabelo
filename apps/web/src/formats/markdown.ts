@@ -63,6 +63,40 @@ export function escapeCell(value: string): string {
 	return out;
 }
 
+// Every character the escaper rewrites, plus whitespace at either boundary. A
+// cell matching none of them is returned by `escapeCell` unchanged, so the fast
+// path below can skip the loop. The class is deliberately wider than the
+// grammar: `<` sends every tag-like cell down the general path rather than only
+// the three `<br>` spellings, and `\s` carries the `u` flag the boundary
+// encoding uses, so a non-breaking space is not mistaken for an ordinary one.
+const NEEDS_ESCAPING = /^\s|\s$|[&\\|\n\r<]/u;
+
+// `.length` is the display width only inside printable ASCII. #186 chose
+// `string-width` so CJK and emoji align in a monospaced editor, and measuring
+// anything outside this range by length would reintroduce that defect while
+// looking correct in a Latin fixture.
+const ASCII_PRINTABLE = /^[\x20-\x7e]*$/;
+
+export interface EscapedCell {
+	readonly text: string;
+	readonly width: number;
+}
+
+function displayWidth(text: string): number {
+	return ASCII_PRINTABLE.test(text) ? text.length : stringWidth(text);
+}
+
+// One escaping implementation with two entry points. The serializer needs each
+// cell's escaped text and its display width together, and measuring here is
+// what lets the width scan and the padding pass share one measurement instead
+// of calling `stringWidth` twice per cell. Cells that need no escaping skip the
+// loop entirely; everything else goes through `escapeCell` itself, so the
+// grammar of docs/adr/0002 stays in exactly one place.
+export function escapeAndMeasure(value: string): EscapedCell {
+	const text = NEEDS_ESCAPING.test(value) ? escapeCell(value) : value;
+	return { text, width: displayWidth(text) };
+}
+
 // Sticky, so the entity match is anchored at `lastIndex` instead of searching
 // forward, with none of the copying that matching `^` against a fresh slice of
 // the remaining cell required.
@@ -316,11 +350,6 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 }
 
 function serializeMarkdown(document: TableDocument): string {
-	const headers = document.columns.map((column) => escapeCell(column.header));
-	const body = document.rows.map((row) =>
-		document.columns.map((column) => escapeCell(cellTextAt(row, column.id))),
-	);
-
 	// Pad columns to a common width so the source stays readable by hand. An
 	// empty cell is padded to hold the empty-value placeholder, because a source
 	// view draws that word where the cell's value would be: reserving the room
@@ -328,17 +357,35 @@ function serializeMarkdown(document: TableDocument): string {
 	// one place a table's layout is decided. The padding does not depend on
 	// whether anyone has that indicator switched on, so the bytes are the same
 	// either way. See core/empty-value.ts.
-	const reserved = (value: string) =>
-		value === "" ? EMPTY_VALUE_PLACEHOLDER.length : stringWidth(value);
-
-	const widths = document.columns.map((_, index) => {
-		let width = Math.max(reserved(headers[index] ?? ""), 3);
-		for (const cells of body) {
-			const cellWidth = reserved(cells[index] ?? "");
-			if (cellWidth > width) width = cellWidth;
+	//
+	// The room reserved in the column and the width the cell is padded from
+	// disagree for exactly one input, the empty cell: it reserves the
+	// placeholder's length and is padded from an actual width of zero. Both are
+	// derived from the one measurement the cell carries, so the escape pass and
+	// the padding pass never measure the same cell twice.
+	const widths: number[] = document.columns.map(() => 3);
+	const reserve = (index: number, cell: EscapedCell): EscapedCell => {
+		const reserved =
+			cell.text === "" ? EMPTY_VALUE_PLACEHOLDER.length : cell.width;
+		const current = widths[index];
+		if (current === undefined) {
+			throw new Error("Markdown column width is missing.");
 		}
-		return width;
-	});
+		if (reserved > current) widths[index] = reserved;
+		return cell;
+	};
+
+	// One pass: each cell is escaped, measured, and folded into its column's
+	// maximum as it is produced. The widths are complete once this is done.
+	const headers = document.columns.map((column, index) =>
+		reserve(index, escapeAndMeasure(column.header)),
+	);
+	const body = document.rows.map((row) =>
+		document.columns.map((column, index) =>
+			reserve(index, escapeAndMeasure(cellTextAt(row, column.id))),
+		),
+	);
+
 	const widthAt = (index: number): number => {
 		const width = widths[index];
 		if (width === undefined) {
@@ -347,11 +394,11 @@ function serializeMarkdown(document: TableDocument): string {
 		return width;
 	};
 
-	const line = (cells: readonly string[]) =>
+	const line = (cells: readonly EscapedCell[]) =>
 		`| ${cells
 			.map(
 				(cell, index) =>
-					`${cell}${" ".repeat(Math.max(0, widthAt(index) - stringWidth(cell)))}`,
+					`${cell.text}${" ".repeat(Math.max(0, widthAt(index) - cell.width))}`,
 			)
 			.join(" | ")} |`;
 
