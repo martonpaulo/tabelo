@@ -505,11 +505,29 @@ export class TabeloPage {
 		await expect(notices).toHaveCount(0);
 	}
 
+	// Same contract as openAppMenu: the menu is open when this resolves,
+	// whichever state the caller left it in.
+	//
+	// Zoom and wrap are closeOnClick={false}, so runPaneCommand can return with
+	// the menu still open on purpose. Clicking the trigger again would toggle it
+	// shut, and the caller would then assert against a menu that is not there.
+	// When it is genuinely closed, the click still must not land inside the
+	// previous menu's exit transition, where it toggles nothing.
+	//
+	// aria-expanded is the trigger's own state and flips before that transition
+	// finishes, so it distinguishes the two cases; waitFor hidden is satisfied by
+	// an absent element, so a cold page passes straight through.
 	async openPaneMenu(view: ViewId, index = 0): Promise<Locator> {
-		await this.paneMenuTrigger(view, index).click();
-		return this.page.getByRole("menu", {
+		const trigger = this.paneMenuTrigger(view, index);
+		const menu = this.page.getByRole("menu", {
 			name: `${copy.workspace.paneActions}: ${getView(view).label}`,
 		});
+		if ((await trigger.getAttribute("aria-expanded")) !== "true") {
+			await menu.waitFor({ state: "hidden" });
+			await trigger.click();
+		}
+		await menu.waitFor({ state: "visible" });
+		return menu;
 	}
 
 	// Close view, zoom, and copy are immediate items in the pane's own menu, so
