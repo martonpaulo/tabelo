@@ -1,4 +1,5 @@
 import type { BenchOptions } from "vitest";
+import { cellText } from "@/core/cell-value";
 import { documentFromMatrix } from "@/core/document";
 import { samplePeople, samplePeopleHeaders } from "@/core/sample-data";
 import type { CellValue, TableDocument } from "@/core/types";
@@ -82,6 +83,15 @@ function benchMatrix(rows: number, shape: BenchShape): CellValue[][] {
 		return [person.name, person.city, person.role, person.age, note];
 	});
 	return [[...samplePeopleHeaders, NOTE_HEADER], ...body];
+}
+
+// The cell strings a table of the given shape contains, in the order a
+// serializer would meet them, projected through the same core function every
+// codec reads a cell with. The codec benches measure a whole table; this is for
+// a bench that has to isolate one function inside it, and it comes from here so
+// the two are measuring the same bytes.
+export function benchCells(rows: BenchRowCount, shape: BenchShape): string[] {
+	return benchMatrix(rows, shape).flat().map(cellText);
 }
 
 export function benchDocument(
