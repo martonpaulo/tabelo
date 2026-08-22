@@ -27,6 +27,7 @@ The benchmarks live beside the code they measure, as `*.bench.ts`:
 | file | what it covers |
 | --- | --- |
 | `apps/web/src/formats/codecs.bench.ts` | every codec's `parse` and `serialize`, driven from the registry |
+| `apps/web/src/formats/markdown.bench.ts` | Markdown's cell escaping and unescaping on their own |
 | `apps/web/src/core/document.bench.ts` | `documentFromMatrix`, `documentToMatrix`, `reconcileDocument` |
 | `apps/web/src/core/operations.bench.ts` | the pure table operations, and the timer floor |
 
@@ -90,8 +91,12 @@ judge a small change; `setCell` at 0.0017 ms is seventeen times it.
 
 ## Baseline
 
-Apple M1, 8 cores, 8 GB, macOS 26.5.2, Node v24.18.0, Vitest 4.1.10, commit
-`8de6641`, 2026-08-22. Milliseconds per call, `min` of 200 or 50 samples.
+Apple M1, 8 cores, 8 GB, macOS 26.5.2, Node v24.18.0, Vitest 4.1.10, 2026-08-22.
+Milliseconds per call, `min` of 200 or 50 samples. Every figure except the
+Markdown rows was taken at commit `8de6641`; the Markdown rows and the cell
+table below were re-taken after #263 and #264, on the same machine and in the
+same session as a run that reproduced the `8de6641` figures for every other
+codec to within noise.
 
 A figure is comparable with another figure from this same table and this same
 machine. It is not comparable with one taken on different hardware, and the
@@ -101,7 +106,7 @@ hardware is recorded here for exactly that reason.
 
 | codec | 200 plain | 200 escaped | 1000 plain | 1000 escaped |
 | --- | ---: | ---: | ---: | ---: |
-| `markdown` | 0.611 | 0.727 | 3.051 | 3.565 |
+| `markdown` | 0.114 | 0.361 | 0.565 | 1.810 |
 | `csv` | 0.118 | 0.115 | 0.582 | 0.560 |
 | `tsv` | 0.117 | 0.113 | 0.580 | 0.557 |
 | `html` | 0.217 | 0.266 | 1.102 | 1.351 |
@@ -113,7 +118,7 @@ hardware is recorded here for exactly that reason.
 
 | codec | 200 plain | 200 escaped | 1000 plain | 1000 escaped |
 | --- | ---: | ---: | ---: | ---: |
-| `markdown` | 0.580 | 0.743 | 2.894 | 3.716 |
+| `markdown` | 0.303 | 0.392 | 1.494 | 1.926 |
 | `csv` | 0.142 | 0.355 | 0.691 | 0.775 |
 | `tsv` | 0.143 | 0.355 | 0.689 | 0.775 |
 | `html` | not measured | not measured | not measured | not measured |
@@ -121,9 +126,28 @@ hardware is recorded here for exactly that reason.
 | `json` | 0.162 | 0.164 | 0.793 | 0.804 |
 | `records` | 0.333 | 0.365 | 1.615 | 1.814 |
 
-Markdown is the most expensive codec in both directions, and the only one whose
-cost is strongly shaped by the escape path. #263 and #264 own that, and both are
-written against this harness.
+Markdown is still the codec most shaped by its escape path: an escape-heavy
+table costs it three times what a plain one does to serialize, where no other
+codec moves by more than a quarter. It is no longer the most expensive codec in
+either direction. #263 and #264 brought serialize down 5.4x on plain content
+and 2.0x on escape-heavy content, and parse down 2.0x throughout.
+
+### Markdown cells
+
+`markdown.bench.ts` times one call over every cell of a 200-row table, because a
+single cell sits too close to the timer floor to read. Same machine and session;
+`before` is commit `8de6641`.
+
+| call | plain, before | plain, after | escaped, before | escaped, after |
+| --- | ---: | ---: | ---: | ---: |
+| `escapeCell` | 0.339 | 0.343 | 0.423 | 0.424 |
+| `escapeAndMeasure` | not present | 0.054 | not present | 0.306 |
+| `unescapeCell` | 0.366 | 0.081 | 0.470 | 0.126 |
+
+`escapeCell` is unchanged by design and measures unchanged, which is what makes
+the rest of the table attributable: the serializer got faster because it stopped
+measuring every cell twice and started skipping the loop for cells that need no
+escaping, not because the escaping grammar moved.
 
 ### Document
 
@@ -163,6 +187,15 @@ The first four entries are imported from #59, measured on a 200 x 4 table.
 | `textForView` re-serializes per pane | 0.069 to 0.139 ms per pane | **Disproved.** Four panes is under half a millisecond. A memo would add a cache with an invalidation rule to save nothing measurable. |
 | `buildTableActions` runs for every closed axis menu | probe body ran 0 times | **Disproved, and the mechanism was wrong.** Base UI does not render menu content while the menu is closed. The per-row cost is real but belongs to `Menu.Root` and its trigger, filed as #164. |
 | The per-keystroke data pipeline is the cost | under 0.6 ms for the four-pane worst case | **Disproved.** React rendering the grid is, by roughly 50x. |
+
+Measured since, on the fixtures above.
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| `unescapeCell` copies the rest of the cell at every character | 0.366 ms per 200-row table, 0.081 ms after | **Confirmed, and fixed in #263.** The `value.slice(index)` inside the character loop was the whole of it. A sticky regex reached from a switch on the three characters that can begin an escape removed it: 4.5x on plain cells, 3.8x on escape-heavy ones. |
+| `serializeMarkdown` measures every cell twice | 0.622 ms per 200-row table, 0.114 ms after | **Confirmed, and fixed in #264.** Escaping and measuring in one pass, plus a fast path for cells needing no escaping, is 5.4x on plain content and 2.0x on escape-heavy content. |
+| Markdown serialize grows faster than its input | 4.9x for 5x the rows, before and after | **Disproved on this harness.** The 8.6x growth reported in #264 came from the 2026-08-20 study's own fixture and does not reproduce on the fixtures here, which were already linear before the fix. The constant was the problem, not the growth. Do not reopen this without a fixture that shows it. |
+| Measuring escaped cells by `.length` would be cheaper than `string-width` | not timed; wrong for CJK, emoji, combining accents, and tabs | **Refused, not measured.** #186 chose `string-width` so those align in a monospaced editor. The fast path in #264 uses `.length` only for `U+0020` to `U+007E`, where the two provably agree, and the property tests in `markdown-fast-path.test.ts` hold it there. |
 
 Also measured in #59 and found innocent, recorded so nobody investigates them
 again: `cn()` across 1000 cells at 2 ms; CodeMirror compartment reconfiguration
