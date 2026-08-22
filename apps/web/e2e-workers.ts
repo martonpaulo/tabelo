@@ -9,9 +9,10 @@
 
 // Playwright computes its default worker count per process, with no awareness of
 // the other worktrees running their own suites on the same machine. Halving the
-// default halves the browser memory each run holds, which is what keeps three
-// parallel checkouts inside 8 GB. An agent that knows it is one of several can
-// drop further by setting the variable rather than editing this file.
+// default halves the browser memory each run holds, which is what keeps several
+// parallel checkouts inside the memory of one laptop. An agent that knows it is
+// one of several can drop further by setting the variable rather than editing
+// this file.
 const DEFAULT_WORKERS = "25%";
 
 const VARIABLE = "TABELO_E2E_WORKERS";

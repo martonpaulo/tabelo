@@ -62,8 +62,29 @@ and the mean's worst cases were single garbage-collection pauses moving a
 50-sample average by half.
 
 **Take a baseline on an idle machine, one run at a time.** Two `pnpm bench`
-processes back to back contend on an 8 GB laptop and produce figures that differ
-from each other by more than any change worth making.
+processes back to back contend for memory on a laptop and produce figures that
+differ from each other by more than any change worth making.
+
+### Name the machine, do not describe it
+
+A figure is comparable with another taken on the same machine and meaningless
+beside one from different hardware, so a baseline has to identify the machine it
+came from. It identifies it by a **label**: `Reference machine A` is whatever it
+was the last time, and the exact chip, core count, memory, and operating system
+build stay in `docs/performance.local.md`, which is deliberately untracked.
+
+This is a privacy rule, not a formatting one. A full specification published in
+a public repository is an inventory of the maintainer's hardware and operating
+system patch level, permanently attached to the name and address in every
+commit, and an operating system build number is precisely what someone shops for
+exploits with. It also buys the reader nothing: `min` on machine A compared with
+`min` on machine A is exactly as valid without it.
+
+Keep only what changes how a number is read: the processor architecture, because
+V8 generates different code for it, and the major versions of Node and Vitest.
+Not the model, not the core count, not the memory, and never the operating
+system build. When a second machine ever appears here, it becomes machine B in
+the same untracked file, and never a second specification.
 
 ### The timer floor
 
@@ -91,7 +112,7 @@ judge a small change; `setCell` at 0.0017 ms is seventeen times it.
 
 ## Baseline
 
-Apple M1, 8 cores, 8 GB, macOS 26.5.2, Node v24.18.0, Vitest 4.1.10, 2026-08-22.
+Reference machine A, an arm64 laptop, on Node 24 and Vitest 4, 2026-08-22.
 Milliseconds per call, `min` of 200 or 50 samples. Every figure except the
 Markdown rows was taken at commit `8de6641`; the Markdown rows and the cell
 table below were re-taken after #263 and #264, on the same machine and in the

@@ -56,6 +56,11 @@ dev-dist
 # Scratch space (handoffs, prototypes): see AGENTS.md
 .scratch
 
+# Local companions to a tracked document, for detail that must not be published.
+# `docs/performance.local.md` names the benchmark machines the tracked baseline
+# refers to only by label. See docs/performance.md.
+*.local.md
+
 # Misc
 *.tgz
 .cache

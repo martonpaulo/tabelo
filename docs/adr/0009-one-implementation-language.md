@@ -19,8 +19,9 @@ and it would have come back.
 **Tabelo stays in TypeScript. No WebAssembly, no second implementation
 language.**
 
-The measurement is what closes it, not a preference. Node 24.18 / V8, macOS
-arm64, a 200 x 6 table with escape-heavy cells:
+The measurement is what closes it, not a preference. Node 24 / V8 on arm64,
+reference machine A of `docs/performance.md`, a 200 x 6 table with escape-heavy
+cells:
 
 | measurement | figure |
 | --- | --- |
