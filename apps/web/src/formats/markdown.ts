@@ -63,76 +63,103 @@ export function escapeCell(value: string): string {
 	return out;
 }
 
+// Sticky, so the entity match is anchored at `lastIndex` instead of searching
+// forward, with none of the copying that matching `^` against a fresh slice of
+// the remaining cell required.
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/sticky
+const ENTITY = /&#([0-9]+);/y;
+
+// Only `&`, `\`, and `<` can begin an escape sequence, so the switch reaches
+// the right branch directly and an ordinary character falls straight to the
+// append with no test at all. A branch that matches nothing must reach that
+// same append: `break` leaves the switch, where `continue` would swallow a
+// trailing backslash or a lone `<`.
 export function unescapeCell(value: string): string {
 	let out = "";
 	for (let index = 0; index < value.length; index += 1) {
-		// Decode only the entity forms the serializer emits. Appended output is
-		// never scanned again, so literal text such as `&#32;` stays literal after
-		// its protected ampersand is restored.
-		if (value.startsWith("&amp;", index)) {
-			out += "&";
-			index += 4;
-			continue;
-		}
-		const entity = value.slice(index).match(/^&#([0-9]+);/);
-		const decimal = entity?.[1];
-		if (entity && decimal !== undefined) {
-			const codePoint = Number(decimal);
-			const decoded =
-				codePoint <= 0x10ffff && String(codePoint) === decimal
-					? String.fromCodePoint(codePoint)
-					: "";
-			if (codePoint !== 13 && /^\s$/u.test(decoded)) {
-				out += decoded;
-				index += entity[0].length - 1;
-				continue;
-			}
-		}
-		// Longest escape first, and every escaped break form before the plain
-		// backslash rule, or `\<br>` would decode as a backslash followed by a
-		// line break.
-		if (value.startsWith("\\<br />", index)) {
-			out += "<br />";
-			index += 6;
-			continue;
-		}
-		if (value.startsWith("\\<br/>", index)) {
-			out += "<br/>";
-			index += 5;
-			continue;
-		}
-		if (value.startsWith("\\<br>", index)) {
-			out += "<br>";
-			index += 4;
-			continue;
-		}
-		if (value.startsWith("\\\\", index)) {
-			out += "\\";
-			index += 1;
-			continue;
-		}
-		if (value.startsWith("\\|", index)) {
-			out += "|";
-			index += 1;
-			continue;
-		}
-		if (value.startsWith("<br />", index)) {
-			out += "\n";
-			index += 5;
-			continue;
-		}
-		if (value.startsWith("<br/>", index)) {
-			out += "\n";
-			index += 4;
-			continue;
-		}
-		if (value.startsWith("<br>", index)) {
-			out += "\n";
-			index += 3;
-			continue;
-		}
 		const char = value[index];
 		if (char === undefined) break;
+		switch (char) {
+			// Decode only the entity forms the serializer emits. Appended output
+			// is never scanned again, so literal text such as `&#32;` stays
+			// literal after its protected ampersand is restored.
+			case "&": {
+				if (value.startsWith("&amp;", index)) {
+					out += "&";
+					index += 4;
+					continue;
+				}
+				// Set on every attempt rather than trusting what the previous
+				// call left behind: the regex is shared module state, and a
+				// stale `lastIndex` after a failed match is the classic defect
+				// with this flag.
+				ENTITY.lastIndex = index;
+				const entity = ENTITY.exec(value);
+				const decimal = entity?.[1];
+				if (entity && decimal !== undefined) {
+					const codePoint = Number(decimal);
+					const decoded =
+						codePoint <= 0x10ffff && String(codePoint) === decimal
+							? String.fromCodePoint(codePoint)
+							: "";
+					if (codePoint !== 13 && /^\s$/u.test(decoded)) {
+						out += decoded;
+						index += entity[0].length - 1;
+						continue;
+					}
+				}
+				break;
+			}
+			// Longest escape first, and every escaped break form before the
+			// plain backslash rule, or `\<br>` would decode as a backslash
+			// followed by a line break.
+			case "\\": {
+				if (value.startsWith("\\<br />", index)) {
+					out += "<br />";
+					index += 6;
+					continue;
+				}
+				if (value.startsWith("\\<br/>", index)) {
+					out += "<br/>";
+					index += 5;
+					continue;
+				}
+				if (value.startsWith("\\<br>", index)) {
+					out += "<br>";
+					index += 4;
+					continue;
+				}
+				if (value.startsWith("\\\\", index)) {
+					out += "\\";
+					index += 1;
+					continue;
+				}
+				if (value.startsWith("\\|", index)) {
+					out += "|";
+					index += 1;
+					continue;
+				}
+				break;
+			}
+			case "<": {
+				if (value.startsWith("<br />", index)) {
+					out += "\n";
+					index += 5;
+					continue;
+				}
+				if (value.startsWith("<br/>", index)) {
+					out += "\n";
+					index += 4;
+					continue;
+				}
+				if (value.startsWith("<br>", index)) {
+					out += "\n";
+					index += 3;
+					continue;
+				}
+				break;
+			}
+		}
 		out += char;
 	}
 	return out;
