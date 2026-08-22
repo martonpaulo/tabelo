@@ -54,6 +54,16 @@ async function counts(pane: Locator): Promise<[number, number]> {
 	return [Number(numbers[0]), Number(numbers[1])];
 }
 
+// The summary is React state rendered after CodeMirror applies the press, so a
+// single read can land on the previous count. Polling waits for the state the
+// press produces instead of for a duration.
+function expectCounts(
+	pane: Locator,
+	expected: [number, number],
+): Promise<void> {
+	return expect.poll(() => counts(pane)).toEqual(expected);
+}
+
 async function seed(tabelo: TabeloPage): Promise<Locator> {
 	const editor = tabelo.source("markdown");
 	await editor.fill(TABLE);
@@ -87,7 +97,7 @@ test("a first press keeps the selection and adds the next occurrence", async ({
 
 	await editor.press("ControlOrMeta+d");
 
-	expect(await counts(tabelo.pane("markdown"))).toEqual([2, 3]);
+	await expectCounts(tabelo.pane("markdown"), [2, 3]);
 	await expect(editor).toBeFocused();
 });
 
@@ -99,14 +109,14 @@ test("repeated presses add one occurrence at a time and then stop", async ({
 	await selectRange(editor, 3, CITY_COLUMN, RIO);
 
 	await editor.press("ControlOrMeta+d");
-	expect(await counts(pane)).toEqual([2, 3]);
+	await expectCounts(pane, [2, 3]);
 	await editor.press("ControlOrMeta+d");
-	expect(await counts(pane)).toEqual([3, 3]);
+	await expectCounts(pane, [3, 3]);
 
 	// Every match is selected, so the command has nothing left to add. It must
 	// stop rather than cycle, and "Riobamba" is not a match for a whole word.
 	await editor.press("ControlOrMeta+d");
-	expect(await counts(pane)).toEqual([3, 3]);
+	await expectCounts(pane, [3, 3]);
 });
 
 test("a selection that is not a whole word matches inside longer words", async ({
@@ -119,33 +129,44 @@ test("a selection that is not a whole word matches inside longer words", async (
 	await selectRange(editor, 3, CITY_COLUMN + 1, 2);
 
 	await editor.press("ControlOrMeta+d");
-	expect(await counts(pane)).toEqual([2, 4]);
+	await expectCounts(pane, [2, 4]);
 });
 
 test("the newest occurrence becomes the primary selection", async ({
 	tabelo,
 }) => {
 	const editor = await seed(tabelo);
+	const pane = tabelo.pane("markdown");
 	await selectRange(editor, 3, CITY_COLUMN, RIO);
 	await editor.press("ControlOrMeta+d");
+	await expectCounts(pane, [2, 3]);
 
 	// Occurrences are gathered downwards through the document, so the range the
 	// press just added is the lowest one on screen. Which cursor is drawn lower
 	// is a direction, not a measurement: the assertion is that the primary
 	// cursor followed the new range rather than staying on the original.
-	const pane = tabelo.pane("markdown");
-	const primary = await cursorTop(pane.locator(".cm-cursor-primary").first());
-	const secondary = await cursorTop(
-		pane.locator(".cm-cursor-secondary").first(),
-	);
-	expect(primary).toBeGreaterThan(secondary);
+	//
+	// The count above proves the command ran; the cursor layer is CodeMirror's
+	// own repaint and can still land after it, so both cursors are read together
+	// and retried. A single read under load can catch them coincident on the
+	// pre-update layout, which reads as no direction at all.
+	await expect.poll(() => cursorDrop(pane)).toBeGreaterThan(0);
 	await expect(editor).toBeFocused();
 });
 
-async function cursorTop(cursor: Locator): Promise<number> {
-	const box = await cursor.boundingBox();
-	if (!box) throw new Error("cursor is not drawn");
-	return box.y;
+// How far the primary cursor sits below the first secondary one. Null while
+// either is undrawn, so the poll retries rather than deciding on half a layout.
+async function cursorDrop(pane: Locator): Promise<number | null> {
+	const primary = await pane
+		.locator(".cm-cursor-primary")
+		.first()
+		.boundingBox();
+	const secondary = await pane
+		.locator(".cm-cursor-secondary")
+		.first()
+		.boundingBox();
+	if (!primary || !secondary) return null;
+	return primary.y - secondary.y;
 }
 
 test("typing replaces every selected occurrence and one undo restores them", async ({
@@ -203,7 +224,7 @@ test("the summary clears when the selection collapses", async ({ tabelo }) => {
 	const pane = tabelo.pane("markdown");
 	await selectRange(editor, 3, CITY_COLUMN, RIO);
 	await editor.press("ControlOrMeta+d");
-	expect(await counts(pane)).toEqual([2, 3]);
+	await expectCounts(pane, [2, 3]);
 
 	await editor.press("ArrowRight");
 	await expect(summary(pane)).toHaveCount(0);
@@ -213,7 +234,7 @@ test("the summary clears when the pane changes view", async ({ tabelo }) => {
 	const editor = await seed(tabelo);
 	await selectRange(editor, 3, CITY_COLUMN, RIO);
 	await editor.press("ControlOrMeta+d");
-	expect(await counts(tabelo.pane("markdown"))).toEqual([2, 3]);
+	await expectCounts(tabelo.pane("markdown"), [2, 3]);
 
 	await tabelo.choosePaneView("markdown", "csv");
 	await expect(summary(tabelo.pane("csv"))).toHaveCount(0);
