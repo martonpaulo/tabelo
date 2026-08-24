@@ -525,7 +525,11 @@ owns it: the floating surface, one shadow, the `--line-floating` boundary, the
 clipped triangular pointer (§6). A tooltip explains its trigger and never
 carries the only copy of something the user needs, because it is transient and
 because pointer-only affordances fail §9. Every tooltip opens on keyboard focus
-as well as hover.
+as well as hover. When it explains why a control is unavailable, the tooltip is
+the visual echo of a persistent accessible description on the control. The
+shared disabled-tooltip pattern keeps an `sr-only` copy mounted and associates
+the control with it through `aria-describedby`; the transient popup is never
+the description's only owner.
 
 No tooltip picks its own side. The primitive's placement flips when the
 preferred side does not fit, and hard-coding a side is how one tooltip ends up

@@ -187,9 +187,13 @@ test("the cell menu exposes explicit conversions and disables invalid ones", asy
 		name: new RegExp(copy.cellTypes.real.boolean, "i"),
 	});
 	await expect(booleanOption).toBeDisabled();
+	await expect(booleanOption).toHaveAccessibleDescription(/\S/);
 	await booleanOption.hover();
 	const tooltip = page.getByRole("tooltip");
 	await expect(tooltip).toBeVisible();
+	await expect(booleanOption).toHaveAccessibleDescription(
+		(await tooltip.innerText()).trim(),
+	);
 	await page.keyboard.press("Escape");
 	await tooltip.waitFor({ state: "hidden" });
 	await page.keyboard.press("Escape");
