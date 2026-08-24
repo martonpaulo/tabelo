@@ -12,6 +12,8 @@
 		"build": "pnpm -r build",
 		"check-types": "pnpm -r check-types",
 		"test": "pnpm -r test",
+		"test:property": "pnpm --filter web run test:property",
+		"test:unit": "pnpm --filter web run test:unit",
 		"test:watch": "pnpm --filter web run test:watch",
 		"test:e2e": "pnpm --filter web run test:e2e --project=chromium",
 		"test:e2e:failed": "pnpm --filter web run test:e2e --project=chromium --last-failed",

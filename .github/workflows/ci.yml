@@ -27,6 +27,7 @@ env:
   GIT_CONFIG_COUNT: 1
   GIT_CONFIG_KEY_0: init.defaultBranch
   GIT_CONFIG_VALUE_0: main
+  TESTS_PER_SHARD: 250
 
 # Cancel superseded CI runs on the same ref so redundant lint and test work
 # stops as soon as a newer commit arrives.
@@ -47,16 +48,16 @@ jobs:
       pull-requests: read
     outputs:
       run_e2e: ${{ steps.classify.outputs.run_e2e }}
-      e2e_matrix: ${{ steps.classify.outputs.e2e_matrix }}
+      e2e_matrix: ${{ steps.e2e_matrix.outputs.e2e_matrix }}
     steps:
-      - name: Classify changes and determine matrix
+      - name: Classify changes
         id: classify
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
             echo "run_e2e=true" >> "$GITHUB_OUTPUT"
-            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":2,"test_args":""},{"project":"chromium","shard":2,"shard_total":2,"test_args":""}]}' >> "$GITHUB_OUTPUT"
+            echo "test_args=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -67,7 +68,7 @@ jobs:
 
           if [ ! -s "$RUNNER_TEMP/changed_files.txt" ]; then
             echo "run_e2e=true" >> "$GITHUB_OUTPUT"
-            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":1,"test_args":""}]}' >> "$GITHUB_OUTPUT"
+            echo "test_args=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -96,6 +97,7 @@ jobs:
             fi
 
             if [[ "$file" =~ \.test\.tsx?$ ]] || \
+               [[ "$file" =~ \.bench\.tsx?$ ]] || \
                [[ "$file" == "biome.json" ]] || \
                [[ "$file" =~ (^|/)vitest\..*\.ts$ ]] || \
                [[ "$file" =~ (^|/)fixtures/ ]]; then
@@ -118,16 +120,16 @@ jobs:
 
           if [ $LEVEL -eq 5 ]; then
             echo "run_e2e=true" >> "$GITHUB_OUTPUT"
-            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":2,"test_args":""},{"project":"chromium","shard":2,"shard_total":2,"test_args":""}]}' >> "$GITHUB_OUTPUT"
+            echo "test_args=" >> "$GITHUB_OUTPUT"
           elif [ $LEVEL -eq 4 ]; then
             echo "run_e2e=true" >> "$GITHUB_OUTPUT"
-            echo 'e2e_matrix={"include":[{"project":"chromium","shard":1,"shard_total":1,"test_args":""}]}' >> "$GITHUB_OUTPUT"
+            echo "test_args=" >> "$GITHUB_OUTPUT"
           elif [ $LEVEL -eq 3 ]; then
             echo "run_e2e=true" >> "$GITHUB_OUTPUT"
-            echo "e2e_matrix={\"include\":[{\"project\":\"chromium\",\"shard\":1,\"shard_total\":1,\"test_args\":\"$LEVEL3_TEST_ARGS\"}]}" >> "$GITHUB_OUTPUT"
+            echo "test_args=$LEVEL3_TEST_ARGS" >> "$GITHUB_OUTPUT"
           else
             echo "run_e2e=false" >> "$GITHUB_OUTPUT"
-            echo 'e2e_matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            echo "test_args=" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/checkout@v7
@@ -140,6 +142,39 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Count selected browser tests and determine matrix
+        id: e2e_matrix
+        env:
+          TEST_ARGS: ${{ steps.classify.outputs.test_args }}
+        run: |
+          if [[ "${{ steps.classify.outputs.run_e2e }}" != "true" ]]; then
+            echo 'e2e_matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          PLAYWRIGHT_JSON_OUTPUT_NAME="$RUNNER_TEMP/playwright-list.json" \
+            pnpm --filter web exec playwright test $TEST_ARGS \
+              --project=chromium --list --reporter=json
+
+          jq -e '.errors | length == 0' "$RUNNER_TEMP/playwright-list.json" \
+            > /dev/null
+          TEST_COUNT=$(jq '[.. | objects | select(has("tests")) | .tests[]?] | length' \
+            "$RUNNER_TEMP/playwright-list.json")
+          if [ "$TEST_COUNT" -eq 0 ]; then
+            echo "No browser tests matched the selected scope." >&2
+            exit 1
+          fi
+
+          SHARD_TOTAL=$(( (TEST_COUNT + TESTS_PER_SHARD - 1) / TESTS_PER_SHARD ))
+          MATRIX=$(jq -cn \
+            --arg project "chromium" \
+            --arg test_args "$TEST_ARGS" \
+            --argjson shard_total "$SHARD_TOTAL" \
+            '{include: [range(1; $shard_total + 1) as $shard | {project: $project, shard: $shard, shard_total: $shard_total, test_args: $test_args}]}')
+
+          echo "Selected $TEST_COUNT browser tests across $SHARD_TOTAL shard(s), with a limit of $TESTS_PER_SHARD tests per shard."
+          echo "e2e_matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
       - name: Lint and format check
         run: pnpm lint
