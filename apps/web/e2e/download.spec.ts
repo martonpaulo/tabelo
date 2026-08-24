@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { listCodecs } from "@/formats";
 import { expect, test } from "./fixtures";
+import { renderedSource } from "./helpers";
 
 // Downloading is a choice, so it is a chooser. The user chooses the format and,
 // only where the format declares an option, how the file should be written. The header row is
@@ -126,13 +127,7 @@ test("source edits preserve whitespace and adjacent Jira escapes in CSV", async 
 
 	await tabelo.choosePaneView("markdown", "jira");
 	const jiraSource = "||Name||\n|  start\\\\&#92;end  |";
-	await expect
-		.poll(() =>
-			tabelo
-				.source("jira")
-				.evaluate((element) => (element as HTMLElement).innerText),
-		)
-		.toBe(jiraSource);
+	await expect.poll(() => renderedSource(tabelo.pane("jira"))).toBe(jiraSource);
 	await tabelo.source("jira").fill(jiraSource);
 	await expect.poll(() => tabelo.cell(1, 1).textContent()).toBe(value);
 
