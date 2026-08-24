@@ -1226,6 +1226,13 @@ Lucide only, `size-4` inside `control-md` and `size-3.5` inside `control-sm`.
 All Lucide icons use the shared 1.5 stroke weight. Always `aria-hidden`, because
 the accessible name comes from the button.
 
+Directional glyphs are shared by three different table operations, so each one
+takes its own family and no two of them may collapse back onto the plain arrow:
+insert lands against a boundary line (`ArrowUpToLine` and its three siblings),
+move is the long-stemmed `MoveUp` family, and fill keeps the plain `ArrowUp`
+family it drags along. The four directions of a family are chosen as a set, not
+one at a time.
+
 Icon-only buttons are limited to the globally stable floating action trigger,
 the grid's per-row and per-column affordances, and the pane header's actions
 chevron, where a label would not fit. The pane chevron earns the exemption
