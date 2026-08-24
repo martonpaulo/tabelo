@@ -284,7 +284,10 @@ Prefer the smallest relevant check.
   `node_modules` it cannot load the Vite, Vitest, and Playwright configuration
   and every test file turns into a false positive. Advisory and deliberately
   not in CI: run it when removing code or changing a manifest
-- `pnpm test`: unit tests, `pnpm test:watch` to re-run on change
+- `pnpm test`: the complete Vitest gate. `pnpm test:unit` runs ordinary unit
+  files with the default timeout, and `pnpm test:property` runs the generated
+  invariant files with their explicit budget. `pnpm test:watch` re-runs on
+  change. `docs/testing.md` owns the suite boundaries and measured baseline
 - `pnpm test:e2e`: the Playwright suite in Chromium. It builds and serves the
   app itself, so it needs no running dev server. First run only:
   `pnpm test:e2e:install`. Iterate with `pnpm test:e2e:changed` after an edit
@@ -323,11 +326,11 @@ changed path: unit tests, fixtures, and unit-test tooling need no browser run;
 product identity and interface copy run the Chromium smoke suite; the global
 stylesheet runs the smoke and visual-system suites; all other application
 changes and unknown paths run the full Chromium suite; workflow or Playwright
-configuration runs that same suite sharded across two runners, which is what
-proves sharding still works when the harness itself changed. Pushes to `main`
-and manual runs also use that sharded matrix. Renames classify both the old and
-new path, so moving a file cannot reduce coverage. Mixed changes always use the
-highest applicable level.
+configuration runs that same full suite. The Check job counts the selected
+tests and derives the shard matrix from the cap recorded in `docs/testing.md`,
+so application changes, harness changes, pushes to `main`, and manual runs use
+one mechanism. Renames classify both the old and new path, so moving a file
+cannot reduce coverage. Mixed changes always use the highest applicable level.
 
 Never claim a check passed unless it ran successfully.
 
@@ -400,6 +403,7 @@ preference to exercise per task.
 - Sample people for fixtures, examples, and manual checks:
   `apps/web/src/core/sample-data.ts`
 - Performance method, baseline, and answered suspicions: `docs/performance.md`
+- Testing strategy, execution budgets, and baseline: `docs/testing.md`
 - ADRs: `docs/adr/`
 - Research notes: `docs/research/` (create only when persisting research)
 - Handoffs: `.scratch/handoffs/`
