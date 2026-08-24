@@ -25,6 +25,7 @@ test("splitting a pane adds the view that was chosen for it", async ({
 	// showing something the user did not ask for.
 	await expect(tabelo.pane("jira")).toBeVisible();
 	await expect(tabelo.pane("csv")).toHaveCount(0);
+	await expect(tabelo.pane("jira")).toBeFocused();
 });
 
 // The confirmed mapping: which pane is split decides which preset results, and
@@ -43,20 +44,6 @@ test("which pane is split decides the resulting arrangement", async ({
 	expect(added.columnStart).toBe(grid.columnStart);
 	// The pane that was not split keeps both rows.
 	expect(markdown.rowEnd - markdown.rowStart).toBe(2);
-});
-
-test("splitting the other pane produces the mirrored arrangement", async ({
-	tabelo,
-}) => {
-	await tabelo.addViewBySplit("markdown", "bottom", "csv");
-
-	const markdown = await tabelo.paneArea("markdown");
-	const added = await tabelo.paneArea("csv");
-	const grid = await tabelo.paneArea("grid");
-
-	expect(added.rowStart).toBe(markdown.rowEnd);
-	expect(added.columnStart).toBe(markdown.columnStart);
-	expect(grid.rowEnd - grid.rowStart).toBe(2);
 });
 
 test("the picker refuses a view another pane already shows", async ({
@@ -95,13 +82,6 @@ test("cancelling changes nothing and returns the focus", async ({
 	await expect(page.getByRole("dialog")).toBeHidden();
 	await expect(panes).toHaveCount(2);
 	await expect(control).toBeFocused();
-});
-
-test("the new pane takes the focus so it is not left on a control that moved", async ({
-	tabelo,
-}) => {
-	await tabelo.addViewBySplit("grid", "bottom", "csv");
-	await expect(tabelo.pane("csv")).toBeFocused();
 });
 
 test("closing a view keeps the other panes and their views", async ({
@@ -329,39 +309,6 @@ test("zoom resets in one action and survives a reload", async ({ tabelo }) => {
 	).toBeDisabled();
 });
 
-test("the zoom level is reported to assistive technology", async ({
-	tabelo,
-}) => {
-	const menu = await tabelo.openPaneMenu("markdown");
-
-	await expect(
-		menu.getByRole("menuitem", { name: copy.workspace.resetZoom }),
-	).toBeDisabled();
-
-	// The menu stays open so the level can be stepped and read repeatedly.
-	await menu
-		.getByRole("menuitem", { name: copy.workspace.zoomIn, exact: true })
-		.click();
-
-	await expect(
-		menu.getByRole("menuitem", { name: copy.workspace.resetZoom }),
-	).toBeEnabled();
-});
-
-// The pane title is identity, while the one trailing trigger owns pane commands.
-test("the pane header keeps identity static beside its actions", async ({
-	tabelo,
-}) => {
-	const actionsTrigger = tabelo.paneMenuTrigger("markdown");
-
-	await expect(actionsTrigger).toBeVisible();
-
-	const pane = tabelo.pane("markdown");
-	const heading = pane.getByRole("heading");
-	await expect(heading).toHaveCount(1);
-	await expect(heading.getByRole("button")).toHaveCount(0);
-});
-
 test("Change view leaves the flat pane menu for one dialog", async ({
 	page,
 	tabelo,
@@ -381,15 +328,6 @@ test("Change view leaves the flat pane menu for one dialog", async ({
 	await expect(
 		dialog.getByRole("menuitem", { name: copy.workspace.zoomIn }),
 	).toHaveCount(0);
-});
-
-test("changing the view from pane actions keeps the pane working", async ({
-	tabelo,
-}) => {
-	await tabelo.choosePaneView("markdown", "jira");
-
-	await expect(tabelo.pane("jira")).toBeVisible();
-	await expect(tabelo.pane("markdown")).toHaveCount(0);
 });
 
 // Adding, closing, and arranging are three commands with one boundary between

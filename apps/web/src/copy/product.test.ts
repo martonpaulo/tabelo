@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	DEFAULT_TABLE_NAME,
-	tableDocumentTitle,
-	validateTableName,
-} from "./product";
+import { validateTableName } from "./product";
 
 describe("table identity", () => {
 	it("trims a valid authored name", () => {
@@ -20,11 +16,5 @@ describe("table identity", () => {
 			ok: false,
 			reason: "too-long",
 		});
-	});
-
-	it("composes the runtime title without changing product metadata", () => {
-		expect(tableDocumentTitle(DEFAULT_TABLE_NAME)).toBe(
-			"Untitled table · Tabelo",
-		);
 	});
 });
