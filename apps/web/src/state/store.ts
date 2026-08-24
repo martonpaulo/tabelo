@@ -115,6 +115,7 @@ import {
 	firstPaneId,
 	type LayoutId,
 	movePane as moveWorkspacePane,
+	type PinnedGridAxis,
 	paneCount,
 	type SplitOption,
 	smallerLayout,
@@ -297,6 +298,7 @@ export interface TabeloState {
 	setPaneZoom: (paneId: string, zoom: number) => void;
 	setPaneWrap: (paneId: string, wrap: boolean) => void;
 	toggleColumnWrap: (columnId: string) => void;
+	setPinnedAxis: (axis: PinnedGridAxis, pinned: boolean) => void;
 	setColumnRatio: (ratio: number) => void;
 	setRowRatio: (ratio: number) => void;
 
@@ -1119,6 +1121,16 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 						: [...state.workspace.wrappedColumns, columnId],
 				},
 			};
+		}),
+
+	// Pinning is a workspace display preference like wrapping above it: it never
+	// touches the document, so it consumes no history step and reaches no codec.
+	setPinnedAxis: (axis, pinned) =>
+		set((state) => {
+			const key =
+				axis === "row" ? "pinFirstDataRow" : ("pinFirstDataColumn" as const);
+			if (state.workspace[key] === pinned) return state;
+			return { workspace: { ...state.workspace, [key]: pinned } };
 		}),
 
 	setColumnRatio: (ratio) =>

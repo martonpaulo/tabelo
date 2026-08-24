@@ -7,6 +7,7 @@ import v4 from "./fixtures/v4.json";
 import v5 from "./fixtures/v5.json";
 import v6 from "./fixtures/v6.json";
 import v7 from "./fixtures/v7.json";
+import v8 from "./fixtures/v8.json";
 import { CURRENT_VERSION, validatePersistedState } from "./schema";
 
 const document = {
@@ -32,6 +33,8 @@ function payload(overrides: Record<string, unknown> = {}) {
 			rowRatio: 0.5,
 			activePaneId: "ac",
 			columnWidths: {},
+			pinFirstDataRow: false,
+			pinFirstDataColumn: false,
 		},
 		draft: null,
 		...overrides,
@@ -64,6 +67,46 @@ describe("loading a stored payload", () => {
 			false,
 			false,
 		]);
+	});
+
+	it("carries both pinned axes through the current workspace schema", () => {
+		const workspace = payload().workspace;
+		const outcome = validatePersistedState(
+			payload({
+				workspace: {
+					...workspace,
+					pinFirstDataRow: true,
+					pinFirstDataColumn: true,
+				},
+			}),
+		);
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.workspace.pinFirstDataRow).toBe(true);
+		expect(outcome.state.workspace.pinFirstDataColumn).toBe(true);
+	});
+
+	// Unlike per-column wrapping and pane wrapping, these two carry no schema
+	// default: the migration below supplies them for every older payload, so a
+	// current payload that omits them was not written by Tabelo.
+	it("refuses a current payload missing a pinned axis", () => {
+		const workspace = payload().workspace;
+		const { pinFirstDataColumn: _omitted, ...withoutPin } = workspace;
+
+		expect(validatePersistedState(payload({ workspace: withoutPin }))).toEqual({
+			status: "unreadable",
+			reason: "current-schema-invalid",
+		});
+	});
+
+	it("leaves a migrated v7 table unpinned", () => {
+		const outcome = validatePersistedState(v7);
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.workspace.pinFirstDataRow).toBe(false);
+		expect(outcome.state.workspace.pinFirstDataColumn).toBe(false);
 	});
 
 	it("preserves per-column wrapping in the current workspace schema", () => {
@@ -115,6 +158,7 @@ describe("loading a stored payload", () => {
 		["v5", v5],
 		["v6", v6],
 		["v7", v7],
+		["v8", v8],
 	] as const)(
 		"loads the stored %s fixture as current state",
 		(_name, fixture) => {

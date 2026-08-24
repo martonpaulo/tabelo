@@ -349,6 +349,61 @@ describe("column wrapping preference", () => {
 	});
 });
 
+describe("pinned axis preferences", () => {
+	it("starts unpinned on both axes", () => {
+		expect(workspace().pinFirstDataRow).toBe(false);
+		expect(workspace().pinFirstDataColumn).toBe(false);
+	});
+
+	it.each(["row", "column"] as const)(
+		"pins the first data %s without touching the document or history",
+		(axis) => {
+			const before = useTabeloStore.getState();
+			const key = axis === "row" ? "pinFirstDataRow" : "pinFirstDataColumn";
+			const other = axis === "row" ? "pinFirstDataColumn" : "pinFirstDataRow";
+
+			before.setPinnedAxis(axis, true);
+
+			let current = useTabeloStore.getState();
+			expect(current.workspace[key]).toBe(true);
+			// The axes are independent: pinning one says nothing about the other.
+			expect(current.workspace[other]).toBe(false);
+			expect(current.document).toBe(before.document);
+			expect(current.past).toBe(before.past);
+			expect(current.future).toBe(before.future);
+
+			current.setPinnedAxis(axis, false);
+			current = useTabeloStore.getState();
+			expect(current.workspace[key]).toBe(false);
+			expect(current.past).toBe(before.past);
+		},
+	);
+
+	it("keeps the preference through a document that is too small to pin", () => {
+		const store = useTabeloStore.getState();
+		store.setPinnedAxis("row", true);
+		store.setPinnedAxis("column", true);
+
+		const current = useTabeloStore.getState();
+		current.applyDocument({
+			columns: [required(current.document.columns[0])],
+			rows: [required(current.document.rows[0])],
+		});
+
+		const after = workspace();
+		expect(after.pinFirstDataRow).toBe(true);
+		expect(after.pinFirstDataColumn).toBe(true);
+	});
+
+	it("does not replace the workspace when the value is unchanged", () => {
+		const before = workspace();
+
+		useTabeloStore.getState().setPinnedAxis("row", false);
+
+		expect(workspace()).toBe(before);
+	});
+});
+
 describe("column width preference", () => {
 	it("uses stable ids, stays outside history, and prunes deleted columns", () => {
 		const before = useTabeloStore.getState();
