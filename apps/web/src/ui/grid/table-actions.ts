@@ -220,6 +220,7 @@ export function buildTableActions(
 		insert.push(
 			{
 				id: "row-above",
+				shortcut: copy.shortcuts.addRowAbove,
 				label: copy.actions.insertRowsAbove(insertCount),
 				icon: ArrowUpToLine,
 				disabled: severalAreas,
@@ -228,6 +229,7 @@ export function buildTableActions(
 			},
 			{
 				id: "row-below",
+				shortcut: copy.shortcuts.addRowBelow,
 				label: copy.actions.insertRowsBelow(insertCount),
 				icon: ArrowDownToLine,
 				disabled: severalAreas,
@@ -240,6 +242,7 @@ export function buildTableActions(
 		insert.push(
 			{
 				id: "column-left",
+				shortcut: copy.shortcuts.addColumnLeft,
 				label: copy.actions.insertColumnsLeft(columnCount),
 				icon: ArrowLeftToLine,
 				disabled: severalAreas,
@@ -248,6 +251,7 @@ export function buildTableActions(
 			},
 			{
 				id: "column-right",
+				shortcut: copy.shortcuts.addColumnRight,
 				label: copy.actions.insertColumnsRight(columnCount),
 				icon: ArrowRightToLine,
 				disabled: severalAreas,

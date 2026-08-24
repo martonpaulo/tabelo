@@ -1417,7 +1417,9 @@ container, so the arrow keys still work.
 | :--- | :--- |
 | Arrows | Move the focused cell. They stop at the edges and never leave the grid |
 | `Shift`+Arrows | Extend the active area from its anchor |
-| `Mod`+Arrows | Move the focused cell without discarding the areas already selected |
+| `Mod`+Arrows | Jump to the edge of the data along that axis |
+| `Mod`+`Shift`+Arrows | Extend the active area to that same edge |
+| `Mod`+`Alt`+`Shift`+Arrows | Move the focused cell without discarding the areas already selected |
 | `Alt`+Arrows | Reorder one contiguous row or column block. A header-touching selection cannot move rows; several areas never collapse into one |
 | `Mod`+`Alt`+Arrows | Repeat one contiguous data-cell selection into one more row or column in the requested direction |
 | `Alt`+`Shift`+Left / Right | Narrow or widen the focused column without reordering it |
@@ -1431,8 +1433,41 @@ container, so the arrow keys still work.
 | `Backspace` | Clear the contents of the selection |
 | `Mod`+`Backspace` | Remove the selected rows or columns |
 | `Mod`+`Enter` | Add a row below |
+| `Mod`+`Shift`+`Enter` | Add a row above |
+| `Mod`+`Alt`+`Enter` | Add a column after |
+| `Mod`+`Alt`+`Shift`+`Enter` | Add a column before |
 | `Mod`+`F` | Open the find bar and put the caret in it. Taken from the browser deliberately: its own find searches the rendered chrome rather than the table |
 | Any printable character | Replace the cell and start editing |
+
+**A jump reads what the grid shows, and follows one rule on both axes.** When
+the next cell continues the non-empty run the focus is already in, the target
+is that run's far edge; otherwise the jump crosses the gap to the next cell
+holding something; and when nothing holds anything in that direction, it lands
+on the table's own edge. Only empty versus non-empty participates, and empty
+means what the cell draws as empty, so a stored `null` and an empty string
+behave alike. Nothing here reads a type out of text: see `docs/adr/0008`.
+
+Vertically the header row is a structural endpoint rather than the first row of
+data. An upward jump lands on it once the data above runs out, and a downward
+jump from it begins at the first data row rather than treating the column's
+name as the start of a run. Horizontally the header row is an ordinary line and
+its names are walked like any other row's values.
+
+**The four insert chords are one reversible matrix**, so learning one teaches
+the rest: the modifier inserts, `Shift` flips which side of the selection the
+new line lands on, and `Alt` switches the axis from rows to columns. Each one
+ends in the same store action as the matching insert menu item, and each menu
+item shows its key.
+
+Moving the focus while keeping several selected areas is the one long chord in
+the table, and it is long because every shorter arrow chord is spent:
+`Alt` reorders, `Mod`+`Alt` fills, `Alt`+`Shift` sets column width, and the
+jump above took `Mod`. It is kept rather than dropped because it is what makes
+a second column reachable at all: `Ctrl`+`Space` adds the column the focus is
+in, and without a move that preserves the areas already selected, every way to
+reach the next column discards them. Multi-area selection would become
+pointer-only, which is exactly what the rule above forbids. `Alt`+`Shift` is
+therefore column width only when the modifier is absent.
 
 The two `Space` chords are the one place the key table names `Ctrl` rather than
 `Mod`. Both modifiers count as the modifier everywhere, but macOS keeps

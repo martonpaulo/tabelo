@@ -748,7 +748,12 @@ export const copy = {
 		find: "Mod+F",
 		undo: "Mod+Z",
 		redo: "Mod+Shift+Z",
-		addRow: "Mod+Enter",
+		// The four insert actions form one reversible matrix: Shift flips the
+		// side, Alt switches the axis from rows to columns.
+		addRowBelow: "Mod+Enter",
+		addRowAbove: "Mod+Shift+Enter",
+		addColumnRight: "Mod+Alt+Enter",
+		addColumnLeft: "Mod+Alt+Shift+Enter",
 		edit: "Enter",
 		clear: "Backspace",
 		deleteStructure: "Mod+Backspace",
