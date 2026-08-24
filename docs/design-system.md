@@ -1228,10 +1228,12 @@ revealed by edge hover or keyboard focus, never by hovering the pane body.
 The floating trigger has a stable accessible name, and every command inside its
 menu keeps a visible label. It displays the project mark rather than a generic
 menu glyph. The mark is a small table grid whose blue header row and two active
-centre cells form a compact T. `logo.svg` is the transparent, theme-adaptive
-browser and interface source; `logo-maskable.svg` supplies a full blue field
-and safe-area geometry for generated installable icons. Both must remain
-legible at 1rem, use only product tokens, and keep the grid silhouette intact.
+centre cells form a compact T. `logo.svg` is the browser and interface source:
+its rounded grid interior is an opaque dark surface, while the padding outside
+that silhouette stays transparent. It uses one fixed palette in every browser
+theme. `logo-maskable.svg` supplies a full blue field and safe-area geometry
+for generated installable icons. Both must remain legible at 1rem, use only
+product colours, and keep the grid silhouette intact.
 
 ---
 

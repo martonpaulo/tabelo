@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
 	<title>Tabelo installable app icon</title>
 	<rect width="64" height="64" rx="12" fill="#0f6cbd" />
-  <path fill="#ffffff" fill-opacity="0.28" d="M14 14h36v10H14zM26 26h12v11H26zM26 39h12v11H26z" />
+  <path fill="#ffffff" fill-opacity="0.55" d="M14 14h36v10H14zM26 26h12v11H26zM26 39h12v11H26z" />
   <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
     <rect x="12" y="12" width="40" height="40" rx="6" />
     <path d="M12 25h40M12 38h40M25 12v40M39 12v40" />
