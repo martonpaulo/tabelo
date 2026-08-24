@@ -6,6 +6,7 @@ import v3 from "./fixtures/v3.json";
 import v4 from "./fixtures/v4.json";
 import v5 from "./fixtures/v5.json";
 import v6 from "./fixtures/v6.json";
+import v7 from "./fixtures/v7.json";
 import {
 	type MigrationRegistry,
 	migrationRegistry,
@@ -137,12 +138,35 @@ describe("adjacent persistence migrations", () => {
 		});
 	});
 
-	it("runs the oldest fixture through the complete chain", () => {
-		const result = runMigrationChain(v1, 1, 7, migrationRegistry);
+	it("leaves every v7 table unpinned without touching its workspace", () => {
+		const result = runMigrationChain(v7, 7, 8, migrationRegistry);
 
 		expect(result).toMatchObject({
 			ok: true,
-			value: { version: 7, name: "Untitled table", draft: null },
+			value: {
+				version: 8,
+				name: v7.name,
+				workspace: {
+					pinFirstDataRow: false,
+					pinFirstDataColumn: false,
+					columnWidths: v7.workspace.columnWidths,
+					activePaneId: v7.workspace.activePaneId,
+				},
+			},
+		});
+	});
+
+	it("runs the oldest fixture through the complete chain", () => {
+		const result = runMigrationChain(v1, 1, 8, migrationRegistry);
+
+		expect(result).toMatchObject({
+			ok: true,
+			value: {
+				version: 8,
+				name: "Untitled table",
+				draft: null,
+				workspace: { pinFirstDataRow: false, pinFirstDataColumn: false },
+			},
 		});
 	});
 });

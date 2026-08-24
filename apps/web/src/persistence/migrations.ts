@@ -11,6 +11,7 @@ import {
 	persistedStateV4Schema,
 	persistedStateV5Schema,
 	persistedStateV6Schema,
+	persistedStateV7Schema,
 } from "./versions";
 
 export interface MigrationStep {
@@ -149,6 +150,23 @@ function migrateV6ToV7(input: unknown): unknown {
 	return { ...source, version: 7, name: DEFAULT_TABLE_NAME };
 }
 
+// Version 8 lets the grid pin its first data row and first data column. Both
+// start off: pinning is something the user asks for, and turning it on for a
+// table the user never pinned would change how their saved table looks on the
+// next load.
+function migrateV7ToV8(input: unknown): unknown {
+	const source = input as z.infer<typeof persistedStateV7Schema>;
+	return {
+		...source,
+		version: 8,
+		workspace: {
+			...source.workspace,
+			pinFirstDataRow: false,
+			pinFirstDataColumn: false,
+		},
+	};
+}
+
 export const migrationRegistry: MigrationRegistry = {
 	1: {
 		source: persistedStateV1Schema,
@@ -177,8 +195,13 @@ export const migrationRegistry: MigrationRegistry = {
 	},
 	6: {
 		source: persistedStateV6Schema,
-		target: persistedStateSchema,
+		target: persistedStateV7Schema,
 		migrate: migrateV6ToV7,
+	},
+	7: {
+		source: persistedStateV7Schema,
+		target: persistedStateSchema,
+		migrate: migrateV7ToV8,
 	},
 };
 

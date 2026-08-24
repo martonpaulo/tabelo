@@ -4,7 +4,7 @@ import { EXPECTED_COLUMN_TYPES } from "@/core/cell-value";
 import { workspacePanesTileLayout } from "@/workspace/layout";
 import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
-export const PERSISTED_VERSION = 7 as const;
+export const PERSISTED_VERSION = 8 as const;
 
 // These schemas mirror the payloads shipped by the commits that introduced
 // versions 1 through 5. Keep them beside their stored fixtures: a migration
@@ -186,30 +186,31 @@ export const persistedStateV4Schema = z
 	})
 	.superRefine((state, context) => refineCurrentRelationships(state, context));
 
-const currentWorkspaceSchema = persistedWorkspaceV4Schema.extend({
+// The workspace shape versions 5 through 7 all wrote. Versions 6 and 7 changed
+// the document and added the table name, so all three share it; version 8 adds
+// the two pinned-axis preferences and therefore takes its own copy below, which
+// is what the note on this schema has always asked the next change to do.
+const persistedWorkspaceV5Schema = persistedWorkspaceV4Schema.extend({
 	columnWidths: z.record(z.string().min(1), z.number().positive()),
 });
 
-// Version 6 changed the document alone, so version 5 shares the current
-// workspace shape. A later version that changes the workspace has to pin this
-// one to its own copy rather than let it follow.
 export const persistedStateV5Schema = z
 	.object({
 		version: z.literal(5),
 		document: persistedDocumentV5Schema,
-		workspace: currentWorkspaceSchema,
+		workspace: persistedWorkspaceV5Schema,
 		draft: currentDraftSchema.nullable(),
 	})
 	.superRefine((state, context) => refineCurrentRelationships(state, context));
 
-const currentStateShape = {
+const persistedStateV6Shape = {
 	document: currentDocumentSchema,
-	workspace: currentWorkspaceSchema,
+	workspace: persistedWorkspaceV5Schema,
 	draft: currentDraftSchema.nullable(),
 };
 
 export const persistedStateV6Schema = z
-	.object({ version: z.literal(6), ...currentStateShape })
+	.object({ version: z.literal(6), ...persistedStateV6Shape })
 	.superRefine((state, context) => {
 		refineCurrentRelationships(state, context);
 	});
@@ -220,11 +221,31 @@ const tableNameSchema = z
 	.refine((name) => name === name.trim())
 	.refine((name) => [...name].length <= MAX_TABLE_NAME_CODE_POINTS);
 
+export const persistedStateV7Schema = z
+	.object({
+		version: z.literal(7),
+		name: tableNameSchema,
+		...persistedStateV6Shape,
+	})
+	.superRefine((state, context) => {
+		refineCurrentRelationships(state, context);
+	});
+
+// Version 8 records whether the grid pins its first data row and first data
+// column. Both are presentation, so they sit beside per-column wrapping in the
+// workspace rather than anywhere the document can reach.
+const currentWorkspaceSchema = persistedWorkspaceV5Schema.extend({
+	pinFirstDataRow: z.boolean(),
+	pinFirstDataColumn: z.boolean(),
+});
+
 export const persistedStateSchema = z
 	.object({
 		version: z.literal(PERSISTED_VERSION),
 		name: tableNameSchema,
-		...currentStateShape,
+		document: currentDocumentSchema,
+		workspace: currentWorkspaceSchema,
+		draft: currentDraftSchema.nullable(),
 	})
 	.superRefine((state, context) => {
 		refineCurrentRelationships(state, context);

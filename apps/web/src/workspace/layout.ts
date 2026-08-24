@@ -201,6 +201,11 @@ export interface SplitOption {
 	readonly layout: LayoutId;
 }
 
+// Which axis a pinned-first preference belongs to. Named here beside the two
+// flags it selects between, so the store, the menu, and the grid all say the
+// same word for the same thing.
+export type PinnedGridAxis = "row" | "column";
+
 export interface Workspace {
 	readonly layout: LayoutId;
 	readonly panes: readonly WorkspacePane[];
@@ -208,6 +213,13 @@ export interface Workspace {
 	// rather than the document timeline, codecs, or clipboard projections.
 	readonly wrappedColumns: readonly string[];
 	readonly columnWidths: Readonly<Record<string, number>>;
+	// Whether the first data row and the first data column hold their position
+	// while the grid scrolls. Presentation, like the two above it: a pinned axis
+	// never reaches the document, a codec, the clipboard, or the undo timeline.
+	// Two booleans rather than a freeze boundary of N rows and N columns, which
+	// is the spreadsheet shape the product declines: see the decision on #160.
+	readonly pinFirstDataRow: boolean;
+	readonly pinFirstDataColumn: boolean;
 	// Fractions of the workspace given to the first column and the first row.
 	readonly columnRatio: number;
 	readonly rowRatio: number;
@@ -495,6 +507,8 @@ export function createDefaultWorkspace(): Workspace {
 		panes,
 		wrappedColumns: [],
 		columnWidths: {},
+		pinFirstDataRow: false,
+		pinFirstDataColumn: false,
 		columnRatio: 0.5,
 		rowRatio: 0.5,
 		activePaneId: firstPaneId(panes),

@@ -233,6 +233,8 @@ function workspaceFor(id: LayoutId): Workspace {
 		panes,
 		wrappedColumns: [],
 		columnWidths: {},
+		pinFirstDataRow: false,
+		pinFirstDataColumn: false,
 		columnRatio: 0.5,
 		rowRatio: 0.5,
 		activePaneId: required(panes[0]).id,
