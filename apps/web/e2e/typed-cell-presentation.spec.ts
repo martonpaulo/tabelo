@@ -161,6 +161,8 @@ test("a mixed column distinguishes real type from its number expectation", async
 				},
 				workspace: {
 					layout: "single",
+					pinFirstDataRow: false,
+					pinFirstDataColumn: false,
 					panes: [
 						{
 							id: "abcd",
