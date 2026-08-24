@@ -48,6 +48,7 @@ import { AxisReorderGrip } from "./axis-reorder-grip";
 import { CellEditor, type EditorExit } from "./cell-editor";
 import {
 	cellTypeDiverges,
+	cellTypePresentationClass,
 	cellValueType,
 	expectedCellValueType,
 } from "./cell-type";
@@ -1476,6 +1477,7 @@ const DataRow = memo(function DataRow({
 											? "whitespace-pre-wrap break-words"
 											: "overflow-hidden whitespace-pre",
 										type !== "string" && "font-value",
+										cellTypePresentationClass(type),
 									)}
 								>
 									{columnIndex === markColumn

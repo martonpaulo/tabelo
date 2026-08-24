@@ -15,6 +15,17 @@ export const CELL_TYPE_MARKS = {
 	null: "null",
 } as const satisfies Record<CellValueType, string>;
 
+const CELL_TYPE_PRESENTATION_CLASSES = {
+	string: "text-value-string",
+	number: "text-value-number font-semibold tabular-nums",
+	boolean: "text-value-boolean font-semibold italic",
+	null: "text-value-null italic",
+} as const satisfies Record<CellValueType, string>;
+
+export function cellTypePresentationClass(type: CellValueType): string {
+	return CELL_TYPE_PRESENTATION_CLASSES[type];
+}
+
 export function cellTypeDiverges(
 	value: CellValue,
 	expectedType: ExpectedColumnType,

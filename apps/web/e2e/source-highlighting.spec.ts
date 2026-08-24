@@ -20,6 +20,49 @@ async function nameColumns(tabelo: TabeloPage): Promise<void> {
 	await tabelo.editCell(1, 1, first.name);
 }
 
+test("JSON scalar roles use distinct semantic and non-colour treatments", async ({
+	tabelo,
+}) => {
+	await tabelo.importFile(
+		"typed.json",
+		'[{"text":"alpha","qty":17,"ok":true,"note":null}]',
+		"application/json",
+	);
+	await tabelo.choosePaneView("markdown", "json");
+	const pane = tabelo.pane("json");
+	await expect(pane.locator(".cm-line span").first()).toBeVisible();
+
+	const tokens = await pane.locator(".cm-line span").evaluateAll((spans) =>
+		spans.map((span) => {
+			const style = getComputedStyle(span);
+			return {
+				text: span.textContent ?? "",
+				color: style.color,
+				fontStyle: style.fontStyle,
+				fontWeight: Number.parseInt(style.fontWeight, 10),
+			};
+		}),
+	);
+	const token = (text: string) => tokens.find((entry) => entry.text === text);
+	const string = token('"alpha"');
+	const number = token("17");
+	const boolean = token("true");
+	const nullValue = token("null");
+
+	expect(string).toBeDefined();
+	expect(number).toBeDefined();
+	expect(boolean).toBeDefined();
+	expect(nullValue).toBeDefined();
+	expect(
+		new Set([string?.color, number?.color, boolean?.color, nullValue?.color])
+			.size,
+	).toBe(4);
+	expect(number?.fontWeight).toBeGreaterThanOrEqual(HEADER_WEIGHT);
+	expect(boolean?.fontWeight).toBeGreaterThanOrEqual(HEADER_WEIGHT);
+	expect(boolean?.fontStyle).toBe("italic");
+	expect(nullValue?.fontStyle).toBe("italic");
+});
+
 test("every source format marks its header cells in the tokens", async ({
 	tabelo,
 }) => {
