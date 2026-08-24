@@ -1,7 +1,12 @@
 import { cellTextAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
-import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
+import type {
+	EscapeMatcher,
+	MatrixParseResult,
+	ParseIssue,
+	TableCodec,
+} from "./types";
 
 // Jira's wiki table syntax marks header cells with a doubled pipe:
 //
@@ -46,32 +51,50 @@ export function escapeJiraCell(value: string): string {
 	return out;
 }
 
+// The one reader of Jira's escape grammar, at one offset. Longest match first,
+// so `&#92;` is recognized before the backslash it restores could be read as
+// the start of another sequence. The decoder below and the source view's escape
+// glyphs both read this, which is what keeps the editor from becoming a second
+// parser. What a match reports is never examined again, so literal entity-like
+// user text stays literal and reversible.
+export const matchJiraEscape: EscapeMatcher = (value, index) => {
+	switch (value[index]) {
+		case "\\": {
+			if (value.startsWith("\\\\", index)) {
+				return { source: "\\\\", decoded: "\n", kind: "line-break" };
+			}
+			if (value.startsWith("\\|", index)) {
+				return { source: "\\|", decoded: "|", kind: "character" };
+			}
+			break;
+		}
+		case "&": {
+			if (value.startsWith("&#92;", index)) {
+				return { source: "&#92;", decoded: "\\", kind: "character" };
+			}
+			if (value.startsWith("&amp;", index)) {
+				return { source: "&amp;", decoded: "&", kind: "character" };
+			}
+			break;
+		}
+	}
+	return null;
+};
+
 export function unescapeJiraCell(value: string): string {
 	let out = "";
 	for (let index = 0; index < value.length; index += 1) {
+		const char = value[index];
+		if (char === undefined) break;
 		// Scan the serialized source once. Restored output is never examined
 		// again, which keeps literal entity-like user text reversible.
-		if (value.startsWith("\\\\", index)) {
-			out += "\n";
-			index += 1;
+		const match = matchJiraEscape(value, index);
+		if (match) {
+			out += match.decoded;
+			index += match.source.length - 1;
 			continue;
 		}
-		if (value.startsWith("\\|", index)) {
-			out += "|";
-			index += 1;
-			continue;
-		}
-		if (value.startsWith("&#92;", index)) {
-			out += "\\";
-			index += 4;
-			continue;
-		}
-		if (value.startsWith("&amp;", index)) {
-			out += "&";
-			index += 4;
-			continue;
-		}
-		out += value[index];
+		out += char;
 	}
 	return out;
 }

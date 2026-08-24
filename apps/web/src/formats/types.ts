@@ -150,3 +150,33 @@ export interface TableCodec {
 	readonly sniffPriority?: number;
 	readonly canSniff?: (text: string) => boolean;
 }
+
+// One escape sequence recognized at one offset of serialized text, as the
+// format that owns the grammar reports it. The decoders read these to restore a
+// cell, and the source views read the same matches to draw over them: see
+// docs/adr/0002 for the grammar itself, and docs/design-system.md, "Syntax and
+// table structure", for what the editor draws.
+//
+// `kind` says what the reader has to be told, not what the character is. A
+// space and a tab are invisible, a line break cannot be drawn on one line, and
+// everything else resolves to a character that is visible once the notation
+// around it is gone.
+export type EscapeKind = "whitespace" | "line-break" | "character";
+
+export interface EscapeMatch {
+	// Exactly the characters consumed at the offset, so a caller can advance by
+	// its length without knowing the grammar.
+	readonly source: string;
+	// What the sequence restores. Empty for nothing the grammar can produce.
+	readonly decoded: string;
+	readonly kind: EscapeKind;
+}
+
+// Recognizes the one escape sequence beginning at `index`, or reports that an
+// ordinary character sits there. One pass, longest match first: what a matcher
+// returns is never examined again, which is what keeps a literal spelling such
+// as `&amp;#32;` literal after its ampersand is restored.
+export type EscapeMatcher = (
+	value: string,
+	index: number,
+) => EscapeMatch | null;

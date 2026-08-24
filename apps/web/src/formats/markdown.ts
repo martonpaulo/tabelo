@@ -3,7 +3,24 @@ import { cellTextAt } from "@/core/cell-value";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import type { Alignment, TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
-import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
+import type {
+	EscapeMatcher,
+	MatrixParseResult,
+	ParseIssue,
+	TableCodec,
+} from "./types";
+
+// The three ways a line break can be spelled in a Markdown cell, longest first
+// so a match is never a prefix of a longer one. Both directions of the grammar
+// read this list, so a spelling can never be escaped without being decodable.
+const BREAK_SPELLINGS = ["<br />", "<br/>", "<br>"] as const;
+
+function breakSpellingAt(value: string, index: number): string | null {
+	for (const spelling of BREAK_SPELLINGS) {
+		if (value.startsWith(spelling, index)) return spelling;
+	}
+	return null;
+}
 
 // Markdown cannot hold a literal pipe or line break inside a table cell, so
 // both are escaped rather than dropped. The transformation must be exactly
@@ -43,20 +60,13 @@ export function escapeCell(value: string): string {
 		}
 		// Every spelling the decoder recognises has to be escaped here, or a
 		// literal `<br/>` typed by the user would come back as a line break.
-		if (source.startsWith("<br />", index)) {
-			out += "\\<br />";
-			index += 5;
-			continue;
-		}
-		if (source.startsWith("<br/>", index)) {
-			out += "\\<br/>";
-			index += 4;
-			continue;
-		}
-		if (source.startsWith("<br>", index)) {
-			out += "\\<br>";
-			index += 3;
-			continue;
+		if (char === "<") {
+			const spelling = breakSpellingAt(source, index);
+			if (spelling) {
+				out += `\\${spelling}`;
+				index += spelling.length - 1;
+				continue;
+			}
 		}
 		out += char;
 	}
@@ -103,96 +113,85 @@ export function escapeAndMeasure(value: string): EscapedCell {
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/sticky
 const ENTITY = /&#([0-9]+);/y;
 
-// Only `&`, `\`, and `<` can begin an escape sequence, so the switch reaches
-// the right branch directly and an ordinary character falls straight to the
-// append with no test at all. A branch that matches nothing must reach that
-// same append: `break` leaves the switch, where `continue` would swallow a
-// trailing backslash or a lone `<`.
+// The one reader of Markdown's escape grammar, at one offset. Only `&`, `\`,
+// and `<` can begin an escape sequence, so the switch reaches the right branch
+// directly and an ordinary character falls straight through with no test at
+// all. A branch that matches nothing must reach the same `null`: `break` leaves
+// the switch, where returning early would swallow a trailing backslash or a
+// lone `<`.
+//
+// The decoder below and the source view's escape glyphs both read this, so
+// there is exactly one description of what `&#32;` stands for and the editor
+// never becomes a second parser. What a match reports is never examined again,
+// which is what keeps literal text such as `&amp;#32;` literal once its
+// protected ampersand is restored.
+export const matchMarkdownEscape: EscapeMatcher = (value, index) => {
+	switch (value[index]) {
+		// Decode only the entity forms the serializer emits.
+		case "&": {
+			if (value.startsWith("&amp;", index)) {
+				return { source: "&amp;", decoded: "&", kind: "character" };
+			}
+			// Set on every attempt rather than trusting what the previous call
+			// left behind: the regex is shared module state, and a stale
+			// `lastIndex` after a failed match is the classic defect with this
+			// flag.
+			ENTITY.lastIndex = index;
+			const entity = ENTITY.exec(value);
+			const decimal = entity?.[1];
+			if (entity && decimal !== undefined) {
+				const codePoint = Number(decimal);
+				const decoded =
+					codePoint <= 0x10ffff && String(codePoint) === decimal
+						? String.fromCodePoint(codePoint)
+						: "";
+				if (codePoint !== 13 && /^\s$/u.test(decoded)) {
+					return { source: entity[0], decoded, kind: "whitespace" };
+				}
+			}
+			break;
+		}
+		// Longest escape first, and every escaped break form before the plain
+		// backslash rule, or `\<br>` would decode as a backslash followed by a
+		// line break.
+		case "\\": {
+			const spelling = breakSpellingAt(value, index + 1);
+			if (spelling) {
+				return {
+					source: `\\${spelling}`,
+					decoded: spelling,
+					kind: "character",
+				};
+			}
+			if (value.startsWith("\\\\", index)) {
+				return { source: "\\\\", decoded: "\\", kind: "character" };
+			}
+			if (value.startsWith("\\|", index)) {
+				return { source: "\\|", decoded: "|", kind: "character" };
+			}
+			break;
+		}
+		case "<": {
+			const spelling = breakSpellingAt(value, index);
+			if (spelling) {
+				return { source: spelling, decoded: "\n", kind: "line-break" };
+			}
+			break;
+		}
+	}
+	return null;
+};
+
 export function unescapeCell(value: string): string {
 	let out = "";
 	for (let index = 0; index < value.length; index += 1) {
 		const char = value[index];
 		if (char === undefined) break;
-		switch (char) {
-			// Decode only the entity forms the serializer emits. Appended output
-			// is never scanned again, so literal text such as `&#32;` stays
-			// literal after its protected ampersand is restored.
-			case "&": {
-				if (value.startsWith("&amp;", index)) {
-					out += "&";
-					index += 4;
-					continue;
-				}
-				// Set on every attempt rather than trusting what the previous
-				// call left behind: the regex is shared module state, and a
-				// stale `lastIndex` after a failed match is the classic defect
-				// with this flag.
-				ENTITY.lastIndex = index;
-				const entity = ENTITY.exec(value);
-				const decimal = entity?.[1];
-				if (entity && decimal !== undefined) {
-					const codePoint = Number(decimal);
-					const decoded =
-						codePoint <= 0x10ffff && String(codePoint) === decimal
-							? String.fromCodePoint(codePoint)
-							: "";
-					if (codePoint !== 13 && /^\s$/u.test(decoded)) {
-						out += decoded;
-						index += entity[0].length - 1;
-						continue;
-					}
-				}
-				break;
-			}
-			// Longest escape first, and every escaped break form before the
-			// plain backslash rule, or `\<br>` would decode as a backslash
-			// followed by a line break.
-			case "\\": {
-				if (value.startsWith("\\<br />", index)) {
-					out += "<br />";
-					index += 6;
-					continue;
-				}
-				if (value.startsWith("\\<br/>", index)) {
-					out += "<br/>";
-					index += 5;
-					continue;
-				}
-				if (value.startsWith("\\<br>", index)) {
-					out += "<br>";
-					index += 4;
-					continue;
-				}
-				if (value.startsWith("\\\\", index)) {
-					out += "\\";
-					index += 1;
-					continue;
-				}
-				if (value.startsWith("\\|", index)) {
-					out += "|";
-					index += 1;
-					continue;
-				}
-				break;
-			}
-			case "<": {
-				if (value.startsWith("<br />", index)) {
-					out += "\n";
-					index += 5;
-					continue;
-				}
-				if (value.startsWith("<br/>", index)) {
-					out += "\n";
-					index += 4;
-					continue;
-				}
-				if (value.startsWith("<br>", index)) {
-					out += "\n";
-					index += 3;
-					continue;
-				}
-				break;
-			}
+		const match = matchMarkdownEscape(value, index);
+		if (match) {
+			out += match.decoded;
+			index += match.source.length - 1;
+			continue;
 		}
 		out += char;
 	}
