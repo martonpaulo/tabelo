@@ -90,8 +90,17 @@ test("the grid exposes real and expected types without replacing cell names", as
 		presentationOf(nullCell),
 		presentationOf(stringCell),
 	]);
-	const [numberPresentation, booleanPresentation, nullPresentation] =
-		presentations;
+	const headerColor = await tabelo
+		.header(1)
+		.locator("[data-column-content]")
+		.evaluate((element) => getComputedStyle(element).color);
+	const [
+		numberPresentation,
+		booleanPresentation,
+		nullPresentation,
+		stringPresentation,
+	] = presentations;
+	expect(stringPresentation.color).toBe(headerColor);
 	expect(new Set(presentations.map(({ color }) => color)).size).toBe(4);
 	expect(numberPresentation.fontWeight).toBeGreaterThanOrEqual(600);
 	expect(booleanPresentation.fontWeight).toBeGreaterThanOrEqual(600);

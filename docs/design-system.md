@@ -215,15 +215,17 @@ links do not become blue merely for decoration.
 
 ### Semantic values and syntax
 
-The value palette crosses views. JSON scalar literals and visual-grid cells use
-the same token for the type the canonical value already carries. The grid asks
-`cellValueType` for that type and never parses the displayed text: a string
-`"1"` stays a string treatment beside the distinct treatment of the number `1`,
-in accordance with ADR 0008.
+The value palette crosses views for native typed values. JSON scalar literals
+and visual-grid number, boolean, and null cells use the same token for the type
+the canonical value already carries. A grid string instead uses the same plain
+`--foreground` as the editable header row, so ordinary text remains neutral.
+The grid asks `cellValueType` for that type and never parses the displayed text:
+a string `"1"` stays plain foreground beside the distinct treatment of the
+number `1`, in accordance with ADR 0008.
 
 | Token | Utility | Role | Second channel |
 | :--- | :--- | :--- | :--- |
-| `--value-string` | `text-value-string` | Quoted source strings and carried string cells | Literal shape and normal weight |
+| `--value-string` | `text-value-string` | Quoted source strings | Literal shape and normal weight |
 | `--value-number` | `text-value-number` | JSON numbers and carried number cells | 600 weight and tabular numerals |
 | `--value-boolean` | `text-value-boolean` | JSON booleans and carried boolean cells | 600 weight and italics |
 | `--value-null` | `text-value-null` | JSON null and carried null cells | Italics and the literal or empty-value shape |
@@ -931,7 +933,7 @@ not a polish item.
 | Focus | 0.125rem `--selection-edge` outline, inset. Never remove it |
 | Selected | `bg-selection-fill`, plus outline when it is the focused cell |
 | Copied | 0.125rem dashed `--selection-edge` border, drawn only on the outer sides of the copied range |
-| Carried cell type | Cross-view semantic value token selected by `cellValueType`; colour is reinforced by weight, italics, numeric spacing, literal shape, and the accessible type name |
+| Carried cell type | Strings use the editable header row's plain foreground; numbers, booleans, and null use the cross-view semantic value token selected by `cellValueType`, reinforced by weight, italics, numeric spacing, literal shape, and the accessible type name |
 | Divergent cell type | Compact textual `CellTypeMark` inside the cell, never alignment or colour alone |
 | Disabled | `opacity-50`, no hover or highlight state, `not-allowed` on the actual hit layer, and a tooltip explaining why. Never hide a disabled action |
 | Invalid | Red wavy underline; written diagnostic on hover and in the editor description |

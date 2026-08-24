@@ -16,7 +16,7 @@ export const CELL_TYPE_MARKS = {
 } as const satisfies Record<CellValueType, string>;
 
 const CELL_TYPE_PRESENTATION_CLASSES = {
-	string: "text-value-string",
+	string: "text-foreground",
 	number: "text-value-number font-semibold tabular-nums",
 	boolean: "text-value-boolean font-semibold italic",
 	null: "text-value-null italic",
