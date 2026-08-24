@@ -75,18 +75,21 @@ test("the grid exposes real and expected types without replacing cell names", as
 	expect(markFont).toBe(stringFont);
 	await expect(numberCell).toHaveCSS("text-align", "left");
 
-	const presentations = await Promise.all(
-		[numberCell, booleanCell, nullCell, stringCell].map((cell) =>
-			cell.locator("[data-cell-value]").evaluate((element) => {
-				const style = getComputedStyle(element);
-				return {
-					color: style.color,
-					fontStyle: style.fontStyle,
-					fontWeight: Number.parseInt(style.fontWeight, 10),
-				};
-			}),
-		),
-	);
+	const presentationOf = (cell: typeof numberCell) =>
+		cell.locator("[data-cell-value]").evaluate((element) => {
+			const style = getComputedStyle(element);
+			return {
+				color: style.color,
+				fontStyle: style.fontStyle,
+				fontWeight: Number.parseInt(style.fontWeight, 10),
+			};
+		});
+	const presentations = await Promise.all([
+		presentationOf(numberCell),
+		presentationOf(booleanCell),
+		presentationOf(nullCell),
+		presentationOf(stringCell),
+	]);
 	const [numberPresentation, booleanPresentation, nullPresentation] =
 		presentations;
 	expect(new Set(presentations.map(({ color }) => color)).size).toBe(4);
