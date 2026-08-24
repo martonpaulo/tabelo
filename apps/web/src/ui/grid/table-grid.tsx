@@ -3,6 +3,7 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import { cellText, readCell } from "@/core/cell-value";
+import { dataEdgeTarget, type JumpDirection } from "@/core/navigation";
 import {
 	activeRange,
 	type CellPosition,
@@ -245,8 +246,11 @@ function coveredByRects(
 	return rects.some((rect) => rectContains(rect, row, column));
 }
 
-// The next cell in reading order, or nothing when there is none. This is how
-// Tab knows it has reached an edge and should let focus leave the grid.
+// The next cell in reading order. The walk wraps with a modulo over the whole
+// grid, so the last cell leads back to the first and Tab never runs out: focus
+// stays inside the grid and leaves it only through the pane's own Escape. The
+// caller always prevents the default, which is what stops the browser taking
+// the key away at an edge.
 //
 // Reading order starts at the header row, so the walk is offset by one row: a
 // grid of N data rows exposes N + 1 rows of cells.
@@ -265,6 +269,13 @@ function adjacentCell(
 		column: index % columns,
 	};
 }
+
+const jumpDirections: Record<string, JumpDirection | undefined> = {
+	ArrowUp: "up",
+	ArrowDown: "down",
+	ArrowLeft: "left",
+	ArrowRight: "right",
+};
 
 function moveAfterCellEdit(position: CellPosition, exit: EditorExit) {
 	const store = useTabeloStore.getState();
@@ -632,6 +643,9 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 		const mod = event.metaKey || event.ctrlKey;
 		const active = activeRange(selection);
+		// Which cardinal direction this key is, or nothing when it is not an
+		// arrow at all. Several branches below ask, so it is asked once.
+		const arrowDirection = jumpDirections[event.key];
 
 		// Find opens from the grid surface and nowhere else. The early return
 		// above already stood the whole handler down while a cell or header
@@ -650,6 +664,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		// path. The focused column owns the gesture even when the selection spans
 		// several cells, matching the pointer handle's exact target.
 		if (
+			!mod &&
 			event.altKey &&
 			event.shiftKey &&
 			(event.key === "ArrowLeft" || event.key === "ArrowRight")
@@ -673,6 +688,22 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			const next = stepColumnWidth(width, event.key === "ArrowLeft" ? -1 : 1);
 			store.resizeColumn(focusedColumn, next, "column");
 			store.announceStatus(copy.status.columnWidth(letter, next));
+			return;
+		}
+
+		// Moving the focus while keeping the areas already selected. It used to
+		// be Mod+arrow, which the data-edge jump below now owns, and this is the
+		// only arrow chord left: Alt is reordering, Mod+Alt is filling, and
+		// Alt+Shift is column width. A long chord for a rare gesture is worth
+		// more than losing it, because without it a second column cannot be
+		// added to a selection without a pointer, and §9 requires that it can.
+		if (mod && event.altKey && event.shiftKey && arrowDirection) {
+			event.preventDefault();
+			moveFocus(
+				arrowDirection === "up" ? -1 : arrowDirection === "down" ? 1 : 0,
+				arrowDirection === "left" ? -1 : arrowDirection === "right" ? 1 : 0,
+				"toggle",
+			);
 			return;
 		}
 
@@ -733,9 +764,24 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			}
 		}
 
-		// Shift extends the active area, the modifier moves the focus without
-		// discarding the areas already selected, and a plain arrow replaces them.
-		const arrowIntent = selectIntentOf(event);
+		// The modifier jumps to the edge of the data, which is the one thing
+		// every spreadsheet puts on this chord. The rule is in `dataEdgeTarget`;
+		// Shift sends the same target through the ordinary extension path, so an
+		// extended jump and a Shift+arrow build the same kind of area.
+		//
+		// Alt is excluded because the branches above already spent Alt+arrow on
+		// reordering and Mod+Alt+arrow on filling.
+		if (mod && !event.altKey && arrowDirection) {
+			event.preventDefault();
+			const target = dataEdgeTarget(store.document, focus, arrowDirection);
+			if (event.shiftKey) store.extendSelection(target);
+			else store.selectCell(target);
+			return;
+		}
+
+		// Shift extends the active area from its anchor, and a plain arrow
+		// replaces it. The modifier never reaches here: the jump above took it.
+		const arrowIntent: SelectIntent = event.shiftKey ? "extend" : "replace";
 
 		switch (event.key) {
 			case "ArrowUp":
@@ -781,8 +827,18 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				return;
 			case "Enter":
 				event.preventDefault();
-				if (mod) store.addRowBelow();
-				else beginEditing(focus);
+				// One reversible matrix rather than four unrelated keys: the
+				// modifier inserts, Shift flips which side of the selection the
+				// new line lands on, and Alt switches the axis from rows to
+				// columns. Every one of the four routes to the same store action
+				// the insert menu uses, so both paths are one history step.
+				if (mod && event.altKey) {
+					if (event.shiftKey) store.addColumnLeft();
+					else store.addColumnRight();
+				} else if (mod) {
+					if (event.shiftKey) store.addRowAbove();
+					else store.addRowBelow();
+				} else beginEditing(focus);
 				return;
 			case "F2":
 				event.preventDefault();

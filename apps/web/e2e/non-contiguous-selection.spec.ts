@@ -121,11 +121,13 @@ test("the keyboard builds a selection of two columns without a pointer", async (
 }) => {
 	await tabelo.cell(1, 1).click();
 	// Ctrl rather than the platform modifier: macOS keeps Cmd+Space for itself,
-	// and Ctrl is what reaches the page everywhere. The modifier on the arrows
-	// is what carries the first column past the move to the second.
+	// and Ctrl is what reaches the page everywhere. Alt+Shift on the arrows is
+	// what carries the first column past the move to the second: a plain arrow
+	// would discard it, and the modifier alone now jumps to the edge of the
+	// data.
 	await page.keyboard.press("Control+Space");
-	await page.keyboard.press("Control+ArrowRight");
-	await page.keyboard.press("Control+ArrowRight");
+	await page.keyboard.press(`${modifier}+Alt+Shift+ArrowRight`);
+	await page.keyboard.press(`${modifier}+Alt+Shift+ArrowRight`);
 	await page.keyboard.press("Control+Space");
 
 	expect(await columnSelected(tabelo, 1)).toBe(true);

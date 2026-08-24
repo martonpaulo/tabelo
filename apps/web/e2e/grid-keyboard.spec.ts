@@ -804,3 +804,186 @@ test("the selection extent is announced only when it changes", async ({
 	await page.keyboard.press("Shift+ArrowDown");
 	await expect(tabelo.announcements).toContainText("2");
 });
+
+// The platform modifier as the keyboard carries it. Read from the host: a
+// legend that is right on one machine and wrong on the pipeline is a broken
+// test, not a broken pipeline.
+const mod = process.platform === "darwin" ? "Meta" : "Control";
+
+// A column with two runs and a gap between them, so one press can be shown to
+// stop at a run's far edge and the next to cross the gap. The second column
+// stays full, so a jump can be shown to depend on the column it is in.
+const gappedColumn = [
+	"Name\tCity",
+	"Ingrid\tRio",
+	"Paulo\tMadrid",
+	"\tBuenos Aires",
+	"\tMexico City",
+	"Mabel\tTokyo",
+].join("\n");
+
+test("the modifier and an arrow jump to the edge of the data", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(gappedColumn);
+	await tabelo.dismissNotices();
+	await tabelo.cell(1, 1).click();
+
+	// The focus and the row below it both hold content, so the jump runs to
+	// that run's far edge rather than moving one step.
+	await page.keyboard.press(`${mod}+ArrowDown`);
+	expect(await focusedCell(page)).toBe("1:0");
+
+	// The run is over, so the next press crosses the gap to the next cell that
+	// holds something rather than stopping inside it.
+	await page.keyboard.press(`${mod}+ArrowDown`);
+	expect(await focusedCell(page)).toBe("4:0");
+
+	// Nothing below holds anything, so the jump has reached the table's edge.
+	await page.keyboard.press(`${mod}+ArrowDown`);
+	expect(await focusedCell(page)).toBe("4:0");
+	expect(await insideGrid(page)).toBe(true);
+});
+
+test("an upward jump lands on the header row and stops there", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(gappedColumn);
+	await tabelo.dismissNotices();
+	await tabelo.cell(5, 1).click();
+
+	await page.keyboard.press(`${mod}+ArrowUp`);
+	expect(await focusedCell(page)).toBe("1:0");
+
+	await page.keyboard.press(`${mod}+ArrowUp`);
+	expect(await focusedCell(page)).toBe("0:0");
+
+	await page.keyboard.press(`${mod}+ArrowUp`);
+	expect(await focusedCell(page)).toBe("-1:0");
+
+	// The header is the top of the table, so the jump has nowhere further to go
+	// and never leaves the grid.
+	await page.keyboard.press(`${mod}+ArrowUp`);
+	expect(await focusedCell(page)).toBe("-1:0");
+	expect(await insideGrid(page)).toBe(true);
+});
+
+test("a downward jump from the header starts at the first data row", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(gappedColumn);
+	await tabelo.dismissNotices();
+	await tabelo.header(1).click();
+
+	// The column's name is not the start of its data. If it were, this would
+	// run on to the far edge of Ingrid and Paulo instead.
+	await page.keyboard.press(`${mod}+ArrowDown`);
+	expect(await focusedCell(page)).toBe("0:0");
+});
+
+test("Shift extends the selection to the same edge the jump lands on", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(gappedColumn);
+	await tabelo.dismissNotices();
+	await tabelo.cell(1, 2).click();
+
+	await page.keyboard.press(`${mod}+Shift+ArrowDown`);
+
+	// The second column has no gap, so the extension reaches the last row and
+	// covers every cell between, rather than moving the focus alone.
+	expect(await focusedCell(page)).toBe("4:1");
+	for (const row of [1, 2, 3, 4, 5]) {
+		await expect(tabelo.cell(row, 2)).toHaveAttribute("aria-selected", "true");
+	}
+	await expect(tabelo.cell(1, 1)).toHaveAttribute("aria-selected", "false");
+});
+
+test("a jump reads the column it is in, not the table as a whole", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(gappedColumn);
+	await tabelo.dismissNotices();
+	await tabelo.cell(1, 2).click();
+
+	// The same starting row as the first test, in the column with no gap in it,
+	// where one press reaches the bottom instead of stopping at row 2.
+	await page.keyboard.press(`${mod}+ArrowDown`);
+	expect(await focusedCell(page)).toBe("4:1");
+});
+
+test("the four insert chords add a row or a column on the requested side", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste("Name\tCity\nIngrid\tRio");
+	await tabelo.dismissNotices();
+	// Each chord is aimed from the row or column holding Ingrid, because an
+	// insertion leaves the selection on what it just added: chaining the four
+	// without re-aiming would test where the selection went, not where the new
+	// line landed.
+	await tabelo.cell(1, 1).click();
+
+	await page.keyboard.press(`${mod}+Enter`);
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect(tabelo.cell(2, 1)).toHaveText("");
+
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press(`${mod}+Shift+Enter`);
+	await expect(tabelo.cell(1, 1)).toHaveText("");
+	await expect(tabelo.cell(2, 1)).toHaveText("Ingrid");
+
+	await tabelo.cell(2, 1).click();
+	await page.keyboard.press(`${mod}+Alt+Enter`);
+	await expect(tabelo.header(1)).toHaveText("Name");
+	await expect(tabelo.header(2)).toHaveText("");
+	await expect(tabelo.header(3)).toHaveText("City");
+
+	await tabelo.cell(2, 1).click();
+	await page.keyboard.press(`${mod}+Alt+Shift+Enter`);
+	await expect(tabelo.header(1)).toHaveText("");
+	await expect(tabelo.header(2)).toHaveText("Name");
+});
+
+test("the modifier separates the rehomed focus move from column resizing", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(gappedColumn);
+	await tabelo.dismissNotices();
+	await tabelo.cell(1, 1).click();
+	const width = (await tabelo.cell(1, 1).boundingBox())?.width ?? 0;
+
+	// Alt+Shift with the modifier moves the focus and keeps what is selected.
+	// Without the modifier the same two keys are column width, so the two must
+	// not both fire.
+	await page.keyboard.press(`${mod}+Alt+Shift+ArrowRight`);
+	expect(await focusedCell(page)).toBe("0:1");
+	expect((await tabelo.cell(1, 1).boundingBox())?.width ?? 0).toBe(width);
+
+	await page.keyboard.press("Alt+Shift+ArrowRight");
+	expect(await focusedCell(page)).toBe("0:1");
+});
+
+test("the new chords leave ordinary typing and Space alone", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste("Name\nIngrid");
+	await tabelo.dismissNotices();
+	await tabelo.cell(1, 1).click();
+
+	// Space with no modifier still replaces the cell and opens the editor,
+	// which is what every printable character does.
+	await page.keyboard.press("Space");
+	const editor = tabelo.grid().getByRole("textbox");
+	await expect(editor).toBeVisible();
+	await editor.fill("Paulo");
+	await editor.press("Enter");
+	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
+});
