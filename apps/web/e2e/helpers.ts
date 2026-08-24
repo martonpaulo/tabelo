@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { HEADER_ROW } from "@/core/selection";
+import { STORAGE_KEY } from "@/persistence/schema";
 import type { NoticeSeverity } from "@/state/notice-queue";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
@@ -160,6 +161,27 @@ export function lastCopied(page: Page): Promise<CopiedFlavours | undefined> {
 			window as unknown as { __copied: { text: string; html?: string }[] }
 		).__copied.at(-1),
 	);
+}
+
+// The rendered text of a source pane, decorations excluded. Every marker a
+// source view draws is generated content or a widget rather than a text node,
+// so what the DOM reports here is the source and nothing else.
+export function renderedSource(pane: Locator): Promise<string> {
+	return pane.evaluate((element) =>
+		Array.from(
+			element.querySelectorAll(".cm-line"),
+			(line) => line.textContent ?? "",
+		).join("\n"),
+	);
+}
+
+// The document as it is actually stored, which is the only text that settles
+// whether a decoration reached it.
+export function storedDocument(page: Page): Promise<string> {
+	return page.evaluate((key) => {
+		const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+		return JSON.stringify(saved?.document ?? null);
+	}, STORAGE_KEY);
 }
 
 export class TabeloPage {

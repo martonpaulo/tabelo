@@ -1,10 +1,14 @@
 import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { samplePerson } from "@/core/sample-data";
-import { STORAGE_KEY } from "@/persistence/schema";
 import type { SpaceIndicators } from "@/preferences/contract";
 import { expect, test } from "./fixtures";
-import { lastCopied, recordingClipboard } from "./helpers";
+import {
+	lastCopied,
+	recordingClipboard,
+	renderedSource,
+	storedDocument,
+} from "./helpers";
 
 // Whitespace and empty-value indicators are decorations and nothing else. What
 // these tests protect is that promise: the same bytes reach the document, the
@@ -67,27 +71,6 @@ async function setIndicators(page: Page, choice: IndicatorChoice) {
 	}
 	await dialog.getByRole("button", { name: copy.settings.apply }).click();
 	await expect(dialog).toBeHidden();
-}
-
-// The document as it is actually stored, which is the only text that matters.
-// Reading the pane's DOM would measure the decorations rather than the source.
-async function storedDocument(page: Page) {
-	return page.evaluate((key) => {
-		const saved = JSON.parse(localStorage.getItem(key) ?? "null");
-		return JSON.stringify(saved?.document ?? null);
-	}, STORAGE_KEY);
-}
-
-// The rendered text of a source pane, decorations excluded: every marker is
-// generated content or a widget, so none of them is a text node and this is the
-// source and nothing else.
-async function renderedSource(pane: Locator) {
-	return pane.evaluate((element) =>
-		Array.from(
-			element.querySelectorAll(".cm-line"),
-			(line) => line.textContent ?? "",
-		).join("\n"),
-	);
 }
 
 test("markers are drawn by default and describe the empty fields a codec reads", async ({
