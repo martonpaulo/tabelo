@@ -1,12 +1,20 @@
 import {
 	ArrowDown,
+	ArrowDownToLine,
 	ArrowLeft,
+	ArrowLeftToLine,
 	ArrowRight,
+	ArrowRightToLine,
 	ArrowUp,
+	ArrowUpToLine,
 	ClipboardPaste,
 	Copy,
 	Eraser,
 	type LucideIcon,
+	MoveDown,
+	MoveLeft,
+	MoveRight,
+	MoveUp,
 	Scissors,
 	Trash2,
 } from "lucide-react";
@@ -201,6 +209,9 @@ export function buildTableActions(
 		["right", ArrowRight, copy.actions.fillRight, copy.shortcuts.fillRight],
 	] as const;
 
+	// Three directional groups share one menu, so each takes its own glyph
+	// family: insert lands against a boundary line, move is the long-stemmed
+	// Move arrow, and fill keeps the plain arrow it drags along.
 	const insert: TableAction[] = [];
 	if (showRows) {
 		// Inserting beside the header row still adds one data row, so the label
@@ -210,7 +221,7 @@ export function buildTableActions(
 			{
 				id: "row-above",
 				label: copy.actions.insertRowsAbove(insertCount),
-				icon: ArrowUp,
+				icon: ArrowUpToLine,
 				disabled: severalAreas,
 				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addRowAbove(),
@@ -218,7 +229,7 @@ export function buildTableActions(
 			{
 				id: "row-below",
 				label: copy.actions.insertRowsBelow(insertCount),
-				icon: ArrowDown,
+				icon: ArrowDownToLine,
 				disabled: severalAreas,
 				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addRowBelow(),
@@ -230,7 +241,7 @@ export function buildTableActions(
 			{
 				id: "column-left",
 				label: copy.actions.insertColumnsLeft(columnCount),
-				icon: ArrowLeft,
+				icon: ArrowLeftToLine,
 				disabled: severalAreas,
 				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addColumnLeft(),
@@ -238,7 +249,7 @@ export function buildTableActions(
 			{
 				id: "column-right",
 				label: copy.actions.insertColumnsRight(columnCount),
-				icon: ArrowRight,
+				icon: ArrowRightToLine,
 				disabled: severalAreas,
 				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addColumnRight(),
@@ -308,7 +319,8 @@ export function buildTableActions(
 			{
 				id: "move-up",
 				label: copy.actions.moveUp,
-				icon: ArrowUp,
+				icon: MoveUp,
+				shortcut: copy.shortcuts.moveUp,
 				disabled: moveUpRefusal !== null,
 				disabledReason:
 					moveUpRefusal === null
@@ -319,7 +331,8 @@ export function buildTableActions(
 			{
 				id: "move-down",
 				label: copy.actions.moveDown,
-				icon: ArrowDown,
+				icon: MoveDown,
+				shortcut: copy.shortcuts.moveDown,
 				disabled: moveDownRefusal !== null,
 				disabledReason:
 					moveDownRefusal === null
@@ -356,7 +369,8 @@ export function buildTableActions(
 			{
 				id: "move-left",
 				label: copy.actions.moveLeft,
-				icon: ArrowLeft,
+				icon: MoveLeft,
+				shortcut: copy.shortcuts.moveLeft,
 				disabled: moveLeftRefusal !== null,
 				disabledReason:
 					moveLeftRefusal === null
@@ -367,7 +381,8 @@ export function buildTableActions(
 			{
 				id: "move-right",
 				label: copy.actions.moveRight,
-				icon: ArrowRight,
+				icon: MoveRight,
+				shortcut: copy.shortcuts.moveRight,
 				disabled: moveRightRefusal !== null,
 				disabledReason:
 					moveRightRefusal === null

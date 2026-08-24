@@ -168,6 +168,38 @@ test("the column menu moves a two-column selection as one block", async ({
 	await expect(tabelo.header(3)).toHaveAttribute("aria-selected", "true");
 });
 
+test("the move actions advertise the binding the grid already answers", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	await tabelo.rowIndex(3).getByRole("button").first().click();
+
+	const menuName = `${copy.actions.rowActions}: ${copy.a11y.rowNumber(2)}`;
+	await tabelo.grid().getByRole("button", { name: menuName }).click();
+	const moveDown = page
+		.getByRole("menu", { name: menuName })
+		.getByRole("menuitem", { name: copy.actions.moveDown });
+
+	// The legend follows the keyboard the user actually has: a glyph on Apple
+	// platforms, the printed word everywhere else. The expectation comes from
+	// the OS running the browser rather than from the app's own detection.
+	const apple = process.platform === "darwin";
+	const keys = moveDown.locator("kbd");
+	await expect(keys.filter({ hasText: apple ? "⌥" : "Alt" })).toHaveCount(1);
+	await expect(keys.filter({ hasText: "↓" })).toHaveCount(1);
+	// The compact legend never reaches a screen reader as a lone symbol.
+	await expect(moveDown).toHaveAccessibleName(/Down arrow/);
+
+	// What it advertises is what the grid does: pressing the binding moves the
+	// same row the menu item would have.
+	await page.keyboard.press("Escape");
+	await tabelo.cell(2, 1).click();
+	await page.keyboard.press("Alt+ArrowDown");
+	await expect(tabelo.cell(2, 1)).toHaveText("Mabel");
+	await expect(tabelo.cell(3, 1)).toHaveText("Paulo");
+});
+
 test("Alt+Down refuses the header row without changing the selection", async ({
 	page,
 	tabelo,

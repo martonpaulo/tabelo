@@ -765,9 +765,18 @@ export const copy = {
 		// reaches the page on every platform: macOS keeps Cmd+Space for itself.
 		toggleColumn: "Ctrl+Space",
 		toggleRow: "Ctrl+Shift+Space",
-		fillUp: "Mod+Alt+↑",
-		fillDown: "Mod+Alt+↓",
-		fillLeft: "Mod+Alt+←",
-		fillRight: "Mod+Alt+→",
+		// Named arrow keys rather than bare glyphs: the legend renders the same
+		// arrow either way, and only the named form carries a spoken label.
+		fillUp: "Mod+Alt+ArrowUp",
+		fillDown: "Mod+Alt+ArrowDown",
+		fillLeft: "Mod+Alt+ArrowLeft",
+		fillRight: "Mod+Alt+ArrowRight",
+		// The grid has reordered rows and columns on Alt+arrow since it grew a
+		// keyboard path at all. These legends advertise that binding; they do
+		// not add a second one.
+		moveUp: "Alt+ArrowUp",
+		moveDown: "Alt+ArrowDown",
+		moveLeft: "Alt+ArrowLeft",
+		moveRight: "Alt+ArrowRight",
 	},
 } as const;
