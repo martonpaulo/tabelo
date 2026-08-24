@@ -77,6 +77,10 @@ test("every sequence a codec writes is drawn as one glyph", async ({
 	// The space entity, the escaped pipe, the escaped backslash, the escaped
 	// ampersand, and the line break, in the order the row lists them.
 	expect(await drawnGlyphs(markdown)).toEqual(["·", "|", "\\", "&", "↵"]);
+	await expect(markdown.locator(escapeMarker).first()).toHaveCSS(
+		"font-style",
+		"normal",
+	);
 
 	await tabelo.choosePaneView("markdown", "jira");
 	const jira = tabelo.pane("jira");

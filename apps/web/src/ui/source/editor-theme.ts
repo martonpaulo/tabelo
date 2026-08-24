@@ -215,8 +215,8 @@ export const editorTheme = EditorView.theme({
 	// An escape sequence, drawn as the one character it stands for. It wears the
 	// notation treatment the syntax tokens already use for an escape, because it
 	// is the same thing said more briefly: notation, not the character it
-	// resembles. Italic and the glyph itself are the channels that survive
-	// forced colours, where the tone does not.
+	// resembles. The distinct glyph is the channel that survives forced colours,
+	// where the tone does not.
 	".cm-tabeloEscapeGlyph::before": {
 		// Generated content and a custom property keep the glyph out of DOM text;
 		// its element is aria-hidden so assistive technology also ignores it,
@@ -225,7 +225,6 @@ export const editorTheme = EditorView.theme({
 	},
 	".cm-tabeloEscape": {
 		color: "var(--syntax-notation)",
-		fontStyle: "italic",
 		// Exactly the width of the sequence it is drawn instead of, which the
 		// widget carries: Markdown padded its column counting those characters,
 		// so anything narrower shifts every delimiter after it. Inline-block is
@@ -342,24 +341,22 @@ export const highlightStyle = HighlightStyle.define([
 		tag: tags.bool,
 		color: "var(--value-boolean)",
 		fontWeight: "600",
-		fontStyle: "italic",
 	},
-	{ tag: tags.null, color: "var(--value-null)", fontStyle: "italic" },
+	{ tag: tags.null, color: "var(--value-null)" },
 	// A character standing in for one it cannot spell directly: a Markdown or
 	// Jira backslash escape, an HTML entity, a Markdown task marker, or an HTML
-	// element name. Italics keep notation distinct from close value hues and in
-	// forced-colour mode. This treatment is
+	// element name. Its token shape and grammar position keep notation distinct
+	// from close value hues and in forced-colour mode. This treatment is
 	// deliberately not `--status-warning`: that token means one thing, a source
 	// that parsed with a non-blocking warning, and an escaped pipe is not one.
 	{
 		tag: [tags.escape, tags.character, tags.atom, tags.tagName],
 		color: "var(--syntax-notation)",
-		fontStyle: "italic",
 	},
 	// An attribute name is tag machinery, not content, so it recedes with the
 	// brackets around it rather than competing with the element name.
 	{ tag: tags.attributeName, color: "var(--muted-foreground)" },
-	{ tag: tags.comment, color: "var(--muted-foreground)", fontStyle: "italic" },
+	{ tag: tags.comment, color: "var(--muted-foreground)" },
 	{ tag: tags.invalid, color: "var(--destructive)" },
 	// Deliberately unstyled, and left at the pane's plain foreground:
 	// `content`, `list`, `quote`, and `labelName`, which are the user's own

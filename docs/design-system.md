@@ -227,13 +227,13 @@ number `1`, in accordance with ADR 0008.
 | :--- | :--- | :--- | :--- |
 | `--value-string` | `text-value-string` | Quoted source strings | Literal shape and normal weight |
 | `--value-number` | `text-value-number` | JSON numbers and carried number cells | 600 weight and tabular numerals |
-| `--value-boolean` | `text-value-boolean` | JSON booleans and carried boolean cells | 600 weight and italics |
-| `--value-null` | `text-value-null` | JSON null and carried null cells | Italics and the literal or empty-value shape |
-| `--syntax-notation` | `text-syntax-notation` | Element names, escapes, entities, and other notation | Italics |
+| `--value-boolean` | `text-value-boolean` | JSON booleans and carried boolean cells | 600 weight in sources; grid type presentation also uses italics |
+| `--value-null` | `text-value-null` | JSON null and carried null cells | Literal shape in sources; grid type presentation also uses italics |
+| `--syntax-notation` | `text-syntax-notation` | Element names, escapes, entities, and other notation | Token shape and grammar position |
 | `--syntax-link` | `text-syntax-link` | Links, URLs, and autolinks | Underline on the link text and the address shape |
 
 Every tone reaches WCAG AA contrast against both `--surface-panel` and the
-selected-cell composite. Close hues also differ by weight, italics, underline,
+selected-cell composite. Close hues also differ by weight, underline,
 numeric spacing, or literal shape, so hue is never their only distinction.
 These colours describe content, not interaction or status: selection keeps its
 blue fill and edge, while the warm warning and destructive band stays reserved
@@ -360,7 +360,10 @@ the contents of each `<th>` in HTML, which is the one format whose grammar
 marks no header and therefore gets a narrow project-owned decoration instead.
 
 **Structure recedes, while semantic values and notation stay related across
-views.**
+views.** Syntax highlighting always keeps tokens upright. Italics are reserved
+for content the user explicitly marked as emphasis; types, comments, element
+names, escapes, entities, annotations, and other grammar indicators never add
+italics of their own.
 Brackets, pipes, the Markdown alignment divider, markup markers, and HTML
 attribute names are all `--muted-foreground`. Strings, numbers, booleans, and
 null use their cross-view value tokens; element names, escapes, entities, and
@@ -388,13 +391,13 @@ glyphs and the placeholder share one tone, `--muted-foreground` mixed to half
 strength, never a status colour and never the full text tone: a marker answers a
 question the reader has to ask before it matters, so it must be findable when
 looked for and ignorable when not. The escape glyph is the exception, and it is
-notation rather than annotation: it wears `--syntax-notation` in italics, the
-same treatment the syntax tokens already give an escape, because it says the
-same thing more briefly. Each is a distinct glyph, so none is told apart from
-content by colour alone, and italics and the glyph itself are what survive
-forced colours where a tone does not. The space and tab glyphs are painted in an
-absolutely positioned pseudo-element so they carry no advance width and the
-annotated character stays exactly one character wide. Every glyph is generated
+notation rather than annotation: it wears the same `--syntax-notation` tone as
+the syntax token it replaces, because it says the same thing more briefly. Each
+is a distinct glyph, so none is told apart from content by colour alone, and the
+glyph itself is what survives forced colours where a tone does not. The space
+and tab glyphs are painted in an absolutely positioned pseudo-element, so they
+carry no advance width and the annotated character stays exactly one character
+wide. Every glyph is generated
 content, so no marker is ever a text node: none of them can be read out, copied,
 downloaded, parsed, or persisted, and the caret, the selection, and the
 diagnostic underlines stay measured in the characters the user typed.

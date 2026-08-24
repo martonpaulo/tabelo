@@ -20,7 +20,7 @@ async function nameColumns(tabelo: TabeloPage): Promise<void> {
 	await tabelo.editCell(1, 1, first.name);
 }
 
-test("JSON scalar roles use distinct semantic and non-colour treatments", async ({
+test("JSON scalar roles use distinct semantic and upright treatments", async ({
 	tabelo,
 }) => {
 	await tabelo.importFile(
@@ -59,8 +59,8 @@ test("JSON scalar roles use distinct semantic and non-colour treatments", async 
 	).toBe(4);
 	expect(number?.fontWeight).toBeGreaterThanOrEqual(HEADER_WEIGHT);
 	expect(boolean?.fontWeight).toBeGreaterThanOrEqual(HEADER_WEIGHT);
-	expect(boolean?.fontStyle).toBe("italic");
-	expect(nullValue?.fontStyle).toBe("italic");
+	expect(boolean?.fontStyle).toBe("normal");
+	expect(nullValue?.fontStyle).toBe("normal");
 });
 
 test("every source format marks its header cells in the tokens", async ({
@@ -117,6 +117,7 @@ test("an HTML closing tag does not read as an opening one", async ({
 		nodes.map((node) => ({
 			text: node.textContent ?? "",
 			color: getComputedStyle(node).color,
+			fontStyle: getComputedStyle(node).fontStyle,
 		})),
 	);
 
@@ -132,6 +133,7 @@ test("an HTML closing tag does not read as an opening one", async ({
 	expect(delimiter).toBeDefined();
 	expect(name).toBeDefined();
 	expect(delimiter?.color).not.toBe(name?.color);
+	expect(name?.fontStyle).toBe("normal");
 });
 
 test("the first grid row is the numbered header row", async ({ tabelo }) => {

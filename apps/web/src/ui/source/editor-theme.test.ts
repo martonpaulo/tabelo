@@ -115,6 +115,12 @@ describe("the shared highlight style", () => {
 		expect(rules).not.toContain("--status-warning");
 	});
 
+	test("reserves italics for content explicitly marked as emphasis", () => {
+		const rules = highlightStyle.module?.getRules() ?? "";
+		expect(rulesFor(tags.emphasis)).toContain("font-style: italic");
+		expect(rules.match(/font-style: italic/g)).toHaveLength(1);
+	});
+
 	test("maps scalar values and notation to their semantic treatments", () => {
 		expect(rulesFor(tags.punctuation)).toContain("--muted-foreground");
 		expect(rulesFor(tags.propertyName)).toContain("font-weight: 600");
