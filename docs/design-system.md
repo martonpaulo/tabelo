@@ -366,28 +366,36 @@ links use the notation and link tokens above. These treatments are presentation
 only: they do not change grammar, parsing, cell values, or source text. A status
 colour is never spent on a token.
 
-**Whitespace and empty values are annotated, never written.** The formats
-Tabelo edits are whitespace-significant and full of positions that hold a value
-the user cannot see: a tab and a run of spaces look alike in TSV, `a,,b` has a
-middle field, and `||a|||b||` is hard to count. Three glyphs answer that, all of
-them CodeMirror decorations over unchanged text: `·` for a space and `→` for a
-tab, on the per-character marks `highlightWhitespace()` provides, and `(empty)`
-where a delimited syntax hides an empty field. The placeholder is the one this
-project draws itself, because no editor has a concept of a field; it appears in
-Markdown, CSV, TSV, and Jira, while JSON, Records, and HTML spell an empty value
-out and get none.
+**Whitespace, empty values, and escape sequences are annotated, never
+written.** The formats Tabelo edits are whitespace-significant and full of
+positions that hold a value the user cannot see: a tab and a run of spaces look
+alike in TSV, `a,,b` has a middle field, `||a|||b||` is hard to count, and
+`&#32;` is five characters standing for one space nobody can spell. Four glyph
+families answer that, all of them CodeMirror decorations over unchanged text:
+`·` for a space and `→` for a tab, on the per-character marks
+`highlightWhitespace()` provides; `(empty)` where a delimited syntax hides an
+empty field; and one glyph over each escape sequence, showing the character the
+sequence stands for. The last two are the ones this project draws itself,
+because no editor has a concept of a field or of a codec's escaping grammar. The
+placeholder appears in Markdown, CSV, TSV, and Jira, while JSON, Records, and
+HTML spell an empty value out and get none; the escape glyph appears in Markdown
+and Jira, the two formats whose codecs escape reversibly inside a cell.
 
-**An annotation sits below the content, never beside it.** All three share one
-tone, `--muted-foreground` mixed to half strength, never a status colour and
-never the full text tone: a marker answers a question the reader has to ask
-before it matters, so it must be findable when looked for and ignorable when
-not. Each is a distinct glyph, so none is told apart from content by colour
-alone, and the space and tab glyphs are painted in an absolutely positioned
-pseudo-element so they carry no advance width and the annotated character stays
-exactly one character wide. Every glyph is generated content, so no marker is
-ever a text node: none of them can be read out, copied, downloaded, parsed, or
-persisted, and the caret, the selection, and the diagnostic underlines stay
-measured in the characters the user typed.
+**An annotation sits below the content, never beside it.** The whitespace
+glyphs and the placeholder share one tone, `--muted-foreground` mixed to half
+strength, never a status colour and never the full text tone: a marker answers a
+question the reader has to ask before it matters, so it must be findable when
+looked for and ignorable when not. The escape glyph is the exception, and it is
+notation rather than annotation: it wears `--syntax-notation` in italics, the
+same treatment the syntax tokens already give an escape, because it says the
+same thing more briefly. Each is a distinct glyph, so none is told apart from
+content by colour alone, and italics and the glyph itself are what survive
+forced colours where a tone does not. The space and tab glyphs are painted in an
+absolutely positioned pseudo-element so they carry no advance width and the
+annotated character stays exactly one character wide. Every glyph is generated
+content, so no marker is ever a text node: none of them can be read out, copied,
+downloaded, parsed, or persisted, and the caret, the selection, and the
+diagnostic underlines stay measured in the characters the user typed.
 
 **The placeholder reads as text and is not text.** It sits where the cell's
 value would have started and takes the width of the padding it is drawn instead
@@ -395,6 +403,26 @@ of, so a reader sees what the field costs. Everything else about it says
 otherwise: it holds no document position, the caret steps over it rather than
 into it, it cannot be selected or typed through, and it never reaches the text,
 the clipboard, a download, or storage.
+
+**An escape sequence is drawn as what it means, in the room it took.** `&#32;`,
+`<br>`, `\|`, `\\`, and `&amp;` are notation the codec had to write, and read as
+text they are both unreadable and out of proportion: five characters where the
+value is one. Each is replaced by the single character it resolves to, and the
+glyph keeps the exact width of the sequence it is drawn instead of, because
+Markdown measured and padded its column counting those characters and a narrower
+drawing would shift every delimiter after it. The width is stated in the
+editor's own character, so it follows the pane's zoom with nothing measuring
+anything. What a sequence is comes from the codec that owns the grammar, never
+from a pattern the editor matches itself, and a run that only looks like one,
+the literal text `&#32;`, stays exactly as written. Whitespace reuses the space
+and tab glyphs, a line break is `↵`, and a hover names both the spelling and the
+character it stands for, which is the one thing that cannot be drawn there. It
+is always on: a reader who cannot tell notation from content has no question a
+preference would answer. The glyph itself is generated content and hidden from
+assistive technology like every other annotation, but this is the one
+replacement that covers characters the file actually holds rather than padding,
+so the sequence is kept in the accessible tree, clipped out of sight: what a
+screen reader reads is still the source, exactly and in order.
 
 **The file carries the room, so the file decides the layout.** Markdown pads its
 columns for readability, and an empty cell is padded to hold the placeholder,
