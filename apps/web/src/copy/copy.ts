@@ -6,6 +6,7 @@ import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import type { FillSeriesRefusal } from "@/core/series";
 import type { CellValueType, ExpectedColumnType } from "@/core/types";
 import type {
+	EscapeMatch,
 	OutputOptionId,
 	ParseIssue,
 	PreconditionFailure,
@@ -20,6 +21,33 @@ import type { PanePositionId, SplitEdge } from "@/workspace/layout";
 // Named once because it is both the visible label of the recovery command and
 // the opening of the accessible name that says which refusal it belongs to.
 const FIX_TABLE = "Fix table";
+
+// What an escape sequence resolves to, named rather than shown: the character
+// is the one thing the source view cannot draw there, which is why the sequence
+// exists at all.
+const escapeTargetNames: Record<string, string> = {
+	" ": "a space",
+	"\t": "a tab",
+	"\n": "a line break",
+	"|": "a pipe",
+	"\\": "a backslash",
+	"&": "an ampersand",
+	"\u00a0": "a non-breaking space",
+};
+
+function escapeTarget(decoded: string): string {
+	// A protected spelling restores text the format would otherwise have read as
+	// its own notation.
+	if (decoded.length > 1) return `the literal text ${decoded}`;
+	const named = escapeTargetNames[decoded];
+	if (named) return named;
+	const codePoint = decoded.codePointAt(0);
+	// Whitespace with no everyday name: say exactly which character it is, in
+	// the notation anyone can look up.
+	return codePoint === undefined
+		? "nothing"
+		: `the character U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}`;
+}
 
 const cellTypeLabels = {
 	string: "String",
@@ -351,6 +379,11 @@ export const copy = {
 		// the user typed. Defined in the core because Markdown's serializer
 		// reserves room for it: see core/empty-value.ts.
 		emptyValue: EMPTY_VALUE_PLACEHOLDER,
+		// What a glyph drawn over an escape sequence stands for, said on hover.
+		// The sequence is spelled out as the source writes it, so the reader can
+		// match what the tooltip names against what the file holds.
+		escapeSequence: (match: EscapeMatch) =>
+			`${match.source} is an escape sequence for ${escapeTarget(match.decoded)}.`,
 		issue: (issue: ParseIssue) => {
 			let message: string;
 			switch (issue.code) {
