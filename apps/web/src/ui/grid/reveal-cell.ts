@@ -1,4 +1,4 @@
-import { HEADER_ROW } from "@/core/selection";
+import { type CellPosition, HEADER_ROW } from "@/core/selection";
 
 // Bringing the focused cell into view, owned by the grid rather than left to
 // the browser.
@@ -19,20 +19,38 @@ import { HEADER_ROW } from "@/core/selection";
 export function revealGridCell(
 	grid: HTMLTableElement,
 	cell: HTMLElement,
-	row: number,
+	position: CellPosition,
 ): void {
 	const scroller = grid.closest<HTMLElement>('[data-slot="panel-body"]');
 	if (!scroller) return;
 
-	const gutter = grid.querySelector<HTMLElement>("[data-row-header]");
+	// The optional pinned data layers are chrome for every cell except the ones
+	// they are made of. A cell inside a pinned layer is that layer, so measuring
+	// against it would push the cell away from itself; the header row and the
+	// first data column sit above and beside the layers rather than under them,
+	// which is the same reason. Absent means unpinned, and the fixed chrome
+	// underneath is then the boundary, exactly as before.
+	const pinnedColumn =
+		position.column === 0
+			? null
+			: grid.querySelector<HTMLElement>("[data-pinned-column]");
+	const pinnedRow =
+		position.row === HEADER_ROW || position.row === 0
+			? null
+			: grid.querySelector<HTMLElement>("[data-pinned-row]");
+
+	const gutter =
+		pinnedColumn ?? grid.querySelector<HTMLElement>("[data-row-header]");
 	// A cell in the header row has only the index strip above it: the header row
 	// is what it sits in, so reserving that row's height would push it away from
 	// chrome that is not there.
-	const above = grid.querySelector<HTMLElement>(
-		row === HEADER_ROW
-			? "[data-column-header]"
-			: `[data-cell="${HEADER_ROW}:0"]`,
-	);
+	const above =
+		pinnedRow ??
+		grid.querySelector<HTMLElement>(
+			position.row === HEADER_ROW
+				? "[data-column-header]"
+				: `[data-cell="${HEADER_ROW}:0"]`,
+		);
 
 	// The find bar sticks to the foot of the same scroller, so while it is open
 	// it is the bottom of the content region rather than the scroller's edge. It

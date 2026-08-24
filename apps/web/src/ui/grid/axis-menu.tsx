@@ -21,6 +21,7 @@ import {
 	ChevronDown,
 	ChevronsLeftRight,
 	MoreVertical,
+	Pin,
 	WrapText,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -31,6 +32,7 @@ import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { MenuSelectionOption } from "@/ui/primitives/menu-selection-option";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import { isSameColumnWidth } from "@/workspace/column-width";
+import type { PinnedGridAxis } from "@/workspace/layout";
 import { expectedTypeOptions } from "./cell-type-options";
 import { DropdownTableActions } from "./dropdown-table-actions";
 import { targetAxisForMenu } from "./menu-target";
@@ -57,11 +59,38 @@ const alignments: {
 	{ value: "right", label: copy.actions.alignRight, icon: AlignRight },
 ];
 
-type Axis = "row" | "column";
+// The first data row and the first data column on their own axes. The header
+// row is row -1 and already sticky, so the first row a pin can reach is the
+// first data one, and both axes count their data from zero.
+const FIRST_DATA_INDEX = 0;
+
+// One checkbox item for both axes. `closeOnClick={false}` matches the wrap
+// toggle beside it: the menu stays open so the effect is visible while the
+// item reads back its own new checked state.
+function PinAxisItem({
+	axis,
+	pinned,
+}: {
+	readonly axis: PinnedGridAxis;
+	readonly pinned: boolean;
+}) {
+	return (
+		<DropdownMenuCheckboxItem
+			checked={pinned}
+			closeOnClick={false}
+			onCheckedChange={(next) =>
+				useTabeloStore.getState().setPinnedAxis(axis, next)
+			}
+		>
+			<Pin aria-hidden />
+			{axis === "row" ? copy.actions.pinFirstRow : copy.actions.pinFirstColumn}
+		</DropdownMenuCheckboxItem>
+	);
+}
 
 // What a trigger tells the shared root about itself when it opens it.
 interface AxisMenuPayload {
-	readonly axis: Axis;
+	readonly axis: PinnedGridAxis;
 	readonly index: number;
 	readonly measureFitWidth?: () => number | undefined;
 }
@@ -75,7 +104,7 @@ export function createAxisMenuHandle(): AxisMenuHandle {
 // A column names itself by its header, falling back to its index-strip letter
 // when it has none, so the menu of an unnamed column is still identifiable.
 function axisMenuLabel(
-	axis: Axis,
+	axis: PinnedGridAxis,
 	index: number,
 	header: string,
 	expectedType?: ExpectedColumnType,
@@ -87,7 +116,7 @@ function axisMenuLabel(
 
 interface AxisMenuTriggerProps {
 	readonly handle: AxisMenuHandle;
-	readonly axis: Axis;
+	readonly axis: PinnedGridAxis;
 	readonly index: number;
 	// Whether this row or column is the one the user is working in. Revealing
 	// the affordance there is what teaches the relationship between a selection
@@ -187,6 +216,15 @@ function AxisMenuBody({ axis, index, measureFitWidth }: AxisMenuPayload) {
 	const wrappedColumns = useTabeloStore(
 		(state) => state.workspace.wrappedColumns,
 	);
+	// Only the first data row and the first data column can be pinned, so only
+	// their own menus carry the control. Offering it from every menu would ask
+	// the reader of column D's menu to work out which column it means.
+	const pinnable = index === FIRST_DATA_INDEX;
+	const pinned = useTabeloStore((state) =>
+		axis === "row"
+			? state.workspace.pinFirstDataRow
+			: state.workspace.pinFirstDataColumn,
+	);
 	const columnWidths = useTabeloStore((state) => state.workspace.columnWidths);
 	const wrapped = column ? wrappedColumns.includes(column.id) : false;
 	const currentWidth = column ? columnWidths[column.id] : undefined;
@@ -239,6 +277,7 @@ function AxisMenuBody({ axis, index, measureFitWidth }: AxisMenuPayload) {
 							<WrapText aria-hidden />
 							{copy.actions.wrapColumnText}
 						</DropdownMenuCheckboxItem>
+						{pinnable ? <PinAxisItem axis={axis} pinned={pinned} /> : null}
 					</DropdownMenuGroup>
 					<DropdownMenuSeparator />
 
@@ -288,6 +327,15 @@ function AxisMenuBody({ axis, index, measureFitWidth }: AxisMenuPayload) {
 							/>
 						))}
 					</DropdownMenuRadioGroup>
+					<DropdownMenuSeparator />
+				</>
+			) : null}
+
+			{axis === "row" && pinnable ? (
+				<>
+					<DropdownMenuGroup>
+						<PinAxisItem axis={axis} pinned={pinned} />
+					</DropdownMenuGroup>
 					<DropdownMenuSeparator />
 				</>
 			) : null}

@@ -77,6 +77,7 @@ import {
 	type GridAutoscrollPoint,
 	useGridAutoscroll,
 } from "./use-grid-autoscroll";
+import { usePinnedAxes } from "./use-pinned-axes";
 
 const alignClass: Record<Alignment, string> = {
 	default: "text-left",
@@ -300,7 +301,19 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		(state) => state.workspace.wrappedColumns,
 	);
 	const columnWidths = useTabeloStore((state) => state.workspace.columnWidths);
+	const pinFirstDataRow = useTabeloStore(
+		(state) => state.workspace.pinFirstDataRow,
+	);
+	const pinFirstDataColumn = useTabeloStore(
+		(state) => state.workspace.pinFirstDataColumn,
+	);
 	const entered = usePaneEntered();
+
+	// Pinning the only row or the only column holds it in place against nothing,
+	// so the layer is simply not drawn. The preference is kept either way: it
+	// becomes effective on its own once the table grows past one.
+	const pinnedRow = pinFirstDataRow && document.rows.length > 1;
+	const pinnedColumn = pinFirstDataColumn && document.columns.length > 1;
 
 	const gridRef = useRef<HTMLTableElement>(null);
 	const wrapperRef = useRef<HTMLDivElement>(null);
@@ -364,7 +377,10 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		// letting both run would scroll twice, and the browser's own attempt is
 		// the one that leaves the cell under the sticky gutter.
 		target.focus({ preventScroll: true });
-		revealGridCell(grid, target, focus.row);
+		// Rebuilt from the two coordinates rather than passing `focus` itself:
+		// the effect must not wake on a selection object that carries the same
+		// focused cell, which is what listing the members keeps it from doing.
+		revealGridCell(grid, target, { row: focus.row, column: focus.column });
 	}, [focus.row, focus.column, editing, editingHeader]);
 
 	// Stepping to a match moves the selection while the find bar keeps the
@@ -377,7 +393,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		const target = grid.querySelector<HTMLElement>(
 			`[data-cell="${match.row}:${match.column}"]`,
 		);
-		if (target) revealGridCell(grid, target, match.row);
+		if (target) revealGridCell(grid, target, match);
 	}, [match]);
 
 	// A column selection starts on the header row, because a column is its header
@@ -527,6 +543,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		draggingRef,
 		axisOf: autoscrollAxisOf,
 		onScroll: extendAutoscrolledDrag,
+	});
+
+	usePinnedAxes({
+		gridRef,
+		pinnedRow,
+		pinnedColumn,
+		document,
+		zoom,
+		columnWidths,
+		wrappedColumns,
 	});
 
 	const moveFocus = useCallback(
@@ -941,7 +967,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				aria-label={copy.a11y.grid}
 				aria-rowcount={document.rows.length + 1}
 				aria-colcount={document.columns.length}
-				className="table-fixed border-separate border-spacing-0 text-content"
+				className="tabelo-grid table-fixed border-separate border-spacing-0 text-content"
 				onPointerDownCapture={(event) => {
 					const activeEditor = event.currentTarget.ownerDocument.activeElement;
 					if (!(activeEditor instanceof HTMLTextAreaElement)) return;
@@ -1033,6 +1059,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								focused={focus.column === columnIndex}
 								width={resolveColumnWidth(columnWidths[column.id])}
 								zoom={zoom}
+								pinned={pinnedColumn && columnIndex === 0}
 								onSelect={(intent) => selectColumn(columnIndex, intent)}
 								onDragStart={() => {
 									draggingRef.current = "column";
@@ -1106,6 +1133,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								header={column.header}
 								align={column.align}
 								wrapped={wrappedColumns.includes(column.id)}
+								pinned={pinnedColumn && columnIndex === 0}
 								selected={rects.some((candidate) =>
 									rectContains(candidate, HEADER_ROW, columnIndex),
 								)}
@@ -1171,6 +1199,8 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							}
 							editingSeed={editing?.row === rowIndex ? editingSeed : null}
 							wrappedColumns={wrappedColumns}
+							pinnedRow={pinnedRow && rowIndex === 0}
+							pinnedColumn={pinnedColumn}
 							selectRow={selectRow}
 							onFinishCellEdit={finishCellEdit}
 							draggingRef={draggingRef}
@@ -1252,6 +1282,12 @@ interface DataRowProps {
 	// The character that opened the editor, when typing is what opened it.
 	readonly editingSeed: string | null;
 	readonly wrappedColumns: readonly ColumnId[];
+	// Whether this row is the pinned first data row, and whether the grid pins
+	// its first data column. Both arrive already narrowed to what actually
+	// renders, so an unpinned table passes the same two `false` values on every
+	// document change and every row is still reconciled away.
+	readonly pinnedRow: boolean;
+	readonly pinnedColumn: boolean;
 	readonly selectRow: (row: number, intent: SelectIntent) => void;
 	readonly onFinishCellEdit: (
 		position: CellPosition,
@@ -1280,6 +1316,8 @@ const DataRow = memo(function DataRow({
 	editingColumn,
 	editingSeed,
 	wrappedColumns,
+	pinnedRow,
+	pinnedColumn,
 	selectRow,
 	onFinishCellEdit,
 	draggingRef,
@@ -1321,8 +1359,13 @@ const DataRow = memo(function DataRow({
 				aria-label={copy.a11y.rowNumber(rowIndex)}
 				data-row-header={rowIndex}
 				className={cn(
-					"sticky left-0 z-10 border-line-subtle border-r border-b bg-surface-gutter align-top",
+					"sticky left-0 border-line-subtle border-r border-b bg-surface-gutter align-top",
 					"px-1 text-right font-index font-normal text-muted-foreground text-xs tabular-nums",
+					// The row's number and its menu are how the row identifies itself,
+					// so they hold position with it. Pinned it sticks on both axes and
+					// joins the corner layer, like the header row's own gutter cell.
+					pinnedRow ? "top-(--grid-pin-top) z-30" : "z-10",
+					pinnedRow && "border-b-line-strong",
 				)}
 				onPointerEnter={() => {
 					if (draggingRef.current !== "row") return;
@@ -1376,6 +1419,7 @@ const DataRow = memo(function DataRow({
 				const describesType = type !== "string" || divergent;
 				const isEditing = columnIndex === editingColumn;
 				const wrapped = wrappedColumns.includes(column.id);
+				const pinnedCell = pinnedColumn && columnIndex === 0;
 
 				return (
 					// gridcell is stated rather than left implicit, for the same
@@ -1386,6 +1430,11 @@ const DataRow = memo(function DataRow({
 						// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
 						role="gridcell"
 						data-cell={`${rowIndex}:${columnIndex}`}
+						// What the pinned layers are made of, for the two readers that
+						// have to find them by their stuck rectangle rather than by
+						// index: reveal-cell's clearance, and the browser suite.
+						data-pinned-row={pinnedRow ? "true" : undefined}
+						data-pinned-column={pinnedCell ? "true" : undefined}
 						data-cell-type={type}
 						data-cell-type-divergent={divergent ? "true" : undefined}
 						data-grid-active={isFocus ? "true" : undefined}
@@ -1403,15 +1452,46 @@ const DataRow = memo(function DataRow({
 						// across a 200-row table. See docs/design-system.md §3.
 						title={value || undefined}
 						className={cn(
-							"relative border-line-subtle border-r border-b px-2 align-top",
+							"border-line-subtle border-r border-b px-2 align-top",
 							"cursor-cell select-none",
+							// One position, never two. `relative` is what the clipboard
+							// mark resolves against, and a pinned cell's own `sticky`
+							// already is that containing block: emitting both would let
+							// the later rule win and turn the sticky offset into a
+							// static shift. Same trap as the header cell and the column
+							// resize handle.
+							//
+							// Between ordinary cells and the row gutter above them, so
+							// a pinned layer covers the table without covering the
+							// chrome. The one cell in both layers renders their
+							// intersection once, a step above each.
+							pinnedRow || pinnedCell ? "sticky" : "relative",
+							pinnedRow && "top-(--grid-pin-top)",
+							pinnedCell && "left-grid-gutter",
+							pinnedRow && pinnedCell
+								? "z-[6]"
+								: (pinnedRow || pinnedCell) && "z-[5]",
+							// The edge that says a layer is pinned without using colour:
+							// the strong line the grid already draws around chrome,
+							// against the subtle one every interior boundary carries.
+							pinnedRow && "border-b-line-strong",
+							pinnedCell && "border-r-line-strong",
 							// A cell being edited overrides the column's own clipping so
 							// its editor can grow and wrap over the rows below it while
 							// the value is too long for the column, without touching
 							// the wrap preference or any other row's height.
 							isEditing ? "z-20 overflow-visible" : "overflow-hidden",
 							alignClass[column.align],
-							inSelection ? "bg-selection-fill" : "bg-background",
+							// A pinned cell has live rows and columns passing underneath
+							// it, so its selection tint is the sticky composition rather
+							// than the bare translucent token. See the header cell and
+							// index.css. Unselected needs nothing: `bg-background` is
+							// already the opaque pane surface.
+							inSelection
+								? pinnedRow || pinnedCell
+									? "bg-sticky-selection-fill"
+									: "bg-selection-fill"
+								: "bg-background",
 							isFocus && "outline-2 outline-selection-edge -outline-offset-2",
 						)}
 						onPointerDown={(event) => {
@@ -1515,6 +1595,10 @@ interface ColumnIndexCellProps {
 	// gesture converts viewport pixels back before writing a width down.
 	readonly width: number;
 	readonly zoom: number;
+	// Whether this cell belongs to the pinned first data column. A column is its
+	// header plus its cells, and the letter and the menu are how the column
+	// names itself, so both travel with the layer rather than scrolling off it.
+	readonly pinned: boolean;
 	readonly onSelect: (intent: SelectIntent) => void;
 	readonly onDragStart: () => void;
 	readonly onDragEnter: () => void;
@@ -1571,6 +1655,7 @@ function ColumnIndexCell({
 	focused,
 	width,
 	zoom,
+	pinned,
 	onSelect,
 	onDragStart,
 	onDragEnter,
@@ -1627,8 +1712,11 @@ function ColumnIndexCell({
 			// positions against, so no `relative` here: it would win over `sticky`
 			// and turn the offset into a shift rather than a scroll threshold.
 			className={cn(
-				"group/col sticky top-0 z-20 h-grid-strip border-line-strong border-r border-b",
+				"group/col sticky top-0 h-grid-strip border-line-strong border-r border-b",
 				"bg-surface-header px-1 text-center font-index font-normal text-muted-foreground text-xs",
+				// Pinned it sticks on both axes and joins the corner layer, beside
+				// the dead corner where the letters meet the row numbers.
+				pinned ? "left-grid-gutter z-30" : "z-20",
 			)}
 			onPointerEnter={onDragEnter}
 		>
@@ -1728,6 +1816,9 @@ interface HeaderCellProps {
 	readonly header: string;
 	readonly align: Alignment;
 	readonly wrapped: boolean;
+	// Whether this header belongs to the pinned first data column. See
+	// ColumnIndexCell: the header is part of the column it names.
+	readonly pinned: boolean;
 	readonly selected: boolean;
 	// A column selection reaches the header row, so a copied column marks it too.
 	readonly copiedEdges: ClipboardEdges | null;
@@ -1746,6 +1837,7 @@ function HeaderCell({
 	header,
 	align,
 	wrapped,
+	pinned,
 	selected,
 	copiedEdges,
 	focus,
@@ -1782,11 +1874,14 @@ function HeaderCell({
 				// The boundary under the header row is a row boundary like any other,
 				// so it takes the subtle line while the sides keep the strong one the
 				// chrome around them draws.
-				"sticky z-20 border-line-strong border-r border-b border-b-line-subtle align-top",
+				"sticky border-line-strong border-r border-b border-b-line-subtle align-top",
 				"cursor-cell select-none px-2 font-semibold",
 				// Sticks below the index strip rather than at the very top, so the
 				// two chrome layers stack instead of covering one another.
 				"top-grid-strip",
+				// Pinned it sticks on both axes and joins the corner layer, beside
+				// the gutter cell that names the header row.
+				pinned ? "left-grid-gutter z-30" : "z-20",
 				// See the data cell's identical rule: editing overrides clipping so a
 				// header longer than its column can grow and wrap while it's being
 				// typed, without changing the column's wrap preference.

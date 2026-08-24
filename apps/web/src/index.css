@@ -187,13 +187,36 @@ body {
 }
 
 /* Native focus scrolling and scrollIntoView use this optimal viewing region,
-   keeping their target clear of the grid chrome without measured offsets. */
+   keeping their target clear of the grid chrome without measured offsets. The
+   two pinned layers are optional and their sizes are not tokens, so the grid
+   publishes each one's measured extent here while it is pinned and removes it
+   again when it is not. Absent means unpinned, which is why the fallback is
+   zero rather than a size. */
 .tabelo-grid-scroller {
 	scroll-padding-top: calc(
 		var(--grid-strip-h) +
-		var(--spacing-content-line-box)
+		var(--spacing-content-line-box) +
+		var(--grid-pinned-row-h, 0rem)
 	);
-	scroll-padding-left: var(--grid-gutter-w);
+	scroll-padding-left: calc(
+		var(--grid-gutter-w) +
+		var(--grid-pinned-column-w, 0rem)
+	);
+}
+
+/* Where an optional pinned first data row comes to rest: clear of the column
+   index strip and clear of the header row. The strip is a fixed token, but the
+   header row is one content line box tall only until a wrapped header makes it
+   taller, which no token can express. The grid measures that row and sets
+   `--grid-header-h` on this same element, so the offset follows it; the token
+   is the fallback for the ordinary case and for the frame before the first
+   measurement. The pinned column needs no such help: the gutter it clears is a
+   fixed token, so `left-grid-gutter` says it directly. */
+.tabelo-grid {
+	--grid-pin-top: calc(
+		var(--grid-strip-h) +
+		var(--grid-header-h, var(--spacing-content-line-box))
+	);
 }
 
 /* Fills for the grid's sticky header row. Live body cells scroll underneath it,
