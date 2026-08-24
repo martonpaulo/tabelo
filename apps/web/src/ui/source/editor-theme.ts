@@ -217,10 +217,10 @@ export const editorTheme = EditorView.theme({
 	// is the same thing said more briefly: notation, not the character it
 	// resembles. Italic and the glyph itself are the channels that survive
 	// forced colours, where the tone does not.
-	".cm-tabeloEscape::before": {
-		// Generated content and a custom property, so the glyph is never a text
-		// node the DOM, a screen reader, or a copy could pick up, while each
-		// sequence still gets its own character.
+	".cm-tabeloEscapeGlyph::before": {
+		// Generated content and a custom property keep the glyph out of DOM text;
+		// its element is aria-hidden so assistive technology also ignores it,
+		// while each sequence still gets its own character.
 		content: "var(--tabelo-escape-glyph)",
 	},
 	".cm-tabeloEscape": {
@@ -237,6 +237,7 @@ export const editorTheme = EditorView.theme({
 		// baseline to its bottom margin edge, which lifts the glyph off the line
 		// the rest of the row sits on. There is nothing to clip either, since one
 		// character is always narrower than the sequence it replaces.
+		position: "relative",
 		userSelect: "none",
 	},
 	// The sequence itself, kept in the accessible tree and out of sight. Clipped

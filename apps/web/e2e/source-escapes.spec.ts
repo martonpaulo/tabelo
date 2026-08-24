@@ -16,7 +16,8 @@ import {
 // are drawn or not, and the caret keeps addressing the characters the file
 // holds.
 
-const glyph = ".cm-tabeloEscape";
+const escapeMarker = ".cm-tabeloEscape";
+const glyph = ".cm-tabeloEscapeGlyph";
 
 const first = samplePerson(0);
 
@@ -24,7 +25,7 @@ const first = samplePerson(0);
 // pipe, a backslash, an ampersand, and a line break. It is typed into the
 // Markdown view rather than pasted, because a line break inside a cell is a row
 // break in every delimited flavour the clipboard carries.
-const sequences = ["&#32;", "\\|", "\\\\", "&amp;", "<br>"];
+const sequences = ["&#32;", "\\|", "\\\\", "&amp;", "<br>"] as const;
 
 const markdownSource = [
 	"| Trailing | Pipe | Backslash | Ampersand | Break |",
@@ -45,7 +46,7 @@ async function seedEscapes(tabelo: TabeloPage, page: Page): Promise<void> {
 // computed `content` comes back.
 async function drawnGlyphs(pane: Locator): Promise<string[]> {
 	return pane.evaluate((element) =>
-		Array.from(element.querySelectorAll(".cm-tabeloEscape"), (span) => {
+		Array.from(element.querySelectorAll(".cm-tabeloEscapeGlyph"), (span) => {
 			// A computed `content` comes back as a CSS string, quoted and with
 			// its own backslashes escaped.
 			const content = getComputedStyle(span, "::before").content;
@@ -136,6 +137,13 @@ test("the glyph is drawn over the source without joining it", async ({
 	await expect(pane.locator(glyph).first()).toHaveAttribute(
 		"aria-hidden",
 		"true",
+	);
+	await expect(pane.locator(escapeMarker).first()).not.toHaveAttribute(
+		"aria-hidden",
+		"true",
+	);
+	await expect(pane.locator(".cm-tabeloEscapeSource").first()).toHaveText(
+		sequences[0],
 	);
 
 	// What the accessible tree and any DOM reader still hold is the source

@@ -134,10 +134,13 @@ class EscapeWidget extends WidgetType {
 		marker.style.setProperty("--tabelo-escape-glyph", cssString(this.glyph));
 		marker.style.width = `${this.columns}ch`;
 
-		// The glyph itself is drawn for the eye only: it is generated content in
-		// the editor theme rather than a text node, so it cannot be read out or
-		// picked up by a copy that falls back to the DOM.
-		marker.setAttribute("aria-hidden", "true");
+		// The glyph itself is drawn for the eye only. It needs its own element so
+		// hiding it from assistive technology does not also hide the source text
+		// beside it in this widget.
+		const glyph = document.createElement("span");
+		glyph.className = "cm-tabeloEscapeGlyph";
+		glyph.setAttribute("aria-hidden", "true");
+		marker.appendChild(glyph);
 
 		// Replacing a run takes it out of the rendered DOM, and unlike the
 		// padding the empty-value placeholder covers, these are characters the
