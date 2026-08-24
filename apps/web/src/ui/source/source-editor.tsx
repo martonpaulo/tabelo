@@ -43,6 +43,7 @@ import type { HighlightLanguage, ViewId } from "@/views/types";
 import { csvLanguage } from "./csv-language";
 import { syntaxTheme } from "./editor-theme";
 import { emptyValueMarkers, emptyValueSyntax } from "./empty-values";
+import { escapeSequenceGlyphs, escapeSyntax } from "./escape-sequences";
 import { htmlHeaderCells, htmlLanguage } from "./html-language";
 import { jiraLanguage } from "./jira-language";
 import { minimalChange } from "./minimal-change";
@@ -115,12 +116,17 @@ function indicatorExtensions(
 	const syntax = emptyValues
 		? emptyValueSyntax(language, fieldSeparator)
 		: null;
+	// Escape sequences are notation the format wrote, not a display choice, so
+	// unlike the three preferences above they are always drawn. A reader who
+	// cannot tell `&#32;` from content has no question to answer with a setting.
+	const escapes = escapeSyntax(language);
 	const classes = indicatorClasses(spaces, tabs);
 
 	return [
 		marksWhitespace ? highlightWhitespace() : [],
 		spaceScope(spaces),
 		syntax ? emptyValueMarkers(syntax) : [],
+		escapes ? escapeSequenceGlyphs(escapes) : [],
 		classes ? EditorView.editorAttributes.of({ class: classes }) : [],
 	];
 }

@@ -4,7 +4,9 @@ import { tags } from "@lezer/highlight";
 import { copy } from "@/copy/copy";
 import {
 	ALL_SPACES_CLASS,
+	SPACE_GLYPH,
 	SPACE_SCOPE_CLASS,
+	TAB_GLYPH,
 	TAB_INDICATOR_CLASS,
 } from "./whitespace-indicators";
 
@@ -168,12 +170,20 @@ export const editorTheme = EditorView.theme({
 	// `&` is the editor root, which is what carries these two: a rule written
 	// as a plain descendant would be scoped under the root and could never
 	// match the root itself.
-	[`&.${TAB_INDICATOR_CLASS} .cm-highlightTab::before`]: { content: '"→"' },
-	[`&.${ALL_SPACES_CLASS} .cm-highlightSpace::before`]: { content: '"·"' },
+	[`&.${TAB_INDICATOR_CLASS} .cm-highlightTab::before`]: {
+		content: `"${TAB_GLYPH}"`,
+	},
+	[`&.${ALL_SPACES_CLASS} .cm-highlightSpace::before`]: {
+		content: `"${SPACE_GLYPH}"`,
+	},
 	// The two narrower modes: CodeMirror's own trailing-whitespace mark, and the
 	// one scope this project marks itself, because no built-in describes it.
-	".cm-trailingSpace .cm-highlightSpace::before": { content: '"·"' },
-	[`.${SPACE_SCOPE_CLASS} .cm-highlightSpace::before`]: { content: '"·"' },
+	".cm-trailingSpace .cm-highlightSpace::before": {
+		content: `"${SPACE_GLYPH}"`,
+	},
+	[`.${SPACE_SCOPE_CLASS} .cm-highlightSpace::before`]: {
+		content: `"${SPACE_GLYPH}"`,
+	},
 	".cm-trailingSpace": {
 		// CodeMirror's base theme tints this red, which here would spend a status
 		// colour on a token and claim an error the parser never reported. The
@@ -201,6 +211,45 @@ export const editorTheme = EditorView.theme({
 		// of it whatever the column declares.
 		display: "inline-block",
 		userSelect: "none",
+	},
+	// An escape sequence, drawn as the one character it stands for. It wears the
+	// notation treatment the syntax tokens already use for an escape, because it
+	// is the same thing said more briefly: notation, not the character it
+	// resembles. Italic and the glyph itself are the channels that survive
+	// forced colours, where the tone does not.
+	".cm-tabeloEscape::before": {
+		// Generated content and a custom property, so the glyph is never a text
+		// node the DOM, a screen reader, or a copy could pick up, while each
+		// sequence still gets its own character.
+		content: "var(--tabelo-escape-glyph)",
+	},
+	".cm-tabeloEscape": {
+		color: "var(--syntax-notation)",
+		fontStyle: "italic",
+		// Exactly the width of the sequence it is drawn instead of, which the
+		// widget carries: Markdown padded its column counting those characters,
+		// so anything narrower shifts every delimiter after it. Inline-block is
+		// what makes that width apply at all, and centring puts the one glyph in
+		// the middle of the room the notation took.
+		display: "inline-block",
+		textAlign: "center",
+		// No `overflow` here: anything but `visible` moves an inline-block's
+		// baseline to its bottom margin edge, which lifts the glyph off the line
+		// the rest of the row sits on. There is nothing to clip either, since one
+		// character is always narrower than the sequence it replaces.
+		userSelect: "none",
+	},
+	// The sequence itself, kept in the accessible tree and out of sight. Clipped
+	// rather than hidden, because `display: none` and `visibility: hidden` both
+	// take it out of the accessible tree as well, which is the one thing it is
+	// here for.
+	".cm-tabeloEscapeSource": {
+		position: "absolute",
+		width: "0.0625rem",
+		height: "0.0625rem",
+		overflow: "hidden",
+		clipPath: "inset(50%)",
+		whiteSpace: "nowrap",
 	},
 	".cm-diagnosticError": {
 		textDecorationLine: "underline",

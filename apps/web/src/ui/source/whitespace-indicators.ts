@@ -25,6 +25,13 @@ import type { SpaceIndicators } from "@/preferences/contract";
 // looking at. `highlightWhitespace()` supplies the per-character spans
 // underneath, which is what keeps a run of dots countable.
 
+// The glyphs a source view draws over whitespace. One owner, because the same
+// two characters answer the same question in more than one place: the
+// per-character indicators here, and the escape-sequence glyphs that stand for
+// a space or a tab a format could not write literally.
+export const SPACE_GLYPH = "·";
+export const TAB_GLYPH = "→";
+
 // The two answers that hold for the whole document arrive as a class on the
 // editor rather than as a decoration, because there is nothing to select: every
 // tab, or every space.
