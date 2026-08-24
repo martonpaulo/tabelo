@@ -1806,6 +1806,36 @@ the strip and header cells (`z-20`), which paint under the two corners that
 stick on both axes (`z-30`). A sticky cell must not also be `relative`: the
 later rule wins and turns the sticky offset into a static shift.
 
+### Pinning the first data row and column
+
+The chrome above is always sticky. Two data layers are sticky **only when the
+user asks for them**, from a checkbox in the axis menu of the first data row and
+of the first data column, which are the only row and column either preference can
+reach. There is no freeze boundary of N rows or N columns: that is the
+spreadsheet shape the product declines, and two booleans answer the same need
+without a boundary to place, a control to place it with, or a number to explain.
+
+- Both are **workspace display preferences**, stored beside per-column wrapping.
+  Neither reaches the document, a codec, the clipboard, a download, or the undo
+  timeline, and neither is per-pane: each view appears at most once, so there is
+  one grid to pin.
+- They **slot between the existing layers** rather than beside them. A pinned
+  cell takes `z-index: 5`, above ordinary cells and below the row gutter; the one
+  cell belonging to both layers renders their intersection once, at `6`. The rule
+  against pairing `sticky` with `relative` applies here too, so a pinned cell
+  drops the `relative` its clipboard mark would otherwise resolve against and
+  uses the sticky containing block instead.
+- A pinned cell **paints an opaque fill**, for the reason the header row already
+  does: live rows and columns pass underneath it, and a translucent selection
+  tint would let their text read through. The unselected fill is the pane
+  surface and needs nothing; the selected one is the sticky composition.
+- The **non-color cue is the boundary line.** A pinned edge takes the strong line
+  the grid already draws around chrome, against the subtle line every interior
+  boundary carries. No new token, and it survives forced colours.
+- **Pinning the only row or the only column draws nothing.** There is nothing for
+  it to hold position against. The preference is still recorded and still shown
+  as checked, so it becomes effective by itself once the table grows.
+
 The pane body is the grid's scroll container. Its optimal viewing region uses
 `scroll-padding-top` equal to the strip plus one content line box and
 `scroll-padding-left` equal to the gutter. The strip and gutter remain fixed
@@ -1813,13 +1843,20 @@ chrome while the content line box follows pane zoom, so the compensation derives
 from the same tokens as the layers it reserves. That declaration governs every
 scroll the browser starts on its own.
 
+A pinned layer extends that region by its own size, and its size is not a token:
+the header row grows when a header wraps, and a pinned row grows with its tallest
+cell. The grid measures each pinned layer and publishes it as a custom property,
+which the declaration adds when present and ignores when absent. Absent means
+unpinned, so the fallback is zero rather than a size.
+
 **The grid moves its own focus, though, and does not rely on it.** Chrome
 honours only part of `scroll-padding-left` when it reveals a focused cell,
 delivering roughly half, so the clearance shrank as the gutter grew and the
 contract survived on a few pixels of slack. The grid therefore focuses with
 `preventScroll` and performs the smallest scroll itself. It measures the two
 boundaries from the elements that draw them, the gutter's trailing edge and the
-header row's bottom edge, rather than recomputing them from tokens: a sticky
+header row's bottom edge, or a pinned layer's edge where one stands in front of
+them, rather than recomputing them from tokens: a sticky
 cell's own rectangle already is its stuck position, so those are the boundaries
 the contract is written about at any zoom and any gutter width, with nothing to
 keep in step. The remainder is rounded outwards, because a cell left a fraction

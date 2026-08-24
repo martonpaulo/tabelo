@@ -529,6 +529,11 @@ export const copy = {
 		selectColumn: "Select column",
 		fitColumnToContent: "Fit column to content",
 		wrapColumnText: "Wrap text",
+		// Offered on the first data row and the first data column only, which is
+		// the axis each one pins, so the label says what it does rather than
+		// which row or column it would reach from somewhere else.
+		pinFirstRow: "Keep this row visible",
+		pinFirstColumn: "Keep this column visible",
 		editHeader: "Rename column",
 		// The command that sits beside a choice its codec has refused. The
 		// refusal already says what is wrong; this takes the user to it.
