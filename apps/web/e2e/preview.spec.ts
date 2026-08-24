@@ -84,18 +84,10 @@ test("the table sits directly on the pane, without a card around it", async ({
 	expect(parentSlot).toBe("preview-scroller");
 });
 
-test("column alignment reaches the preview", async ({ page, tabelo }) => {
+test("column alignment reaches the preview", async ({ tabelo }) => {
 	await tabelo.paste("Name\tCity\nIngrid\tRio");
 
-	await tabelo
-		.columnIndex(2)
-		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		})
-		.click();
-	await page
-		.getByRole("menuitemradio", { name: copy.actions.alignRight })
-		.click();
+	await tabelo.setColumnAlignment(2, copy.actions.alignRight);
 
 	const table = previewTable(await openPreview(tabelo));
 	await expect(table.getByRole("columnheader").nth(1)).toHaveCSS(

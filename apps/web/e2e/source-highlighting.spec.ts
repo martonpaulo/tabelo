@@ -144,21 +144,12 @@ test("the first grid row is the numbered header row", async ({ tabelo }) => {
 });
 
 test("grid headers show alignment without an extra icon", async ({
-	page,
 	tabelo,
 }) => {
 	const header = tabelo.header(1);
 	await expect(header.locator("svg")).toHaveCount(0);
 
-	await tabelo
-		.columnIndex(1)
-		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		})
-		.click();
-	await page
-		.getByRole("menuitemradio", { name: copy.actions.alignRight })
-		.click();
+	await tabelo.setColumnAlignment(1, copy.actions.alignRight);
 
 	await expect(header).toHaveCSS("text-align", "right");
 });
