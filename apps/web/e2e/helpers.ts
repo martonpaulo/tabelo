@@ -337,6 +337,39 @@ export class TabeloPage {
 		await dialog.waitFor({ state: "hidden" });
 	}
 
+	// The column's own menu, opened from its index-strip trigger.
+	async openColumnMenu(column: number): Promise<Locator> {
+		await this.columnIndex(column)
+			.getByRole("button", {
+				name: new RegExp(`^${copy.actions.columnActions}:`),
+			})
+			.click();
+		const menu = this.page.getByRole("menu", {
+			name: new RegExp(`^${copy.actions.columnActions}:`),
+		});
+		await menu.waitFor({ state: "visible" });
+		return menu;
+	}
+
+	// Alignment is a submenu, so it is its own menu once open and is addressed
+	// by its own accessible name rather than through the root menu's tree.
+	async openAlignmentSubmenu(column: number): Promise<Locator> {
+		const parent = await this.openColumnMenu(column);
+		const submenu = this.page.getByRole("menu", {
+			name: copy.actions.alignment,
+		});
+		await parent
+			.getByRole("menuitem", { name: copy.actions.alignment })
+			.click();
+		await submenu.waitFor({ state: "visible" });
+		return submenu;
+	}
+
+	async setColumnAlignment(column: number, label: string): Promise<void> {
+		const submenu = await this.openAlignmentSubmenu(column);
+		await submenu.getByRole("menuitemradio", { name: label }).click();
+	}
+
 	async openAppMenu(): Promise<Locator> {
 		const menu = this.page.getByRole("menu", {
 			name: copy.actions.openAppMenu,

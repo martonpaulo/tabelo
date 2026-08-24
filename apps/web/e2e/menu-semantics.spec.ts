@@ -250,12 +250,10 @@ test("column choices use the shared one-line radio anatomy", async ({
 	const expectedType = menu.getByRole("group", {
 		name: copy.actions.expectedType,
 	});
-	const alignment = menu.getByRole("group", { name: copy.actions.alignment });
 
 	await expect(expectedType.getByRole("menuitemradio")).toHaveCount(3);
-	await expect(alignment.getByRole("menuitemradio")).toHaveCount(4);
 	await expect(menu.locator('[data-slot="selection-option-icon"]')).toHaveCount(
-		7,
+		3,
 	);
 	await expect(
 		menu.locator('[data-slot="dropdown-menu-radio-item-indicator"]'),
@@ -263,6 +261,19 @@ test("column choices use the shared one-line radio anatomy", async ({
 	await expect(
 		expectedType.getByRole("menuitemradio", { checked: true }),
 	).toHaveCount(1);
+
+	// Alignment kept every one of those semantics when it moved behind a
+	// submenu trigger: the same radio anatomy, one checked value read from the
+	// column, and a choice that survives closing and reopening the menu.
+	await page.keyboard.press("Escape");
+	const alignment = await tabelo.openAlignmentSubmenu(1);
+	await expect(alignment.getByRole("menuitemradio")).toHaveCount(4);
+	await expect(
+		alignment.locator('[data-slot="selection-option-icon"]'),
+	).toHaveCount(4);
+	await expect(
+		alignment.locator('[data-slot="dropdown-menu-radio-item-indicator"]'),
+	).toHaveCount(0);
 	await expect(
 		alignment.getByRole("menuitemradio", { checked: true }),
 	).toHaveCount(1);
@@ -270,21 +281,66 @@ test("column choices use the shared one-line radio anatomy", async ({
 	await alignment
 		.getByRole("menuitemradio", { name: copy.actions.alignCenter })
 		.click();
-	await tabelo
-		.grid()
-		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		})
-		.first()
-		.click();
 	await expect(
-		page
-			.getByRole("menu", {
-				name: new RegExp(`^${copy.actions.columnActions}:`),
-			})
-			.getByRole("group", { name: copy.actions.alignment })
-			.getByRole("menuitemradio", { name: copy.actions.alignCenter }),
+		(await tabelo.openAlignmentSubmenu(1)).getByRole("menuitemradio", {
+			name: copy.actions.alignCenter,
+		}),
 	).toBeChecked();
+});
+
+test("the alignment submenu opens, closes, and returns focus from the keyboard", async ({
+	page,
+	tabelo,
+}) => {
+	const trigger = tabelo.columnIndex(1).getByRole("button", {
+		name: new RegExp(`^${copy.actions.columnActions}:`),
+	});
+	await trigger.click();
+	const root = page.getByRole("menu", {
+		name: new RegExp(`^${copy.actions.columnActions}:`),
+	});
+	const submenu = page.getByRole("menu", { name: copy.actions.alignment });
+	const submenuTrigger = root.getByRole("menuitem", {
+		name: copy.actions.alignment,
+	});
+
+	// ArrowRight opens the child menu and moves into it; ArrowLeft returns to
+	// the trigger without closing the menu the user started from.
+	await submenuTrigger.focus();
+	await page.keyboard.press("ArrowRight");
+	await expect(submenu).toBeVisible();
+	await expect(
+		submenu.getByRole("menuitemradio", { name: copy.actions.alignDefault }),
+	).toBeFocused();
+	await page.keyboard.press("ArrowLeft");
+	await expect(submenu).toBeHidden();
+	await expect(root).toBeVisible();
+	await expect(submenuTrigger).toBeFocused();
+
+	// Escape from inside the child menu unwinds one level at a time, and the
+	// grid trigger gets focus back at the end rather than the document body.
+	await page.keyboard.press("ArrowRight");
+	await expect(submenu).toBeVisible();
+	await page.keyboard.press("Escape");
+	await expect(submenu).toBeHidden();
+	await expect(root).toBeVisible();
+	await page.keyboard.press("Escape");
+	await expect(root).toBeHidden();
+	await expect(trigger).toBeFocused();
+});
+
+test("the alignment submenu stays inside a narrow viewport", async ({
+	page,
+	tabelo,
+}) => {
+	await page.setViewportSize({ width: 320, height: 568 });
+	const submenu = await tabelo.openAlignmentSubmenu(1);
+	const box = await submenu.boundingBox();
+	expect(box).not.toBeNull();
+	expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
+	expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(320);
+	expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);
+	expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(568);
 });
 
 test("table menus preserve named and unnamed semantic groups", async ({
@@ -305,12 +361,17 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	const dropdownGroups = menu.locator(
 		'[data-slot="dropdown-menu-group"], [data-slot="dropdown-menu-radio-group"]',
 	);
-	await expect(dropdownGroups).toHaveCount(8);
+	await expect(dropdownGroups).toHaveCount(7);
 	await expect(
 		menu.getByRole("group", { name: copy.actions.expectedType }),
 	).toHaveCount(1);
+	// Alignment is one row of the root menu now, and its group travelled with
+	// it into the child menu rather than staying behind as an empty label.
 	await expect(
 		menu.getByRole("group", { name: copy.actions.alignment }),
+	).toHaveCount(0);
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.alignment }),
 	).toHaveCount(1);
 	await expect(
 		menu.getByRole("group", { name: copy.actions.edit }),
@@ -319,10 +380,10 @@ test("table menus preserve named and unnamed semantic groups", async ({
 		menu.getByRole("group", { name: copy.actions.move }),
 	).toHaveCount(1);
 	await expect(menu.locator('[data-slot="dropdown-menu-label"]')).toHaveCount(
-		4,
+		3,
 	);
 	await expect(dropdownGroups.locator(":scope[aria-labelledby]")).toHaveCount(
-		4,
+		3,
 	);
 	await expect(
 		dropdownGroups.locator(":scope:not([aria-labelledby])"),

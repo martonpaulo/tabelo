@@ -616,13 +616,15 @@ A group whose items are *actions* rather than states, such as zoom, add, and
 close, stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
 
 Every action collection uses the menu primitive's semantic Group, in dropdown
-and context menus alike. A visible group title is reserved for Alignment,
-Expected type, Cell type, Edit, Move, and Fill. It is canonical copy rendered
-through GroupLabel, and the Group is named with `aria-labelledby`. Clipboard,
-Insert, Remove, and the single
-self-explanatory Fit column to content action remain untitled semantic groups,
-without an empty label. Group labels are non-interactive and arrow-key
-navigation skips them. App and pane menus follow the same grouping contract.
+and context menus alike. A visible group title is reserved for Expected type,
+Cell type, Edit, Move, and Fill. It is canonical copy rendered through
+GroupLabel, and the Group is named with `aria-labelledby`. Clipboard, Insert,
+Remove, and the single self-explanatory Fit column to content action remain
+untitled semantic groups, without an empty label. Alignment is named by its
+submenu trigger and by that menu's own accessible name instead, so its radio
+group travels into the child menu without a GroupLabel of its own. Group labels
+are non-interactive and arrow-key navigation skips them. App and pane menus
+follow the same grouping contract.
 
 A submenu is allowed for exactly one shape: **a flat list of immediate,
 self-explanatory commands that needs no explanatory state**. Every row performs

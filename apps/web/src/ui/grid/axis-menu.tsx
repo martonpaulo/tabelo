@@ -9,6 +9,9 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
 	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
 import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
@@ -265,34 +268,66 @@ function AxisMenuBody({ axis, index, measureFitWidth }: AxisMenuPayload) {
 					</DropdownMenuRadioGroup>
 					<DropdownMenuSeparator />
 
-					{/* A column has one alignment, so these are radio items rather
-					    than a tinted background that only a sighted user can read. */}
-					<DropdownMenuRadioGroup
-						aria-labelledby="column-alignment-label"
-						value={column?.align ?? "default"}
-						onValueChange={(next) =>
-							useTabeloStore
-								.getState()
-								.setColumnAlignment(index, next as Alignment)
-						}
-					>
-						<DropdownMenuLabel id="column-alignment-label">
-							{copy.actions.alignment}
-						</DropdownMenuLabel>
-						{alignments.map((option) => (
-							<MenuSelectionOption
-								key={option.value}
-								value={option.value}
-								icon={<option.icon />}
-								label={option.label}
-							/>
-						))}
-					</DropdownMenuRadioGroup>
+					<ColumnAlignmentSubmenu index={index} align={column?.align} />
 					<DropdownMenuSeparator />
 				</>
 			) : null}
 
 			<DropdownTableActions axis={axis} beforeRun={select} />
 		</>
+	);
+}
+
+// A submenu rather than four rows in the root menu: alignment is a flat list of
+// immediate choices with nothing to state beforehand, which is the whole of the
+// class docs/design-system.md §3 allows one for. The radio semantics travel with
+// it, so the checked value is still read from the column rather than the last
+// click.
+function ColumnAlignmentSubmenu({
+	index,
+	align,
+}: {
+	readonly index: number;
+	readonly align?: Alignment;
+}) {
+	const current = align ?? "default";
+	// The trigger wears the column's own alignment, so the root menu still says
+	// which one is set without a second line of copy explaining it.
+	const TriggerIcon =
+		alignments.find((option) => option.value === current)?.icon ?? AlignJustify;
+
+	return (
+		<DropdownMenuSub>
+			<DropdownMenuSubTrigger>
+				<TriggerIcon aria-hidden />
+				{copy.actions.alignment}
+			</DropdownMenuSubTrigger>
+			{/* No width of its own: the primitive already sizes a submenu to its
+			    content above a shared floor, and the shared spacing rhythm comes
+			    with it. */}
+			<DropdownMenuSubContent aria-label={copy.actions.alignment}>
+				{/* A column has one alignment, so these are radio items rather than
+				    a tinted background that only a sighted user can read. The
+				    group takes no name of its own: the menu around it already
+				    carries one, and two would be announced twice. */}
+				<DropdownMenuRadioGroup
+					value={current}
+					onValueChange={(next) =>
+						useTabeloStore
+							.getState()
+							.setColumnAlignment(index, next as Alignment)
+					}
+				>
+					{alignments.map((option) => (
+						<MenuSelectionOption
+							key={option.value}
+							value={option.value}
+							icon={<option.icon />}
+							label={option.label}
+						/>
+					))}
+				</DropdownMenuRadioGroup>
+			</DropdownMenuSubContent>
+		</DropdownMenuSub>
 	);
 }
