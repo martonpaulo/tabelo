@@ -3,6 +3,7 @@ import type { CellValue, ExpectedColumnType } from "@/core/types";
 import {
 	CELL_TYPE_MARKS,
 	cellTypeDiverges,
+	cellTypePresentationClass,
 	cellValueType,
 	expectedCellValueType,
 } from "./cell-type";
@@ -49,5 +50,14 @@ describe("grid cell type presentation", () => {
 			null: "null",
 		});
 		expect(new Set(Object.values(CELL_TYPE_MARKS))).toHaveLength(4);
+	});
+
+	it.each([
+		["string", "text-value-string"],
+		["number", "text-value-number font-semibold tabular-nums"],
+		["boolean", "text-value-boolean font-semibold italic"],
+		["null", "text-value-null italic"],
+	] as const)("maps %s to its semantic presentation", (type, className) => {
+		expect(cellTypePresentationClass(type)).toBe(className);
 	});
 });

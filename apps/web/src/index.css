@@ -23,9 +23,17 @@
 	--color-line-floating: var(--line-floating);
 	--color-control-outline: var(--control-outline);
 
-	/* The one accent in the product: what the user has selected. */
+	/* Interaction accent: what the user has selected. */
 	--color-selection-fill: var(--selection-fill);
 	--color-selection-edge: var(--selection-edge);
+
+	/* Cross-view semantic values and source notation. */
+	--color-value-string: var(--value-string);
+	--color-value-number: var(--value-number);
+	--color-value-boolean: var(--value-boolean);
+	--color-value-null: var(--value-null);
+	--color-syntax-notation: var(--syntax-notation);
+	--color-syntax-link: var(--syntax-link);
 
 	/* Synchronization state. Always paired with a text label, never colour alone. */
 	--color-status-warning: var(--status-warning);
@@ -87,6 +95,13 @@
 	--text-selection-fill: rgb(77 166 255 / 32%);
 	--active-line-fill: rgb(77 166 255 / 9%);
 	--selection-edge: #4da6ff;
+
+	--value-string: #a6da95;
+	--value-number: #8bd5ca;
+	--value-boolean: #d0b2ff;
+	--value-null: #9dbdff;
+	--syntax-notation: #b7bdf8;
+	--syntax-link: #91d7e3;
 
 	--status-warning: #fbbf24;
 

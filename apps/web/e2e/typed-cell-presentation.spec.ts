@@ -75,6 +75,30 @@ test("the grid exposes real and expected types without replacing cell names", as
 	expect(markFont).toBe(stringFont);
 	await expect(numberCell).toHaveCSS("text-align", "left");
 
+	const presentations = await Promise.all(
+		[numberCell, booleanCell, nullCell, stringCell].map((cell) =>
+			cell.locator("[data-cell-value]").evaluate((element) => {
+				const style = getComputedStyle(element);
+				return {
+					color: style.color,
+					fontStyle: style.fontStyle,
+					fontWeight: Number.parseInt(style.fontWeight, 10),
+				};
+			}),
+		),
+	);
+	const [numberPresentation, booleanPresentation, nullPresentation] =
+		presentations;
+	expect(new Set(presentations.map(({ color }) => color)).size).toBe(4);
+	expect(numberPresentation.fontWeight).toBeGreaterThanOrEqual(600);
+	expect(booleanPresentation.fontWeight).toBeGreaterThanOrEqual(600);
+	expect(booleanPresentation.fontStyle).toBe("italic");
+	expect(nullPresentation.fontStyle).toBe("italic");
+
+	await numberCell.click();
+	await expect(numberCell).toHaveAttribute("aria-selected", "true");
+	await expect(numberCell).toHaveCSS("outline-style", "solid");
+
 	const columnIndex = tabelo.columnIndex(1);
 	await expect(columnIndex).toHaveAttribute("data-expected-type", "text");
 	await expect(
@@ -229,6 +253,7 @@ test("type marks remain legible under forced colours, zoom, and wrapping", async
 	if (browserName === "chromium") {
 		await page.emulateMedia({ forcedColors: "active" });
 		await expect(mark).toBeVisible();
+		await expect(cell).toHaveAccessibleName(/number/i);
 		expect(
 			await mark.evaluate((element) => getComputedStyle(element).color),
 		).not.toBe("rgba(0, 0, 0, 0)");

@@ -9,8 +9,8 @@ import {
 } from "./whitespace-indicators";
 
 // The editor is styled entirely from Tabelo's tokens so it stays part of the
-// product rather than looking like an embedded IDE. Colour here is restrained
-// on purpose: structure is emphasised, content is left alone.
+// product rather than looking like an embedded IDE. Semantic colour is shared
+// with the grid, while structure stays quiet and content remains primary.
 // See docs/design-system.md §1.
 
 // The source text is pane content, so it follows that pane's zoom. This is the
@@ -272,36 +272,47 @@ export const highlightStyle = HighlightStyle.define([
 	{ tag: tags.strikethrough, textDecoration: "line-through" },
 	{
 		tag: tags.link,
-		color: "var(--selection-edge)",
+		color: "var(--syntax-link)",
 		textDecoration: "underline",
 	},
-	// The address inside a link, and a bare autolink. The accent already says
+	// The address inside a link, and a bare autolink. The link tone already says
 	// this is a link; the underline belongs to the text that carries it.
-	{ tag: tags.url, color: "var(--selection-edge)" },
+	{ tag: tags.url, color: "var(--syntax-link)" },
 	{ tag: tags.monospace, color: "var(--foreground)" },
 	// Quoted CSV fields, JSON string values, and HTML attribute values: the case
 	// where punctuation inside a value is data rather than structure.
-	{ tag: tags.string, color: "var(--selection-edge)" },
+	{ tag: tags.string, color: "var(--value-string)" },
+	{
+		tag: tags.number,
+		color: "var(--value-number)",
+		fontWeight: "600",
+		fontVariantNumeric: "tabular-nums",
+	},
+	{
+		tag: tags.bool,
+		color: "var(--value-boolean)",
+		fontWeight: "600",
+		fontStyle: "italic",
+	},
+	{ tag: tags.null, color: "var(--value-null)", fontStyle: "italic" },
 	// A character standing in for one it cannot spell directly: a Markdown or
-	// Jira backslash escape, an HTML entity, a Markdown task marker. The accent
-	// marks it as notation rather than the literal text it looks like. It is
+	// Jira backslash escape, an HTML entity, a Markdown task marker, or an HTML
+	// element name. Italics keep notation distinct from close value hues and in
+	// forced-colour mode. This treatment is
 	// deliberately not `--status-warning`: that token means one thing, a source
 	// that parsed with a non-blocking warning, and an escaped pipe is not one.
-	{ tag: tags.escape, color: "var(--selection-edge)" },
-	{ tag: tags.character, color: "var(--selection-edge)" },
-	{ tag: tags.atom, color: "var(--selection-edge)" },
-	{ tag: tags.tagName, color: "var(--selection-edge)" },
+	{
+		tag: [tags.escape, tags.character, tags.atom, tags.tagName],
+		color: "var(--syntax-notation)",
+		fontStyle: "italic",
+	},
 	// An attribute name is tag machinery, not content, so it recedes with the
 	// brackets around it rather than competing with the element name.
 	{ tag: tags.attributeName, color: "var(--muted-foreground)" },
 	{ tag: tags.comment, color: "var(--muted-foreground)", fontStyle: "italic" },
 	{ tag: tags.invalid, color: "var(--destructive)" },
 	// Deliberately unstyled, and left at the pane's plain foreground:
-	// - `number`, `bool`, and `null`, the typed JSON literals. A cell's type is
-	//   carried, never read off its text (docs/adr/0008), and colouring the
-	//   literals would invite reading a type out of the source. The accent on
-	//   `string` already separates a quoted value from an unquoted one.
-	// - `content`, `list`, `quote`, and `labelName`, which are the user's own
+	// `content`, `list`, `quote`, and `labelName`, which are the user's own
 	//   text. Structure is emphasised here; content is left alone.
 ]);
 

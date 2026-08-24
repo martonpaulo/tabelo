@@ -213,6 +213,30 @@ and is a separate token from structural cell selection, so the two meanings do
 not accumulate into a muddy block in dark mode. Ordinary neutral buttons and
 links do not become blue merely for decoration.
 
+### Semantic values and syntax
+
+The value palette crosses views. JSON scalar literals and visual-grid cells use
+the same token for the type the canonical value already carries. The grid asks
+`cellValueType` for that type and never parses the displayed text: a string
+`"1"` stays a string treatment beside the distinct treatment of the number `1`,
+in accordance with ADR 0008.
+
+| Token | Utility | Role | Second channel |
+| :--- | :--- | :--- | :--- |
+| `--value-string` | `text-value-string` | Quoted source strings and carried string cells | Literal shape and normal weight |
+| `--value-number` | `text-value-number` | JSON numbers and carried number cells | 600 weight and tabular numerals |
+| `--value-boolean` | `text-value-boolean` | JSON booleans and carried boolean cells | 600 weight and italics |
+| `--value-null` | `text-value-null` | JSON null and carried null cells | Italics and the literal or empty-value shape |
+| `--syntax-notation` | `text-syntax-notation` | Element names, escapes, entities, and other notation | Italics |
+| `--syntax-link` | `text-syntax-link` | Links, URLs, and autolinks | Underline on the link text and the address shape |
+
+Every tone reaches WCAG AA contrast against both `--surface-panel` and the
+selected-cell composite. Close hues also differ by weight, italics, underline,
+numeric spacing, or literal shape, so hue is never their only distinction.
+These colours describe content, not interaction or status: selection keeps its
+blue fill and edge, while the warm warning and destructive band stays reserved
+for diagnostics and destructive state.
+
 ### Status
 
 | Token | Utility | Meaning |
@@ -333,13 +357,14 @@ header portion of each Records field; every key inside every JSON object; and
 the contents of each `<th>` in HTML, which is the one format whose grammar
 marks no header and therefore gets a narrow project-owned decoration instead.
 
-**Structure recedes, content is left alone, and one accent marks notation.**
+**Structure recedes, while semantic values and notation stay related across
+views.**
 Brackets, pipes, the Markdown alignment divider, markup markers, and HTML
-attribute names are all `--muted-foreground`. The accent marks what is notation
-rather than the literal text it resembles: element names, quoted values,
-escapes and entities, and links. Typed JSON literals stay at the plain
-foreground on purpose, because a cell's type is carried and never read off its
-text: see `docs/adr/0008`. A status colour is never spent on a token.
+attribute names are all `--muted-foreground`. Strings, numbers, booleans, and
+null use their cross-view value tokens; element names, escapes, entities, and
+links use the notation and link tokens above. These treatments are presentation
+only: they do not change grammar, parsing, cell values, or source text. A status
+colour is never spent on a token.
 
 **Whitespace and empty values are annotated, never written.** The formats
 Tabelo edits are whitespace-significant and full of positions that hold a value
@@ -872,6 +897,7 @@ not a polish item.
 | Focus | 0.125rem `--selection-edge` outline, inset. Never remove it |
 | Selected | `bg-selection-fill`, plus outline when it is the focused cell |
 | Copied | 0.125rem dashed `--selection-edge` border, drawn only on the outer sides of the copied range |
+| Carried cell type | Cross-view semantic value token selected by `cellValueType`; colour is reinforced by weight, italics, numeric spacing, literal shape, and the accessible type name |
 | Divergent cell type | Compact textual `CellTypeMark` inside the cell, never alignment or colour alone |
 | Disabled | `opacity-50`, no hover or highlight state, `not-allowed` on the actual hit layer, and a tooltip explaining why. Never hide a disabled action |
 | Invalid | Red wavy underline; written diagnostic on hover and in the editor description |
