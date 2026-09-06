@@ -67,15 +67,42 @@ describes the migration and its downstream effects.
 - Commit subject: a commit made for an issue ends with `(#<issue number>)`, for
   example `feat: add the export button (#54)`. It is the issue number, never
   the pull request's, and a commit belonging to no issue carries no suffix
-- Merge policy: **rebase merge**, `gh pr merge <number> --rebase
-  --delete-branch`. Every commit of the branch reaches `main` intact, so the
-  one-concern-per-commit history and each issue suffix survive. Never squash:
-  squashing collapses them into one subject and discards every issue reference
-  but one. The repository's GitHub settings allow rebase only
+- Merge policy: **squash merge**, `gh pr merge <number> --squash
+  --delete-branch`. This reverses the earlier rebase-only rule, and the reason
+  is the orchestrated lane: Agent Orchestrator merges through its own action,
+  that action is squash-only, and a repository it cannot merge cannot use
+  auto-merge at all. The repository's GitHub settings allow squash only, so the
+  setting and this policy cannot drift apart. The cost is real and accepted:
+  `main` gets one commit per pull request instead of one per concern
+- The pull request title is what reaches `main`, so it carries the Conventional
+  Commits prefix and the `(#<issue number>)` suffix. Under the previous rebase
+  policy each commit carried its own; under squash the title is the only subject
+  that survives, which is why `pr-conventions` is a required check rather than a
+  courtesy. One concern per commit still applies on the branch, where it is what
+  makes a review readable
 - Delete branches after merge: enabled
 - Release, signing, and secret storage: **not applicable**. Nothing is
   downloaded, installed, or signed. Deployment is GitHub Pages via GitHub
   Actions using the built-in `GITHUB_TOKEN`; this project stores no secrets
+- Agent automation: `enabled`
+- Implementation agent: `claude`
+- Review agent: `codex`
+- Orchestration agent: `codex`
+- Skills baseline revision: `478435d682218fb51a83bef36b60efad737679ee`
+- Skills baseline applied: `2026-09-07`
+- Skills baseline divergence `merge-policy` at
+  `478435d682218fb51a83bef36b60efad737679ee`: the baseline's template text
+  records merge commits and forbids squashing, while its orchestration step
+  defaults an orchestrated repository to squash because Agent Orchestrator's
+  merge action is squash-only. The two disagree; Tabelo follows the
+  orchestration default, as every other orchestrated repository here does
+
+The three agent roles are the only mechanism that decides who does the work.
+No issue label overrides them: the `implementer:`, `reviewer:`, and
+`orchestrator:` label families are reserved and inert, because the orchestrator
+resolves each role from the project configuration and reads no label to fill
+one. Running a different harness on one issue means spawning that session
+explicitly.
 
 ## Product
 
@@ -319,10 +346,16 @@ Prefer the smallest relevant check.
   another worktree is already running Playwright; wait or keep one worker rather
   than creating resource contention and unrelated timeout failures
 
-CI and Pages deployment are skipped only when every changed path matches the
-non-build path list owned by their workflows. For pull requests that run CI,
-the Check job always runs and browser coverage is selected by the highest-risk
-changed path: unit tests, fixtures, and unit-test tooling need no browser run;
+On a push to `main`, CI and Pages deployment are skipped when every changed path
+matches the non-build path list owned by their workflows. **A pull request has
+no such filter**, and deliberately so: `Check` is a required status check, and
+GitHub does not report a path-filtered trigger as skipped. It leaves the check
+expected and waiting, which would make a documentation-only pull request
+unmergeable forever. Cost is controlled inside the job instead. The Check job
+therefore always runs on a pull request, and browser coverage is selected by the
+highest-risk changed path: documentation, agent guidance, and orchestration
+files need no browser run, and neither do unit tests, fixtures, or unit-test
+tooling;
 product identity and interface copy run the Chromium smoke suite; the global
 stylesheet runs the smoke and visual-system suites; all other application
 changes and unknown paths run the full Chromium suite; workflow or Playwright
@@ -340,8 +373,16 @@ sleeps, no pixel snapshots, and storage isolated per test.
 
 ## Agent instruction files
 
-- `AGENTS.md` is the source of truth.
-- Keep a root `CLAUDE.md` symbolic link pointing to `AGENTS.md`.
+- `AGENTS.md` is the source of truth. Every other entrypoint is a link to it,
+  never a copy: a copy drifts, and two files claiming to be the policy is the
+  failure this rule prevents.
+- Keep a root `CLAUDE.md` symbolic link pointing to `AGENTS.md`, and a root
+  `GEMINI.md` symbolic link beside it. Codex and Antigravity CLI read
+  `AGENTS.md` directly and need no bridge of their own.
+- `.gemini/rules/agents.md` is an older Gemini entrypoint that root `GEMINI.md`
+  replaces. It stays until an installed Gemini CLI can confirm the root file is
+  actually loaded, because removing the only working entrypoint on the strength
+  of an unverified replacement leaves that client with no policy at all.
 - Add folder-specific `AGENTS.md` files only when a subtree genuinely requires
   different rules, each with a sibling `CLAUDE.md` symbolic link.
 - Do not duplicate the same rules across instruction files.
@@ -426,6 +467,29 @@ preference to exercise per task.
   blockers. Ask only when a material decision cannot be discovered safely.
 - Do not turn analysis, research, or a read-only audit into implementation
   without authorization.
+
+## Long-running operations
+
+Tabelo's slowest commands are the Playwright suite and a full workspace build.
+Both are slow while working, which is what makes elapsed time a bad signal here.
+
+- Wait on an observable condition, not an arbitrary sleep. Use the client's
+  bounded yield, timeout, or status mechanism.
+- Distinguish slow but progressing work from a stall using new output, state
+  changes, resource activity, the known duration of the current phase, or a
+  tool-reported deadline. Elapsed time alone is not evidence of a stall.
+- Inspect the current output and state before interrupting, retrying, or
+  changing approach. A Playwright run that is quiet between specs has not
+  hung.
+- Interrupt only when there is evidence of no useful progress, a deadline has
+  expired, or the continued cost or risk is no longer justified. A focused run
+  that announces a materially larger test count than intended is its own
+  interrupt condition: see `## Build and validate`.
+- After an interruption, say what state or output was preserved, diagnose the
+  likely cause, and choose a narrower retry, a different tool, a smaller unit
+  of work, or an explicit blocker. Never rerun the same unchanged failure.
+- Do not add a polling service, background job, or timer merely to satisfy this
+  rule.
 
 ## Before editing
 
@@ -536,6 +600,223 @@ here:
   covers vendored primitives exclusively: never widen it to Tabelo's own
   components, where those rules are load-bearing.
 
+## Durable project learning
+
+At wrap-up, decide whether the work produced a learning that should outlive the
+session. One qualifies only when it is verified, specific to Tabelo, likely to
+recur, and belongs in a durable source.
+
+Qualifying examples: a reproducible command that was actually run, an ownership
+boundary or invariant the code now establishes, a recurring failure with a
+verified cause, or a versioned external constraint whose source must stay
+visible. Not qualifying: hypotheses, one-off debugging steps, raw logs,
+issue-specific implementation detail, transient environment state,
+machine-specific paths, or a conclusion with no evidence.
+
+Compare each qualifying learning against the canonical owner that already
+exists. This repository has one for most of them, and using it matters more
+than the learning itself: `docs/performance.md` owns measurements and the
+register of answered suspicions, `docs/testing.md` owns suite boundaries and
+budgets, `docs/design-system.md` owns anything visual, `docs/adr/` owns a
+decision and its reasoning, `CONTEXT.md` owns vocabulary, and this file owns
+process. Do not create a new file when one of those can hold it.
+
+If the learning is already recorded, do nothing. If it is absent or
+contradictory, present one compact proposal naming `Evidence`,
+`Canonical owner`, `Smallest change`, `Draft`, and
+`Decision requested: Approve, reject, or revise.` The draft is the exact
+section change proposed.
+
+Documentation the selected behavior requires is part of the current task and
+needs no extra approval. An adjacent learning outside the accepted scope is
+proposal-only and waits for approval before editing, staging, or committing.
+Do not delay the requested result while waiting on it.
+
+## User attention cards
+
+When the user must notice and respond to a proposed follow-up, a material
+choice, a permission boundary, or a blocker, use exactly one of the four cards
+below. Never bury one inside a general summary or a vague "human review" note.
+
+The English labels name the semantic fields; they are not fixed user-facing
+copy. Render every visible heading, field label, option, recommendation, and
+reply token in the language already used with the user, and keep code,
+commands, paths, identifiers, and quoted source text in their required form.
+
+Surround every card with a standalone `---` before its heading and another
+after its final response line; consecutive cards may share one rule. The emoji
+supplements the heading and never replaces it. Use one card per requested
+decision, and end with an exact response format the user can copy.
+
+### Raise the card through the question tool
+
+A card written only as Markdown is a message, and a message ends the turn. The
+agent stops, the orchestrator marks the session idle, and a genuinely blocking
+decision looks answered. The card is the record; it is not the asking.
+
+So whenever the client offers a native structured-question facility, put the
+question through it. The tool call is what holds the turn open and what makes
+an orchestrated session report blocked rather than finished. Map the card onto
+it directly: the heading becomes the question, each row of the options table
+becomes one option with its tradeoffs as the description, and the recommended
+option goes first, marked as recommended.
+
+Write the card too, in the same turn. The tool renders a compact chooser; the
+card carries the evidence and reasoning the chooser has no room for. The tool
+alone strips the argument, the card alone never asks.
+
+Fall back to the card alone only when the client has no such facility. A run
+that wrote only the card has not asked, however clearly it was worded.
+
+### Proposed issue
+
+Use this card when the work uncovers a distinct, evidence-backed, implementable
+improvement outside the accepted scope, valuable enough to preserve and not
+already tracked. A research note under `docs/research/` does not replace it. Do
+not propose issues for incidental observations, speculation, tracked work, or
+anything completed within the current task. The card proposes backlog capture;
+it never authorizes creating the issue.
+
+```markdown
+---
+
+## 🆕 Proposed issue: <short title>
+
+**What I need from you:** Approve, reject, or revise this issue proposal.
+
+### Why this matters
+
+<Explain the user or project impact in plain language.>
+
+### Current situation
+
+<Explain what happens today and the evidence found.>
+
+### Proposed outcome
+
+<Explain what should become possible or improve after implementation.>
+
+### Why this is a separate issue
+
+<Explain why it is valuable but outside the current task.>
+
+### My recommendation
+
+<Explain briefly why opening the issue is worthwhile.>
+
+**Reply with:** `Approve issue`, `Reject issue`, or `Revise: ...`
+
+---
+```
+
+### Decision needed
+
+Use this card when the user must choose among materially different outcomes.
+State why the choice cannot be made safely from existing evidence, show the
+meaningful options and tradeoffs, and recommend one. Do not stop at "human
+review needed."
+
+```markdown
+---
+
+## 🧭 Decision needed: <question>
+
+**What I need from you:** Choose one of the options below.
+
+### Why this decision is needed
+
+<Explain what cannot be decided safely without the user's preference.>
+
+### Options
+
+| Option | What it means | Advantages | Disadvantages |
+| --- | --- | --- | --- |
+| A — <name> | <plain explanation> | <benefits> | <tradeoffs> |
+| B — <name> | <plain explanation> | <benefits> | <tradeoffs> |
+
+### My recommendation
+
+**Option <X>**, because <short evidence-based reason>.
+
+**Reply with:** `Option A`, `Option B`, or `Revise: ...`
+
+---
+```
+
+### Approval needed
+
+Use this card when one exact action is already preferred but crossing a
+permission, publication, destructive-operation, cost, privacy, or
+external-mutation boundary requires approval. Name the exact target, expected
+change, risk, reversibility, and recovery path. Approval covers only the stated
+action.
+
+```markdown
+---
+
+## 🔐 Approval needed: <exact action>
+
+**What I need from you:** Approve or decline this specific action.
+
+### Proposed action
+
+<Describe exactly what will be changed, published, deleted, or executed.>
+
+### Why it is needed
+
+<Explain the benefit and why the action cannot be avoided.>
+
+### Impact and safety
+
+- **Target:** <exact repository, file, branch, service, or data>
+- **Expected change:** <what will be different>
+- **Risk:** <what could go wrong>
+- **Reversible:** <yes or no, and how>
+- **Recovery:** <how the previous state can be restored>
+
+### My recommendation
+
+<Recommend approval or rejection, with a short reason.>
+
+**Reply with:** `Approve`, `Decline`, or `Revise: ...`
+
+---
+```
+
+### Action needed
+
+Use this card when work is blocked by one specific external action from the
+user rather than by a choice or a permission decision. State what is blocked,
+why you cannot continue, the smallest unblocking action, and the observable
+condition for resumption.
+
+```markdown
+---
+
+## ⛔ Action needed: <blocking condition>
+
+**What I need from you:** <one specific action>.
+
+### What is blocked
+
+<Explain which requested work cannot continue.>
+
+### Why I cannot continue
+
+<Explain the verified blocker in plain language.>
+
+### How to unblock it
+
+1. <First exact action>
+2. <Second action, only when necessary>
+
+### I can continue when
+
+<Describe the observable condition that confirms the blocker is resolved.>
+
+---
+```
+
 ## Configuration and repository hygiene
 
 - Ignore secrets, local environments, logs, caches, build output, and generated
@@ -634,9 +915,51 @@ here:
 - Check status and branch before editing and before the final report.
 - Use Conventional Commits in English. One commit per concern, and end the
   subject with its issue number when the commit belongs to one.
-- Inspect the diff before committing. Never commit secrets, caches, generated
-  logs, temporary artifacts, or unrelated formatting churn.
+- Title the pull request the same way, because squash merge makes that title the
+  subject of the only commit that reaches `main`. `pr-conventions` checks it.
+- Merge with `gh pr merge <number> --squash --delete-branch`, or leave it to
+  `skd merge` on an orchestrated pull request.
+- Inspect the exact payload before publishing it: the staged diff before a
+  commit, the outgoing commit range before a push, and the final text before an
+  issue, pull request, comment, or review. Never commit secrets, caches,
+  generated logs, temporary artifacts, or unrelated formatting churn.
+- Stop before the mutation when the payload holds a credential, token, key, or
+  sensitive personal value. Report the file, a masked location, and the
+  category; never print the value. Offer a placeholder, a secret-store
+  reference, or removal from scope. An explicit request to publish a plaintext
+  secret is refused: authorization can permit a publication, it cannot make a
+  secret safe.
+- If a value may already be published, deleting it from the latest tree does not
+  unpublish it. Stop further spread, state the reach without repeating the
+  value, and revoke or rotate it before any decision about rewriting history.
 - If commit or push fails, report the exact failure without claiming success.
+
+## Agent execution
+
+Rules for any executor working from a clone of this repository, including a
+cloud executor that reads only committed files and cannot ask a question.
+
+- Run tests with `pnpm test`, types with `pnpm check-types`, and format and lint
+  with `pnpm check`. A change is not done while any of the three fails on the
+  exact current head. `pnpm test:e2e` is the browser gate: run it whole before
+  reporting, per `## Build and validate`.
+- Branch as `type/agent/issue-NNN/short-description` and commit with
+  Conventional Commits, the subject ending in `(#<issue number>)`.
+- Never push to `main` and never merge: open a pull request and stop. Merge
+  belongs to the maintainer, or to GitHub auto-merge under the predicates in
+  `.ao/worker-rules.md`.
+- Start the pull request body with one `Closes #<n>` line per resolved issue,
+  then the problem, the implementation, the validation commands with their
+  actual results, and the residual risk.
+- Do not touch: `.ao/`, `.github/workflows/`, `LICENSE`.
+- `AGENTS.md` is protected by section, not as a file. `## Project identity and
+  policy` is governance and never moves under an executor. Every other section
+  documents this code, so a change that makes a recorded rule untrue updates it
+  in the same pull request. `## Domain rules`, `## Frozen technical direction`,
+  and `## Architecture boundaries` are where this repository keeps the patterns
+  a change is most likely to break: establishing a new one stops and asks first.
+- When a needed decision is not written in the issue, comment exactly what is
+  missing, apply `status: needs-decision`, and stop cleanly instead of guessing.
 
 ## Completion report
 
