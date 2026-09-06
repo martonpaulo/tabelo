@@ -4,6 +4,10 @@
   <img src="apps/web/public/logo.svg" width="96" height="96" alt="Tabelo logo" />
 </p>
 
+[![CI](https://github.com/martonpaulo/tabelo/actions/workflows/ci.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/ci.yml)
+[![Deploy](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
+
 **One table, multiple views, zero copy-and-paste between them.**
 
 Tabelo is a small table editor for the moments when a spreadsheet is too much,
@@ -196,6 +200,11 @@ clearly than the property itself.
 Chromium is the only browser the suite runs, locally and in CI, because it is
 the only browser Tabelo supports. There is no second project to opt into and no
 cross-browser command to remember before opening a pull request.
+
+> [!TIP]
+> Before you commit: `pnpm check && pnpm check-types && pnpm test`. Add
+> `pnpm test:e2e` when the change crosses a UI boundary, which is the coverage
+> CI selects for you anyway.
 
 <br />
 
