@@ -395,10 +395,12 @@ or reference a machine-local skills checkout. Keep one line each: what it owns,
 when it applies, what it defers to. Remove an entry when its skill is gone, and
 add one when a new skill is written.
 
-- `implement-issue`: owns GitHub issue implementation end to end, from the
-  scope contract through code, tests, commit, push, and handoff. Entry point
-  for any named issue number. Defers to: the specialists below for the part of
-  the work each one owns.
+This repository owns no issue-implementation skill of its own. Driving a named
+issue number from scope contract to pull request is the general workflow's job,
+which is also what the orchestrated lane invokes. Its part here is to route the
+specialist work to the skills below and to obey this file; the skills below own
+the parts they name.
+
 - `codec-contract`: owns parsing, serialization, format sniffing, import,
   paste, clipboard, download, output options, and round-trip preservation.
   Defers to: `domain-model` when the ambiguity is vocabulary, not encoding.
@@ -420,10 +422,11 @@ add one when a new skill is written.
   question, written under `.scratch/prototypes/`.
 - `resolve-conflicts`: owns an in-progress Git merge, rebase, cherry-pick, or
   revert conflict. Applies only when Git is already conflicted.
-- `copilot-review`: owns validating exactly one pull request against its
-  linked issue and this policy. Invoked by GitHub Copilot review through
-  `.github/copilot-instructions.md`. Read-only: it never commits, merges, or
-  changes repository settings.
+Pull request review is not in this list either. It belongs to the review agent
+recorded in `## Project identity and policy`, which posts its verdict through
+the orchestrator. GitHub Copilot review is not a second reviewer here: its
+repository ruleset is disabled, and two reviewers claiming one job is the defect
+the precedence rule below exists to prevent.
 
 Six of these (`debug`, `domain-model`, `module-design`, `research`,
 `prototype`, `resolve-conflicts`) share a name with a general skill an agent

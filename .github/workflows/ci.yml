@@ -14,7 +14,6 @@ on:
       - ".ao/**"
       - ".claude/**"
       - ".gemini/**"
-      - ".github/copilot-instructions.md"
       - ".github/instructions/**"
       - ".scratch/**"
   # No path filter on pull requests. `Check` is a required status check, and a
@@ -97,7 +96,6 @@ jobs:
                [[ "$file" == .ao/* ]] || \
                [[ "$file" == .claude/* ]] || \
                [[ "$file" == .gemini/* ]] || \
-               [[ "$file" == ".github/copilot-instructions.md" ]] || \
                [[ "$file" == .github/instructions/* ]] || \
                [[ "$file" == .scratch/* ]]; then
               continue
