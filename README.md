@@ -201,10 +201,10 @@ cross-browser command to remember before opening a pull request.
 
 ## A quick look under the hood
 
-React 19, Vite, TanStack Router, Tailwind v4, shadcn/ui on Base UI, CodeMirror 6
-for source views (lazily loaded), Papa Parse for delimited formats. Scaffolded
-with [Better-T-Stack](https://www.better-t-stack.dev/). The grid is hand-built.
-no grid library.
+React 19, Vite, Tailwind v4, shadcn/ui on Base UI, CodeMirror 6 for source views
+(lazily loaded), Papa Parse for delimited formats. Scaffolded with
+[Better-T-Stack](https://www.better-t-stack.dev/). The grid is hand-built, with
+no grid library, and there is no router: the one page is mounted directly.
 
 One idea holds the whole thing up: **there is a single canonical table document,
 and every format is a parser and serializer around it.** No text format is ever
@@ -222,6 +222,10 @@ The decisions worth reading before you change anything:
 - [Build an accessible DOM grid instead of adopting a spreadsheet component](docs/adr/0004-accessible-dom-grid-over-spreadsheet-component.md)
 - [Describe formats and views in registries, not in the core](docs/adr/0005-view-and-codec-registries.md)
 - [Offer preset workspace layouts instead of free slot assignment](docs/adr/0006-preset-workspace-layouts.md)
+- [Mount the single page directly instead of routing to it](docs/adr/0007-no-router-for-a-single-page-application.md)
+- [Carry a cell's type instead of deriving it from the text](docs/adr/0008-cells-carry-types-and-never-derive-them.md)
+- [Keep one implementation language, and why WebAssembly lost the measurement](docs/adr/0009-one-implementation-language.md)
+- [Ship one dark palette and no theme preference](docs/adr/0010-one-dark-palette.md)
 
 [`docs/design-system.md`](docs/design-system.md) is binding for anything visual,
 [`CONTEXT.md`](CONTEXT.md) defines the vocabulary, and [`AGENTS.md`](AGENTS.md)
