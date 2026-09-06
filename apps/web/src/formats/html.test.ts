@@ -101,6 +101,84 @@ describe("html serialization", () => {
 		expect(documentToMatrix(reparsed.document)).toEqual(original);
 	});
 
+	// Shrunk from the property suite in #185: a cell whose whole value is a
+	// bare carriage return came back as a carriage return instead of a newline.
+	it("normalizes every line-ending spelling to a single newline", () => {
+		const original = [
+			["Name", "Note"],
+			["Ingrid", "\r"],
+			["Paulo", "row-2:\r\n"],
+			["Mabel", "line one\nline two"],
+			["Felix", "before\r\nbetween\rafter"],
+		];
+		const document = documentFromMatrix(original, { headerRow: true });
+
+		const reparsed = htmlCodec.parse(htmlCodec.serialize(document));
+		expect(reparsed.ok).toBe(true);
+		if (!reparsed.ok) return;
+		expect(documentToMatrix(reparsed.document)).toEqual([
+			["Name", "Note"],
+			["Ingrid", "\n"],
+			["Paulo", "row-2:\n"],
+			["Mabel", "line one\nline two"],
+			["Felix", "before\nbetween\nafter"],
+		]);
+	});
+
+	// A CRLF collapsing to one break is what distinguishes the correct fix from
+	// two chained replacements, which would emit two.
+	it("keeps consecutive newlines distinct from a collapsed CRLF", () => {
+		const original = [["Name"], ["a\n\nb"], ["a\r\n\r\nb"], ["a\r\rb"]];
+		const document = documentFromMatrix(original, { headerRow: true });
+
+		const serialized = htmlCodec.serialize(document);
+		expect(serialized).toContain("a<br><br>b");
+		expect(serialized).not.toContain("<br><br><br>");
+
+		const reparsed = htmlCodec.parse(serialized);
+		expect(reparsed.ok).toBe(true);
+		if (!reparsed.ok) return;
+		expect(documentToMatrix(reparsed.document)).toEqual([
+			["Name"],
+			["a\n\nb"],
+			["a\n\nb"],
+			["a\n\nb"],
+		]);
+	});
+
+	// Headers travel through the same pair of functions as body cells, and the
+	// acceptance criterion asks for that to be proven rather than assumed.
+	it("normalizes line endings in headers as well as body cells", () => {
+		const document = documentFromMatrix([["a\r\nb"], ["c\rd"]], {
+			headerRow: true,
+		});
+
+		const reparsed = htmlCodec.parse(htmlCodec.serialize(document));
+		expect(reparsed.ok).toBe(true);
+		if (!reparsed.ok) return;
+		expect(documentToMatrix(reparsed.document)).toEqual([["a\nb"], ["c\nd"]]);
+	});
+
+	// Reversed by the parser rather than by the normalization: escaping must
+	// still win over the <br> substitution.
+	it("keeps a literal <br> in the value distinct from a line break", () => {
+		const original = [
+			["Name", "Note"],
+			["Ingrid", "<br>"],
+			["Paulo", "\r"],
+		];
+		const document = documentFromMatrix(original, { headerRow: true });
+
+		const reparsed = htmlCodec.parse(htmlCodec.serialize(document));
+		expect(reparsed.ok).toBe(true);
+		if (!reparsed.ok) return;
+		expect(documentToMatrix(reparsed.document)).toEqual([
+			["Name", "Note"],
+			["Ingrid", "<br>"],
+			["Paulo", "\n"],
+		]);
+	});
+
 	it("preserves boundary whitespace and non-breaking spaces byte-exact", () => {
 		const original = [
 			["Name", "Note"],

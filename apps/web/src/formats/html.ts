@@ -22,13 +22,26 @@ export function escapeHtmlText(value: string): string {
 		.replace(/"/g, "&quot;");
 }
 
+// HTML carries one line break, and this codec spells it "\n" in both
+// directions. A CRLF pair collapses to a single break rather than two, which is
+// why this is one regex and not two chained replacements.
+//
+// Exported because the clipboard writes its own HTML flavour: it has to spell
+// a line break the same way this codec reads one back, and the private payload
+// beside it has to be compared on those terms.
+export function normalizeLineEndings(value: string): string {
+	return value.replace(/\r\n?/g, "\n");
+}
+
 // Reads one cell's text, treating <br> as the line break it represents.
 function cellText(cell: Element): string {
 	const clone = cell.cloneNode(true) as HTMLElement;
 	for (const br of clone.querySelectorAll("br")) {
 		br.replaceWith(clone.ownerDocument.createTextNode("\n"));
 	}
-	return clone.textContent ?? "";
+	// A carriage return sitting in a text node is markup the serializer never
+	// writes, so imported and pasted HTML is normalized on the way in too.
+	return normalizeLineEndings(clone.textContent ?? "");
 }
 
 function alignmentOf(cell: Element): Alignment {
@@ -106,8 +119,12 @@ function parseHtmlMatrix(text: string): MatrixParseResult {
 
 function cellMarkup(tag: "th" | "td", value: string, align: Alignment): string {
 	const style = align === "default" ? "" : ` style="text-align: ${align}"`;
-	// A newline in the value is real data; <br> is how HTML carries it.
-	const content = escapeHtmlText(value).replace(/\n/g, "<br>");
+	// A newline in the value is real data; <br> is how HTML carries it. The
+	// normalization runs before the substitution so a CRLF becomes one <br>.
+	const content = escapeHtmlText(normalizeLineEndings(value)).replace(
+		/\n/g,
+		"<br>",
+	);
 	return `      <${tag}${style}>${content}</${tag}>`;
 }
 

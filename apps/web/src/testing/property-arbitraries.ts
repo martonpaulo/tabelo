@@ -193,32 +193,14 @@ const keyedTableDocumentArbitrary = createDocumentArbitrary({
 	titledRows: false,
 });
 
-// The carriage return is the last character any codec still has to be kept
-// away from, and #218 owns that reason. The delimited codecs carry the full
-// hostile alphabet and the one-column range again since #217.
-const returnFreeCellStringArbitrary = cellStringArbitrary.filter(
-	(value) => !value.includes("\r"),
-);
-const returnFreeHeaderStringArbitrary = returnFreeCellStringArbitrary.filter(
-	(value) => value.trim().length > 0,
-);
-
-const htmlTableDocumentArbitrary = createDocumentArbitrary({
-	keyedHeaders: false,
-	minColumnCount: 1,
-	titledRows: false,
-	valueArbitrary: returnFreeCellStringArbitrary,
-});
-
 // Satisfies both JSON's key restrictions and Records' title restrictions, so
 // one document can travel through every registered codec in sequence.
 export const universallySerializableDocumentArbitrary = createDocumentArbitrary(
 	{
-		headerArbitrary: returnFreeHeaderStringArbitrary,
+		headerArbitrary: headerStringArbitrary,
 		keyedHeaders: true,
 		minColumnCount: 2,
 		titledRows: true,
-		valueArbitrary: returnFreeCellStringArbitrary,
 	},
 );
 
@@ -226,7 +208,7 @@ const codecDocumentArbitraries: Record<CodecId, fc.Arbitrary<TableDocument>> = {
 	markdown: tableDocumentArbitrary,
 	csv: tableDocumentArbitrary,
 	tsv: tableDocumentArbitrary,
-	html: htmlTableDocumentArbitrary,
+	html: tableDocumentArbitrary,
 	jira: tableDocumentArbitrary,
 	json: keyedTableDocumentArbitrary,
 	records: universallySerializableDocumentArbitrary,

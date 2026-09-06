@@ -1,6 +1,7 @@
 import Papa from "papaparse";
 import { cellText } from "@/core/cell-value";
 import type { CellValue } from "@/core/types";
+import { normalizeLineEndings } from "@/formats/html";
 import { type ClipboardSelection, embedTabeloPayload } from "./payload";
 
 // Copy writes two flavours: tab-separated text, which every spreadsheet
@@ -41,7 +42,7 @@ export function matrixToHtml(
 			const cells = row
 				.map(
 					(cell) =>
-						`<td>${escapeHtml(cellText(cell)).replace(/\n/g, "<br>")}</td>`,
+						`<td>${escapeHtml(normalizeLineEndings(cellText(cell))).replace(/\n/g, "<br>")}</td>`,
 				)
 				.join("");
 			return `<tr>${cells}</tr>`;

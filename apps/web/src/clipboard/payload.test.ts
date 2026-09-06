@@ -200,6 +200,31 @@ describe("preferring the private payload", () => {
 		expect(readClipboardTable(payload)?.source).toBe("html");
 	});
 
+	// The HTML flavour spells one line break, so a carriage return survives only
+	// in the private payload. The consistency check has to compare on those
+	// terms, or a single "\r" costs the whole selection its types (#218).
+	it("keeps the payload when only a line-ending spelling differs", () => {
+		const selection: ClipboardSelection = {
+			matrix: [
+				["Ingrid", "row-1:\r\n"],
+				["Paulo", "\r"],
+			],
+			expectedTypes: ["text", "text"],
+		};
+
+		const table = readClipboardTable(selectionClipboardPayload(selection));
+
+		expect(table?.source).toBe("tabelo");
+		expect(table?.matrix).toEqual(selection.matrix);
+		expect(table?.expectedTypes).toEqual(selection.expectedTypes);
+	});
+
+	// The public flavour every other application reads carries no stray control
+	// character: the break is the <br>, and nothing beside it.
+	it("writes no carriage return into the public HTML flavour", () => {
+		expect(matrixToHtml([["a\r\nb"], ["c\rd"]])).not.toContain("\r");
+	});
+
 	// The rule the whole model rests on. External content is text, and text is
 	// where no type came from.
 	it("never types content that arrived from outside Tabelo", () => {
