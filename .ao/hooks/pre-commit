@@ -1,0 +1,13 @@
+#!/bin/sh
+# Tabelo runs Husky's hooks, but `core.hooksPath` can point at only one
+# directory and the orchestration push guard needs `.ao/hooks`. This shim keeps
+# `.husky/pre-commit` the single owner of what runs before a commit, so pointing
+# Git at `.ao/hooks` adds the guard without silently dropping lint-staged.
+# See https://typicode.github.io/husky/how-to.html for the hooksPath contract.
+
+[ -f .husky/pre-commit ] || exit 0
+
+PATH="$(git rev-parse --show-toplevel)/node_modules/.bin:$PATH"
+export PATH
+
+exec sh .husky/pre-commit
