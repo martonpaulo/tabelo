@@ -3,21 +3,26 @@ name: CI
 on:
   push:
     branches: [main]
-    # These paths cannot affect the built site or its pipeline. Keep the list
-    # here as the single owner for both push and pull request filtering.
-    paths-ignore: &non_build_paths
+    # These paths cannot affect the built site or its pipeline, so a push that
+    # only touches them needs no run at all.
+    paths-ignore:
       # Documentation anywhere in the repository
       - "**/*.md"
       - "docs/**"
       - "LICENSE"
       - ".agents/**"
+      - ".ao/**"
       - ".claude/**"
       - ".gemini/**"
-      - ".github/copilot-instructions.md"
       - ".github/instructions/**"
       - ".scratch/**"
+  # No path filter on pull requests. `Check` is a required status check, and a
+  # filtered trigger does not report a skipped check: GitHub leaves it expected
+  # and waiting forever, so a documentation-only pull request could never merge.
+  # Cost is controlled inside the job instead, where the Classify step already
+  # selects browser coverage from the changed paths and gives a documentation
+  # change no browser shards.
   pull_request:
-    paths-ignore: *non_build_paths
   workflow_dispatch:
 
 permissions:
@@ -88,9 +93,9 @@ jobs:
                [[ "$file" == docs/* ]] || \
                [[ "$file" == "LICENSE" ]] || \
                [[ "$file" == .agents/* ]] || \
+               [[ "$file" == .ao/* ]] || \
                [[ "$file" == .claude/* ]] || \
                [[ "$file" == .gemini/* ]] || \
-               [[ "$file" == ".github/copilot-instructions.md" ]] || \
                [[ "$file" == .github/instructions/* ]] || \
                [[ "$file" == .scratch/* ]]; then
               continue
