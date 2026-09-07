@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ClipboardPayload } from "@/clipboard/parse";
+import type { ClipboardPayload, ClipboardSource } from "@/clipboard/parse";
 import type { ClipboardSelection } from "@/clipboard/payload";
 import { DEFAULT_TABLE_NAME, validateTableName } from "@/copy/product";
 import { readCell } from "@/core/cell-value";
@@ -109,7 +109,7 @@ import {
 	removeNotice,
 	type TransientNotice,
 } from "@/state/notice-queue";
-import { getView } from "@/views/registry";
+import { editableViewForCodec, getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import { clampColumnWidth } from "@/workspace/column-width";
 import {
@@ -118,6 +118,7 @@ import {
 	firstPaneId,
 	type LayoutId,
 	movePane as moveWorkspacePane,
+	openImportWorkspace,
 	type PinnedGridAxis,
 	paneCount,
 	type SplitOption,
@@ -219,6 +220,11 @@ export type SortOutcome = "sorted" | "unchanged" | "unavailable";
 
 export interface PendingImport {
 	readonly prepared: PreparedImport;
+	// Whether the request was made from an untouched session, which is what
+	// decides the arrangement the answer opens into. Captured with the request
+	// because applying the document is itself work: the answer can no longer
+	// ask the session whether anything had happened before it.
+	readonly initialSession: boolean;
 }
 
 // What choosing the series did. The count is what the announcement reports, and
@@ -672,6 +678,33 @@ export function hasSessionWork(
 	state: Pick<TabeloState, "hasHeldContent" | "draft">,
 ): boolean {
 	return state.hasHeldContent || state.draft !== null;
+}
+
+// Whether nothing in this visit has been worked on yet, which is what makes the
+// next import the first content the session receives. The session predicate
+// rather than present blankness: emptying a table or undoing back past it does
+// not turn the next paste into a first import.
+function isInitialSession(
+	state: Pick<TabeloState, "document" | "hasHeldContent" | "draft">,
+): boolean {
+	return isDocumentBlank(state.document) && !hasSessionWork(state);
+}
+
+// What accepting an import leaves behind, whichever path answered the header
+// question. The first content a session receives also decides the arrangement:
+// the format it arrived in beside the visual table it became. Content no
+// editable view owns, plain text and Tabelo's own clipboard payload, keeps
+// whatever arrangement is already open.
+function importedWorkspaceState(
+	workspace: Workspace,
+	source: ClipboardSource,
+	initialSession: boolean,
+): Pick<TabeloState, "selection" | "workspace"> {
+	const view = initialSession ? editableViewForCodec(source) : null;
+	return {
+		selection: createSelection({ row: 0, column: 0 }),
+		workspace: view ? openImportWorkspace(workspace, view.id) : workspace,
+	};
 }
 
 export const useTabeloStore = create<TabeloState>((set, get) => ({
@@ -1868,8 +1901,12 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		// Into an empty document, a paste creates the table: including the
 		// header decision. Into an existing one, it writes at the selection.
 		if (isDocumentBlank(state.document)) {
+			const initialSession = isInitialSession(state);
 			if (prepared.value.headerRow === undefined) {
-				set({ pendingImport: { prepared: prepared.value }, inputError: null });
+				set({
+					pendingImport: { prepared: prepared.value, initialSession },
+					inputError: null,
+				});
 				return null;
 			}
 			const document = createImportedDocument(
@@ -1877,9 +1914,15 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				prepared.value.headerRow,
 			);
 			state.applyDocument(document);
-			set({
-				selection: createSelection({ row: 0, column: 0 }),
-			});
+			// Read after the document is applied, so the arrangement builds on the
+			// workspace whose column preferences reconciliation has just updated.
+			set((current) =>
+				importedWorkspaceState(
+					current.workspace,
+					prepared.value.source,
+					initialSession,
+				),
+			);
 			return null;
 		}
 
@@ -1927,8 +1970,12 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			return;
 		}
 
+		const initialSession = isInitialSession(state);
 		if (prepared.value.headerRow === undefined) {
-			set({ pendingImport: { prepared: prepared.value }, inputError: null });
+			set({
+				pendingImport: { prepared: prepared.value, initialSession },
+				inputError: null,
+			});
 			return;
 		}
 		const document = createImportedDocument(
@@ -1936,20 +1983,34 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			prepared.value.headerRow,
 		);
 		state.applyDocument(document);
-		set({
-			selection: createSelection({ row: 0, column: 0 }),
-		});
+		set((current) =>
+			importedWorkspaceState(
+				current.workspace,
+				prepared.value.source,
+				initialSession,
+			),
+		);
 	},
 
 	reportInputError: (error) => set({ inputError: error }),
 
 	answerPendingImport: (headerRow) => {
 		const state = get();
-		if (!state.pendingImport) return;
-		state.applyDocument(
-			createImportedDocument(state.pendingImport.prepared, headerRow),
+		const pending = state.pendingImport;
+		if (!pending) return;
+		// Work done while the question was open, a draft typed into a source pane,
+		// costs the request its opening arrangement: the session is no longer
+		// untouched. Asked of the state before the document lands, because
+		// applying it is what sets the held-content flag.
+		const initialSession = pending.initialSession && isInitialSession(state);
+		state.applyDocument(createImportedDocument(pending.prepared, headerRow));
+		set((current) =>
+			importedWorkspaceState(
+				current.workspace,
+				pending.prepared.source,
+				initialSession,
+			),
 		);
-		set({ selection: createSelection({ row: 0, column: 0 }) });
 	},
 
 	cancelPendingImport: () => set({ pendingImport: null }),

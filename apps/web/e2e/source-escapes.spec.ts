@@ -212,6 +212,7 @@ test("text that only looks like a sequence stays text", async ({ tabelo }) => {
 	// The literal five characters `&#32;`, which Markdown serializes with its
 	// ampersand protected. Only that ampersand is notation.
 	await tabelo.paste(["Note", "&#32;"].join("\n"));
+	await tabelo.showInSourcePane("markdown");
 	const pane = tabelo.pane("markdown");
 
 	expect(await renderedSource(pane)).toContain("&amp;#32;");

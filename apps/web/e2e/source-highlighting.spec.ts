@@ -28,7 +28,7 @@ test("JSON scalar roles use distinct semantic and upright treatments", async ({
 		'[{"text":"alpha","qty":17,"ok":true,"note":null}]',
 		"application/json",
 	);
-	await tabelo.choosePaneView("markdown", "json");
+	await tabelo.showInSourcePane("json");
 	const pane = tabelo.pane("json");
 	await expect(pane.locator(".cm-line span").first()).toBeVisible();
 

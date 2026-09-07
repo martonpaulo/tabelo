@@ -226,6 +226,7 @@ test("dismissing the menu leaves focus to whatever the press lands on", async ({
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
+	await tabelo.showInSourcePane("markdown");
 	const editor = tabelo.source("markdown");
 	const box = await editor.boundingBox();
 	if (!box) throw new Error("The Markdown editor has no box to press in.");

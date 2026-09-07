@@ -236,6 +236,7 @@ test("pinning reaches no serialized view and no history step", async ({
 	// comparison over it sees everything the document would have carried.
 	await tabelo.paste(samplePeopleCsv(2).replaceAll(",", "\t"));
 	await tabelo.dismissNotices();
+	await tabelo.showInSourcePane("markdown");
 	const source = tabelo.source("markdown");
 	await tabelo.editCell(2, 2, "Lisbon");
 	const before = await source.textContent();

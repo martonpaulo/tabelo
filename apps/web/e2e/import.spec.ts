@@ -1,5 +1,9 @@
+import { copy } from "@/copy/copy";
 import { IMPORT_LIMITS } from "@/import/prepare";
+import { getView } from "@/views/registry";
+import type { ViewId } from "@/views/types";
 import { expect, test } from "./fixtures";
+import type { TabeloPage } from "./helpers";
 
 test("a malformed named file preserves the current table", async ({
 	tabelo,
@@ -35,7 +39,8 @@ test("a typed JSON import preserves native scalars through an edit and projectio
 	await expect(tabelo.cell(1, 3)).toHaveAccessibleName(/null/i);
 	await expect(tabelo.cell(1, 5)).toHaveText("007");
 	await tabelo.editCell(1, 4, "edited");
-	await tabelo.choosePaneView("markdown", "json");
+	// The import already opened JSON beside the grid, so the pane is in place.
+	await expect(tabelo.pane("json")).toBeVisible();
 
 	const source = tabelo.source("json");
 	await expect(source).toContainText('"qty":1');
@@ -145,4 +150,150 @@ test("cancelling the file picker leaves the current table unchanged", async ({
 	await tabelo.cancelFileImport();
 
 	await expect(tabelo.cell(1, 1)).toHaveText("keep me");
+});
+
+// The first content a session receives decides what the workspace opens as:
+// the format it arrived in, beside the visual table it became. Reading order
+// is the assertion rather than geometry, so it holds at every width.
+
+async function paneLabels(tabelo: TabeloPage): Promise<(string | null)[]> {
+	return tabelo
+		.panes()
+		.evaluateAll((panes) =>
+			panes.map((pane) => pane.getAttribute("aria-label")),
+		);
+}
+
+function paneLabel(view: ViewId): string {
+	return copy.a11y.pane(getView(view).label);
+}
+
+test("a first Jira paste opens the Jira source before the grid", async ({
+	tabelo,
+}) => {
+	await tabelo.paste("||Name||City||\n|Ingrid|Rio|");
+
+	expect(await paneLabels(tabelo)).toEqual([
+		paneLabel("jira"),
+		paneLabel("grid"),
+	]);
+	await expect(tabelo.source("jira")).toContainText("Ingrid");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+});
+
+test("a first CSV import opens the CSV source once the header is answered", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.importFile("people.csv", "Name,City\nIngrid,Rio", "text/csv");
+
+	// Nothing moves while the question is open, which the store contract covers:
+	// the document does not exist until it is answered.
+	await page
+		.getByRole("dialog", { name: copy.headerImport.title })
+		.getByRole("button", { name: copy.headerImport.asHeaders })
+		.click();
+
+	expect(await paneLabels(tabelo)).toEqual([
+		paneLabel("csv"),
+		paneLabel("grid"),
+	]);
+	await expect(tabelo.header(1)).toHaveText("Name");
+});
+
+test("a spreadsheet paste opens the TSV source and focuses the table", async ({
+	page,
+	tabelo,
+}) => {
+	// A genuine first visit, where the welcome surface owns focus.
+	await tabelo.runAppCommand("newTable");
+	const welcome = page.getByRole("region", { name: copy.empty.title });
+	await expect(welcome).toBeVisible();
+
+	await page.evaluate(() => {
+		const data = new DataTransfer();
+		data.setData("text/plain", "Name\tCity\nIngrid\tRio");
+		const event = new Event("paste", { bubbles: true, cancelable: true });
+		Object.defineProperty(event, "clipboardData", { value: data });
+		window.dispatchEvent(event);
+	});
+	await page
+		.getByRole("dialog", { name: copy.headerImport.title })
+		.getByRole("button", { name: copy.headerImport.asHeaders })
+		.click();
+
+	expect(await paneLabels(tabelo)).toEqual([
+		paneLabel("tsv"),
+		paneLabel("grid"),
+	]);
+	// The surface that owned focus is gone, so focus is placed rather than lost.
+	await expect(tabelo.pane("grid")).toBeFocused();
+});
+
+test("a paste from inside the grid keeps the table reachable", async ({
+	page,
+	tabelo,
+}) => {
+	// The arrangement mounts the grid in the other pane, so the cell that was
+	// focused is gone. Focus is placed on the pane the table moved into rather
+	// than dropped to the document, and the keyboard still drives the table.
+	await tabelo.cell(1, 1).click();
+	await expect(tabelo.cell(1, 1)).toBeFocused();
+
+	await tabelo.paste("||Name||City||\n|Ingrid|Rio|");
+
+	expect(await paneLabels(tabelo)).toEqual([
+		paneLabel("jira"),
+		paneLabel("grid"),
+	]);
+	await expect(tabelo.pane("grid")).toBeFocused();
+
+	await page.keyboard.press("Enter");
+	await expect(tabelo.cell(1, 1)).toBeFocused();
+	await page.keyboard.press("ArrowRight");
+	await expect(tabelo.cell(1, 2)).toBeFocused();
+});
+
+test("plain text keeps the default arrangement", async ({ tabelo }) => {
+	// No format claims it, so there is no source view to open beside the table.
+	await tabelo.paste("Ingrid\nPaulo", undefined, false);
+
+	expect(await paneLabels(tabelo)).toEqual([
+		paneLabel("grid"),
+		paneLabel("markdown"),
+	]);
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+});
+
+test("a paste into an existing table leaves the arrangement alone", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "keep me");
+	await tabelo.cell(1, 1).click();
+
+	await tabelo.paste("||Name||City||\n|Ingrid|Rio|");
+
+	expect(await paneLabels(tabelo)).toEqual([
+		paneLabel("grid"),
+		paneLabel("markdown"),
+	]);
+});
+
+test("the opening arrangement is saved like any other", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste("||Name||City||\n|Ingrid|Rio|");
+	expect(await paneLabels(tabelo)).toEqual([
+		paneLabel("jira"),
+		paneLabel("grid"),
+	]);
+
+	await page.reload();
+	await tabelo.workspace.waitFor({ state: "visible" });
+
+	expect(await paneLabels(tabelo)).toEqual([
+		paneLabel("jira"),
+		paneLabel("grid"),
+	]);
 });
