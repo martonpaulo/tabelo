@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import { tableDocumentTitle } from "@/copy/product";
 import { isDocumentBlank } from "@/core/document";
 import { runHistory } from "@/history/coordinator";
@@ -56,6 +62,21 @@ function paneZoomStep(event: KeyboardEvent): -1 | 0 | 1 | null {
 	}
 }
 
+// The welcome surface owns focus and disappears with the import that replaced
+// it, so focus is placed rather than dropped to the document. It lands on the
+// pane frame the workspace made active, which is where a pane the workspace
+// itself created also puts it: the frame is a labelled region that says which
+// pane arrived, and entering its content stays a deliberate keystroke.
+// See docs/design-system.md sections 9 and 3.
+function focusActivePane(): void {
+	requestAnimationFrame(() => {
+		const { activePaneId } = useTabeloStore.getState().workspace;
+		document
+			.querySelector<HTMLElement>(`[data-pane-id="${activePaneId}"]`)
+			?.focus();
+	});
+}
+
 export function TabeloApp() {
 	const pwaUpdate = usePwaUpdate();
 	const [rootDialog, setRootDialog] = useState<RootDialog>(null);
@@ -70,6 +91,13 @@ export function TabeloApp() {
 	);
 	const showWelcome = hydrated && welcomeOpen;
 	const showWelcomeSurface = showWelcome && !importQuestionOpen;
+
+	// Every way content can arrive while the welcome surface is open ends here:
+	// the surface goes, and focus follows the content into the workspace.
+	const finishWelcomeImport = useCallback(() => {
+		setWelcomeOpen(false);
+		focusActivePane();
+	}, []);
 
 	const openRootDialog = (dialog: Exclude<RootDialog, null>) => {
 		if (rootDialog !== null || document.querySelector('[role="dialog"]'))
@@ -141,11 +169,11 @@ export function TabeloApp() {
 			)
 				return;
 			event.preventDefault();
-			if (after.document !== before.document) setWelcomeOpen(false);
+			if (after.document !== before.document) finishWelcomeImport();
 		};
 		window.addEventListener("paste", onPaste);
 		return () => window.removeEventListener("paste", onPaste);
-	}, [showWelcomeSurface]);
+	}, [finishWelcomeImport, showWelcomeSurface]);
 
 	// Undo and redo are document-level, so they work wherever focus is, except
 	// inside a source editor, which owns the shortcut first and falls through to
@@ -224,7 +252,7 @@ export function TabeloApp() {
 				{showWelcomeSurface ? (
 					<EmptyState
 						onStartEmpty={() => setWelcomeOpen(false)}
-						onStarted={() => setWelcomeOpen(false)}
+						onStarted={finishWelcomeImport}
 					/>
 				) : null}
 			</div>
@@ -263,7 +291,7 @@ export function TabeloApp() {
 				onOpenChange={closeRootDialog}
 				onConfirm={startNewTable}
 			/>
-			<HeaderRowDialog onImported={() => setWelcomeOpen(false)} />
+			<HeaderRowDialog onImported={finishWelcomeImport} />
 		</div>
 	);
 }

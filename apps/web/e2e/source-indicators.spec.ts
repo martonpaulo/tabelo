@@ -8,6 +8,7 @@ import {
 	recordingClipboard,
 	renderedSource,
 	storedDocument,
+	type TabeloPage,
 } from "./helpers";
 
 // Whitespace and empty-value indicators are decorations and nothing else. What
@@ -15,6 +16,14 @@ import {
 // clipboard, and storage whether the markers are drawn or not.
 
 const first = samplePerson(0);
+
+// Every fixture here arrives as delimited text, which opens that format beside
+// the grid. These tests are about what a source editor draws rather than which
+// format holds it, so each one starts from Markdown.
+async function seed(tabelo: TabeloPage, text: string): Promise<void> {
+	await tabelo.paste(text);
+	await tabelo.showInSourcePane("markdown");
+}
 
 const marker = ".cm-tabeloEmptyValue";
 const tab = ".cm-highlightTab";
@@ -79,7 +88,8 @@ test("markers are drawn by default and describe the empty fields a codec reads",
 	tabelo,
 }) => {
 	// Two rows where the middle field is empty in every delimited syntax.
-	await tabelo.paste(
+	await seed(
+		tabelo,
 		[
 			["Name", "City", "Role"].join("\t"),
 			[first.name, "", first.role].join("\t"),
@@ -113,7 +123,8 @@ test("each space mode marks a different set of spaces", async ({
 }) => {
 	// Markdown pads every cell for alignment, and a trailing space is added to
 	// the end of one line, so each mode has something of its own to find.
-	await tabelo.paste(
+	await seed(
+		tabelo,
 		[["Name", "City"].join("\t"), [first.name, first.city].join("\t")].join(
 			"\n",
 		),
@@ -147,7 +158,8 @@ test("a switch turns off exactly the marker it names", async ({
 	tabelo,
 	page,
 }) => {
-	await tabelo.paste(
+	await seed(
+		tabelo,
 		[
 			["Name", "City", "Role"].join("\t"),
 			[first.name, "", first.role].join("\t"),
@@ -184,7 +196,8 @@ test("the placeholder is drawn beside the source without joining it", async ({
 	tabelo,
 	page,
 }) => {
-	await tabelo.paste(
+	await seed(
+		tabelo,
 		[["Name", "City"].join("\t"), [first.name, ""].join("\t")].join("\n"),
 	);
 	const pane = tabelo.pane("markdown");
@@ -221,7 +234,8 @@ test("the space, tab, and empty glyphs are drawn together", async ({
 	tabelo,
 	page,
 }) => {
-	await tabelo.paste(
+	await seed(
+		tabelo,
 		[
 			["Name", "City", "Role"].join("\t"),
 			[first.name, "", `${first.role} `].join("\t"),
@@ -263,7 +277,8 @@ test("a space keeps a visible marker in forced colours", async ({
 	tabelo,
 	page,
 }) => {
-	await tabelo.paste(
+	await seed(
+		tabelo,
 		[["Name", "City"].join("\t"), [first.name, first.city].join("\t")].join(
 			"\n",
 		),
@@ -307,7 +322,8 @@ test("typing into an empty field replaces the placeholder with the value", async
 	tabelo,
 	page,
 }) => {
-	await tabelo.paste(
+	await seed(
+		tabelo,
 		[
 			["Name", "City"].join("\t"),
 			[first.name, ""].join("\t"),
@@ -343,7 +359,8 @@ test("turning indicators off changes what is drawn and nothing else", async ({
 	await page.reload();
 	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
-	await tabelo.paste(
+	await seed(
+		tabelo,
 		[
 			["Name", "City", "Role"].join("\t"),
 			[first.name, "", first.role].join("\t"),
@@ -395,7 +412,8 @@ test("indicators leave the caret, the pane's wrapping, and editing alone", async
 	tabelo,
 	page,
 }) => {
-	await tabelo.paste(
+	await seed(
+		tabelo,
 		[["Name", "City"].join("\t"), [first.name, ""].join("\t")].join("\n"),
 	);
 	await tabelo.choosePaneView("markdown", "csv");

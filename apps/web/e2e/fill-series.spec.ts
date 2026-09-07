@@ -35,6 +35,7 @@ function seriesAction(tabelo: TabeloPage): Locator {
 
 async function copyFillTwoRows(tabelo: TabeloPage): Promise<void> {
 	await tabelo.importFile("counts.json", COUNTS, "application/json");
+	await tabelo.showInSourcePane("markdown");
 	await tabelo.cell(1, 1).click();
 	await tabelo.page.keyboard.press("Shift+ArrowDown");
 

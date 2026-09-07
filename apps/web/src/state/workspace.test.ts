@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { selectionClipboardPayload } from "@/clipboard/serialize";
+import { readCell } from "@/core/cell-value";
 import { HEADER_ROW } from "@/core/selection";
 import type { ViewId } from "@/views/types";
 import { paneCount, splitOptions } from "@/workspace/layout";
@@ -714,5 +716,154 @@ describe("moving panes", () => {
 
 		expect(before.movePane(paneId, "missing-pane")).toBe(false);
 		expect(useTabeloStore.getState()).toBe(before);
+	});
+});
+
+// The first content a session receives decides what the workspace opens as:
+// the format it arrived in beside the visual table it became. Only the first,
+// and only from an untouched session: a paste into work already in progress is
+// a matrix write, and rearranging around it would move the panes under the
+// person using them.
+
+describe("opening arrangement for the first import", () => {
+	const jira = "||Name||City||\n|Ingrid|Rio|";
+	const markdown = "| Name | City |\n| --- | --- |\n| Ingrid | Rio |";
+
+	function views(): readonly string[] {
+		return workspace().panes.map((pane) => pane.view);
+	}
+
+	function activeView(): string | undefined {
+		const active = workspace().panes.find(
+			(pane) => pane.id === workspace().activePaneId,
+		);
+		return active?.view;
+	}
+
+	it("opens the sniffed format beside the grid on a first paste", () => {
+		useTabeloStore.getState().pasteClipboard({ text: jira });
+
+		expect(workspace().layout).toBe("columns");
+		expect(views()).toEqual(["jira", "grid"]);
+		expect(activeView()).toBe("grid");
+	});
+
+	it("opens the named format of a first file import", () => {
+		useTabeloStore.getState().importText(markdown, "markdown");
+
+		expect(views()).toEqual(["markdown", "grid"]);
+	});
+
+	it("opens the format the header answer belonged to", () => {
+		useTabeloStore.getState().importText("Name,City\nIngrid,Rio", "csv");
+		expect(views()).toEqual(["grid", "markdown"]);
+
+		useTabeloStore.getState().answerPendingImport(true);
+
+		expect(views()).toEqual(["csv", "grid"]);
+		expect(activeView()).toBe("grid");
+	});
+
+	it("opens the same arrangement when row 1 is answered as data", () => {
+		useTabeloStore
+			.getState()
+			.pasteClipboard({ text: "Ingrid\tRio\nPaulo\tMadrid" });
+
+		useTabeloStore.getState().answerPendingImport(false);
+
+		expect(views()).toEqual(["tsv", "grid"]);
+	});
+
+	it("keeps the default arrangement for content no view can show", () => {
+		const before = workspace();
+
+		useTabeloStore.getState().pasteClipboard({ text: "Ingrid\nPaulo" });
+
+		expect(workspace().panes.map((pane) => pane.view)).toEqual(
+			before.panes.map((pane) => pane.view),
+		);
+		expect(workspace().layout).toBe(before.layout);
+	});
+
+	it("leaves the arrangement alone once the session holds work", () => {
+		useTabeloStore.getState().editCell(0, 0, "Ingrid");
+		const before = workspace();
+
+		useTabeloStore.getState().importText(jira, "jira");
+
+		expect(workspace().panes.map((pane) => pane.view)).toEqual(
+			before.panes.map((pane) => pane.view),
+		);
+	});
+
+	it("leaves the arrangement alone after a table was emptied again", () => {
+		useTabeloStore.getState().editCell(0, 0, "Ingrid");
+		useTabeloStore.getState().undo();
+		const before = workspace();
+
+		useTabeloStore.getState().importText(jira, "jira");
+
+		expect(workspace().panes.map((pane) => pane.view)).toEqual(
+			before.panes.map((pane) => pane.view),
+		);
+	});
+
+	it("drops the arrangement when work arrives while the question is open", () => {
+		useTabeloStore.getState().importText("Name,City\nIngrid,Rio", "csv");
+		const before = workspace();
+		useTabeloStore
+			.getState()
+			.setDraft(markdownPaneId(), "markdown", invalidMarkdown);
+
+		useTabeloStore.getState().answerPendingImport(true);
+
+		expect(workspace().panes.map((pane) => pane.view)).toEqual(
+			before.panes.map((pane) => pane.view),
+		);
+	});
+
+	it("carries the panes and their preferences into the arrangement", () => {
+		const paneId = markdownPaneId();
+		useTabeloStore.getState().setPaneZoom(paneId, 1.4);
+		const before = workspace().panes.map((pane) => pane.id);
+
+		useTabeloStore.getState().importText(jira, "jira");
+
+		const after = workspace();
+		expect(after.panes.map((pane) => pane.id)).toEqual(before);
+		expect(after.panes.find((pane) => pane.id === paneId)?.zoom).toBe(1.4);
+	});
+
+	it("keeps the arrangement and the types of a Tabelo paste", () => {
+		// Tabelo's own flavour reports provenance rather than a format, so there
+		// is no view of it to open. Re-reading it to find one would cost the
+		// typed values it exists to carry.
+		const payload = selectionClipboardPayload({
+			matrix: [["Ingrid", 35]],
+			expectedTypes: ["text", "number"],
+		});
+		const before = workspace();
+
+		useTabeloStore.getState().pasteClipboard(payload);
+
+		expect(workspace().panes.map((pane) => pane.view)).toEqual(
+			before.panes.map((pane) => pane.view),
+		);
+		const document = useTabeloStore.getState().document;
+		const numeric = required(document.columns[1]);
+		expect(numeric.expectedType).toBe("number");
+		expect(readCell(required(document.rows[0]), numeric.id)).toBe(35);
+	});
+
+	it("makes the import one history step, arrangement included", () => {
+		useTabeloStore.getState().importText(jira, "jira");
+
+		expect(useTabeloStore.getState().past).toHaveLength(1);
+
+		useTabeloStore.getState().undo();
+
+		// Undo walks the document timeline; the workspace is not on it.
+		expect(useTabeloStore.getState().document).toBe(initialState.document);
+		expect(views()).toEqual(["jira", "grid"]);
 	});
 });

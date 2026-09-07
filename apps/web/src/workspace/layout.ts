@@ -540,6 +540,30 @@ export function splitOptions(workspace: Workspace): readonly SplitOption[] {
 	);
 }
 
+// The arrangement the first content of a session opens into: the format it
+// arrived in on the left, the visual table it became on the right. Pane
+// identity and every pane-owned and workspace-owned preference carry over from
+// the arrangement being replaced, so only the shape and the two views are
+// decided here. The grid becomes active because it is the view the user works
+// the table in.
+export function openImportWorkspace(
+	workspace: Workspace,
+	sourceView: ViewId,
+): Workspace {
+	const carried = applyLayout("columns", workspace.panes);
+	const panes = carried.map<WorkspacePane>((pane, index) => ({
+		...pane,
+		view: index === 0 ? sourceView : "grid",
+	}));
+	const grid = panes.find((pane) => pane.view === "grid");
+	return {
+		...workspace,
+		layout: "columns",
+		panes,
+		activePaneId: grid?.id ?? firstPaneId(panes),
+	};
+}
+
 export function createDefaultWorkspace(): Workspace {
 	const panes = applyLayout("columns");
 	return {

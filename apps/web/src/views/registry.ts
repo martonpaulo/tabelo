@@ -18,7 +18,7 @@ import {
 	recordsCodec,
 	tsvCodec,
 } from "@/formats";
-import type { ViewDefinition, ViewId } from "./types";
+import { canParse, type ViewDefinition, type ViewId } from "./types";
 
 // Every view the workspace can show, described by capability rather than by
 // name. Nothing outside this file enumerates formats: the workspace, the pane
@@ -178,4 +178,17 @@ export function getView(id: ViewId): ViewDefinition {
 
 export function listViews(): readonly ViewDefinition[] {
 	return viewOrder.map((id) => registry[id]);
+}
+
+// The editable view that reads and writes a given format, which is how an
+// imported or pasted source becomes something the workspace can open. Only a
+// view that parses qualifies, so HTML content resolves to the HTML source
+// rather than the rendered preview even though both borrow the same codec.
+// Content no codec owns, such as plain text or Tabelo's own clipboard payload,
+// resolves to nothing: there is no view of it to open.
+export function editableViewForCodec(codecId: string): ViewDefinition | null {
+	return (
+		listViews().find((view) => canParse(view) && view.codec?.id === codecId) ??
+		null
+	);
 }

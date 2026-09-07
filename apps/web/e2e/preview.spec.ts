@@ -37,7 +37,7 @@ function borderWidths(table: Locator): Promise<number[]> {
 }
 
 async function openPreview(tabelo: TabeloPage): Promise<Locator> {
-	await tabelo.choosePaneView("markdown", "html-preview");
+	await tabelo.showInSourcePane("html-preview");
 	return tabelo.pane("html-preview");
 }
 

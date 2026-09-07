@@ -46,6 +46,7 @@ test("keyboard fill is one undoable synchronized document step", async ({
 	tabelo,
 }) => {
 	await tabelo.paste("A\tB\tC\na\tb\tx\nc\td\ty\n\t\t");
+	await tabelo.showInSourcePane("markdown");
 	await selectRectangle(page, tabelo, 2, 2);
 	const selectionAnnouncement = await tabelo.announcements.textContent();
 

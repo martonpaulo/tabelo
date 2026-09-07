@@ -13,6 +13,7 @@ import {
 	layoutsForPaneCount,
 	movePane,
 	movePaneDestinations,
+	openImportWorkspace,
 	paneCount,
 	panePositionId,
 	SLOT_ORDER,
@@ -684,5 +685,65 @@ describe("default workspace", () => {
 			"markdown",
 		]);
 		expect(workspace.activePaneId).toBe(required(workspace.panes[0]).id);
+	});
+});
+
+// The first content a session receives opens beside the table it became. The
+// helper decides the shape and the two views; everything else about the
+// workspace is carried from the arrangement it replaces.
+
+describe("opening workspace for an import", () => {
+	it("puts the detected source before the grid in two columns", () => {
+		const workspace = openImportWorkspace(createDefaultWorkspace(), "jira");
+
+		expect(workspace.layout).toBe("columns");
+		expect(workspace.panes.map((pane) => pane.view)).toEqual(["jira", "grid"]);
+		expect(workspacePanesTileLayout(workspace.layout, workspace.panes)).toBe(
+			true,
+		);
+	});
+
+	it("makes the grid the pane document actions apply to", () => {
+		const workspace = openImportWorkspace(createDefaultWorkspace(), "csv");
+
+		const grid = workspace.panes.find((pane) => pane.view === "grid");
+		expect(workspace.activePaneId).toBe(required(grid).id);
+	});
+
+	it("carries pane identity and preferences through the change", () => {
+		const previous = createDefaultWorkspace();
+		const first = required(previous.panes[0]);
+		const zoomed = {
+			...previous,
+			panes: previous.panes.map((pane) =>
+				pane.id === first.id ? { ...pane, zoom: 1.5, wrap: true } : pane,
+			),
+			pinFirstDataRow: true,
+			columnRatio: 0.3,
+		};
+
+		const workspace = openImportWorkspace(zoomed, "records");
+
+		const carried = required(
+			workspace.panes.find((pane) => pane.id === first.id),
+		);
+		expect(carried.zoom).toBe(1.5);
+		expect(carried.wrap).toBe(true);
+		expect(workspace.pinFirstDataRow).toBe(true);
+		expect(workspace.columnRatio).toBe(0.3);
+	});
+
+	it("shows each view once, whatever the workspace held before", () => {
+		const wider = {
+			...createDefaultWorkspace(),
+			layout: "quad" as LayoutId,
+			panes: applyLayout("quad", createDefaultWorkspace().panes),
+		};
+
+		const workspace = openImportWorkspace(wider, "csv");
+
+		const views = workspace.panes.map((pane) => pane.view);
+		expect(views).toEqual(["csv", "grid"]);
+		expect(new Set(views).size).toBe(views.length);
 	});
 });

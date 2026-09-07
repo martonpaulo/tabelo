@@ -758,6 +758,18 @@ emptied during the current visit. An explicit New table command resets the
 document first and then returns to this surface. A trusted `Mod`+`V` paste event
 starts the table directly while the surface is open.
 
+**The first content of a session decides what the workspace opens as.** A
+paste or import made while nothing has been worked on yet arranges two panes in
+columns: the format the content arrived in on the left, the visual table it
+became on the right, with the table active and focus placed on its pane frame.
+This is the moment the product explains itself, so it says what it means
+without a sentence: the same table, in two representations, side by side.
+Content no editable view owns, plain text and Tabelo's own clipboard payload,
+keeps the ordinary default instead. Only the first content does this: once the
+session holds a table or a draft, an import replaces the document and leaves
+the arrangement exactly as the user set it up. The result is saved like any
+other workspace, so returning to the app keeps it.
+
 Its three entry actions use the shared decision-action group: right-aligned in
 one horizontal row at every supported width. Ordinary alternatives come first
 and the primary starting action comes last, at the far right. Their DOM and

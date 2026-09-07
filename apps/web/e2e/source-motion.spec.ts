@@ -74,6 +74,7 @@ test("a view change in one pane leaves the other pane's editor alone", async ({
 }) => {
 	await tabelo.paste(samplePeopleCsv(2));
 	await tabelo.dismissNotices();
+	await tabelo.showInSourcePane("markdown");
 	await tabelo.addViewBySplit("markdown", "bottom", "csv");
 
 	const stamp = (view: "markdown" | "csv", value: string) =>
