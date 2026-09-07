@@ -58,8 +58,13 @@ interface ReorderDrag {
 }
 
 interface AxisReorderOptions {
+	// The semantic table. A row drop line spans the table itself, which is
+	// narrower than the surface whenever the pane is wider than the columns.
 	readonly gridRef: RefObject<HTMLTableElement | null>;
-	readonly wrapperRef: RefObject<HTMLElement | null>;
+	// The shared grid surface: the positioned wrapper holding the column index
+	// strip and the table. Column handles live in the strip, outside the table,
+	// so hit testing and the indicator's own coordinates resolve against this.
+	readonly surfaceRef: RefObject<HTMLElement | null>;
 	readonly draggingRef: RefObject<GridDragKind | null>;
 	readonly setIndicatorRef: RefObject<DropIndicatorSetter | null>;
 }
@@ -77,7 +82,7 @@ export interface AxisReorderController {
 	// the boundary keeps up with content the pointer is not moving over.
 	readonly trackReorder: (
 		point: GridAutoscrollPoint,
-		grid: HTMLTableElement,
+		surface: HTMLElement,
 	) => void;
 }
 
@@ -120,7 +125,7 @@ function blockFor(axis: ReorderAxis, index: number): ContiguousBlock {
 // far half the one after, which is what makes every gap reachable including the
 // one past the last item.
 function resolveBoundary(
-	grid: HTMLTableElement,
+	surface: HTMLElement,
 	point: GridAutoscrollPoint,
 	axis: ReorderAxis,
 ): number | null {
@@ -129,11 +134,11 @@ function resolveBoundary(
 	// pinned to the middle of that band and only the reordered coordinate comes
 	// from the pointer. That is what lets the pointer wander over the cells, or
 	// off the grid entirely on the other axis, without losing the target.
-	const band = grid.querySelector<HTMLElement>(selector);
+	const band = surface.querySelector<HTMLElement>(selector);
 	if (!band) return null;
 	const bandBox = band.getBoundingClientRect();
 	const target = gridTargetAt(
-		grid,
+		surface,
 		axis === "row"
 			? { x: (bandBox.left + bandBox.right) / 2, y: point.y }
 			: { x: point.x, y: (bandBox.top + bandBox.bottom) / 2 },
@@ -154,9 +159,13 @@ function resolveBoundary(
 	return position < middle ? index : index + 1;
 }
 
+// `grid` is the semantic table and `surface` the wrapper both it and the strip
+// sit in. A row line runs the width of the table; a column line runs the height
+// of the surface, so it covers the strip the drag is aimed at as well as the
+// rows it will move.
 function indicatorFor(
 	grid: HTMLTableElement,
-	wrapper: HTMLElement,
+	surface: HTMLElement,
 	axis: ReorderAxis,
 	boundary: number,
 ): DropIndicatorGeometry | null {
@@ -167,14 +176,14 @@ function indicatorFor(
 	// that item's trailing edge instead.
 	const trailing = boundary >= count;
 	const attribute = axis === "row" ? "data-row-header" : "data-column-header";
-	const target = grid.querySelector<HTMLElement>(
+	const target = surface.querySelector<HTMLElement>(
 		`[${attribute}="${Math.min(boundary, count - 1)}"]`,
 	);
 	if (!target) return null;
 
 	const box = target.getBoundingClientRect();
 	const tableBox = grid.getBoundingClientRect();
-	const wrapperBox = wrapper.getBoundingClientRect();
+	const surfaceBox = surface.getBoundingClientRect();
 	const rootFontSize = Number.parseFloat(
 		getComputedStyle(grid.ownerDocument.documentElement).fontSize,
 	);
@@ -185,15 +194,15 @@ function indicatorFor(
 	return axis === "row"
 		? {
 				axis,
-				start: toRem((trailing ? box.bottom : box.top) - wrapperBox.top),
-				cross: toRem(tableBox.left - wrapperBox.left),
+				start: toRem((trailing ? box.bottom : box.top) - surfaceBox.top),
+				cross: toRem(tableBox.left - surfaceBox.left),
 				length: toRem(tableBox.width),
 			}
 		: {
 				axis,
-				start: toRem((trailing ? box.right : box.left) - wrapperBox.left),
-				cross: toRem(tableBox.top - wrapperBox.top),
-				length: toRem(tableBox.height),
+				start: toRem((trailing ? box.right : box.left) - surfaceBox.left),
+				cross: 0,
+				length: toRem(surfaceBox.height),
 			};
 }
 
@@ -202,7 +211,7 @@ function indicatorFor(
 // action, so a drag can never produce a document shape the keyboard could not.
 export function useAxisReorder({
 	gridRef,
-	wrapperRef,
+	surfaceRef,
 	draggingRef,
 	setIndicatorRef,
 }: AxisReorderOptions): AxisReorderController {
@@ -227,20 +236,20 @@ export function useAxisReorder({
 	const paint = useCallback(
 		(drag: ReorderDrag) => {
 			const grid = gridRef.current;
-			const wrapper = wrapperRef.current;
-			if (!grid || !wrapper || drag.boundary === null) return;
+			const surface = surfaceRef.current;
+			if (!grid || !surface || drag.boundary === null) return;
 			setIndicatorRef.current?.(
-				indicatorFor(grid, wrapper, drag.axis, drag.boundary),
+				indicatorFor(grid, surface, drag.axis, drag.boundary),
 			);
 		},
-		[gridRef, setIndicatorRef, wrapperRef],
+		[gridRef, setIndicatorRef, surfaceRef],
 	);
 
 	const trackReorder = useCallback(
-		(point: GridAutoscrollPoint, grid: HTMLTableElement) => {
+		(point: GridAutoscrollPoint, surface: HTMLElement) => {
 			const drag = dragRef.current;
 			if (!drag?.dragging) return;
-			const boundary = resolveBoundary(grid, point, drag.axis);
+			const boundary = resolveBoundary(surface, point, drag.axis);
 			// A pointer that has left the band keeps the boundary it last found, so
 			// the line stays where the user last aimed it rather than disappearing.
 			if (boundary !== null) drag.boundary = boundary;
@@ -286,16 +295,16 @@ export function useAxisReorder({
 	// the window. Listening here rather than on the element keeps every ending in
 	// one place and survives the row being re-rendered underneath the drag.
 	useEffect(() => {
-		const view = gridRef.current?.ownerDocument.defaultView ?? window;
+		const view = surfaceRef.current?.ownerDocument.defaultView ?? window;
 
 		const onPointerMove = (event: PointerEvent) => {
 			const drag = dragRef.current;
-			const grid = gridRef.current;
-			if (!drag || !grid || event.pointerId !== drag.pointerId) return;
+			const surface = surfaceRef.current;
+			if (!drag || !surface || event.pointerId !== drag.pointerId) return;
 
 			if (!drag.dragging) {
 				const rootFontSize = Number.parseFloat(
-					getComputedStyle(grid.ownerDocument.documentElement).fontSize,
+					getComputedStyle(surface.ownerDocument.documentElement).fontSize,
 				);
 				const travelled = Math.abs(
 					(drag.axis === "row" ? event.clientY : event.clientX) - drag.origin,
@@ -307,7 +316,7 @@ export function useAxisReorder({
 				draggingRef.current = reorderDragOf(drag.axis);
 			}
 
-			trackReorder({ x: event.clientX, y: event.clientY }, grid);
+			trackReorder({ x: event.clientX, y: event.clientY }, surface);
 		};
 
 		const onPointerUp = (event: PointerEvent) => {
@@ -366,7 +375,7 @@ export function useAxisReorder({
 			view.removeEventListener("keydown", onKeyDown, true);
 			teardown();
 		};
-	}, [draggingRef, gridRef, teardown, trackReorder]);
+	}, [draggingRef, surfaceRef, teardown, trackReorder]);
 
 	// Stable, so the autoscroll controller can depend on it without tearing down
 	// and re-registering its window listeners on every render of the grid.

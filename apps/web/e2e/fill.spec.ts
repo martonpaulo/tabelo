@@ -71,6 +71,30 @@ test("keyboard fill is one undoable synchronized document step", async ({
 	await expect(tabelo.cell(3, 2)).toHaveText("");
 });
 
+// The handle fills from where it stands, so a selection change it makes must
+// not pull focus into the grid: the second fill is the same keystroke as the
+// first. The grid's focus handoff covers the table and the column index strip,
+// and this control is deliberately outside it.
+test("filling from the focused handle leaves focus on the handle", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste("A\tB\tC\na\tb\tx\n\t\t\n\t\t");
+	await tabelo.cell(1, 1).click();
+
+	const handle = fillHandle(tabelo);
+	await handle.focus();
+	await expect(handle).toBeFocused();
+
+	await page.keyboard.press("ControlOrMeta+Alt+ArrowDown");
+	await expect(tabelo.cell(2, 1)).toHaveText("a");
+	await expect(handle).toBeFocused();
+
+	await page.keyboard.press("ControlOrMeta+Alt+ArrowDown");
+	await expect(tabelo.cell(3, 1)).toHaveText("a");
+	await expect(handle).toBeFocused();
+});
+
 test("all four keyboard fill commands extend in their requested direction", async ({
 	page,
 	tabelo,

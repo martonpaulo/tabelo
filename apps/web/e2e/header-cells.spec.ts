@@ -23,6 +23,75 @@ test("the index strip names every column and is not a table row", async ({
 	await expect(tabelo.grid().locator('thead [role="row"]')).toHaveCount(1);
 });
 
+test("the strip's controls are owned by the surface, not by the grid", async ({
+	tabelo,
+}) => {
+	// `role="grid"` may own nothing but `row` and `rowgroup`, and the strip
+	// holds real controls. Keeping it inside the table re-parented those
+	// controls onto the grid itself, whatever role the row claimed.
+	await expect(tabelo.grid().locator("[data-column-strip]")).toHaveCount(0);
+	await expect(tabelo.gridSurface().locator("[data-column-strip]")).toHaveCount(
+		1,
+	);
+
+	// Outside the table and still on the keyboard path, which is the reason the
+	// strip was never simply hidden from assistive technology.
+	const select = tabelo.columnIndex(2).getByRole("button", {
+		name: new RegExp(`^${copy.actions.selectColumn}:`),
+	});
+	await tabelo.cell(1, 1).click();
+	await select.focus();
+	await tabelo.page.keyboard.press("Space");
+	await expect(tabelo.header(2)).toHaveAttribute("aria-selected", "true");
+	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "false");
+
+	// Selecting from the strip hands DOM focus to the cell it selected. The
+	// grid's keyboard model lives on the table the strip now sits beside, so
+	// without that handoff every following key would reach a button that
+	// answers none of them.
+	await expect(tabelo.header(2)).toBeFocused();
+
+	// Which is the point: the next keystroke is a grid action, not a lost one.
+	await tabelo.page.keyboard.press("ArrowDown");
+	await expect(tabelo.cell(1, 2)).toBeFocused();
+	await expect(tabelo.cell(1, 2)).toHaveAttribute("aria-selected", "true");
+	await tabelo.page.keyboard.press("F2");
+	await expect(
+		tabelo.grid().getByRole("textbox", { name: copy.a11y.cellEditor(0, 1) }),
+	).toBeFocused();
+});
+
+test("each letter stays over the column it names", async ({ tabelo }) => {
+	// The strip and the table are laid out from one width model but by two
+	// different mechanisms, grid tracks and a colgroup, so this is the pairing
+	// the split has to keep. Asserted as containment rather than as equal
+	// geometry: the contract is that the letter is over its column, at whatever
+	// width the column happens to have.
+	const centredOverColumn = async (column: number) => {
+		const strip = await tabelo.columnIndex(column).boundingBox();
+		const header = await tabelo.header(column).boundingBox();
+		if (!strip || !header) throw new Error("the column did not render");
+		const centre = header.x + header.width / 2;
+		return centre > strip.x && centre < strip.x + strip.width;
+	};
+
+	expect(await centredOverColumn(1)).toBe(true);
+	expect(await centredOverColumn(3)).toBe(true);
+
+	// A resized column carries its letter with it. The keyboard path is used
+	// because it is the one that leaves no pointer hovering the strip.
+	const before = (await tabelo.columnIndex(1).boundingBox())?.width ?? 0;
+	await tabelo.cell(1, 1).click();
+	for (let step = 0; step < 4; step += 1) {
+		await tabelo.page.keyboard.press("Alt+Shift+ArrowRight");
+	}
+	await expect
+		.poll(async () => (await tabelo.columnIndex(1).boundingBox())?.width ?? 0)
+		.toBeGreaterThan(before);
+	expect(await centredOverColumn(1)).toBe(true);
+	expect(await centredOverColumn(3)).toBe(true);
+});
+
 test("an empty header announces its column letter", async ({ tabelo }) => {
 	await expect(tabelo.header(1)).toHaveText("");
 
@@ -309,9 +378,9 @@ test("the strip stays sticky and layered after scrolling both axes", async ({
 		)
 		.toEqual({ left: 60, top: 300 });
 
-	const geometry = await tabelo.grid().evaluate((grid) => {
+	const geometry = await tabelo.gridSurface().evaluate((surface) => {
 		const read = (selector: string) => {
-			const element = grid.querySelector(selector);
+			const element = surface.querySelector(selector);
 			if (!element) return null;
 			return {
 				zIndex: Number(getComputedStyle(element).zIndex) || 0,
@@ -319,7 +388,9 @@ test("the strip stays sticky and layered after scrolling both axes", async ({
 			};
 		};
 		return {
-			strip: read('[data-column-header="0"]'),
+			// The strip sticks as one element: it is chrome beside the table, so
+			// its cells ride on the container rather than each sticking alone.
+			strip: read("[data-column-strip]"),
 			headerCell: read('[data-cell="-1:0"]'),
 			headerGutter: read('[data-row-header="-1"]'),
 			bodyCell: read('[data-cell="30:0"]'),

@@ -31,14 +31,14 @@ export interface FillDragController {
 	readonly onHandlePointerDown: (
 		event: React.PointerEvent<HTMLButtonElement>,
 	) => void;
-	readonly trackFill: (
-		point: GridAutoscrollPoint,
-		grid: HTMLTableElement,
-	) => void;
+	// The root every cell lookup runs against: the shared grid surface while the
+	// autoscroll controller drives it, the table itself from the pointer path.
+	// A fill only ever resolves `[data-cell]`, which the table owns either way.
+	readonly trackFill: (point: GridAutoscrollPoint, root: HTMLElement) => void;
 }
 
 function targetForPoint(
-	grid: HTMLTableElement,
+	grid: HTMLElement,
 	point: GridAutoscrollPoint,
 	source: CellRect,
 	axis: FillAxis,
@@ -89,7 +89,7 @@ function addedRect(source: CellRect, target: CellRect): CellRect | null {
 }
 
 function previewFor(
-	grid: HTMLTableElement,
+	grid: HTMLElement,
 	wrapper: HTMLElement,
 	source: CellRect,
 	target: CellRect,
@@ -143,7 +143,7 @@ export function useFillDrag({
 	}, [draggingRef, setPreviewRef]);
 
 	const trackFill = useCallback(
-		(point: GridAutoscrollPoint, grid: HTMLTableElement) => {
+		(point: GridAutoscrollPoint, grid: HTMLElement) => {
 			const drag = dragRef.current;
 			const wrapper = wrapperRef.current;
 			if (!drag?.axis || !wrapper) return;

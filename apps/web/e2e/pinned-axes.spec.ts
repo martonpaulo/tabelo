@@ -68,7 +68,7 @@ async function openColumnMenu(
 	const name = `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType(header, column - 1, "text")}`;
 	const menu = tabelo.page.getByRole("menu", { name });
 	await menu.waitFor({ state: "hidden" });
-	await tabelo.grid().getByRole("button", { name }).click();
+	await tabelo.gridSurface().getByRole("button", { name }).click();
 	await menu.waitFor();
 	return menu;
 }

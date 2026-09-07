@@ -238,7 +238,7 @@ test("column choices use the shared one-line radio anatomy", async ({
 	tabelo,
 }) => {
 	await tabelo
-		.grid()
+		.gridSurface()
 		.getByRole("button", {
 			name: new RegExp(`^${copy.actions.columnActions}:`),
 		})
@@ -348,7 +348,7 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	tabelo,
 }) => {
 	const trigger = tabelo
-		.grid()
+		.gridSurface()
 		.getByRole("button", {
 			name: new RegExp(`^${copy.actions.columnActions}:`),
 		})
@@ -430,7 +430,7 @@ test("column menu labels stay out of traversal and the menu scrolls when narrow"
 }) => {
 	await page.setViewportSize({ width: 320, height: 568 });
 	const trigger = tabelo
-		.grid()
+		.gridSurface()
 		.getByRole("button", {
 			name: new RegExp(`^${copy.actions.columnActions}:`),
 		})
@@ -470,7 +470,7 @@ test("destructive menu actions keep one color across label and icon", async ({
 	tabelo,
 }) => {
 	await tabelo
-		.grid()
+		.gridSurface()
 		.getByRole("button", {
 			name: new RegExp(`^${copy.actions.columnActions}:`),
 		})
