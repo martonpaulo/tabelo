@@ -20,12 +20,14 @@ const marker = ".cm-tabeloEmptyValue";
 const tab = ".cm-highlightTab";
 
 // A space span always exists while anything is marked; what the reader can
-// actually see is the glyph the theme generates, so that is what is counted.
+// actually see is the dot the theme paints into it, so that is what is counted.
+// The dot is a background rather than generated content, because a laid-out
+// glyph per space is what made scrolling a padded Markdown table stutter (#275).
 async function paintedSpaces(pane: Locator): Promise<number> {
 	return pane.evaluate(
 		(element) =>
 			Array.from(element.querySelectorAll(".cm-highlightSpace")).filter(
-				(span) => getComputedStyle(span, "::before").content !== "none",
+				(span) => getComputedStyle(span).backgroundImage !== "none",
 			).length,
 	);
 }
@@ -238,9 +240,11 @@ test("the space, tab, and empty glyphs are drawn together", async ({
 			selector,
 		);
 
-	// A space carries a middle dot, a tab carries an arrow, and an empty field
-	// carries the word. Quotation marks are how a computed `content` comes back.
-	expect(await drawn(".cm-highlightSpace")).toContain('"·"');
+	// A space carries a middle dot, painted into its own box rather than laid
+	// out as generated content; a tab carries an arrow and an empty field the
+	// word, both of which stay generated content. Quotation marks are how a
+	// computed `content` comes back.
+	expect(await paintedSpaces(pane)).toBeGreaterThan(0);
 	expect(await drawn(".cm-highlightTab")).toContain('"→"');
 	expect(await drawn(marker)).toContain(`"${copy.source.emptyValue}"`);
 
@@ -249,6 +253,52 @@ test("the space, tab, and empty glyphs are drawn together", async ({
 	expect(source).not.toContain(copy.source.emptyValue);
 	expect(source).not.toContain("·");
 	expect(source).not.toContain("→");
+});
+
+// Forced colours paints no background image, so the dot the theme normally
+// draws would leave the space the one annotation with nothing left, while the
+// tab arrow and the placeholder survive as generated content. The glyph comes
+// back there, on exactly the spaces the mode marked.
+test("a space keeps a visible marker in forced colours", async ({
+	tabelo,
+	page,
+}) => {
+	await tabelo.paste(
+		[["Name", "City"].join("\t"), [first.name, first.city].join("\t")].join(
+			"\n",
+		),
+	);
+	const pane = tabelo.pane("markdown");
+	await setIndicators(page, { spaces: "all" });
+	const marked = await paintedSpaces(pane);
+	expect(marked).toBeGreaterThan(0);
+
+	const glyphs = async () =>
+		pane.evaluate(
+			(element) =>
+				Array.from(
+					element.querySelectorAll<HTMLElement>(".cm-highlightSpace"),
+				).filter(
+					(span) => getComputedStyle(span, "::before").content !== "none",
+				).length,
+		);
+
+	// Nothing is generated while the background can be painted: one marker, one
+	// mechanism, never both at once.
+	expect(await glyphs()).toBe(0);
+
+	await page.emulateMedia({ forcedColors: "active" });
+	expect(await glyphs()).toBe(marked);
+
+	// A mode that marks fewer spaces still marks only those.
+	await page.emulateMedia({ forcedColors: "none" });
+	await setIndicators(page, { spaces: "boundary" });
+	const boundary = await paintedSpaces(pane);
+	await page.emulateMedia({ forcedColors: "active" });
+	expect(await glyphs()).toBe(boundary);
+	expect(boundary).toBeLessThan(marked);
+
+	await page.emulateMedia({ forcedColors: "none" });
 });
 
 // The placeholder stands in for a value, so it has to get out of the way the

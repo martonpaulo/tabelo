@@ -218,6 +218,17 @@ Measured since, on the fixtures above.
 | Markdown serialize grows faster than its input | 4.9x for 5x the rows, before and after | **Disproved on this harness.** The 8.6x growth reported in #264 came from the 2026-08-20 study's own fixture and does not reproduce on the fixtures here, which were already linear before the fix. The constant was the problem, not the growth. Do not reopen this without a fixture that shows it. |
 | Measuring escaped cells by `.length` would be cheaper than `string-width` | not timed; wrong for CJK, emoji, combining accents, and tabs | **Refused, not measured.** #186 chose `string-width` so those align in a monospaced editor. The fast path in #264 uses `.length` only for `U+0020` to `U+007E`, where the two provably agree, and the property tests in `markdown-fast-path.test.ts` hold it there. |
 
+One entry was measured in the browser rather than on the bench, because the cost
+was rendering rather than computation. The harness was a disposable Playwright
+spec driving 180 rAF-paced scroll steps over a 200-row Markdown table, timing a
+forced style-and-layout of the viewport at each step and reading the CDP
+`Performance` domain across the run. Three repetitions per arm, back to back on
+one machine.
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| Scroll lag with space indicators comes from the number of decoration spans | span count identical at 996 before and after; forced style+layout median 15.5 ms to 9.9 ms in `all` mode, layout 1.20 s to 0.45 s | **Disproved as stated, and the real cause fixed in #275.** The spans were never the cost. Each one was, because the theme gave it a `position: relative` block, a pseudo-element box, and the shaping of a `·`. Painting the dot as a background left the count untouched and made `all` mode as cheap as `boundary`, which it had never been. Do not reach for a run-matching decorator that collapses spans: the layout inside each span was the cost, not the span. |
+
 Also measured in #59 and found innocent, recorded so nobody investigates them
 again: `cn()` across 1000 cells at 2 ms; CodeMirror compartment reconfiguration
 at 0.1 ms per dispatch; the focus-following `querySelector` at 35 microseconds;
