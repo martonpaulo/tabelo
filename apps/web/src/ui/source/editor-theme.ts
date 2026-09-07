@@ -4,6 +4,7 @@ import { tags } from "@lezer/highlight";
 import { copy } from "@/copy/copy";
 import {
 	ALL_SPACES_CLASS,
+	SPACE_GLYPH,
 	SPACE_SCOPE_CLASS,
 	TAB_GLYPH,
 	TAB_INDICATOR_CLASS,
@@ -69,6 +70,12 @@ const spaceDot = {
 	backgroundPosition: "center",
 	backgroundRepeat: "no-repeat",
 };
+
+// The character the forced-colours fallback in index.css draws, published to
+// CSS rather than repeated there, so `whitespace-indicators.ts` stays the one
+// owner of the glyph. This is the same handover `--tabelo-escape-glyph` already
+// uses for the escape-sequence marker.
+const spaceGlyphProperty = { "--tabelo-space-glyph": `"${SPACE_GLYPH}"` };
 
 export const editorTheme = EditorView.theme({
 	"&": {
@@ -209,7 +216,19 @@ export const editorTheme = EditorView.theme({
 	// one scope this project marks itself, because no built-in describes it.
 	".cm-trailingSpace .cm-highlightSpace": spaceDot,
 	[`.${SPACE_SCOPE_CLASS} .cm-highlightSpace`]: spaceDot,
+	// The same three answers again, publishing the glyph the forced-colours
+	// fallback draws. Forced colours paints no background image, so the dot
+	// alone would leave the space the one annotation with nothing left, while
+	// the tab arrow and the placeholder survive as generated content. The rule
+	// that draws it lives in index.css, because a CodeMirror theme cannot carry
+	// `&` inside a media query; what it may not carry is the character, so the
+	// character is handed over as a property set on the element that decides a
+	// space is marked. One element per mode rather than one per space, so the
+	// fallback costs nothing on the path this change exists to make cheap.
+	[`&.${ALL_SPACES_CLASS}`]: spaceGlyphProperty,
+	[`.${SPACE_SCOPE_CLASS}`]: spaceGlyphProperty,
 	".cm-trailingSpace": {
+		...spaceGlyphProperty,
 		// CodeMirror's base theme tints this red, which here would spend a status
 		// colour on a token and claim an error the parser never reported. The
 		// dots are the whole cue.

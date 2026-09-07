@@ -261,6 +261,34 @@ textarea,
 	[data-cell-type-mark] {
 		color: CanvasText;
 	}
+
+	/* Forced colours paints no background image, so the source views' space dot
+	   would be the one annotation left with nothing, while the tab arrow and the
+	   empty-field placeholder survive as generated content. The glyph returns
+	   here, on exactly the spans whose mode marked them: the editor theme sets
+	   `--tabelo-space-glyph` on the element that makes that decision, so
+	   `whitespace-indicators.ts` stays the one owner of the character and an
+	   unmarked space generates no pseudo-element at all. The rule lives in this
+	   file rather than the theme because a CodeMirror theme cannot expand `&`
+	   inside a media query, the same reason `.cm-cursorLayer` is reached from
+	   the reduced-motion block below. Drawing a laid-out glyph is what made
+	   scrolling stutter (#275); it is affordable here, where it is paid only by
+	   a reader whose system is repainting the page anyway. */
+	.cm-highlightSpace {
+		position: relative;
+	}
+
+	.cm-highlightSpace::before {
+		/* `none` rather than an empty string: an empty string still generates a
+		   box, one per unmarked space, and `boundary` and `trailing` leave most
+		   spaces unmarked while the spans exist for all of them. */
+		content: var(--tabelo-space-glyph, none);
+		position: absolute;
+		inset-inline: 0;
+		text-align: center;
+		pointer-events: none;
+		user-select: none;
+	}
 }
 
 /* One focus treatment for the whole app, including inside the grid.

@@ -255,6 +255,52 @@ test("the space, tab, and empty glyphs are drawn together", async ({
 	expect(source).not.toContain("→");
 });
 
+// Forced colours paints no background image, so the dot the theme normally
+// draws would leave the space the one annotation with nothing left, while the
+// tab arrow and the placeholder survive as generated content. The glyph comes
+// back there, on exactly the spaces the mode marked.
+test("a space keeps a visible marker in forced colours", async ({
+	tabelo,
+	page,
+}) => {
+	await tabelo.paste(
+		[["Name", "City"].join("\t"), [first.name, first.city].join("\t")].join(
+			"\n",
+		),
+	);
+	const pane = tabelo.pane("markdown");
+	await setIndicators(page, { spaces: "all" });
+	const marked = await paintedSpaces(pane);
+	expect(marked).toBeGreaterThan(0);
+
+	const glyphs = async () =>
+		pane.evaluate(
+			(element) =>
+				Array.from(
+					element.querySelectorAll<HTMLElement>(".cm-highlightSpace"),
+				).filter(
+					(span) => getComputedStyle(span, "::before").content !== "none",
+				).length,
+		);
+
+	// Nothing is generated while the background can be painted: one marker, one
+	// mechanism, never both at once.
+	expect(await glyphs()).toBe(0);
+
+	await page.emulateMedia({ forcedColors: "active" });
+	expect(await glyphs()).toBe(marked);
+
+	// A mode that marks fewer spaces still marks only those.
+	await page.emulateMedia({ forcedColors: "none" });
+	await setIndicators(page, { spaces: "boundary" });
+	const boundary = await paintedSpaces(pane);
+	await page.emulateMedia({ forcedColors: "active" });
+	expect(await glyphs()).toBe(boundary);
+	expect(boundary).toBeLessThan(marked);
+
+	await page.emulateMedia({ forcedColors: "none" });
+});
+
 // The placeholder stands in for a value, so it has to get out of the way the
 // moment there is one.
 test("typing into an empty field replaces the placeholder with the value", async ({

@@ -401,7 +401,12 @@ advance width and the annotated character stays exactly one character wide. The
 split is a cost decision: Markdown pads every cell, so a viewport can hold a
 thousand marked spaces, and a background is the only one of the two that adds no
 box and no text shaping per character. A tab is one span per tab and appears in
-quantity only in TSV, so it keeps the glyph. No marker is ever a text node,
+quantity only in TSV, so it keeps the glyph. Forced colours is the one place the
+split reverses: a background is not painted there at all, so the space dot
+returns to a pseudo-element glyph for that mode only, drawn on exactly the
+spaces the reader's mode marked. That is what keeps "a distinct glyph survives
+forced colours" true of all three markers rather than two. No marker is ever a
+text node,
 because each is either generated content or a background rather than content at
 all: none of them can be read out, copied, downloaded, parsed, or persisted, and
 the caret, the selection, and the diagnostic underlines stay measured in the
