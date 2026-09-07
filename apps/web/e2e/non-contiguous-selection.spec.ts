@@ -221,6 +221,36 @@ test("the focus group carries no shortcut, stops at the edges, and cancels clean
 	await expect(page.getByRole("tooltip")).toHaveText(copy.disabled.focusTopRow);
 });
 
+test("dismissing the menu leaves focus to whatever the press lands on", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	const editor = tabelo.source("markdown");
+	const box = await editor.boundingBox();
+	if (!box) throw new Error("The Markdown editor has no box to press in.");
+
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("ContextMenu");
+	await expect(page.getByRole("menu")).toBeVisible();
+
+	// A press outside the menu dismisses it and runs no command, so the grid
+	// takes nothing back: the focus handoff belongs to command completion.
+	// The primitive's own overlay absorbs that first press, which is why the
+	// editor is pressed twice rather than once.
+	await page.mouse.click(box.x + 40, box.y + 10);
+	await expect(page.getByRole("menu")).toHaveCount(0);
+	await expect.poll(() => focusedCell(page)).toBe("0:0");
+
+	await editor.click();
+	await expect(editor).toBeFocused();
+	await page.keyboard.type("XY");
+
+	// The source editor owns the typing, and nothing reached the grid.
+	await expect(editor).toBeFocused();
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+});
+
 test("moving the focus through the menu adds no history step", async ({
 	page,
 	tabelo,

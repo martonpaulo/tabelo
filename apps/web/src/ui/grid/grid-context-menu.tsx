@@ -14,6 +14,7 @@ import {
 	type ReactNode,
 	type RefObject,
 	useId,
+	useRef,
 	useState,
 } from "react";
 import { copy } from "@/copy/copy";
@@ -112,21 +113,30 @@ export function GridContextMenu({
 }) {
 	const [axis, setAxis] = useState<ContextAxis>("cell");
 
-	// Where focus lands when the menu closes. The grid's own focus-following
-	// effect deliberately stands down while a menu owns focus, so an action
-	// that moved the focused cell would otherwise leave DOM focus on the
-	// trigger and the new cell possibly out of view. Returning the cell hands
-	// both back: the keyboard path to Move focus, keep selection is only a
-	// keyboard path if the grid is focused again afterwards.
+	// Whether this opening of the menu ended in one of its own commands. Only
+	// then does the grid take focus back explicitly; a dismissal is somebody
+	// else's business, and stealing focus from whatever the user pressed
+	// instead would send their next keystroke into a cell.
+	const commandRan = useRef(false);
+
+	// Where focus lands when a command closes the menu. The grid's own
+	// focus-following effect deliberately stands down while a menu owns focus,
+	// so an action that moved the focused cell would otherwise leave DOM focus
+	// on the trigger and the new cell possibly out of view. Returning the cell
+	// hands both back: the keyboard path to Move focus, keep selection is only
+	// a keyboard path if the grid is focused again afterwards.
 	const finalFocus = () => {
+		// `true` is the primitive's own behaviour, which is what a dismissal
+		// keeps: this component adds a destination, it does not take one away.
+		if (!commandRan.current) return true;
 		const wrapper = wrapperRef?.current;
 		const grid = wrapper?.querySelector<HTMLElement>("table");
-		if (!grid) return null;
+		if (!grid) return true;
 		const { focus } = activeRange(useTabeloStore.getState().selection);
 		const cell = grid.querySelector<HTMLElement>(
 			`[data-cell="${focus.row}:${focus.column}"]`,
 		);
-		if (!cell) return null;
+		if (!cell) return true;
 		// Revealed once focus has actually moved, because the browser scrolls
 		// on focus too and the later scroll is the one that wins. Clear of the
 		// sticky chrome is the grid's contract, not merely on screen.
@@ -138,7 +148,11 @@ export function GridContextMenu({
 	};
 
 	return (
-		<ContextMenu>
+		<ContextMenu
+			onOpenChange={(open) => {
+				if (open) commandRan.current = false;
+			}}
+		>
 			<ContextMenuTrigger
 				render={<div ref={wrapperRef} className="relative min-w-max" />}
 				onContextMenuCapture={(event: React.MouseEvent) => {
@@ -203,7 +217,10 @@ export function GridContextMenu({
 									<ContextMenuItem
 										disabled={action.disabled}
 										variant={action.danger ? "destructive" : "default"}
-										onClick={action.run}
+										onClick={() => {
+											commandRan.current = true;
+											action.run();
+										}}
 									>
 										<action.icon aria-hidden />
 										{action.label}
