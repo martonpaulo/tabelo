@@ -44,6 +44,21 @@ test("the strip's controls are owned by the surface, not by the grid", async ({
 	await tabelo.page.keyboard.press("Space");
 	await expect(tabelo.header(2)).toHaveAttribute("aria-selected", "true");
 	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "false");
+
+	// Selecting from the strip hands DOM focus to the cell it selected. The
+	// grid's keyboard model lives on the table the strip now sits beside, so
+	// without that handoff every following key would reach a button that
+	// answers none of them.
+	await expect(tabelo.header(2)).toBeFocused();
+
+	// Which is the point: the next keystroke is a grid action, not a lost one.
+	await tabelo.page.keyboard.press("ArrowDown");
+	await expect(tabelo.cell(1, 2)).toBeFocused();
+	await expect(tabelo.cell(1, 2)).toHaveAttribute("aria-selected", "true");
+	await tabelo.page.keyboard.press("F2");
+	await expect(
+		tabelo.grid().getByRole("textbox", { name: copy.a11y.cellEditor(0, 1) }),
+	).toBeFocused();
 });
 
 test("each letter stays over the column it names", async ({ tabelo }) => {

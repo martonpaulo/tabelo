@@ -329,6 +329,10 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 	const gridRef = useRef<HTMLTableElement>(null);
 	const wrapperRef = useRef<HTMLDivElement>(null);
+	// The column index strip. Held separately because "focus is in the grid" is
+	// the table plus this strip, and the surface around them holds one control
+	// that has never counted: see the focus-handoff effect below.
+	const stripRef = useRef<HTMLDivElement>(null);
 	const draggingRef = useRef<GridDragKind | null>(null);
 	// Written by the drop indicator when it mounts, so a reorder drag repaints
 	// one element rather than the whole table on every pointer move.
@@ -370,6 +374,21 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// Keep DOM focus on the focused cell, but never steal it from the source
 	// panel or a menu: follow the selection only when focus is already inside
 	// the grid, or when an edit just finished and left focus with nobody.
+	//
+	// "Inside the grid" is the table plus the column index strip, which is the
+	// boundary that held while the strip was still a row of the table. Selecting
+	// a column from the strip is exactly the case this handoff exists for: the
+	// grid's keyboard model lives on the table, so a selection made from a strip
+	// control has to move focus there or the next key reaches a button that
+	// answers none of them.
+	//
+	// Not the whole surface, which is the wider box the two share with the fill
+	// handle. That handle fills by keyboard from where it stands, so it was
+	// deliberately outside this test before the strip moved and stays outside it
+	// now: including it would pull focus off the handle after its first fill.
+	// Everything else stands down as it always did, a menu having portalled its
+	// popup out, the find bar being the surface's sibling, and another pane
+	// being elsewhere entirely.
 	useEffect(() => {
 		const isEditing = editing !== null || editingHeader !== null;
 		const justFinishedEditing = wasEditingRef.current && !isEditing;
@@ -379,8 +398,10 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		const grid = gridRef.current;
 		const surface = wrapperRef.current;
 		if (!grid || !surface) return;
-		if (!grid.contains(window.document.activeElement) && !justFinishedEditing)
-			return;
+		const active = window.document.activeElement;
+		const insideGrid =
+			grid.contains(active) || stripRef.current?.contains(active) === true;
+		if (!insideGrid && !justFinishedEditing) return;
 
 		const target = grid.querySelector<HTMLElement>(
 			`[data-cell="${focus.row}:${focus.column}"]`,
@@ -1081,6 +1102,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				    controls, and it then re-parented them into the grid. See
 				    docs/design-system.md §9. */}
 				<div
+					ref={stripRef}
 					data-column-strip
 					className="sticky top-0 z-30 grid h-grid-strip"
 					style={{
