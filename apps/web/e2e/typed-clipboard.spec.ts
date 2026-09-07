@@ -160,6 +160,23 @@ test("a payload that no longer describes the table beside it is not believed", a
 	await expect(tabelo.cell(2, 1)).toHaveAttribute("data-cell-type", "string");
 });
 
+// Anything short of a payload that validates is not a refusal to paste: the
+// public flavours are still there, and they are what the paste falls back to.
+test("a private flavour that does not validate falls back to the public ones", async ({
+	tabelo,
+}) => {
+	await importTypedRows(tabelo);
+	await selectRange(tabelo, [1, 1], [1, 3]);
+	const copied = await tabelo.copyFlavours();
+
+	await tabelo.cell(2, 1).click();
+	await tabelo.paste({ ...copied, typed: '{"version":1,"matrix":[]}' });
+
+	await expect(tabelo.cell(2, 1)).toHaveText("1");
+	await expect(tabelo.cell(2, 1)).toHaveAttribute("data-cell-type", "string");
+	await expect(tabelo.cell(2, 2)).toHaveAttribute("data-cell-type", "string");
+});
+
 test("an external application receives a table with no metadata in it", async ({
 	page,
 	tabelo,
