@@ -1207,6 +1207,16 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 										? match.end
 										: NO_MARK
 								}
+								onDragStart={() => {
+									draggingRef.current = "cell";
+								}}
+								onDragEnter={() => {
+									if (draggingRef.current !== "cell") return;
+									useTabeloStore.getState().extendSelection({
+										row: HEADER_ROW,
+										column: columnIndex,
+									});
+								}}
 							/>
 						))}
 					</tr>
@@ -1882,6 +1892,10 @@ interface HeaderCellProps {
 	// Equal bounds mean it holds no match.
 	readonly markStart: number;
 	readonly markEnd: number;
+	// The grid owns the drag lifecycle, so the header only reports the two
+	// edges of the gesture. See ColumnIndexCell: same split, different kind.
+	readonly onDragStart: () => void;
+	readonly onDragEnter: () => void;
 }
 
 function HeaderCell({
@@ -1897,6 +1911,8 @@ function HeaderCell({
 	seed,
 	markStart,
 	markEnd,
+	onDragStart,
+	onDragEnter,
 }: HeaderCellProps) {
 	const entered = usePaneEntered();
 
@@ -1951,6 +1967,10 @@ function HeaderCell({
 				// own mousedown handling moves focus to <body> after ours runs and
 				// the cell would look selected while ignoring every keystroke.
 				event.preventDefault();
+				// The header row is an ordinary row of the cell selection, so its
+				// drag is the data cells' own kind: starting it here is what lets
+				// one rectangle span the boundary in either direction.
+				onDragStart();
 				const store = useTabeloStore.getState();
 				const at = { row: HEADER_ROW, column: columnIndex };
 				const intent = selectIntentOf(event);
@@ -1959,6 +1979,7 @@ function HeaderCell({
 				else store.selectCell(at);
 				event.currentTarget.focus();
 			}}
+			onPointerEnter={onDragEnter}
 			onDoubleClick={() =>
 				useTabeloStore.getState().setEditingHeader(columnIndex)
 			}
