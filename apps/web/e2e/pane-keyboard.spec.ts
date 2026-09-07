@@ -45,11 +45,18 @@ test("the workspace ring does not grow with the table", async ({
 		exact: true,
 	});
 
+	// A table exists before the first walk, so the one below grows it rather
+	// than creating it: the first content of a session opens the format it
+	// arrived in, and this test is about the ring rather than the arrangement.
+	await tabelo.paste("Name\tRole\nIngrid\tDesigner");
+	await tabelo.restoreDefaultArrangement();
+
 	await gridPane.focus();
 	await expect(rowSelect).toHaveAttribute("tabindex", "-1");
 	const before = await tabsToReach(page, markdownPane);
 	expect(before).toBeGreaterThan(0);
 
+	await tabelo.cell(1, 1).click();
 	await tabelo.paste(bigTable);
 	// The fixture explicitly uses row 1 as headers. The exact count is not this
 	// test's contract; only that the grid is now far larger than it was.

@@ -182,6 +182,7 @@ test("replaces one match, reaching every open view, and undoes in one step", asy
 	tabelo,
 }) => {
 	await tabelo.paste(PEOPLE);
+	await tabelo.showInSourcePane("markdown");
 	await openFind(tabelo, "Rio");
 	await showReplace(tabelo);
 	await replacementField(tabelo).fill("Lisbon");

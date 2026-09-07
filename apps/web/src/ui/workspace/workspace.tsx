@@ -205,6 +205,32 @@ export function Workspace({
 			?.focus();
 	}, [addedPaneId]);
 
+	// Which view each pane holds, as one comparable value. An import that opens
+	// its own arrangement moves the grid into the other pane, so what the user
+	// was working in is unmounted and mounted again elsewhere.
+	const paneViews = workspace.panes
+		.map((pane) => `${pane.id}:${pane.view}`)
+		.join(" ");
+	const lastPaneViews = useRef(paneViews);
+
+	// Focus that was inside a pane whose content has just been replaced is
+	// dropped to the document, and the grid deliberately declines to take it
+	// back: it never steals focus that is outside it. So the workspace places
+	// focus itself, on the active pane's frame, the same landing a pane the
+	// workspace creates uses. Only when focus was genuinely lost, so a caller
+	// that restores focus to its own opener still wins, and never on the first
+	// render, where nothing has moved and a page load must not take focus.
+	useEffect(() => {
+		const changed = lastPaneViews.current !== paneViews;
+		lastPaneViews.current = paneViews;
+		if (!changed) return;
+		const active = window.document.activeElement;
+		if (active !== null && active !== window.document.body) return;
+		containerRef.current
+			?.querySelector<HTMLElement>(`[data-pane-id="${workspace.activePaneId}"]`)
+			?.focus();
+	}, [paneViews, workspace.activePaneId]);
+
 	// A resizer is only meaningful where its axis actually splits, and stacking
 	// splits neither: there is one column and the panes size themselves. The
 	// extent answers "whether" and "where" at once, so a handle can never be

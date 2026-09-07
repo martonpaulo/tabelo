@@ -3,7 +3,7 @@ import { copy } from "@/copy/copy";
 import { HEADER_ROW } from "@/core/selection";
 import { STORAGE_KEY } from "@/persistence/schema";
 import type { NoticeSeverity } from "@/state/notice-queue";
-import { getView } from "@/views/registry";
+import { getView, listViews } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import {
 	FILL_ORDER,
@@ -499,6 +499,41 @@ export class TabeloPage {
 		await dialog
 			.getByRole("button", { name: copy.addView.confirm, exact: true })
 			.click();
+		await dialog.waitFor({ state: "hidden" });
+	}
+
+	// Which format the workspace's source pane is showing. The first content a
+	// session receives opens the format it arrived in beside the grid, so a
+	// fixture import decides this rather than the default arrangement.
+	async sourcePaneView(): Promise<ViewId | null> {
+		for (const view of listViews()) {
+			if (view.kind === "grid") continue;
+			if ((await this.pane(view.id).count()) > 0) return view.id;
+		}
+		return null;
+	}
+
+	// Puts a view into the pane beside the grid, whatever that pane is showing.
+	// A test that establishes a fixture by importing cannot assume the Markdown
+	// pane of the default arrangement is still there to change: the opening
+	// arrangement is a contract of its own, asserted where it belongs.
+	async showInSourcePane(view: ViewId): Promise<void> {
+		const current = await this.sourcePaneView();
+		if (current === null || current === view) return;
+		await this.choosePaneView(current, view);
+	}
+
+	// Returns the grid to the leading pane, where the default arrangement keeps
+	// it. An import opens its own arrangement with the source first, which is a
+	// different reading order for anything that walks the workspace ring.
+	async restoreDefaultArrangement(): Promise<void> {
+		await this.showInSourcePane("markdown");
+		const leading = await this.panes().first().getAttribute("aria-label");
+		if (leading === copy.a11y.pane(getView("grid").label)) return;
+		const dialog = await this.openMovePaneDialog("grid");
+		// Two panes leave exactly one destination: the other pane's position.
+		await dialog.getByRole("radio").first().click();
+		await dialog.getByRole("button", { name: copy.workspace.movePane }).click();
 		await dialog.waitFor({ state: "hidden" });
 	}
 
