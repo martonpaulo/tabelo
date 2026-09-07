@@ -95,11 +95,28 @@ validates and projects to exactly the table the public flavours are visibly
 carrying, so external content still arrives as text and nothing gains a type in
 transit. Its schema is versioned on its own: bytes in flight between two tabs
 have a different compatibility window from a stored document, and tying the two
-versions together would make either one unable to change alone. The transport
-was measured rather than chosen: a custom MIME flavour survives DataTransfer in
-both engines, but Firefox refuses to write one through the asynchronous
-clipboard API and takes the public flavours down with it, while an inert HTML
-comment survived every path in both engines.
+versions together would make either one unable to change alone.
+
+The transport was measured rather than chosen, and it was re-measured in #266
+once its original reason no longer applied. The original reason was Firefox: it
+refused to write a custom MIME flavour through the asynchronous clipboard API
+and took the public flavours down with it, while an inert HTML comment survived
+every path in both engines. Firefox is no longer supported (#265), so the
+comment was expected to give way to a flavour of its own, which is both tidier
+and measurably faster.
+
+It does not, and the reason is now Chromium's alone. Chromium keeps a custom
+type written through `DataTransfer.setData` in a different store from a
+"web "-prefixed type written through `ClipboardItem`, and neither reader sees
+the other's. Tabelo copies and pastes from both a keyboard event and a menu
+command, so a flavour of its own carries the types through two of those four
+paths and silently drops them through the other two: a number arrives as its
+text, a null becomes an empty string, and a column's expectation vanishes. The
+HTML flavour is the only carrier both transports share. Priority 1 is data
+preservation, so the shared carrier wins over the tidier one, and
+`e2e/clipboard-transports.spec.ts` pins that result across all four
+combinations. `docs/performance.md` records the measurement and the reproduction
+so the question is not re-opened without new evidence about Chromium.
 
 Pasting values into columns that already exist writes values and nothing else.
 An expectation travels only where the paste creates the columns, because

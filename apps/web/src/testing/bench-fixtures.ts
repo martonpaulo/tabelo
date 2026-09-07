@@ -1,8 +1,13 @@
 import type { BenchOptions } from "vitest";
+import type { ClipboardSelection } from "@/clipboard/payload";
 import { cellText } from "@/core/cell-value";
 import { documentFromMatrix } from "@/core/document";
 import { samplePeople, samplePeopleHeaders } from "@/core/sample-data";
-import type { CellValue, TableDocument } from "@/core/types";
+import type {
+	CellValue,
+	ExpectedColumnType,
+	TableDocument,
+} from "@/core/types";
 
 // The tables `pnpm bench` measures. Fixed, deterministic, and built from the
 // shared roster, so two runs on one machine measure the same bytes and a figure
@@ -92,6 +97,31 @@ function benchMatrix(rows: number, shape: BenchShape): CellValue[][] {
 // the two are measuring the same bytes.
 export function benchCells(rows: BenchRowCount, shape: BenchShape): string[] {
 	return benchMatrix(rows, shape).flat().map(cellText);
+}
+
+// What each column of the fixture expects to be typed into it, in the order
+// `benchMatrix` builds them: the roster's name, city, and role, its `age`, and
+// the note column added here. Stated rather than read off the values, because
+// nothing in Tabelo derives an expectation from text.
+const BENCH_EXPECTED_TYPES: readonly ExpectedColumnType[] = [
+	"text",
+	"text",
+	"text",
+	"number",
+	"text",
+];
+
+// The same fixed table as a grid selection, so the clipboard benches measure
+// the bytes the codec benches do. The header row travels with it: a selection
+// that spans whole columns includes it.
+export function benchSelection(
+	rows: BenchRowCount,
+	shape: BenchShape,
+): ClipboardSelection {
+	return {
+		matrix: benchMatrix(rows, shape),
+		expectedTypes: BENCH_EXPECTED_TYPES,
+	};
 }
 
 export function benchDocument(

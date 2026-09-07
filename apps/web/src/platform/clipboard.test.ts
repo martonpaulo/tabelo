@@ -6,9 +6,9 @@ import {
 } from "./clipboard";
 
 // The clipboard is the one API the user can refuse, so each refusal shape is
-// pinned here rather than discovered in a browser: a denial, a browser missing
-// half the API, an empty clipboard, and an unrecognised fault all have to reach
-// the caller as themselves.
+// pinned here rather than discovered in a browser: a denial, a context with no
+// clipboard object at all, an empty clipboard, and an unrecognised fault all
+// have to reach the caller as themselves.
 
 const originalNavigator = globalThis.navigator;
 const originalClipboardItem = globalThis.ClipboardItem;
@@ -158,6 +158,9 @@ describe("writing a table", () => {
 	});
 });
 
+// There is one read path. The clipboard object arrives whole or not at all, so
+// a failed read is the answer rather than a reason to try a second half of the
+// API: `readText` is never consulted here, and these pin that.
 describe("reading the clipboard", () => {
 	it("prefers the rich flavour and keeps both parts", async () => {
 		stubClipboard({
@@ -175,53 +178,42 @@ describe("reading the clipboard", () => {
 		});
 	});
 
-	// Firefox implements readText() but not read(), and the button path has to
-	// keep working there rather than reporting a failure.
-	it("falls back to plain text when read() is absent", async () => {
-		stubClipboard({ readText: vi.fn().mockResolvedValue("a\tb") });
-
-		expect(await readClipboardTable()).toEqual({
-			ok: true,
-			payload: { text: "a\tb" },
-		});
-	});
-
-	it("falls back to plain text when read() fails recoverably", async () => {
+	it("reports a clipboard without read() as unavailable", async () => {
 		const readText = vi.fn().mockResolvedValue("a\tb");
-		stubClipboard({
-			read: vi.fn().mockRejectedValue(failure("NotSupportedError")),
-			readText,
-		});
-
-		expect(await readClipboardTable()).toEqual({
-			ok: true,
-			payload: { text: "a\tb" },
-		});
-		expect(readText).toHaveBeenCalled();
-	});
-
-	it("does not retry a refusal as plain text", async () => {
-		const readText = vi.fn().mockResolvedValue("a\tb");
-		stubClipboard({
-			read: vi.fn().mockRejectedValue(failure("NotAllowedError")),
-			readText,
-		});
+		stubClipboard({ readText });
 
 		expect(await readClipboardTable()).toEqual({
 			ok: false,
-			reason: "blocked",
+			reason: "unavailable",
 		});
 		expect(readText).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		["NotSupportedError", "unavailable"],
+		["NotAllowedError", "blocked"],
+		["WeirdError", "unknown"],
+	])(
+		"reports a failed read as %s without a second attempt",
+		async (name, reason) => {
+			const readText = vi.fn().mockResolvedValue("a\tb");
+			stubClipboard({
+				read: vi.fn().mockRejectedValue(failure(name)),
+				readText,
+			});
+
+			expect(await readClipboardTable()).toEqual({ ok: false, reason });
+			expect(readText).not.toHaveBeenCalled();
+		},
+	);
+
 	it("distinguishes an empty clipboard from a blocked one", async () => {
-		stubClipboard({
-			read: vi.fn().mockResolvedValue([]),
-			readText: vi.fn(),
-		});
+		stubClipboard({ read: vi.fn().mockResolvedValue([]) });
 		expect(await readClipboardTable()).toEqual({ ok: false, reason: "empty" });
 
-		stubClipboard({ readText: vi.fn().mockResolvedValue("") });
+		stubClipboard({
+			read: vi.fn().mockResolvedValue([clipboardItem({ "text/plain": "" })]),
+		});
 		expect(await readClipboardTable()).toEqual({ ok: false, reason: "empty" });
 	});
 
@@ -236,16 +228,6 @@ describe("reading the clipboard", () => {
 		expect(await readClipboardTable()).toEqual({
 			ok: false,
 			reason: "unavailable",
-		});
-	});
-
-	it("reports an unrecognised fault as unknown", async () => {
-		stubClipboard({
-			readText: vi.fn().mockRejectedValue(failure("WeirdError")),
-		});
-		expect(await readClipboardTable()).toEqual({
-			ok: false,
-			reason: "unknown",
 		});
 	});
 });

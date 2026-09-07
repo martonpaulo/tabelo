@@ -170,6 +170,20 @@ the rest of the table attributable: the serializer got faster because it stopped
 measuring every cell twice and started skipping the loop for cells that need no
 escaping, not because the escaping grammar moved.
 
+### Clipboard
+
+`clipboard.bench.ts` times the two halves of the clipboard transport. `copy` is
+the whole write path a grid copy runs: the TSV, the HTML table, and the private
+payload spliced into it. `paste` is the transport half of the read path: the
+strip every reader of the HTML flavour runs, and the decode that turns the
+payload back into a selection. The public HTML parse is excluded for the same
+`DOMParser` reason as the codec table above.
+
+| call | 200 plain | 200 escaped | 1000 plain | 1000 escaped |
+| --- | ---: | ---: | ---: | ---: |
+| `copy` | 0.621 | 0.713 | 3.090 | 3.551 |
+| `paste` | 0.700 | 0.875 | 3.585 | 4.473 |
+
 ### Document
 
 | call | 200 rows | 1000 rows |
@@ -236,6 +250,34 @@ a plain CodeMirror insert into a 202-line document at 1.6 ms.
 
 A second implementation language was considered and rejected on measurement.
 See `docs/adr/0009`.
+
+### A private clipboard flavour would be faster, and is not available
+
+**Suspicion:** the payload rides inside the HTML flavour as a base64 comment,
+so every copy encodes and splices and every paste scans and decodes. A custom
+MIME flavour would carry the JSON directly and skip all of it. #266 proposed it
+on the grounds that the comment existed only because Firefox refused a custom
+flavour, and Firefox is no longer supported.
+
+**Measured, 2026-09-07, reference machine A.** The gain is real: with the
+payload in `web application/x-tabelo+json`, `copy` fell to 0.467 / 0.522 / 2.330
+/ 2.602 and `paste` to 0.171 / 0.180 / 0.841 / 0.890 against the table above.
+About 1.3x on the write and about 4x on the read.
+
+**It is not available anyway.** Chromium keeps a custom type written through
+`DataTransfer.setData` in a different store from a "web "-prefixed type written
+through `ClipboardItem`, and neither reader sees the other's. Reproduced on all
+four combinations in real Chromium: a payload written on the copy event is
+absent from `navigator.clipboard.read()`, and one written through
+`ClipboardItem` is absent from the paste event. Tabelo copies and pastes from
+both a keyboard event and a menu command, so the flavour would drop every type
+on two of those four paths. The HTML flavour is the only carrier both transports
+share.
+
+**Do not re-open this without first showing that Chromium has unified the two
+stores.** The speed was never in doubt; the interoperability is what fails.
+`e2e/clipboard-transports.spec.ts` holds the result, and fails on exactly the
+two crossing combinations if the transport is moved again.
 
 ### Adding an entry
 
