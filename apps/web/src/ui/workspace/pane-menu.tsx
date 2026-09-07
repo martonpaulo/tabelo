@@ -185,11 +185,21 @@ export function PaneMenu({
 					</>
 				) : null}
 
-				<DropdownMenuGroup>
-					{/* The group's label carries the current value, so a screen reader
-					    reports the percentage on entering the group and again after each
-					    step: the items stay in place and the menu stays open. */}
-					<DropdownMenuLabel aria-live="polite">
+				{/* The group's label carries the current value, so a screen reader
+				    reports the percentage on entering the group and again after each
+				    step: the items stay in place and the menu stays open.
+
+				    The group is the live region, not the label. The label renders
+				    with role="presentation", and a global ARIA attribute on a
+				    presentational element triggers presentational role conflict
+				    resolution: the role would be ignored, the element exposed as
+				    generic, and the menu would then own a child that is neither a
+				    menuitem nor a group. A group is an allowed child, and the only
+				    text that changes inside it is the label's, so what the region
+				    announces is unchanged.
+				    https://w3c.github.io/aria/#conflict_resolution_presentation_none */}
+				<DropdownMenuGroup aria-live="polite">
+					<DropdownMenuLabel>
 						{copy.workspace.zoom(paneZoomPercent(zoom))}
 					</DropdownMenuLabel>
 					<DisabledTooltip

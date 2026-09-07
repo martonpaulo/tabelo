@@ -85,6 +85,47 @@ tests, plus 414 Chromium tests in 50 files. The 44 property tests are unchanged.
 The detailed rules for stable seams, selectors, waits, synthetic data, and
 required browser coverage stay in `AGENTS.md` rather than being copied here.
 
+## The axe regression net
+
+`apps/web/e2e/accessibility.spec.ts` runs `@axe-core/playwright` over seven
+representative states: the first-visit surface, a focused grid, a focused source
+editor, an open menu, an open dialog, a parse-error state, and the settings
+dialog. The helper beside it, `apps/web/e2e/axe.ts`, owns the tag set and the
+failure report.
+
+What it is for: the ordinary WCAG violations nobody writes a bespoke test for.
+Contrast, missing accessible names, invalid ARIA attribute combinations,
+duplicate ids, orphaned labels. It is a net under the hand-written assertions,
+never a replacement for them.
+
+Three boundaries decide what a green run means:
+
+- **The rule set is a standard, not an opinion.** `withTags` selects `wcag2a`,
+  `wcag2aa`, `wcag21a`, and `wcag21aa`. The best-practice catalogue is not a
+  gate. No blanket rule exclusion, subtree exclusion, or accepted-violation
+  snapshot may be added; a genuine tool limitation isolates the exact rule and
+  node and links reproducible evidence.
+- **Seven states are a sample.** A state that is not in the list is unscanned,
+  not proven clean. The source views other than Markdown share one editor owner
+  and one set of capabilities, and the rendered preview has no editable or error
+  state, so neither gets its own scan; their behavioural tests continue to own
+  them.
+- **Axe reaches roughly a third of real accessibility defects.** The keyboard,
+  focus, live-region, and semantic tests stay load-bearing, in particular the
+  Chromium-computed accessible descriptions in `disabled-reason.spec.ts`, which
+  axe cannot see: an unassociated tooltip is valid markup and reaches no
+  accessible description (#283).
+
+The baseline is not green yet. Four of the seven states fail
+`aria-required-children` on the grid, tracked as #327; the check is delivered
+red rather than suppressed.
+
+Measured on 2026-09-07 with one local worker on the machine described under
+Baseline: seven Chromium tests, 0.57 s to 1.4 s each, 13.2 s wall including the
+preview server. Trace and screenshot capture on the failing states is part of
+that figure. New `e2e/` paths already select the full browser suite and feed the
+dynamic shard count, so CI needs no second job.
+
 ## Vitest projects
 
 `pnpm test` remains the complete gate. Focused commands are:
