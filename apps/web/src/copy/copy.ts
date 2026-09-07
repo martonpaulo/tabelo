@@ -361,6 +361,12 @@ export const copy = {
 		// rather than picking one of them.
 		singleAreaRequired: "This needs one selected area, not several.",
 		singleCellRequired: "Select one data cell to change its type.",
+		// The focus move stops at the same edges the arrow keys do, and says
+		// which edge it is already sitting on rather than doing nothing.
+		focusTopRow: "The focused cell is already in the top row.",
+		focusLastRow: "The focused cell is already in the last row.",
+		focusFirstColumn: "The focused cell is already in the first column.",
+		focusLastColumn: "The focused cell is already in the last column.",
 		noQuery: "Type something to find first.",
 		// Both the step and the replace controls refuse for the same reason, so
 		// they say the same thing rather than inventing two wordings for it.
@@ -495,6 +501,14 @@ export const copy = {
 		moveLeft: "Move left",
 		moveRight: "Move right",
 		fill: "Fill",
+		// The menu path that replaces the removed four-key focus chord. Named
+		// for what it preserves, because that is the whole reason to reach for
+		// it instead of an arrow key.
+		moveFocus: "Move focus, keep selection",
+		moveFocusUp: "Move focus up",
+		moveFocusDown: "Move focus down",
+		moveFocusLeft: "Move focus left",
+		moveFocusRight: "Move focus right",
 		fillUp: "Fill up",
 		fillDown: "Fill down",
 		fillLeft: "Fill left",
@@ -782,12 +796,14 @@ export const copy = {
 		find: "Mod+F",
 		undo: "Mod+Z",
 		redo: "Mod+Shift+Z",
-		// The four insert actions form one reversible matrix: Shift flips the
-		// side, Alt switches the axis from rows to columns.
+		// The four insert actions form one symmetric family: the modifier picks
+		// the axis, Mod for rows and Alt for columns, and Shift chooses the
+		// preceding side. Every one stays inside the three-key limit that
+		// docs/design-system.md section 9 sets for the whole product.
 		addRowBelow: "Mod+Enter",
 		addRowAbove: "Mod+Shift+Enter",
-		addColumnRight: "Mod+Alt+Enter",
-		addColumnLeft: "Mod+Alt+Shift+Enter",
+		addColumnRight: "Alt+Enter",
+		addColumnLeft: "Alt+Shift+Enter",
 		edit: "Enter",
 		clear: "Backspace",
 		deleteStructure: "Mod+Backspace",

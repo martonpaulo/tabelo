@@ -16,14 +16,20 @@ import {
 	MoveRight,
 	MoveUp,
 	Scissors,
+	SquareArrowDown,
+	SquareArrowLeft,
+	SquareArrowRight,
+	SquareArrowUp,
 	Trash2,
 } from "lucide-react";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import {
+	activeRange,
 	type FillDirection,
 	fillTargetInDirection,
 	isContiguous,
+	neighbourCell,
 	type SelectionFillRefusal,
 	type SelectionMoveRefusal,
 	selectionColumns,
@@ -209,6 +215,34 @@ export function buildTableActions(
 		["right", ArrowRight, copy.actions.fillRight, copy.shortcuts.fillRight],
 	] as const;
 
+	// Moving the focus without discarding the areas already selected. It used
+	// to be Mod+Alt+Shift+arrow, which section 9 no longer allows, and it is
+	// the reason a second column can be added to a selection without a
+	// pointer at all: every arrow key that stays inside the three-key limit
+	// replaces the selection. The square-arrow family keeps it distinct from
+	// the three directional groups the menu already carries.
+	const focusDirections = [
+		["up", SquareArrowUp, copy.actions.moveFocusUp, copy.disabled.focusTopRow],
+		[
+			"down",
+			SquareArrowDown,
+			copy.actions.moveFocusDown,
+			copy.disabled.focusLastRow,
+		],
+		[
+			"left",
+			SquareArrowLeft,
+			copy.actions.moveFocusLeft,
+			copy.disabled.focusFirstColumn,
+		],
+		[
+			"right",
+			SquareArrowRight,
+			copy.actions.moveFocusRight,
+			copy.disabled.focusLastColumn,
+		],
+	] as const;
+
 	// Three directional groups share one menu, so each takes its own glyph
 	// family: insert lands against a boundary line, move is the long-stemmed
 	// Move arrow, and fill keeps the plain arrow it drags along.
@@ -368,6 +402,31 @@ export function buildTableActions(
 					};
 				})
 			: [];
+	const focus: TableAction[] =
+		context.axis === "cell"
+			? focusDirections.map(([direction, icon, label, atEdge]) => {
+					const target = neighbourCell(
+						activeRange(selection).focus,
+						direction,
+						rows,
+						columns,
+					);
+					return {
+						id: `focus-${direction}`,
+						label,
+						icon,
+						disabled: target === null,
+						disabledReason: target === null ? atEdge : undefined,
+						// No document operation and no history step: this moves the
+						// focus and keeps the areas, which is exactly what the removed
+						// chord did.
+						run: () => {
+							if (target) store.moveFocusKeepingRegions(target);
+						},
+					};
+				})
+			: [];
+
 	if (showColumns) {
 		move.push(
 			{
@@ -444,6 +503,12 @@ export function buildTableActions(
 			label: copy.actions.fill,
 			labelId: "table-actions-fill-label",
 			actions: fill,
+		},
+		{
+			id: "focus",
+			label: copy.actions.moveFocus,
+			labelId: "table-actions-focus-label",
+			actions: focus,
 		},
 		{ id: "remove", actions: remove },
 	].filter((group) => group.actions.length > 0);

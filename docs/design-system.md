@@ -706,7 +706,9 @@ familiar label or symbol, so zoom in appears as separate `Command` and `+` keys
 instead of the ambiguous string `Mod++`. Smaller text and normal letter spacing
 distinguish the shortcut from its action label without making it look like
 another button. Dropdown and context menus share this treatment through the
-menu primitive.
+menu primitive. `@tabelo/ui/lib/shortcut` owns how a legend string splits into
+the keys it names, so the rendered `<kbd>` count and the three-key limit in
+section 9 are counted the same way.
 
 Key legends follow the user's platform, which the app already knows. Apple
 keyboards get the glyphs their keys are printed with: `⌘`, `⌃`, `⌥`, `⇧`, `⌫`,
@@ -1409,6 +1411,16 @@ These are requirements, not aspirations:
 
 - The grid is fully operable from the keyboard, including reordering. The model
   below is the contract, not a summary of it.
+- **No shortcut requires more than three simultaneous physical keys**, counting
+  every modifier and the final key. `Mod` is one physical modifier on the
+  active platform, and a chord that reaches four keys is not offered at all
+  rather than offered and hard to press. The rule is product-wide: app, pane,
+  grid, and source-view bindings are all subject to it, and so is every view
+  registered later. An action whose chord would exceed the limit keeps a
+  visible, keyboard-navigable command path instead: a menu entry is a path, a
+  longer chord or an undocumented key sequence is not. `copy.shortcuts` is the
+  metadata this is checked over, and a unit test fails when any legend there
+  names four keys.
 - Every control has an accessible name; icon-only controls use `aria-label`.
 - Focus is always visible and never trapped.
 - Interface chrome is not text-selectable. Source text and rendered view
@@ -1462,7 +1474,6 @@ container, so the arrow keys still work.
 | `Shift`+Arrows | Extend the active area from its anchor |
 | `Mod`+Arrows | Jump to the edge of the data along that axis |
 | `Mod`+`Shift`+Arrows | Extend the active area to that same edge |
-| `Mod`+`Alt`+`Shift`+Arrows | Move the focused cell without discarding the areas already selected |
 | `Alt`+Arrows | Reorder one contiguous row or column block. A header-touching selection cannot move rows; several areas never collapse into one |
 | `Mod`+`Alt`+Arrows | Repeat one contiguous data-cell selection into one more row or column in the requested direction |
 | `Alt`+`Shift`+Left / Right | Narrow or widen the focused column without reordering it |
@@ -1477,8 +1488,8 @@ container, so the arrow keys still work.
 | `Mod`+`Backspace` | Remove the selected rows or columns |
 | `Mod`+`Enter` | Add a row below |
 | `Mod`+`Shift`+`Enter` | Add a row above |
-| `Mod`+`Alt`+`Enter` | Add a column after |
-| `Mod`+`Alt`+`Shift`+`Enter` | Add a column before |
+| `Alt`+`Enter` | Add a column after |
+| `Alt`+`Shift`+`Enter` | Add a column before |
 | `Mod`+`F` | Open the find bar and put the caret in it. Taken from the browser deliberately: its own find searches the rendered chrome rather than the table |
 | Any printable character | Replace the cell and start editing |
 
@@ -1496,21 +1507,31 @@ jump from it begins at the first data row rather than treating the column's
 name as the start of a run. Horizontally the header row is an ordinary line and
 its names are walked like any other row's values.
 
-**The four insert chords are one reversible matrix**, so learning one teaches
-the rest: the modifier inserts, `Shift` flips which side of the selection the
-new line lands on, and `Alt` switches the axis from rows to columns. Each one
-ends in the same store action as the matching insert menu item, and each menu
-item shows its key.
+**The four insert chords are one symmetric family**, so learning one teaches
+the rest: `Mod` inserts a row, `Alt` inserts a column, and `Shift` chooses the
+preceding side, above or left. Each one ends in the same store action as the
+matching insert menu item, each menu item shows its key, and none of the four
+reaches the three-key limit's edge with a modifier to spare. `Mod`+`Alt`
+together no longer name an insert: that chord is unassigned, and it neither
+inserts nor falls through into editing.
 
-Moving the focus while keeping several selected areas is the one long chord in
-the table, and it is long because every shorter arrow chord is spent:
-`Alt` reorders, `Mod`+`Alt` fills, `Alt`+`Shift` sets column width, and the
-jump above took `Mod`. It is kept rather than dropped because it is what makes
-a second column reachable at all: `Ctrl`+`Space` adds the column the focus is
-in, and without a move that preserves the areas already selected, every way to
-reach the next column discards them. Multi-area selection would become
-pointer-only, which is exactly what the rule above forbids. `Alt`+`Shift` is
-therefore column width only when the modifier is absent.
+Moving the focus while keeping several selected areas has **no chord at all**.
+Every arrow combination inside the limit is spent: `Alt` reorders,
+`Mod`+`Alt` fills, `Alt`+`Shift` sets column width, and the jump above took
+`Mod`. So it lives in the cell context menu instead, as the flat **Move focus,
+keep selection** group, whose four directions carry no shortcut legend and are
+disabled at the table's edges with the reason written out. That is what keeps
+multi-area selection off the pointer: `Ctrl`+`Space` adds the column the focus
+is in, and the menu is what carries the areas already selected past the move to
+the next column. The menu opens from the focused cell with the `ContextMenu`
+key as well as with a right-click, and closing it returns focus to the cell the
+action moved to, revealed clear of the sticky chrome like every other focus
+move. `Alt`+`Shift` remains column width only when the modifier is absent.
+
+Every arrow chord this grid does not name is left to the browser. A removed or
+unassigned combination returns without preventing the default rather than
+falling into the branch below it: that is what stops `Mod`+`Alt`+`Shift`+arrow
+from quietly becoming a reorder now that its own branch is gone.
 
 The two `Space` chords are the one place the key table names `Ctrl` rather than
 `Mod`. Both modifiers count as the modifier everywhere, but macOS keeps
@@ -1622,12 +1643,14 @@ case: every gesture except the modifier produces exactly one.
 - A selection is never empty. A subtraction that would empty it does nothing.
 - Every count is a set: two areas covering the same column still describe one
   column, so a label never promises to delete something twice.
-- **The modifier means "keep what is already selected" on the keyboard too.**
-  `Mod`+arrows move the focused cell without discarding the other areas, which
-  is what lets `Ctrl`+`Space` reach a second column at all. The single cell the
-  focus sits on is provisional: moving it moves that cell rather than leaving a
-  trail of one-cell areas, and turning its column or row into an area replaces
-  it instead of painting it twice.
+- **Keeping what is already selected while the focus moves is a menu action,
+  not a chord.** Move focus, keep selection in the cell context menu moves the
+  focused cell without discarding the other areas, which is what lets
+  `Ctrl`+`Space` reach a second column at all. The single cell the focus sits
+  on is provisional: moving it moves that cell rather than leaving a trail of
+  one-cell areas, and turning its column or row into an area replaces it
+  instead of painting it twice. It changes no document state and adds no
+  history step.
 
 **Find is a second way of moving the selection, never a second highlight.**
 `Mod`+`F` opens the grid pane's find bar (§3) and `Escape` closes it,

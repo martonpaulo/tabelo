@@ -9,6 +9,7 @@ import {
 	type CellPosition,
 	type CellRect,
 	HEADER_ROW,
+	neighbourCell,
 	rectContains,
 	replaceActiveRange,
 	selectionFillRefusal,
@@ -567,26 +568,21 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	});
 
 	const moveFocus = useCallback(
-		(rowDelta: number, columnDelta: number, intent: SelectIntent) => {
+		(direction: JumpDirection, intent: "replace" | "extend") => {
 			const store = useTabeloStore.getState();
 			const from = activeRange(store.selection).focus;
-			const next = {
-				// The floor is the header row: arrows and Shift+arrows reach it, and
-				// stop there rather than wrapping or escaping the grid.
-				row: Math.max(
-					HEADER_ROW,
-					Math.min(from.row + rowDelta, store.document.rows.length - 1),
-				),
-				column: Math.max(
-					0,
-					Math.min(
-						from.column + columnDelta,
-						store.document.columns.length - 1,
-					),
-				),
-			};
+			// One bounded step, through the same helper the menu's own focus
+			// moves use, so the two paths stop at the same edges. A step off the
+			// grid keeps the cell it started from: arrows stop at the edge rather
+			// than wrapping or leaving the grid.
+			const next =
+				neighbourCell(
+					from,
+					direction,
+					store.document.rows.length,
+					store.document.columns.length,
+				) ?? from;
 			if (intent === "extend") store.extendSelection(next);
-			else if (intent === "toggle") store.moveFocusKeepingRegions(next);
 			else store.selectCell(next);
 		},
 		[],
@@ -717,22 +713,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			return;
 		}
 
-		// Moving the focus while keeping the areas already selected. It used to
-		// be Mod+arrow, which the data-edge jump below now owns, and this is the
-		// only arrow chord left: Alt is reordering, Mod+Alt is filling, and
-		// Alt+Shift is column width. A long chord for a rare gesture is worth
-		// more than losing it, because without it a second column cannot be
-		// added to a selection without a pointer, and §9 requires that it can.
-		if (mod && event.altKey && event.shiftKey && arrowDirection) {
-			event.preventDefault();
-			moveFocus(
-				arrowDirection === "up" ? -1 : arrowDirection === "down" ? 1 : 0,
-				arrowDirection === "left" ? -1 : arrowDirection === "right" ? 1 : 0,
-				"toggle",
-			);
-			return;
-		}
-
 		if (
 			mod &&
 			event.altKey &&
@@ -761,9 +741,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			return;
 		}
 
-		// Reordering shares the arrow keys with navigation, behind Alt. Keeping
-		// it on the keyboard means drag is never the only way to reorder.
-		if (event.altKey) {
+		// Reordering shares the arrow keys with navigation, behind Alt alone.
+		// Keeping it on the keyboard means drag is never the only way to
+		// reorder. The two other modifiers are excluded rather than ignored:
+		// a permissive test here would quietly re-adopt a chord section 9 no
+		// longer allows, which is exactly how Mod+Alt+Shift+arrow would have
+		// gone on reordering after its own branch was removed.
+		if (event.altKey && !mod && !event.shiftKey) {
 			if (event.key === "ArrowUp" || event.key === "ArrowDown") {
 				event.preventDefault();
 				const refusal = store.moveSelectedRow(event.key === "ArrowUp" ? -1 : 1);
@@ -790,6 +774,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			}
 		}
 
+		// Every Alt+arrow chord this grid owns has been offered its branch by
+		// now: reorder, fill, and column width. What is left is unassigned, so
+		// it returns without preventing the browser's default rather than
+		// falling into ordinary navigation below. Mod+Alt+Shift+arrow, which
+		// used to move the focus, is the combination this keeps inert.
+		if (event.altKey && arrowDirection) return;
+
 		// The modifier jumps to the edge of the data, which is the one thing
 		// every spreadsheet puts on this chord. The rule is in `dataEdgeTarget`;
 		// Shift sends the same target through the ordinary extension path, so an
@@ -807,24 +798,24 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 		// Shift extends the active area from its anchor, and a plain arrow
 		// replaces it. The modifier never reaches here: the jump above took it.
-		const arrowIntent: SelectIntent = event.shiftKey ? "extend" : "replace";
+		const arrowIntent = event.shiftKey ? "extend" : "replace";
 
 		switch (event.key) {
 			case "ArrowUp":
 				event.preventDefault();
-				moveFocus(-1, 0, arrowIntent);
+				moveFocus("up", arrowIntent);
 				return;
 			case "ArrowDown":
 				event.preventDefault();
-				moveFocus(1, 0, arrowIntent);
+				moveFocus("down", arrowIntent);
 				return;
 			case "ArrowLeft":
 				event.preventDefault();
-				moveFocus(0, -1, arrowIntent);
+				moveFocus("left", arrowIntent);
 				return;
 			case "ArrowRight":
 				event.preventDefault();
-				moveFocus(0, 1, arrowIntent);
+				moveFocus("right", arrowIntent);
 				return;
 			case "Tab": {
 				const next = adjacentCell(
@@ -852,18 +843,23 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				});
 				return;
 			case "Enter":
+				// One symmetric family rather than four unrelated keys: Mod
+				// inserts a row, Alt inserts a column, and Shift flips which side
+				// of the selection the new line lands on. Every one of the four
+				// routes to the same store action the insert menu uses, so both
+				// paths are one history step, and none exceeds three keys.
+				//
+				// The two modifiers are exclusive, so the retired
+				// Mod+Alt+(Shift+)Enter neither inserts nor falls through into
+				// editing: it is unassigned and left to the browser.
+				if (mod && event.altKey) return;
 				event.preventDefault();
-				// One reversible matrix rather than four unrelated keys: the
-				// modifier inserts, Shift flips which side of the selection the
-				// new line lands on, and Alt switches the axis from rows to
-				// columns. Every one of the four routes to the same store action
-				// the insert menu uses, so both paths are one history step.
-				if (mod && event.altKey) {
-					if (event.shiftKey) store.addColumnLeft();
-					else store.addColumnRight();
-				} else if (mod) {
+				if (mod) {
 					if (event.shiftKey) store.addRowAbove();
 					else store.addRowBelow();
+				} else if (event.altKey) {
+					if (event.shiftKey) store.addColumnLeft();
+					else store.addColumnRight();
 				} else beginEditing(focus);
 				return;
 			case "F2":

@@ -939,35 +939,147 @@ test("the four insert chords add a row or a column on the requested side", async
 	await expect(tabelo.cell(2, 1)).toHaveText("Ingrid");
 
 	await tabelo.cell(2, 1).click();
-	await page.keyboard.press(`${mod}+Alt+Enter`);
+	await page.keyboard.press("Alt+Enter");
 	await expect(tabelo.header(1)).toHaveText("Name");
 	await expect(tabelo.header(2)).toHaveText("");
 	await expect(tabelo.header(3)).toHaveText("City");
 
 	await tabelo.cell(2, 1).click();
-	await page.keyboard.press(`${mod}+Alt+Shift+Enter`);
+	await page.keyboard.press("Alt+Shift+Enter");
 	await expect(tabelo.header(1)).toHaveText("");
 	await expect(tabelo.header(2)).toHaveText("Name");
 });
 
-test("the modifier separates the rehomed focus move from column resizing", async ({
+test("one insert is one undo step and none fires while a cell is being edited", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste("Name\tCity\nIngrid\tRio");
+	await tabelo.dismissNotices();
+	await tabelo.cell(1, 1).click();
+
+	await page.keyboard.press("Alt+Enter");
+	await expect(tabelo.header(2)).toHaveText("");
+	await page.keyboard.press(`${mod}+z`);
+	await expect(tabelo.header(1)).toHaveText("Name");
+	await expect(tabelo.header(2)).toHaveText("City");
+
+	// An open editor owns every key, so no insert reaches the document while
+	// one is typing. Each chord is pressed into its own freshly opened editor,
+	// because whatever the editor does with the key it may also close.
+	const editor = tabelo.grid().getByRole("textbox");
+	for (const chord of ["Alt+Enter", "Alt+Shift+Enter", `${mod}+Shift+Enter`]) {
+		await tabelo.cell(1, 1).click();
+		await page.keyboard.press("F2");
+		await expect(editor).toBeVisible();
+		await page.keyboard.press(chord);
+		await expect(tabelo.header(1)).toHaveText("Name");
+		await expect(tabelo.header(2)).toHaveText("City");
+		await expect(tabelo.header(3)).toHaveCount(0);
+		await expect(tabelo.cell(2, 1)).toHaveCount(0);
+		await page.keyboard.press("Escape");
+	}
+});
+
+test("the retired four-key chords do nothing at all", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste("Name\tCity\nIngrid\tRio");
+	await tabelo.dismissNotices();
+	await tabelo.cell(1, 1).click();
+	const editor = tabelo.grid().getByRole("textbox");
+
+	// Naming a removed chord to prove it is inert: Mod+Alt+Enter no longer
+	// inserts a column and must not fall through into editing either.
+	await page.keyboard.press(`${mod}+Alt+Enter`);
+	await expect(editor).toHaveCount(0);
+	await expect(tabelo.header(1)).toHaveText("Name");
+	await expect(tabelo.header(2)).toHaveText("City");
+	await expect(tabelo.header(3)).toHaveCount(0);
+
+	await page.keyboard.press(`${mod}+Alt+Shift+Enter`);
+	await expect(editor).toHaveCount(0);
+	await expect(tabelo.header(1)).toHaveText("Name");
+	await expect(tabelo.header(3)).toHaveCount(0);
+
+	// The four removed arrow chords move nothing, reorder nothing, and fill
+	// nothing: every one of them is unassigned now. The grid also stops
+	// preventing their default, so the browser keeps whatever they mean to it.
+	await page.evaluate(() => {
+		const seen: string[] = [];
+		(window as unknown as { __prevented: string[] }).__prevented = seen;
+		window.addEventListener("keydown", (event) => {
+			if (event.defaultPrevented) seen.push(event.key);
+		});
+	});
+	for (const direction of ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]) {
+		await tabelo.cell(1, 1).click();
+		await page.keyboard.press(`${mod}+Alt+Shift+${direction}`);
+		expect(await focusedCell(page)).toBe("0:0");
+		await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+		await expect(tabelo.cell(1, 2)).toHaveText("Rio");
+		await expect(tabelo.header(1)).toHaveText("Name");
+		await expect(tabelo.header(2)).toHaveText("City");
+	}
+	expect(
+		await page.evaluate(
+			() => (window as unknown as { __prevented: string[] }).__prevented,
+		),
+	).toEqual([]);
+});
+
+test("the insert family does not collide with the commands beside it", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste("Name\tCity\nIngrid\tRio\nPaulo\tMadrid");
+	await tabelo.dismissNotices();
+
+	// Alt+arrow still reorders and Alt+Shift+arrow still resizes, neither of
+	// which the column inserts may disturb.
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("Alt+ArrowDown");
+	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
+	await expect(tabelo.cell(2, 1)).toHaveText("Ingrid");
+
+	const first = tabelo.header(1);
+	const widthBefore = (await first.boundingBox())?.width ?? 0;
+	await first.focus();
+	await page.keyboard.press("Alt+Shift+ArrowRight");
+	await expect
+		.poll(async () => (await first.boundingBox())?.width ?? 0)
+		.toBeGreaterThan(widthBefore);
+
+	// Plain and Shift+Enter still open the editor rather than inserting.
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("Enter");
+	await expect(tabelo.grid().getByRole("textbox")).toBeVisible();
+	await page.keyboard.press("Escape");
+	await expect(tabelo.header(3)).toHaveCount(0);
+});
+
+test("the removed focus chord leaves column resizing to Alt+Shift alone", async ({
 	page,
 	tabelo,
 }) => {
 	await tabelo.paste(gappedColumn);
 	await tabelo.dismissNotices();
 	await tabelo.cell(1, 1).click();
-	const width = (await tabelo.cell(1, 1).boundingBox())?.width ?? 0;
 
-	// Alt+Shift with the modifier moves the focus and keeps what is selected.
-	// Without the modifier the same two keys are column width, so the two must
-	// not both fire.
+	// Alt+Shift with the modifier used to move the focus. It is unassigned now,
+	// so it moves nothing, and the same two keys without the modifier stay
+	// column width.
 	await page.keyboard.press(`${mod}+Alt+Shift+ArrowRight`);
-	expect(await focusedCell(page)).toBe("0:1");
-	expect((await tabelo.cell(1, 1).boundingBox())?.width ?? 0).toBe(width);
+	expect(await focusedCell(page)).toBe("0:0");
 
+	const first = tabelo.header(1);
+	const widthBefore = (await first.boundingBox())?.width ?? 0;
+	await first.focus();
 	await page.keyboard.press("Alt+Shift+ArrowRight");
-	expect(await focusedCell(page)).toBe("0:1");
+	await expect
+		.poll(async () => (await first.boundingBox())?.width ?? 0)
+		.toBeGreaterThan(widthBefore);
 });
 
 test("the new chords leave ordinary typing and Space alone", async ({

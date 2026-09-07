@@ -30,6 +30,7 @@ import { ContextMenuSelectionOption } from "@/ui/primitives/context-menu-selecti
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { cellTypeOptions } from "./cell-type-options";
 import { targetAxisForMenu, targetCellForMenu } from "./menu-target";
+import { revealGridCell } from "./reveal-cell";
 import { buildTableActions, type TableActionContext } from "./table-actions";
 
 // One context menu for the whole grid rather than one per cell. Mounting a
@@ -111,6 +112,31 @@ export function GridContextMenu({
 }) {
 	const [axis, setAxis] = useState<ContextAxis>("cell");
 
+	// Where focus lands when the menu closes. The grid's own focus-following
+	// effect deliberately stands down while a menu owns focus, so an action
+	// that moved the focused cell would otherwise leave DOM focus on the
+	// trigger and the new cell possibly out of view. Returning the cell hands
+	// both back: the keyboard path to Move focus, keep selection is only a
+	// keyboard path if the grid is focused again afterwards.
+	const finalFocus = () => {
+		const wrapper = wrapperRef?.current;
+		const grid = wrapper?.querySelector<HTMLElement>("table");
+		if (!grid) return null;
+		const { focus } = activeRange(useTabeloStore.getState().selection);
+		const cell = grid.querySelector<HTMLElement>(
+			`[data-cell="${focus.row}:${focus.column}"]`,
+		);
+		if (!cell) return null;
+		// Revealed once focus has actually moved, because the browser scrolls
+		// on focus too and the later scroll is the one that wins. Clear of the
+		// sticky chrome is the grid's contract, not merely on screen.
+		requestAnimationFrame(() => {
+			if (cell.isConnected)
+				revealGridCell(grid as HTMLTableElement, cell, focus);
+		});
+		return cell;
+	};
+
 	return (
 		<ContextMenu>
 			<ContextMenuTrigger
@@ -153,7 +179,7 @@ export function GridContextMenu({
 				{children}
 			</ContextMenuTrigger>
 
-			<ContextMenuContent className="w-auto min-w-56">
+			<ContextMenuContent className="w-auto min-w-56" finalFocus={finalFocus}>
 				{axis === "cell" ? (
 					<>
 						<CellTypeMenuGroup />
