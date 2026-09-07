@@ -151,9 +151,20 @@ record, then raise the same question through the tool.
 
 Never invent a product decision, a provenance label, or a new `status:` value.
 
+**You never close or reopen an issue, and you never change its state by hand.** An issue closes
+because a merged pull request's `Closes` line closed it, and that is the only mechanism that ties
+the closed issue to the commit that earned it. Closing one yourself produces the failure every
+other rule here exists to prevent: the issue reads as delivered, the lane frees the slot, the
+backlog stops showing the work, and no commit exists. That state is indistinguishable from success
+on every surface, so nothing will come looking for it.
+
+If you conclude the issue needs no change -- already fixed, obsolete, or wrong about the code --
+say exactly that in a comment with the evidence, apply `status: needs-decision`, and stop. Leaving
+it open and explained costs one human read. Closing it wrongly costs the work.
+
 ## Automatic merge
 
-Auto-merge: available under the predicates below. `main` requires one approving review plus the `Check` and `pr-conventions` status checks, and the repository merges by squash, which is the method `skd merge` uses.
+Auto-merge: available under the predicates below.
 
 **You do not merge, and you do not arm auto-merge.** `skd merge` is the single actor. It
 evaluates the predicates -- CI green on the exact reviewed commit, an approved review from a

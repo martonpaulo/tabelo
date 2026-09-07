@@ -963,6 +963,12 @@ cloud executor that reads only committed files and cannot ask a question.
   a change is most likely to break: establishing a new one stops and asks first.
 - When a needed decision is not written in the issue, comment exactly what is
   missing, apply `status: needs-decision`, and stop cleanly instead of guessing.
+- Never close or reopen an issue. An issue closes because a merged pull
+  request's `Closes` line closed it, which is the only thing tying the closed
+  issue to the commit that earned it. Closing one by hand leaves it reading as
+  delivered with no commit behind it, and no surface can tell that apart from
+  success. If the issue needs no change, comment the evidence, apply
+  `status: needs-decision`, and stop.
 
 ## Completion report
 
