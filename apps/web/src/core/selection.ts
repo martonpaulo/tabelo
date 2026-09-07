@@ -530,10 +530,12 @@ export function remapSelectionRows(
 
 		// Which edge the next Shift+arrow measures from has to survive, or the
 		// keyboard extends the wrong side of the region. Both endpoints follow
-		// their own rows: where the two still land in one run, that run keeps
-		// them exactly, whichever way round they now are. A region the
-		// permutation split has no endpoint to inherit, so each fragment reads
-		// from its own top edge.
+		// their own rows, and a run keeps them only when the two still describe
+		// its whole extent, whichever way round they now are. Landing inside a
+		// run is not enough: a permutation can move an endpoint inward past
+		// rows that are still selected, and reading the run from there would
+		// drop them from the selection. Membership comes first; the edge is
+		// kept where it costs nothing.
 		const rightwards = range.anchor.column > range.focus.column;
 		const anchorColumn = rightwards ? rect.right : rect.left;
 		const focusColumn = rightwards ? rect.left : rect.right;
@@ -541,13 +543,11 @@ export function remapSelectionRows(
 		const focusRow = mapRow(range.focus.row);
 
 		for (const [from, to] of runs) {
-			const holdsBoth =
-				anchorRow >= from &&
-				anchorRow <= to &&
-				focusRow >= from &&
-				focusRow <= to;
-			const anchorAt = holdsBoth ? anchorRow : from;
-			const focusAt = holdsBoth ? focusRow : to;
+			const boundsRun =
+				(anchorRow === from && focusRow === to) ||
+				(anchorRow === to && focusRow === from);
+			const anchorAt = boundsRun ? anchorRow : from;
+			const focusAt = boundsRun ? focusRow : to;
 			if (range.mode === "row") {
 				ranges.push(axisRange(anchorAt, focusAt, "row"));
 				continue;

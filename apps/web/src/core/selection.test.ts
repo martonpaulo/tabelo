@@ -665,6 +665,49 @@ describe("remapping a selection through a row permutation", () => {
 		]);
 	});
 
+	it("keeps every selected row when an endpoint moved inward", () => {
+		// Swapping the first two rows leaves all three in one run, but the
+		// range's own first row is now its middle. Reading the run from the
+		// mapped endpoints would start it at row 1 and quietly drop a row that
+		// is still selected, which is what a later copy or clear would act on.
+		const swapped = [1, 0, 2];
+		const cells: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 0, column: 1 },
+					focus: { row: 2, column: 1 },
+					mode: "cell",
+				},
+			],
+			activeIndex: 0,
+		};
+		expect(remapSelectionRows(cells, swapped, 3, 3).ranges).toEqual([
+			{
+				anchor: { row: 0, column: 1 },
+				focus: { row: 2, column: 1 },
+				mode: "cell",
+			},
+		]);
+
+		const rows: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 0, column: 0 },
+					focus: { row: 2, column: 0 },
+					mode: "row",
+				},
+			],
+			activeIndex: 0,
+		};
+		expect(remapSelectionRows(rows, swapped, 3, 3).ranges).toEqual([
+			{
+				anchor: { row: 0, column: 0 },
+				focus: { row: 2, column: 0 },
+				mode: "row",
+			},
+		]);
+	});
+
 	it("gives a fragment that inherited no endpoint its own top edge", () => {
 		// The anchor's row lands in one fragment and the focus's in another, so
 		// neither fragment can express the original orientation and both read

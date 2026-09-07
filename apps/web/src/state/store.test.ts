@@ -8,6 +8,7 @@ import {
 	type GridSelection,
 	HEADER_ROW,
 	type SelectionRange,
+	selectionDataRows,
 } from "@/core/selection";
 import type { CellValue, TableDocument } from "@/core/types";
 import { hasSessionWork, useTabeloStore } from "./store";
@@ -1369,6 +1370,34 @@ describe("sorting rows by a column", () => {
 		expect(useTabeloStore.getState().selection).toEqual(upward);
 		useTabeloStore.getState().redo();
 		expect(useTabeloStore.getState().selection).toEqual(upward);
+	});
+
+	it("keeps every selected row when the sort moves an endpoint inward", () => {
+		// Ascending swaps the first two rows only, so the selected block stays
+		// one run while its own first row becomes the middle of it. Membership
+		// is what a later copy or clear acts on, so it must survive the sort
+		// and both history directions intact.
+		useTabeloStore.setState({
+			document: documentFromMatrix([["Key"], ["b"], ["a"], ["c"]], {
+				headerRow: true,
+			}),
+		});
+		const block = selectionOf({
+			anchor: { row: 0, column: 0 },
+			focus: { row: 2, column: 0 },
+			mode: "cell",
+		});
+		useTabeloStore.setState({ selection: block });
+
+		useTabeloStore.getState().sortRowsByColumn(0, "ascending");
+		const rows = (selection: GridSelection) =>
+			selectionDataRows(selection, 3, 1);
+		expect(rows(useTabeloStore.getState().selection)).toEqual([0, 1, 2]);
+
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().selection).toEqual(block);
+		useTabeloStore.getState().redo();
+		expect(rows(useTabeloStore.getState().selection)).toEqual([0, 1, 2]);
 	});
 
 	it("leaves unrelated undo clamping the selection as it always did", () => {

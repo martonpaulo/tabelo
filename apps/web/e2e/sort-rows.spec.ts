@@ -112,6 +112,12 @@ test("sorting an ordered table says so instead of claiming rows moved", async ({
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
+	// Select the column and let the grid finish saying so before any sort. The
+	// menu selects its target column when it opens, and that summary settles on
+	// a timer that would otherwise land after the announcement under test.
+	await tabelo.columnIndex(1).getByRole("button").first().click();
+	await expect(tabelo.announcements).not.toBeEmpty();
+
 	await sortColumn(tabelo, 1, copy.actions.sortAscending);
 	const sorted = await names(tabelo);
 
@@ -168,4 +174,31 @@ test("sorting acts on the menu's column and keeps every selected area", async ({
 	await expect(
 		page.locator('[data-cell][aria-selected="true"]').first(),
 	).toBeVisible();
+});
+
+test("a sort keeps every row of a selected block selected", async ({
+	page,
+	tabelo,
+}) => {
+	// Ascending swaps the first two rows only, so the selected block stays one
+	// run while its own first row becomes the middle of it.
+	await tabelo.paste("key\tvalue\nb\t1\na\t2\nc\t3");
+	await tabelo.dismissNotices();
+
+	// The sort column as a column region, which is what keeps the menu from
+	// collapsing the selection, and a separate three-row block beside it.
+	await tabelo.columnIndex(1).getByRole("button").first().click();
+	await tabelo.cell(1, 2).click({ modifiers: [modifier] });
+	await page.keyboard.press("Shift+ArrowDown");
+	await page.keyboard.press("Shift+ArrowDown");
+
+	await sortColumn(tabelo, 1, copy.actions.sortAscending);
+	await expect(tabelo.cell(1, 1)).toHaveText("a");
+
+	// All three cells of the block are still selected. Losing the one whose
+	// row moved to the middle would silently change what a later copy or clear
+	// acts on.
+	for (const row of [1, 2, 3]) {
+		await expect(tabelo.cell(row, 2)).toHaveAttribute("aria-selected", "true");
+	}
 });
