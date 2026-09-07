@@ -28,11 +28,13 @@ import {
 	moveRows,
 	pasteMatrix,
 	promoteFirstRowToHeader,
+	type SortDirection,
 	setAlignment,
 	setCell,
 	setCellType,
 	setColumnExpectedType,
 	setHeader,
+	sortRows,
 } from "@/core/operations";
 import {
 	activeRange,
@@ -46,6 +48,7 @@ import {
 	isContiguous,
 	moveFocusKeepingRegions,
 	rectDataRows,
+	remapSelectionRows,
 	type SelectionMode,
 	type SelectionMoveRefusal,
 	selectedAxis,
@@ -184,12 +187,36 @@ export type PendingPaneAction =
 	| { readonly kind: "view"; readonly paneId: string; readonly view: ViewId }
 	| { readonly kind: "close"; readonly paneId: string };
 
+// The exact selections on either side of one document transition, for the
+// operations that permute rows rather than editing in place. Undo restores
+// `before` and redo restores `after`, so a sort comes back to precisely what
+// was selected before it and returns to precisely what it left selected, even
+// when the selection moved in between.
+//
+// Transient timeline metadata, not persisted sort state: it lives on the
+// in-memory history entry, never reaches storage, and describes no order the
+// document should be kept in. Every other operation carries none of it and
+// keeps the clamping behaviour it always had.
+export interface SelectionRestore {
+	readonly before: GridSelection;
+	readonly after: GridSelection;
+}
+
 export interface HistoryEntry {
 	readonly document: TableDocument;
 	// A draft that was still uncommitted when this entry was superseded.
 	// Restoring it is what keeps a grid edit from destroying pending text.
 	readonly draft: Draft | null;
+	// Present only on the entry adjacent to a row permutation. It travels with
+	// the transition through undo and redo, so both directions restore an exact
+	// selection rather than a clamped one.
+	readonly selectionRestore?: SelectionRestore;
 }
+
+// What sorting did. "unchanged" is a real answer rather than a failure: a table
+// already in that order is sorted, and saying so is what keeps the
+// announcement from claiming rows moved when none did.
+export type SortOutcome = "sorted" | "unchanged" | "unavailable";
 
 export interface PendingImport {
 	readonly prepared: PreparedImport;
@@ -285,7 +312,10 @@ export interface TabeloState {
 	outputOptions: Required<OutputOptions>;
 	hydrate: () => void;
 	replaceUnreadableStorage: () => boolean;
-	applyDocument: (next: TableDocument) => void;
+	applyDocument: (
+		next: TableDocument,
+		selectionRestore?: SelectionRestore,
+	) => void;
 
 	setDraft: (paneId: string, viewId: ViewId, text: string) => void;
 	discardDraft: () => void;
@@ -335,6 +365,10 @@ export interface TabeloState {
 		column: number,
 		expectedType: ExpectedColumnType,
 	) => void;
+	// Sorts the whole table by one column, in the document itself. The column is
+	// the one whose menu was opened, never the selected columns: an action
+	// reached from column C's menu sorts by C.
+	sortRowsByColumn: (column: number, direction: SortDirection) => SortOutcome;
 	resizeColumn: (
 		column: number,
 		width: number | undefined,
@@ -763,11 +797,16 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// The single funnel for every structural change. A table edit always wins
 	// over an uncommitted draft, and the draft it displaces is preserved in
 	// history rather than dropped. See docs/adr/0001 and 0003.
-	applyDocument: (next) => {
+	applyDocument: (next, selectionRestore) => {
 		if (next === get().document) return;
 		clearInvalidTimer();
 		set((state) => ({
-			past: pushHistory(state.past, snapshotOf(state)),
+			past: pushHistory(
+				state.past,
+				selectionRestore
+					? { ...snapshotOf(state), selectionRestore }
+					: snapshotOf(state),
+			),
 			future: [],
 			document: next,
 			hasHeldContent: state.hasHeldContent || !isDocumentBlank(next),
@@ -787,7 +826,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			// is looking for. Only what it found is recomputed.
 			find: refreshFind(state.find, next),
 			selection: clampSelection(
-				state.selection,
+				selectionRestore ? selectionRestore.after : state.selection,
 				next.rows.length,
 				next.columns.length,
 			),
@@ -1187,9 +1226,17 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set((state) => {
 			const entry = state.past.at(-1);
 			if (!entry) return state;
+			const restore = entry.selectionRestore;
 			return {
 				past: state.past.slice(0, -1),
-				future: [snapshotOf(state), ...state.future],
+				// The pair travels with the transition rather than with a
+				// document, so redo finds it again on the other side.
+				future: [
+					restore
+						? { ...snapshotOf(state), selectionRestore: restore }
+						: snapshotOf(state),
+					...state.future,
+				],
 				document: entry.document,
 				hasHeldContent:
 					state.hasHeldContent || !isDocumentBlank(entry.document),
@@ -1202,7 +1249,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				fillSeriesOffer: null,
 				find: refreshFind(state.find, entry.document),
 				selection: clampSelection(
-					state.selection,
+					restore ? restore.before : state.selection,
 					entry.document.rows.length,
 					entry.document.columns.length,
 				),
@@ -1215,8 +1262,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set((state) => {
 			const entry = state.future[0];
 			if (!entry) return state;
+			const restore = entry.selectionRestore;
 			return {
-				past: pushHistory(state.past, snapshotOf(state)),
+				past: pushHistory(
+					state.past,
+					restore
+						? { ...snapshotOf(state), selectionRestore: restore }
+						: snapshotOf(state),
+				),
 				future: state.future.slice(1),
 				document: entry.document,
 				hasHeldContent:
@@ -1230,7 +1283,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				fillSeriesOffer: null,
 				find: refreshFind(state.find, entry.document),
 				selection: clampSelection(
-					state.selection,
+					restore ? restore.after : state.selection,
 					entry.document.rows.length,
 					entry.document.columns.length,
 				),
@@ -1329,6 +1382,32 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			next = setColumnExpectedType(next, target, expectedType);
 		}
 		state.applyDocument(next);
+	},
+
+	sortRowsByColumn: (column, direction) => {
+		const state = get();
+		const target = state.document.columns[column];
+		if (!target || state.document.rows.length < 2) return "unavailable";
+
+		const { document, nextRowOf } = sortRows(
+			state.document,
+			target.id,
+			direction,
+		);
+		if (document === state.document) return "unchanged";
+
+		// One commit, so the reorder and the selection that survives it are one
+		// history step rather than two.
+		state.applyDocument(document, {
+			before: state.selection,
+			after: remapSelectionRows(
+				state.selection,
+				nextRowOf,
+				document.rows.length,
+				document.columns.length,
+			),
+		});
+		return "sorted";
 	},
 
 	// Width is a persisted workspace preference, so it bypasses the document

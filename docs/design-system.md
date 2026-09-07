@@ -1844,6 +1844,18 @@ mirrors the row-number gutter on the other axis. Both are chrome:
   opened on a target already inside the selection keeps the selection instead of
   collapsing onto it: collapsing would silently discard the rest of what the
   user picked and leave the menu acting on one column of several.
+- **Sorting is the exception to that rule, deliberately.** Sort ascending and
+  Sort descending act on the column whose menu is open and never on every
+  selected column: sorting by several columns at once is not a thing the
+  document can express, so an action reached from column C's menu orders the
+  table by C. They are two immediate commands beside alignment rather than a
+  submenu or a stored choice, because the sort reorders the document once and
+  nothing stays applied afterwards for a radio group to read back. They are
+  written inline in the column menu for the same reason alignment and expected
+  type are: the shared action list acts on the selection, and these act on one
+  named column. Below two rows they are disabled with the reason written out,
+  and sorting a table already in that order says so rather than claiming rows
+  moved.
 - It is never itself selected and never takes `--selection-fill`. Selecting a
   column paints the header and body cells it represents, while this metadata
   strip remains chrome.

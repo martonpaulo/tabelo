@@ -361,7 +361,7 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	const dropdownGroups = menu.locator(
 		'[data-slot="dropdown-menu-group"], [data-slot="dropdown-menu-radio-group"]',
 	);
-	await expect(dropdownGroups).toHaveCount(7);
+	await expect(dropdownGroups).toHaveCount(8);
 	await expect(
 		menu.getByRole("group", { name: copy.actions.expectedType }),
 	).toHaveCount(1);
@@ -387,7 +387,7 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	);
 	await expect(
 		dropdownGroups.locator(":scope:not([aria-labelledby])"),
-	).toHaveCount(4);
+	).toHaveCount(5);
 
 	await page.keyboard.press("Escape");
 	await expect(trigger).toBeFocused();

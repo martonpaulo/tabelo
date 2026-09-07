@@ -353,6 +353,7 @@ export const copy = {
 		lastRow: "The selected row is already last.",
 		firstColumn: "The selected column is already first.",
 		lastColumn: "The selected column is already last.",
+		sortSingleRow: "A table needs at least two rows to sort.",
 		lastRemainingRow: "A table must keep at least one row.",
 		lastRemainingColumn: "A table must keep at least one column.",
 		headerRowRequired: "Every table keeps its header row.",
@@ -518,6 +519,10 @@ export const copy = {
 		alignRight: "Align right",
 		alignDefault: "No alignment",
 		alignment: "Alignment",
+		// Sorting reorders the table itself rather than the view, so the labels
+		// say what the rows do and never suggest a sort that stays applied.
+		sortAscending: "Sort ascending",
+		sortDescending: "Sort descending",
 		expectedType: "Expected type",
 		cellType: "Cell type",
 		edit: "Edit",
@@ -636,6 +641,12 @@ export const copy = {
 			`${count} ${count === 1 ? "cell" : "cells"} filled.`,
 		seriesFilled: (count: number) =>
 			`${count} ${count === 1 ? "cell" : "cells"} continued as a series.`,
+		rowsSorted: (count: number) =>
+			`${count} ${count === 1 ? "row" : "rows"} sorted.`,
+		// A table already in that order was sorted, and nothing moved. Saying so
+		// is the difference between a quiet success and a command that looks
+		// broken.
+		rowsAlreadySorted: "The rows are already in this order.",
 		loading: "Loading…",
 	},
 

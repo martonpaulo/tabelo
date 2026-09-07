@@ -21,6 +21,8 @@ import {
 	AlignJustify,
 	AlignLeft,
 	AlignRight,
+	ArrowDownWideNarrow,
+	ArrowUpNarrowWide,
 	ChevronDown,
 	ChevronsLeftRight,
 	MoreVertical,
@@ -29,6 +31,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { copy } from "@/copy/copy";
+import type { SortDirection } from "@/core/operations";
 import type { Alignment, ExpectedColumnType } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
@@ -309,6 +312,9 @@ function AxisMenuBody({ axis, index, measureFitWidth }: AxisMenuPayload) {
 
 					<ColumnAlignmentSubmenu index={index} align={column?.align} />
 					<DropdownMenuSeparator />
+
+					<ColumnSortGroup index={index} />
+					<DropdownMenuSeparator />
 				</>
 			) : null}
 
@@ -323,6 +329,53 @@ function AxisMenuBody({ axis, index, measureFitWidth }: AxisMenuPayload) {
 
 			<DropdownTableActions axis={axis} beforeRun={select} />
 		</>
+	);
+}
+
+// Two immediate commands rather than a submenu or a stored choice: sorting
+// reorders the document once, so there is no state for a radio group to read
+// back and nothing stays applied afterwards. They sit beside alignment because
+// both are column-shaped, and both act on the column whose menu is open.
+function ColumnSortGroup({ index }: { readonly index: number }) {
+	const rowCount = useTabeloStore((state) => state.document.rows.length);
+	const missing = useTabeloStore(
+		(state) => state.document.columns[index] === undefined,
+	);
+	const reason =
+		missing || rowCount < 2 ? copy.disabled.sortSingleRow : undefined;
+
+	const sort = (direction: SortDirection) => {
+		const store = useTabeloStore.getState();
+		const outcome = store.sortRowsByColumn(index, direction);
+		if (outcome === "unavailable") return;
+		store.announceStatus(
+			outcome === "sorted"
+				? copy.status.rowsSorted(useTabeloStore.getState().document.rows.length)
+				: copy.status.rowsAlreadySorted,
+		);
+	};
+
+	return (
+		<DropdownMenuGroup>
+			<DisabledTooltip reason={reason}>
+				<DropdownMenuItem
+					disabled={reason !== undefined}
+					onClick={() => sort("ascending")}
+				>
+					<ArrowUpNarrowWide aria-hidden />
+					{copy.actions.sortAscending}
+				</DropdownMenuItem>
+			</DisabledTooltip>
+			<DisabledTooltip reason={reason}>
+				<DropdownMenuItem
+					disabled={reason !== undefined}
+					onClick={() => sort("descending")}
+				>
+					<ArrowDownWideNarrow aria-hidden />
+					{copy.actions.sortDescending}
+				</DropdownMenuItem>
+			</DisabledTooltip>
+		</DropdownMenuGroup>
 	);
 }
 
