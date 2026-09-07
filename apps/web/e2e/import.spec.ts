@@ -230,6 +230,30 @@ test("a spreadsheet paste opens the TSV source and focuses the table", async ({
 	await expect(tabelo.pane("grid")).toBeFocused();
 });
 
+test("a paste from inside the grid keeps the table reachable", async ({
+	page,
+	tabelo,
+}) => {
+	// The arrangement mounts the grid in the other pane, so the cell that was
+	// focused is gone. Focus is placed on the pane the table moved into rather
+	// than dropped to the document, and the keyboard still drives the table.
+	await tabelo.cell(1, 1).click();
+	await expect(tabelo.cell(1, 1)).toBeFocused();
+
+	await tabelo.paste("||Name||City||\n|Ingrid|Rio|");
+
+	expect(await paneLabels(tabelo)).toEqual([
+		paneLabel("jira"),
+		paneLabel("grid"),
+	]);
+	await expect(tabelo.pane("grid")).toBeFocused();
+
+	await page.keyboard.press("Enter");
+	await expect(tabelo.cell(1, 1)).toBeFocused();
+	await page.keyboard.press("ArrowRight");
+	await expect(tabelo.cell(1, 2)).toBeFocused();
+});
+
 test("plain text keeps the default arrangement", async ({ tabelo }) => {
 	// No format claims it, so there is no source view to open beside the table.
 	await tabelo.paste("Ingrid\nPaulo", undefined, false);
