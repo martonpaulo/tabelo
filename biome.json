@@ -35,7 +35,13 @@
 		"enabled": true,
 		"indentStyle": "tab"
 	},
-	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
@@ -68,6 +74,78 @@
 	},
 	"overrides": [
 		{
+			"includes": ["apps/web/src/core/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["react", "react/**", "react-dom", "react-dom/**"],
+										"message": "The table document core is framework-free: it owns plain data and pure operations, so it cannot import React or any UI package. Move the presentation into a component under apps/web/src/ui."
+									},
+									{
+										"group": ["@/ui", "@/ui/**", "@tabelo/ui", "@tabelo/ui/**"],
+										"message": "The table document core is framework-free: it owns plain data and pure operations, so it cannot import React or any UI package. Move the presentation into a component under apps/web/src/ui."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["apps/web/src/formats/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["react", "react/**", "react-dom", "react-dom/**"],
+										"message": "Codecs own format syntax, never presentation: a parse/serialize pair cannot import React or any UI package. Move the rendering into the view that displays the format."
+									},
+									{
+										"group": ["@/ui", "@/ui/**", "@tabelo/ui", "@tabelo/ui/**"],
+										"message": "Codecs own format syntax, never presentation: a parse/serialize pair cannot import React or any UI package. Move the rendering into the view that displays the format."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["apps/web/src/views/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["@codemirror/**", "codemirror"],
+										"message": "The view registry declares what the workspace can display, by capability: it cannot import CodeMirror or a UI component. Load the editor from the pane that renders the view."
+									},
+									{
+										"group": ["@/ui", "@/ui/**"],
+										"message": "The view registry declares what the workspace can display, by capability: it cannot import CodeMirror or a UI component. Load the editor from the pane that renders the view."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
 			"includes": ["packages/ui/src/components/**"],
 			"linter": {
 				"rules": {
@@ -75,6 +153,47 @@
 						"noLabelWithoutControl": "off",
 						"useSemanticElements": "off",
 						"useKeyWithClickEvents": "off"
+					},
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["@/**"],
+										"message": "Shared UI does not know the product: packages/ui cannot import application code from apps/web. Pass what the component needs in through its props."
+									},
+									{
+										"group": ["apps/**", "**/apps/web/**"],
+										"message": "Shared UI does not know the product: packages/ui cannot import application code from apps/web. Pass what the component needs in through its props."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["packages/ui/**", "!packages/ui/src/components/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["@/**"],
+										"message": "Shared UI does not know the product: packages/ui cannot import application code from apps/web. Pass what the component needs in through its props."
+									},
+									{
+										"group": ["apps/**", "**/apps/web/**"],
+										"message": "Shared UI does not know the product: packages/ui cannot import application code from apps/web. Pass what the component needs in through its props."
+									}
+								]
+							}
+						}
 					}
 				}
 			}

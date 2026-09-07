@@ -249,6 +249,17 @@ Do not add without an explicit, demonstrated need:
 Keep these concerns independent. The dependency direction points inward: UI may
 depend on the core, never the reverse.
 
+Four of these boundaries are executable rather than prose. `biome.json` scopes
+`style/noRestrictedImports` to the owning subtree so that the core and the
+codecs cannot import React or a UI package, the view registry cannot import
+CodeMirror or a UI component, and `packages/ui` cannot import application code.
+Each restriction carries the contract it protects as its diagnostic message.
+That set is deliberately small: it covers the boundaries whose violation is a
+design defect rather than a style slip, and every other boundary below stays
+prose. The rules match import specifiers, which is complete here only because
+the `@/` alias rule under `## Code, comments, and documentation` leaves no
+parent-relative escape; they detect neither cycles nor orphan modules.
+
 - **Table document**: the internal representation. Columns, rows, cell values,
   stable identifiers, alignment, schema version. Plain data, no framework
   imports.
