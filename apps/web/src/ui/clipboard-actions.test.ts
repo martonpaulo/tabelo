@@ -30,7 +30,7 @@ const { documentFromMatrix, documentToMatrix } = await import(
 const { createSelection } = await import("@/core/selection");
 const { useTabeloStore } = await import("@/state/store");
 
-const { csvCodec, jiraCodec, listCodecs } = await import("@/formats");
+const { jiraCodec, listCodecs, recordsCodec } = await import("@/formats");
 
 const {
 	copyCodecToClipboard,
@@ -133,15 +133,22 @@ describe("copying the document as a format", () => {
 	});
 
 	// The clipboard is not a file, so a preference about how a download is
-	// written must not follow the text onto it. CSV without its header row
-	// would no longer read back as this table.
+	// written must not follow the text onto it. Records without its first
+	// column name would no longer read back as this table.
 	it("ignores the download chooser's output options", async () => {
-		useTabeloStore.getState().setOutputOption("includeHeader", false);
+		const chosen = recordsCodec.serialize(document, {
+			includeFirstColumnName: false,
+		});
+		// The preference has to be one that visibly changes the file, or this
+		// proves nothing.
+		expect(chosen).not.toBe(recordsCodec.serialize(document));
 
-		await copyCodecToClipboard(csvCodec, document);
+		useTabeloStore.getState().setOutputOption("includeFirstColumnName", false);
+
+		await copyCodecToClipboard(recordsCodec, document);
 
 		expect(writeClipboardText).toHaveBeenCalledWith(
-			csvCodec.serialize(document, { includeHeader: true }),
+			recordsCodec.serialize(document),
 		);
 	});
 

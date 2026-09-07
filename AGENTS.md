@@ -140,8 +140,10 @@ vocabulary and `docs/adr/` for the reasoning.
   that identify a header declare it, and CSV, TSV, or plain text asks whether row
   1 is the header before replacing the document. Choosing data creates empty
   headers; nothing infers from cell values. Paste into an existing selection is
-  a matrix write and never asks. CSV export offers an "include header row"
-  option. That is an output preference, never document state. Deleting the
+  a matrix write and never asks. Every exported CSV prints the header row: a
+  file without it no longer describes the table it came from, so no option,
+  menu, shortcut, or preference produces one. A format may still declare output
+  options, which are output preferences and never document state. Deleting the
   header row is allowed and preserves the invariant rather than breaking it: the
   first surviving data row is promoted into the header in the same step, so the
   document is never headerless, not even transiently.

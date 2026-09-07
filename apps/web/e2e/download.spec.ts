@@ -5,9 +5,9 @@ import { expect, test } from "./fixtures";
 import { renderedSource } from "./helpers";
 
 // Downloading is a choice, so it is a chooser. The user chooses the format and,
-// only where the format declares an option, how the file should be written. The header row is
-// the case that matters: the table always has one, and whether the file prints
-// it is a property of that file and of nothing else.
+// only where the format declares an option, how the file should be written. The
+// header row is not one of those choices: it is structural, so every CSV file
+// prints it and no control exists that could leave it out.
 
 // Captures the download without writing it to disk, so its bytes can be read.
 async function savedFile(
@@ -68,31 +68,20 @@ test("the chooser lists every registered format", async ({ page, tabelo }) => {
 	}
 });
 
-test("only CSV offers the header row choice", async ({ page, tabelo }) => {
+test("CSV offers no output choices at all", async ({ page, tabelo }) => {
 	await expect(tabelo.workspace).toBeVisible();
 	await openChooser(page);
 	const dialog = page.getByRole("dialog");
 
 	// Markdown is selected first and has no output choices to make.
-	await expect(
-		dialog.getByRole("checkbox", {
-			name: copy.download.option("includeHeader"),
-		}),
-	).toHaveCount(0);
+	await expect(dialog.getByRole("checkbox")).toHaveCount(0);
 
 	await dialog.getByRole("radio", { name: copy.views.csv.label }).click();
-	const option = dialog.getByRole("checkbox", {
-		name: copy.download.option("includeHeader"),
-	});
-	await expect(option).toBeVisible();
-	await expect(option).toBeChecked();
+	await expect(dialog.getByRole("checkbox")).toHaveCount(0);
 
+	// TSV shares CSV's serializer, so it is where a leaked choice would show.
 	await dialog.getByRole("radio", { name: copy.views.tsv.label }).click();
-	await expect(
-		dialog.getByRole("checkbox", {
-			name: copy.download.option("includeHeader"),
-		}),
-	).toHaveCount(0);
+	await expect(dialog.getByRole("checkbox")).toHaveCount(0);
 });
 
 test("CSV includes the header row by default", async ({ page, tabelo }) => {
@@ -145,7 +134,7 @@ test("source edits preserve whitespace and adjacent Jira escapes in CSV", async 
 	expect(file.body).toBe('Name\n"  start\n\\end  "');
 });
 
-test("unchecking the option omits the header row from the file only", async ({
+test("Mod+S downloads CSV with its header row too", async ({
 	page,
 	tabelo,
 }) => {
@@ -153,40 +142,63 @@ test("unchecking the option omits the header row from the file only", async ({
 	await tabelo.editCell(1, 1, "Ingrid");
 
 	const file = await savedFile(page, async () => {
-		await openChooser(page);
+		await page.keyboard.press(shortcut);
 		const dialog = page.getByRole("dialog");
 		await dialog.getByRole("radio", { name: copy.views.csv.label }).click();
-		await dialog
-			.getByRole("checkbox", { name: copy.download.option("includeHeader") })
+		await page
+			.getByRole("button", { name: copy.actions.download, exact: true })
+			.click();
+	});
+
+	expect(file.name).toBe("untitled-table.csv");
+	expect(file.body.split("\n")[0]).toBe("Name,,");
+});
+
+// The header row is what makes the file describe the table it came from, so the
+// only proof that matters is reading the download back in.
+test("a downloaded CSV reimports as the same table", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editHeader(1, "Name");
+	await tabelo.editHeader(2, "City");
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.editCell(1, 2, "Rio");
+
+	const file = await savedFile(page, async () => {
+		await openChooser(page);
+		await page
+			.getByRole("dialog")
+			.getByRole("radio", { name: copy.views.csv.label })
 			.click();
 		await page
 			.getByRole("button", { name: copy.actions.download, exact: true })
 			.click();
 	});
 
-	expect(file.body.split("\n")[0]).toBe("Ingrid,,");
-	expect(file.body).not.toContain("Name");
+	await tabelo.importFile(file.name, file.body, "text/csv");
+	const headerDialog = page.getByRole("dialog", {
+		name: copy.headerImport.title,
+	});
+	if ((await headerDialog.count()) > 0) {
+		await headerDialog
+			.getByRole("button", { name: copy.headerImport.asHeaders })
+			.click();
+	}
 
-	// The table itself still has its header, and so does every other view.
 	await expect(tabelo.header(1)).toHaveText("Name");
-	await expect(tabelo.source("markdown")).toContainText("Name");
+	await expect(tabelo.header(2)).toHaveText("City");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect(tabelo.cell(1, 2)).toHaveText("Rio");
 });
 
 // TSV shares CSV's serializer, so it is the format that would actually leak.
-test("the option does not leak into other formats", async ({
+test("TSV keeps its own bytes, header row included", async ({
 	page,
 	tabelo,
 }) => {
 	await tabelo.editHeader(1, "Name");
 	await tabelo.editCell(1, 1, "Ingrid");
-
-	await openChooser(page);
-	const dialog = page.getByRole("dialog");
-	await dialog.getByRole("radio", { name: copy.views.csv.label }).click();
-	await dialog
-		.getByRole("checkbox", { name: copy.download.option("includeHeader") })
-		.click();
-	await page.getByRole("button", { name: copy.actions.cancel }).click();
 
 	const file = await savedFile(page, async () => {
 		await openChooser(page);
@@ -201,6 +213,66 @@ test("the option does not leak into other formats", async ({
 
 	expect(file.name).toBe("untitled-table.tsv");
 	expect(file.body.split("\n")[0]).toBe("Name\t\t");
+	expect(file.body).toContain("Ingrid");
+});
+
+// The generic output-option mechanism is still live infrastructure: Records
+// declares two. Removing CSV's must not have disturbed it.
+test("a Records option still works and changes only its own file", async ({
+	page,
+	tabelo,
+}) => {
+	// Records refuses duplicate or empty column names, so give every column one.
+	await tabelo.editHeader(1, "Name");
+	await tabelo.editHeader(2, "City");
+	await tabelo.editHeader(3, "Role");
+	// Records titles each record with the first column's value, so every row
+	// needs one before it will serialize at all.
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.editCell(1, 2, "Rio");
+	await tabelo.editCell(2, 1, "Paulo");
+	await tabelo.editCell(3, 1, "Mabel");
+
+	const withName = await savedFile(page, async () => {
+		await openChooser(page);
+		await page
+			.getByRole("dialog")
+			.getByRole("radio", { name: copy.views.records.label })
+			.click();
+		await page
+			.getByRole("button", { name: copy.actions.download, exact: true })
+			.click();
+	});
+
+	const withoutName = await savedFile(page, async () => {
+		await openChooser(page);
+		const dialog = page.getByRole("dialog");
+		await dialog.getByRole("radio", { name: copy.views.records.label }).click();
+		const option = dialog.getByRole("checkbox", {
+			name: copy.download.option("includeFirstColumnName"),
+		});
+		await expect(option).toBeChecked();
+		await option.click();
+		await expect(option).not.toBeChecked();
+		await page
+			.getByRole("button", { name: copy.actions.download, exact: true })
+			.click();
+	});
+
+	expect(withoutName.body).not.toBe(withName.body);
+
+	// The CSV file is untouched by any of it, header row included.
+	const csv = await savedFile(page, async () => {
+		await openChooser(page);
+		await page
+			.getByRole("dialog")
+			.getByRole("radio", { name: copy.views.csv.label })
+			.click();
+		await page
+			.getByRole("button", { name: copy.actions.download, exact: true })
+			.click();
+	});
+	expect(csv.body.split("\n")[0]).toBe("Name,City,Role");
 });
 
 test("the chooser is keyboard operable and Escape returns focus", async ({

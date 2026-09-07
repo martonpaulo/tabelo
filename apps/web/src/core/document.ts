@@ -229,21 +229,13 @@ export function reconcileDocument(
 	};
 }
 
-export interface DocumentToMatrixOptions {
-	readonly includeHeader?: boolean;
-}
-
 // The one seam where the document becomes text. Every codec that serializes
 // through a matrix inherits `cellText` from here rather than deciding for
-// itself what a number or a boolean looks like.
-export function documentToMatrix(
-	document: TableDocument,
-	options: DocumentToMatrixOptions = {},
-): string[][] {
-	const { includeHeader = true } = options;
+// itself what a number or a boolean looks like. The header row is structural,
+// so it is always the first row.
+export function documentToMatrix(document: TableDocument): string[][] {
 	const body = document.rows.map((row) =>
 		document.columns.map((column) => cellTextAt(row, column.id)),
 	);
-	if (!includeHeader) return body;
 	return [document.columns.map((column) => column.header), ...body];
 }

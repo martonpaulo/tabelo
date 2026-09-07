@@ -588,17 +588,13 @@ export const copy = {
 		options: "Options",
 		// Output-only choices, listed by the id the codec declares.
 		option: (id: OutputOptionId) =>
-			id === "includeHeader"
-				? "Include header row"
-				: id === "includeFirstColumnName"
-					? "Include the first column name"
-					: "Include empty values",
+			id === "includeFirstColumnName"
+				? "Include the first column name"
+				: "Include empty values",
 		optionHint: (id: OutputOptionId) =>
-			id === "includeHeader"
-				? "The table always has a header row. This decides whether the file prints it."
-				: id === "includeFirstColumnName"
-					? 'Each record title is prefixed with it, like "Product: Product A".'
-					: "A field with no value prints an empty bullet instead of being left out.",
+			id === "includeFirstColumnName"
+				? 'Each record title is prefixed with it, like "Product: Product A".'
+				: "A field with no value prints an empty bullet instead of being left out.",
 		invalidDraft:
 			"This source is not valid yet. Download the last valid table or copy the draft.",
 		copyDraft: "Copy the draft",

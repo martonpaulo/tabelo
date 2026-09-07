@@ -59,7 +59,7 @@ describe("typed cell value properties", () => {
 			numRuns: PROPERTY_RUNS,
 		},
 	)("the matrix projection is cellText of every value", ({ document }) => {
-		expect(documentToMatrix(document, { includeHeader: false })).toEqual(
+		expect(documentToMatrix(document).slice(1)).toEqual(
 			valuesOf(document).map((row) => row.map(cellText)),
 		);
 	});

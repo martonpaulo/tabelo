@@ -78,16 +78,12 @@ export type MatrixParseResult =
 	| { readonly ok: false; readonly issues: readonly ParseIssue[] };
 
 // Choices that belong to the output file and to nothing else. They never reach
-// the document, the history timeline, or any source projection: the table
-// always has exactly one header row, and whether a download prints it is a
-// property of that download. See AGENTS.md on header handling.
-export type OutputOptionId =
-	| "includeHeader"
-	| "includeFirstColumnName"
-	| "includeEmptyValues";
+// the document, the history timeline, or any source projection: an output
+// option shapes one download and says nothing about the table. See AGENTS.md
+// on header handling.
+export type OutputOptionId = "includeFirstColumnName" | "includeEmptyValues";
 
 export interface OutputOptions {
-	readonly includeHeader?: boolean;
 	// Records only, both download-only: dropping the first column's name from
 	// the title line, or dropping bullets whose value is empty. Both produce
 	// output the codec cannot parse back, which is exactly why neither may ever
@@ -107,7 +103,6 @@ export interface PreconditionFailure {
 
 // One owner for what an unconfigured download produces.
 export const defaultOutputOptions: Required<OutputOptions> = {
-	includeHeader: true,
 	includeFirstColumnName: true,
 	includeEmptyValues: true,
 };

@@ -4,9 +4,10 @@ import { listDownloadableCodecs, outputOptionsFor } from "@/formats";
 import { defaultOutputOptions } from "@/formats/types";
 import { textForView, useTabeloStore } from "./store";
 
-// The header row exists in the document and always will. What the checkbox
-// changes is one file, so the test that matters is everything it must leave
-// alone: the table, the history, and every other view.
+// An output option shapes one downloaded file and nothing else. What the
+// checkbox must leave alone is everything: the table, the history, and every
+// other view. The header row is not one of these choices: it is structural, so
+// CSV prints it unconditionally and declares no option at all.
 
 const initialState = useTabeloStore.getInitialState();
 
@@ -23,12 +24,12 @@ beforeEach(() => {
 	});
 });
 
-function csv() {
-	const codec = listDownloadableCodecs(useTabeloStore.getState().document).find(
-		(candidate) => candidate.id === "csv",
+function codec(id: string) {
+	const found = listDownloadableCodecs(useTabeloStore.getState().document).find(
+		(candidate) => candidate.id === id,
 	);
-	if (!codec) throw new Error("The CSV codec is not registered.");
-	return codec;
+	if (!found) throw new Error(`The ${id} codec is not registered.`);
+	return found;
 }
 
 describe("the download preference", () => {
@@ -36,24 +37,21 @@ describe("the download preference", () => {
 		expect(useTabeloStore.getState().outputOptions).toEqual(
 			defaultOutputOptions,
 		);
-		expect(defaultOutputOptions.includeHeader).toBe(true);
 	});
 
-	it("decides whether the file prints the header row", () => {
+	it("decides what the file prints", () => {
 		const document = useTabeloStore.getState().document;
+		const records = codec("records");
 
-		expect(csv().serialize(document, { includeHeader: true })).toBe(
-			"Name,Role\nIngrid,Designer",
-		);
-		expect(csv().serialize(document, { includeHeader: false })).toBe(
-			"Ingrid,Designer",
-		);
+		expect(
+			records.serialize(document, { includeFirstColumnName: true }),
+		).not.toBe(records.serialize(document, { includeFirstColumnName: false }));
 	});
 
 	it("changes nothing but the next file", () => {
 		const before = useTabeloStore.getState();
 
-		before.setOutputOption("includeHeader", false);
+		before.setOutputOption("includeFirstColumnName", false);
 
 		const after = useTabeloStore.getState();
 		expect(after.document).toBe(before.document);
@@ -76,34 +74,56 @@ describe("the download preference", () => {
 		expect(documentToMatrix(after.document)[0]).toEqual(["Name", "Role"]);
 	});
 
-	// CSV and TSV are one serializer, so TSV would honour a flag it never
-	// offered. Narrowing the values to what a codec declared is what stops
-	// unchecking the box under CSV from quietly changing a TSV file too.
+	// Formats share serializers, so a value left in would be honoured by a
+	// format that never offered the choice. Narrowing to what a codec declared
+	// is what keeps one format's checkbox out of another format's file.
 	it("does not reach formats that never declared it", () => {
 		const document = useTabeloStore.getState().document;
-		const chosen = { ...defaultOutputOptions, includeHeader: false };
+		const chosen = {
+			includeFirstColumnName: false,
+			includeEmptyValues: false,
+		};
 
-		for (const codec of listDownloadableCodecs(document)) {
-			const narrowed = outputOptionsFor(codec, chosen);
-			if (codec.outputOptions?.includes("includeHeader")) {
-				expect(narrowed).toEqual({ includeHeader: false });
-				continue;
-			}
-			// A codec with its own declared options (records has two) still keeps
-			// them, all at their default; only includeHeader must never reach it.
-			expect(narrowed).not.toHaveProperty("includeHeader");
-			expect(codec.serialize(document, narrowed)).toBe(
-				codec.serialize(document),
+		for (const candidate of listDownloadableCodecs(document)) {
+			const narrowed = outputOptionsFor(candidate, chosen);
+			const declared = candidate.outputOptions ?? [];
+
+			expect(Object.keys(narrowed).sort()).toEqual([...declared].sort());
+			if (declared.length > 0) continue;
+
+			expect(candidate.serialize(document, narrowed)).toBe(
+				candidate.serialize(document),
 			);
-			expect(codec.serialize(document)).toContain("Name");
+			expect(candidate.serialize(document)).toContain("Name");
 		}
 	});
 
 	it("is offered by exactly the formats that can honour it", () => {
 		const declaring = listDownloadableCodecs(useTabeloStore.getState().document)
-			.filter((codec) => codec.outputOptions?.includes("includeHeader"))
-			.map((codec) => codec.id);
+			.filter((candidate) => (candidate.outputOptions ?? []).length > 0)
+			.map((candidate) => candidate.id);
 
-		expect(declaring).toEqual(["csv"]);
+		expect(declaring).toEqual(["records"]);
 	});
+
+	// CSV and TSV are one serializer, and the header row is not negotiable in
+	// either: no chosen option can produce a file without it.
+	it.each(["csv", "tsv"] as const)(
+		"always writes the header row in %s, whatever is chosen",
+		(id) => {
+			const document = useTabeloStore.getState().document;
+			const candidate = codec(id);
+			const narrowed = outputOptionsFor(candidate, {
+				includeFirstColumnName: false,
+				includeEmptyValues: false,
+			});
+
+			expect(candidate.serialize(document, narrowed)).toBe(
+				candidate.serialize(document),
+			);
+			expect(candidate.serialize(document).split("\n")[0]).toBe(
+				["Name", "Role"].join(candidate.fieldSeparator ?? ","),
+			);
+		},
+	);
 });
