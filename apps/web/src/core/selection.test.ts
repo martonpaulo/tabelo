@@ -498,10 +498,12 @@ describe("remapping a selection through a row permutation", () => {
 			],
 			activeIndex: 0,
 		};
+		// Reversed, so the anchor's row is now the lower of the two and the
+		// region reads upwards, exactly as its endpoints landed.
 		expect(remap(selection).ranges).toEqual([
 			{
-				anchor: { row: 3, column: 0 },
-				focus: { row: 4, column: 1 },
+				anchor: { row: 4, column: 0 },
+				focus: { row: 3, column: 1 },
 				mode: "cell",
 			},
 		]);
@@ -560,13 +562,13 @@ describe("remapping a selection through a row permutation", () => {
 		const next = remap(selection);
 		expect(next.ranges).toHaveLength(2);
 		expect(next.ranges[0]).toEqual({
-			anchor: { row: 3, column: 0 },
-			focus: { row: 4, column: 0 },
+			anchor: { row: 4, column: 0 },
+			focus: { row: 3, column: 0 },
 			mode: "cell",
 		});
 		expect(next.ranges[1]).toEqual({
-			anchor: { row: 2, column: 0 },
-			focus: { row: 3, column: 0 },
+			anchor: { row: 3, column: 0 },
+			focus: { row: 2, column: 0 },
 			mode: "cell",
 		});
 	});
@@ -615,7 +617,7 @@ describe("remapping a selection through a row permutation", () => {
 		]);
 	});
 
-	it("keeps an upward region reading from its own anchor", () => {
+	it("keeps each endpoint of a region on its own row", () => {
 		const selection: GridSelection = {
 			ranges: [
 				{
@@ -626,11 +628,73 @@ describe("remapping a selection through a row permutation", () => {
 			],
 			activeIndex: 0,
 		};
+		// Reversing the table sends the anchor's row to 2 and the focus's row
+		// to 3, and both are still one run, so the region reads from the anchor
+		// where its own row went rather than from the fragment's top edge.
 		expect(remap(selection).ranges).toEqual([
 			{
-				anchor: { row: 3, column: 2 },
-				focus: { row: 2, column: 0 },
+				anchor: { row: 2, column: 2 },
+				focus: { row: 3, column: 0 },
 				mode: "cell",
+			},
+		]);
+	});
+
+	it("keeps an upward row region reading from its own anchor", () => {
+		// Rows 0 and 1 do not move at all here, so the region the keyboard
+		// extends must come back exactly as it was: anchored below its focus.
+		// Flattening it to top-anchored would make the next Shift+Down grow the
+		// selection where it should shrink it.
+		const still = [0, 1, 3, 2];
+		const selection: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 1, column: 0 },
+					focus: { row: 0, column: 0 },
+					mode: "row",
+				},
+			],
+			activeIndex: 0,
+		};
+		expect(remap(selection, still).ranges).toEqual([
+			{
+				anchor: { row: 1, column: 0 },
+				focus: { row: 0, column: 0 },
+				mode: "row",
+			},
+		]);
+	});
+
+	it("gives a fragment that inherited no endpoint its own top edge", () => {
+		// The anchor's row lands in one fragment and the focus's in another, so
+		// neither fragment can express the original orientation and both read
+		// downwards from their own first row.
+		const scatter = [4, 2, 0, 1, 3];
+		const selection: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 2, column: 0 },
+					focus: { row: 0, column: 0 },
+					mode: "row",
+				},
+			],
+			activeIndex: 0,
+		};
+		expect(remap(selection, scatter).ranges).toEqual([
+			{
+				anchor: { row: 0, column: 0 },
+				focus: { row: 0, column: 0 },
+				mode: "row",
+			},
+			{
+				anchor: { row: 2, column: 0 },
+				focus: { row: 2, column: 0 },
+				mode: "row",
+			},
+			{
+				anchor: { row: 4, column: 0 },
+				focus: { row: 4, column: 0 },
+				mode: "row",
 			},
 		]);
 	});

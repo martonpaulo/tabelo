@@ -528,30 +528,33 @@ export function remapSelectionRows(
 			return;
 		}
 
-		// Orientation is kept where a fragment can express it: an anchor below
-		// its focus, or to the right of it, is what the next Shift+arrow
-		// extends from, and losing it would move the wrong edge.
-		const upwards = range.anchor.row > range.focus.row;
+		// Which edge the next Shift+arrow measures from has to survive, or the
+		// keyboard extends the wrong side of the region. Both endpoints follow
+		// their own rows: where the two still land in one run, that run keeps
+		// them exactly, whichever way round they now are. A region the
+		// permutation split has no endpoint to inherit, so each fragment reads
+		// from its own top edge.
 		const rightwards = range.anchor.column > range.focus.column;
 		const anchorColumn = rightwards ? rect.right : rect.left;
 		const focusColumn = rightwards ? rect.left : rect.right;
+		const anchorRow = mapRow(range.anchor.row);
 		const focusRow = mapRow(range.focus.row);
 
 		for (const [from, to] of runs) {
+			const holdsBoth =
+				anchorRow >= from &&
+				anchorRow <= to &&
+				focusRow >= from &&
+				focusRow <= to;
+			const anchorAt = holdsBoth ? anchorRow : from;
+			const focusAt = holdsBoth ? focusRow : to;
 			if (range.mode === "row") {
-				ranges.push(axisRange(from, to, "row"));
+				ranges.push(axisRange(anchorAt, focusAt, "row"));
 				continue;
 			}
-			// Only an unfragmented region can keep its vertical orientation:
-			// once one region became several, the anchor of a fragment that
-			// never held one is its own top edge.
-			const reversed = upwards && runs.length === 1;
 			ranges.push({
-				anchor: {
-					row: reversed ? to : from,
-					column: anchorColumn,
-				},
-				focus: { row: reversed ? from : to, column: focusColumn },
+				anchor: { row: anchorAt, column: anchorColumn },
+				focus: { row: focusAt, column: focusColumn },
 				mode: range.mode,
 			});
 		}

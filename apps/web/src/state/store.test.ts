@@ -1330,6 +1330,47 @@ describe("sorting rows by a column", () => {
 		expect(state.selection).toEqual(after);
 	});
 
+	it("keeps an upward row range anchored where the rows did not move", () => {
+		// Sort keys that swap only the last two rows, so the selected pair is
+		// untouched and the region must come back exactly as it was.
+		useTabeloStore.setState({
+			document: documentFromMatrix([["Key"], ["a"], ["b"], ["d"], ["c"]], {
+				headerRow: true,
+			}),
+		});
+		const upward = selectionOf(
+			// A column region, which is what keeps the menu from collapsing a
+			// mixed selection onto its target.
+			{
+				anchor: { row: HEADER_ROW, column: 0 },
+				focus: { row: HEADER_ROW, column: 0 },
+				mode: "column",
+			},
+			// Anchored on the second data row and extended up to the first, so
+			// the next Shift+Down should shrink toward the anchor.
+			{
+				anchor: { row: 1, column: 0 },
+				focus: { row: 0, column: 0 },
+				mode: "row",
+			},
+		);
+		useTabeloStore.setState({ selection: upward });
+
+		useTabeloStore.getState().sortRowsByColumn(0, "ascending");
+		expect(columnValues(useTabeloStore.getState().document)).toEqual([
+			"a",
+			"b",
+			"c",
+			"d",
+		]);
+		expect(useTabeloStore.getState().selection).toEqual(upward);
+
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().selection).toEqual(upward);
+		useTabeloStore.getState().redo();
+		expect(useTabeloStore.getState().selection).toEqual(upward);
+	});
+
 	it("leaves unrelated undo clamping the selection as it always did", () => {
 		useTabeloStore.setState({ document: unsortedNames() });
 		const store = useTabeloStore.getState();
