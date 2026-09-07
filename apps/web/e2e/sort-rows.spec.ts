@@ -44,8 +44,11 @@ test("sorting a column reorders the document for every open view", async ({
 	await expect(tabelo.cell(1, 1)).toHaveText("Felix");
 	await expect(tabelo.cell(4, 1)).toHaveText("Paulo");
 	// The Markdown pane is a projection of the same document, so it agrees
-	// without any further action.
+	// without any further action. Its editor is loaded lazily, so the pane is
+	// waited for on its own budget rather than inside an assertion's shorter
+	// one: a cold worker can still be fetching the chunk here.
 	const source = tabelo.source("markdown");
+	await source.waitFor({ state: "visible" });
 	await expect(source).toContainText("Felix");
 	const markdown = await source.innerText();
 	expect(markdown.indexOf("Felix")).toBeLessThan(markdown.indexOf("Paulo"));
