@@ -245,6 +245,14 @@ export class TabeloPage {
 		});
 	}
 
+	// The whole grid surface: the semantic table plus the column index strip,
+	// which is chrome and therefore sits beside the table rather than inside it.
+	// Anything the strip owns is addressed from here; anything the table owns
+	// stays addressed from `grid()`.
+	gridSurface(): Locator {
+		return this.pane("grid").locator("[data-grid-surface]");
+	}
+
 	// Cells and headers are addressed by position rather than by accessible
 	// name: their names are now their contents, which is the point: a cell is
 	// named after its value, not after its coordinates.
@@ -260,7 +268,7 @@ export class TabeloPage {
 	// select handle, and its menu.
 	columnIndex(column: number): Locator {
 		requirePositiveIndex(column, "column");
-		return this.grid().locator(`[data-column-header="${column - 1}"]`);
+		return this.gridSurface().locator(`[data-column-header="${column - 1}"]`);
 	}
 
 	// The row's own gutter cell, which owns the row number, its select handle,

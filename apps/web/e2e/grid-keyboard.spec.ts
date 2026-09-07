@@ -349,7 +349,7 @@ test("Fit reveals clipped column content and explains disabled states", async ({
 
 	const openMenu = async () => {
 		await tabelo
-			.grid()
+			.gridSurface()
 			.getByRole("button", {
 				name: new RegExp(`^${copy.actions.columnActions}:`),
 			})
@@ -498,7 +498,7 @@ test("workspace width survives document history, reload, and duplication", async
 		})
 		.click();
 	await tabelo
-		.grid()
+		.gridSurface()
 		.getByRole("button", {
 			name: new RegExp(`^${copy.actions.columnActions}:`),
 		})
@@ -528,7 +528,7 @@ test("Fit stores the same normalized width at different pane zoom levels", async
 	);
 	const fitColumn = async () => {
 		await tabelo
-			.grid()
+			.gridSurface()
 			.getByRole("button", {
 				name: new RegExp(`^${copy.actions.columnActions}:`),
 			})
@@ -587,7 +587,7 @@ test("column wrapping grows rows, persists, and keeps cell navigation", async ({
 	const compactHeight = await cellHeight();
 	const openColumnMenu = async () => {
 		await tabelo
-			.grid()
+			.gridSurface()
 			.getByRole("button", {
 				name: new RegExp(`^${copy.actions.columnActions}:`),
 			})

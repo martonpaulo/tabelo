@@ -1822,10 +1822,25 @@ that JSON back produces a column actually named after the letter.
 A row of column letters (`A`, `B`, ... `Z`, `AA`) sits above the header row and
 mirrors the row-number gutter on the other axis. Both are chrome:
 
-- It is **not a table row.** It carries `role="presentation"` so it never counts
-  toward `aria-rowcount` or shifts `aria-rowindex`; the header row is still row
-  1. Presentation rather than `aria-hidden`, because the controls it holds must
-  stay reachable.
+- It is **not part of the table at all.** It is a sibling of `<table
+  role="grid">` inside the shared grid surface, not a row inside it. `grid` may
+  own nothing but `row` and `rowgroup`, and the strip holds real controls, so
+  every arrangement that kept it inside the table was a workaround: `aria-hidden`
+  put the controls out of reach, and `role="presentation"` was discarded by
+  ARIA's own conflict resolution precisely because the row holds controls,
+  re-parenting them onto the grid and failing `aria-required-children`. Outside
+  the table the question does not arise, and the header row is still row 1. The
+  row-number gutter is different and stays where it is: its cell is a
+  `rowheader` inside a data `row`, which is true, and its controls are owned
+  correctly.
+- **One width model, two mechanisms.** The strip is a CSS grid whose tracks and
+  the table's `colgroup` are generated from the same ordered columns, the same
+  resolved widths, and the same pane zoom. There is no second width store, no
+  measurement observer, and no scroll synchronisation: both siblings sit in the
+  one scrolling surface, so they scroll together by construction.
+- **The strip sticks as one element**, at the top of the scroller, rather than
+  cell by cell. Only its corner and a pinned first column stick sideways as
+  well, joining the corner layer.
 - Like the gutter, it **keeps its size at every zoom level** (`--grid-strip-h`).
   At 100% it is exactly one table-row baseline tall, so the strip, header row,
   and body begin on one vertical rhythm.
@@ -1860,13 +1875,15 @@ mirrors the row-number gutter on the other axis. Both are chrome:
   column paints the header and body cells it represents, while this metadata
   strip remains chrome.
 - Its leftmost cell, where the letters meet the row numbers, is a dead corner:
-  an empty presentational cell, never a control.
+  an empty box, never a control.
 
 Four sticky layers now overlap, and their order is deliberate rather than
 accidental: body cells paint under the row gutter (`z-10`), which paints under
 the strip and header cells (`z-20`), which paint under the two corners that
-stick on both axes (`z-30`). A sticky cell must not also be `relative`: the
-later rule wins and turns the sticky offset into a static shift.
+stick on both axes (`z-30`). The strip carries `z-30` as a whole, so it is the
+one layer nothing in the table paints over. A sticky cell must not also be
+`relative`: the later rule wins and turns the sticky offset into a static shift,
+which is why only an unpinned strip cell adds `relative` for its resize handle.
 
 ### Pinning the first data row and column
 

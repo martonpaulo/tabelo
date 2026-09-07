@@ -38,7 +38,7 @@ test("row and column actions meet the control minimum target", async ({
 	const row = tabelo.grid().getByRole("button", {
 		name: new RegExp(`^${copy.actions.rowActions}:`),
 	});
-	const column = tabelo.grid().getByRole("button", {
+	const column = tabelo.gridSurface().getByRole("button", {
 		name: new RegExp(`^${copy.actions.columnActions}:`),
 	});
 
@@ -65,7 +65,7 @@ test("the row and column being worked in reveal their own actions", async ({
 			name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(index - 1)}`,
 		});
 	const columnTrigger = (name: string) =>
-		tabelo.grid().getByRole("button", {
+		tabelo.gridSurface().getByRole("button", {
 			name: `${copy.actions.columnActions}: ${name}, ${copy.a11y.expectedColumnType("text")}`,
 		});
 
@@ -152,7 +152,7 @@ test("the column menu moves a two-column selection as one block", async ({
 		.click({ modifiers: ["Shift"] });
 
 	const menuName = `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("name", 0, "text")}`;
-	await tabelo.grid().getByRole("button", { name: menuName }).click();
+	await tabelo.gridSurface().getByRole("button", { name: menuName }).click();
 	const menu = page.getByRole("menu", { name: menuName });
 	await expect(menu).toBeVisible();
 	await menu.getByRole("menuitem", { name: copy.actions.moveRight }).click();
@@ -240,7 +240,7 @@ test("Move down is disabled for a block ending at the last row", async ({
 test("tabbing into a header reveals its actions without a pointer", async ({
 	tabelo,
 }) => {
-	const trigger = tabelo.grid().getByRole("button", {
+	const trigger = tabelo.gridSurface().getByRole("button", {
 		name: `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("", 2, "text")}`,
 	});
 	expect(await opacity(trigger)).toBe("0");
@@ -590,7 +590,7 @@ test("four panes stay quiet: no action icons in the cells", async ({
 
 	// Only the row and column in play show a trigger; the cells carry none.
 	const visible = await tabelo
-		.grid()
+		.gridSurface()
 		.getByRole("button", {
 			name: new RegExp(
 				`^(${copy.actions.rowActions}|${copy.actions.columnActions}):`,

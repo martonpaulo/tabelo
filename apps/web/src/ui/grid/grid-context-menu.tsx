@@ -105,10 +105,12 @@ export function GridContextMenu({
 	wrapperRef,
 }: {
 	readonly children: ReactNode;
-	// The positioned box the drop indicator measures and draws against. It is
-	// this element rather than the table because a table cannot hold a non-table
-	// child, and because it scrolls with the table, so the indicator needs no
-	// scroll arithmetic of its own.
+	// The grid surface: the positioned box holding the column index strip and the
+	// semantic table. The drop indicator measures and draws against it, because a
+	// table cannot hold a non-table child and because it scrolls with the table,
+	// so the indicator needs no scroll arithmetic of its own. It is also what
+	// makes the strip's controls part of the grid for hit testing, now that they
+	// sit beside the table rather than inside it.
 	readonly wrapperRef?: RefObject<HTMLDivElement | null>;
 }) {
 	const [axis, setAxis] = useState<ContextAxis>("cell");
@@ -129,11 +131,10 @@ export function GridContextMenu({
 		// `true` is the primitive's own behaviour, which is what a dismissal
 		// keeps: this component adds a destination, it does not take one away.
 		if (!commandRan.current) return true;
-		const wrapper = wrapperRef?.current;
-		const grid = wrapper?.querySelector<HTMLElement>("table");
-		if (!grid) return true;
+		const surface = wrapperRef?.current;
+		if (!surface) return true;
 		const { focus } = activeRange(useTabeloStore.getState().selection);
-		const cell = grid.querySelector<HTMLElement>(
+		const cell = surface.querySelector<HTMLElement>(
 			`[data-cell="${focus.row}:${focus.column}"]`,
 		);
 		if (!cell) return true;
@@ -141,8 +142,7 @@ export function GridContextMenu({
 		// on focus too and the later scroll is the one that wins. Clear of the
 		// sticky chrome is the grid's contract, not merely on screen.
 		requestAnimationFrame(() => {
-			if (cell.isConnected)
-				revealGridCell(grid as HTMLTableElement, cell, focus);
+			if (cell.isConnected) revealGridCell(surface, cell, focus);
 		});
 		return cell;
 	};
@@ -154,7 +154,13 @@ export function GridContextMenu({
 			}}
 		>
 			<ContextMenuTrigger
-				render={<div ref={wrapperRef} className="relative min-w-max" />}
+				render={
+					<div
+						ref={wrapperRef}
+						data-grid-surface
+						className="relative min-w-max"
+					/>
+				}
 				onContextMenuCapture={(event: React.MouseEvent) => {
 					const target = event.target as HTMLElement | null;
 
