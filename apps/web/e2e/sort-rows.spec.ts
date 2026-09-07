@@ -39,16 +39,16 @@ test("sorting a column reorders the document for every open view", async ({
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
+	await tabelo.showInSourcePane("markdown");
 	await sortColumn(tabelo, 1, copy.actions.sortAscending);
 
 	await expect(tabelo.cell(1, 1)).toHaveText("Felix");
 	await expect(tabelo.cell(4, 1)).toHaveText("Paulo");
-	// The Markdown pane is a projection of the same document, so it agrees
-	// without any further action. Its editor is loaded lazily, so the pane is
-	// waited for on its own budget rather than inside an assertion's shorter
-	// one: a cold worker can still be fetching the chunk here.
+	// The pane an import opens shows the format it detected, which is TSV for
+	// this fixture, so Markdown is asked for explicitly. It is open before the
+	// sort, which is what makes the assertion below about synchronization
+	// rather than about what a fresh pane renders.
 	const source = tabelo.source("markdown");
-	await source.waitFor({ state: "visible" });
 	await expect(source).toContainText("Felix");
 	const markdown = await source.innerText();
 	expect(markdown.indexOf("Felix")).toBeLessThan(markdown.indexOf("Paulo"));
