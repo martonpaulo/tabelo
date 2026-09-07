@@ -4,8 +4,9 @@ import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
 import {
 	gridAreaOf,
-	layoutSplitsColumns,
-	layoutSplitsRows,
+	layoutColumnSplitExtent,
+	layoutRowSplitExtent,
+	type SplitExtent,
 	type SplitOption,
 	splitOptions,
 } from "@/workspace/layout";
@@ -35,10 +36,12 @@ type WorkspaceDialog =
 interface ResizerProps {
 	readonly axis: Axis;
 	readonly ratio: number;
+	// The cross-axis grid interval the divider actually exists on.
+	readonly extent: SplitExtent;
 	readonly containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
-function Resizer({ axis, ratio, containerRef }: ResizerProps) {
+function Resizer({ axis, ratio, extent, containerRef }: ResizerProps) {
 	const dragging = useRef(false);
 
 	const apply = useCallback(
@@ -69,54 +72,70 @@ function Resizer({ axis, ratio, containerRef }: ResizerProps) {
 	const isColumns = axis === "columns";
 
 	return (
-		// A focusable separator with a value is the ARIA Authoring Practices
-		// window-splitter pattern. <hr> cannot be dragged, and a splitter that
-		// reports its position is exactly what aria-valuenow is for.
-		// biome-ignore lint/a11y/useSemanticElements: see above
+		// The divider is placed against the tracks it actually divides, not
+		// against the whole workspace: in "left-split" the row boundary exists in
+		// the left column alone, and a handle spanning the full width would put a
+		// row-resize cursor, a hover highlight, and pointer capture across the
+		// middle of a pane that has no such boundary. The wrapper only positions,
+		// so it stays transparent to the pointer and carries no intrinsic content
+		// that could feed the fr tracks around it.
 		<div
-			role="separator"
-			tabIndex={0}
-			aria-orientation={isColumns ? "vertical" : "horizontal"}
-			aria-label={
-				isColumns ? copy.workspace.resizeColumns : copy.workspace.resizeRows
-			}
-			aria-valuenow={Math.round(ratio * 100)}
-			aria-valuemin={15}
-			aria-valuemax={85}
-			className={
-				isColumns
-					? "absolute top-0 z-30 h-full w-2 -translate-x-1/2 cursor-col-resize touch-none hover:bg-selection-edge/30 focus-visible:bg-selection-edge/40"
-					: "absolute left-0 z-30 h-2 w-full -translate-y-1/2 cursor-row-resize touch-none hover:bg-selection-edge/30 focus-visible:bg-selection-edge/40"
-			}
-			style={
-				isColumns ? { left: `${ratio * 100}%` } : { top: `${ratio * 100}%` }
-			}
-			onPointerDown={(event) => {
-				event.preventDefault();
-				event.currentTarget.setPointerCapture(event.pointerId);
-				dragging.current = true;
+			className="pointer-events-none relative"
+			style={{
+				gridArea: isColumns
+					? `${extent.start} / 1 / ${extent.end} / 3`
+					: `1 / ${extent.start} / 3 / ${extent.end}`,
 			}}
-			onPointerMove={(event) => {
-				if (!dragging.current) return;
-				apply(event.clientX, event.clientY);
-			}}
-			onPointerUp={(event) => {
-				event.currentTarget.releasePointerCapture(event.pointerId);
-				dragging.current = false;
-			}}
-			onKeyDown={(event) => {
-				const decrease = isColumns ? "ArrowLeft" : "ArrowUp";
-				const increase = isColumns ? "ArrowRight" : "ArrowDown";
-				if (event.key === decrease) {
-					event.preventDefault();
-					nudge(-0.02);
+		>
+			{/* A focusable separator with a value is the ARIA Authoring Practices
+			    window-splitter pattern. <hr> cannot be dragged, and a splitter that
+			    reports its position is exactly what aria-valuenow is for. */}
+			{/* biome-ignore lint/a11y/useSemanticElements: see above */}
+			<div
+				role="separator"
+				tabIndex={0}
+				aria-orientation={isColumns ? "vertical" : "horizontal"}
+				aria-label={
+					isColumns ? copy.workspace.resizeColumns : copy.workspace.resizeRows
 				}
-				if (event.key === increase) {
-					event.preventDefault();
-					nudge(0.02);
+				aria-valuenow={Math.round(ratio * 100)}
+				aria-valuemin={15}
+				aria-valuemax={85}
+				className={
+					isColumns
+						? "pointer-events-auto absolute top-0 z-30 h-full w-2 -translate-x-1/2 cursor-col-resize touch-none hover:bg-selection-edge/30 focus-visible:bg-selection-edge/40"
+						: "pointer-events-auto absolute left-0 z-30 h-2 w-full -translate-y-1/2 cursor-row-resize touch-none hover:bg-selection-edge/30 focus-visible:bg-selection-edge/40"
 				}
-			}}
-		/>
+				style={
+					isColumns ? { left: `${ratio * 100}%` } : { top: `${ratio * 100}%` }
+				}
+				onPointerDown={(event) => {
+					event.preventDefault();
+					event.currentTarget.setPointerCapture(event.pointerId);
+					dragging.current = true;
+				}}
+				onPointerMove={(event) => {
+					if (!dragging.current) return;
+					apply(event.clientX, event.clientY);
+				}}
+				onPointerUp={(event) => {
+					event.currentTarget.releasePointerCapture(event.pointerId);
+					dragging.current = false;
+				}}
+				onKeyDown={(event) => {
+					const decrease = isColumns ? "ArrowLeft" : "ArrowUp";
+					const increase = isColumns ? "ArrowRight" : "ArrowDown";
+					if (event.key === decrease) {
+						event.preventDefault();
+						nudge(-0.02);
+					}
+					if (event.key === increase) {
+						event.preventDefault();
+						nudge(0.02);
+					}
+				}}
+			/>
+		</div>
 	);
 }
 
@@ -187,9 +206,13 @@ export function Workspace({
 	}, [addedPaneId]);
 
 	// A resizer is only meaningful where its axis actually splits, and stacking
-	// splits neither: there is one column and the panes size themselves.
-	const splitsColumns = !stacked && layoutSplitsColumns(workspace.layout);
-	const splitsRows = !stacked && layoutSplitsRows(workspace.layout);
+	// splits neither: there is one column and the panes size themselves. The
+	// extent answers "whether" and "where" at once, so a handle can never be
+	// rendered without the boundary it controls.
+	const columnExtent = stacked
+		? null
+		: layoutColumnSplitExtent(workspace.layout);
+	const rowExtent = stacked ? null : layoutRowSplitExtent(workspace.layout);
 
 	// Where the workspace can still grow. Empty at four panes, which is what
 	// removes every control rather than disabling one.
@@ -222,10 +245,10 @@ export function Workspace({
 				stacked
 					? undefined
 					: {
-							gridTemplateColumns: splitsColumns
+							gridTemplateColumns: columnExtent
 								? `${workspace.columnRatio}fr ${1 - workspace.columnRatio}fr`
 								: "1fr 1fr",
-							gridTemplateRows: splitsRows
+							gridTemplateRows: rowExtent
 								? `${workspace.rowRatio}fr ${1 - workspace.rowRatio}fr`
 								: "1fr 1fr",
 						}
@@ -258,17 +281,19 @@ export function Workspace({
 				);
 			})}
 
-			{splitsColumns ? (
+			{columnExtent ? (
 				<Resizer
 					axis="columns"
 					ratio={workspace.columnRatio}
+					extent={columnExtent}
 					containerRef={containerRef}
 				/>
 			) : null}
-			{splitsRows ? (
+			{rowExtent ? (
 				<Resizer
 					axis="rows"
 					ratio={workspace.rowRatio}
+					extent={rowExtent}
 					containerRef={containerRef}
 				/>
 			) : null}

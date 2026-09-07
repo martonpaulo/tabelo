@@ -5,7 +5,9 @@ import {
 	getLayout,
 	gridAreaOf,
 	type LayoutId,
+	layoutColumnSplitExtent,
 	layoutPresets,
+	layoutRowSplitExtent,
 	layoutSplitsColumns,
 	layoutSplitsRows,
 	layoutsForPaneCount,
@@ -80,6 +82,69 @@ describe("layout presets", () => {
 		expect(layoutSplitsColumns("single")).toBe(false);
 		expect(layoutSplitsRows("single")).toBe(false);
 	});
+
+	// The whole point of #63: a handle spans the boundary it controls, and in an
+	// asymmetric preset that boundary covers one track of the other axis only.
+	// Grid lines, so a caller places against them without re-deriving anything.
+	it.each([
+		["single", null, null],
+		["columns", { start: 1, end: 3 }, null],
+		["rows", null, { start: 1, end: 3 }],
+		// The vertical divider runs the full height, but the horizontal one
+		// exists in the left column alone: the right pane is undivided.
+		["left-split", { start: 1, end: 3 }, { start: 1, end: 2 }],
+		["right-split", { start: 1, end: 3 }, { start: 2, end: 3 }],
+		["top-split", { start: 1, end: 2 }, { start: 1, end: 3 }],
+		["bottom-split", { start: 2, end: 3 }, { start: 1, end: 3 }],
+		["quad", { start: 1, end: 3 }, { start: 1, end: 3 }],
+	] as const)(
+		"%s divides only the tracks it says it does",
+		(id, columns, rows) => {
+			expect(layoutColumnSplitExtent(id)).toEqual(columns);
+			expect(layoutRowSplitExtent(id)).toEqual(rows);
+		},
+	);
+
+	it.each(layoutPresets.map((preset) => [preset.id, preset] as const))(
+		"%s keeps split presence and split extent as one answer",
+		(id) => {
+			expect(layoutSplitsColumns(id)).toBe(
+				layoutColumnSplitExtent(id) !== null,
+			);
+			expect(layoutSplitsRows(id)).toBe(layoutRowSplitExtent(id) !== null);
+		},
+	);
+
+	it.each(layoutPresets.map((preset) => [preset.id, preset] as const))(
+		"%s places every extent inside the 2x2 grid and covers a whole boundary",
+		(id, preset) => {
+			for (const [extent, axis] of [
+				[layoutColumnSplitExtent(id), "column"],
+				[layoutRowSplitExtent(id), "row"],
+			] as const) {
+				if (!extent) continue;
+				expect(extent.start).toBeGreaterThanOrEqual(1);
+				expect(extent.end).toBeLessThanOrEqual(3);
+				expect(extent.end).toBeGreaterThan(extent.start);
+				// Every cross-axis track the extent claims is genuinely divided: no
+				// pane covering it straddles the axis that splits.
+				for (let track = extent.start; track < extent.end; track += 1) {
+					for (const slots of preset.panes) {
+						const area = gridAreaOf(slots);
+						const covers =
+							axis === "column"
+								? area.rowStart <= track && track < area.rowEnd
+								: area.columnStart <= track && track < area.columnEnd;
+						const straddles =
+							axis === "column"
+								? area.columnEnd - area.columnStart === 2
+								: area.rowEnd - area.rowStart === 2;
+						expect(covers && straddles).toBe(false);
+					}
+				}
+			}
+		},
+	);
 });
 
 describe("layouts for a pane count", () => {
