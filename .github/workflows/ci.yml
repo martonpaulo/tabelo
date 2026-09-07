@@ -148,6 +148,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Knip needs the installed workspace to load the Vite, Vitest, and
+      # Playwright configuration; without it every test file reports as unused.
+      # It runs before the browser matrix so dead code fails the run before any
+      # runner is claimed.
+      - name: Dead-code check
+        run: pnpm check:dead-code
+
       - name: Count selected browser tests and determine matrix
         id: e2e_matrix
         env:

@@ -322,8 +322,9 @@ Prefer the smallest relevant check.
 - `pnpm check:dead-code`: Knip, reporting unused files, exports, dependencies,
   and catalog entries. It needs an installed workspace, because without
   `node_modules` it cannot load the Vite, Vitest, and Playwright configuration
-  and every test file turns into a false positive. Advisory and deliberately
-  not in CI: run it when removing code or changing a manifest
+  and every test file turns into a false positive. It is a required gate in
+  the Check job, running straight after the frozen install: run it locally when
+  removing code or changing a manifest, before CI does
 - `pnpm test`: the complete Vitest gate. `pnpm test:unit` runs ordinary unit
   files with the default timeout, and `pnpm test:property` runs the generated
   invariant files with their explicit budget. `pnpm test:watch` re-runs on
