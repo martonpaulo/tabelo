@@ -4,7 +4,6 @@ import { tags } from "@lezer/highlight";
 import { copy } from "@/copy/copy";
 import {
 	ALL_SPACES_CLASS,
-	SPACE_GLYPH,
 	SPACE_SCOPE_CLASS,
 	TAB_GLYPH,
 	TAB_INDICATOR_CLASS,
@@ -43,6 +42,32 @@ const headerCellStyle = { color: "var(--foreground)", fontWeight: "600" };
 // two of these marks over the same characters cannot fade one of them twice.
 const annotationStyle = {
 	color: "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
+};
+
+// The space dot, painted rather than laid out. A background fills the box the
+// character already has, so it costs no containing block, no pseudo-element
+// box, and no text shaping: the three things a marked space paid for on every
+// scroll repaint when Markdown's alignment padding put a thousand of them in
+// one viewport (#275). It is the mechanism CodeMirror's own
+// `highlightWhitespace()` uses, in Tabelo's tone rather than CodeMirror's, so
+// `annotationStyle`'s colour still has one owner. A background is not content
+// at all, which strengthens rather than weakens what the pseudo-element
+// promised: it can add no advance width, and it can never be read out, copied,
+// downloaded, or extracted from the DOM. `background-position` centres it in
+// the character at every `--pane-zoom`, because both the box and the gradient
+// scale with the font size.
+//
+// `closest-side` is what keeps the dot the weight the `·` glyph had. CodeMirror
+// sizes its own dot against the default `farthest-corner`, which measures the
+// box's diagonal, so the marker would grow with the line height rather than
+// with the character: at Tabelo's two-rem line box that draws a dot roughly
+// twice the glyph's diameter. Measured from the closest side instead, the
+// radius is half the character's width and nothing else, and the two stops
+// give the edge a feather rather than leaving it aliased.
+const spaceDot = {
+	backgroundImage: `radial-gradient(circle closest-side at 50% 55%, ${annotationStyle.color} 22%, transparent 34%)`,
+	backgroundPosition: "center",
+	backgroundRepeat: "no-repeat",
 };
 
 export const editorTheme = EditorView.theme({
@@ -138,27 +163,33 @@ export const editorTheme = EditorView.theme({
 	// below the content rather than beside it: the muted tone at half strength,
 	// findable when looked for and ignorable when not. Each one is a distinct
 	// glyph, so none depends on colour alone to be told apart from content.
-	// CodeMirror draws its own dot and arrow as background images; those are
-	// cleared, because the glyphs below are the ones this product chose. A rule
-	// here with no `content` generates nothing, which is what leaves an ordinary
-	// space unmarked.
+	// CodeMirror draws its own dot and arrow as background images in its own
+	// grey; both are cleared here, because the tone and the shapes below are the
+	// ones this product chose. Clearing them is also what leaves an unmarked
+	// space unmarked: the mode rules further down are the only thing that puts
+	// anything back, and each is more specific than this one.
 	".cm-highlightSpace, .cm-highlightTab": {
 		backgroundImage: "none",
-		// The anchor for the glyph below. Painting it in an absolutely
+	},
+	".cm-highlightTab": {
+		// The anchor for the arrow below. Painting it in an absolutely
 		// positioned pseudo-element is what keeps it free of advance width, so
 		// the annotated character stays exactly one character wide and the text
-		// beside it never moves.
+		// beside it never moves. A tab is one span per tab and only ever appears
+		// in quantity in TSV, so the cost of a laid-out box is paid rarely; a
+		// space is one span per character in Markdown's alignment padding, which
+		// is why it is painted instead. See #275.
 		position: "relative",
 	},
-	".cm-highlightSpace::before, .cm-highlightTab::before": {
+	".cm-highlightTab::before": {
 		...annotationStyle,
 		position: "absolute",
 		left: "0",
 		right: "0",
 		textAlign: "center",
 		// Drawn over the character, never in place of it: no pointer, no
-		// selection, no width. The space or tab underneath stays the selectable,
-		// copyable thing it always was.
+		// selection, no width. The tab underneath stays the selectable, copyable
+		// thing it always was.
 		pointerEvents: "none",
 		userSelect: "none",
 	},
@@ -173,17 +204,11 @@ export const editorTheme = EditorView.theme({
 	[`&.${TAB_INDICATOR_CLASS} .cm-highlightTab::before`]: {
 		content: `"${TAB_GLYPH}"`,
 	},
-	[`&.${ALL_SPACES_CLASS} .cm-highlightSpace::before`]: {
-		content: `"${SPACE_GLYPH}"`,
-	},
+	[`&.${ALL_SPACES_CLASS} .cm-highlightSpace`]: spaceDot,
 	// The two narrower modes: CodeMirror's own trailing-whitespace mark, and the
 	// one scope this project marks itself, because no built-in describes it.
-	".cm-trailingSpace .cm-highlightSpace::before": {
-		content: `"${SPACE_GLYPH}"`,
-	},
-	[`.${SPACE_SCOPE_CLASS} .cm-highlightSpace::before`]: {
-		content: `"${SPACE_GLYPH}"`,
-	},
+	".cm-trailingSpace .cm-highlightSpace": spaceDot,
+	[`.${SPACE_SCOPE_CLASS} .cm-highlightSpace`]: spaceDot,
 	".cm-trailingSpace": {
 		// CodeMirror's base theme tints this red, which here would spend a status
 		// colour on a token and claim an error the parser never reported. The

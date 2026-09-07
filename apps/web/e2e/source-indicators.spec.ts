@@ -20,12 +20,14 @@ const marker = ".cm-tabeloEmptyValue";
 const tab = ".cm-highlightTab";
 
 // A space span always exists while anything is marked; what the reader can
-// actually see is the glyph the theme generates, so that is what is counted.
+// actually see is the dot the theme paints into it, so that is what is counted.
+// The dot is a background rather than generated content, because a laid-out
+// glyph per space is what made scrolling a padded Markdown table stutter (#275).
 async function paintedSpaces(pane: Locator): Promise<number> {
 	return pane.evaluate(
 		(element) =>
 			Array.from(element.querySelectorAll(".cm-highlightSpace")).filter(
-				(span) => getComputedStyle(span, "::before").content !== "none",
+				(span) => getComputedStyle(span).backgroundImage !== "none",
 			).length,
 	);
 }
@@ -238,9 +240,11 @@ test("the space, tab, and empty glyphs are drawn together", async ({
 			selector,
 		);
 
-	// A space carries a middle dot, a tab carries an arrow, and an empty field
-	// carries the word. Quotation marks are how a computed `content` comes back.
-	expect(await drawn(".cm-highlightSpace")).toContain('"·"');
+	// A space carries a middle dot, painted into its own box rather than laid
+	// out as generated content; a tab carries an arrow and an empty field the
+	// word, both of which stay generated content. Quotation marks are how a
+	// computed `content` comes back.
+	expect(await paintedSpaces(pane)).toBeGreaterThan(0);
 	expect(await drawn(".cm-highlightTab")).toContain('"→"');
 	expect(await drawn(marker)).toContain(`"${copy.source.emptyValue}"`);
 

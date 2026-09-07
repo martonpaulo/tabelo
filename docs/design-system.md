@@ -395,12 +395,17 @@ notation rather than annotation: it wears the same `--syntax-notation` tone as
 the syntax token it replaces, because it says the same thing more briefly. Each
 is a distinct glyph, so none is told apart from content by colour alone, and the
 glyph itself is what survives forced colours where a tone does not. The space
-and tab glyphs are painted in an absolutely positioned pseudo-element, so they
-carry no advance width and the annotated character stays exactly one character
-wide. Every glyph is generated
-content, so no marker is ever a text node: none of them can be read out, copied,
-downloaded, parsed, or persisted, and the caret, the selection, and the
-diagnostic underlines stay measured in the characters the user typed.
+dot is painted as a background inside the character's own box, and the tab arrow
+in an absolutely positioned pseudo-element; either way the marker carries no
+advance width and the annotated character stays exactly one character wide. The
+split is a cost decision: Markdown pads every cell, so a viewport can hold a
+thousand marked spaces, and a background is the only one of the two that adds no
+box and no text shaping per character. A tab is one span per tab and appears in
+quantity only in TSV, so it keeps the glyph. No marker is ever a text node,
+because each is either generated content or a background rather than content at
+all: none of them can be read out, copied, downloaded, parsed, or persisted, and
+the caret, the selection, and the diagnostic underlines stay measured in the
+characters the user typed.
 
 **The placeholder reads as text and is not text.** It sits where the cell's
 value would have started and takes the width of the padding it is drawn instead
