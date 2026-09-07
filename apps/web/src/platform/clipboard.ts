@@ -1,5 +1,4 @@
 import type { ClipboardPayload } from "@/clipboard/parse";
-import { TABELO_CLIPBOARD_TYPE } from "@/clipboard/payload";
 
 // The clipboard is the one browser API Tabelo uses that the user can refuse.
 // Permission can be denied and a restrictive context can remove the whole
@@ -75,7 +74,6 @@ export async function writeClipboardText(
 export async function writeClipboardTable(
 	text: string,
 	html: string,
-	typed?: string,
 ): Promise<ClipboardWriteOutcome> {
 	const api = clipboard();
 	if (!api?.write || typeof ClipboardItem === "undefined") {
@@ -87,16 +85,6 @@ export async function writeClipboardTable(
 			new ClipboardItem({
 				"text/plain": new Blob([text], { type: "text/plain" }),
 				"text/html": new Blob([html], { type: "text/html" }),
-				// Tabelo's own types, in their own flavour. Chromium carries a
-				// "web "-prefixed custom format through this API, so the private
-				// bytes never enter the HTML an external application receives.
-				...(typed
-					? {
-							[TABELO_CLIPBOARD_TYPE]: new Blob([typed], {
-								type: TABELO_CLIPBOARD_TYPE,
-							}),
-						}
-					: {}),
 			}),
 		]);
 		return { ok: true, richness: "table" };
@@ -124,7 +112,6 @@ async function readRich(
 		const items = await read();
 		let text = "";
 		let html: string | undefined;
-		let typed: string | undefined;
 		for (const item of items) {
 			if (item.types.includes("text/html")) {
 				html = await (await item.getType("text/html")).text();
@@ -132,14 +119,9 @@ async function readRich(
 			if (item.types.includes("text/plain")) {
 				text = await (await item.getType("text/plain")).text();
 			}
-			// Present only on a copy Tabelo made itself; an external application
-			// never writes this flavour, so its absence is the normal case.
-			if (item.types.includes(TABELO_CLIPBOARD_TYPE)) {
-				typed = await (await item.getType(TABELO_CLIPBOARD_TYPE)).text();
-			}
 		}
 		if (!text && !html) return { ok: false, reason: "empty" };
-		return { ok: true, payload: { text, html, typed } };
+		return { ok: true, payload: { text, html } };
 	} catch (error) {
 		return { ok: false, reason: reasonFor(error) };
 	}

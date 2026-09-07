@@ -2,7 +2,7 @@ import Papa from "papaparse";
 import { cellText } from "@/core/cell-value";
 import type { CellValue } from "@/core/types";
 import { normalizeLineEndings } from "@/formats/html";
-import { type ClipboardSelection, encodeTabeloPayload } from "./payload";
+import { type ClipboardSelection, embedTabeloPayload } from "./payload";
 
 // Copy writes two flavours: tab-separated text, which every spreadsheet
 // understands, and an HTML table for targets that accept rich content. Papa
@@ -52,21 +52,16 @@ export function matrixToHtml(
 }
 
 // A grid selection as the clipboard should carry it: the interoperable text and
-// HTML every other application reads, plus Tabelo's own types in a flavour of
-// their own. One function rather than two call sites assembling the same set,
-// so a flavour cannot be added to the menu path and forgotten on the keyboard
-// one.
-//
-// The private flavour is absent when the selection is too large to bound. The
-// copy still lands as text and HTML, so the values survive and only their types
-// do not.
+// HTML every other application reads, with Tabelo's own types riding inertly
+// inside the HTML. One function rather than two call sites assembling the same
+// pair, so a flavour cannot be added to the menu path and forgotten on the
+// keyboard one.
 export function selectionClipboardPayload(selection: ClipboardSelection): {
 	readonly text: string;
 	readonly html: string;
-	readonly typed?: string;
 } {
-	const text = matrixToTsv(selection.matrix);
-	const html = matrixToHtml(selection.matrix);
-	const typed = encodeTabeloPayload(selection);
-	return typed === null ? { text, html } : { text, html, typed };
+	return {
+		text: matrixToTsv(selection.matrix),
+		html: embedTabeloPayload(matrixToHtml(selection.matrix), selection),
+	};
 }

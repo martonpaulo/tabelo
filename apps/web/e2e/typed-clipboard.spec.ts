@@ -1,15 +1,14 @@
 import type { Page } from "@playwright/test";
-import { TABELO_CLIPBOARD_TYPE } from "@/clipboard/payload";
 import { copy } from "@/copy/copy";
 import type { ExpectedColumnType } from "@/core/types";
 import { expect, test } from "./fixtures";
 import { lastCopied, recordingClipboard, type TabeloPage } from "./helpers";
 
-// Types survive between two Tabelo tabs because a private payload travels
-// beside the public flavours, and they never appear from outside because that
-// payload has to validate and match the visible table before it is believed.
-// The payload rides in a MIME flavour of its own, so the HTML an external
-// application receives carries nothing but the table: see docs/adr/0008.
+// Types survive between two Tabelo tabs because a private payload rides inside
+// the HTML flavour, and they never appear from outside because that payload has
+// to validate and match the visible table before it is believed. The payload
+// travels inside the HTML flavour rather than as its own MIME type: see
+// docs/adr/0008.
 
 const TYPED_ROWS =
 	'[{"qty":1,"ok":true,"note":null,"code":"1"},{"qty":2,"ok":false,"note":"x","code":"2"}]';
@@ -69,7 +68,7 @@ test("a copied value pastes back as the same value, not as its text", async ({
 
 	const copied = await tabelo.copyFlavours();
 	await tabelo.cell(2, 1).click();
-	await tabelo.paste(copied);
+	await tabelo.paste(copied.text, copied.html);
 
 	// The public text says "1", "true" and "", which is all TSV can say. What
 	// came back is a number, a boolean, and a null.
@@ -89,7 +88,7 @@ test("a paste carries the value's type without restructuring the destination", a
 
 	const copied = await tabelo.copyFlavours();
 	await tabelo.cell(1, 4).click();
-	await tabelo.paste(copied);
+	await tabelo.paste(copied.text, copied.html);
 
 	await expect(tabelo.cell(1, 4)).toHaveAttribute("data-cell-type", "number");
 	await expect(
@@ -109,7 +108,7 @@ test("the expected column types travel with a copy into an empty table", async (
 
 	await startBlankTable(tabelo);
 	await tabelo.cell(1, 1).click();
-	await tabelo.paste(copied);
+	await tabelo.paste(copied.text, copied.html);
 
 	const expectedTypeOf = (column: number) =>
 		tabelo.columnIndex(column).getByRole("button", { name: /column actions/i });
@@ -134,7 +133,10 @@ test("the same content pastes as text once the private payload is gone", async (
 	const copied = await tabelo.copyFlavours();
 
 	await tabelo.cell(2, 1).click();
-	await tabelo.paste({ text: copied.text, html: copied.html });
+	await tabelo.paste(
+		copied.text,
+		copied.html.replace(/<!--tabelo:[\s\S]*?-->/, ""),
+	);
 
 	await expect(tabelo.cell(2, 1)).toHaveAttribute("data-cell-type", "string");
 	await expect(tabelo.cell(2, 2)).toHaveAttribute("data-cell-type", "string");
@@ -150,31 +152,16 @@ test("a payload that no longer describes the table beside it is not believed", a
 
 	await tabelo.cell(2, 1).click();
 	// Tabelo's own metadata, beside a table it never wrote.
-	await tabelo.paste({
-		...copied,
-		text: "9",
-		html: "<table><tbody><tr><td>9</td></tr></tbody></table>",
-	});
+	await tabelo.paste(
+		"9",
+		copied.html.replace(
+			/<table[\s\S]*<\/table>/,
+			"<table><tbody><tr><td>9</td></tr></tbody></table>",
+		),
+	);
 
 	await expect(tabelo.cell(2, 1)).toHaveText("9");
 	await expect(tabelo.cell(2, 1)).toHaveAttribute("data-cell-type", "string");
-});
-
-// Anything short of a payload that validates is not a refusal to paste: the
-// public flavours are still there, and they are what the paste falls back to.
-test("a private flavour that does not validate falls back to the public ones", async ({
-	tabelo,
-}) => {
-	await importTypedRows(tabelo);
-	await selectRange(tabelo, [1, 1], [1, 3]);
-	const copied = await tabelo.copyFlavours();
-
-	await tabelo.cell(2, 1).click();
-	await tabelo.paste({ ...copied, typed: '{"version":1,"matrix":[]}' });
-
-	await expect(tabelo.cell(2, 1)).toHaveText("1");
-	await expect(tabelo.cell(2, 1)).toHaveAttribute("data-cell-type", "string");
-	await expect(tabelo.cell(2, 2)).toHaveAttribute("data-cell-type", "string");
 });
 
 test("an external application receives a table with no metadata in it", async ({
@@ -194,34 +181,14 @@ test("an external application receives a table with no metadata in it", async ({
 	).toBeVisible();
 
 	const written = await lastCopied(page);
-	// The private bytes travel in a flavour of their own, so the HTML an
-	// external application receives carries no trace of them at all.
-	expect(written?.types).toEqual([
-		"text/plain",
-		"text/html",
-		TABELO_CLIPBOARD_TYPE,
-	]);
-	expect(written?.typed).toContain(`"version"`);
-	expect(written?.html).not.toContain("tabelo");
-
+	expect(written?.html).toContain("tabelo:");
+	// What a rich-text target renders is the table and nothing else: the payload
+	// is a comment, so it has no text of its own.
 	const rendered = await page.evaluate((html) => {
 		const host = document.createElement("div");
 		host.innerHTML = html ?? "";
 		return host.textContent ?? "";
 	}, written?.html);
+	expect(rendered).not.toContain("tabelo");
 	expect(rendered).toBe("1true");
-
-	// The same three flavours pasted back: the button path assembles its own
-	// ClipboardItem, so it has to be shown carrying the types as well as
-	// keeping them out of the HTML.
-	await tabelo.cell(2, 1).click();
-	await tabelo.paste({
-		text: written?.text ?? "",
-		html: written?.html,
-		typed: written?.typed,
-	});
-
-	await expect(tabelo.cell(2, 1)).toHaveAttribute("data-cell-type", "number");
-	await expect(tabelo.cell(2, 2)).toHaveAttribute("data-cell-type", "boolean");
-	await expect(tabelo.cell(2, 3)).toHaveAttribute("data-cell-type", "null");
 });

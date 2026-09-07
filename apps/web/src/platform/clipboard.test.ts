@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TABELO_CLIPBOARD_TYPE } from "@/clipboard/payload";
 import {
 	readClipboardTable,
 	writeClipboardTable,
@@ -143,29 +142,6 @@ describe("writing a table", () => {
 		expect(writeText).not.toHaveBeenCalled();
 	});
 
-	it("carries Tabelo's own types in a flavour of their own", async () => {
-		const write = vi.fn().mockResolvedValue(undefined);
-		stubClipboard({ write, writeText: vi.fn() });
-		Object.defineProperty(globalThis, "ClipboardItem", {
-			value: class {
-				constructor(readonly items: Record<string, unknown>) {}
-			},
-			configurable: true,
-			writable: true,
-		});
-
-		await writeClipboardTable("a\tb", "<table></table>", '{"version":1}');
-
-		const [[items]] = write.mock.calls as [
-			[{ items: Record<string, unknown> }[]],
-		];
-		expect(Object.keys(items[0]?.items ?? {})).toEqual([
-			"text/plain",
-			"text/html",
-			TABELO_CLIPBOARD_TYPE,
-		]);
-	});
-
 	it("uses plain text when ClipboardItem does not exist", async () => {
 		const writeText = vi.fn().mockResolvedValue(undefined);
 		stubClipboard({ write: vi.fn(), writeText });
@@ -199,23 +175,6 @@ describe("reading the clipboard", () => {
 		expect(await readClipboardTable()).toEqual({
 			ok: true,
 			payload: { text: "a\tb", html: "<table/>" },
-		});
-	});
-
-	it("picks up Tabelo's own flavour when the copy carried one", async () => {
-		stubClipboard({
-			read: vi.fn().mockResolvedValue([
-				clipboardItem({
-					"text/plain": "a\tb",
-					"text/html": "<table/>",
-					[TABELO_CLIPBOARD_TYPE]: '{"version":1}',
-				}),
-			]),
-		});
-
-		expect(await readClipboardTable()).toEqual({
-			ok: true,
-			payload: { text: "a\tb", html: "<table/>", typed: '{"version":1}' },
 		});
 	});
 

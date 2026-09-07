@@ -1,5 +1,4 @@
 import { expect, type Locator, type Page } from "@playwright/test";
-import { TABELO_CLIPBOARD_TYPE } from "@/clipboard/payload";
 import { copy } from "@/copy/copy";
 import { HEADER_ROW } from "@/core/selection";
 import { STORAGE_KEY } from "@/persistence/schema";
@@ -95,17 +94,15 @@ export async function setClipboard(
 export interface CopiedFlavours {
 	readonly text: string;
 	readonly html?: string;
-	// Tabelo's own flavour, carried as its own MIME type on both transports.
-	readonly typed?: string;
 }
 
 // A clipboard that accepts everything and remembers it, so the copied bytes can
 // be asserted without the permission plumbing Playwright cannot grant in every
 // browser. Serialized into the page, so it closes over nothing.
 export async function recordingClipboard(page: Page): Promise<void> {
-	await page.addInitScript((privateType: string) => {
+	await page.addInitScript(() => {
 		Object.defineProperty(window, "__copied", {
-			value: [] as { text: string; html?: string; typed?: string }[],
+			value: [] as { text: string; html?: string }[],
 			configurable: true,
 			writable: true,
 		});
@@ -129,9 +126,7 @@ export async function recordingClipboard(page: Page): Promise<void> {
 			value: {
 				writeText: async (text: string) => {
 					(
-						window as unknown as {
-							__copied: { text: string; html?: string; typed?: string }[];
-						}
+						window as unknown as { __copied: { text: string; html?: string }[] }
 					).__copied.push({ text });
 				},
 				write: async (
@@ -144,46 +139,26 @@ export async function recordingClipboard(page: Page): Promise<void> {
 					if (!item) throw new Error("Clipboard write requires an item.");
 					let text = "";
 					let html: string | undefined;
-					let typed: string | undefined;
 					if (item.types.includes("text/plain")) {
 						text = await (await item.getType("text/plain")).text();
 					}
 					if (item.types.includes("text/html")) {
 						html = await (await item.getType("text/html")).text();
 					}
-					if (item.types.includes(privateType)) {
-						typed = await (await item.getType(privateType)).text();
-					}
 					(
-						window as unknown as {
-							__copied: {
-								text: string;
-								html?: string;
-								typed?: string;
-								types?: string[];
-							}[];
-						}
-					).__copied.push({ text, html, typed, types: [...item.types] });
+						window as unknown as { __copied: { text: string; html?: string }[] }
+					).__copied.push({ text, html });
 				},
 			},
 			configurable: true,
 		});
-	}, TABELO_CLIPBOARD_TYPE);
+	});
 }
 
-export function lastCopied(
-	page: Page,
-): Promise<(CopiedFlavours & { types?: string[] }) | undefined> {
+export function lastCopied(page: Page): Promise<CopiedFlavours | undefined> {
 	return page.evaluate(() =>
 		(
-			window as unknown as {
-				__copied: {
-					text: string;
-					html?: string;
-					typed?: string;
-					types?: string[];
-				}[];
-			}
+			window as unknown as { __copied: { text: string; html?: string }[] }
 		).__copied.at(-1),
 	);
 }
@@ -649,22 +624,16 @@ export class TabeloPage {
 		await header.filter({ hasText: value }).waitFor();
 	}
 
-	// A string is the common case: text alone, the way an external application
-	// pastes. A round trip passes the whole set that `copyFlavours` returned, so
-	// nothing is dropped between the writer and the reader.
 	async paste(
-		flavours: string | CopiedFlavours,
+		text: string,
 		html?: string,
 		headerRow: boolean | null = true,
 	): Promise<void> {
-		const flavourSet =
-			typeof flavours === "string" ? { text: flavours, html } : flavours;
 		await this.grid().evaluate(
 			(grid, payload) => {
 				const data = new DataTransfer();
 				data.setData("text/plain", payload.text);
 				if (payload.html) data.setData("text/html", payload.html);
-				if (payload.typed) data.setData(payload.privateType, payload.typed);
 				const event = new Event("paste", {
 					bubbles: true,
 					cancelable: true,
@@ -672,7 +641,7 @@ export class TabeloPage {
 				Object.defineProperty(event, "clipboardData", { value: data });
 				grid.dispatchEvent(event);
 			},
-			{ ...flavourSet, privateType: TABELO_CLIPBOARD_TYPE },
+			{ text, html },
 		);
 
 		// Most tests paste only to establish a fixture and should state the header
@@ -716,20 +685,16 @@ export class TabeloPage {
 	private async clipboardEvent(
 		type: "copy" | "cut",
 	): Promise<Required<CopiedFlavours>> {
-		return this.grid().evaluate(
-			(grid, { name, privateType }) => {
-				const data = new DataTransfer();
-				const event = new Event(name, { bubbles: true, cancelable: true });
-				Object.defineProperty(event, "clipboardData", { value: data });
-				grid.dispatchEvent(event);
-				return {
-					text: data.getData("text/plain"),
-					html: data.getData("text/html"),
-					typed: data.getData(privateType),
-				};
-			},
-			{ name: type, privateType: TABELO_CLIPBOARD_TYPE },
-		);
+		return this.grid().evaluate((grid, name) => {
+			const data = new DataTransfer();
+			const event = new Event(name, { bubbles: true, cancelable: true });
+			Object.defineProperty(event, "clipboardData", { value: data });
+			grid.dispatchEvent(event);
+			return {
+				text: data.getData("text/plain"),
+				html: data.getData("text/html"),
+			};
+		}, type);
 	}
 
 	async importFile(

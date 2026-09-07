@@ -89,37 +89,34 @@ its migration stayed reviewable on its own.
 
 The clipboard carries the model between two Tabelo tabs without becoming a
 source of authority over it. TSV and HTML have no syntax for a type, so a
-private payload travels beside them holding the selected values and each
-selected column's expectation. It is preferred only when it validates and
-projects to exactly the table the public flavours are visibly carrying, so
-external content still arrives as text and nothing gains a type in transit. Its
-schema is versioned on its own: bytes in flight between two tabs have a
-different compatibility window from a stored document, and tying the two
+private payload rides inertly inside the HTML flavour holding the selected
+values and each selected column's expectation. It is preferred only when it
+validates and projects to exactly the table the public flavours are visibly
+carrying, so external content still arrives as text and nothing gains a type in
+transit. Its schema is versioned on its own: bytes in flight between two tabs
+have a different compatibility window from a stored document, and tying the two
 versions together would make either one unable to change alone.
 
-The payload rides in a MIME flavour of its own, `web application/x-tabelo+json`,
-on both the event path and the asynchronous one. It rode inertly inside the HTML
-flavour until #266, and the reason was Firefox: that engine refused to write a
-custom flavour through the asynchronous clipboard API and took the public
-flavours down with it, while an HTML comment survived every path in both
-engines. Firefox is no longer a supported browser (#265), and Chromium carries a
-web custom format through `DataTransfer` and `ClipboardItem` alike, verified on
-both before the change. Separating the private bytes from the visible flavour is
-a correctness property first: what an external application receives can no
-longer contain anything but the table. It is also faster, measured with the
-method in `docs/performance.md`: assembling a copy fell about 1.3x and reading
-the payload back about 4x at 200 and 1000 rows, because the base64 encode, the
-splice, and the marker scan are all gone.
+The transport was measured rather than chosen, and it was re-measured in #266
+once its original reason no longer applied. The original reason was Firefox: it
+refused to write a custom MIME flavour through the asynchronous clipboard API
+and took the public flavours down with it, while an inert HTML comment survived
+every path in both engines. Firefox is no longer supported (#265), so the
+comment was expected to give way to a flavour of its own, which is both tidier
+and measurably faster.
 
-The version describes the payload's shape and never its transport. Moving the
-same bytes to a different flavour is not a version event, and bumping the
-version for one would reject exactly the payloads a transport change means to
-keep reading. So #266 left it at 1 and kept two things permanently: the HTML
-comment is still stripped from every HTML flavour Tabelo reads, because an old
-build's copy sits in the system clipboard long after every tab has reloaded and
-an unstripped marker would land in a cell as text, and the comment is still
-decoded when no private flavour is present, because the strip has to stay
-regardless and the decode beside it preserves types on content already copied.
+It does not, and the reason is now Chromium's alone. Chromium keeps a custom
+type written through `DataTransfer.setData` in a different store from a
+"web "-prefixed type written through `ClipboardItem`, and neither reader sees
+the other's. Tabelo copies and pastes from both a keyboard event and a menu
+command, so a flavour of its own carries the types through two of those four
+paths and silently drops them through the other two: a number arrives as its
+text, a null becomes an empty string, and a column's expectation vanishes. The
+HTML flavour is the only carrier both transports share. Priority 1 is data
+preservation, so the shared carrier wins over the tidier one, and
+`e2e/clipboard-transports.spec.ts` pins that result across all four
+combinations. `docs/performance.md` records the measurement and the reproduction
+so the question is not re-opened without new evidence about Chromium.
 
 Pasting values into columns that already exist writes values and nothing else.
 An expectation travels only where the paste creates the columns, because

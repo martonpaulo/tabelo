@@ -47,7 +47,7 @@ export async function copyToClipboard(
 	scope: CopyScope,
 ): Promise<boolean> {
 	const outcome = payload.html
-		? await writeClipboardTable(payload.text, payload.html, payload.typed)
+		? await writeClipboardTable(payload.text, payload.html)
 		: await writeClipboardText(payload.text);
 
 	// A refusal is a failure and says so, in its own tone and without a timer.

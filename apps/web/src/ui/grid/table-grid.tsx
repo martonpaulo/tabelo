@@ -1,6 +1,5 @@
 import { cn } from "@tabelo/ui/lib/utils";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { TABELO_CLIPBOARD_TYPE } from "@/clipboard/payload";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import { cellText, readCell } from "@/core/cell-value";
@@ -960,11 +959,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		);
 		event.clipboardData.setData("text/plain", payload.text);
 		event.clipboardData.setData("text/html", payload.html);
-		// A web custom format, so the private bytes stay out of the HTML an
-		// external application receives. See clipboard/payload.ts.
-		if (payload.typed) {
-			event.clipboardData.setData(TABELO_CLIPBOARD_TYPE, payload.typed);
-		}
 		event.preventDefault();
 	};
 	const contentWidth = document.columns.reduce(
@@ -1070,7 +1064,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					const refusal = store.pasteClipboard({
 						text: event.clipboardData.getData("text/plain"),
 						html: event.clipboardData.getData("text/html"),
-						typed: event.clipboardData.getData(TABELO_CLIPBOARD_TYPE),
 					});
 					if (refusal) {
 						store.pushNotice({
