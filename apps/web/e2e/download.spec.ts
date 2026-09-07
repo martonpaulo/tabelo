@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
-import { listCodecs } from "@/formats";
+import { getCodec, listCodecs } from "@/formats";
 import { expect, test } from "./fixtures";
 import { renderedSource } from "./helpers";
 
@@ -441,22 +441,36 @@ test("an output option is reached by Tab and toggled by Space", async ({
 	const dialog = page.getByRole("dialog");
 	await dialog.getByRole("radio", { name: copy.views.records.label }).click();
 
-	const option = dialog.getByRole("checkbox", {
-		name: copy.download.option("includeFirstColumnName"),
-	});
-	await expect(option).toBeChecked();
+	// Every option Records declares, not just the first: they render through one
+	// component, so a fix that reached only one of them would be a coincidence.
+	const declared = getCodec("records").outputOptions ?? [];
+	expect(declared.length).toBeGreaterThan(0);
+	const options = declared.map((option) =>
+		dialog.getByRole("checkbox", { name: copy.download.option(option) }),
+	);
 
-	// Walk the dialog's own focus order from its first control rather than
-	// asserting a position: what matters is that the option is on the path.
-	await dialog.getByRole("button", { name: copy.actions.cancel }).focus();
-	for (let stop = 0; stop < 12; stop += 1) {
-		if (await option.evaluate((el) => el === document.activeElement)) break;
-		await page.keyboard.press("Tab");
+	for (const option of options) {
+		const before = await option.isChecked();
+
+		// Walk the dialog's own focus order from its first control rather than
+		// asserting a position: what matters is that the option is on the path.
+		await dialog.getByRole("button", { name: copy.actions.cancel }).focus();
+		for (let stop = 0; stop < 12; stop += 1) {
+			if (await option.evaluate((el) => el === document.activeElement)) break;
+			await page.keyboard.press("Tab");
+		}
+		await expect(option).toBeFocused();
+
+		// Keyboard focus must be visible, not merely present. The indicator is a
+		// ring the theme paints through focus-visible, so the assertion is that
+		// some ring is drawn, never which size or colour it is.
+		expect(
+			await option.evaluate((el) => getComputedStyle(el).boxShadow),
+		).not.toBe("none");
+
+		await page.keyboard.press("Space");
+		expect(await option.isChecked()).toBe(!before);
+		await page.keyboard.press("Space");
+		expect(await option.isChecked()).toBe(before);
 	}
-	await expect(option).toBeFocused();
-
-	await page.keyboard.press("Space");
-	await expect(option).not.toBeChecked();
-	await page.keyboard.press("Space");
-	await expect(option).toBeChecked();
 });
