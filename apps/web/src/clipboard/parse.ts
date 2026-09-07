@@ -8,7 +8,11 @@ import {
 	readHtmlTable,
 } from "@/formats/html";
 import type { CodecId, ParseIssue, TableCodec } from "@/formats/types";
-import { type ClipboardSelection, readTabeloPayload } from "./payload";
+import {
+	type ClipboardSelection,
+	decodeTabeloPayload,
+	readLegacyTabeloPayload,
+} from "./payload";
 
 // "tabelo" is not a codec: it is the private flavour Tabelo writes for itself,
 // and it is the only source that can hand over values that are already typed.
@@ -26,6 +30,9 @@ export interface ClipboardTable {
 export interface ClipboardPayload {
 	readonly text: string;
 	readonly html?: string;
+	// Tabelo's own flavour, as the raw JSON it was written with. Present only on
+	// a copy Tabelo made itself; every external source arrives without it.
+	readonly typed?: string;
 }
 
 function tableViaCodec(codec: TableCodec, text: string): ClipboardTable | null {
@@ -82,16 +89,21 @@ export function readClipboardTable(
 	payload: ClipboardPayload,
 ): ClipboardTable | null {
 	const text = payload.text ?? "";
+	// The HTML is split even though nothing writes the comment any more: a copy
+	// an older build left on the system clipboard outlives every tab, so its
+	// marker still has to be removed, and reading it back costs nothing beside
+	// the removal that has to happen regardless.
 	const split = payload.html
-		? readTabeloPayload(payload.html)
+		? readLegacyTabeloPayload(payload.html)
 		: { html: "", selection: null };
+	const selection = payload.typed
+		? (decodeTabeloPayload(payload.typed) ?? split.selection)
+		: split.selection;
 
 	const html = split.html ? readHtmlTable(split.html) : null;
 	if (html) {
 		const typed =
-			split.selection && describesPublicTable(split.selection, html)
-				? split.selection
-				: null;
+			selection && describesPublicTable(selection, html) ? selection : null;
 		return {
 			matrix: normalizeMatrix(typed ? typed.matrix : html.matrix),
 			source: typed ? "tabelo" : "html",

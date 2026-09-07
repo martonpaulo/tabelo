@@ -170,6 +170,38 @@ the rest of the table attributable: the serializer got faster because it stopped
 measuring every cell twice and started skipping the loop for cells that need no
 escaping, not because the escaping grammar moved.
 
+### Clipboard
+
+`clipboard.bench.ts` times the two halves of the clipboard transport. `copy` is
+the whole write path a grid copy runs: the TSV, the HTML table, and the private
+payload. `paste` is the transport-specific half of the read path: the strip
+every reader of the HTML flavour runs, and the decode that turns the private
+bytes back into a selection. The public HTML parse is excluded for the same
+`DOMParser` reason as the codec table above, and is unchanged by #266 either
+way.
+
+Same machine and session; `before` is the HTML-comment transport at `5597c18`,
+measured by pointing this bench at it. #266 moved the payload into a MIME
+flavour of its own, which drops a base64 encode from the write and a marker
+scan plus a base64 decode from the read.
+
+| call | 200 plain, before | 200 plain, after | 200 escaped, before | 200 escaped, after |
+| --- | ---: | ---: | ---: | ---: |
+| `copy` | 0.618 | 0.467 | 0.711 | 0.522 |
+| `paste` | 0.696 | 0.171 | 0.875 | 0.180 |
+
+| call | 1000 plain, before | 1000 plain, after | 1000 escaped, before | 1000 escaped, after |
+| --- | ---: | ---: | ---: | ---: |
+| `copy` | 3.142 | 2.330 | 3.611 | 2.602 |
+| `paste` | 3.621 | 0.841 | 4.489 | 0.890 |
+
+The read is where the change shows: about 4x throughout, because the whole
+base64 round trip is gone and what remains is one regex that matches nothing
+plus a JSON parse. The write improves about 1.3x, which is the encode no longer
+running. The case for the change was never the speed, though: the payload no
+longer travels inside the flavour an external application receives. See
+`docs/adr/0008`.
+
 ### Document
 
 | call | 200 rows | 1000 rows |

@@ -69,10 +69,12 @@ export interface PrepareImportRequest {
 
 function payloadBytes(payload: ClipboardPayload): number {
 	const encoder = new TextEncoder();
-	// Tabelo's own private flavour rides inside the HTML, and it is metadata
-	// rather than content the user is importing. It carries its own bound, so
-	// charging it to this budget would shrink the table a Tabelo copy can be
-	// pasted back into for bytes the destination never has to hold.
+	// Tabelo's own private flavour is metadata rather than content the user is
+	// importing. It carries its own bound, so charging it to this budget would
+	// shrink the table a Tabelo copy can be pasted back into for bytes the
+	// destination never has to hold. It travels in a flavour of its own, which
+	// this budget simply does not read; the strip is for the HTML comment an
+	// older build's copy may still be carrying.
 	const html = payload.html ? stripTabeloPayload(payload.html) : "";
 	return (
 		encoder.encode(payload.text).byteLength + encoder.encode(html).byteLength

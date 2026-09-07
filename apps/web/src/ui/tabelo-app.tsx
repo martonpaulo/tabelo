@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { TABELO_CLIPBOARD_TYPE } from "@/clipboard/payload";
 import { tableDocumentTitle } from "@/copy/product";
 import { isDocumentBlank } from "@/core/document";
 import { runHistory } from "@/history/coordinator";
@@ -131,6 +132,7 @@ export function TabeloApp() {
 			const payload = {
 				text: event.clipboardData.getData("text/plain"),
 				html: event.clipboardData.getData("text/html"),
+				typed: event.clipboardData.getData(TABELO_CLIPBOARD_TYPE),
 			};
 			const before = useTabeloStore.getState();
 			before.pasteClipboard(payload);

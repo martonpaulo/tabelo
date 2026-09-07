@@ -118,13 +118,30 @@ describe("a Tabelo clipboard selection", () => {
 			expectedTypes: ["text"],
 		});
 
-		const rawBytes = new TextEncoder().encode(
-			payload.text + payload.html,
+		const encoder = new TextEncoder();
+		const publicBytes = encoder.encode(payload.text + payload.html).byteLength;
+		const everything = encoder.encode(
+			payload.text + payload.html + (payload.typed ?? ""),
 		).byteLength;
-		expect(payload.html).toContain("tabelo:");
-		expect(rawBytes).toBeGreaterThan(IMPORT_LIMITS.payloadBytes);
+		// The public flavours fit on their own, and would not once the private
+		// one is added to them.
+		expect(publicBytes).toBeLessThan(IMPORT_LIMITS.payloadBytes);
+		expect(everything).toBeGreaterThan(IMPORT_LIMITS.payloadBytes);
 
 		expect(prepareImport({ payload }).ok).toBe(true);
+	});
+
+	// The same rule for the transport an older build used. The marker is
+	// stripped before the budget is counted, so a copy made before #266 is
+	// charged for its table and not for the metadata riding in it.
+	it("is not charged for a marker an older build left in the HTML", () => {
+		const long = "x".repeat(400_000);
+		const html = `<!--tabelo:${"A".repeat(600_000)}--><table><tbody><tr><td>${long}</td></tr></tbody></table>`;
+
+		expect(new TextEncoder().encode(long + html).byteLength).toBeGreaterThan(
+			IMPORT_LIMITS.payloadBytes,
+		);
+		expect(prepareImport({ payload: { text: long, html } }).ok).toBe(true);
 	});
 });
 

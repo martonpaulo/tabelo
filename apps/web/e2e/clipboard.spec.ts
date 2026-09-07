@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import { TABELO_CLIPBOARD_TYPE } from "@/clipboard/payload";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 import { faultyClipboard, type TabeloPage } from "./helpers";
@@ -177,7 +178,7 @@ test("a granted copy confirms what it did and keeps the rich flavour", async ({
 		await page.evaluate(
 			() => (window as unknown as { __written: string[] }).__written,
 		),
-	).toEqual(["text/plain", "text/html"]);
+	).toEqual(["text/plain", "text/html", TABELO_CLIPBOARD_TYPE]);
 });
 
 // The mark showing where the clipboard was filled from. It is drawn by the

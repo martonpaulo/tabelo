@@ -14,7 +14,7 @@ import { readClipboardTable } from "./parse";
 import {
 	CLIPBOARD_PAYLOAD_VERSION,
 	type ClipboardSelection,
-	readTabeloPayload,
+	decodeTabeloPayload,
 	stripTabeloPayload,
 } from "./payload";
 import { matrixToHtml, selectionClipboardPayload } from "./serialize";
@@ -27,30 +27,19 @@ const typedSelection: ClipboardSelection = {
 	expectedTypes: ["text", "number", "boolean", "text"],
 };
 
-const PAYLOAD_PATTERN = /<!--tabelo:([\s\S]*?)-->/;
-
-function tamper(html: string, replace: (encoded: string) => string): string {
-	const encoded = PAYLOAD_PATTERN.exec(html)?.[1];
-	if (encoded === undefined) throw new Error("no payload to tamper with");
-	return html.replace(encoded, replace(encoded));
-}
-
 // The payload Tabelo actually wrote, as an object. Every forgery below starts
 // from it and changes one thing, so each test isolates the rule it names
 // rather than tripping the fingerprint on its way past.
 function genuinePayload(
 	selection: ClipboardSelection = typedSelection,
 ): Record<string, unknown> {
-	const { html } = selectionClipboardPayload(selection);
-	const encoded = PAYLOAD_PATTERN.exec(html)?.[1] ?? "";
-	return JSON.parse(
-		new TextDecoder().decode(
-			Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0)),
-		),
-	);
+	return JSON.parse(selectionClipboardPayload(selection).typed ?? "");
 }
 
-function forgedHtml(payload: unknown, matrix = typedSelection.matrix): string {
+// The pre-flavour transport: the same JSON, base64-encoded into an HTML
+// comment. Written only here now, because this is the one place that still has
+// to prove Tabelo can read what an older build left on the system clipboard.
+function legacyHtml(payload: unknown, matrix = typedSelection.matrix): string {
 	const bytes = new TextEncoder().encode(JSON.stringify(payload));
 	let binary = "";
 	for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -59,47 +48,36 @@ function forgedHtml(payload: unknown, matrix = typedSelection.matrix): string {
 
 describe("the private clipboard payload", () => {
 	it("round-trips every scalar and the expected column types", () => {
-		const { html } = selectionClipboardPayload(typedSelection);
+		const { typed } = selectionClipboardPayload(typedSelection);
 
-		expect(readTabeloPayload(html).selection).toEqual(typedSelection);
+		expect(decodeTabeloPayload(typed ?? "")).toEqual(typedSelection);
 	});
 
-	it("is invisible to the public HTML table it travels with", () => {
+	it("leaves the public HTML flavour carrying nothing but the table", () => {
 		const { html } = selectionClipboardPayload(typedSelection);
 
-		// Both halves of the guarantee: the payload is stripped before parsing,
-		// and it would still be inert if it were not.
+		expect(html).toBe(matrixToHtml(typedSelection.matrix));
+		expect(html).not.toContain("tabelo");
 		expect(readHtmlTable(html)?.matrix).toEqual([
 			["Ingrid", "35", "true", ""],
 			["Paulo", "35", "false", ""],
 		]);
-		expect(stripTabeloPayload(html)).toBe(matrixToHtml(typedSelection.matrix));
-		expect(stripTabeloPayload(html)).not.toContain("tabelo:");
-	});
-
-	it("leaves HTML that carries no payload untouched", () => {
-		const html = matrixToHtml([["Ingrid"]]);
-
-		expect(readTabeloPayload(html)).toEqual({ html, selection: null });
 	});
 
 	it.each([
-		["a truncated payload", (encoded: string) => encoded.slice(0, -8)],
-		["bytes that are not base64", () => "not base64 at all"],
-		["an empty payload", () => ""],
-	])("falls back and still strips %s", (_name, replace) => {
-		const { html } = selectionClipboardPayload(typedSelection);
+		["truncated bytes", (json: string) => json.slice(0, -8)],
+		["bytes that are not JSON", () => "not json at all"],
+		["nothing at all", () => ""],
+	])("refuses %s", (_name, damage) => {
+		const { typed } = selectionClipboardPayload(typedSelection);
 
-		const read = readTabeloPayload(tamper(html, replace));
-
-		expect(read.selection).toBeNull();
-		expect(read.html).not.toContain("tabelo:");
+		expect(decodeTabeloPayload(damage(typed ?? ""))).toBeNull();
 	});
 
 	// A value swapped for one that projects to the same text is the edit a
 	// dimension check cannot see, so the fingerprint is what has to catch it.
 	it("refuses a payload whose values no longer match its fingerprint", () => {
-		const forged = forgedHtml({
+		const forged = JSON.stringify({
 			...genuinePayload(),
 			matrix: [
 				["Ingrid", "35", true, null],
@@ -107,25 +85,25 @@ describe("the private clipboard payload", () => {
 			],
 		});
 
-		expect(readTabeloPayload(forged).selection).toBeNull();
+		expect(decodeTabeloPayload(forged)).toBeNull();
 	});
 
 	it("refuses a version it does not know rather than guessing at it", () => {
-		const forged = forgedHtml({
+		const forged = JSON.stringify({
 			...genuinePayload(),
 			version: CLIPBOARD_PAYLOAD_VERSION + 1,
 		});
 
-		expect(readTabeloPayload(forged).selection).toBeNull();
+		expect(decodeTabeloPayload(forged)).toBeNull();
 	});
 
 	it("refuses a key it did not write", () => {
-		const forged = forgedHtml({
+		const forged = JSON.stringify({
 			...genuinePayload(),
 			trailingKey: "unexpected",
 		});
 
-		expect(readTabeloPayload(forged).selection).toBeNull();
+		expect(decodeTabeloPayload(forged)).toBeNull();
 	});
 
 	it.each([
@@ -135,12 +113,12 @@ describe("the private clipboard payload", () => {
 		["a nested array", [["deep"]]],
 		["an object", { value: 1 }],
 	])("refuses %s where a scalar belongs", (_name, value) => {
-		const forged = forgedHtml({
+		const forged = JSON.stringify({
 			...genuinePayload(),
 			matrix: [[value]],
 		});
 
-		expect(readTabeloPayload(forged).selection).toBeNull();
+		expect(decodeTabeloPayload(forged)).toBeNull();
 	});
 
 	// The bound exists so an unbounded string never reaches the decoder. A
@@ -153,11 +131,53 @@ describe("the private clipboard payload", () => {
 			expectedTypes: ["text"],
 		};
 
-		const { html } = selectionClipboardPayload(selection);
+		const payload = selectionClipboardPayload(selection);
 
-		expect(html).not.toContain("tabelo:");
+		expect(payload.typed).toBeUndefined();
 		// The values themselves still travel: it is only their types that do not.
-		expect(readHtmlTable(html)?.matrix).toEqual([[enormous]]);
+		expect(readHtmlTable(payload.html)?.matrix).toEqual([[enormous]]);
+	});
+});
+
+// An old build's copy sits in the system clipboard long after every tab has
+// reloaded onto the new one, so both halves of the old transport still have to
+// work: the marker is removed, and what it carried is still believed.
+describe("the pre-flavour HTML-comment transport", () => {
+	it("still hands a paste the values with their types", () => {
+		const html = legacyHtml(genuinePayload());
+
+		const table = readClipboardTable({ text: "", html });
+
+		expect(table?.source).toBe("tabelo");
+		expect(table?.matrix).toEqual(typedSelection.matrix);
+		expect(table?.expectedTypes).toEqual(typedSelection.expectedTypes);
+	});
+
+	it("removes the marker before anything else reads the HTML", () => {
+		const html = legacyHtml(genuinePayload());
+
+		expect(stripTabeloPayload(html)).toBe(matrixToHtml(typedSelection.matrix));
+		expect(stripTabeloPayload(html)).not.toContain("tabelo:");
+	});
+
+	it("leaves HTML that carries no marker untouched", () => {
+		const html = matrixToHtml([["Ingrid"]]);
+
+		expect(stripTabeloPayload(html)).toBe(html);
+	});
+
+	// A marker that arrives corrupted still has to be removed: left in place it
+	// would reach a cell as text, which is the corruption the strip prevents.
+	it("still strips a marker whose contents cannot be believed", () => {
+		const html = legacyHtml(genuinePayload()).replace(
+			/<!--tabelo:[\s\S]*?-->/,
+			"<!--tabelo:not base64 at all-->",
+		);
+
+		const table = readClipboardTable({ text: "", html });
+
+		expect(table?.source).toBe("html");
+		expect(stripTabeloPayload(html)).not.toContain("tabelo:");
 	});
 });
 
@@ -176,12 +196,9 @@ describe("preferring the private payload", () => {
 		const payload = selectionClipboardPayload(typedSelection);
 		// The metadata Tabelo wrote, beside a table it did not: exactly what a
 		// stale or recombined clipboard looks like.
-		const html = payload.html.replace(
-			matrixToHtml(typedSelection.matrix),
-			matrixToHtml([["Mabel", 45, true, null]]),
-		);
+		const html = matrixToHtml([["Mabel", 45, true, null]]);
 
-		const table = readClipboardTable({ text: payload.text, html });
+		const table = readClipboardTable({ ...payload, html });
 
 		expect(table?.source).toBe("html");
 		expect(table?.matrix).toEqual([["Mabel", "45", "true", ""]]);
@@ -196,7 +213,7 @@ describe("preferring the private payload", () => {
 			expectedTypes: ["text"],
 		});
 
-		expect(readTabeloPayload(payload.html).selection).not.toBeNull();
+		expect(decodeTabeloPayload(payload.typed ?? "")).not.toBeNull();
 		expect(readClipboardTable(payload)?.source).toBe("html");
 	});
 

@@ -1,9 +1,10 @@
 import type { ClipboardPayload } from "@/clipboard/parse";
+import { TABELO_CLIPBOARD_TYPE } from "@/clipboard/payload";
 
 // The clipboard is the one browser API Tabelo uses that the user can refuse.
-// Permission can be denied, the read half is absent in some browsers, and a
-// restrictive context can remove the whole thing, so every call reports what
-// happened instead of returning false and leaving the caller to guess.
+// Permission can be denied and a restrictive context can remove the whole
+// thing, so every call reports what happened instead of returning false and
+// leaving the caller to guess.
 //
 // Trusted keyboard copy and paste arrive as events and never come through
 // here, which is why the recovery advice everywhere is "use the keyboard": it
@@ -12,7 +13,7 @@ import type { ClipboardPayload } from "@/clipboard/parse";
 export type ClipboardBlock =
 	// The user or the page's permission policy refused.
 	| "blocked"
-	// The API, or the half of it being asked for, does not exist here.
+	// The API does not exist here.
 	| "unavailable"
 	// The call worked and there was nothing to read.
 	| "empty"
@@ -51,9 +52,9 @@ function reasonFor(error: unknown): ClipboardBlock {
 	}
 }
 
-// The DOM types declare every method as present, but Firefox ships no read(),
-// and an insecure or restricted context removes the object entirely. Treating
-// it as partial is what the runtime actually looks like.
+// The DOM types declare the object as always present, but an insecure or
+// restricted context removes it entirely. Treating it as partial is what the
+// runtime actually looks like.
 function clipboard(): Partial<Clipboard> | undefined {
 	return typeof navigator === "undefined" ? undefined : navigator.clipboard;
 }
@@ -74,6 +75,7 @@ export async function writeClipboardText(
 export async function writeClipboardTable(
 	text: string,
 	html: string,
+	typed?: string,
 ): Promise<ClipboardWriteOutcome> {
 	const api = clipboard();
 	if (!api?.write || typeof ClipboardItem === "undefined") {
@@ -85,6 +87,16 @@ export async function writeClipboardTable(
 			new ClipboardItem({
 				"text/plain": new Blob([text], { type: "text/plain" }),
 				"text/html": new Blob([html], { type: "text/html" }),
+				// Tabelo's own types, in their own flavour. Chromium carries a
+				// "web "-prefixed custom format through this API, so the private
+				// bytes never enter the HTML an external application receives.
+				...(typed
+					? {
+							[TABELO_CLIPBOARD_TYPE]: new Blob([typed], {
+								type: TABELO_CLIPBOARD_TYPE,
+							}),
+						}
+					: {}),
 			}),
 		]);
 		return { ok: true, richness: "table" };
@@ -97,33 +109,22 @@ export async function writeClipboardTable(
 }
 
 export async function readClipboardTable(): Promise<ClipboardReadOutcome> {
+	// The object arrives whole or not at all: there is no second attempt to make
+	// when it is absent, because the same context that removes read() removes
+	// readText() beside it.
 	const api = clipboard();
-	if (!api) return { ok: false, reason: "unavailable" };
-
-	// A null result means the rich attempt failed in a way plain text might
-	// survive; anything else is already the final answer.
-	const read = api.read?.bind(api);
-	const rich = read ? await readRich(read) : null;
-	if (rich) return rich;
-
-	if (!api.readText) return { ok: false, reason: "unavailable" };
-	try {
-		const text = await api.readText();
-		return text
-			? { ok: true, payload: { text } }
-			: { ok: false, reason: "empty" };
-	} catch (error) {
-		return { ok: false, reason: reasonFor(error) };
-	}
+	if (!api?.read) return { ok: false, reason: "unavailable" };
+	return readRich(api.read.bind(api));
 }
 
 async function readRich(
 	read: () => Promise<ClipboardItems>,
-): Promise<ClipboardReadOutcome | null> {
+): Promise<ClipboardReadOutcome> {
 	try {
 		const items = await read();
 		let text = "";
 		let html: string | undefined;
+		let typed: string | undefined;
 		for (const item of items) {
 			if (item.types.includes("text/html")) {
 				html = await (await item.getType("text/html")).text();
@@ -131,16 +132,15 @@ async function readRich(
 			if (item.types.includes("text/plain")) {
 				text = await (await item.getType("text/plain")).text();
 			}
+			// Present only on a copy Tabelo made itself; an external application
+			// never writes this flavour, so its absence is the normal case.
+			if (item.types.includes(TABELO_CLIPBOARD_TYPE)) {
+				typed = await (await item.getType(TABELO_CLIPBOARD_TYPE)).text();
+			}
 		}
 		if (!text && !html) return { ok: false, reason: "empty" };
-		return { ok: true, payload: { text, html } };
+		return { ok: true, payload: { text, html, typed } };
 	} catch (error) {
-		const reason = reasonFor(error);
-		// A refusal applies to the whole clipboard, so falling through to
-		// readText() would only produce the same refusal a second time.
-		if (reason === "blocked") return { ok: false, reason };
-		// Anything else may still be readable as plain text: Firefox has no
-		// read() but does have readText().
-		return null;
+		return { ok: false, reason: reasonFor(error) };
 	}
 }
