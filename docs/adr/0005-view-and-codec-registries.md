@@ -36,12 +36,14 @@ and HTML still apply alignment edits because their syntax carries it. This is
 registry data, not a switch on codec ids.
 
 A codec may also declare `outputOptions`: choices that belong to the file it
-writes and to nothing else. CSV declares `includeHeader`, because the table
-always has exactly one header row and whether the file prints it is a property
-of that file, not `hasHeader` state creeping back into the document. The
-download chooser reads the declaration rather than naming CSV, so a format with
-no choices is offered none and a format that gains one needs no edit there.
-Values are labelled in `ui/copy.ts` by id, keeping visible strings out of the
+writes and to nothing else. Records declares `includeFirstColumnName` and
+`includeEmptyValues`, because both produce output its own parser cannot read
+back, which is exactly why neither may reach an editable pane. A choice a
+format cannot legitimately offer is simply not declared: CSV declares none,
+because its header row is structural and every file prints it. The download
+chooser reads the declaration rather than naming a format, so a format with no
+choices is offered none and a format that gains one needs no edit there. Values
+are labelled in `copy/copy.ts` by id, keeping visible strings out of the
 registry.
 
 A codec may declare a document precondition when its format cannot represent
@@ -53,9 +55,9 @@ data still describes whether a view can produce a file at all; the precondition
 answers whether it can produce one for the current document.
 
 The chosen values are **session-only**, held in the store and never persisted.
-They change the shape of the exported file, and a silently remembered "no
-header row" would surprise someone weeks later; every session starts from the
-codec's declared default instead.
+They change the shape of the exported file, and a silently remembered "leave
+the empty values out" would surprise someone weeks later; every session starts
+from the codec's declared default instead.
 
 **A view registry** holds what the workspace can display. A `ViewDefinition`
 adds presentation to a codec: a label, a description, an icon, a `kind`

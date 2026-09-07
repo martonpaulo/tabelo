@@ -273,9 +273,9 @@ export interface TabeloState {
 	pendingImport: PendingImport | null;
 	pendingPaneAction: PendingPaneAction | null;
 	// What the next download should produce. Deliberately session-only: it
-	// changes the shape of the exported file, and a silently remembered "no
-	// header row" would surprise someone weeks later. Never persisted, never
-	// document state, never a history step. See docs/adr/0005.
+	// changes the shape of the exported file, and a silently remembered "leave
+	// the empty values out" would surprise someone weeks later. Never
+	// persisted, never document state, never a history step. See docs/adr/0005.
 	outputOptions: Required<OutputOptions>;
 	hydrate: () => void;
 	replaceUnreadableStorage: () => boolean;

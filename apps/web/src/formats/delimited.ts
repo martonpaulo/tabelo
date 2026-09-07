@@ -2,14 +2,11 @@ import Papa from "papaparse";
 import { documentToMatrix } from "@/core/document";
 import type { TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
-import {
-	type CodecId,
-	defaultOutputOptions,
-	type MatrixParseResult,
-	type OutputOptionId,
-	type OutputOptions,
-	type ParseIssue,
-	type TableCodec,
+import type {
+	CodecId,
+	MatrixParseResult,
+	ParseIssue,
+	TableCodec,
 } from "./types";
 
 // CSV and TSV differ only by delimiter, so they share one implementation.
@@ -115,11 +112,8 @@ export function parseDelimitedMatrix(
 export function serializeDelimited(
 	document: TableDocument,
 	delimiter: string,
-	options: OutputOptions = {},
 ): string {
-	const matrix = documentToMatrix(document, {
-		includeHeader: options.includeHeader ?? defaultOutputOptions.includeHeader,
-	});
+	const matrix = documentToMatrix(document);
 	const text = Papa.unparse(matrix, { delimiter, newline: "\n" });
 
 	// A final row of only empty cells writes nothing visible, so without a
@@ -142,9 +136,6 @@ interface DelimitedCodecConfig {
 	// still opens; TSV is only ever tab-separated, and sniffing there would
 	// misread a tab-free line.
 	readonly sniffDelimiter: boolean;
-	// Declared per format rather than derived: both delimited formats could
-	// drop the header row, but only CSV promises the choice.
-	readonly outputOptions?: readonly OutputOptionId[];
 }
 
 export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
@@ -201,9 +192,7 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 		// separator is the one the format declares. Guessing there let cell data
 		// masquerade as structure and made canonical output unreadable (#217).
 		parse: (text) => toDocumentParseResult(readMatrix(text, false)),
-		serialize: (document, options) =>
-			serializeDelimited(document, config.delimiter, options),
-		outputOptions: config.outputOptions,
+		serialize: (document) => serializeDelimited(document, config.delimiter),
 		sniffPriority: config.id === "tsv" ? 10 : 40,
 		canSniff: (text) =>
 			config.id === "tsv"

@@ -137,7 +137,9 @@ describe("csv serialization", () => {
 		expect(out).toBe('A,B\nplain,"has,comma"');
 	});
 
-	it("can omit the header row on export", () => {
+	// The header row is structural, so a CSV file that omits it no longer
+	// describes the table it came from. There is no option that produces one.
+	it("always writes the header row", () => {
 		const document = documentFromMatrix(
 			[
 				["A", "B"],
@@ -145,14 +147,27 @@ describe("csv serialization", () => {
 			],
 			{ headerRow: true },
 		);
-		expect(csvCodec.serialize(document, { includeHeader: false })).toBe("1,2");
-		// The choice belongs to the file, never to the table.
 		expect(csvCodec.serialize(document)).toBe("A,B\n1,2");
-		expect(document.columns.map((column) => column.header)).toEqual(["A", "B"]);
 	});
 
-	it("declares the header choice so the download chooser can offer it", () => {
-		expect(csvCodec.outputOptions).toEqual(["includeHeader"]);
+	it("offers no output option that could drop it", () => {
+		expect(csvCodec.outputOptions).toBeUndefined();
+	});
+
+	// A table with no data is still a table, and its header row is what says so.
+	it("writes a table with no data rows as its header row", () => {
+		const document = documentFromMatrix([["A", "B"]], { headerRow: true });
+		expect(csvCodec.serialize(document).split("\n")[0]).toBe("A,B");
+		expect(matrixOf(csvCodec.serialize(document))[0]).toEqual(["A", "B"]);
+	});
+
+	it("round-trips a header carrying hostile and duplicate values", () => {
+		const original = [
+			["a,b", 'q"q', "a,b", "", "líne\nbreak"],
+			["1", "2", "3", "4", "5"],
+		];
+		const document = documentFromMatrix(original, { headerRow: true });
+		expect(matrixOf(csvCodec.serialize(document))).toEqual(original);
 	});
 
 	it("round-trips hostile values", () => {

@@ -49,7 +49,8 @@ describe("the typed document foundation", () => {
 		const document: TableDocument = { columns, rows: [row] };
 
 		expect(Object.values(row.cells)).toEqual(["Ingrid", 35]);
-		expect(documentToMatrix(document, { includeHeader: false })).toEqual([
+		expect(documentToMatrix(document)).toEqual([
+			["Name", "Age"],
 			["Ingrid", "35"],
 		]);
 	});
