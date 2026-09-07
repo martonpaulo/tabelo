@@ -87,7 +87,6 @@ describes the migration and its downstream effects.
 - Agent automation: `enabled`
 - Implementation agent: `claude`
 - Review agent: `codex`
-- Orchestration agent: `codex`
 - Skills baseline revision: `478435d682218fb51a83bef36b60efad737679ee`
 - Skills baseline applied: `2026-09-07`
 - Skills baseline divergence `merge-policy` at
