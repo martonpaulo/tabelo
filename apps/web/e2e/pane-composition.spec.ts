@@ -1,4 +1,4 @@
-import type { Locator } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
@@ -442,4 +442,200 @@ test("the pane header keeps its controls at the narrowest four-pane width", asyn
 			() => document.documentElement.scrollWidth <= window.innerWidth,
 		),
 	).toBe(true);
+});
+
+// #63: a divider advertises an interaction only where that interaction exists.
+// Every assertion below is hit-testing and direction, never a measured size:
+// the question is which element owns a point, not how large anything is.
+
+// The point a probe lands on, described by what owns it rather than by where
+// it is. A separator sits above the panes, so "the pane answered" is the proof
+// that no handle is stretched across it.
+async function ownerAt(
+	page: Page,
+	x: number,
+	y: number,
+): Promise<{ separator: boolean; paneId: string | null }> {
+	return page.evaluate(
+		([left, top]) => {
+			const element = document.elementFromPoint(left as number, top as number);
+			return {
+				separator: Boolean(element?.closest('[role="separator"]')),
+				paneId:
+					element?.closest("[data-pane-id]")?.getAttribute("data-pane-id") ??
+					null,
+			};
+		},
+		[x, y],
+	);
+}
+
+function box(value: Awaited<ReturnType<Locator["boundingBox"]>>) {
+	if (!value) throw new Error("Expected the element to have a layout box.");
+	return value;
+}
+
+// The pane that spans both tracks of one axis, which is the pane the other
+// axis's divider must not cross. Read from grid lines, so it follows the
+// preset rather than a remembered view order.
+async function undividedPane(
+	page: Page,
+	axis: "row" | "column",
+): Promise<Locator> {
+	const id = await page.evaluate((along) => {
+		for (const node of document.querySelectorAll("[data-pane-id]")) {
+			const [rowStart, columnStart, rowEnd, columnEnd] = window
+				.getComputedStyle(node)
+				.gridArea.split("/")
+				.map((part) => Number(part.trim()));
+			const spans =
+				along === "row"
+					? Number(rowEnd) - Number(rowStart) === 2
+					: Number(columnEnd) - Number(columnStart) === 2;
+			if (spans) return node.getAttribute("data-pane-id");
+		}
+		return null;
+	}, axis);
+	if (!id) throw new Error(`No pane spans both ${axis} tracks.`);
+	return page.locator(`[data-pane-id="${id}"]`);
+}
+
+test("each preset exposes exactly the dividers its shape has", async ({
+	page,
+	tabelo,
+}) => {
+	const columns = page.getByRole("separator", {
+		name: copy.workspace.resizeColumns,
+	});
+	const rows = page.getByRole("separator", { name: copy.workspace.resizeRows });
+
+	for (const [layout, hasColumns, hasRows] of [
+		["single", 0, 0],
+		["columns", 1, 0],
+		["rows", 0, 1],
+		["left-split", 1, 1],
+		["right-split", 1, 1],
+		["top-split", 1, 1],
+		["bottom-split", 1, 1],
+		["quad", 1, 1],
+	] as const) {
+		await tabelo.chooseLayout(layout);
+		await expect(columns).toHaveCount(hasColumns);
+		await expect(rows).toHaveCount(hasRows);
+	}
+});
+
+// Both mirrors of both axes. In "left-split" and "right-split" the horizontal
+// divider exists in one column only; in "top-split" and "bottom-split" the
+// vertical one exists in one row only.
+for (const [layout, axis, label] of [
+	["left-split", "row", copy.workspace.resizeRows],
+	["right-split", "row", copy.workspace.resizeRows],
+	["top-split", "column", copy.workspace.resizeColumns],
+	["bottom-split", "column", copy.workspace.resizeColumns],
+] as const) {
+	test(`the ${layout} divider stops at the boundary it controls`, async ({
+		page,
+		tabelo,
+	}) => {
+		await tabelo.chooseLayout(layout);
+		const divider = page.getByRole("separator", { name: label });
+		await expect(divider).toBeVisible();
+
+		const undivided = await undividedPane(
+			page,
+			axis === "row" ? "row" : "column",
+		);
+		const undividedId = await undivided.getAttribute("data-pane-id");
+
+		const probe = async () => {
+			const handle = box(await divider.boundingBox());
+			const pane = box(await undivided.boundingBox());
+			// A point on the divider's own line, inside the pane that has no such
+			// boundary. The other point is on the same line where the boundary is
+			// real, which is what proves the divider did not simply disappear.
+			return axis === "row"
+				? {
+						across: await ownerAt(
+							page,
+							pane.x + pane.width / 2,
+							handle.y + handle.height / 2,
+						),
+						along: await ownerAt(
+							page,
+							handle.x + handle.width / 2,
+							handle.y + handle.height / 2,
+						),
+					}
+				: {
+						across: await ownerAt(
+							page,
+							handle.x + handle.width / 2,
+							pane.y + pane.height / 2,
+						),
+						along: await ownerAt(
+							page,
+							handle.x + handle.width / 2,
+							handle.y + handle.height / 2,
+						),
+					};
+		};
+
+		const settled = await probe();
+		expect(settled.across.separator).toBe(false);
+		expect(settled.across.paneId).toBe(undividedId);
+		expect(settled.along.separator).toBe(true);
+
+		// The extent follows the current geometry of the other axis rather than a
+		// fixed half, so moving that axis must not strand it.
+		const other = page.getByRole("separator", {
+			name:
+				axis === "row"
+					? copy.workspace.resizeColumns
+					: copy.workspace.resizeRows,
+		});
+		await other.focus();
+		for (let press = 0; press < 5; press += 1) {
+			await page.keyboard.press(axis === "row" ? "ArrowLeft" : "ArrowUp");
+		}
+		await expect(other).not.toHaveAttribute("aria-valuenow", "50");
+
+		const moved = await probe();
+		expect(moved.across.separator).toBe(false);
+		expect(moved.across.paneId).toBe(undividedId);
+		expect(moved.along.separator).toBe(true);
+	});
+}
+
+test("the partial divider still drags its own boundary and reports it", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.chooseLayout("left-split");
+	const rows = page.getByRole("separator", { name: copy.workspace.resizeRows });
+	await expect(rows).toHaveAttribute("aria-valuenow", "50");
+	await expect(rows).toHaveAttribute("aria-valuemin", "15");
+	await expect(rows).toHaveAttribute("aria-valuemax", "85");
+
+	const start = box(await rows.boundingBox());
+	await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(
+		start.x + start.width / 2,
+		start.y + start.height / 2 + 120,
+		{ steps: 8 },
+	);
+	await page.mouse.up();
+
+	// Direction, not distance: dragging down gives the upper pane more room.
+	await expect
+		.poll(async () => Number(await rows.getAttribute("aria-valuenow")))
+		.toBeGreaterThan(50);
+
+	await rows.focus();
+	const dragged = Number(await rows.getAttribute("aria-valuenow"));
+	await page.keyboard.press("ArrowUp");
+	await expect
+		.poll(async () => Number(await rows.getAttribute("aria-valuenow")))
+		.toBeLessThan(dragged);
 });

@@ -131,7 +131,14 @@ would displace a draft.
 
 Split ratios are stored per axis and the resize handle appears only when the
 layout actually splits that axis, derived from the preset rather than listed,
-so a new preset needs no edit there.
+so a new preset needs no edit there. The same derivation decides **where** the
+handle runs, not only whether it exists: an asymmetric preset divides one axis
+across part of the grid only, and a handle drawn across the whole workspace
+would put a resize cursor, a hover highlight, and pointer capture over a pane
+with no such boundary. A handle therefore spans the cross-axis tracks no pane
+straddles, so in `left-split` the row handle covers the left column alone and
+in `top-split` the column handle covers the top row alone. Both facts come from
+the preset's own rectangles, so presence and extent cannot disagree.
 
 ## Consequences
 
