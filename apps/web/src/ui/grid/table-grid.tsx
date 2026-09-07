@@ -532,7 +532,14 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				grid,
 				{
 					x: Math.max(point.x, gutterBox.right + 1),
-					y: Math.max(point.y, headerBox.bottom + 1),
+					// Clamped to the header's own top rather than below it. What this
+					// has to stay off is the column-index strip above the header,
+					// which owns no cell; the header row itself is an ordinary
+					// endpoint of a cell rectangle, so excluding it made an
+					// autoscrolling header drag sample the first data row instead of
+					// the header under the pointer, and quietly pull data rows into a
+					// header-only selection.
+					y: Math.max(point.y, headerBox.top + 1),
 				},
 				"[data-cell]",
 			);

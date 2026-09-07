@@ -461,3 +461,115 @@ test("a dragged header and data block clears and undoes as one step", async ({
 	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 	await expect(tabelo.cell(2, 2)).toHaveText("Developer");
 });
+
+// A table wide enough that the grid pane scrolls horizontally, so a drag can
+// run past the pane edge and autoscroll while staying at header height.
+function wideTable(columns = 14): string {
+	const header = Array.from(
+		{ length: columns },
+		(_, column) => `Column ${column + 1}`,
+	);
+	return [
+		header.join("\t"),
+		...Array.from({ length: 2 }, (_, row) =>
+			header.map((_, column) => `${row + 1}:${column + 1}`).join("\t"),
+		),
+	].join("\n");
+}
+
+// Autoscroll re-samples the cell under the pointer on every tick. That sample
+// used to be clamped below the header row, which was harmless only while a cell
+// drag could not start in the header: once it could, a header drag running past
+// the pane edge sampled the first data row instead, and pulled data rows into a
+// header-only selection that Backspace would then clear.
+test("a header drag that autoscrolls sideways keeps the data rows out of it", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(wideTable());
+	const scroller = tabelo.pane("grid").locator('[data-slot="panel-body"]');
+	const scrollerBox = await scroller.boundingBox();
+	if (!scrollerBox) throw new Error("the grid pane did not lay out");
+
+	const start = await tabelo.header(2).boundingBox();
+	if (!start) throw new Error("the header did not lay out");
+	const headerHeight = start.y + start.height / 2;
+
+	await page.mouse.move(start.x + start.width / 2, headerHeight);
+	await page.mouse.down();
+	// Past the trailing pane edge, still at the header's own height.
+	await page.mouse.move(scrollerBox.x + scrollerBox.width + 8, headerHeight);
+
+	await expect
+		.poll(() => scroller.evaluate((element) => element.scrollLeft))
+		.toBeGreaterThan(0);
+
+	// The gesture never left the header row, so nothing in the body belongs to
+	// it however far the autoscroll travelled.
+	await expect
+		.poll(() =>
+			tabelo.grid().locator('[role="gridcell"][aria-selected="true"]').count(),
+		)
+		.toBe(0);
+	// It did keep extending across the header itself.
+	await expect
+		.poll(() =>
+			tabelo
+				.grid()
+				.locator('[role="columnheader"][aria-selected="true"]')
+				.count(),
+		)
+		.toBeGreaterThan(1);
+
+	await page.mouse.up();
+});
+
+// The same autoscroll must still admit a rectangle that genuinely spans both,
+// so the fix above cannot be a blanket exclusion of the data rows.
+test("a header drag that reaches a data row still autoscrolls into both", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(wideTable());
+	const scroller = tabelo.pane("grid").locator('[data-slot="panel-body"]');
+	const scrollerBox = await scroller.boundingBox();
+	if (!scrollerBox) throw new Error("the grid pane did not lay out");
+
+	const start = await tabelo.header(2).boundingBox();
+	const dataRow = await tabelo.cell(1, 2).boundingBox();
+	if (!start || !dataRow) throw new Error("the grid did not lay out both rows");
+
+	await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+	await page.mouse.down();
+	// Down into the first data row, then out past the trailing pane edge at
+	// that row's height.
+	await page.mouse.move(
+		dataRow.x + dataRow.width / 2,
+		dataRow.y + dataRow.height / 2,
+	);
+	await page.mouse.move(
+		scrollerBox.x + scrollerBox.width + 8,
+		dataRow.y + dataRow.height / 2,
+	);
+
+	await expect
+		.poll(() => scroller.evaluate((element) => element.scrollLeft))
+		.toBeGreaterThan(0);
+
+	// Both rows of the rectangle survived the autoscrolled extension.
+	await expect
+		.poll(() =>
+			tabelo
+				.grid()
+				.locator('[role="columnheader"][aria-selected="true"]')
+				.count(),
+		)
+		.toBeGreaterThan(1);
+	await expect
+		.poll(() =>
+			tabelo.grid().locator('[role="gridcell"][aria-selected="true"]').count(),
+		)
+		.toBeGreaterThan(1);
+
+	await page.mouse.up();
+});
