@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
-import { listCodecs } from "@/formats";
+import { getCodec, listCodecs } from "@/formats";
 import { expect, test } from "./fixtures";
 import { renderedSource } from "./helpers";
 
@@ -418,4 +418,59 @@ test("a healthy document shows no draft warning", async ({ page, tabelo }) => {
 	await expect(
 		page.getByRole("button", { name: copy.download.copyDraft }),
 	).toHaveCount(0);
+});
+
+// An output option a keyboard cannot reach is not an option. The two Records
+// options are the only ones any codec declares today, and the chooser renders
+// every future one through the same primitive, so this is the stop that keeps
+// the whole mechanism operable rather than one checkbox in one dialog (#320).
+test("an output option is reached by Tab and toggled by Space", async ({
+	page,
+	tabelo,
+}) => {
+	// Records refuses duplicate or empty column names, and titles each record
+	// with the first column's value, so give it enough to serialize.
+	await tabelo.editHeader(1, "Name");
+	await tabelo.editHeader(2, "City");
+	await tabelo.editHeader(3, "Role");
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.editCell(2, 1, "Paulo");
+	await tabelo.editCell(3, 1, "Mabel");
+
+	await openChooser(page);
+	const dialog = page.getByRole("dialog");
+	await dialog.getByRole("radio", { name: copy.views.records.label }).click();
+
+	// Every option Records declares, not just the first: they render through one
+	// component, so a fix that reached only one of them would be a coincidence.
+	const declared = getCodec("records").outputOptions ?? [];
+	expect(declared.length).toBeGreaterThan(0);
+	const options = declared.map((option) =>
+		dialog.getByRole("checkbox", { name: copy.download.option(option) }),
+	);
+
+	for (const option of options) {
+		const before = await option.isChecked();
+
+		// Walk the dialog's own focus order from its first control rather than
+		// asserting a position: what matters is that the option is on the path.
+		await dialog.getByRole("button", { name: copy.actions.cancel }).focus();
+		for (let stop = 0; stop < 12; stop += 1) {
+			if (await option.evaluate((el) => el === document.activeElement)) break;
+			await page.keyboard.press("Tab");
+		}
+		await expect(option).toBeFocused();
+
+		// Keyboard focus must be visible, not merely present. The indicator is a
+		// ring the theme paints through focus-visible, so the assertion is that
+		// some ring is drawn, never which size or colour it is.
+		expect(
+			await option.evaluate((el) => getComputedStyle(el).boxShadow),
+		).not.toBe("none");
+
+		await page.keyboard.press("Space");
+		expect(await option.isChecked()).toBe(!before);
+		await page.keyboard.press("Space");
+		expect(await option.isChecked()).toBe(before);
+	}
 });

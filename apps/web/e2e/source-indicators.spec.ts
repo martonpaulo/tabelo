@@ -442,3 +442,29 @@ test("indicators leave the caret, the pane's wrapping, and editing alone", async
 	await expect(pane.locator(marker)).toHaveCount(1);
 	expect(await typeAtOffset()).toBe(withoutMarkers);
 });
+
+// The settings toggles use the same checkbox primitive the download chooser's
+// output options do. These were already reachable when the chooser's were not,
+// which is why the fix belongs to the primitive rather than to either dialog.
+// Asserted here so the side that happened to work cannot quietly stop (#320).
+test("a settings toggle is reached by Tab and toggled by Space", async ({
+	page,
+	tabelo,
+}) => {
+	await expect(tabelo.workspace).toBeVisible();
+	const dialog = await openSettings(page);
+	const toggle = dialog.getByRole("checkbox", {
+		name: copy.settings.tabIndicators.label,
+	});
+	const before = await toggle.isChecked();
+
+	await dialog.getByRole("button", { name: copy.settings.apply }).focus();
+	for (let stop = 0; stop < 12; stop += 1) {
+		if (await toggle.evaluate((el) => el === document.activeElement)) break;
+		await page.keyboard.press("Tab");
+	}
+	await expect(toggle).toBeFocused();
+
+	await page.keyboard.press("Space");
+	expect(await toggle.isChecked()).toBe(!before);
+});
