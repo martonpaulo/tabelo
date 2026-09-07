@@ -1223,3 +1223,150 @@ describe("fill history", () => {
 		expect(useTabeloStore.getState().past).toBe(before.past);
 	});
 });
+
+describe("sorting rows by a column", () => {
+	// Three names out of order, so ascending moves every row.
+	function unsortedNames(): TableDocument {
+		return documentFromMatrix([["Name"], ["Paulo"], ["Amora"], ["Ingrid"]], {
+			headerRow: true,
+		});
+	}
+
+	function names(): readonly CellValue[] {
+		return columnValues(useTabeloStore.getState().document);
+	}
+
+	it("reorders the document in one history step and reaches every view", () => {
+		const document = unsortedNames();
+		useTabeloStore.setState({ document });
+
+		expect(useTabeloStore.getState().sortRowsByColumn(0, "ascending")).toBe(
+			"sorted",
+		);
+		const state = useTabeloStore.getState();
+		expect(names()).toEqual(["Amora", "Ingrid", "Paulo"]);
+		expect(state.past).toHaveLength(1);
+		// Every view is a projection of the document, so the serialized matrix
+		// is the sorted order without any further action.
+		expect(documentToMatrix(state.document)).toEqual([
+			["Name"],
+			["Amora"],
+			["Ingrid"],
+			["Paulo"],
+		]);
+	});
+
+	it("sorts descending from the same column", () => {
+		useTabeloStore.setState({ document: unsortedNames() });
+		expect(useTabeloStore.getState().sortRowsByColumn(0, "descending")).toBe(
+			"sorted",
+		);
+		expect(names()).toEqual(["Paulo", "Ingrid", "Amora"]);
+	});
+
+	it("records nothing when the rows are already in that order", () => {
+		useTabeloStore.setState({ document: unsortedNames() });
+		useTabeloStore.getState().sortRowsByColumn(0, "ascending");
+		const sorted = useTabeloStore.getState().document;
+
+		expect(useTabeloStore.getState().sortRowsByColumn(0, "ascending")).toBe(
+			"unchanged",
+		);
+		const state = useTabeloStore.getState();
+		expect(state.document).toBe(sorted);
+		expect(state.past).toHaveLength(1);
+	});
+
+	it("refuses a table with fewer than two rows and an unknown column", () => {
+		useTabeloStore.setState({
+			document: documentFromMatrix([["Name"], ["Ingrid"]], { headerRow: true }),
+		});
+		expect(useTabeloStore.getState().sortRowsByColumn(0, "ascending")).toBe(
+			"unavailable",
+		);
+		expect(useTabeloStore.getState().sortRowsByColumn(9, "ascending")).toBe(
+			"unavailable",
+		);
+		expect(useTabeloStore.getState().past).toHaveLength(0);
+	});
+
+	it("carries the selection to where its rows landed", () => {
+		useTabeloStore.setState({
+			document: unsortedNames(),
+			// The first data row, "Paulo", which sorting sends to the bottom.
+			selection: createSelection({ row: 0, column: 0 }),
+		});
+		useTabeloStore.getState().sortRowsByColumn(0, "ascending");
+		expect(useTabeloStore.getState().selection).toEqual(
+			createSelection({ row: 2, column: 0 }),
+		);
+	});
+
+	it("restores the exact selection through undo and redo", () => {
+		const before = selectionOf({
+			anchor: { row: 0, column: 0 },
+			focus: { row: 1, column: 0 },
+			mode: "cell",
+		});
+		useTabeloStore.setState({ document: unsortedNames(), selection: before });
+		useTabeloStore.getState().sortRowsByColumn(0, "ascending");
+		const after = useTabeloStore.getState().selection;
+
+		// The user moves on before undoing, which is what makes an exact restore
+		// different from keeping whatever the selection happens to be.
+		useTabeloStore
+			.getState()
+			.setSelection(createSelection({ row: 0, column: 0 }));
+
+		useTabeloStore.getState().undo();
+		let state = useTabeloStore.getState();
+		expect(names()).toEqual(["Paulo", "Amora", "Ingrid"]);
+		expect(state.selection).toEqual(before);
+
+		state.setSelection(createSelection({ row: 2, column: 0 }));
+		useTabeloStore.getState().redo();
+		state = useTabeloStore.getState();
+		expect(names()).toEqual(["Amora", "Ingrid", "Paulo"]);
+		expect(state.selection).toEqual(after);
+	});
+
+	it("leaves unrelated undo clamping the selection as it always did", () => {
+		useTabeloStore.setState({ document: unsortedNames() });
+		const store = useTabeloStore.getState();
+		store.editCell(0, 0, "Felix");
+		useTabeloStore
+			.getState()
+			.setSelection(createSelection({ row: 2, column: 0 }));
+
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().selection).toEqual(
+			createSelection({ row: 2, column: 0 }),
+		);
+	});
+
+	it("keeps row identity, so column preferences follow their rows", () => {
+		const document = unsortedNames();
+		const ids = document.rows.map((row) => row.id);
+		useTabeloStore.setState({ document });
+		useTabeloStore.getState().sortRowsByColumn(0, "ascending");
+
+		expect(
+			useTabeloStore.getState().document.rows.map((row) => row.id),
+		).toEqual([ids[1], ids[2], ids[0]]);
+	});
+
+	it("restores a displaced invalid draft when the sort is undone", () => {
+		useTabeloStore.setState({ document: unsortedNames() });
+		const paneId =
+			useTabeloStore
+				.getState()
+				.workspace.panes.find((pane) => pane.view === "markdown")?.id ?? "";
+		useTabeloStore.getState().setDraft(paneId, "markdown", "| broken");
+
+		useTabeloStore.getState().sortRowsByColumn(0, "ascending");
+		expect(useTabeloStore.getState().draft).toBeNull();
+
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().draft?.text).toBe("| broken");
+	});
+});

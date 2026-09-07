@@ -484,6 +484,93 @@ export function clampSelection(
 			};
 }
 
+// The selection after the rows underneath it were permuted, as a sort does.
+// `nextRowOf[oldIndex]` is where that row landed.
+//
+// Remapping the two corners of a rectangle is not enough: a permutation can
+// scatter one selected block across the table, and a rectangle drawn between
+// the new minimum and maximum would then claim rows the user never selected. So
+// each region is expanded into the rows it actually covers, every row is
+// mapped, and the destinations are rebuilt into as many regions as it takes.
+// Regions stay separate, overlaps included, because nothing here merges them.
+//
+// The header row is fixed: it is the header rather than the smallest value, so
+// it never takes part in a sort and never moves.
+export function remapSelectionRows(
+	selection: GridSelection,
+	nextRowOf: readonly number[],
+	rowCount: number,
+	columnCount: number,
+): GridSelection {
+	const mapRow = (row: number): number =>
+		row === HEADER_ROW ? HEADER_ROW : (nextRowOf[row] ?? row);
+
+	const ranges: SelectionRange[] = [];
+	let activeIndex = 0;
+	selection.ranges.forEach((range, index) => {
+		const isActive = index === selection.activeIndex;
+		const firstFragment = ranges.length;
+
+		// A column region spans every row on its own, so a row permutation
+		// leaves it exactly as it was.
+		if (range.mode === "column") {
+			ranges.push(range);
+			if (isActive) activeIndex = firstFragment;
+			return;
+		}
+
+		const rect = rangeRect(range, rowCount, columnCount);
+		const rows = sortedUnion(rectRows(rect).map(mapRow));
+		const runs = runsOf(rows);
+		if (runs.length === 0) {
+			ranges.push(range);
+			if (isActive) activeIndex = firstFragment;
+			return;
+		}
+
+		// Orientation is kept where a fragment can express it: an anchor below
+		// its focus, or to the right of it, is what the next Shift+arrow
+		// extends from, and losing it would move the wrong edge.
+		const upwards = range.anchor.row > range.focus.row;
+		const rightwards = range.anchor.column > range.focus.column;
+		const anchorColumn = rightwards ? rect.right : rect.left;
+		const focusColumn = rightwards ? rect.left : rect.right;
+		const focusRow = mapRow(range.focus.row);
+
+		for (const [from, to] of runs) {
+			if (range.mode === "row") {
+				ranges.push(axisRange(from, to, "row"));
+				continue;
+			}
+			// Only an unfragmented region can keep its vertical orientation:
+			// once one region became several, the anchor of a fragment that
+			// never held one is its own top edge.
+			const reversed = upwards && runs.length === 1;
+			ranges.push({
+				anchor: {
+					row: reversed ? to : from,
+					column: anchorColumn,
+				},
+				focus: { row: reversed ? from : to, column: focusColumn },
+				mode: range.mode,
+			});
+		}
+
+		if (isActive) {
+			// The fragment holding the focused cell stays active, so the
+			// keyboard carries on from the cell it was already on.
+			const offset = runs.findIndex(
+				([from, to]) => focusRow >= from && focusRow <= to,
+			);
+			activeIndex = firstFragment + Math.max(0, offset);
+		}
+	});
+
+	return ranges.length === 0
+		? selection
+		: { ranges, activeIndex: Math.min(activeIndex, ranges.length - 1) };
+}
+
 // The data rows a rect covers, with the header row dropped. Operations that act
 // on rows as structure use this, because the header row is structurally
 // required and is never one of the rows they may remove or duplicate.

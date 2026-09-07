@@ -489,4 +489,140 @@ export function pasteMatrix(
 	return { ...next, rows };
 }
 
+// Sorting the rows by one column. This is a document operation, not a view
+// state: Tabelo has no presentation order, so a sort that lived only in the
+// grid would leave the Markdown pane, the CSV pane, and the downloaded file
+// disagreeing with what the user is looking at. It reorders `document.rows`,
+// reaching every view at once, and it is one history step. See the decision in
+// issue #143.
+export type SortDirection = "ascending" | "descending";
+
+export interface RowSortResult {
+	readonly document: TableDocument;
+	// Where each row went: `nextRowOf[oldIndex]` is that row's new index. The
+	// selection is remapped through this, so a sort keeps whatever the user had
+	// selected rather than dropping it.
+	readonly nextRowOf: readonly number[];
+}
+
+// One collator for the whole module, pinned to English rather than the runtime
+// locale. Sorting mutates the document, so a runtime locale would make the same
+// table sort into two different documents on two machines, and therefore into
+// two different Markdown files from identical input. The product is
+// single-locale English, so pinning is both honest and testable. Constructing
+// one per comparison is the cost to avoid; this is constructed once.
+//
+// `numeric: true` orders numeric-looking strings the way a reader expects
+// without parsing them or concluding anything about their type.
+// `sensitivity: "base"` makes "ana" and "Ana" compare equal, which is friendlier
+// for a name column and makes the comparison non-total: the sort has to be
+// stable for the result to be deterministic, and `Array.prototype.sort` is
+// specified as stable.
+// https://tc39.es/ecma262/#sec-array.prototype.sort
+const collator = new Intl.Collator("en", {
+	numeric: true,
+	sensitivity: "base",
+});
+
+// The tiebreak between values of different carried types, ascending. It runs
+// from the most constrained value space to the least: a number carries its own
+// total order, a boolean has two values, a string is arbitrary. A column's
+// expected type guides entry without constraining its cells, so a column
+// holding several real types is an ordinary document; sorting one has to be
+// deterministic, not meaningful.
+const typeOrder: Record<"number" | "boolean" | "string", number> = {
+	number: 0,
+	boolean: 1,
+	string: 2,
+};
+
+// `null` and the empty string both project to empty text, and both place last
+// in either direction. Whitespace is content, so a whitespace-only string is
+// not empty.
+function isEmptyCell(value: CellValue): boolean {
+	return value === null || value === "";
+}
+
+// The comparison rule, and the reason it reads `typeof` and never text.
+//
+// A cell's type is carried, never derived: a typed source stated it or the user
+// chose it. So `"10"` is a string because a string is what the cell holds, and
+// it sorts through the collator like any other string rather than as ten. Do
+// not "fix" this later by parsing numeric-looking strings, and do not project
+// through `cellText` before comparing: that would flatten every number into a
+// numeric-looking string and reintroduce exactly the inference AGENTS.md
+// forbids. The collator's `numeric: true` already handles the readable ordering
+// of digits inside strings without any of that.
+function compareCells(left: CellValue, right: CellValue): number {
+	const leftType = typeof left;
+	const rightType = typeof right;
+	if (leftType !== rightType) {
+		return (
+			(typeOrder[leftType as keyof typeof typeOrder] ?? 0) -
+			(typeOrder[rightType as keyof typeof typeOrder] ?? 0)
+		);
+	}
+	if (typeof left === "number" && typeof right === "number") {
+		// Subtraction would answer NaN for a NaN operand, which sorts
+		// unpredictably. Comparing both directions keeps the result an integer
+		// sign and treats an incomparable pair as equal, which stability then
+		// resolves into the original order.
+		return (left > right ? 1 : 0) - (left < right ? 1 : 0);
+	}
+	if (typeof left === "boolean" && typeof right === "boolean") {
+		return (left ? 1 : 0) - (right ? 1 : 0);
+	}
+	if (typeof left === "string" && typeof right === "string") {
+		return collator.compare(left, right);
+	}
+	return 0;
+}
+
+// Reorders existing row objects. Nothing is parsed, coerced, normalized, or
+// rewritten: row identity, cell values, and their types come through untouched,
+// so column widths and every other preference keyed by a row or column id
+// follow their rows.
+export function sortRows(
+	document: TableDocument,
+	columnId: ColumnId,
+	direction: SortDirection,
+): RowSortResult {
+	const identity = document.rows.map((_, index) => index);
+	const known = document.columns.some((column) => column.id === columnId);
+	if (!known || document.rows.length < 2) {
+		return { document, nextRowOf: identity };
+	}
+
+	const values = document.rows.map((row) => readCell(row, columnId));
+	const order = [...identity].sort((left, right) => {
+		const leftValue = values[left] ?? "";
+		const rightValue = values[right] ?? "";
+		const leftEmpty = isEmptyCell(leftValue);
+		const rightEmpty = isEmptyCell(rightValue);
+		// Resolved before the direction is applied, which is what keeps empty
+		// cells last in both directions rather than flipping to first.
+		if (leftEmpty || rightEmpty) {
+			if (leftEmpty && rightEmpty) return 0;
+			return leftEmpty ? 1 : -1;
+		}
+		const compared = compareCells(leftValue, rightValue);
+		return direction === "descending" ? -compared : compared;
+	});
+
+	if (order.every((from, to) => from === to)) {
+		return { document, nextRowOf: identity };
+	}
+
+	const nextRowOf = [...identity];
+	order.forEach((from, to) => {
+		nextRowOf[from] = to;
+	});
+	const rows = order.map((from) => document.rows[from]).filter(isRow);
+	return { document: { ...document, rows }, nextRowOf };
+}
+
+function isRow(row: Row | undefined): row is Row {
+	return row !== undefined;
+}
+
 export { sortedDesc };
