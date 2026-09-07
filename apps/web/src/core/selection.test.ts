@@ -9,6 +9,7 @@ import {
 	HEADER_ROW,
 	isContiguous,
 	moveFocusKeepingRegions,
+	neighbourCell,
 	rectCoversHeader,
 	rectDataRows,
 	selectedAxis,
@@ -226,6 +227,35 @@ describe("the modifier gesture", () => {
 		const removed = toggleSelectionRegion(added, { row: 2, column: 1 }, "cell");
 		expect(removed.ranges).toHaveLength(1);
 		expect(activeRange(removed).focus).toEqual({ row: 0, column: 0 });
+	});
+});
+
+// One bounded step, shared by the arrow keys and by the menu that moves the
+// focus without discarding the selection, so the two cannot disagree about
+// where the table ends.
+describe("the neighbouring cell", () => {
+	it("steps one cell in each direction", () => {
+		const from = { row: 1, column: 1 };
+		expect(neighbourCell(from, "up", 3, 3)).toEqual({ row: 0, column: 1 });
+		expect(neighbourCell(from, "down", 3, 3)).toEqual({ row: 2, column: 1 });
+		expect(neighbourCell(from, "left", 3, 3)).toEqual({ row: 1, column: 0 });
+		expect(neighbourCell(from, "right", 3, 3)).toEqual({ row: 1, column: 2 });
+	});
+
+	it("treats the header row as the top edge rather than as row zero", () => {
+		expect(neighbourCell({ row: 0, column: 0 }, "up", 3, 3)).toEqual({
+			row: HEADER_ROW,
+			column: 0,
+		});
+		expect(
+			neighbourCell({ row: HEADER_ROW, column: 0 }, "up", 3, 3),
+		).toBeNull();
+	});
+
+	it("refuses a step that would leave the grid", () => {
+		expect(neighbourCell({ row: 2, column: 2 }, "down", 3, 3)).toBeNull();
+		expect(neighbourCell({ row: 2, column: 2 }, "right", 3, 3)).toBeNull();
+		expect(neighbourCell({ row: 1, column: 0 }, "left", 3, 3)).toBeNull();
 	});
 });
 

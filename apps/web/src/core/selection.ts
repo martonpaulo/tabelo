@@ -364,6 +364,27 @@ function toggleCell(
 		: rebuild(selection, toSpliced(selection.ranges, index));
 }
 
+// One step from a cell in a cardinal direction, or null when that step would
+// leave the grid. The floor is the header row, the same edge the arrow keys
+// stop at, so the arrow model and the menu that moves the focus without
+// discarding the selection cannot disagree about where the table ends.
+export function neighbourCell(
+	position: CellPosition,
+	direction: FillDirection,
+	rows: number,
+	columns: number,
+): CellPosition | null {
+	const rowDelta = direction === "up" ? -1 : direction === "down" ? 1 : 0;
+	const columnDelta = direction === "left" ? -1 : direction === "right" ? 1 : 0;
+	const next = {
+		row: position.row + rowDelta,
+		column: position.column + columnDelta,
+	};
+	if (next.row < HEADER_ROW || next.row > rows - 1) return null;
+	if (next.column < 0 || next.column > columns - 1) return null;
+	return next;
+}
+
 // Move the focused cell while keeping every area already selected: the
 // keyboard's half of what the modifier means on the pointer.
 //

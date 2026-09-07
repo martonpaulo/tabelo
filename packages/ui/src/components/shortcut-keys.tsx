@@ -1,5 +1,6 @@
 import { menuShortcutKeyStyles } from "@tabelo/ui/components/menu-styles";
 import { isApplePlatform } from "@tabelo/ui/lib/platform";
+import { shortcutRawKeys } from "@tabelo/ui/lib/shortcut";
 
 interface ShortcutKey {
 	readonly display: string;
@@ -11,14 +12,8 @@ function shortcutKeys(shortcut: string): readonly ShortcutKey[] {
 	// keyboards print them as words, and a ⌃ there reads as a stray caret
 	// rather than as the Ctrl key the user is looking at.
 	const apple = isApplePlatform();
-	const rawKeys =
-		shortcut === "+"
-			? ["+"]
-			: shortcut.endsWith("++")
-				? [...shortcut.slice(0, -2).split("+"), "+"]
-				: shortcut.split("+");
 
-	return rawKeys.flatMap<ShortcutKey>((key) => {
+	return shortcutRawKeys(shortcut).flatMap<ShortcutKey>((key) => {
 		switch (key) {
 			case "Mod":
 				return [

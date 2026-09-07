@@ -397,9 +397,15 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	const contextGroups = menu.locator(
 		'[data-slot="context-menu-group"], [data-slot="context-menu-radio-group"]',
 	);
-	await expect(contextGroups).toHaveCount(7);
+	// One more group than the axis menu carries: moving the focus without
+	// discarding the selection is a cell-scoped command path, and it is named
+	// rather than left as a run of unlabelled rows.
+	await expect(contextGroups).toHaveCount(8);
 	await expect(
 		menu.getByRole("group", { name: copy.actions.cellType }),
+	).toHaveCount(1);
+	await expect(
+		menu.getByRole("group", { name: copy.actions.moveFocus }),
 	).toHaveCount(1);
 	await expect(
 		menu.getByRole("group", { name: copy.actions.edit }),
@@ -407,10 +413,12 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	await expect(
 		menu.getByRole("group", { name: copy.actions.fill }),
 	).toHaveCount(1);
+	// Exact, because the focus group's own label starts with the same word and
+	// the reorder group is the one being counted here.
 	await expect(
-		menu.getByRole("group", { name: copy.actions.move }),
+		menu.getByRole("group", { name: copy.actions.move, exact: true }),
 	).toHaveCount(1);
-	await expect(contextGroups.locator(":scope[aria-labelledby]")).toHaveCount(4);
+	await expect(contextGroups.locator(":scope[aria-labelledby]")).toHaveCount(5);
 	await expect(
 		contextGroups.locator(":scope:not([aria-labelledby])"),
 	).toHaveCount(3);

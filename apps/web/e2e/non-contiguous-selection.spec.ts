@@ -115,24 +115,157 @@ test("the modifier adds a cell area, and Shift extends the newest one", async ({
 	expect(await selected(3, 4)).toBe(true);
 });
 
+// Move focus, keep selection, reached the way a keyboard user reaches it: the
+// ContextMenu key opens the menu on the focused cell, and the item is
+// activated from focus rather than clicked. No shortcut is involved, which is
+// the whole point of the group.
+async function moveFocusByMenu(
+	page: Page,
+	direction: "up" | "down" | "left" | "right",
+): Promise<void> {
+	const label = {
+		up: copy.actions.moveFocusUp,
+		down: copy.actions.moveFocusDown,
+		left: copy.actions.moveFocusLeft,
+		right: copy.actions.moveFocusRight,
+	}[direction];
+	await page.keyboard.press("ContextMenu");
+	const menu = page.getByRole("menu");
+	await expect(menu).toBeVisible();
+	await menu.getByRole("menuitem", { name: label }).press("Enter");
+	await expect(menu).toBeHidden();
+}
+
+function focusedCell(page: Page): Promise<string | null> {
+	return page.evaluate(
+		() => document.activeElement?.getAttribute("data-cell") ?? null,
+	);
+}
+
 test("the keyboard builds a selection of two columns without a pointer", async ({
 	page,
 	tabelo,
 }) => {
 	await tabelo.cell(1, 1).click();
 	// Ctrl rather than the platform modifier: macOS keeps Cmd+Space for itself,
-	// and Ctrl is what reaches the page everywhere. Alt+Shift on the arrows is
-	// what carries the first column past the move to the second: a plain arrow
-	// would discard it, and the modifier alone now jumps to the edge of the
-	// data.
+	// and Ctrl is what reaches the page everywhere. The menu action is what
+	// carries the first column past the move to the second: every arrow chord
+	// inside the three-key limit would discard it.
 	await page.keyboard.press("Control+Space");
-	await page.keyboard.press(`${modifier}+Alt+Shift+ArrowRight`);
-	await page.keyboard.press(`${modifier}+Alt+Shift+ArrowRight`);
+	await moveFocusByMenu(page, "right");
+	await moveFocusByMenu(page, "right");
 	await page.keyboard.press("Control+Space");
 
 	expect(await columnSelected(tabelo, 1)).toBe(true);
 	expect(await columnSelected(tabelo, 2)).toBe(false);
 	expect(await columnSelected(tabelo, 3)).toBe(true);
+	// The total is announced across every area, exactly as it is when the
+	// same selection is built with a pointer.
+	await expect(tabelo.announcements).toHaveText(
+		copy.a11y.multiSelectionSummary("column", 2),
+	);
+});
+
+test("the menu hands focus back to the cell it moved to", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("Control+Space");
+
+	await moveFocusByMenu(page, "right");
+	// Focus is back inside the grid, on the new cell, so the next keystroke
+	// goes to the grid rather than to whatever the menu left behind.
+	await expect.poll(() => focusedCell(page)).toBe("0:1");
+	expect(await columnSelected(tabelo, 1)).toBe(true);
+
+	await moveFocusByMenu(page, "down");
+	await expect.poll(() => focusedCell(page)).toBe("1:1");
+	expect(await columnSelected(tabelo, 1)).toBe(true);
+});
+
+test("the focus group carries no shortcut, stops at the edges, and cancels cleanly", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	// The header row is the grid's top edge, and the first column its left one,
+	// so its first cell is where two of the four directions run out.
+	await tabelo.header(1).click();
+	await page.keyboard.press("ContextMenu");
+	const menu = page.getByRole("menu");
+	await expect(menu).toBeVisible();
+
+	const right = menu.getByRole("menuitem", {
+		name: copy.actions.moveFocusRight,
+	});
+	// A visible command path, not a second hidden chord.
+	await expect(right.locator("kbd")).toHaveCount(0);
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.moveFocusUp }),
+	).toBeDisabled();
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.moveFocusLeft }),
+	).toBeDisabled();
+	await expect(right).toBeEnabled();
+
+	// Escape without executing leaves the focus where it was.
+	await page.keyboard.press("Escape");
+	await expect(menu).toBeHidden();
+	await expect.poll(() => focusedCell(page)).toBe("-1:0");
+
+	// The disabled directions explain themselves rather than hiding.
+	await page.keyboard.press("ContextMenu");
+	await menu.getByRole("menuitem", { name: copy.actions.moveFocusUp }).hover();
+	await expect(page.getByRole("tooltip")).toHaveText(copy.disabled.focusTopRow);
+});
+
+test("dismissing the menu leaves focus to whatever the press lands on", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	const editor = tabelo.source("markdown");
+	const box = await editor.boundingBox();
+	if (!box) throw new Error("The Markdown editor has no box to press in.");
+
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("ContextMenu");
+	await expect(page.getByRole("menu")).toBeVisible();
+
+	// A press outside the menu dismisses it and runs no command, so the grid
+	// takes nothing back: the focus handoff belongs to command completion.
+	// The primitive's own overlay absorbs that first press, which is why the
+	// editor is pressed twice rather than once.
+	await page.mouse.click(box.x + 40, box.y + 10);
+	await expect(page.getByRole("menu")).toHaveCount(0);
+	await expect.poll(() => focusedCell(page)).toBe("0:0");
+
+	await editor.click();
+	await expect(editor).toBeFocused();
+	await page.keyboard.type("XY");
+
+	// The source editor owns the typing, and nothing reached the grid.
+	await expect(editor).toBeFocused();
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+});
+
+test("moving the focus through the menu adds no history step", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	await tabelo.cell(1, 1).click();
+	await tabelo.editCell(1, 1, "Edited");
+	await tabelo.cell(1, 1).click();
+
+	await moveFocusByMenu(page, "right");
+	await page.keyboard.press(`${modifier}+z`);
+
+	// One undo reaches past the focus move to the edit, because the move never
+	// touched the document.
+	await expect(tabelo.cell(1, 1)).not.toHaveText("Edited");
 });
 
 test("a plain arrow still discards the whole selection", async ({
