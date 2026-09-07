@@ -77,6 +77,13 @@ test("sorting is reachable and announced from the keyboard", async ({
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
+	// Select the age column first and let the grid finish saying so. Opening a
+	// menu on an unselected column selects it, and that summary settles on a
+	// timer: waiting for it here is what makes the announcement under test the
+	// sort's own rather than whichever of the two landed last.
+	await tabelo.columnIndex(4).getByRole("button").first().click();
+	await expect(tabelo.announcements).not.toBeEmpty();
+
 	const trigger = tabelo.columnIndex(4).getByRole("button", {
 		name: new RegExp(`^${copy.actions.columnActions}:`),
 	});
