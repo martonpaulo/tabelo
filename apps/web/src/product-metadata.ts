@@ -5,6 +5,12 @@ type ProductMetadataOptions = {
 	siteOrigin?: string;
 };
 
+// JSON inside a <script> block is not attribute content: escaping quotes there
+// would corrupt it. Only "<" can end the block early, so that is what is hidden.
+function escapeJsonLd(value: unknown): string {
+	return JSON.stringify(value).replaceAll("<", "\\u003c");
+}
+
 function escapeHtmlAttribute(value: string): string {
 	return value
 		.replaceAll("&", "&amp;")
@@ -19,22 +25,57 @@ export function createProductMetadata({
 }: ProductMetadataOptions): string {
 	const title = escapeHtmlAttribute(product.documentTitle);
 	const description = escapeHtmlAttribute(product.description);
+	const name = escapeHtmlAttribute(product.name);
 	const tags = [
 		`<meta property="og:title" content="${title}" />`,
 		`<meta property="og:description" content="${description}" />`,
 		`<meta property="og:type" content="${product.openGraphType}" />`,
+		`<meta property="og:site_name" content="${name}" />`,
+		`<meta property="og:locale" content="en_US" />`,
 		`<meta name="twitter:card" content="${product.twitterCard}" />`,
 	];
 
-	// Root-based local builds do not have a public deployment URL. Omitting URL
-	// metadata prevents them from advertising the production site or localhost.
-	if (basePath !== "/" && siteOrigin) {
-		const canonicalUrl = escapeHtmlAttribute(
-			new URL(basePath, siteOrigin).toString(),
-		);
+	// Only the deploy workflow sets SITE_ORIGIN. Local builds have no public
+	// deployment URL, so omitting URL metadata prevents them from advertising
+	// the production site or localhost.
+	if (siteOrigin) {
+		const canonicalUrl = new URL(basePath, siteOrigin);
+		// The 1200x630 card is what a link preview crops to; the PWA icon is square
+		// and every platform letterboxes it.
+		const imageUrl = new URL("social-card.png", canonicalUrl);
+		const canonical = escapeHtmlAttribute(canonicalUrl.toString());
+		const image = escapeHtmlAttribute(imageUrl.toString());
 		tags.push(
-			`<meta property="og:url" content="${canonicalUrl}" />`,
-			`<link rel="canonical" href="${canonicalUrl}" />`,
+			`<meta property="og:url" content="${canonical}" />`,
+			`<meta property="og:image" content="${image}" />`,
+			`<meta name="twitter:image" content="${image}" />`,
+			`<meta property="og:image:width" content="1200" />`,
+			`<meta property="og:image:height" content="630" />`,
+			`<meta property="og:image:alt" content="${title}" />`,
+			`<link rel="canonical" href="${canonical}" />`,
+			// One SoftwareApplication node: it is what a search engine reads to
+			// show the product as an application rather than as a page.
+			`<script type="application/ld+json">${escapeJsonLd({
+				"@context": "https://schema.org",
+				"@type": "SoftwareApplication",
+				name: product.name,
+				url: canonicalUrl.toString(),
+				description: product.description,
+				applicationCategory: "BusinessApplication",
+				operatingSystem: "Any browser",
+				image: imageUrl.toString(),
+				isAccessibleForFree: true,
+				offers: {
+					"@type": "Offer",
+					price: "0",
+					priceCurrency: "EUR",
+				},
+				author: {
+					"@type": "Person",
+					name: "Marton Paulo",
+					url: "https://martonpaulo.com",
+				},
+			})}</script>`,
 		);
 	}
 

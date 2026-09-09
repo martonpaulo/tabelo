@@ -8,13 +8,16 @@ export interface GridAutoscrollPoint {
 }
 
 interface GridAutoscrollOptions<DragKind> {
-	readonly gridRef: RefObject<HTMLTableElement | null>;
+	// The shared grid surface: the positioned wrapper holding the column index
+	// strip and the semantic table. Hit testing runs against it rather than the
+	// table, because the strip is chrome and sits outside the table.
+	readonly surfaceRef: RefObject<HTMLElement | null>;
 	readonly draggingRef: RefObject<DragKind | null>;
 	readonly axisOf: (drag: DragKind) => GridAutoscrollAxis;
 	readonly onScroll: (
 		drag: DragKind,
 		point: GridAutoscrollPoint,
-		grid: HTMLTableElement,
+		surface: HTMLElement,
 	) => void;
 }
 
@@ -39,7 +42,7 @@ function axisAllows(axis: GridAutoscrollAxis, direction: "x" | "y"): boolean {
 }
 
 function reducedMotionStep(
-	grid: HTMLTableElement,
+	surface: HTMLElement,
 	point: GridAutoscrollPoint,
 	scrollport: DOMRect,
 	direction: "x" | "y",
@@ -47,14 +50,14 @@ function reducedMotionStep(
 ): number {
 	const x = clamp(point.x, scrollport.left + 1, scrollport.right - 1);
 	const y = clamp(point.y, scrollport.top + 1, scrollport.bottom - 1);
-	const target = grid.ownerDocument
+	const target = surface.ownerDocument
 		.elementsFromPoint(x, y)
 		.map((sampled) =>
 			sampled.closest<HTMLElement>(
 				"[data-cell], [data-column-header], [data-row-header]",
 			),
 		)
-		.find((candidate) => candidate && grid.contains(candidate));
+		.find((candidate) => candidate && surface.contains(candidate));
 	if (!target) return fallback;
 	const box = target.getBoundingClientRect();
 	return direction === "x" ? box.width : box.height;
@@ -64,7 +67,7 @@ function reducedMotionStep(
 // column selection use it now; reorder (#139) and fill (#203) extend the drag
 // kind and callback instead of creating another frame loop.
 export function useGridAutoscroll<DragKind>({
-	gridRef,
+	surfaceRef,
 	draggingRef,
 	axisOf,
 	onScroll,
@@ -92,9 +95,11 @@ export function useGridAutoscroll<DragKind>({
 			frameRef.current = null;
 			const drag = draggingRef.current;
 			const pointer = pointerRef.current;
-			const grid = gridRef.current;
-			const scroller = grid?.closest<HTMLElement>('[data-slot="panel-body"]');
-			if (drag === null || !pointer || !grid || !scroller) return;
+			const surface = surfaceRef.current;
+			const scroller = surface?.closest<HTMLElement>(
+				'[data-slot="panel-body"]',
+			);
+			if (drag === null || !pointer || !surface || !scroller) return;
 
 			const box = scroller.getBoundingClientRect();
 			const axis = axisOf(drag);
@@ -107,7 +112,7 @@ export function useGridAutoscroll<DragKind>({
 			if (outsideX === 0 && outsideY === 0) return;
 
 			const rootFontSize = Number.parseFloat(
-				getComputedStyle(grid.ownerDocument.documentElement).fontSize,
+				getComputedStyle(surface.ownerDocument.documentElement).fontSize,
 			);
 			const maximum = rootFontSize * MAX_SCROLL_PER_FRAME_REM;
 			const sampleInset = rootFontSize * TARGET_SAMPLE_INSET_REM;
@@ -126,12 +131,12 @@ export function useGridAutoscroll<DragKind>({
 				if (outsideX !== 0) {
 					deltaX =
 						Math.sign(outsideX) *
-						reducedMotionStep(grid, pointer, box, "x", maximum);
+						reducedMotionStep(surface, pointer, box, "x", maximum);
 				}
 				if (outsideY !== 0) {
 					deltaY =
 						Math.sign(outsideY) *
-						reducedMotionStep(grid, pointer, box, "y", maximum);
+						reducedMotionStep(surface, pointer, box, "y", maximum);
 				}
 			}
 
@@ -144,7 +149,7 @@ export function useGridAutoscroll<DragKind>({
 					x: clamp(pointer.x, box.left + sampleInset, box.right - sampleInset),
 					y: clamp(pointer.y, box.top + sampleInset, box.bottom - sampleInset),
 				},
-				grid,
+				surface,
 			);
 
 			const moved =
@@ -160,8 +165,10 @@ export function useGridAutoscroll<DragKind>({
 
 		const trackPointer = (event: PointerEvent) => {
 			const drag = draggingRef.current;
-			const grid = gridRef.current;
-			const scroller = grid?.closest<HTMLElement>('[data-slot="panel-body"]');
+			const surface = surfaceRef.current;
+			const scroller = surface?.closest<HTMLElement>(
+				'[data-slot="panel-body"]',
+			);
 			if (drag === null || !scroller) {
 				stopFrame();
 				return;
@@ -191,5 +198,5 @@ export function useGridAutoscroll<DragKind>({
 			window.removeEventListener("blur", finishDrag);
 			stopFrame();
 		};
-	}, [axisOf, draggingRef, gridRef, onScroll]);
+	}, [axisOf, draggingRef, onScroll, surfaceRef]);
 }

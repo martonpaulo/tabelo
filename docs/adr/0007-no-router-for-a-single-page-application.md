@@ -35,7 +35,8 @@ links into `index.html`, where Vite rewrites root-absolute `href` values
 against `base` at build time.
 
 The measurement that decided it, taken on a throwaway worktree at `e74a1cc`
-with both sides built as `BASE_PATH=/tabelo/`:
+with both sides built as `BASE_PATH=/tabelo/` (the subpath the site was
+deployed at then; it has since moved to the root of `tabelo.martonpaulo.com`):
 
 | | with the router | without it | delta |
 | --- | --- | --- | --- |

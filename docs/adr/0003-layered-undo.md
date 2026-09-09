@@ -30,6 +30,13 @@ Undo is layered, and the layer is chosen by focus.
   rather than discarding it.
 - Sync-originated editor transactions are annotated and excluded from the local
   history, so undo never rewinds a change the user did not make.
+- An operation that permutes rows rather than editing in place, which today is
+  sorting, records the exact selection on either side of its step. Undo returns
+  the selection it was made from and redo returns the selection it produced,
+  even when the selection moved in between. Every other step keeps clamping the
+  current selection to the restored document, and this metadata is transient
+  timeline state that is never persisted and describes no order the document is
+  kept in.
 - A pane changing view resets that pane's local history, as its own step. The
   editor survives the change, but its text now means something else, so its
   keystroke history describes a format the pane has left. Undo therefore stops

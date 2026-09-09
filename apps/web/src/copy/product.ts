@@ -8,7 +8,7 @@ export const product = {
 	description:
 		"Edit one table visually or through synchronized text formats, entirely in your browser",
 	openGraphType: "website",
-	twitterCard: "summary",
+	twitterCard: "summary_large_image",
 } as const;
 
 export const DEFAULT_TABLE_NAME = "Untitled table";

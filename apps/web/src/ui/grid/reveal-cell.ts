@@ -16,12 +16,16 @@ import { type CellPosition, HEADER_ROW } from "@/core/selection";
 // the row gutter's right edge and the header row's bottom edge are exactly the
 // two boundaries the contract is written about, at any pane zoom and any gutter
 // width, with no second source of truth to keep in step.
+// `surface` is the shared grid surface: the positioned wrapper holding the
+// column index strip and the semantic table. The strip is chrome and sits
+// outside the table, so the boundary a header cell has to clear is only
+// reachable from there.
 export function revealGridCell(
-	grid: HTMLTableElement,
+	surface: HTMLElement,
 	cell: HTMLElement,
 	position: CellPosition,
 ): void {
-	const scroller = grid.closest<HTMLElement>('[data-slot="panel-body"]');
+	const scroller = surface.closest<HTMLElement>('[data-slot="panel-body"]');
 	if (!scroller) return;
 
 	// The optional pinned data layers are chrome for every cell except the ones
@@ -33,20 +37,20 @@ export function revealGridCell(
 	const pinnedColumn =
 		position.column === 0
 			? null
-			: grid.querySelector<HTMLElement>("[data-pinned-column]");
+			: surface.querySelector<HTMLElement>("[data-pinned-column]");
 	const pinnedRow =
 		position.row === HEADER_ROW || position.row === 0
 			? null
-			: grid.querySelector<HTMLElement>("[data-pinned-row]");
+			: surface.querySelector<HTMLElement>("[data-pinned-row]");
 
 	const gutter =
-		pinnedColumn ?? grid.querySelector<HTMLElement>("[data-row-header]");
+		pinnedColumn ?? surface.querySelector<HTMLElement>("[data-row-header]");
 	// A cell in the header row has only the index strip above it: the header row
 	// is what it sits in, so reserving that row's height would push it away from
 	// chrome that is not there.
 	const above =
 		pinnedRow ??
-		grid.querySelector<HTMLElement>(
+		surface.querySelector<HTMLElement>(
 			position.row === HEADER_ROW
 				? "[data-column-header]"
 				: `[data-cell="${HEADER_ROW}:0"]`,

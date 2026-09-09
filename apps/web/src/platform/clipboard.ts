@@ -1,9 +1,9 @@
 import type { ClipboardPayload } from "@/clipboard/parse";
 
 // The clipboard is the one browser API Tabelo uses that the user can refuse.
-// Permission can be denied, the read half is absent in some browsers, and a
-// restrictive context can remove the whole thing, so every call reports what
-// happened instead of returning false and leaving the caller to guess.
+// Permission can be denied and a restrictive context can remove the whole
+// thing, so every call reports what happened instead of returning false and
+// leaving the caller to guess.
 //
 // Trusted keyboard copy and paste arrive as events and never come through
 // here, which is why the recovery advice everywhere is "use the keyboard": it
@@ -12,7 +12,7 @@ import type { ClipboardPayload } from "@/clipboard/parse";
 export type ClipboardBlock =
 	// The user or the page's permission policy refused.
 	| "blocked"
-	// The API, or the half of it being asked for, does not exist here.
+	// The API does not exist here.
 	| "unavailable"
 	// The call worked and there was nothing to read.
 	| "empty"
@@ -51,9 +51,9 @@ function reasonFor(error: unknown): ClipboardBlock {
 	}
 }
 
-// The DOM types declare every method as present, but Firefox ships no read(),
-// and an insecure or restricted context removes the object entirely. Treating
-// it as partial is what the runtime actually looks like.
+// The DOM types declare the object as always present, but an insecure or
+// restricted context removes it entirely. Treating it as partial is what the
+// runtime actually looks like.
 function clipboard(): Partial<Clipboard> | undefined {
 	return typeof navigator === "undefined" ? undefined : navigator.clipboard;
 }
@@ -97,29 +97,17 @@ export async function writeClipboardTable(
 }
 
 export async function readClipboardTable(): Promise<ClipboardReadOutcome> {
+	// The object arrives whole or not at all: there is no second attempt to make
+	// when it is absent, because the same context that removes read() removes
+	// readText() beside it.
 	const api = clipboard();
-	if (!api) return { ok: false, reason: "unavailable" };
-
-	// A null result means the rich attempt failed in a way plain text might
-	// survive; anything else is already the final answer.
-	const read = api.read?.bind(api);
-	const rich = read ? await readRich(read) : null;
-	if (rich) return rich;
-
-	if (!api.readText) return { ok: false, reason: "unavailable" };
-	try {
-		const text = await api.readText();
-		return text
-			? { ok: true, payload: { text } }
-			: { ok: false, reason: "empty" };
-	} catch (error) {
-		return { ok: false, reason: reasonFor(error) };
-	}
+	if (!api?.read) return { ok: false, reason: "unavailable" };
+	return readRich(api.read.bind(api));
 }
 
 async function readRich(
 	read: () => Promise<ClipboardItems>,
-): Promise<ClipboardReadOutcome | null> {
+): Promise<ClipboardReadOutcome> {
 	try {
 		const items = await read();
 		let text = "";
@@ -135,12 +123,6 @@ async function readRich(
 		if (!text && !html) return { ok: false, reason: "empty" };
 		return { ok: true, payload: { text, html } };
 	} catch (error) {
-		const reason = reasonFor(error);
-		// A refusal applies to the whole clipboard, so falling through to
-		// readText() would only produce the same refusal a second time.
-		if (reason === "blocked") return { ok: false, reason };
-		// Anything else may still be readable as plain text: Firefox has no
-		// read() but does have readText().
-		return null;
+		return { ok: false, reason: reasonFor(error) };
 	}
 }

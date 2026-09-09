@@ -4,9 +4,10 @@ import { TabeloApp } from "@/ui/tabelo-app";
 
 // GitHub Pages has no SPA rewrite rule, so the deploy workflow serves
 // index.html as 404.html. That gets a deep link here, but leaves the deep path
-// in the address bar. BASE_URL is the canonical path the build was made for,
-// and replaceState normalizes to it without leaving the deep path behind in
-// the session history.
+// in the address bar. BASE_URL is the canonical path the build was made for
+// (`/` both in production at tabelo.martonpaulo.com and locally), and
+// replaceState normalizes to it without leaving the deep path behind in the
+// session history.
 const canonicalPath = import.meta.env.BASE_URL;
 
 if (window.location.pathname !== canonicalPath) {

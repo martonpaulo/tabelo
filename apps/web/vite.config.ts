@@ -7,8 +7,10 @@ import { THEME_COLOR } from "./src/preferences/contract";
 import { createProductMetadata } from "./src/product-metadata";
 import { devServerPort, previewServerPort } from "./worktree-ports";
 
-// GitHub Pages serves this project from a subpath. The deploy workflow sets
-// BASE_PATH; local dev and preview stay at the root.
+// GitHub Pages serves this project from the root of tabelo.martonpaulo.com.
+// The deploy workflow still sets BASE_PATH (and SITE_ORIGIN) explicitly so a
+// build for another location stays a one-variable change; local dev and
+// preview stay at the root.
 const base = process.env.BASE_PATH ?? "/";
 const productMetadata = createProductMetadata({
 	basePath: base,

@@ -117,22 +117,62 @@ export function gridAreaStyle(slots: readonly SlotId[]): string {
 	return `${area.rowStart} / ${area.columnStart} / ${area.rowEnd} / ${area.columnEnd}`;
 }
 
+// The stretch of the other axis over which one axis genuinely divides,
+// expressed as CSS grid lines so a caller can place against it directly.
+export interface SplitExtent {
+	readonly start: number;
+	readonly end: number;
+}
+
+// Where an axis actually splits, not merely whether it does. The middle
+// boundary of an axis exists only on the cross-axis tracks no pane straddles:
+// in "left-split" the panes divide left of the vertical divider but not right
+// of it, so the row boundary is real in column 1 alone. Returns null when no
+// track divides, which is the same answer as "this axis does not split".
+//
+// Derived from the preset's own rectangles rather than listed per layout, so a
+// new preset needs no edit here.
+function splitExtentAlong(
+	id: LayoutId,
+	axis: "column" | "row",
+): SplitExtent | null {
+	const areas = getLayout(id).panes.map(gridAreaOf);
+
+	// A pane covering both tracks of the splitting axis leaves no boundary
+	// behind it, and the cross-axis tracks it occupies are the ones it hides.
+	const straddles = (area: GridArea): boolean =>
+		axis === "column"
+			? area.columnEnd - area.columnStart === 2
+			: area.rowEnd - area.rowStart === 2;
+	const covers = (area: GridArea, track: number): boolean =>
+		axis === "column"
+			? area.rowStart <= track && track < area.rowEnd
+			: area.columnStart <= track && track < area.columnEnd;
+
+	const divided = [1, 2].filter(
+		(track) => !areas.some((area) => covers(area, track) && straddles(area)),
+	);
+	if (divided.length === 0) return null;
+	return { start: Math.min(...divided), end: Math.max(...divided) + 1 };
+}
+
+export function layoutColumnSplitExtent(id: LayoutId): SplitExtent | null {
+	return splitExtentAlong(id, "column");
+}
+
+export function layoutRowSplitExtent(id: LayoutId): SplitExtent | null {
+	return splitExtentAlong(id, "row");
+}
+
 // Whether a layout actually splits along an axis, which decides if the matching
-// resize handle means anything. Derived from the preset rather than listed, so
-// a new preset needs no edit here: an axis is split as soon as some pane
-// occupies a single track along it.
+// resize handle means anything. Presence is the existence of an extent, so
+// there is one owner: a handle can never be shown with nowhere to put it.
 export function layoutSplitsColumns(id: LayoutId): boolean {
-	return getLayout(id).panes.some((slots) => {
-		const area = gridAreaOf(slots);
-		return area.columnEnd - area.columnStart === 1;
-	});
+	return layoutColumnSplitExtent(id) !== null;
 }
 
 export function layoutSplitsRows(id: LayoutId): boolean {
-	return getLayout(id).panes.some((slots) => {
-		const area = gridAreaOf(slots);
-		return area.rowEnd - area.rowStart === 1;
-	});
+	return layoutRowSplitExtent(id) !== null;
 }
 
 export function paneCount(id: LayoutId): number {
@@ -498,6 +538,30 @@ export function splitOptions(workspace: Workspace): readonly SplitOption[] {
 			return target ? [{ paneId: pane.id, edge, layout: target.id }] : [];
 		}),
 	);
+}
+
+// The arrangement the first content of a session opens into: the format it
+// arrived in on the left, the visual table it became on the right. Pane
+// identity and every pane-owned and workspace-owned preference carry over from
+// the arrangement being replaced, so only the shape and the two views are
+// decided here. The grid becomes active because it is the view the user works
+// the table in.
+export function openImportWorkspace(
+	workspace: Workspace,
+	sourceView: ViewId,
+): Workspace {
+	const carried = applyLayout("columns", workspace.panes);
+	const panes = carried.map<WorkspacePane>((pane, index) => ({
+		...pane,
+		view: index === 0 ? sourceView : "grid",
+	}));
+	const grid = panes.find((pane) => pane.view === "grid");
+	return {
+		...workspace,
+		layout: "columns",
+		panes,
+		activePaneId: grid?.id ?? firstPaneId(panes),
+	};
 }
 
 export function createDefaultWorkspace(): Workspace {

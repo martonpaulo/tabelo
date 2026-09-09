@@ -14,6 +14,7 @@ import {
 	type ReactNode,
 	type RefObject,
 	useId,
+	useRef,
 	useState,
 } from "react";
 import { copy } from "@/copy/copy";
@@ -30,6 +31,7 @@ import { ContextMenuSelectionOption } from "@/ui/primitives/context-menu-selecti
 import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { cellTypeOptions } from "./cell-type-options";
 import { targetAxisForMenu, targetCellForMenu } from "./menu-target";
+import { revealGridCell } from "./reveal-cell";
 import { buildTableActions, type TableActionContext } from "./table-actions";
 
 // One context menu for the whole grid rather than one per cell. Mounting a
@@ -103,18 +105,62 @@ export function GridContextMenu({
 	wrapperRef,
 }: {
 	readonly children: ReactNode;
-	// The positioned box the drop indicator measures and draws against. It is
-	// this element rather than the table because a table cannot hold a non-table
-	// child, and because it scrolls with the table, so the indicator needs no
-	// scroll arithmetic of its own.
+	// The grid surface: the positioned box holding the column index strip and the
+	// semantic table. The drop indicator measures and draws against it, because a
+	// table cannot hold a non-table child and because it scrolls with the table,
+	// so the indicator needs no scroll arithmetic of its own. It is also what
+	// makes the strip's controls part of the grid for hit testing, now that they
+	// sit beside the table rather than inside it.
 	readonly wrapperRef?: RefObject<HTMLDivElement | null>;
 }) {
 	const [axis, setAxis] = useState<ContextAxis>("cell");
 
+	// Whether this opening of the menu ended in one of its own commands. Only
+	// then does the grid take focus back explicitly; a dismissal is somebody
+	// else's business, and stealing focus from whatever the user pressed
+	// instead would send their next keystroke into a cell.
+	const commandRan = useRef(false);
+
+	// Where focus lands when a command closes the menu. The grid's own
+	// focus-following effect deliberately stands down while a menu owns focus,
+	// so an action that moved the focused cell would otherwise leave DOM focus
+	// on the trigger and the new cell possibly out of view. Returning the cell
+	// hands both back: the keyboard path to Move focus, keep selection is only
+	// a keyboard path if the grid is focused again afterwards.
+	const finalFocus = () => {
+		// `true` is the primitive's own behaviour, which is what a dismissal
+		// keeps: this component adds a destination, it does not take one away.
+		if (!commandRan.current) return true;
+		const surface = wrapperRef?.current;
+		if (!surface) return true;
+		const { focus } = activeRange(useTabeloStore.getState().selection);
+		const cell = surface.querySelector<HTMLElement>(
+			`[data-cell="${focus.row}:${focus.column}"]`,
+		);
+		if (!cell) return true;
+		// Revealed once focus has actually moved, because the browser scrolls
+		// on focus too and the later scroll is the one that wins. Clear of the
+		// sticky chrome is the grid's contract, not merely on screen.
+		requestAnimationFrame(() => {
+			if (cell.isConnected) revealGridCell(surface, cell, focus);
+		});
+		return cell;
+	};
+
 	return (
-		<ContextMenu>
+		<ContextMenu
+			onOpenChange={(open) => {
+				if (open) commandRan.current = false;
+			}}
+		>
 			<ContextMenuTrigger
-				render={<div ref={wrapperRef} className="relative min-w-max" />}
+				render={
+					<div
+						ref={wrapperRef}
+						data-grid-surface
+						className="relative min-w-max"
+					/>
+				}
 				onContextMenuCapture={(event: React.MouseEvent) => {
 					const target = event.target as HTMLElement | null;
 
@@ -153,7 +199,7 @@ export function GridContextMenu({
 				{children}
 			</ContextMenuTrigger>
 
-			<ContextMenuContent className="w-auto min-w-56">
+			<ContextMenuContent className="w-auto min-w-56" finalFocus={finalFocus}>
 				{axis === "cell" ? (
 					<>
 						<CellTypeMenuGroup />
@@ -177,7 +223,10 @@ export function GridContextMenu({
 									<ContextMenuItem
 										disabled={action.disabled}
 										variant={action.danger ? "destructive" : "default"}
-										onClick={action.run}
+										onClick={() => {
+											commandRan.current = true;
+											action.run();
+										}}
 									>
 										<action.icon aria-hidden />
 										{action.label}

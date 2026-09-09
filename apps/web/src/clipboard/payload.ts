@@ -8,13 +8,28 @@ import type { CellValue, ExpectedColumnType } from "@/core/types";
 
 // Tabelo's own clipboard flavour: the types that TSV and HTML cannot spell.
 //
-// The transport was decided by measurement rather than preference. A custom
-// MIME flavour round-trips through DataTransfer in both engines, but Firefox
-// refuses to write one through the asynchronous API at all
-// ("NotAllowedError: Type 'web application/x-tabelo+json' not supported for
-// write"), and that refusal takes the public flavours down with it. An inert
-// comment inside the HTML flavour survived every path in both engines, so it
-// is the one transport rather than one of two.
+// The transport was decided by measurement rather than preference, and the
+// measurement was re-taken on Chromium alone in #266, once the engine-specific
+// reason behind it stopped applying (#265). The conclusion survived, for a
+// different reason.
+//
+// Chromium keeps two separate stores for a custom clipboard type. A type
+// written through `DataTransfer.setData` on a copy event lands in the pickled
+// custom-data format, while a "web "-prefixed type written through
+// `ClipboardItem` lands in the web custom format map, and neither reader sees
+// the other's store. Reproduced on all four combinations: a payload written as
+// `web application/x-tabelo+json` on the copy event is absent from
+// `navigator.clipboard.read()`, and one written through `ClipboardItem` is
+// absent from the paste event's `clipboardData`.
+// https://chromium.googlesource.com/chromium/src/+/main/content/browser/renderer_host/clipboard_host_impl.cc
+//
+// Tabelo copies and pastes from both a keyboard event and a menu command, so a
+// flavour of its own would carry the types through two of those four paths and
+// silently drop them through the other two: a number would arrive as its text
+// and a column's expectation would vanish. An inert comment in the HTML
+// flavour reaches every path, because HTML is the only carrier both transports
+// share. Priority 1 is data preservation, so the shared carrier wins over the
+// tidier one, and e2e/clipboard-transports.spec.ts holds that result.
 //
 // This schema is versioned on its own. It describes bytes in flight between
 // two Tabelo tabs, which is a different compatibility window from a stored

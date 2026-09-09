@@ -37,20 +37,25 @@ export function autoscrollAxisOf(drag: GridDragKind): GridAutoscrollAxis {
 	return "both";
 }
 
-// The innermost grid element matching `selector` under a viewport point.
-// `elementsFromPoint` rather than `elementFromPoint`, because the sticky chrome
-// layers and the drop indicator can all sit over the element being looked for.
+// The innermost element matching `selector` under a viewport point, confined to
+// the grid surface. `elementsFromPoint` rather than `elementFromPoint`, because
+// the sticky chrome layers and the drop indicator can all sit over the element
+// being looked for.
+//
+// The root is the shared surface rather than the semantic table: the column
+// index strip is chrome and sits beside the table rather than inside it, so a
+// containment test against the table alone would reject every column handle.
 export function gridTargetAt(
-	grid: HTMLTableElement,
+	root: HTMLElement,
 	point: GridAutoscrollPoint,
 	selector: string,
 ): HTMLElement | null {
-	for (const sampled of grid.ownerDocument.elementsFromPoint(
+	for (const sampled of root.ownerDocument.elementsFromPoint(
 		point.x,
 		point.y,
 	)) {
 		const target = sampled.closest<HTMLElement>(selector);
-		if (target && grid.contains(target)) return target;
+		if (target && root.contains(target)) return target;
 	}
 	return null;
 }

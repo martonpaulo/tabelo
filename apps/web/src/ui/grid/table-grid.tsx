@@ -9,6 +9,7 @@ import {
 	type CellPosition,
 	type CellRect,
 	HEADER_ROW,
+	neighbourCell,
 	rectContains,
 	replaceActiveRange,
 	selectionFillRefusal,
@@ -328,6 +329,10 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 	const gridRef = useRef<HTMLTableElement>(null);
 	const wrapperRef = useRef<HTMLDivElement>(null);
+	// The column index strip. Held separately because "focus is in the grid" is
+	// the table plus this strip, and the surface around them holds one control
+	// that has never counted: see the focus-handoff effect below.
+	const stripRef = useRef<HTMLDivElement>(null);
 	const draggingRef = useRef<GridDragKind | null>(null);
 	// Written by the drop indicator when it mounts, so a reorder drag repaints
 	// one element rather than the whole table on every pointer move.
@@ -369,6 +374,21 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// Keep DOM focus on the focused cell, but never steal it from the source
 	// panel or a menu: follow the selection only when focus is already inside
 	// the grid, or when an edit just finished and left focus with nobody.
+	//
+	// "Inside the grid" is the table plus the column index strip, which is the
+	// boundary that held while the strip was still a row of the table. Selecting
+	// a column from the strip is exactly the case this handoff exists for: the
+	// grid's keyboard model lives on the table, so a selection made from a strip
+	// control has to move focus there or the next key reaches a button that
+	// answers none of them.
+	//
+	// Not the whole surface, which is the wider box the two share with the fill
+	// handle. That handle fills by keyboard from where it stands, so it was
+	// deliberately outside this test before the strip moved and stays outside it
+	// now: including it would pull focus off the handle after its first fill.
+	// Everything else stands down as it always did, a menu having portalled its
+	// popup out, the find bar being the surface's sibling, and another pane
+	// being elsewhere entirely.
 	useEffect(() => {
 		const isEditing = editing !== null || editingHeader !== null;
 		const justFinishedEditing = wasEditingRef.current && !isEditing;
@@ -376,9 +396,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		if (isEditing) return;
 
 		const grid = gridRef.current;
-		if (!grid) return;
-		if (!grid.contains(window.document.activeElement) && !justFinishedEditing)
-			return;
+		const surface = wrapperRef.current;
+		if (!grid || !surface) return;
+		const active = window.document.activeElement;
+		const insideGrid =
+			grid.contains(active) || stripRef.current?.contains(active) === true;
+		if (!insideGrid && !justFinishedEditing) return;
 
 		const target = grid.querySelector<HTMLElement>(
 			`[data-cell="${focus.row}:${focus.column}"]`,
@@ -391,7 +414,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		// Rebuilt from the two coordinates rather than passing `focus` itself:
 		// the effect must not wake on a selection object that carries the same
 		// focused cell, which is what listing the members keeps it from doing.
-		revealGridCell(grid, target, { row: focus.row, column: focus.column });
+		revealGridCell(surface, target, { row: focus.row, column: focus.column });
 	}, [focus.row, focus.column, editing, editingHeader]);
 
 	// Stepping to a match moves the selection while the find bar keeps the
@@ -400,11 +423,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// rather than merely on screen, which is the contract #141 established.
 	useEffect(() => {
 		const grid = gridRef.current;
-		if (!grid || !match) return;
+		const surface = wrapperRef.current;
+		if (!grid || !surface || !match) return;
 		const target = grid.querySelector<HTMLElement>(
 			`[data-cell="${match.row}:${match.column}"]`,
 		);
-		if (target) revealGridCell(grid, target, match);
+		if (target) revealGridCell(surface, target, match);
 	}, [match]);
 
 	// A column selection starts on the header row, because a column is its header
@@ -462,7 +486,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 	const reorder = useAxisReorder({
 		gridRef,
-		wrapperRef,
+		surfaceRef: wrapperRef,
 		draggingRef,
 		setIndicatorRef,
 	});
@@ -473,31 +497,27 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		setPreviewRef: setFillPreviewRef,
 	});
 	const extendAutoscrolledDrag = useCallback(
-		(
-			drag: GridDragKind,
-			point: GridAutoscrollPoint,
-			grid: HTMLTableElement,
-		) => {
+		(drag: GridDragKind, point: GridAutoscrollPoint, surface: HTMLElement) => {
 			// A reorder drag has nothing to extend. It re-resolves the gap the
 			// pointer names, so scrolling past the edge keeps moving the line
 			// through content the pointer itself never travelled over.
 			if (drag === "row-reorder" || drag === "column-reorder") {
-				reorder.trackReorder(point, grid);
+				reorder.trackReorder(point, surface);
 				return;
 			}
 			if (drag === "fill-row" || drag === "fill-column") {
-				fill.trackFill(point, grid);
+				fill.trackFill(point, surface);
 				return;
 			}
 
 			if (drag === "column") {
-				const stripCell = grid.querySelector<HTMLElement>(
+				const stripCell = surface.querySelector<HTMLElement>(
 					"[data-column-header]",
 				);
 				if (!stripCell) return;
 				const stripBox = stripCell.getBoundingClientRect();
 				const target = gridTargetAt(
-					grid,
+					surface,
 					{ x: point.x, y: (stripBox.top + stripBox.bottom) / 2 },
 					"[data-column-header]",
 				);
@@ -508,11 +528,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			}
 
 			if (drag === "row") {
-				const gutterCell = grid.querySelector<HTMLElement>("[data-row-header]");
+				const gutterCell =
+					surface.querySelector<HTMLElement>("[data-row-header]");
 				if (!gutterCell) return;
 				const gutterBox = gutterCell.getBoundingClientRect();
 				const target = gridTargetAt(
-					grid,
+					surface,
 					{ x: (gutterBox.left + gutterBox.right) / 2, y: point.y },
 					"[data-row-header]",
 				);
@@ -522,16 +543,25 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				return;
 			}
 
-			const headerCell = grid.querySelector<HTMLElement>('[data-cell="-1:0"]');
-			const gutterCell = grid.querySelector<HTMLElement>("[data-row-header]");
+			const headerCell =
+				surface.querySelector<HTMLElement>('[data-cell="-1:0"]');
+			const gutterCell =
+				surface.querySelector<HTMLElement>("[data-row-header]");
 			if (!headerCell || !gutterCell) return;
 			const headerBox = headerCell.getBoundingClientRect();
 			const gutterBox = gutterCell.getBoundingClientRect();
 			const target = gridTargetAt(
-				grid,
+				surface,
 				{
 					x: Math.max(point.x, gutterBox.right + 1),
-					y: Math.max(point.y, headerBox.bottom + 1),
+					// Clamped to the header's own top rather than below it. What this
+					// has to stay off is the column-index strip above the header,
+					// which owns no cell; the header row itself is an ordinary
+					// endpoint of a cell rectangle, so excluding it made an
+					// autoscrolling header drag sample the first data row instead of
+					// the header under the pointer, and quietly pull data rows into a
+					// header-only selection.
+					y: Math.max(point.y, headerBox.top + 1),
 				},
 				"[data-cell]",
 			);
@@ -550,7 +580,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	);
 
 	useGridAutoscroll({
-		gridRef,
+		surfaceRef: wrapperRef,
 		draggingRef,
 		axisOf: autoscrollAxisOf,
 		onScroll: extendAutoscrolledDrag,
@@ -567,26 +597,21 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	});
 
 	const moveFocus = useCallback(
-		(rowDelta: number, columnDelta: number, intent: SelectIntent) => {
+		(direction: JumpDirection, intent: "replace" | "extend") => {
 			const store = useTabeloStore.getState();
 			const from = activeRange(store.selection).focus;
-			const next = {
-				// The floor is the header row: arrows and Shift+arrows reach it, and
-				// stop there rather than wrapping or escaping the grid.
-				row: Math.max(
-					HEADER_ROW,
-					Math.min(from.row + rowDelta, store.document.rows.length - 1),
-				),
-				column: Math.max(
-					0,
-					Math.min(
-						from.column + columnDelta,
-						store.document.columns.length - 1,
-					),
-				),
-			};
+			// One bounded step, through the same helper the menu's own focus
+			// moves use, so the two paths stop at the same edges. A step off the
+			// grid keeps the cell it started from: arrows stop at the edge rather
+			// than wrapping or leaving the grid.
+			const next =
+				neighbourCell(
+					from,
+					direction,
+					store.document.rows.length,
+					store.document.columns.length,
+				) ?? from;
 			if (intent === "extend") store.extendSelection(next);
-			else if (intent === "toggle") store.moveFocusKeepingRegions(next);
 			else store.selectCell(next);
 		},
 		[],
@@ -717,22 +742,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			return;
 		}
 
-		// Moving the focus while keeping the areas already selected. It used to
-		// be Mod+arrow, which the data-edge jump below now owns, and this is the
-		// only arrow chord left: Alt is reordering, Mod+Alt is filling, and
-		// Alt+Shift is column width. A long chord for a rare gesture is worth
-		// more than losing it, because without it a second column cannot be
-		// added to a selection without a pointer, and §9 requires that it can.
-		if (mod && event.altKey && event.shiftKey && arrowDirection) {
-			event.preventDefault();
-			moveFocus(
-				arrowDirection === "up" ? -1 : arrowDirection === "down" ? 1 : 0,
-				arrowDirection === "left" ? -1 : arrowDirection === "right" ? 1 : 0,
-				"toggle",
-			);
-			return;
-		}
-
 		if (
 			mod &&
 			event.altKey &&
@@ -761,9 +770,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			return;
 		}
 
-		// Reordering shares the arrow keys with navigation, behind Alt. Keeping
-		// it on the keyboard means drag is never the only way to reorder.
-		if (event.altKey) {
+		// Reordering shares the arrow keys with navigation, behind Alt alone.
+		// Keeping it on the keyboard means drag is never the only way to
+		// reorder. The two other modifiers are excluded rather than ignored:
+		// a permissive test here would quietly re-adopt a chord section 9 no
+		// longer allows, which is exactly how Mod+Alt+Shift+arrow would have
+		// gone on reordering after its own branch was removed.
+		if (event.altKey && !mod && !event.shiftKey) {
 			if (event.key === "ArrowUp" || event.key === "ArrowDown") {
 				event.preventDefault();
 				const refusal = store.moveSelectedRow(event.key === "ArrowUp" ? -1 : 1);
@@ -790,6 +803,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			}
 		}
 
+		// Every Alt+arrow chord this grid owns has been offered its branch by
+		// now: reorder, fill, and column width. What is left is unassigned, so
+		// it returns without preventing the browser's default rather than
+		// falling into ordinary navigation below. Mod+Alt+Shift+arrow, which
+		// used to move the focus, is the combination this keeps inert.
+		if (event.altKey && arrowDirection) return;
+
 		// The modifier jumps to the edge of the data, which is the one thing
 		// every spreadsheet puts on this chord. The rule is in `dataEdgeTarget`;
 		// Shift sends the same target through the ordinary extension path, so an
@@ -807,24 +827,24 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 		// Shift extends the active area from its anchor, and a plain arrow
 		// replaces it. The modifier never reaches here: the jump above took it.
-		const arrowIntent: SelectIntent = event.shiftKey ? "extend" : "replace";
+		const arrowIntent = event.shiftKey ? "extend" : "replace";
 
 		switch (event.key) {
 			case "ArrowUp":
 				event.preventDefault();
-				moveFocus(-1, 0, arrowIntent);
+				moveFocus("up", arrowIntent);
 				return;
 			case "ArrowDown":
 				event.preventDefault();
-				moveFocus(1, 0, arrowIntent);
+				moveFocus("down", arrowIntent);
 				return;
 			case "ArrowLeft":
 				event.preventDefault();
-				moveFocus(0, -1, arrowIntent);
+				moveFocus("left", arrowIntent);
 				return;
 			case "ArrowRight":
 				event.preventDefault();
-				moveFocus(0, 1, arrowIntent);
+				moveFocus("right", arrowIntent);
 				return;
 			case "Tab": {
 				const next = adjacentCell(
@@ -852,18 +872,23 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				});
 				return;
 			case "Enter":
+				// One symmetric family rather than four unrelated keys: Mod
+				// inserts a row, Alt inserts a column, and Shift flips which side
+				// of the selection the new line lands on. Every one of the four
+				// routes to the same store action the insert menu uses, so both
+				// paths are one history step, and none exceeds three keys.
+				//
+				// The two modifiers are exclusive, so the retired
+				// Mod+Alt+(Shift+)Enter neither inserts nor falls through into
+				// editing: it is unassigned and left to the browser.
+				if (mod && event.altKey) return;
 				event.preventDefault();
-				// One reversible matrix rather than four unrelated keys: the
-				// modifier inserts, Shift flips which side of the selection the
-				// new line lands on, and Alt switches the axis from rows to
-				// columns. Every one of the four routes to the same store action
-				// the insert menu uses, so both paths are one history step.
-				if (mod && event.altKey) {
-					if (event.shiftKey) store.addColumnLeft();
-					else store.addColumnRight();
-				} else if (mod) {
+				if (mod) {
 					if (event.shiftKey) store.addRowAbove();
 					else store.addRowBelow();
+				} else if (event.altKey) {
+					if (event.shiftKey) store.addColumnLeft();
+					else store.addColumnRight();
 				} else beginEditing(focus);
 				return;
 			case "F2":
@@ -965,6 +990,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		(total, column) => total + resolveColumnWidth(columnWidths[column.id]),
 		0,
 	);
+	// The one width model both siblings of the grid surface are laid out from:
+	// the strip's grid tracks and the table's colgroup read the same numbers, so
+	// a letter can never drift from the column it names. The gutter keeps its
+	// token size at every zoom level; only content columns scale.
+	const columnTrack = (column: Column) =>
+		`${resolveColumnWidth(columnWidths[column.id]) * zoom}rem`;
+	const surfaceWidth = `calc(var(--grid-gutter-w) + ${contentWidth * zoom}rem)`;
 	const keepTypedEditing = () => {
 		typedDecisionOutcomeRef.current = "keep-editing";
 		setTypedDialogOpen(false);
@@ -1005,25 +1037,14 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 
 	return (
 		<GridContextMenu wrapperRef={wrapperRef}>
-			<table
-				ref={gridRef}
-				// Automatic table layout treats column widths as minimums and lets
-				// long content expand them. Fixed layout plus an explicit total makes
-				// the colgroup authoritative while preserving per-pane zoom.
-				style={{
-					width: `calc(var(--grid-gutter-w) + ${contentWidth * zoom}rem)`,
-				}}
-				// Grid semantics, not document-table semantics: this is an editable
-				// widget with its own keyboard model, so assistive technology should
-				// treat it that way. `<table role="grid">` is the ARIA Authoring
-				// Practices pattern for exactly this; the lint rule is a heuristic that
-				// does not model it. See docs/design-system.md §9.
-				// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
-				role="grid"
-				aria-label={copy.a11y.grid}
-				aria-rowcount={document.rows.length + 1}
-				aria-colcount={document.columns.length}
-				className="tabelo-grid table-fixed border-separate border-spacing-0 text-content"
+			{/* The strip and the table are siblings, and these three events belong to
+			    both of them: an editor is committed by a pointer press anywhere on
+			    the grid surface, and the clipboard follows focus, which a strip
+			    control can hold. `contents` generates no box, so the strip still
+			    resolves its sticky position against the surface itself and the
+			    rendered layout is exactly what the two siblings declare. */}
+			<div
+				className="contents"
 				onPointerDownCapture={(event) => {
 					const activeEditor = event.currentTarget.ownerDocument.activeElement;
 					if (!(activeEditor instanceof HTMLTextAreaElement)) return;
@@ -1039,7 +1060,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 						event.stopPropagation();
 					}
 				}}
-				onKeyDown={handleKeyDown}
 				onCopy={(event) => {
 					if (useTabeloStore.getState().editing) return;
 					writeClipboard(event);
@@ -1073,198 +1093,231 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					}
 				}}
 			>
-				<colgroup>
-					{/* The gutter holds row numbers and menu affordances rather than
-					    table content, so it keeps its size at every zoom level. */}
-					<col style={{ width: "var(--grid-gutter-w)" }} />
-					{document.columns.map((column) => (
-						<col
+				{/* The column index strip. It is chrome, like the row-number gutter it
+				    mirrors, so it sits beside the table rather than inside it: the
+				    controls it holds are neither a `row` nor a `rowgroup`, and those
+				    are the only children `role="grid"` may own. Marking the row
+				    presentational did not help, because ARIA's conflict resolution
+				    discards a presentational role precisely when the element holds
+				    controls, and it then re-parented them into the grid. See
+				    docs/design-system.md §9. */}
+				<div
+					ref={stripRef}
+					data-column-strip
+					className="sticky top-0 z-30 grid h-grid-strip"
+					style={{
+						width: surfaceWidth,
+						gridTemplateColumns: `var(--grid-gutter-w) ${document.columns
+							.map(columnTrack)
+							.join(" ")}`,
+					}}
+				>
+					{/* Where the letters meet the row numbers is a dead corner, not a
+					    control. */}
+					<div className="sticky left-0 z-30 border-line-strong border-r border-b bg-surface-header" />
+					{document.columns.map((column, columnIndex) => (
+						<ColumnIndexCell
 							key={column.id}
-							style={{
-								width: `${resolveColumnWidth(columnWidths[column.id]) * zoom}rem`,
-							}}
-						/>
-					))}
-				</colgroup>
-
-				<thead>
-					{/* The column index strip. It is chrome, like the row-number gutter
-					    it mirrors, so role="presentation" keeps it out of the grid's row
-					    semantics: it must not count toward aria-rowcount or shift
-					    aria-rowindex. Presentation rather than aria-hidden, because the
-					    controls it holds have to stay reachable: aria-hidden would remove
-					    its descendants from the tree, taking column selection and the
-					    column menu with them. The lint rule reads a <tr> inside
-					    role="grid" as interactive; removing a chrome row from the row
-					    semantics is what role="presentation" is for. See §9. */}
-					{/* biome-ignore lint/a11y/noInteractiveElementToNoninteractiveRole: see above */}
-					<tr role="presentation">
-						{/* Where the letters meet the row numbers is a dead corner, not a
-						    control. */}
-						<td
-							role="presentation"
-							className="sticky top-0 left-0 z-30 h-grid-strip border-line-strong border-r border-b bg-surface-header"
-						/>
-						{document.columns.map((column, columnIndex) => (
-							<ColumnIndexCell
-								key={column.id}
-								axisMenuHandle={axisMenuHandle}
-								columnIndex={columnIndex}
-								header={column.header}
-								expectedType={column.expectedType}
-								focused={focus.column === columnIndex}
-								width={resolveColumnWidth(columnWidths[column.id])}
-								zoom={zoom}
-								pinned={pinnedColumn && columnIndex === 0}
-								onSelect={(intent) => selectColumn(columnIndex, intent)}
-								onDragStart={() => {
-									draggingRef.current = "column";
-								}}
-								onDragEnter={() => {
-									if (draggingRef.current !== "column") return;
-									selectColumn(columnIndex, "extend");
-								}}
-								onGripPointerDown={reorder.onGripPointerDown}
-							/>
-						))}
-					</tr>
-
-					<tr
-						// biome-ignore lint/a11y/noRedundantRoles: see the tbody rows
-						role="row"
-						aria-rowindex={1}
-						className="group/row h-content-line-box"
-					>
-						<th
-							scope="row"
-							// biome-ignore lint/a11y/noRedundantRoles: see the tbody rows
-							role="rowheader"
-							aria-label={copy.a11y.headerRow}
-							// Right-clicking row 1 offers row actions like any other row.
-							// Before the strip existed this lookup found nothing and the
-							// menu fell through to cell actions on a non-cell.
-							data-row-header={HEADER_ROW}
-							className="sticky top-grid-strip left-0 z-30 border-line-strong border-r border-b border-b-line-subtle bg-surface-gutter px-1 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums"
-							onPointerEnter={() => {
-								if (draggingRef.current !== "row") return;
-								selectRow(HEADER_ROW, "extend");
-							}}
-						>
-							<div className="grid h-content-line-box grid-cols-[1.25rem_minmax(0,1fr)_1.25rem] items-center gap-1">
-								{/* No reorder grip: every table keeps exactly one header row
-								    and it is always the first, so there is nowhere for it to
-								    go. The track stays so its number lines up with every
-								    other one. */}
-								<span aria-hidden="true" />
-								<button
-									type="button"
-									tabIndex={entered ? 0 : -1}
-									aria-label={`${copy.actions.selectRow}: ${copy.a11y.headerRow}`}
-									className="min-w-0 cursor-pointer justify-self-end rounded-interactive px-1 text-right hover:text-foreground"
-									onPointerDown={(event) => {
-										if (event.button !== 0) return;
-										draggingRef.current = "row";
-										selectRow(HEADER_ROW, selectIntentOf(event));
-									}}
-									onClick={(event) => {
-										// A keyboard-generated click has no pointer detail.
-										if (event.detail === 0)
-											selectRow(HEADER_ROW, selectIntentOf(event));
-									}}
-								>
-									1
-								</button>
-								<AxisMenuTrigger
-									handle={axisMenuHandle}
-									axis="row"
-									index={HEADER_ROW}
-									revealed={focus.row === HEADER_ROW}
-								/>
-							</div>
-						</th>
-						{document.columns.map((column, columnIndex) => (
-							<HeaderCell
-								key={column.id}
-								columnIndex={columnIndex}
-								header={column.header}
-								align={column.align}
-								wrapped={wrappedColumns.includes(column.id)}
-								pinned={pinnedColumn && columnIndex === 0}
-								selected={rects.some((candidate) =>
-									rectContains(candidate, HEADER_ROW, columnIndex),
-								)}
-								copiedEdges={clipboardEdgesAt(
-									copiedAt,
-									HEADER_ROW,
-									columnIndex,
-								)}
-								focus={focus.row === HEADER_ROW && focus.column === columnIndex}
-								editing={editingHeader === columnIndex}
-								seed={editingSeed}
-								markStart={
-									match?.row === HEADER_ROW && match.column === columnIndex
-										? match.start
-										: NO_MARK
-								}
-								markEnd={
-									match?.row === HEADER_ROW && match.column === columnIndex
-										? match.end
-										: NO_MARK
-								}
-							/>
-						))}
-					</tr>
-				</thead>
-
-				<tbody>
-					{document.rows.map((row, rowIndex) => (
-						// Every selection prop is narrowed to this row's own membership
-						// before it crosses the memo boundary. Passing the shared focus
-						// and the regions instead would change all 200 rows' props on
-						// every arrow key, which is the case the boundary exists to skip:
-						// a row outside the selection keeps the same empty spans and is
-						// reconciled away.
-						<DataRow
-							key={row.id}
-							row={row}
-							rowIndex={rowIndex}
-							columns={document.columns}
 							axisMenuHandle={axisMenuHandle}
-							focused={focus.row === rowIndex}
-							focusColumn={focus.row === rowIndex ? focus.column : NO_COLUMN}
-							selectedSpans={spansOf(rects, rowIndex)}
-							// Narrowed for the same reason, and to primitives for the
-							// same reason: the copied areas outlive the selection, so a
-							// row outside them must keep props that do not change.
-							//
-							// Three rows' worth, because a cell's top and bottom edges
-							// come from whether the cell above or below it is copied
-							// too, and a row cannot see its neighbours from behind the
-							// memo boundary.
-							copiedSpans={spansOf(copiedRanges, rowIndex)}
-							copiedSpansAbove={spansOf(copiedRanges, rowIndex - 1)}
-							copiedSpansBelow={spansOf(copiedRanges, rowIndex + 1)}
-							// The current find match, narrowed to this row: at most one
-							// row in the table carries it, so every other row keeps the
-							// same three values and is reconciled away.
-							markColumn={match?.row === rowIndex ? match.column : NO_COLUMN}
-							markStart={match?.row === rowIndex ? match.start : NO_MARK}
-							markEnd={match?.row === rowIndex ? match.end : NO_MARK}
-							editingColumn={
-								editing?.row === rowIndex ? editing.column : NO_COLUMN
-							}
-							editingSeed={editing?.row === rowIndex ? editingSeed : null}
-							wrappedColumns={wrappedColumns}
-							pinnedRow={pinnedRow && rowIndex === 0}
-							pinnedColumn={pinnedColumn}
-							selectRow={selectRow}
-							onFinishCellEdit={finishCellEdit}
-							draggingRef={draggingRef}
+							tableRef={gridRef}
+							columnIndex={columnIndex}
+							header={column.header}
+							expectedType={column.expectedType}
+							focused={focus.column === columnIndex}
+							width={resolveColumnWidth(columnWidths[column.id])}
+							zoom={zoom}
+							pinned={pinnedColumn && columnIndex === 0}
+							onSelect={(intent) => selectColumn(columnIndex, intent)}
+							onDragStart={() => {
+								draggingRef.current = "column";
+							}}
+							onDragEnter={() => {
+								if (draggingRef.current !== "column") return;
+								selectColumn(columnIndex, "extend");
+							}}
 							onGripPointerDown={reorder.onGripPointerDown}
 						/>
 					))}
-				</tbody>
-			</table>
+				</div>
+
+				<table
+					ref={gridRef}
+					// Automatic table layout treats column widths as minimums and lets
+					// long content expand them. Fixed layout plus an explicit total makes
+					// the colgroup authoritative while preserving per-pane zoom.
+					style={{ width: surfaceWidth }}
+					// Grid semantics, not document-table semantics: this is an editable
+					// widget with its own keyboard model, so assistive technology should
+					// treat it that way. `<table role="grid">` is the ARIA Authoring
+					// Practices pattern for exactly this; the lint rule is a heuristic that
+					// does not model it. See docs/design-system.md §9.
+					// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
+					role="grid"
+					aria-label={copy.a11y.grid}
+					aria-rowcount={document.rows.length + 1}
+					aria-colcount={document.columns.length}
+					className="tabelo-grid table-fixed border-separate border-spacing-0 text-content"
+					onKeyDown={handleKeyDown}
+				>
+					<colgroup>
+						{/* The gutter holds row numbers and menu affordances rather than
+					    table content, so it keeps its size at every zoom level. */}
+						<col style={{ width: "var(--grid-gutter-w)" }} />
+						{document.columns.map((column) => (
+							<col key={column.id} style={{ width: columnTrack(column) }} />
+						))}
+					</colgroup>
+
+					<thead>
+						<tr
+							// biome-ignore lint/a11y/noRedundantRoles: see the tbody rows
+							role="row"
+							aria-rowindex={1}
+							className="group/row h-content-line-box"
+						>
+							<th
+								scope="row"
+								// biome-ignore lint/a11y/noRedundantRoles: see the tbody rows
+								role="rowheader"
+								aria-label={copy.a11y.headerRow}
+								// Right-clicking row 1 offers row actions like any other row.
+								// Before the strip existed this lookup found nothing and the
+								// menu fell through to cell actions on a non-cell.
+								data-row-header={HEADER_ROW}
+								className="sticky top-grid-strip left-0 z-30 border-line-strong border-r border-b border-b-line-subtle bg-surface-gutter px-1 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums"
+								onPointerEnter={() => {
+									if (draggingRef.current !== "row") return;
+									selectRow(HEADER_ROW, "extend");
+								}}
+							>
+								<div className="grid h-content-line-box grid-cols-[1.25rem_minmax(0,1fr)_1.25rem] items-center gap-1">
+									{/* No reorder grip: every table keeps exactly one header row
+								    and it is always the first, so there is nowhere for it to
+								    go. The track stays so its number lines up with every
+								    other one. */}
+									<span aria-hidden="true" />
+									<button
+										type="button"
+										tabIndex={entered ? 0 : -1}
+										aria-label={`${copy.actions.selectRow}: ${copy.a11y.headerRow}`}
+										className="min-w-0 cursor-pointer justify-self-end rounded-interactive px-1 text-right hover:text-foreground"
+										onPointerDown={(event) => {
+											if (event.button !== 0) return;
+											draggingRef.current = "row";
+											selectRow(HEADER_ROW, selectIntentOf(event));
+										}}
+										onClick={(event) => {
+											// A keyboard-generated click has no pointer detail.
+											if (event.detail === 0)
+												selectRow(HEADER_ROW, selectIntentOf(event));
+										}}
+									>
+										1
+									</button>
+									<AxisMenuTrigger
+										handle={axisMenuHandle}
+										axis="row"
+										index={HEADER_ROW}
+										revealed={focus.row === HEADER_ROW}
+									/>
+								</div>
+							</th>
+							{document.columns.map((column, columnIndex) => (
+								<HeaderCell
+									key={column.id}
+									columnIndex={columnIndex}
+									header={column.header}
+									align={column.align}
+									wrapped={wrappedColumns.includes(column.id)}
+									pinned={pinnedColumn && columnIndex === 0}
+									selected={rects.some((candidate) =>
+										rectContains(candidate, HEADER_ROW, columnIndex),
+									)}
+									copiedEdges={clipboardEdgesAt(
+										copiedAt,
+										HEADER_ROW,
+										columnIndex,
+									)}
+									focus={
+										focus.row === HEADER_ROW && focus.column === columnIndex
+									}
+									editing={editingHeader === columnIndex}
+									seed={editingSeed}
+									markStart={
+										match?.row === HEADER_ROW && match.column === columnIndex
+											? match.start
+											: NO_MARK
+									}
+									markEnd={
+										match?.row === HEADER_ROW && match.column === columnIndex
+											? match.end
+											: NO_MARK
+									}
+									onDragStart={() => {
+										draggingRef.current = "cell";
+									}}
+									onDragEnter={() => {
+										if (draggingRef.current !== "cell") return;
+										useTabeloStore.getState().extendSelection({
+											row: HEADER_ROW,
+											column: columnIndex,
+										});
+									}}
+								/>
+							))}
+						</tr>
+					</thead>
+
+					<tbody>
+						{document.rows.map((row, rowIndex) => (
+							// Every selection prop is narrowed to this row's own membership
+							// before it crosses the memo boundary. Passing the shared focus
+							// and the regions instead would change all 200 rows' props on
+							// every arrow key, which is the case the boundary exists to skip:
+							// a row outside the selection keeps the same empty spans and is
+							// reconciled away.
+							<DataRow
+								key={row.id}
+								row={row}
+								rowIndex={rowIndex}
+								columns={document.columns}
+								axisMenuHandle={axisMenuHandle}
+								focused={focus.row === rowIndex}
+								focusColumn={focus.row === rowIndex ? focus.column : NO_COLUMN}
+								selectedSpans={spansOf(rects, rowIndex)}
+								// Narrowed for the same reason, and to primitives for the
+								// same reason: the copied areas outlive the selection, so a
+								// row outside them must keep props that do not change.
+								//
+								// Three rows' worth, because a cell's top and bottom edges
+								// come from whether the cell above or below it is copied
+								// too, and a row cannot see its neighbours from behind the
+								// memo boundary.
+								copiedSpans={spansOf(copiedRanges, rowIndex)}
+								copiedSpansAbove={spansOf(copiedRanges, rowIndex - 1)}
+								copiedSpansBelow={spansOf(copiedRanges, rowIndex + 1)}
+								// The current find match, narrowed to this row: at most one
+								// row in the table carries it, so every other row keeps the
+								// same three values and is reconciled away.
+								markColumn={match?.row === rowIndex ? match.column : NO_COLUMN}
+								markStart={match?.row === rowIndex ? match.start : NO_MARK}
+								markEnd={match?.row === rowIndex ? match.end : NO_MARK}
+								editingColumn={
+									editing?.row === rowIndex ? editing.column : NO_COLUMN
+								}
+								editingSeed={editing?.row === rowIndex ? editingSeed : null}
+								wrappedColumns={wrappedColumns}
+								pinnedRow={pinnedRow && rowIndex === 0}
+								pinnedColumn={pinnedColumn}
+								selectRow={selectRow}
+								onFinishCellEdit={finishCellEdit}
+								draggingRef={draggingRef}
+								onGripPointerDown={reorder.onGripPointerDown}
+							/>
+						))}
+					</tbody>
+				</table>
+			</div>
 
 			{fillSource ? (
 				<FillHandle
@@ -1642,6 +1695,11 @@ const DataRow = memo(function DataRow({
 // menu, and the resize handle.
 interface ColumnIndexCellProps {
 	readonly axisMenuHandle: AxisMenuHandle;
+	// The semantic table, passed explicitly rather than found by walking up from
+	// this cell: the strip is chrome beside the table, so there is no longer an
+	// ancestor table to walk to. Fit measures the column's rendered content,
+	// which only the table holds.
+	readonly tableRef: React.RefObject<HTMLTableElement | null>;
 	readonly columnIndex: number;
 	readonly header: string;
 	readonly expectedType: ExpectedColumnType;
@@ -1705,6 +1763,7 @@ function zoomNormalizedNaturalWidth(
 
 function ColumnIndexCell({
 	axisMenuHandle,
+	tableRef,
 	columnIndex,
 	header,
 	expectedType,
@@ -1717,7 +1776,7 @@ function ColumnIndexCell({
 	onDragEnter,
 	onGripPointerDown,
 }: ColumnIndexCellProps) {
-	const cellRef = useRef<HTMLTableCellElement>(null);
+	const cellRef = useRef<HTMLDivElement>(null);
 	const resizeState = useRef<{
 		startX: number;
 		startWidth: number;
@@ -1727,7 +1786,7 @@ function ColumnIndexCell({
 	const entered = usePaneEntered();
 	const measureFitWidth = () => {
 		const cell = cellRef.current;
-		const table = cell?.closest("table");
+		const table = tableRef.current;
 		if (!cell || !table) return undefined;
 		const content = Array.from(
 			table.querySelectorAll<HTMLElement>(
@@ -1758,21 +1817,23 @@ function ColumnIndexCell({
 	};
 
 	return (
-		<td
+		<div
 			ref={cellRef}
-			role="presentation"
 			data-column-header={columnIndex}
 			data-column-letter={letter}
 			data-expected-type={expectedType}
-			// `sticky` already establishes the containing block the resize handle
-			// positions against, so no `relative` here: it would win over `sticky`
-			// and turn the offset into a shift rather than a scroll threshold.
 			className={cn(
-				"group/col sticky top-0 h-grid-strip border-line-strong border-r border-b",
+				"group/col min-w-0 border-line-strong border-r border-b",
 				"bg-surface-header px-1 text-center font-index font-normal text-muted-foreground text-xs",
-				// Pinned it sticks on both axes and joins the corner layer, beside
-				// the dead corner where the letters meet the row numbers.
-				pinned ? "left-grid-gutter z-30" : "z-20",
+				// Pinned it sticks sideways and joins the corner layer, beside the
+				// dead corner where the letters meet the row numbers. The strip
+				// itself owns the vertical stickiness for every cell.
+				//
+				// `sticky` already establishes the containing block the resize
+				// handle positions against, so only an unpinned cell adds
+				// `relative`: pairing the two would win over `sticky` and turn the
+				// offset into a shift rather than a scroll threshold.
+				pinned ? "sticky left-grid-gutter z-30" : "relative z-20",
 			)}
 			onPointerEnter={onDragEnter}
 		>
@@ -1859,7 +1920,7 @@ function ColumnIndexCell({
 					resizeState.current = null;
 				}}
 			/>
-		</td>
+		</div>
 	);
 }
 
@@ -1886,6 +1947,10 @@ interface HeaderCellProps {
 	// Equal bounds mean it holds no match.
 	readonly markStart: number;
 	readonly markEnd: number;
+	// The grid owns the drag lifecycle, so the header only reports the two
+	// edges of the gesture. See ColumnIndexCell: same split, different kind.
+	readonly onDragStart: () => void;
+	readonly onDragEnter: () => void;
 }
 
 function HeaderCell({
@@ -1901,6 +1966,8 @@ function HeaderCell({
 	seed,
 	markStart,
 	markEnd,
+	onDragStart,
+	onDragEnter,
 }: HeaderCellProps) {
 	const entered = usePaneEntered();
 
@@ -1955,6 +2022,10 @@ function HeaderCell({
 				// own mousedown handling moves focus to <body> after ours runs and
 				// the cell would look selected while ignoring every keystroke.
 				event.preventDefault();
+				// The header row is an ordinary row of the cell selection, so its
+				// drag is the data cells' own kind: starting it here is what lets
+				// one rectangle span the boundary in either direction.
+				onDragStart();
 				const store = useTabeloStore.getState();
 				const at = { row: HEADER_ROW, column: columnIndex };
 				const intent = selectIntentOf(event);
@@ -1963,6 +2034,7 @@ function HeaderCell({
 				else store.selectCell(at);
 				event.currentTarget.focus();
 			}}
+			onPointerEnter={onDragEnter}
 			onDoubleClick={() =>
 				useTabeloStore.getState().setEditingHeader(columnIndex)
 			}

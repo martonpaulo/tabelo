@@ -1,4 +1,5 @@
 import { assert, describe, expect, it } from "vitest";
+import { readCell } from "./cell-value";
 import {
 	createEmptyDocument,
 	documentFromMatrix,
@@ -23,6 +24,7 @@ import {
 	setCell,
 	setCellType,
 	setColumnExpectedType,
+	sortRows,
 } from "./operations";
 import { samplePeopleMatrix } from "./sample-data";
 import { HEADER_ROW } from "./selection";
@@ -760,5 +762,150 @@ describe("blank headers survive structural edits", () => {
 			"",
 			"",
 		]);
+	});
+});
+
+describe("sorting rows by a column", () => {
+	// Column ids are generated, so every case names its target by position and
+	// resolves the id the way the store does.
+	function columnId(document: ReturnType<typeof docOf>, index: number) {
+		const column = document.columns[index];
+		assert(column);
+		return column.id;
+	}
+
+	// Read as canonical values rather than through `documentToMatrix`, whose
+	// text projection would hide exactly the carried types these cases are
+	// about, and would make `null` indistinguishable from the empty string.
+	function sortedColumn(
+		matrix: CellValue[][],
+		direction: "ascending" | "descending",
+		index = 0,
+	) {
+		const document = docOf(matrix);
+		const id = columnId(document, index);
+		const result = sortRows(document, id, direction);
+		return result.document.rows.map((row) => readCell(row, id));
+	}
+
+	it("compares two numbers numerically, not as text", () => {
+		const matrix: CellValue[][] = [["n"], [10], [9], [100]];
+		expect(sortedColumn(matrix, "ascending")).toEqual([9, 10, 100]);
+		expect(sortedColumn(matrix, "descending")).toEqual([100, 10, 9]);
+	});
+
+	it("compares numeric-looking strings as strings, through the collator", () => {
+		// Every value here is a string, so nothing is parsed. The collator's
+		// numeric ordering is what puts "9" before "10" without concluding that
+		// either one is a number.
+		const matrix: CellValue[][] = [["n"], ["10"], ["9"], ["100"]];
+		expect(sortedColumn(matrix, "ascending")).toEqual(["9", "10", "100"]);
+	});
+
+	it("sorts false before true", () => {
+		const matrix: CellValue[][] = [["flag"], [true], [false], [true]];
+		expect(sortedColumn(matrix, "ascending")).toEqual([false, true, true]);
+		expect(sortedColumn(matrix, "descending")).toEqual([true, true, false]);
+	});
+
+	it("orders mixed carried types as number, boolean, then string", () => {
+		const matrix: CellValue[][] = [["mixed"], ["b"], [true], [2], ["a"], [1]];
+		expect(sortedColumn(matrix, "ascending")).toEqual([1, 2, true, "a", "b"]);
+		expect(sortedColumn(matrix, "descending")).toEqual(["b", "a", true, 2, 1]);
+	});
+
+	it("places null and the empty string last in both directions", () => {
+		const matrix: CellValue[][] = [["v"], ["b"], [null], ["a"], [""]];
+		expect(sortedColumn(matrix, "ascending")).toEqual(["a", "b", null, ""]);
+		expect(sortedColumn(matrix, "descending")).toEqual(["b", "a", null, ""]);
+	});
+
+	it("treats a whitespace-only string as content rather than as empty", () => {
+		const matrix: CellValue[][] = [["v"], [""], [" "], ["a"]];
+		expect(sortedColumn(matrix, "ascending")).toEqual([" ", "a", ""]);
+	});
+
+	it("keeps the original order for values that compare equal", () => {
+		// The collator ignores case, so these three compare equal and stability
+		// is the only thing that decides their order.
+		const document = docOf([
+			["name", "seq"],
+			["ana", "1"],
+			["Ana", "2"],
+			["ANA", "3"],
+		]);
+		const result = sortRows(document, columnId(document, 0), "ascending");
+		expect(documentToMatrix(result.document).slice(1)).toEqual([
+			["ana", "1"],
+			["Ana", "2"],
+			["ANA", "3"],
+		]);
+	});
+
+	it("preserves row identity and the exact cell values it moved", () => {
+		const document = docOf([
+			["name", "age"],
+			["Paulo", 35],
+			["Ingrid", 35],
+		]);
+		const ids = document.rows.map((row) => row.id);
+		const cells = document.rows.map((row) => ({ ...row.cells }));
+		const result = sortRows(document, columnId(document, 0), "ascending");
+
+		expect(result.document.rows.map((row) => row.id)).toEqual([ids[1], ids[0]]);
+		expect(result.document.rows.map((row) => row.cells)).toEqual([
+			cells[1],
+			cells[0],
+		]);
+		// The input document is untouched: these are the same row objects, moved.
+		expect(document.rows.map((row) => row.id)).toEqual(ids);
+	});
+
+	it("reports where every row went", () => {
+		const document = docOf([["v"], ["c"], ["a"], ["b"]]);
+		const result = sortRows(document, columnId(document, 0), "ascending");
+		expect(result.nextRowOf).toEqual([2, 0, 1]);
+	});
+
+	it("returns the same document for an order that is already sorted", () => {
+		const document = docOf([["v"], ["a"], ["b"]]);
+		const result = sortRows(document, columnId(document, 0), "ascending");
+		expect(result.document).toBe(document);
+		expect(result.nextRowOf).toEqual([0, 1]);
+	});
+
+	it("returns the same document for a single row or an unknown column", () => {
+		const single = docOf([["v"], ["a"]]);
+		expect(sortRows(single, columnId(single, 0), "ascending").document).toBe(
+			single,
+		);
+		const document = docOf([["v"], ["b"], ["a"]]);
+		expect(sortRows(document, "no-such-column", "ascending").document).toBe(
+			document,
+		);
+	});
+
+	it("never touches the header row", () => {
+		const document = docOf([
+			["zebra", "apple"],
+			["b", "b"],
+			["a", "a"],
+		]);
+		const result = sortRows(document, columnId(document, 0), "ascending");
+		expect(result.document.columns.map((column) => column.header)).toEqual([
+			"zebra",
+			"apple",
+		]);
+	});
+
+	it("keeps every row of a table at the documented scale", () => {
+		const rows = Array.from({ length: 200 }, (_, index) => [
+			String((index * 7) % 200),
+			index,
+		]);
+		const document = docOf([["key", "seq"], ...rows]);
+		const result = sortRows(document, columnId(document, 0), "ascending");
+		expect(result.document.rows).toHaveLength(200);
+		expect(new Set(result.document.rows.map((row) => row.id)).size).toBe(200);
 	});
 });

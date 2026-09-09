@@ -1,5 +1,7 @@
+import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
+import type { TabeloPage } from "./helpers";
 
 // The header row is part of the table the user edits, not chrome around it: it
 // is selectable, editable, and clearable exactly like a data row. Its column
@@ -19,6 +21,75 @@ test("the index strip names every column and is not a table row", async ({
 	// numbering: the header row is still row 1 and the body still starts at 2.
 	await expect(tabelo.grid()).toHaveAttribute("aria-rowcount", "4");
 	await expect(tabelo.grid().locator('thead [role="row"]')).toHaveCount(1);
+});
+
+test("the strip's controls are owned by the surface, not by the grid", async ({
+	tabelo,
+}) => {
+	// `role="grid"` may own nothing but `row` and `rowgroup`, and the strip
+	// holds real controls. Keeping it inside the table re-parented those
+	// controls onto the grid itself, whatever role the row claimed.
+	await expect(tabelo.grid().locator("[data-column-strip]")).toHaveCount(0);
+	await expect(tabelo.gridSurface().locator("[data-column-strip]")).toHaveCount(
+		1,
+	);
+
+	// Outside the table and still on the keyboard path, which is the reason the
+	// strip was never simply hidden from assistive technology.
+	const select = tabelo.columnIndex(2).getByRole("button", {
+		name: new RegExp(`^${copy.actions.selectColumn}:`),
+	});
+	await tabelo.cell(1, 1).click();
+	await select.focus();
+	await tabelo.page.keyboard.press("Space");
+	await expect(tabelo.header(2)).toHaveAttribute("aria-selected", "true");
+	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "false");
+
+	// Selecting from the strip hands DOM focus to the cell it selected. The
+	// grid's keyboard model lives on the table the strip now sits beside, so
+	// without that handoff every following key would reach a button that
+	// answers none of them.
+	await expect(tabelo.header(2)).toBeFocused();
+
+	// Which is the point: the next keystroke is a grid action, not a lost one.
+	await tabelo.page.keyboard.press("ArrowDown");
+	await expect(tabelo.cell(1, 2)).toBeFocused();
+	await expect(tabelo.cell(1, 2)).toHaveAttribute("aria-selected", "true");
+	await tabelo.page.keyboard.press("F2");
+	await expect(
+		tabelo.grid().getByRole("textbox", { name: copy.a11y.cellEditor(0, 1) }),
+	).toBeFocused();
+});
+
+test("each letter stays over the column it names", async ({ tabelo }) => {
+	// The strip and the table are laid out from one width model but by two
+	// different mechanisms, grid tracks and a colgroup, so this is the pairing
+	// the split has to keep. Asserted as containment rather than as equal
+	// geometry: the contract is that the letter is over its column, at whatever
+	// width the column happens to have.
+	const centredOverColumn = async (column: number) => {
+		const strip = await tabelo.columnIndex(column).boundingBox();
+		const header = await tabelo.header(column).boundingBox();
+		if (!strip || !header) throw new Error("the column did not render");
+		const centre = header.x + header.width / 2;
+		return centre > strip.x && centre < strip.x + strip.width;
+	};
+
+	expect(await centredOverColumn(1)).toBe(true);
+	expect(await centredOverColumn(3)).toBe(true);
+
+	// A resized column carries its letter with it. The keyboard path is used
+	// because it is the one that leaves no pointer hovering the strip.
+	const before = (await tabelo.columnIndex(1).boundingBox())?.width ?? 0;
+	await tabelo.cell(1, 1).click();
+	for (let step = 0; step < 4; step += 1) {
+		await tabelo.page.keyboard.press("Alt+Shift+ArrowRight");
+	}
+	await expect
+		.poll(async () => (await tabelo.columnIndex(1).boundingBox())?.width ?? 0)
+		.toBeGreaterThan(before);
+	expect(await centredOverColumn(1)).toBe(true);
+	expect(await centredOverColumn(3)).toBe(true);
 });
 
 test("an empty header announces its column letter", async ({ tabelo }) => {
@@ -307,9 +378,9 @@ test("the strip stays sticky and layered after scrolling both axes", async ({
 		)
 		.toEqual({ left: 60, top: 300 });
 
-	const geometry = await tabelo.grid().evaluate((grid) => {
+	const geometry = await tabelo.gridSurface().evaluate((surface) => {
 		const read = (selector: string) => {
-			const element = grid.querySelector(selector);
+			const element = surface.querySelector(selector);
 			if (!element) return null;
 			return {
 				zIndex: Number(getComputedStyle(element).zIndex) || 0,
@@ -317,7 +388,9 @@ test("the strip stays sticky and layered after scrolling both axes", async ({
 			};
 		};
 		return {
-			strip: read('[data-column-header="0"]'),
+			// The strip sticks as one element: it is chrome beside the table, so
+			// its cells ride on the container rather than each sticking alone.
+			strip: read("[data-column-strip]"),
 			headerCell: read('[data-cell="-1:0"]'),
 			headerGutter: read('[data-row-header="-1"]'),
 			bodyCell: read('[data-cell="30:0"]'),
@@ -340,4 +413,234 @@ test("the strip stays sticky and layered after scrolling both axes", async ({
 	expect(headerGutter.zIndex).toBeGreaterThan(headerCell.zIndex);
 	expect(headerCell.zIndex).toBeGreaterThan(bodyGutter.zIndex);
 	expect(bodyGutter.zIndex).toBeGreaterThan(0);
+});
+
+// A pointer drag across the header/data boundary. The header row is an
+// ordinary row of the cell selection, so one gesture may start on either side
+// of the boundary and finish on the other.
+//
+// Both endpoints are reached through hover rather than a bounding box read up
+// front: the box is resolved once at press time and once at release time, so a
+// column width settling between the two cannot land the press on the wrong
+// cell. Reading both boxes first made this drag miss roughly one run in twenty.
+async function dragBetween(
+	page: Page,
+	from: Locator,
+	to: Locator,
+): Promise<void> {
+	await from.hover();
+	await page.mouse.down();
+	// The extension reads the endpoint the pointer entered, so the destination's
+	// own enter is what completes the rectangle.
+	await to.hover();
+	await page.mouse.up();
+}
+
+// The rectangle both drag directions are expected to produce over the pasted
+// table: the first two columns, from the header row down to the second data
+// row, with the third column untouched.
+async function expectHeaderBlock(
+	tabelo: TabeloPage,
+	selected: boolean,
+): Promise<void> {
+	const state = String(selected);
+	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", state);
+	await expect(tabelo.header(2)).toHaveAttribute("aria-selected", state);
+	await expect(tabelo.cell(1, 1)).toHaveAttribute("aria-selected", state);
+	await expect(tabelo.cell(1, 2)).toHaveAttribute("aria-selected", state);
+	await expect(tabelo.cell(2, 1)).toHaveAttribute("aria-selected", state);
+	await expect(tabelo.cell(2, 2)).toHaveAttribute("aria-selected", state);
+}
+
+// The third column sits outside both endpoints, which is what proves the
+// horizontal extent follows them instead of collapsing to one column or
+// growing to the whole row.
+async function expectThirdColumnOutside(tabelo: TabeloPage): Promise<void> {
+	await expect(tabelo.header(3)).toHaveAttribute("aria-selected", "false");
+	await expect(tabelo.cell(1, 3)).toHaveAttribute("aria-selected", "false");
+	await expect(tabelo.cell(2, 3)).toHaveAttribute("aria-selected", "false");
+}
+
+test("a pointer drag selects one rectangle across the header boundary either way", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(
+		"Name\tRole\tCity\nIngrid\tDesigner\tRio\nPaulo\tDeveloper\tMadrid",
+	);
+
+	// Upwards, out of the body and into the header.
+	await dragBetween(page, tabelo.cell(2, 1), tabelo.header(2));
+	await expectHeaderBlock(tabelo, true);
+	await expectThirdColumnOutside(tabelo);
+
+	// The same two endpoints the other way round produce the same rectangle,
+	// after a single click outside the block has cleared it.
+	await tabelo.cell(2, 3).click();
+	await expectHeaderBlock(tabelo, false);
+	await dragBetween(page, tabelo.header(2), tabelo.cell(2, 1));
+	await expectHeaderBlock(tabelo, true);
+	await expectThirdColumnOutside(tabelo);
+
+	// The release ended the gesture, so hovering afterwards extends nothing.
+	await tabelo.cell(2, 3).hover();
+	await expectHeaderBlock(tabelo, true);
+	await expectThirdColumnOutside(tabelo);
+});
+
+test("Shift and click extend the cell range across the header boundary either way", async ({
+	tabelo,
+}) => {
+	await tabelo.paste(
+		"Name\tRole\tCity\nIngrid\tDesigner\tRio\nPaulo\tDeveloper\tMadrid",
+	);
+
+	await tabelo.cell(2, 1).click();
+	await tabelo.header(2).click({ modifiers: ["Shift"] });
+	await expectHeaderBlock(tabelo, true);
+	await expectThirdColumnOutside(tabelo);
+
+	await tabelo.header(2).click();
+	await tabelo.cell(2, 1).click({ modifiers: ["Shift"] });
+	await expectHeaderBlock(tabelo, true);
+	await expectThirdColumnOutside(tabelo);
+});
+
+test("a dragged header and data block clears and undoes as one step", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(
+		"Name\tRole\tCity\nIngrid\tDesigner\tRio\nPaulo\tDeveloper\tMadrid",
+	);
+
+	await dragBetween(page, tabelo.cell(2, 1), tabelo.header(2));
+	await tabelo.page.keyboard.press("Backspace");
+
+	// The whole rectangle emptied, and only it.
+	await expect(tabelo.header(1)).toHaveText("");
+	await expect(tabelo.header(2)).toHaveText("");
+	await expect(tabelo.cell(1, 1)).toHaveText("");
+	await expect(tabelo.cell(2, 2)).toHaveText("");
+	await expect(tabelo.header(3)).toHaveText("City");
+	await expect(tabelo.cell(1, 3)).toHaveText("Rio");
+
+	// One operation, so one step brings the header and the data back together.
+	await tabelo.runAppCommand("undo");
+	await expect(tabelo.header(1)).toHaveText("Name");
+	await expect(tabelo.header(2)).toHaveText("Role");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect(tabelo.cell(2, 2)).toHaveText("Developer");
+});
+
+// A table wide enough that the grid pane scrolls horizontally, so a drag can
+// run past the pane edge and autoscroll while staying at header height.
+function wideTable(columns = 14): string {
+	const header = Array.from(
+		{ length: columns },
+		(_, column) => `Column ${column + 1}`,
+	);
+	return [
+		header.join("\t"),
+		...Array.from({ length: 2 }, (_, row) =>
+			header.map((_, column) => `${row + 1}:${column + 1}`).join("\t"),
+		),
+	].join("\n");
+}
+
+// Autoscroll re-samples the cell under the pointer on every tick. That sample
+// used to be clamped below the header row, which was harmless only while a cell
+// drag could not start in the header: once it could, a header drag running past
+// the pane edge sampled the first data row instead, and pulled data rows into a
+// header-only selection that Backspace would then clear.
+test("a header drag that autoscrolls sideways keeps the data rows out of it", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(wideTable());
+	const scroller = tabelo.pane("grid").locator('[data-slot="panel-body"]');
+	const scrollerBox = await scroller.boundingBox();
+	if (!scrollerBox) throw new Error("the grid pane did not lay out");
+
+	const start = await tabelo.header(2).boundingBox();
+	if (!start) throw new Error("the header did not lay out");
+	const headerHeight = start.y + start.height / 2;
+
+	await page.mouse.move(start.x + start.width / 2, headerHeight);
+	await page.mouse.down();
+	// Past the trailing pane edge, still at the header's own height.
+	await page.mouse.move(scrollerBox.x + scrollerBox.width + 8, headerHeight);
+
+	await expect
+		.poll(() => scroller.evaluate((element) => element.scrollLeft))
+		.toBeGreaterThan(0);
+
+	// The gesture never left the header row, so nothing in the body belongs to
+	// it however far the autoscroll travelled.
+	await expect
+		.poll(() =>
+			tabelo.grid().locator('[role="gridcell"][aria-selected="true"]').count(),
+		)
+		.toBe(0);
+	// It did keep extending across the header itself.
+	await expect
+		.poll(() =>
+			tabelo
+				.grid()
+				.locator('[role="columnheader"][aria-selected="true"]')
+				.count(),
+		)
+		.toBeGreaterThan(1);
+
+	await page.mouse.up();
+});
+
+// The same autoscroll must still admit a rectangle that genuinely spans both,
+// so the fix above cannot be a blanket exclusion of the data rows.
+test("a header drag that reaches a data row still autoscrolls into both", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(wideTable());
+	const scroller = tabelo.pane("grid").locator('[data-slot="panel-body"]');
+	const scrollerBox = await scroller.boundingBox();
+	if (!scrollerBox) throw new Error("the grid pane did not lay out");
+
+	const start = await tabelo.header(2).boundingBox();
+	const dataRow = await tabelo.cell(1, 2).boundingBox();
+	if (!start || !dataRow) throw new Error("the grid did not lay out both rows");
+
+	await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+	await page.mouse.down();
+	// Down into the first data row, then out past the trailing pane edge at
+	// that row's height.
+	await page.mouse.move(
+		dataRow.x + dataRow.width / 2,
+		dataRow.y + dataRow.height / 2,
+	);
+	await page.mouse.move(
+		scrollerBox.x + scrollerBox.width + 8,
+		dataRow.y + dataRow.height / 2,
+	);
+
+	await expect
+		.poll(() => scroller.evaluate((element) => element.scrollLeft))
+		.toBeGreaterThan(0);
+
+	// Both rows of the rectangle survived the autoscrolled extension.
+	await expect
+		.poll(() =>
+			tabelo
+				.grid()
+				.locator('[role="columnheader"][aria-selected="true"]')
+				.count(),
+		)
+		.toBeGreaterThan(1);
+	await expect
+		.poll(() =>
+			tabelo.grid().locator('[role="gridcell"][aria-selected="true"]').count(),
+		)
+		.toBeGreaterThan(1);
+
+	await page.mouse.up();
 });

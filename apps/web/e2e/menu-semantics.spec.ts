@@ -238,7 +238,7 @@ test("column choices use the shared one-line radio anatomy", async ({
 	tabelo,
 }) => {
 	await tabelo
-		.grid()
+		.gridSurface()
 		.getByRole("button", {
 			name: new RegExp(`^${copy.actions.columnActions}:`),
 		})
@@ -348,7 +348,7 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	tabelo,
 }) => {
 	const trigger = tabelo
-		.grid()
+		.gridSurface()
 		.getByRole("button", {
 			name: new RegExp(`^${copy.actions.columnActions}:`),
 		})
@@ -361,7 +361,7 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	const dropdownGroups = menu.locator(
 		'[data-slot="dropdown-menu-group"], [data-slot="dropdown-menu-radio-group"]',
 	);
-	await expect(dropdownGroups).toHaveCount(7);
+	await expect(dropdownGroups).toHaveCount(8);
 	await expect(
 		menu.getByRole("group", { name: copy.actions.expectedType }),
 	).toHaveCount(1);
@@ -387,7 +387,7 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	);
 	await expect(
 		dropdownGroups.locator(":scope:not([aria-labelledby])"),
-	).toHaveCount(4);
+	).toHaveCount(5);
 
 	await page.keyboard.press("Escape");
 	await expect(trigger).toBeFocused();
@@ -397,9 +397,15 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	const contextGroups = menu.locator(
 		'[data-slot="context-menu-group"], [data-slot="context-menu-radio-group"]',
 	);
-	await expect(contextGroups).toHaveCount(7);
+	// One more group than the axis menu carries: moving the focus without
+	// discarding the selection is a cell-scoped command path, and it is named
+	// rather than left as a run of unlabelled rows.
+	await expect(contextGroups).toHaveCount(8);
 	await expect(
 		menu.getByRole("group", { name: copy.actions.cellType }),
+	).toHaveCount(1);
+	await expect(
+		menu.getByRole("group", { name: copy.actions.moveFocus }),
 	).toHaveCount(1);
 	await expect(
 		menu.getByRole("group", { name: copy.actions.edit }),
@@ -407,10 +413,12 @@ test("table menus preserve named and unnamed semantic groups", async ({
 	await expect(
 		menu.getByRole("group", { name: copy.actions.fill }),
 	).toHaveCount(1);
+	// Exact, because the focus group's own label starts with the same word and
+	// the reorder group is the one being counted here.
 	await expect(
-		menu.getByRole("group", { name: copy.actions.move }),
+		menu.getByRole("group", { name: copy.actions.move, exact: true }),
 	).toHaveCount(1);
-	await expect(contextGroups.locator(":scope[aria-labelledby]")).toHaveCount(4);
+	await expect(contextGroups.locator(":scope[aria-labelledby]")).toHaveCount(5);
 	await expect(
 		contextGroups.locator(":scope:not([aria-labelledby])"),
 	).toHaveCount(3);
@@ -422,7 +430,7 @@ test("column menu labels stay out of traversal and the menu scrolls when narrow"
 }) => {
 	await page.setViewportSize({ width: 320, height: 568 });
 	const trigger = tabelo
-		.grid()
+		.gridSurface()
 		.getByRole("button", {
 			name: new RegExp(`^${copy.actions.columnActions}:`),
 		})
@@ -462,7 +470,7 @@ test("destructive menu actions keep one color across label and icon", async ({
 	tabelo,
 }) => {
 	await tabelo
-		.grid()
+		.gridSurface()
 		.getByRole("button", {
 			name: new RegExp(`^${copy.actions.columnActions}:`),
 		})

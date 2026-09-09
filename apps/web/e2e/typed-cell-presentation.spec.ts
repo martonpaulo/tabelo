@@ -122,7 +122,7 @@ test("the grid exposes real and expected types without replacing cell names", as
 	await selectColumn.focus();
 	await expect(selectColumn).toBeFocused();
 
-	const columnActions = tabelo.grid().getByRole("button", {
+	const columnActions = tabelo.gridSurface().getByRole("button", {
 		name: /column actions: qty, expected type text/i,
 	});
 	await columnActions.focus();
@@ -251,7 +251,7 @@ test("type marks remain legible under forced colours, zoom, and wrapping", async
 	);
 	expect(sizeAfterZoom).toBeGreaterThan(sizeBeforeZoom);
 
-	const columnActions = tabelo.grid().getByRole("button", {
+	const columnActions = tabelo.gridSurface().getByRole("button", {
 		name: /column actions: qty, expected type text/i,
 	});
 	await columnActions.click();

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ClipboardPayload } from "@/clipboard/parse";
+import type { ClipboardPayload, ClipboardSource } from "@/clipboard/parse";
 import type { ClipboardSelection } from "@/clipboard/payload";
 import { DEFAULT_TABLE_NAME, validateTableName } from "@/copy/product";
 import { readCell } from "@/core/cell-value";
@@ -28,11 +28,13 @@ import {
 	moveRows,
 	pasteMatrix,
 	promoteFirstRowToHeader,
+	type SortDirection,
 	setAlignment,
 	setCell,
 	setCellType,
 	setColumnExpectedType,
 	setHeader,
+	sortRows,
 } from "@/core/operations";
 import {
 	activeRange,
@@ -46,6 +48,7 @@ import {
 	isContiguous,
 	moveFocusKeepingRegions,
 	rectDataRows,
+	remapSelectionRows,
 	type SelectionMode,
 	type SelectionMoveRefusal,
 	selectedAxis,
@@ -106,7 +109,7 @@ import {
 	removeNotice,
 	type TransientNotice,
 } from "@/state/notice-queue";
-import { getView } from "@/views/registry";
+import { editableViewForCodec, getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import { clampColumnWidth } from "@/workspace/column-width";
 import {
@@ -115,6 +118,7 @@ import {
 	firstPaneId,
 	type LayoutId,
 	movePane as moveWorkspacePane,
+	openImportWorkspace,
 	type PinnedGridAxis,
 	paneCount,
 	type SplitOption,
@@ -183,15 +187,44 @@ export type PendingPaneAction =
 	| { readonly kind: "view"; readonly paneId: string; readonly view: ViewId }
 	| { readonly kind: "close"; readonly paneId: string };
 
+// The exact selections on either side of one document transition, for the
+// operations that permute rows rather than editing in place. Undo restores
+// `before` and redo restores `after`, so a sort comes back to precisely what
+// was selected before it and returns to precisely what it left selected, even
+// when the selection moved in between.
+//
+// Transient timeline metadata, not persisted sort state: it lives on the
+// in-memory history entry, never reaches storage, and describes no order the
+// document should be kept in. Every other operation carries none of it and
+// keeps the clamping behaviour it always had.
+export interface SelectionRestore {
+	readonly before: GridSelection;
+	readonly after: GridSelection;
+}
+
 export interface HistoryEntry {
 	readonly document: TableDocument;
 	// A draft that was still uncommitted when this entry was superseded.
 	// Restoring it is what keeps a grid edit from destroying pending text.
 	readonly draft: Draft | null;
+	// Present only on the entry adjacent to a row permutation. It travels with
+	// the transition through undo and redo, so both directions restore an exact
+	// selection rather than a clamped one.
+	readonly selectionRestore?: SelectionRestore;
 }
+
+// What sorting did. "unchanged" is a real answer rather than a failure: a table
+// already in that order is sorted, and saying so is what keeps the
+// announcement from claiming rows moved when none did.
+export type SortOutcome = "sorted" | "unchanged" | "unavailable";
 
 export interface PendingImport {
 	readonly prepared: PreparedImport;
+	// Whether the request was made from an untouched session, which is what
+	// decides the arrangement the answer opens into. Captured with the request
+	// because applying the document is itself work: the answer can no longer
+	// ask the session whether anything had happened before it.
+	readonly initialSession: boolean;
 }
 
 // What choosing the series did. The count is what the announcement reports, and
@@ -279,7 +312,10 @@ export interface TabeloState {
 	outputOptions: Required<OutputOptions>;
 	hydrate: () => void;
 	replaceUnreadableStorage: () => boolean;
-	applyDocument: (next: TableDocument) => void;
+	applyDocument: (
+		next: TableDocument,
+		selectionRestore?: SelectionRestore,
+	) => void;
 
 	setDraft: (paneId: string, viewId: ViewId, text: string) => void;
 	discardDraft: () => void;
@@ -329,6 +365,10 @@ export interface TabeloState {
 		column: number,
 		expectedType: ExpectedColumnType,
 	) => void;
+	// Sorts the whole table by one column, in the document itself. The column is
+	// the one whose menu was opened, never the selected columns: an action
+	// reached from column C's menu sorts by C.
+	sortRowsByColumn: (column: number, direction: SortDirection) => SortOutcome;
 	resizeColumn: (
 		column: number,
 		width: number | undefined,
@@ -640,6 +680,33 @@ export function hasSessionWork(
 	return state.hasHeldContent || state.draft !== null;
 }
 
+// Whether nothing in this visit has been worked on yet, which is what makes the
+// next import the first content the session receives. The session predicate
+// rather than present blankness: emptying a table or undoing back past it does
+// not turn the next paste into a first import.
+function isInitialSession(
+	state: Pick<TabeloState, "document" | "hasHeldContent" | "draft">,
+): boolean {
+	return isDocumentBlank(state.document) && !hasSessionWork(state);
+}
+
+// What accepting an import leaves behind, whichever path answered the header
+// question. The first content a session receives also decides the arrangement:
+// the format it arrived in beside the visual table it became. Content no
+// editable view owns, plain text and Tabelo's own clipboard payload, keeps
+// whatever arrangement is already open.
+function importedWorkspaceState(
+	workspace: Workspace,
+	source: ClipboardSource,
+	initialSession: boolean,
+): Pick<TabeloState, "selection" | "workspace"> {
+	const view = initialSession ? editableViewForCodec(source) : null;
+	return {
+		selection: createSelection({ row: 0, column: 0 }),
+		workspace: view ? openImportWorkspace(workspace, view.id) : workspace,
+	};
+}
+
 export const useTabeloStore = create<TabeloState>((set, get) => ({
 	name: DEFAULT_TABLE_NAME,
 	document: createEmptyDocument(),
@@ -730,11 +797,16 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// The single funnel for every structural change. A table edit always wins
 	// over an uncommitted draft, and the draft it displaces is preserved in
 	// history rather than dropped. See docs/adr/0001 and 0003.
-	applyDocument: (next) => {
+	applyDocument: (next, selectionRestore) => {
 		if (next === get().document) return;
 		clearInvalidTimer();
 		set((state) => ({
-			past: pushHistory(state.past, snapshotOf(state)),
+			past: pushHistory(
+				state.past,
+				selectionRestore
+					? { ...snapshotOf(state), selectionRestore }
+					: snapshotOf(state),
+			),
 			future: [],
 			document: next,
 			hasHeldContent: state.hasHeldContent || !isDocumentBlank(next),
@@ -754,7 +826,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			// is looking for. Only what it found is recomputed.
 			find: refreshFind(state.find, next),
 			selection: clampSelection(
-				state.selection,
+				selectionRestore ? selectionRestore.after : state.selection,
 				next.rows.length,
 				next.columns.length,
 			),
@@ -1154,9 +1226,17 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set((state) => {
 			const entry = state.past.at(-1);
 			if (!entry) return state;
+			const restore = entry.selectionRestore;
 			return {
 				past: state.past.slice(0, -1),
-				future: [snapshotOf(state), ...state.future],
+				// The pair travels with the transition rather than with a
+				// document, so redo finds it again on the other side.
+				future: [
+					restore
+						? { ...snapshotOf(state), selectionRestore: restore }
+						: snapshotOf(state),
+					...state.future,
+				],
 				document: entry.document,
 				hasHeldContent:
 					state.hasHeldContent || !isDocumentBlank(entry.document),
@@ -1169,7 +1249,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				fillSeriesOffer: null,
 				find: refreshFind(state.find, entry.document),
 				selection: clampSelection(
-					state.selection,
+					restore ? restore.before : state.selection,
 					entry.document.rows.length,
 					entry.document.columns.length,
 				),
@@ -1182,8 +1262,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set((state) => {
 			const entry = state.future[0];
 			if (!entry) return state;
+			const restore = entry.selectionRestore;
 			return {
-				past: pushHistory(state.past, snapshotOf(state)),
+				past: pushHistory(
+					state.past,
+					restore
+						? { ...snapshotOf(state), selectionRestore: restore }
+						: snapshotOf(state),
+				),
 				future: state.future.slice(1),
 				document: entry.document,
 				hasHeldContent:
@@ -1197,7 +1283,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				fillSeriesOffer: null,
 				find: refreshFind(state.find, entry.document),
 				selection: clampSelection(
-					state.selection,
+					restore ? restore.after : state.selection,
 					entry.document.rows.length,
 					entry.document.columns.length,
 				),
@@ -1296,6 +1382,32 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			next = setColumnExpectedType(next, target, expectedType);
 		}
 		state.applyDocument(next);
+	},
+
+	sortRowsByColumn: (column, direction) => {
+		const state = get();
+		const target = state.document.columns[column];
+		if (!target || state.document.rows.length < 2) return "unavailable";
+
+		const { document, nextRowOf } = sortRows(
+			state.document,
+			target.id,
+			direction,
+		);
+		if (document === state.document) return "unchanged";
+
+		// One commit, so the reorder and the selection that survives it are one
+		// history step rather than two.
+		state.applyDocument(document, {
+			before: state.selection,
+			after: remapSelectionRows(
+				state.selection,
+				nextRowOf,
+				document.rows.length,
+				document.columns.length,
+			),
+		});
+		return "sorted";
 	},
 
 	// Width is a persisted workspace preference, so it bypasses the document
@@ -1789,8 +1901,12 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		// Into an empty document, a paste creates the table: including the
 		// header decision. Into an existing one, it writes at the selection.
 		if (isDocumentBlank(state.document)) {
+			const initialSession = isInitialSession(state);
 			if (prepared.value.headerRow === undefined) {
-				set({ pendingImport: { prepared: prepared.value }, inputError: null });
+				set({
+					pendingImport: { prepared: prepared.value, initialSession },
+					inputError: null,
+				});
 				return null;
 			}
 			const document = createImportedDocument(
@@ -1798,9 +1914,15 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				prepared.value.headerRow,
 			);
 			state.applyDocument(document);
-			set({
-				selection: createSelection({ row: 0, column: 0 }),
-			});
+			// Read after the document is applied, so the arrangement builds on the
+			// workspace whose column preferences reconciliation has just updated.
+			set((current) =>
+				importedWorkspaceState(
+					current.workspace,
+					prepared.value.source,
+					initialSession,
+				),
+			);
 			return null;
 		}
 
@@ -1848,8 +1970,12 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			return;
 		}
 
+		const initialSession = isInitialSession(state);
 		if (prepared.value.headerRow === undefined) {
-			set({ pendingImport: { prepared: prepared.value }, inputError: null });
+			set({
+				pendingImport: { prepared: prepared.value, initialSession },
+				inputError: null,
+			});
 			return;
 		}
 		const document = createImportedDocument(
@@ -1857,20 +1983,34 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			prepared.value.headerRow,
 		);
 		state.applyDocument(document);
-		set({
-			selection: createSelection({ row: 0, column: 0 }),
-		});
+		set((current) =>
+			importedWorkspaceState(
+				current.workspace,
+				prepared.value.source,
+				initialSession,
+			),
+		);
 	},
 
 	reportInputError: (error) => set({ inputError: error }),
 
 	answerPendingImport: (headerRow) => {
 		const state = get();
-		if (!state.pendingImport) return;
-		state.applyDocument(
-			createImportedDocument(state.pendingImport.prepared, headerRow),
+		const pending = state.pendingImport;
+		if (!pending) return;
+		// Work done while the question was open, a draft typed into a source pane,
+		// costs the request its opening arrangement: the session is no longer
+		// untouched. Asked of the state before the document lands, because
+		// applying it is what sets the held-content flag.
+		const initialSession = pending.initialSession && isInitialSession(state);
+		state.applyDocument(createImportedDocument(pending.prepared, headerRow));
+		set((current) =>
+			importedWorkspaceState(
+				current.workspace,
+				pending.prepared.source,
+				initialSession,
+			),
 		);
-		set({ selection: createSelection({ row: 0, column: 0 }) });
 	},
 
 	cancelPendingImport: () => set({ pendingImport: null }),

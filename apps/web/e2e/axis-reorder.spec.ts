@@ -15,7 +15,9 @@ async function seedRoster(tabelo: TabeloPage): Promise<void> {
 }
 
 function grip(tabelo: TabeloPage, axis: "row" | "column", index: number) {
-	return tabelo.grid().locator(`[data-reorder-grip="${axis}:${index}"]`);
+	// The surface rather than the table: a column grip lives in the index strip,
+	// which is chrome beside the table.
+	return tabelo.gridSurface().locator(`[data-reorder-grip="${axis}:${index}"]`);
 }
 
 function indicator(tabelo: TabeloPage): Locator {

@@ -9,8 +9,10 @@ import {
 	HEADER_ROW,
 	isContiguous,
 	moveFocusKeepingRegions,
+	neighbourCell,
 	rectCoversHeader,
 	rectDataRows,
+	remapSelectionRows,
 	selectedAxis,
 	selectionColumns,
 	selectionContains,
@@ -229,6 +231,35 @@ describe("the modifier gesture", () => {
 	});
 });
 
+// One bounded step, shared by the arrow keys and by the menu that moves the
+// focus without discarding the selection, so the two cannot disagree about
+// where the table ends.
+describe("the neighbouring cell", () => {
+	it("steps one cell in each direction", () => {
+		const from = { row: 1, column: 1 };
+		expect(neighbourCell(from, "up", 3, 3)).toEqual({ row: 0, column: 1 });
+		expect(neighbourCell(from, "down", 3, 3)).toEqual({ row: 2, column: 1 });
+		expect(neighbourCell(from, "left", 3, 3)).toEqual({ row: 1, column: 0 });
+		expect(neighbourCell(from, "right", 3, 3)).toEqual({ row: 1, column: 2 });
+	});
+
+	it("treats the header row as the top edge rather than as row zero", () => {
+		expect(neighbourCell({ row: 0, column: 0 }, "up", 3, 3)).toEqual({
+			row: HEADER_ROW,
+			column: 0,
+		});
+		expect(
+			neighbourCell({ row: HEADER_ROW, column: 0 }, "up", 3, 3),
+		).toBeNull();
+	});
+
+	it("refuses a step that would leave the grid", () => {
+		expect(neighbourCell({ row: 2, column: 2 }, "down", 3, 3)).toBeNull();
+		expect(neighbourCell({ row: 2, column: 2 }, "right", 3, 3)).toBeNull();
+		expect(neighbourCell({ row: 1, column: 0 }, "left", 3, 3)).toBeNull();
+	});
+});
+
 // The keyboard's half of the modifier. Without a way to move the focus that
 // keeps the other areas, a second column is unreachable without a pointer.
 describe("moving the focus while keeping the regions", () => {
@@ -440,5 +471,297 @@ describe("fill availability", () => {
 		const corner = createSelection({ row: 0, column: 0 });
 		expect(selectionFillRefusal(corner, 3, 3, direction)).toBe(expected);
 		expect(fillTargetInDirection(corner, 3, 3, direction)).toBeNull();
+	});
+});
+
+describe("remapping a selection through a row permutation", () => {
+	// Five data rows reversed: row 0 lands last, row 4 lands first.
+	const reversed = [4, 3, 2, 1, 0];
+	const ROWS = 5;
+	const COLUMNS = 3;
+
+	function remap(selection: GridSelection, permutation = reversed) {
+		return remapSelectionRows(selection, permutation, ROWS, COLUMNS);
+	}
+
+	it("follows the rows a rectangle covered rather than its corners", () => {
+		// Rows 0 and 1 land on 4 and 3, so the region is still two rows, at the
+		// bottom. A corner remap would have drawn rows 3 to 4 as well here, but
+		// the next case is the one that proves the difference.
+		const selection: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 0, column: 0 },
+					focus: { row: 1, column: 1 },
+					mode: "cell",
+				},
+			],
+			activeIndex: 0,
+		};
+		// Reversed, so the anchor's row is now the lower of the two and the
+		// region reads upwards, exactly as its endpoints landed.
+		expect(remap(selection).ranges).toEqual([
+			{
+				anchor: { row: 4, column: 0 },
+				focus: { row: 3, column: 1 },
+				mode: "cell",
+			},
+		]);
+	});
+
+	it("splits one region into every run its rows landed on", () => {
+		// Rows 0, 1 and 2 land on 4, 2 and 0 under this permutation, which is
+		// three separate places. A bounding rectangle would have claimed rows 0
+		// to 4, including two rows that were never selected.
+		const scatter = [4, 2, 0, 1, 3];
+		const selection: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 0, column: 1 },
+					focus: { row: 2, column: 1 },
+					mode: "cell",
+				},
+			],
+			activeIndex: 0,
+		};
+		expect(remap(selection, scatter).ranges).toEqual([
+			{
+				anchor: { row: 0, column: 1 },
+				focus: { row: 0, column: 1 },
+				mode: "cell",
+			},
+			{
+				anchor: { row: 2, column: 1 },
+				focus: { row: 2, column: 1 },
+				mode: "cell",
+			},
+			{
+				anchor: { row: 4, column: 1 },
+				focus: { row: 4, column: 1 },
+				mode: "cell",
+			},
+		]);
+	});
+
+	it("keeps separate regions separate, including overlapping ones", () => {
+		const selection: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 0, column: 0 },
+					focus: { row: 1, column: 0 },
+					mode: "cell",
+				},
+				{
+					anchor: { row: 1, column: 0 },
+					focus: { row: 2, column: 0 },
+					mode: "cell",
+				},
+			],
+			activeIndex: 1,
+		};
+		const next = remap(selection);
+		expect(next.ranges).toHaveLength(2);
+		expect(next.ranges[0]).toEqual({
+			anchor: { row: 4, column: 0 },
+			focus: { row: 3, column: 0 },
+			mode: "cell",
+		});
+		expect(next.ranges[1]).toEqual({
+			anchor: { row: 3, column: 0 },
+			focus: { row: 2, column: 0 },
+			mode: "cell",
+		});
+	});
+
+	it("keeps the header row where it is", () => {
+		const selection: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: HEADER_ROW, column: 0 },
+					focus: { row: 0, column: 0 },
+					mode: "cell",
+				},
+			],
+			activeIndex: 0,
+		};
+		// The header stays at its sentinel while row 0 lands on 4, so the two
+		// are no longer adjacent and the region becomes two: the header cell,
+		// and the row that moved away from it.
+		expect(remap(selection).ranges).toEqual([
+			{
+				anchor: { row: HEADER_ROW, column: 0 },
+				focus: { row: HEADER_ROW, column: 0 },
+				mode: "cell",
+			},
+			{
+				anchor: { row: 4, column: 0 },
+				focus: { row: 4, column: 0 },
+				mode: "cell",
+			},
+		]);
+	});
+
+	it("leaves a column region alone", () => {
+		const selection = createSelection({ row: HEADER_ROW, column: 1 }, "column");
+		expect(remap(selection)).toEqual(selection);
+	});
+
+	it("keeps row regions spanning the table", () => {
+		const selection = createSelection({ row: 1, column: 0 }, "row");
+		expect(remap(selection).ranges).toEqual([
+			{
+				anchor: { row: 3, column: 0 },
+				focus: { row: 3, column: 0 },
+				mode: "row",
+			},
+		]);
+	});
+
+	it("keeps each endpoint of a region on its own row", () => {
+		const selection: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 2, column: 2 },
+					focus: { row: 1, column: 0 },
+					mode: "cell",
+				},
+			],
+			activeIndex: 0,
+		};
+		// Reversing the table sends the anchor's row to 2 and the focus's row
+		// to 3, and both are still one run, so the region reads from the anchor
+		// where its own row went rather than from the fragment's top edge.
+		expect(remap(selection).ranges).toEqual([
+			{
+				anchor: { row: 2, column: 2 },
+				focus: { row: 3, column: 0 },
+				mode: "cell",
+			},
+		]);
+	});
+
+	it("keeps an upward row region reading from its own anchor", () => {
+		// Rows 0 and 1 do not move at all here, so the region the keyboard
+		// extends must come back exactly as it was: anchored below its focus.
+		// Flattening it to top-anchored would make the next Shift+Down grow the
+		// selection where it should shrink it.
+		const still = [0, 1, 3, 2];
+		const selection: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 1, column: 0 },
+					focus: { row: 0, column: 0 },
+					mode: "row",
+				},
+			],
+			activeIndex: 0,
+		};
+		expect(remap(selection, still).ranges).toEqual([
+			{
+				anchor: { row: 1, column: 0 },
+				focus: { row: 0, column: 0 },
+				mode: "row",
+			},
+		]);
+	});
+
+	it("keeps every selected row when an endpoint moved inward", () => {
+		// Swapping the first two rows leaves all three in one run, but the
+		// range's own first row is now its middle. Reading the run from the
+		// mapped endpoints would start it at row 1 and quietly drop a row that
+		// is still selected, which is what a later copy or clear would act on.
+		const swapped = [1, 0, 2];
+		const cells: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 0, column: 1 },
+					focus: { row: 2, column: 1 },
+					mode: "cell",
+				},
+			],
+			activeIndex: 0,
+		};
+		expect(remapSelectionRows(cells, swapped, 3, 3).ranges).toEqual([
+			{
+				anchor: { row: 0, column: 1 },
+				focus: { row: 2, column: 1 },
+				mode: "cell",
+			},
+		]);
+
+		const rows: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 0, column: 0 },
+					focus: { row: 2, column: 0 },
+					mode: "row",
+				},
+			],
+			activeIndex: 0,
+		};
+		expect(remapSelectionRows(rows, swapped, 3, 3).ranges).toEqual([
+			{
+				anchor: { row: 0, column: 0 },
+				focus: { row: 2, column: 0 },
+				mode: "row",
+			},
+		]);
+	});
+
+	it("gives a fragment that inherited no endpoint its own top edge", () => {
+		// The anchor's row lands in one fragment and the focus's in another, so
+		// neither fragment can express the original orientation and both read
+		// downwards from their own first row.
+		const scatter = [4, 2, 0, 1, 3];
+		const selection: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 2, column: 0 },
+					focus: { row: 0, column: 0 },
+					mode: "row",
+				},
+			],
+			activeIndex: 0,
+		};
+		expect(remap(selection, scatter).ranges).toEqual([
+			{
+				anchor: { row: 0, column: 0 },
+				focus: { row: 0, column: 0 },
+				mode: "row",
+			},
+			{
+				anchor: { row: 2, column: 0 },
+				focus: { row: 2, column: 0 },
+				mode: "row",
+			},
+			{
+				anchor: { row: 4, column: 0 },
+				focus: { row: 4, column: 0 },
+				mode: "row",
+			},
+		]);
+	});
+
+	it("makes the fragment holding the focused cell active", () => {
+		const scatter = [4, 2, 0, 1, 3];
+		const selection: GridSelection = {
+			ranges: [
+				{
+					anchor: { row: 0, column: 0 },
+					focus: { row: 0, column: 0 },
+					mode: "cell",
+				},
+				{
+					anchor: { row: 0, column: 1 },
+					focus: { row: 2, column: 1 },
+					mode: "cell",
+				},
+			],
+			// The focus of the second region is row 2, which lands on row 0.
+			activeIndex: 1,
+		};
+		const next = remap(selection, scatter);
+		expect(next.ranges).toHaveLength(4);
+		expect(activeRange(next).focus).toEqual({ row: 0, column: 1 });
 	});
 });

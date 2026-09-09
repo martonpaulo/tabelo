@@ -364,6 +364,27 @@ function toggleCell(
 		: rebuild(selection, toSpliced(selection.ranges, index));
 }
 
+// One step from a cell in a cardinal direction, or null when that step would
+// leave the grid. The floor is the header row, the same edge the arrow keys
+// stop at, so the arrow model and the menu that moves the focus without
+// discarding the selection cannot disagree about where the table ends.
+export function neighbourCell(
+	position: CellPosition,
+	direction: FillDirection,
+	rows: number,
+	columns: number,
+): CellPosition | null {
+	const rowDelta = direction === "up" ? -1 : direction === "down" ? 1 : 0;
+	const columnDelta = direction === "left" ? -1 : direction === "right" ? 1 : 0;
+	const next = {
+		row: position.row + rowDelta,
+		column: position.column + columnDelta,
+	};
+	if (next.row < HEADER_ROW || next.row > rows - 1) return null;
+	if (next.column < 0 || next.column > columns - 1) return null;
+	return next;
+}
+
 // Move the focused cell while keeping every area already selected: the
 // keyboard's half of what the modifier means on the pointer.
 //
@@ -461,6 +482,96 @@ export function clampSelection(
 				ranges,
 				activeIndex: Math.min(selection.activeIndex, ranges.length - 1),
 			};
+}
+
+// The selection after the rows underneath it were permuted, as a sort does.
+// `nextRowOf[oldIndex]` is where that row landed.
+//
+// Remapping the two corners of a rectangle is not enough: a permutation can
+// scatter one selected block across the table, and a rectangle drawn between
+// the new minimum and maximum would then claim rows the user never selected. So
+// each region is expanded into the rows it actually covers, every row is
+// mapped, and the destinations are rebuilt into as many regions as it takes.
+// Regions stay separate, overlaps included, because nothing here merges them.
+//
+// The header row is fixed: it is the header rather than the smallest value, so
+// it never takes part in a sort and never moves.
+export function remapSelectionRows(
+	selection: GridSelection,
+	nextRowOf: readonly number[],
+	rowCount: number,
+	columnCount: number,
+): GridSelection {
+	const mapRow = (row: number): number =>
+		row === HEADER_ROW ? HEADER_ROW : (nextRowOf[row] ?? row);
+
+	const ranges: SelectionRange[] = [];
+	let activeIndex = 0;
+	selection.ranges.forEach((range, index) => {
+		const isActive = index === selection.activeIndex;
+		const firstFragment = ranges.length;
+
+		// A column region spans every row on its own, so a row permutation
+		// leaves it exactly as it was.
+		if (range.mode === "column") {
+			ranges.push(range);
+			if (isActive) activeIndex = firstFragment;
+			return;
+		}
+
+		const rect = rangeRect(range, rowCount, columnCount);
+		const rows = sortedUnion(rectRows(rect).map(mapRow));
+		const runs = runsOf(rows);
+		if (runs.length === 0) {
+			ranges.push(range);
+			if (isActive) activeIndex = firstFragment;
+			return;
+		}
+
+		// Which edge the next Shift+arrow measures from has to survive, or the
+		// keyboard extends the wrong side of the region. Both endpoints follow
+		// their own rows, and a run keeps them only when the two still describe
+		// its whole extent, whichever way round they now are. Landing inside a
+		// run is not enough: a permutation can move an endpoint inward past
+		// rows that are still selected, and reading the run from there would
+		// drop them from the selection. Membership comes first; the edge is
+		// kept where it costs nothing.
+		const rightwards = range.anchor.column > range.focus.column;
+		const anchorColumn = rightwards ? rect.right : rect.left;
+		const focusColumn = rightwards ? rect.left : rect.right;
+		const anchorRow = mapRow(range.anchor.row);
+		const focusRow = mapRow(range.focus.row);
+
+		for (const [from, to] of runs) {
+			const boundsRun =
+				(anchorRow === from && focusRow === to) ||
+				(anchorRow === to && focusRow === from);
+			const anchorAt = boundsRun ? anchorRow : from;
+			const focusAt = boundsRun ? focusRow : to;
+			if (range.mode === "row") {
+				ranges.push(axisRange(anchorAt, focusAt, "row"));
+				continue;
+			}
+			ranges.push({
+				anchor: { row: anchorAt, column: anchorColumn },
+				focus: { row: focusAt, column: focusColumn },
+				mode: range.mode,
+			});
+		}
+
+		if (isActive) {
+			// The fragment holding the focused cell stays active, so the
+			// keyboard carries on from the cell it was already on.
+			const offset = runs.findIndex(
+				([from, to]) => focusRow >= from && focusRow <= to,
+			);
+			activeIndex = firstFragment + Math.max(0, offset);
+		}
+	});
+
+	return ranges.length === 0
+		? selection
+		: { ranges, activeIndex: Math.min(activeIndex, ranges.length - 1) };
 }
 
 // The data rows a rect covers, with the header row dropped. Operations that act

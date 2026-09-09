@@ -38,7 +38,7 @@ test("row and column actions meet the control minimum target", async ({
 	const row = tabelo.grid().getByRole("button", {
 		name: new RegExp(`^${copy.actions.rowActions}:`),
 	});
-	const column = tabelo.grid().getByRole("button", {
+	const column = tabelo.gridSurface().getByRole("button", {
 		name: new RegExp(`^${copy.actions.columnActions}:`),
 	});
 
@@ -65,7 +65,7 @@ test("the row and column being worked in reveal their own actions", async ({
 			name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(index - 1)}`,
 		});
 	const columnTrigger = (name: string) =>
-		tabelo.grid().getByRole("button", {
+		tabelo.gridSurface().getByRole("button", {
 			name: `${copy.actions.columnActions}: ${name}, ${copy.a11y.expectedColumnType("text")}`,
 		});
 
@@ -152,7 +152,7 @@ test("the column menu moves a two-column selection as one block", async ({
 		.click({ modifiers: ["Shift"] });
 
 	const menuName = `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("name", 0, "text")}`;
-	await tabelo.grid().getByRole("button", { name: menuName }).click();
+	await tabelo.gridSurface().getByRole("button", { name: menuName }).click();
 	const menu = page.getByRole("menu", { name: menuName });
 	await expect(menu).toBeVisible();
 	await menu.getByRole("menuitem", { name: copy.actions.moveRight }).click();
@@ -240,7 +240,7 @@ test("Move down is disabled for a block ending at the last row", async ({
 test("tabbing into a header reveals its actions without a pointer", async ({
 	tabelo,
 }) => {
-	const trigger = tabelo.grid().getByRole("button", {
+	const trigger = tabelo.gridSurface().getByRole("button", {
 		name: `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("", 2, "text")}`,
 	});
 	expect(await opacity(trigger)).toBe("0");
@@ -307,6 +307,52 @@ test("the axis and context menus describe the same actions", async ({
 	).toBe(true);
 	// A row menu offers nothing about columns.
 	expect(fromRow.some((label) => label?.includes("column"))).toBe(false);
+});
+
+test("both menu surfaces show the same insert legends", async ({
+	page,
+	tabelo,
+}) => {
+	const apple = process.platform === "darwin";
+	// The expectation comes from the OS running the browser rather than from
+	// the app's own platform detection, so the two have to agree independently.
+	const columnKeys = apple ? ["⌥", "↵"] : ["Alt", "Enter"];
+
+	const columnMenu = await tabelo.openColumnMenu(1);
+	const fromAxis = columnMenu.getByRole("menuitem", {
+		name: copy.actions.insertColumnsRight(1),
+	});
+	await expect(fromAxis.locator("kbd")).toHaveText(columnKeys);
+	await page.keyboard.press("Escape");
+
+	// Back to one selected cell, so the labels are the singular ones. Opening
+	// the column menu selected the whole column, and a menu names what it will
+	// act on.
+	await tabelo.cell(1, 1).click();
+	await tabelo.cell(1, 1).click({ button: "right" });
+	const contextMenu = page.getByRole("menu");
+	await expect(
+		contextMenu
+			.getByRole("menuitem", { name: copy.actions.insertColumnsRight(1) })
+			.locator("kbd"),
+	).toHaveText(columnKeys);
+	// Rows take the platform modifier, columns take Alt, and Shift chooses the
+	// preceding side. Three keys is the ceiling for all four.
+	await expect(
+		contextMenu
+			.getByRole("menuitem", { name: copy.actions.insertColumnsLeft(1) })
+			.locator("kbd"),
+	).toHaveCount(3);
+	await expect(
+		contextMenu
+			.getByRole("menuitem", { name: copy.actions.insertRowsBelow(1) })
+			.locator("kbd"),
+	).toHaveCount(2);
+	await expect(
+		contextMenu
+			.getByRole("menuitem", { name: copy.actions.insertRowsAbove(1) })
+			.locator("kbd"),
+	).toHaveCount(3);
 });
 
 test("context menu refuses to delete every selected column", async ({
@@ -544,7 +590,7 @@ test("four panes stay quiet: no action icons in the cells", async ({
 
 	// Only the row and column in play show a trigger; the cells carry none.
 	const visible = await tabelo
-		.grid()
+		.gridSurface()
 		.getByRole("button", {
 			name: new RegExp(
 				`^(${copy.actions.rowActions}|${copy.actions.columnActions}):`,
