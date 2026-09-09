@@ -116,14 +116,15 @@ Three boundaries decide what a green run means:
   axe cannot see: an unassociated tooltip is valid markup and reaches no
   accessible description (#283).
 
-The baseline is not green yet. Four of the seven states fail
-`aria-required-children` on the grid, tracked as #327; the check is delivered
-red rather than suppressed.
+All seven states pass. The scan was written red on purpose: four of them failed
+`aria-required-children` on the grid, because the column index strip's
+presentational row re-parented its buttons into the table. #327 fixed that by
+moving the strip out of the table, and nothing here was suppressed to reach
+green.
 
-Measured on 2026-09-07 with one local worker on the machine described under
-Baseline: seven Chromium tests, 0.57 s to 1.4 s each, 13.2 s wall including the
-preview server. Trace and screenshot capture on the failing states is part of
-that figure. New `e2e/` paths already select the full browser suite and feed the
+Measured on 2026-09-10 with one local worker on the machine described under
+Baseline: seven Chromium tests, 0.77 s to 1.8 s each, 11.9 s wall including the
+preview server. New `e2e/` paths already select the full browser suite and feed the
 dynamic shard count, so CI needs no second job.
 
 ## Vitest projects

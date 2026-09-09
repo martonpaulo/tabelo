@@ -11,10 +11,9 @@ import { expect, test } from "./fixtures";
 //
 // A violation found here is fixed, or tracked as its own issue and left red.
 // No blanket rule exclusion, subtree exclusion, or accepted-violation snapshot
-// may be added to turn this green. #327 is the one open finding: the column
-// index strip's presentational row re-parents its buttons into the grid, so
-// every state that exposes the grid fails aria-required-children until the
-// design contract that produced it is settled.
+// may be added to turn this green. The one finding this scan produced, the
+// column index strip re-parenting its buttons into the grid, was fixed in #327
+// by moving the strip out of the table, so all seven states pass.
 
 const invalidMarkdown =
 	"| Name | Role |\n| not a divider |\n| Ingrid | Designer |";
