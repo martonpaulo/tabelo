@@ -5,7 +5,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { tableDocumentTitle } from "@/copy/product";
+import { product, tableDocumentTitle } from "@/copy/product";
 import { isDocumentBlank } from "@/core/document";
 import { runHistory } from "@/history/coordinator";
 import { hasSessionWork, startAutosave, useTabeloStore } from "@/state/store";
@@ -237,6 +237,11 @@ export function TabeloApp() {
 
 	return (
 		<div className="flex h-full min-h-0 flex-col bg-surface-app">
+			{/* The interface is a workspace of panes, so no visible text acts as the
+			    page heading. Assistive technology and search engines still expect
+			    one, and it names the product rather than the open table, which the
+			    document title already carries. */}
+			<h1 className="sr-only">{`${product.name}: ${product.tagline}`}</h1>
 			<div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
 				<div
 					className="flex min-h-0 min-w-0 flex-1"
