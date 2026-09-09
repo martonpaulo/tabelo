@@ -1,3 +1,6 @@
+<!-- Source of truth for social-card.png. After editing, regenerate with:
+     rsvg-convert -w 1200 -h 630 social-card.svg -o social-card.png
+     magick social-card.png -strip -colors 256 -define png:compression-level=9 PNG8:social-card.png -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Tabelo: edit one table in every view">
   <rect width="1200" height="630" fill="#1f1f1f"/>
   <g transform="translate(700 92)">
