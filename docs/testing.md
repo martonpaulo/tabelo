@@ -85,6 +85,48 @@ tests, plus 414 Chromium tests in 50 files. The 44 property tests are unchanged.
 The detailed rules for stable seams, selectors, waits, synthetic data, and
 required browser coverage stay in `AGENTS.md` rather than being copied here.
 
+## The axe regression net
+
+`apps/web/e2e/accessibility.spec.ts` runs `@axe-core/playwright` over seven
+representative states: the first-visit surface, a focused grid, a focused source
+editor, an open menu, an open dialog, a parse-error state, and the settings
+dialog. The helper beside it, `apps/web/e2e/axe.ts`, owns the tag set and the
+failure report.
+
+What it is for: the ordinary WCAG violations nobody writes a bespoke test for.
+Contrast, missing accessible names, invalid ARIA attribute combinations,
+duplicate ids, orphaned labels. It is a net under the hand-written assertions,
+never a replacement for them.
+
+Three boundaries decide what a green run means:
+
+- **The rule set is a standard, not an opinion.** `withTags` selects `wcag2a`,
+  `wcag2aa`, `wcag21a`, and `wcag21aa`. The best-practice catalogue is not a
+  gate. No blanket rule exclusion, subtree exclusion, or accepted-violation
+  snapshot may be added; a genuine tool limitation isolates the exact rule and
+  node and links reproducible evidence.
+- **Seven states are a sample.** A state that is not in the list is unscanned,
+  not proven clean. The source views other than Markdown share one editor owner
+  and one set of capabilities, and the rendered preview has no editable or error
+  state, so neither gets its own scan; their behavioural tests continue to own
+  them.
+- **Axe reaches roughly a third of real accessibility defects.** The keyboard,
+  focus, live-region, and semantic tests stay load-bearing, in particular the
+  Chromium-computed accessible descriptions in `disabled-reason.spec.ts`, which
+  axe cannot see: an unassociated tooltip is valid markup and reaches no
+  accessible description (#283).
+
+All seven states pass. The scan was written red on purpose: four of them failed
+`aria-required-children` on the grid, because the column index strip's
+presentational row re-parented its buttons into the table. #327 fixed that by
+moving the strip out of the table, and nothing here was suppressed to reach
+green.
+
+Measured on 2026-09-10 with one local worker on the machine described under
+Baseline: seven Chromium tests, 0.77 s to 1.8 s each, 11.9 s wall including the
+preview server. New `e2e/` paths already select the full browser suite and feed the
+dynamic shard count, so CI needs no second job.
+
 ## Vitest projects
 
 `pnpm test` remains the complete gate. Focused commands are:

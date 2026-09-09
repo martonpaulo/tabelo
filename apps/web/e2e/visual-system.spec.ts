@@ -288,7 +288,14 @@ test("the pane zoom label is announced", async ({ tabelo }) => {
 	const zoomLabel = paneMenu.getByText(copy.workspace.zoom(100), {
 		exact: true,
 	});
-	await expect(zoomLabel).toHaveAttribute("aria-live", "polite");
+	// The group owns the live region rather than the label it contains: the
+	// label is presentational, and a global ARIA attribute on it would cost the
+	// menu a validly typed child. The label's text is the only text inside the
+	// group that changes, so it is still what gets announced.
+	const liveRegion = paneMenu.locator('[aria-live="polite"]');
+	await expect(liveRegion).toHaveCount(1);
+	await expect(liveRegion).toContainText(copy.workspace.zoom(100));
+	await expect(zoomLabel).toBeVisible();
 });
 
 test("only view content participates in native text selection", async ({
