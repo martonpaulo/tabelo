@@ -19,7 +19,7 @@ Everything runs in your browser. No account, no server, no upload.
 
 **Tabelo** is the word for table in the [language Esperanto](https://www.youtube.com/watch?v=whGSkjXTPjU).
 
-You can access it here 👉 [https://martonpaulo.github.io/tabelo/](https://martonpaulo.github.io/tabelo/)
+You can access it here 👉 [https://tabelo.martonpaulo.com/](https://tabelo.martonpaulo.com/)
 
 <br />
 

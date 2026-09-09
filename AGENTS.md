@@ -22,10 +22,10 @@ describes the migration and its downstream effects.
   `@tabelo/config`. All workspace packages are private and are
   never published to a registry
 - Landing page: the application itself, at
-  `https://martonpaulo.github.io/tabelo/`, built from `apps/web` and published
-  to GitHub Pages by CI. There is no separate marketing site. `/tabelo/` is the
-  canonical production path; any deeper application path redirects to it. The
-  equivalent canonical path in local development is `/`
+  `https://tabelo.martonpaulo.com/`, built from `apps/web` and published to
+  GitHub Pages by CI on its own subdomain (`apps/web/public/CNAME`). There is
+  no separate marketing site. `/` is the canonical production path, in local
+  development as well; any deeper application path redirects to it
 - License: `MIT`, © 2026 Marton Paulo
 - Development language: English (code, comments, commits, filenames, tests,
   configuration, developer docs)

@@ -8,8 +8,8 @@ import { copy } from "@/copy/copy";
 // application rather than in the workflow.
 
 // The canonical path is whatever BASE_PATH the build used, so the expectation
-// is read from the running build instead of assuming the deployed "/tabelo/"
-// or the local "/".
+// is read from the running build instead of assuming "/" (the deployed and the
+// local path today) or any subpath a future build might use.
 function canonicalPathname(baseURL: string | undefined): string {
 	if (!baseURL) {
 		throw new Error("The Playwright base URL is required.");

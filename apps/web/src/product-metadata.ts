@@ -26,15 +26,19 @@ export function createProductMetadata({
 		`<meta name="twitter:card" content="${product.twitterCard}" />`,
 	];
 
-	// Root-based local builds do not have a public deployment URL. Omitting URL
-	// metadata prevents them from advertising the production site or localhost.
-	if (basePath !== "/" && siteOrigin) {
-		const canonicalUrl = escapeHtmlAttribute(
-			new URL(basePath, siteOrigin).toString(),
-		);
+	// Only the deploy workflow sets SITE_ORIGIN. Local builds have no public
+	// deployment URL, so omitting URL metadata prevents them from advertising
+	// the production site or localhost.
+	if (siteOrigin) {
+		const canonicalUrl = new URL(basePath, siteOrigin);
+		const imageUrl = new URL("pwa-512x512.png", canonicalUrl);
+		const canonical = escapeHtmlAttribute(canonicalUrl.toString());
+		const image = escapeHtmlAttribute(imageUrl.toString());
 		tags.push(
-			`<meta property="og:url" content="${canonicalUrl}" />`,
-			`<link rel="canonical" href="${canonicalUrl}" />`,
+			`<meta property="og:url" content="${canonical}" />`,
+			`<meta property="og:image" content="${image}" />`,
+			`<meta name="twitter:image" content="${image}" />`,
+			`<link rel="canonical" href="${canonical}" />`,
 		);
 	}
 

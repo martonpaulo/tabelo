@@ -104,7 +104,7 @@ baseline, and neither should be given an invented one.
 
 - Browser only, no runtime beyond the page. Persistence is `localStorage`;
   offline capability is a service worker.
-- Published to GitHub Pages at `https://martonpaulo.github.io/tabelo/`, built
-  from `apps/web` by CI. The application is its own landing page.
+- Published to GitHub Pages at `https://tabelo.martonpaulo.com/`, built from
+  `apps/web` by CI. The application is its own landing page.
 - The product stores no secrets and holds no user account state.
 - Roughly 200 rows is the working scale, not a limit to engineer past.
