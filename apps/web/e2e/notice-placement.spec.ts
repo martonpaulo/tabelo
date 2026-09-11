@@ -164,10 +164,20 @@ test("a covered pane keeps its actions trigger on the keyboard", async ({
 	await page.setViewportSize(STACKED);
 	await raiseNotice(tabelo);
 
-	const trigger = tabelo.paneMenuTrigger("grid");
-	await trigger.focus();
-	await page.keyboard.press("Enter");
-	await expect(page.getByRole("menu", { name: /^Pane actions/ })).toBeVisible();
+	const trigger = await box(tabelo.paneMenuTrigger("grid"));
+	expect(
+		await noticeIsTopmostAt(
+			page,
+			trigger.x + trigger.width / 2,
+			trigger.y + trigger.height / 2,
+		),
+	).toBe(true);
+
+	// The shared helper is the path every other spec takes to this menu, so it
+	// has to honour the same keyboard route rather than click through a notice.
+	const menu = await tabelo.openPaneMenu("grid");
+	await expect(menu).toBeVisible();
+	await expect(tabelo.notice()).toHaveCount(1);
 });
 
 test("dismissing a notice gives the pointer its pane back", async ({

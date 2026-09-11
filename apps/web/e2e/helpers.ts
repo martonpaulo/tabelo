@@ -184,6 +184,18 @@ export function storedDocument(page: Page): Promise<string> {
 	}, STORAGE_KEY);
 }
 
+// Whether a notice is what the pointer would hit at the centre of a control.
+function coveredByNotice(control: Locator): Promise<boolean> {
+	return control.evaluate((element) => {
+		const box = element.getBoundingClientRect();
+		const hit = document.elementFromPoint(
+			box.x + box.width / 2,
+			box.y + box.height / 2,
+		);
+		return Boolean(hit?.closest("[data-severity]"));
+	});
+}
+
 export class TabeloPage {
 	readonly workspace: Locator;
 	readonly notices: Locator;
@@ -615,6 +627,13 @@ export class TabeloPage {
 	// aria-expanded is the trigger's own state and flips before that transition
 	// finishes, so it distinguishes the two cases; waitFor hidden is satisfied by
 	// an absent element, so a cold page passes straight through.
+	//
+	// A notice may cover the pane header it lands on, trigger included, and
+	// the notice bar keeps a covered trigger reachable from the keyboard only.
+	// A click there lands on the notice and retries until the test times out,
+	// so a covered trigger is activated the way the notice bar promises. An
+	// uncovered one is clicked: that is the pointer exit several specs mean,
+	// and a keyboard press would first move focus off an open cell editor.
 	async openPaneMenu(view: ViewId, index = 0): Promise<Locator> {
 		const trigger = this.paneMenuTrigger(view, index);
 		const menu = this.page.getByRole("menu", {
@@ -622,7 +641,8 @@ export class TabeloPage {
 		});
 		if ((await trigger.getAttribute("aria-expanded")) !== "true") {
 			await menu.waitFor({ state: "hidden" });
-			await trigger.click();
+			if (await coveredByNotice(trigger)) await trigger.press("Enter");
+			else await trigger.click();
 		}
 		await menu.waitFor({ state: "visible" });
 		return menu;
