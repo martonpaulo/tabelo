@@ -42,7 +42,7 @@ const headerCellStyle = { color: "var(--foreground)", fontWeight: "600" };
 // the text it describes. Mixed rather than applied as an opacity, so nesting
 // two of these marks over the same characters cannot fade one of them twice.
 const annotationStyle = {
-	color: "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
+	color: "color-mix(in oklab, var(--muted-foreground) 40%, transparent)",
 };
 
 // The space dot, painted rather than laid out. A background fills the box the

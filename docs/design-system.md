@@ -391,8 +391,8 @@ HTML spell an empty value out and get none; the escape glyph appears in Markdown
 and Jira, the two formats whose codecs escape reversibly inside a cell.
 
 **An annotation sits below the content, never beside it.** The whitespace
-glyphs and the placeholder share one tone, `--muted-foreground` mixed to half
-strength, never a status colour and never the full text tone: a marker answers a
+glyphs and the placeholder share one tone, `--muted-foreground` mixed to 40%
+strength (lowered from half on #363), never a status colour and never the full text tone: a marker answers a
 question the reader has to ask before it matters, so it must be findable when
 looked for and ignorable when not. The escape glyph is the exception, and it is
 notation rather than annotation: it wears the same `--syntax-notation` tone as
