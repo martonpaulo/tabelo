@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Fragment, type RefObject, useSyncExternalStore } from "react";
 import { copy } from "@/copy/copy";
+import { product } from "@/copy/product";
 import { canSerialize, listCodecs } from "@/formats";
 import {
 	canRunHistory,
@@ -296,7 +297,7 @@ export function AppMenu({
 					<DropdownMenuItem
 						render={
 							<a
-								href="https://github.com/martonpaulo/tabelo"
+								href={product.repositoryUrl}
 								target="_blank"
 								rel="noreferrer"
 							/>

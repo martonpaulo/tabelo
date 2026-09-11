@@ -19,6 +19,25 @@ function escapeHtmlAttribute(value: string): string {
 		.replaceAll(">", "&gt;");
 }
 
+// What the page says before the application mounts: the product, what it is,
+// who made it, and where its source lives. A crawler that does not run
+// JavaScript reads this, and a visitor sees it for the moment before the app
+// replaces it (#362). Built from the same product copy as the interface.
+export function createStaticIntro(): string {
+	const heading = escapeHtmlAttribute(`${product.name}: ${product.tagline}`);
+	const description = escapeHtmlAttribute(product.description);
+	const author = escapeHtmlAttribute(product.author.name);
+	const link = (href: string, label: string) =>
+		`<a href="${escapeHtmlAttribute(href)}" class="text-foreground underline underline-offset-2">${escapeHtmlAttribute(label)}</a>`;
+	return [
+		`<main class="mx-auto max-w-xl p-8 text-muted-foreground text-sm leading-relaxed">`,
+		`<h1 class="mb-2 font-semibold text-base text-foreground">${heading}</h1>`,
+		`<p>${description}.</p>`,
+		`<p class="mt-4 text-xs">${escapeHtmlAttribute(product.creditLabel)} ${link(product.author.url, author)} · ${link(product.repositoryUrl, product.sourceLabel)}</p>`,
+		"</main>",
+	].join("");
+}
+
 export function createProductMetadata({
 	basePath,
 	siteOrigin,
@@ -72,8 +91,8 @@ export function createProductMetadata({
 				},
 				author: {
 					"@type": "Person",
-					name: "Marton Paulo",
-					url: "https://martonpaulo.com",
+					name: product.author.name,
+					url: product.author.url,
 				},
 			})}</script>`,
 		);

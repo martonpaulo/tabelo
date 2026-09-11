@@ -24,7 +24,12 @@ if (!rootElement) {
 	throw new Error("Root element not found");
 }
 
-if (!rootElement.innerHTML) {
+// The shell ships a static introduction inside the root for readers without
+// JavaScript (#362), so an empty root no longer means "not mounted yet". The
+// marker keeps a second evaluation of this module from mounting twice; the
+// first render replaces the static content.
+if (rootElement.dataset.mounted !== "true") {
+	rootElement.dataset.mounted = "true";
 	const root = ReactDOM.createRoot(rootElement);
 	root.render(
 		<div className="h-full">

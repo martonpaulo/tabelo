@@ -1,9 +1,18 @@
 // Product identity is build-time and runtime copy. Keeping it framework-free
 // lets the HTML shell, manifest, and interface share one owner.
+const author = {
+	name: "Marton Paulo",
+	url: "https://martonpaulo.com",
+} as const;
+
 export const product = {
 	name: "Tabelo",
 	tagline: "Edit one table in every view, always in sync",
-	copyright: "© 2026 Marton Paulo",
+	author,
+	copyright: `© 2026 ${author.name}`,
+	repositoryUrl: "https://github.com/martonpaulo/tabelo",
+	creditLabel: "Made by",
+	sourceLabel: "Source on GitHub",
 	documentTitle: "Tabelo: Edit one table in every view",
 	description:
 		"Edit one table visually or through synchronized text formats, entirely in your browser",

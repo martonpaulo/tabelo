@@ -1,6 +1,7 @@
 import { ClipboardPaste, Table2, Upload } from "lucide-react";
 import { useLayoutEffect, useRef } from "react";
 import { copy } from "@/copy/copy";
+import { product } from "@/copy/product";
 import { pasteFromClipboard } from "@/ui/clipboard-actions";
 import { importTableFile } from "@/ui/import";
 import {
@@ -33,6 +34,11 @@ export function EmptyState({
 				tabIndex={-1}
 				className="w-auto min-w-[min(28rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface bg-popover p-4 text-popover-foreground shadow-md ring-1 ring-line-strong focus-visible:outline-2 focus-visible:outline-selection-edge focus-visible:-outline-offset-2"
 			>
+				<p className="mb-4 text-muted-foreground text-sm leading-relaxed">
+					<span className="font-semibold text-foreground">{product.name}</span>
+					{": "}
+					{copy.empty.intro}.
+				</p>
 				<h2 id="empty-state-title" className="font-medium text-sm">
 					{copy.empty.title}
 				</h2>
@@ -65,6 +71,26 @@ export function EmptyState({
 						{copy.empty.emptyAction}
 					</DialogConfirm>
 				</DialogActions>
+				<p className="mt-4 text-muted-foreground text-xs">
+					{copy.empty.credit}{" "}
+					<a
+						href={product.author.url}
+						target="_blank"
+						rel="noreferrer"
+						className="text-foreground underline underline-offset-2"
+					>
+						{product.author.name}
+					</a>
+					{" · "}
+					<a
+						href={product.repositoryUrl}
+						target="_blank"
+						rel="noreferrer"
+						className="text-foreground underline underline-offset-2"
+					>
+						{copy.empty.source}
+					</a>
+				</p>
 			</section>
 		</div>
 	);

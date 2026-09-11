@@ -627,6 +627,12 @@ export const copy = {
 	empty: {
 		title: "Start with a table",
 		body: "Use an empty table, paste from the clipboard, or import a table file.",
+		// Said once, on first sight: what the product is, who made it, and where
+		// its source lives (#362). The same words reach the HTML shell at build
+		// time, so a reader without JavaScript and a search engine see them too.
+		intro: product.description,
+		credit: product.creditLabel,
+		source: product.sourceLabel,
 		emptyAction: "Use an empty table",
 		pasteHint: "Paste a table",
 		sourceTitle: "Nothing here yet",

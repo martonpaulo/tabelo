@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createProductMetadata } from "./product-metadata";
+import { product } from "./copy/product";
+import { createProductMetadata, createStaticIntro } from "./product-metadata";
 
 describe("createProductMetadata", () => {
 	it("emits sharing metadata and the deployment URL for a root build with an origin", () => {
@@ -70,5 +71,19 @@ describe("createProductMetadata", () => {
 		expect(metadata).not.toContain("og:image");
 		expect(metadata).not.toContain('rel="canonical"');
 		expect(metadata).not.toContain("tabelo.martonpaulo.com");
+	});
+});
+
+// #362: what a crawler without JavaScript reads, built from the product copy.
+describe("createStaticIntro", () => {
+	it("names the product, credits the author, and links the repository", () => {
+		const intro = createStaticIntro();
+		expect(intro.match(/<h1\b/g)).toHaveLength(1);
+		expect(intro).toContain(`href="${product.author.url}"`);
+		expect(intro).toContain(`href="${product.repositoryUrl}"`);
+	});
+
+	it("escapes the copy it is built from", () => {
+		expect(createStaticIntro()).not.toMatch(/<(?!\/?(?:main|h1|p|a)\b)/);
 	});
 });

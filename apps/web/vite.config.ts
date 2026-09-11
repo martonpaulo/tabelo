@@ -4,7 +4,10 @@ import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { product } from "./src/copy/product";
 import { THEME_COLOR } from "./src/preferences/contract";
-import { createProductMetadata } from "./src/product-metadata";
+import {
+	createProductMetadata,
+	createStaticIntro,
+} from "./src/product-metadata";
 import { devServerPort, previewServerPort } from "./worktree-ports";
 
 // GitHub Pages serves this project from the root of tabelo.martonpaulo.com.
@@ -79,6 +82,7 @@ export default defineConfig({
 					.replaceAll("__TABELO_DOCUMENT_TITLE__", product.documentTitle)
 					.replaceAll("__TABELO_DESCRIPTION__", product.description)
 					.replace("__TABELO_PRODUCT_METADATA__", productMetadata)
+					.replace("__TABELO_STATIC_INTRO__", createStaticIntro())
 					.replace("__TABELO_THEME_COLOR__", THEME_COLOR),
 		},
 		tailwindcss(),
