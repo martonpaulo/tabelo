@@ -18,7 +18,8 @@ level3_specs="smoke.spec.ts"
 affects_site=false
 seen=0
 
-while IFS= read -r file; do
+# The second test keeps a final path that has no trailing newline.
+while IFS= read -r file || [[ -n "$file" ]]; do
 	[[ -z "$file" ]] && continue
 	seen=1
 
