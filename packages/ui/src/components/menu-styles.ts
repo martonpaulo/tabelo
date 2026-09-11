@@ -8,10 +8,14 @@ import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 // same visual contract. Shared strings keep geometry and states in one place.
 export const menuPopupStyles = `rounded-surface p-1 text-popover-foreground outline-none supports-backdrop-filter:[--hairline-fill:color-mix(in_oklab,var(--popover)_94%,transparent)] supports-backdrop-filter:backdrop-blur-md ${floatingSurfaceStyles} ${popupTransitionStyles}`;
 
+// The inset every menu row keeps from the popup's edge. Anything static a
+// menu shows beside its items reuses it, so its text lines up with theirs.
+export const menuItemInsetStyles = "px-2 py-2";
+
 export const menuLabelStyles =
 	"px-2 py-1.5 text-muted-foreground text-xs leading-none data-inset:pl-7";
 
-export const menuItemLayoutStyles = `relative flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive px-2 py-2 text-sm leading-snug outline-hidden data-disabled:cursor-not-allowed data-inset:pl-7 data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
+export const menuItemLayoutStyles = `relative flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive ${menuItemInsetStyles} text-sm leading-snug outline-hidden data-disabled:cursor-not-allowed data-inset:pl-7 data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
 
 export const menuChoiceItemLayoutStyles = `relative flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive py-2 pr-10 pl-2 text-sm leading-snug outline-hidden data-disabled:cursor-not-allowed data-inset:pl-7 data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
 
@@ -46,6 +50,6 @@ export const singleSelectionIndicatorShapeStyles =
 export const singleSelectionIndicatorFillStyles =
 	"absolute inset-0 rounded-full bg-primary";
 
-export const menuSubTriggerLayoutStyles = `flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive px-2 py-2 text-sm leading-snug outline-hidden data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
+export const menuSubTriggerLayoutStyles = `flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive ${menuItemInsetStyles} text-sm leading-snug outline-hidden data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
 
 export const menuSeparatorStyles = "-mx-1 my-2 h-[0.0625rem] bg-border";

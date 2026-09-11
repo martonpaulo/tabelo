@@ -11,6 +11,8 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
+import { menuItemInsetStyles } from "@tabelo/ui/components/menu-styles";
+import { cn } from "@tabelo/ui/lib/utils";
 import {
 	ClipboardCopy,
 	Download,
@@ -144,16 +146,24 @@ export function AppMenu({
 				side="top"
 				className="w-auto min-w-64 max-w-[calc(100vw-1.5rem)]"
 			>
+				{/* Static identity, outside every group: a menu group holds actions.
+				    It takes the items' own inset so its text lines up with theirs,
+				    and one grid spaces every line of it. */}
+				<div
+					className={cn(
+						"grid gap-1 whitespace-normal text-sm",
+						menuItemInsetStyles,
+					)}
+				>
+					<MenuOption label={copy.app.name} description={copy.app.tagline} />
+					<span className="block text-muted-foreground text-xs">
+						{copy.app.copyright}
+					</span>
+					<span className="block text-muted-foreground text-xs">
+						{tableName}
+					</span>
+				</div>
 				<DropdownMenuGroup>
-					<div className="max-w-72 whitespace-normal px-2 py-1.5 text-sm">
-						<MenuOption label={copy.app.name} description={copy.app.tagline} />
-						<span className="block text-muted-foreground text-xs">
-							{copy.app.copyright}
-						</span>
-						<span className="block text-muted-foreground text-xs">
-							{tableName}
-						</span>
-					</div>
 					<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onRename)}>
 						<Pencil aria-hidden />
 						{copy.actions.renameTable}
