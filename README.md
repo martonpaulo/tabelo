@@ -28,7 +28,7 @@ Jira and back leaves the table exactly as it was.
 
 <br />
 
-## 🌱 Quick Start
+## Quick Start
 
 Requires [Node.js](https://nodejs.org) 24+ and [pnpm](https://pnpm.io) 11+.
 
@@ -45,7 +45,7 @@ side without serving each other's build.
 
 <br />
 
-## 🛠 Commands
+## Commands
 
 | Command                 | What it does                                   |
 | :---------------------- | :--------------------------------------------- |
@@ -89,7 +89,7 @@ opening a pull request.
 
 <br />
 
-## 🔐 Secrets and variables
+## Secrets and variables
 
 There is no application secret to configure: Tabelo has no backend, no API key and no account. Both
 workflows use only the `GITHUB_TOKEN` that GitHub Actions provides on its own.
