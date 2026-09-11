@@ -1,6 +1,6 @@
 import { cellTextAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
-import { toDocumentParseResult } from "./parse";
+import { lineSpans, toDocumentParseResult } from "./parse";
 import type {
 	EscapeMatcher,
 	MatrixParseResult,
@@ -194,6 +194,8 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 		ok: true,
 		table: { matrix: [headerCells, ...bodyRows], headerRow: true },
 		warnings: warnings.length > 0 ? warnings : undefined,
+		// One line per row, header included.
+		rows: lineSpans(text).slice(start, end),
 	};
 }
 
@@ -222,6 +224,7 @@ export const jiraCodec: TableCodec = {
 	},
 	extension: "jira.txt",
 	mimeType: "text/plain",
+	mapsSourceRows: true,
 	parseMatrix: parseJiraMatrix,
 	parse: (text) => toDocumentParseResult(parseJiraMatrix(text)),
 	serialize: serializeJira,

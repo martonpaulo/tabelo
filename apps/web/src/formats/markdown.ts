@@ -2,11 +2,12 @@ import stringWidth from "string-width";
 import { cellTextAt } from "@/core/cell-value";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import type { Alignment, TableDocument } from "@/core/types";
-import { toDocumentParseResult } from "./parse";
+import { lineSpans, toDocumentParseResult } from "./parse";
 import type {
 	EscapeMatcher,
 	MatrixParseResult,
 	ParseIssue,
+	SourceRowRange,
 	TableCodec,
 } from "./types";
 
@@ -259,6 +260,20 @@ function alignmentMarker(align: Alignment, width: number): string {
 	}
 }
 
+// The header row owns the alignment divider under it: the divider is how
+// Markdown says the line above is a header, not a row of its own. Every body
+// line after it is one row.
+function markdownRows(
+	text: string,
+	start: number,
+	end: number,
+): SourceRowRange[] {
+	const spans = lineSpans(text).slice(start, end);
+	const [header, divider, ...body] = spans;
+	if (!header || !divider) return [];
+	return [{ from: header.from, to: divider.to }, ...body];
+}
+
 function parseMarkdownMatrix(text: string): MatrixParseResult {
 	const lines = text.split(/\r?\n/);
 	const start = lines.findIndex((line) => line.trim() !== "");
@@ -345,6 +360,7 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 			alignments: delimiterCells.map(alignmentOf),
 		},
 		warnings: warnings.length > 0 ? warnings : undefined,
+		rows: markdownRows(text, start, end),
 	};
 }
 
@@ -416,6 +432,7 @@ export const markdownCodec: TableCodec = {
 	},
 	extension: "md",
 	mimeType: "text/markdown",
+	mapsSourceRows: true,
 	parseMatrix: parseMarkdownMatrix,
 	parse: (text) => toDocumentParseResult(parseMarkdownMatrix(text)),
 	serialize: serializeMarkdown,

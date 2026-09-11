@@ -6,6 +6,7 @@ import type {
 	CodecId,
 	MatrixParseResult,
 	ParseIssue,
+	SourceRowRange,
 	TableCodec,
 } from "./types";
 
@@ -23,10 +24,53 @@ const LINE_BREAK = /\r\n|\r|\n/;
 export interface DelimitedMatrix {
 	readonly matrix: string[][];
 	readonly issues: readonly ParseIssue[];
+	// Where each row of the matrix sits in the text (#296).
+	readonly rows: readonly SourceRowRange[];
 }
 
-function runPapa(text: string, delimiter: string) {
-	return Papa.parse<string[]>(text, { skipEmptyLines: false, delimiter });
+interface PapaRun {
+	readonly data: string[][];
+	readonly errors: Papa.ParseError[];
+	// The offset just past each row, its line break included.
+	readonly cursors: number[];
+}
+
+// Row by row rather than all at once, because only a step reports where each
+// row ends, and that is the one reliable source of row boundaries a quoted line
+// break cannot fool. It yields the same rows as a whole-text parse; an error's
+// `row` is reported relative to its step, so it is numbered here instead.
+// https://github.com/mholt/PapaParse/blob/5.5.4/papaparse.js#L1669-L1680
+function runPapa(text: string, delimiter: string): PapaRun {
+	const data: string[][] = [];
+	const errors: Papa.ParseError[] = [];
+	const cursors: number[] = [];
+	Papa.parse<string[]>(text, {
+		skipEmptyLines: false,
+		delimiter,
+		step: (row) => {
+			for (const error of row.errors) {
+				errors.push({ ...error, row: data.length });
+			}
+			data.push(row.data);
+			cursors.push(row.meta.cursor);
+		},
+	});
+	return { data, errors, cursors };
+}
+
+// A row runs from where the previous one ended to its own end, less the line
+// break that closes it.
+function rowRanges(text: string, cursors: readonly number[]): SourceRowRange[] {
+	return cursors.map((cursor, index) => {
+		const from = index === 0 ? 0 : (cursors[index - 1] ?? 0);
+		const ending = text.slice(Math.max(from, cursor - 2), cursor);
+		const breakLength = ending.endsWith("\r\n")
+			? 2
+			: ending.endsWith("\n") || ending.endsWith("\r")
+				? 1
+				: 0;
+		return { from, to: Math.max(from, cursor - breakLength) };
+	});
 }
 
 // A blank line is a legitimate empty row and looks like a single empty field
@@ -80,13 +124,17 @@ export function parseDelimitedMatrix(
 	const result = runPapa(text, effective);
 
 	const matrix = result.data.map((row) => row.map((cell) => cell ?? ""));
+	const rows = rowRanges(text, result.cursors);
 
 	// Only a source that actually ends in a line break can carry the phantom
 	// record Papa Parse reports after it. Judging by shape alone deleted the
 	// last row of a table whose final cells were empty.
 	if (matrix.length > 1 && LINE_BREAK.test(text.slice(-2))) {
 		const last = matrix.at(-1);
-		if (last?.length === 1 && last[0] === "") matrix.pop();
+		if (last?.length === 1 && last[0] === "") {
+			matrix.pop();
+			rows.pop();
+		}
 	}
 
 	const issues: ParseIssue[] = result.errors.map((error) => {
@@ -106,7 +154,7 @@ export function parseDelimitedMatrix(
 		}
 	});
 
-	return { matrix, issues };
+	return { matrix, issues, rows };
 }
 
 export function serializeDelimited(
@@ -152,9 +200,11 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 			return { ok: false, issues: [{ code: "empty-source" }] };
 		}
 
-		const { matrix, issues } = parseDelimitedMatrix(text, config.delimiter, {
-			sniffDelimiter,
-		});
+		const { matrix, issues, rows } = parseDelimitedMatrix(
+			text,
+			config.delimiter,
+			{ sniffDelimiter },
+		);
 
 		// An unterminated quote means the user is mid-edit. Hold the last valid
 		// table rather than showing them a mangled one.
@@ -173,6 +223,7 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 			ok: true,
 			table: { matrix },
 			warnings: issues.length > 0 ? issues : undefined,
+			rows,
 		};
 	};
 
@@ -184,6 +235,7 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 		},
 		extension: config.extension,
 		mimeType: config.mimeType,
+		mapsSourceRows: true,
 		fieldSeparator: config.delimiter,
 		// Import and the clipboard carry text this product did not write, so a
 		// European semicolon file still has to open.

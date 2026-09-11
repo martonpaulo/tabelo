@@ -50,6 +50,18 @@ export type ParseIssue =
 	| ({ readonly code: "records-bullet-required" } & LocatedParseIssue)
 	| ({ readonly code: "records-unknown-column" } & LocatedParseIssue);
 
+// Where one semantic table row sits in the source it was parsed from, as UTF-16
+// offsets: `from` is its first character and `to` is just after its last one,
+// before the line break that ends it (#296). A row is the table's unit, not a
+// text line: a Markdown header owns its alignment divider too, and a CSV row
+// with a quoted line break spans several lines. Only a format that can say this
+// reliably returns it, from the same parse that found the rows; a source view
+// draws the boundaries between them and never works them out itself.
+export interface SourceRowRange {
+	readonly from: number;
+	readonly to: number;
+}
+
 // A successful parse can still carry warnings: a ragged row is recoverable by
 // padding, and saying so is better than silently reshaping the user's table.
 export type ParseResult =
@@ -57,6 +69,8 @@ export type ParseResult =
 			readonly ok: true;
 			readonly document: TableDocument;
 			readonly warnings?: readonly ParseIssue[];
+			// One per table row, header first, when the format can map them.
+			readonly rows?: readonly SourceRowRange[];
 	  }
 	| { readonly ok: false; readonly issues: readonly ParseIssue[] };
 
@@ -74,6 +88,8 @@ export type MatrixParseResult =
 			readonly ok: true;
 			readonly table: ParsedTable;
 			readonly warnings?: readonly ParseIssue[];
+			// One per matrix row: see SourceRowRange.
+			readonly rows?: readonly SourceRowRange[];
 	  }
 	| { readonly ok: false; readonly issues: readonly ParseIssue[] };
 
@@ -141,6 +157,11 @@ export interface TableCodec {
 	// reads back this codec's own output. Presentation reads it to place
 	// empty-value markers; parsing never consults it.
 	readonly fieldSeparator?: string;
+	// Whether a successful parse returns where each row sits in the source
+	// (#296). Declared so a source view parses a projection for its row
+	// separators only when that parse can answer; HTML, Records, and JSON have
+	// no reliable row boundary and do not declare it.
+	readonly mapsSourceRows?: boolean;
 	// Text clipboard sniffing is format-owned. Lower priorities run first.
 	readonly sniffPriority?: number;
 	readonly canSniff?: (text: string) => boolean;
