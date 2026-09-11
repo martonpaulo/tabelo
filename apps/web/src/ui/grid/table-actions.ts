@@ -10,11 +10,14 @@ import {
 	ClipboardPaste,
 	Copy,
 	Eraser,
+	Focus,
 	type LucideIcon,
+	Move,
 	MoveDown,
 	MoveLeft,
 	MoveRight,
 	MoveUp,
+	PaintBucket,
 	Scissors,
 	SquareArrowDown,
 	SquareArrowLeft,
@@ -61,6 +64,9 @@ export interface TableActionGroup {
 	readonly id: string;
 	readonly label?: string;
 	readonly labelId?: string;
+	// A named group of directional commands shown as one submenu, so the menu's
+	// first level stays short. Every renderer draws it the same way (#369).
+	readonly submenu?: { readonly icon: LucideIcon };
 	readonly actions: readonly TableAction[];
 }
 
@@ -496,18 +502,21 @@ export function buildTableActions(
 			id: "move",
 			label: copy.actions.move,
 			labelId: "table-actions-move-label",
+			submenu: { icon: Move },
 			actions: move,
 		},
 		{
 			id: "fill",
 			label: copy.actions.fill,
 			labelId: "table-actions-fill-label",
+			submenu: { icon: PaintBucket },
 			actions: fill,
 		},
 		{
 			id: "focus",
 			label: copy.actions.moveFocus,
 			labelId: "table-actions-focus-label",
+			submenu: { icon: Focus },
 			actions: focus,
 		},
 		{ id: "remove", actions: remove },

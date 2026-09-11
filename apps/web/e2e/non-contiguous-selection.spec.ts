@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { samplePeopleCsv } from "@/core/sample-data";
 import { expect, test } from "./fixtures";
-import type { TabeloPage } from "./helpers";
+import { openSubmenu, type TabeloPage } from "./helpers";
 
 // The platform modifier as the pointer carries it. Meta on macOS, Control
 // everywhere else, read from the host rather than assumed.
@@ -130,9 +130,10 @@ async function moveFocusByMenu(
 		right: copy.actions.moveFocusRight,
 	}[direction];
 	await page.keyboard.press("ContextMenu");
-	const menu = page.getByRole("menu");
+	const menu = page.locator('[data-slot="context-menu-content"]');
 	await expect(menu).toBeVisible();
-	await menu.getByRole("menuitem", { name: label }).press("Enter");
+	const group = await openSubmenu(page, menu, copy.actions.moveFocus);
+	await group.getByRole("menuitem", { name: label }).press("Enter");
 	await expect(menu).toBeHidden();
 }
 
@@ -194,30 +195,35 @@ test("the focus group carries no shortcut, stops at the edges, and cancels clean
 	// so its first cell is where two of the four directions run out.
 	await tabelo.header(1).click();
 	await page.keyboard.press("ContextMenu");
-	const menu = page.getByRole("menu");
+	const menu = page.locator('[data-slot="context-menu-content"]');
 	await expect(menu).toBeVisible();
+	const group = await openSubmenu(page, menu, copy.actions.moveFocus);
 
-	const right = menu.getByRole("menuitem", {
+	const right = group.getByRole("menuitem", {
 		name: copy.actions.moveFocusRight,
 	});
 	// A visible command path, not a second hidden chord.
 	await expect(right.locator("kbd")).toHaveCount(0);
 	await expect(
-		menu.getByRole("menuitem", { name: copy.actions.moveFocusUp }),
+		group.getByRole("menuitem", { name: copy.actions.moveFocusUp }),
 	).toBeDisabled();
 	await expect(
-		menu.getByRole("menuitem", { name: copy.actions.moveFocusLeft }),
+		group.getByRole("menuitem", { name: copy.actions.moveFocusLeft }),
 	).toBeDisabled();
 	await expect(right).toBeEnabled();
 
-	// Escape without executing leaves the focus where it was.
+	// Escape without executing leaves the focus where it was: one for the
+	// submenu, one for the menu.
+	await page.keyboard.press("Escape");
 	await page.keyboard.press("Escape");
 	await expect(menu).toBeHidden();
 	await expect.poll(() => focusedCell(page)).toBe("-1:0");
 
 	// The disabled directions explain themselves rather than hiding.
 	await page.keyboard.press("ContextMenu");
-	await menu.getByRole("menuitem", { name: copy.actions.moveFocusUp }).hover();
+	await (await openSubmenu(page, menu, copy.actions.moveFocus))
+		.getByRole("menuitem", { name: copy.actions.moveFocusUp })
+		.hover();
 	await expect(page.getByRole("tooltip")).toHaveText(copy.disabled.focusTopRow);
 });
 
@@ -302,26 +308,25 @@ test("actions needing one area are disabled with a reason, never hidden", async 
 	await columnHandle(tabelo, 3).click({ modifiers: [modifier] });
 	await openCellMenu(page, tabelo);
 
-	const menu = page.getByRole("menu");
-	for (const label of [
-		copy.actions.moveLeft,
-		copy.actions.paste,
-		copy.actions.insertColumnsLeft(2),
-	]) {
+	const menu = page.locator('[data-slot="context-menu-content"]');
+	for (const label of [copy.actions.paste, copy.actions.insertColumnsLeft(2)]) {
 		const action = menu.getByRole("menuitem", { name: label });
 		await expect(action).toBeVisible();
 		await expect(action).toBeDisabled();
 	}
-
-	const blocked = menu.getByRole("menuitem", { name: copy.actions.moveLeft });
-	await blocked.hover();
-	await expect(page.getByRole("tooltip")).toBeVisible();
-
-	// The operations that act on a set of indices stay available, and their
-	// labels count both areas rather than the last one.
+	// The labels counting both areas are checked while this first level is
+	// the only menu open.
 	await expect(
 		menu.getByRole("menuitem", { name: copy.actions.deleteColumns(2) }),
 	).toBeEnabled();
+
+	const blocked = (await openSubmenu(page, menu, copy.actions.move)).getByRole(
+		"menuitem",
+		{ name: copy.actions.moveLeft },
+	);
+	await expect(blocked).toBeDisabled();
+	await blocked.hover();
+	await expect(page.getByRole("tooltip")).toBeVisible();
 });
 
 // The reported case: two columns that touch. The modifier keeps them two areas
@@ -332,23 +337,26 @@ test("adjacent columns stay separate under the modifier and join under Shift", a
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
-	const menu = page.getByRole("menu");
-	const moveRight = menu.getByRole("menuitem", {
-		name: copy.actions.moveRight,
-	});
+	const menu = page.locator('[data-slot="context-menu-content"]');
+	const moveRight = async () =>
+		(await openSubmenu(page, menu, copy.actions.move)).getByRole("menuitem", {
+			name: copy.actions.moveRight,
+		});
 
 	await columnHandle(tabelo, 1).click();
 	await columnHandle(tabelo, 2).click({ modifiers: [modifier] });
 	await openCellMenu(page, tabelo);
-	await expect(moveRight).toBeDisabled();
-	await expect(moveRight).toHaveAccessibleDescription(/\S/);
+	const refused = await moveRight();
+	await expect(refused).toBeDisabled();
+	await expect(refused).toHaveAccessibleDescription(/\S/);
+	await page.keyboard.press("Escape");
 	await page.keyboard.press("Escape");
 	await expect(menu).toHaveCount(0);
 
 	await columnHandle(tabelo, 1).click();
 	await columnHandle(tabelo, 2).click({ modifiers: ["Shift"] });
 	await openCellMenu(page, tabelo);
-	await expect(moveRight).toBeEnabled();
+	await expect(await moveRight()).toBeEnabled();
 });
 
 test("Alt+Right refuses several areas without changing them", async ({

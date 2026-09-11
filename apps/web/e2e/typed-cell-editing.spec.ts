@@ -1,8 +1,8 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import type { CellValueType, ExpectedColumnType } from "@/core/types";
 import { expect, test } from "./fixtures";
-import type { TabeloPage } from "./helpers";
+import { openSubmenu, type TabeloPage } from "./helpers";
 
 async function setExpectedType(
 	page: Page,
@@ -44,10 +44,13 @@ async function enterCellText(
 	await editor.press("Enter");
 }
 
-function visibleCellTypeMenu(page: Page) {
-	return page.getByRole("menu").filter({
-		has: page.getByText(copy.actions.cellType, { exact: true }),
-	});
+// Cell type is a submenu of the cell's context menu (#369).
+function openCellTypeMenu(page: Page): Promise<Locator> {
+	return openSubmenu(
+		page,
+		page.locator('[data-slot="context-menu-content"]'),
+		copy.actions.cellType,
+	);
 }
 
 async function chooseCellType(
@@ -57,7 +60,7 @@ async function chooseCellType(
 ) {
 	const cell = tabelo.cell(1, 1);
 	await cell.click({ button: "right" });
-	const menu = visibleCellTypeMenu(page);
+	const menu = await openCellTypeMenu(page);
 	await expect(menu.getByRole("menuitemradio", { checked: true })).toHaveCount(
 		1,
 	);
@@ -182,7 +185,7 @@ test("the cell menu exposes explicit conversions and disables invalid ones", asy
 
 	await enterCellText(tabelo, 1, 1, "hello");
 	await cell.click({ button: "right" });
-	const menu = visibleCellTypeMenu(page);
+	const menu = await openCellTypeMenu(page);
 	const booleanOption = menu.getByRole("menuitemradio", {
 		name: new RegExp(copy.cellTypes.real.boolean, "i"),
 	});
@@ -198,11 +201,12 @@ test("the cell menu exposes explicit conversions and disables invalid ones", asy
 	await tooltip.waitFor({ state: "hidden" });
 	await page.keyboard.press("Escape");
 	await menu.waitFor({ state: "hidden" });
+	await page.keyboard.press("Escape");
 
 	await cell.click();
 	await tabelo.cell(1, 2).click({ modifiers: ["Shift"] });
 	await cell.click({ button: "right" });
-	const rangeMenu = visibleCellTypeMenu(page);
+	const rangeMenu = await openCellTypeMenu(page);
 	const rangeOptions = rangeMenu.getByRole("menuitemradio");
 	await expect(rangeOptions).toHaveCount(4);
 	for (const option of await rangeOptions.all()) {

@@ -7,6 +7,9 @@ import {
 	ContextMenuRadioGroup,
 	ContextMenuSeparator,
 	ContextMenuShortcut,
+	ContextMenuSub,
+	ContextMenuSubContent,
+	ContextMenuSubTrigger,
 	ContextMenuTrigger,
 } from "@tabelo/ui/components/context-menu";
 import {
@@ -32,7 +35,11 @@ import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
 import { cellTypeOptions } from "./cell-type-options";
 import { targetAxisForMenu, targetCellForMenu } from "./menu-target";
 import { revealGridCell } from "./reveal-cell";
-import { buildTableActions, type TableActionContext } from "./table-actions";
+import {
+	buildTableActions,
+	type TableAction,
+	type TableActionContext,
+} from "./table-actions";
 
 // One context menu for the whole grid rather than one per cell. Mounting a
 // menu on every cell of a 200-row table would be wasteful, and the axis the
@@ -63,40 +70,55 @@ function CellTypeMenuGroup() {
 	const row = target ? document.rows[target.row] : undefined;
 	const value = row && column ? readCell(row, column.id) : undefined;
 	const currentType = value === undefined ? undefined : cellValueType(value);
+	// The trigger wears the current type's icon, so the first level still says
+	// which type the cell holds, as the Alignment submenu does for a column.
+	const TriggerIcon = (
+		cellTypeOptions.find((option) => option.value === currentType) ??
+		cellTypeOptions[0]
+	)?.icon;
 
 	return (
-		<ContextMenuRadioGroup
-			aria-labelledby={labelId}
-			value={currentType ?? ""}
-			onValueChange={(next) => {
-				if (target) {
-					useTabeloStore
-						.getState()
-						.setCellType(target.row, target.column, next as CellValueType);
-				}
-			}}
-		>
-			<ContextMenuLabel id={labelId}>{copy.actions.cellType}</ContextMenuLabel>
-			{cellTypeOptions.map((option) => {
-				const unavailable =
-					value === undefined || !convertCellValue(value, option.value).ok;
-				const reason =
-					value === undefined
-						? copy.disabled.singleCellRequired
-						: unavailable
-							? copy.disabled.cellTypeConversion(option.label)
-							: undefined;
-				return (
-					<ContextMenuSelectionOption
-						key={option.value}
-						value={option.value}
-						icon={<option.icon />}
-						label={option.label}
-						availability={reason ? { kind: "unavailable", reason } : undefined}
-					/>
-				);
-			})}
-		</ContextMenuRadioGroup>
+		<ContextMenuSub>
+			<ContextMenuSubTrigger>
+				{TriggerIcon ? <TriggerIcon aria-hidden /> : null}
+				<span id={labelId}>{copy.actions.cellType}</span>
+			</ContextMenuSubTrigger>
+			<ContextMenuSubContent aria-label={copy.actions.cellType}>
+				<ContextMenuRadioGroup
+					aria-labelledby={labelId}
+					value={currentType ?? ""}
+					onValueChange={(next) => {
+						if (target) {
+							useTabeloStore
+								.getState()
+								.setCellType(target.row, target.column, next as CellValueType);
+						}
+					}}
+				>
+					{cellTypeOptions.map((option) => {
+						const unavailable =
+							value === undefined || !convertCellValue(value, option.value).ok;
+						const reason =
+							value === undefined
+								? copy.disabled.singleCellRequired
+								: unavailable
+									? copy.disabled.cellTypeConversion(option.label)
+									: undefined;
+						return (
+							<ContextMenuSelectionOption
+								key={option.value}
+								value={option.value}
+								icon={<option.icon />}
+								label={option.label}
+								availability={
+									reason ? { kind: "unavailable", reason } : undefined
+								}
+							/>
+						);
+					})}
+				</ContextMenuRadioGroup>
+			</ContextMenuSubContent>
+		</ContextMenuSub>
 	);
 }
 
@@ -146,6 +168,28 @@ export function GridContextMenu({
 		});
 		return cell;
 	};
+
+	const item = (action: TableAction) => (
+		<DisabledTooltip
+			key={action.id}
+			reason={action.disabled ? action.disabledReason : undefined}
+		>
+			<ContextMenuItem
+				disabled={action.disabled}
+				variant={action.danger ? "destructive" : "default"}
+				onClick={() => {
+					commandRan.current = true;
+					action.run();
+				}}
+			>
+				<action.icon aria-hidden />
+				{action.label}
+				{action.shortcut ? (
+					<ContextMenuShortcut>{action.shortcut}</ContextMenuShortcut>
+				) : null}
+			</ContextMenuItem>
+		</DisabledTooltip>
+	);
 
 	return (
 		<ContextMenu
@@ -209,36 +253,33 @@ export function GridContextMenu({
 				{buildTableActions({ axis }).map((group, index) => (
 					<Fragment key={group.id}>
 						{index > 0 ? <ContextMenuSeparator /> : null}
-						<ContextMenuGroup aria-labelledby={group.labelId}>
-							{group.label && group.labelId ? (
-								<ContextMenuLabel id={group.labelId}>
-									{group.label}
-								</ContextMenuLabel>
-							) : null}
-							{group.actions.map((action) => (
-								<DisabledTooltip
-									key={action.id}
-									reason={action.disabled ? action.disabledReason : undefined}
-								>
-									<ContextMenuItem
-										disabled={action.disabled}
-										variant={action.danger ? "destructive" : "default"}
-										onClick={() => {
-											commandRan.current = true;
-											action.run();
-										}}
+						{group.submenu && group.label ? (
+							<ContextMenuGroup>
+								<ContextMenuSub>
+									<ContextMenuSubTrigger>
+										<group.submenu.icon aria-hidden />
+										{group.label}
+									</ContextMenuSubTrigger>
+									<ContextMenuSubContent
+										aria-label={group.label}
+										// A command chosen here closes the whole menu, so it
+										// hands focus back the way a first-level one does.
+										finalFocus={finalFocus}
 									>
-										<action.icon aria-hidden />
-										{action.label}
-										{action.shortcut ? (
-											<ContextMenuShortcut>
-												{action.shortcut}
-											</ContextMenuShortcut>
-										) : null}
-									</ContextMenuItem>
-								</DisabledTooltip>
-							))}
-						</ContextMenuGroup>
+										{group.actions.map(item)}
+									</ContextMenuSubContent>
+								</ContextMenuSub>
+							</ContextMenuGroup>
+						) : (
+							<ContextMenuGroup aria-labelledby={group.labelId}>
+								{group.label && group.labelId ? (
+									<ContextMenuLabel id={group.labelId}>
+										{group.label}
+									</ContextMenuLabel>
+								) : null}
+								{group.actions.map(item)}
+							</ContextMenuGroup>
+						)}
 					</Fragment>
 				))}
 			</ContextMenuContent>

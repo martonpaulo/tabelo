@@ -2,7 +2,7 @@ import type { Locator } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { samplePeopleCsv } from "@/core/sample-data";
 import { expect, test } from "./fixtures";
-import type { TabeloPage } from "./helpers";
+import { openSubmenu, type TabeloPage } from "./helpers";
 
 // Row and column actions were a small icon that only existed while the pointer
 // was inside its header. They are still quiet, but they are now findable: the
@@ -155,7 +155,9 @@ test("the column menu moves a two-column selection as one block", async ({
 	await tabelo.gridSurface().getByRole("button", { name: menuName }).click();
 	const menu = page.getByRole("menu", { name: menuName });
 	await expect(menu).toBeVisible();
-	await menu.getByRole("menuitem", { name: copy.actions.moveRight }).click();
+	await (await openSubmenu(page, menu, copy.actions.move))
+		.getByRole("menuitem", { name: copy.actions.moveRight })
+		.click();
 
 	await expect(tabelo.header(1)).toHaveText("role");
 	await expect(tabelo.header(2)).toHaveText("name");
@@ -177,9 +179,13 @@ test("the move actions advertise the binding the grid already answers", async ({
 
 	const menuName = `${copy.actions.rowActions}: ${copy.a11y.rowNumber(2)}`;
 	await tabelo.grid().getByRole("button", { name: menuName }).click();
-	const moveDown = page
-		.getByRole("menu", { name: menuName })
-		.getByRole("menuitem", { name: copy.actions.moveDown });
+	const moveDown = (
+		await openSubmenu(
+			page,
+			page.getByRole("menu", { name: menuName }),
+			copy.actions.move,
+		)
+	).getByRole("menuitem", { name: copy.actions.moveDown });
 
 	// The legend follows the keyboard the user actually has: a glyph on Apple
 	// platforms, the printed word everywhere else. The expectation comes from
@@ -193,6 +199,7 @@ test("the move actions advertise the binding the grid already answers", async ({
 
 	// What it advertises is what the grid does: pressing the binding moves the
 	// same row the menu item would have.
+	await page.keyboard.press("Escape");
 	await page.keyboard.press("Escape");
 	await tabelo.cell(2, 1).click();
 	await page.keyboard.press("Alt+ArrowDown");
@@ -231,7 +238,10 @@ test("Move down is disabled for a block ending at the last row", async ({
 	const menuName = `${copy.actions.rowActions}: ${copy.a11y.rowNumber(3)}`;
 	await tabelo.grid().getByRole("button", { name: menuName }).click();
 	const menu = page.getByRole("menu", { name: menuName });
-	const moveDown = menu.getByRole("menuitem", { name: copy.actions.moveDown });
+	const moveDown = (await openSubmenu(page, menu, copy.actions.move)).getByRole(
+		"menuitem",
+		{ name: copy.actions.moveDown },
+	);
 	await expect(moveDown).toBeDisabled();
 	await moveDown.hover();
 	await expect(page.getByRole("tooltip")).toBeVisible();

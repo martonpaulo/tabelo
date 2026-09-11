@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
-import type { TabeloPage } from "./helpers";
+import { openSubmenu, type TabeloPage } from "./helpers";
 
 const modifier = process.platform === "darwin" ? "Meta" : "Control";
 
@@ -200,11 +200,15 @@ test("header and multiarea fill commands stay visible with a reason", async ({
 	tabelo,
 }) => {
 	await tabelo.header(1).click({ button: "right" });
-	let menu = page.getByRole("menu");
-	let fillDown = menu.getByRole("menuitem", { name: copy.actions.fillDown });
+	let menu = page.locator('[data-slot="context-menu-content"]');
+	let fillDown = (await openSubmenu(page, menu, copy.actions.fill)).getByRole(
+		"menuitem",
+		{ name: copy.actions.fillDown },
+	);
 	await expect(fillDown).toBeDisabled();
 	await fillDown.hover();
 	await expect(page.getByRole("tooltip")).toBeVisible();
+	await page.keyboard.press("Escape");
 	await page.keyboard.press("Escape");
 	await page.keyboard.press("Escape");
 	await expect(menu).toBeHidden();
@@ -212,8 +216,11 @@ test("header and multiarea fill commands stay visible with a reason", async ({
 	await tabelo.cell(1, 1).click();
 	await tabelo.cell(3, 3).click({ modifiers: [modifier] });
 	await tabelo.cell(3, 3).click({ button: "right" });
-	menu = page.getByRole("menu");
-	fillDown = menu.getByRole("menuitem", { name: copy.actions.fillDown });
+	menu = page.locator('[data-slot="context-menu-content"]');
+	fillDown = (await openSubmenu(page, menu, copy.actions.fill)).getByRole(
+		"menuitem",
+		{ name: copy.actions.fillDown },
+	);
 	await expect(fillDown).toBeDisabled();
 	await fillDown.hover();
 	await expect(page.getByRole("tooltip")).toBeVisible();

@@ -1,6 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
+import { openSubmenu } from "./helpers";
 
 async function expectDialogOptionAnatomy(dialog: Locator, expected: number) {
 	const list = dialog.getByRole("radiogroup");
@@ -343,7 +344,7 @@ test("the alignment submenu stays inside a narrow viewport", async ({
 	expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(568);
 });
 
-test("table menus preserve named and unnamed semantic groups", async ({
+test("table menus preserve named groups and fold directional ones into submenus", async ({
 	page,
 	tabelo,
 }) => {
@@ -354,74 +355,56 @@ test("table menus preserve named and unnamed semantic groups", async ({
 		})
 		.first();
 	await trigger.click();
-	let menu = page.getByRole("menu", {
+	const menu = page.getByRole("menu", {
 		name: new RegExp(`^${copy.actions.columnActions}:`),
 	});
 
-	const dropdownGroups = menu.locator(
-		'[data-slot="dropdown-menu-group"], [data-slot="dropdown-menu-radio-group"]',
-	);
-	await expect(dropdownGroups).toHaveCount(8);
+	// Named groups keep their names on the first level.
 	await expect(
 		menu.getByRole("group", { name: copy.actions.expectedType }),
 	).toHaveCount(1);
-	// Alignment is one row of the root menu now, and its group travelled with
-	// it into the child menu rather than staying behind as an empty label.
-	await expect(
-		menu.getByRole("group", { name: copy.actions.alignment }),
-	).toHaveCount(0);
-	await expect(
-		menu.getByRole("menuitem", { name: copy.actions.alignment }),
-	).toHaveCount(1);
 	await expect(
 		menu.getByRole("group", { name: copy.actions.edit }),
 	).toHaveCount(1);
+	// A group of directional commands is one row that opens its own menu
+	// (#369), like Alignment, rather than a labelled run of four rows.
+	for (const label of [copy.actions.alignment, copy.actions.move]) {
+		await expect(
+			menu.getByRole("menuitem", { name: label, exact: true }),
+		).toHaveAttribute("aria-haspopup", "menu");
+	}
 	await expect(
-		menu.getByRole("group", { name: copy.actions.move }),
+		menu.getByRole("group", { name: copy.actions.move, exact: true }),
+	).toHaveCount(0);
+	const move = await openSubmenu(page, menu, copy.actions.move);
+	await expect(
+		move.getByRole("menuitem", { name: copy.actions.moveRight }),
 	).toHaveCount(1);
-	await expect(menu.locator('[data-slot="dropdown-menu-label"]')).toHaveCount(
-		3,
-	);
-	await expect(dropdownGroups.locator(":scope[aria-labelledby]")).toHaveCount(
-		3,
-	);
-	await expect(
-		dropdownGroups.locator(":scope:not([aria-labelledby])"),
-	).toHaveCount(5);
 
+	await page.keyboard.press("Escape");
 	await page.keyboard.press("Escape");
 	await expect(trigger).toBeFocused();
 	await tabelo.cell(1, 1).click({ button: "right" });
-	menu = page.locator('[data-slot="context-menu-content"]');
-	await expect(menu).toBeVisible();
-	const contextGroups = menu.locator(
-		'[data-slot="context-menu-group"], [data-slot="context-menu-radio-group"]',
-	);
-	// One more group than the axis menu carries: moving the focus without
-	// discarding the selection is a cell-scoped command path, and it is named
-	// rather than left as a run of unlabelled rows.
-	await expect(contextGroups).toHaveCount(8);
+	const context = page.locator('[data-slot="context-menu-content"]');
+	await expect(context).toBeVisible();
 	await expect(
-		menu.getByRole("group", { name: copy.actions.cellType }),
+		context.getByRole("group", { name: copy.actions.edit }),
 	).toHaveCount(1);
-	await expect(
-		menu.getByRole("group", { name: copy.actions.moveFocus }),
-	).toHaveCount(1);
-	await expect(
-		menu.getByRole("group", { name: copy.actions.edit }),
-	).toHaveCount(1);
-	await expect(
-		menu.getByRole("group", { name: copy.actions.fill }),
-	).toHaveCount(1);
-	// Exact, because the focus group's own label starts with the same word and
-	// the reorder group is the one being counted here.
-	await expect(
-		menu.getByRole("group", { name: copy.actions.move, exact: true }),
-	).toHaveCount(1);
-	await expect(contextGroups.locator(":scope[aria-labelledby]")).toHaveCount(5);
-	await expect(
-		contextGroups.locator(":scope:not([aria-labelledby])"),
-	).toHaveCount(3);
+	for (const label of [
+		copy.actions.cellType,
+		copy.actions.move,
+		copy.actions.fill,
+		copy.actions.moveFocus,
+	]) {
+		await expect(
+			context.getByRole("menuitem", { name: label, exact: true }),
+		).toHaveAttribute("aria-haspopup", "menu");
+		await expect(
+			context.getByRole("group", { name: label, exact: true }),
+		).toHaveCount(0);
+	}
+	const cellType = await openSubmenu(page, context, copy.actions.cellType);
+	await expect(cellType.getByRole("menuitemradio")).toHaveCount(4);
 });
 
 test("column menu labels stay out of traversal and the menu scrolls when narrow", async ({

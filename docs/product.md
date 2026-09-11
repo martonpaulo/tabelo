@@ -157,7 +157,7 @@ reversible implementation choice does not belong here.
 | Fit with wrapping | Fit is disabled with a reason while the column wraps | design system §9 | #81 |
 | Menu grouping | Content, display, then pane actions | design system §3 | #70 |
 | Group titles | Alignment, Edit, Move; no single-item title | design system §3 | #75, #81 |
-| Cascading menus | Only for flat, immediate, self-explanatory command lists | design system §3 | #149, #155 |
+| Cascading menus | Only for flat, immediate, self-explanatory command lists, one level deep; includes the grid's directional groups | design system §3 | #149, #155, #369 |
 | New table | Confirm when work exists; success returns to the welcome surface | `AGENTS.md` domain rules | #39, #46 |
 | Floating menu identity | Global commands; New table is destructive; identity includes copyright | design system §6 | #71 |
 | Pinning | Optional first data row and first data column only | design system §9 | #160 |

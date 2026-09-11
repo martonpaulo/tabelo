@@ -683,24 +683,28 @@ A group whose items are *actions* rather than states, such as zoom, add, and
 close, stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
 
 Every action collection uses the menu primitive's semantic Group, in dropdown
-and context menus alike. A visible group title is reserved for Expected type,
-Cell type, Edit, Move, and Fill. It is canonical copy rendered through
-GroupLabel, and the Group is named with `aria-labelledby`. Clipboard, Insert,
-Remove, and the single self-explanatory Fit column to content action remain
-untitled semantic groups, without an empty label. Alignment is named by its
-submenu trigger and by that menu's own accessible name instead, so its radio
-group travels into the child menu without a GroupLabel of its own. Group labels
+and context menus alike. A visible group title is reserved for Expected type and
+Edit. It is canonical copy rendered through GroupLabel, and the Group is named
+with `aria-labelledby`. Clipboard, Insert, Remove, and the single
+self-explanatory Fit column to content action remain untitled semantic groups,
+without an empty label. Alignment, Cell type, Move, Fill, and Move focus are
+named by their submenu trigger and by that menu's own accessible name instead,
+so their items travel into the child menu without a GroupLabel of their own. Group labels
 are non-interactive and arrow-key navigation skips them. App and pane menus
 follow the same grouping contract.
 
 A submenu is allowed for exactly one shape: **a flat list of immediate,
 self-explanatory commands that needs no explanatory state**. Every row performs
 its command the moment it is chosen, there is nothing to state beforehand, and
-nothing to unwind afterwards. The class has exactly two approved members: the
-global `Copy as`, whose rows are the codec registry and which is the standing
-example, and column `Alignment`, which keeps its radio-group semantics wherever
-it is placed. Nothing else nests, and a submenu never contains a second
-submenu.
+nothing to unwind afterwards. The approved members are the global `Copy as`,
+whose rows are the codec registry and which is the standing example; column
+`Alignment` and cell `Cell type`, which keep their radio-group semantics
+wherever they are placed; and the three named groups of four directional
+commands in the grid's menus, `Move`, `Fill`, and `Move focus, keep
+selection`, folded in on #369 because a flat grid context menu had grown taller
+than a laptop screen. Clipboard, Insert, Edit, and Delete stay on the first
+level, one click away. Nothing else nests, and a submenu never contains a
+second submenu.
 
 Every other choice still opens one dialog, and the two standing examples say
 why. **Add view** carries a consequence the list cannot show, because the same

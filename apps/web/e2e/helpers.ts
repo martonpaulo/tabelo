@@ -196,6 +196,23 @@ function coveredByNotice(control: Locator): Promise<boolean> {
 	});
 }
 
+// A named group the menus show as one submenu (#369): Move, Fill, Move focus,
+// and Cell type. Opens it from its row in `menu` and returns the submenu, where
+// its items are reached exactly as the flat ones were. From the keyboard, as
+// a user would: the row takes focus and ArrowRight opens it.
+export async function openSubmenu(
+	page: Page,
+	menu: Locator,
+	label: string,
+): Promise<Locator> {
+	await menu
+		.getByRole("menuitem", { name: label, exact: true })
+		.press("ArrowRight");
+	const submenu = page.getByRole("menu", { name: label, exact: true });
+	await expect(submenu).toBeVisible();
+	return submenu;
+}
+
 export class TabeloPage {
 	readonly workspace: Locator;
 	readonly notices: Locator;
