@@ -377,15 +377,20 @@ unmergeable forever. Cost is controlled inside the job instead. The Check job
 therefore always runs on a pull request, and browser coverage is selected by the
 highest-risk changed path: documentation, agent guidance, and orchestration
 files need no browser run, and neither do unit tests, fixtures, or unit-test
-tooling;
+tooling; browser specs and their helpers run the full Chromium suite;
 product identity and interface copy run the Chromium smoke suite; the global
 stylesheet runs the smoke and visual-system suites; all other application
-changes and unknown paths run the full Chromium suite; workflow or Playwright
-configuration runs that same full suite. The Check job counts the selected
-tests and derives the shard matrix from the cap recorded in `docs/testing.md`,
-so application changes, harness changes, pushes to `main`, and manual runs use
-one mechanism. Renames classify both the old and new path, so moving a file
-cannot reduce coverage. Mixed changes always use the highest applicable level.
+changes and unknown paths run the full Chromium suite; workflow, pipeline
+script, or Playwright configuration runs that same full suite. One script,
+`.github/scripts/classify-changes.sh`, owns those rules for every event. A pull
+request is classified by its own files; a push to `main` by every file changed
+since the last commit on `main` whose CI passed, so a push that cancelled an
+unfinished run inherits that run's changes; a manual run, or a history the
+compare API cannot answer, selects everything. The Check job counts the
+selected tests and derives the shard matrix from the cap recorded in
+`docs/testing.md`, so every event uses one mechanism. Renames classify both the
+old and new path, so moving a file cannot reduce coverage. Mixed changes always
+use the highest applicable level.
 
 Never claim a check passed unless it ran successfully.
 

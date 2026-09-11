@@ -51,93 +51,46 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      # Finds the last commit on main whose CI passed.
+      actions: read
     outputs:
       run_e2e: ${{ steps.classify.outputs.run_e2e }}
       e2e_matrix: ${{ steps.e2e_matrix.outputs.e2e_matrix }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The path rules live in one script that Deploy shares, so the two can
+      # never disagree about what a path needs. A pull request is classified by
+      # its own files. A push is classified against the last commit on main
+      # whose CI passed, not against the previous push: a push that cancelled
+      # an unfinished run inherits that run's changes, so nothing it touched
+      # can skip the browser suite. A manual run, or a history the API cannot
+      # compare, selects everything.
       - name: Classify changes
         id: classify
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
-          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
-            echo "run_e2e=true" >> "$GITHUB_OUTPUT"
-            echo "test_args=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
-            --paginate \
-            -q '.[] | .filename, (.previous_filename // empty)' \
-            > "$RUNNER_TEMP/changed_files.txt"
-
-          if [ ! -s "$RUNNER_TEMP/changed_files.txt" ]; then
-            echo "run_e2e=true" >> "$GITHUB_OUTPUT"
-            echo "test_args=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          LEVEL=2
-          LEVEL3_TEST_ARGS="smoke.spec.ts"
-
-          while IFS= read -r file; do
-            if [[ "$file" == .github/workflows/* ]] || \
-               [[ "$file" == "apps/web/playwright.config.ts" ]] || \
-               [[ "$file" == "apps/web/e2e-workers.ts" ]] || \
-               [[ "$file" == "apps/web/worktree-ports.ts" ]]; then
-              LEVEL=5
-              break
-            fi
-
-            if [[ "$file" == *.md ]] || \
-               [[ "$file" == docs/* ]] || \
-               [[ "$file" == "LICENSE" ]] || \
-               [[ "$file" == .agents/* ]] || \
-               [[ "$file" == .ao/* ]] || \
-               [[ "$file" == .claude/* ]] || \
-               [[ "$file" == .gemini/* ]] || \
-               [[ "$file" == .github/instructions/* ]] || \
-               [[ "$file" == .scratch/* ]]; then
-              continue
-            fi
-
-            if [[ "$file" =~ \.test\.tsx?$ ]] || \
-               [[ "$file" =~ \.bench\.tsx?$ ]] || \
-               [[ "$file" == "biome.json" ]] || \
-               [[ "$file" =~ (^|/)vitest\..*\.ts$ ]] || \
-               [[ "$file" =~ (^|/)fixtures/ ]]; then
-              continue
-            fi
-
-            if [[ "$file" == apps/web/src/copy/* ]]; then
-              if [ $LEVEL -lt 3 ]; then LEVEL=3; fi
-              continue
-            fi
-
-            if [[ "$file" == "apps/web/src/index.css" ]]; then
-              if [ $LEVEL -lt 3 ]; then LEVEL=3; fi
-              LEVEL3_TEST_ARGS="smoke.spec.ts visual-system.spec.ts"
-              continue
-            fi
-
-            if [ $LEVEL -lt 4 ]; then LEVEL=4; fi
-          done < "$RUNNER_TEMP/changed_files.txt"
-
-          if [ $LEVEL -eq 5 ]; then
-            echo "run_e2e=true" >> "$GITHUB_OUTPUT"
-            echo "test_args=" >> "$GITHUB_OUTPUT"
-          elif [ $LEVEL -eq 4 ]; then
-            echo "run_e2e=true" >> "$GITHUB_OUTPUT"
-            echo "test_args=" >> "$GITHUB_OUTPUT"
-          elif [ $LEVEL -eq 3 ]; then
-            echo "run_e2e=true" >> "$GITHUB_OUTPUT"
-            echo "test_args=$LEVEL3_TEST_ARGS" >> "$GITHUB_OUTPUT"
-          else
-            echo "run_e2e=false" >> "$GITHUB_OUTPUT"
-            echo "test_args=" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+          changed="$RUNNER_TEMP/changed_files.txt"
+          : > "$changed"
+          case "${{ github.event_name }}" in
+            pull_request)
+              gh api "repos/$REPO/pulls/${{ github.event.pull_request.number }}/files" \
+                --paginate -q '.[] | .filename, (.previous_filename // empty)' \
+                > "$changed" || : > "$changed"
+              ;;
+            push)
+              base=$(gh run list --repo "$REPO" --workflow ci.yml --branch main \
+                --event push --status success --limit 1 --json headSha -q '.[0].headSha' || true)
+              if [[ -n "$base" ]]; then
+                .github/scripts/changed-files.sh "$REPO" "$base" "${{ github.sha }}" \
+                  > "$changed" || : > "$changed"
+              fi
+              ;;
+          esac
+          echo "Classifying $(wc -l < "$changed") changed path(s)."
+          .github/scripts/classify-changes.sh < "$changed" | tee -a "$GITHUB_OUTPUT"
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
