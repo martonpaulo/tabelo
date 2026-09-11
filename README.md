@@ -1,27 +1,105 @@
+<div align="center">
+
+<img src="apps/web/public/social-card.jpg" width="100%" alt="Tabelo: edit one table in every view, always in sync. The Markdown and Table panes of one workspace showing the same table.">
+
 # Tabelo
 
-<img src="apps/web/public/social-card.jpg" width="100%" alt="Tabelo: edit one table in every view, always in sync. The Markdown and Table panes of one workspace showing the same table." />
+Edit one table as a grid, Markdown, CSV, TSV, HTML, Jira, JSON or records, with every view
+synchronized and everything running in your browser.
 
-[![CI](https://github.com/martonpaulo/tabelo/actions/workflows/ci.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/ci.yml)
-[![Deploy](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
+[![CI](https://github.com/martonpaulo/tabelo/actions/workflows/ci.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/ci.yml) [![Deploy](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml) [![React 19.2](https://img.shields.io/badge/React-19.2-informational.svg)](https://react.dev) [![Vite 8.1](https://img.shields.io/badge/Vite-8.1-informational.svg)](https://vite.dev) [![TypeScript 6.0](https://img.shields.io/badge/TypeScript-6.0-informational.svg)](https://www.typescriptlang.org)
 
-**One table, multiple views, zero copy-and-paste between them.**
+</div>
 
-Tabelo is a table editor for the moments when a spreadsheet is too much,
-but hand-editing pipes and commas is no fun either. Change a cell in the visual
-table and the Markdown updates. Fix the CSV and the table updates. Open
-up to four views and they all stay in sync.
-
-Everything runs in your browser. No account, no server, no upload.
+Tabelo is a table editor for the moments when a spreadsheet is **too much**, but hand-editing pipes
+and commas is no fun either. Change a cell in the visual table and the Markdown updates. Fix the CSV
+and the table updates. Open up to **four views at once** and they all stay in sync. Everything runs
+in your browser: **no account, no server, no upload**.
 
 **Tabelo** is the word for table in the [language Esperanto](https://www.youtube.com/watch?v=whGSkjXTPjU).
-
-You can access it here 👉 [https://tabelo.martonpaulo.com/](https://tabelo.martonpaulo.com/)
+It exists because moving a table between a wiki, a ticket, a spreadsheet and a code review usually
+means retyping it, and every retype is a chance to lose a line break, an alignment marker or a
+leading zero. Here **one canonical document** backs every format, so a round trip through CSV or
+Jira and back leaves the table exactly as it was.
 
 <br />
 
-## 💡 Here is the whole idea
+---
+
+## 🌱 Quick Start
+
+Requires [Node.js](https://nodejs.org) 24+ and [pnpm](https://pnpm.io) 11+.
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Then open the URL it prints. The dev server starts at `http://localhost:3001` in CI and on a plain
+checkout; every other worktree gets its own port derived from its path, so several checkouts can run
+side by side without serving each other's build.
+
+<br />
+
+## 🛠 Commands
+
+| Command                 | What it does                                   |
+| :---------------------- | :--------------------------------------------- |
+| `pnpm dev`              | Dev server                                     |
+| `pnpm build`            | Production build                               |
+| `pnpm test`             | Unit and property tests                        |
+| `pnpm test:watch`       | Unit tests, re-running on change               |
+| `pnpm test:unit`        | Unit tests only                                |
+| `pnpm test:property`    | Property tests only                            |
+| `pnpm bench`            | Benchmarks                                     |
+| `pnpm test:e2e:install` | Install Chromium for browser tests             |
+| `pnpm test:e2e`         | Browser tests in Chromium                      |
+| `pnpm test:e2e:failed`  | Only the tests that failed last time           |
+| `pnpm test:e2e:changed` | Only the specs affected by uncommitted changes |
+| `pnpm test:e2e:ui`      | Playwright's watch and time-travel interface   |
+| `pnpm test:e2e:serve`   | Build once and keep the preview server warm    |
+| `pnpm check-types`      | TypeScript                                     |
+| `pnpm lint`             | Biome check                                    |
+| `pnpm check`            | Biome check, writing fixes                     |
+| `pnpm check:dead-code`  | Knip, for unused files, exports and dependencies |
+
+`pnpm test:e2e` builds and serves the app itself. `test:e2e:serve` is worth starting first when a fix
+needs several `test:e2e:failed` rounds: the suite reuses that server and skips the build and boot
+each time.
+
+Property tests run 100 generated cases per invariant. A failure reports its `seed`, `path`, and
+minimal counterexample. Replay it by temporarily passing the reported `{ seed, path }` beside
+`numRuns` in that `test.prop` call, then run the focused spec. Keep the property after the fix. Add
+the shrunk example as an ordinary regression test only when it communicates a distinct contract more
+clearly than the property itself.
+
+Chromium is the only browser the suite runs, locally and in CI, because it is the only browser Tabelo
+supports. There is no second project to opt into and no cross-browser command to remember before
+opening a pull request.
+
+> [!TIP]
+> Before you commit: `pnpm check && pnpm check-types && pnpm test`. Add `pnpm test:e2e` when the
+> change crosses a UI boundary, which is the coverage CI selects for you anyway.
+
+<br />
+
+## 🔐 Secrets and variables
+
+There is no application secret to configure: Tabelo has no backend, no API key and no account. Both
+workflows use only the `GITHUB_TOKEN` that GitHub Actions provides on its own.
+
+| Variable               | Where           | What it does                                                     |
+| :--------------------- | :-------------- | :--------------------------------------------------------------- |
+| `BASE_PATH`            | Build           | Public base path of the built site. Defaults to `/`; the deploy workflow sets it explicitly |
+| `SITE_ORIGIN`          | Build           | Absolute origin used in the page metadata and social card tags    |
+| `TABELO_DEV_PORT`      | Local dev       | Overrides the path-derived dev server port                        |
+| `TABELO_PREVIEW_PORT`  | Local dev       | Overrides the path-derived preview server port                    |
+| `TABELO_PWA_DEV`       | Local dev       | Enables the service worker in dev, for working on the worker itself |
+| `CI`                   | CI              | Set by GitHub Actions; pins the canonical ports and the Playwright retry policy |
+
+<br />
+
+## Here is the whole idea
 
 These are not separate files. They are the same table:
 
@@ -84,7 +162,7 @@ there. Those formats cannot express alignment, so Tabelo quietly remembers it.
 
 <br />
 
-## ✨ What it does
+## What it does
 
 - **Arrange the workspace.** One to four panes, with each view available only
   once. Open the floating Tabelo button for files, layouts, undo, redo, and the
@@ -124,7 +202,7 @@ collaboration, or analytics. Tabelo is happiest staying small.
 
 <br />
 
-## ⌨️ Keyboard
+## Keyboard
 
 Both hands stay where they are.
 
@@ -149,60 +227,6 @@ history runs out it keeps going through the table's own history. One timeline
 underneath, native behaviour on top.
 
 Every shortcut also has a menu entry, so nothing is reachable only by keyboard.
-
-<br />
-
-## Run it locally
-
-Requires [Node.js](https://nodejs.org) 24+ and [pnpm](https://pnpm.io) 11+.
-
-```bash
-pnpm install
-```
-
-```bash
-pnpm dev
-```
-
-Then open the URL it prints. The dev and preview ports are derived from the
-checkout's path, so several worktrees can run side by side without serving each
-other's build. `TABELO_DEV_PORT` and `TABELO_PREVIEW_PORT` override them.
-
-| Command                 | What it does                                       |
-| :---------------------- | :------------------------------------------------- |
-| `pnpm dev`              | Dev server                                         |
-| `pnpm build`            | Production build                                   |
-| `pnpm test`             | Unit tests                                         |
-| `pnpm test:watch`       | Unit tests, re-running on change                   |
-| `pnpm test:e2e:install` | Install Chromium for browser tests                 |
-| `pnpm test:e2e`         | Browser tests in Chromium                          |
-| `pnpm test:e2e:failed`  | Only the tests that failed last time               |
-| `pnpm test:e2e:changed` | Only the specs affected by uncommitted changes     |
-| `pnpm test:e2e:ui`      | Playwright's watch and time-travel interface       |
-| `pnpm test:e2e:serve`   | Build once and keep the preview server warm        |
-| `pnpm check-types`      | TypeScript                                         |
-| `pnpm lint`             | Biome check                                        |
-| `pnpm check`            | Biome check, writing fixes                         |
-
-`pnpm test:e2e` builds and serves the app itself. `test:e2e:serve` is worth
-starting first when a fix needs several `test:e2e:failed` rounds: the suite
-reuses that server and skips the build and boot each time.
-
-Property tests run 100 generated cases per invariant. A failure reports its
-`seed`, `path`, and minimal counterexample. Replay it by temporarily passing the
-reported `{ seed, path }` beside `numRuns` in that `test.prop` call, then run the
-focused spec. Keep the property after the fix. Add the shrunk example as an
-ordinary regression test only when it communicates a distinct contract more
-clearly than the property itself.
-
-Chromium is the only browser the suite runs, locally and in CI, because it is
-the only browser Tabelo supports. There is no second project to opt into and no
-cross-browser command to remember before opening a pull request.
-
-> [!TIP]
-> Before you commit: `pnpm check && pnpm check-types && pnpm test`. Add
-> `pnpm test:e2e` when the change crosses a UI boundary, which is the coverage
-> CI selects for you anyway.
 
 <br />
 
@@ -240,7 +264,7 @@ holds the working agreements.
 
 <br />
 
-## 🔒 Privacy
+## Privacy
 
 Your data never leaves your browser. There is no backend, no account, and no
 telemetry of any kind. The document lives in `localStorage` on your machine.
@@ -249,7 +273,7 @@ including with us.
 
 <br />
 
-## Honest limitations
+## Limitations
 
 - **Built for tables up to a few hundred rows.** There is no virtualization, on
   purpose. Paste 50,000 rows and it will warn you rather than pretend.
@@ -273,4 +297,4 @@ including with us.
 
 ## License
 
-[MIT](LICENSE) © 2026 Marton Paulo
+[MIT](LICENSE) © 2026 Marton Paulo.
