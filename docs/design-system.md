@@ -1798,9 +1798,22 @@ resize handle) belongs to the column index strip, not to the header cell.
 
 Because it is a row, **the boundary under the header row is an ordinary row
 boundary**: `--line-subtle`, the same one every pair of data rows draws, across
-the gutter and the cells alike. `--line-strong` stays on the boundaries between
-the grid's chrome and its table, which is what the column index strip, the two
-corners, and the gutter's outer edge draw.
+the gutter and the cells alike.
+
+**The grid draws two kinds of line, and a line's kind never changes with
+state.**
+
+- A line that continues the table's own grid, between two columns or between
+  two rows, is `--line-subtle` wherever it runs: between cells, between header
+  cells, between two letters on the column index strip, and between two numbers
+  in the gutter. A column's divider is one line from its letter to its last row.
+- A line where the grid's chrome meets its table is `--line-strong`: the strip's
+  bottom edge, the gutter's right edge on every row, and the corner. A pinned
+  row or column draws the same strong edge along its whole length, strip and
+  header included, because its pinned edge is also a boundary between layers.
+
+Selection, focus, and copying never recolour a line. They draw their own marks
+over the grid, which is what keeps every divider legible in every state.
 
 Because it is sticky, **its fill is composited over an opaque base**. Body rows
 scroll under the header, and both fills it can wear, the header surface and

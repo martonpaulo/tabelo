@@ -1473,7 +1473,10 @@ const DataRow = memo(function DataRow({
 				aria-label={copy.a11y.rowNumber(rowIndex)}
 				data-row-header={rowIndex}
 				className={cn(
-					"sticky left-0 border-line-subtle border-r border-b bg-surface-gutter align-top",
+					// The right edge is where chrome meets the table, so it takes the
+					// strong line the header row's gutter cell already draws; the
+					// edge between two numbers is a row boundary like any other.
+					"sticky left-0 border-r border-r-line-strong border-b border-b-line-subtle bg-surface-gutter align-top",
 					"px-1 text-right font-index font-normal text-muted-foreground text-xs tabular-nums",
 					// The row's number and its menu are how the row identifies itself,
 					// so they hold position with it. Pinned it sticks on both axes and
@@ -1828,7 +1831,11 @@ function ColumnIndexCell({
 			data-column-letter={letter}
 			data-expected-type={expectedType}
 			className={cn(
-				"group/col min-w-0 border-line-strong border-r border-b",
+				// The line between two letters is the column's own divider, carried
+				// up from the table, so it matches the cells below it; the strip's
+				// bottom edge is where chrome meets the table and takes the strong
+				// line.
+				"group/col min-w-0 border-r border-r-line-subtle border-b border-b-line-strong",
 				"bg-surface-header px-1 text-center font-index font-normal text-muted-foreground text-xs",
 				// Pinned it sticks sideways and joins the corner layer, beside the
 				// dead corner where the letters meet the row numbers. The strip
@@ -1838,7 +1845,9 @@ function ColumnIndexCell({
 				// handle positions against, so only an unpinned cell adds
 				// `relative`: pairing the two would win over `sticky` and turn the
 				// offset into a shift rather than a scroll threshold.
-				pinned ? "sticky left-grid-gutter z-30" : "relative z-20",
+				pinned
+					? "sticky left-grid-gutter z-30 border-r-line-strong"
+					: "relative z-20",
 			)}
 			onPointerEnter={onDragEnter}
 		>
@@ -1999,17 +2008,18 @@ function HeaderCell({
 				// resolves against, and the later rule would win and turn the sticky
 				// offset into a static shift. Same rule as the column resize handle.
 				//
-				// The boundary under the header row is a row boundary like any other,
-				// so it takes the subtle line while the sides keep the strong one the
-				// chrome around them draws.
-				"sticky border-line-strong border-r border-b border-b-line-subtle align-top",
+				// The header row is a row of the table, so every edge it draws is an
+				// ordinary grid line: its sides are the columns' own dividers and
+				// the boundary under it is a row boundary like any other.
+				"sticky border-line-subtle border-r border-b align-top",
 				"cursor-cell select-none px-2 font-semibold",
 				// Sticks below the index strip rather than at the very top, so the
 				// two chrome layers stack instead of covering one another.
 				"top-grid-strip",
 				// Pinned it sticks on both axes and joins the corner layer, beside
-				// the gutter cell that names the header row.
-				pinned ? "left-grid-gutter z-30" : "z-20",
+				// the gutter cell that names the header row, and carries the strong
+				// edge the pinned column draws all the way down.
+				pinned ? "left-grid-gutter z-30 border-r-line-strong" : "z-20",
 				// See the data cell's identical rule: editing overrides clipping so a
 				// header longer than its column can grow and wrap while it's being
 				// typed, without changing the column's wrap preference.
