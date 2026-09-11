@@ -351,6 +351,64 @@ test("typing into an empty field replaces the placeholder with the value", async
 	await expect(pane.locator(marker)).toHaveCount(1);
 });
 
+// An empty field has one caret stop, where its value would start. The padding
+// around the placeholder used to offer four in a field holding nothing, and the
+// stop past the placeholder was drawn above the text line. Asserted as order
+// along the line and containment in the line box, never as exact positions.
+test("an empty field gives the caret one stop, on the text line", async ({
+	tabelo,
+	page,
+}) => {
+	await seed(
+		tabelo,
+		[["Name", "City", "Role"].join("\t"), [first.name, "", ""].join("\t")].join(
+			"\n",
+		),
+	);
+	const pane = tabelo.pane("markdown");
+	const markers = pane.locator(marker);
+	await expect(markers).toHaveCount(2);
+	const caret = pane.locator(".cm-cursor").first();
+	const centre = async (locator: Locator) => {
+		const box = await locator.boundingBox();
+		if (!box) throw new Error("not rendered");
+		return box.x + box.width / 2;
+	};
+	const caretX = async () => (await caret.boundingBox())?.x ?? -1;
+	const firstCentre = await centre(markers.nth(0));
+	const secondCentre = await centre(markers.nth(1));
+
+	// The caret layer is redrawn after the selection changes, so each check
+	// polls for the state the press produces rather than reading once.
+	const caretOnTextLine = async () => {
+		const caretBox = await caret.boundingBox();
+		const lineBox = await pane.locator(".cm-activeLine").boundingBox();
+		if (!caretBox || !lineBox) return false;
+		return (
+			caretBox.y >= lineBox.y &&
+			caretBox.y + caretBox.height <= lineBox.y + lineBox.height
+		);
+	};
+
+	// A click on the placeholder lands before it, on the text line.
+	await markers.nth(0).click();
+	await expect.poll(caretOnTextLine).toBe(true);
+	await expect.poll(caretX).toBeLessThan(firstCentre);
+
+	// One press leaves the field entirely and lands on the next one's stop.
+	await page.keyboard.press("ArrowRight");
+	await expect.poll(caretX).toBeGreaterThan(firstCentre);
+	expect(await caretX()).toBeLessThan(secondCentre);
+
+	// And one press back returns to the first field's stop.
+	await page.keyboard.press("ArrowLeft");
+	await expect.poll(caretX).toBeLessThan(firstCentre);
+
+	// Typing there fills the field it speaks for.
+	await page.keyboard.type(first.city);
+	await expect(tabelo.cell(1, 2)).toHaveText(first.city);
+});
+
 test("turning indicators off changes what is drawn and nothing else", async ({
 	tabelo,
 	page,

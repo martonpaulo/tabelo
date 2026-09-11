@@ -254,6 +254,13 @@ export const editorTheme = EditorView.theme({
 		// writes every cell against the left of its column and pads to the right
 		// of it whatever the column declares.
 		display: "inline-block",
+		// An inline-block's box is its line-height, which here is the whole
+		// 2rem line, while a text run's box is only its font's content area.
+		// CodeMirror measures a caret beside the placeholder from the
+		// placeholder's box, so a line-tall box drew that caret from the top of
+		// the line instead of on the text. Sizing it like text keeps every caret
+		// in the line on one baseline.
+		lineHeight: "normal",
 		userSelect: "none",
 	},
 	// An escape sequence, drawn as the one character it stands for. It wears the

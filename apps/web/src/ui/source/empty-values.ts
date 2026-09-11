@@ -1,5 +1,11 @@
 import { syntaxTree } from "@codemirror/language";
-import type { Range } from "@codemirror/state";
+import {
+	EditorSelection,
+	EditorState,
+	type Range,
+	type Transaction,
+	type TransactionSpec,
+} from "@codemirror/state";
 import {
 	Decoration,
 	type DecorationSet,
@@ -222,45 +228,119 @@ export function jiraEmptyOffsets(line: string): readonly number[] {
 	return offsets;
 }
 
+// One empty field, in document offsets, from the start of its opening
+// delimiter (`before`) to the end of its closing one (`after`). Between the two
+// delimiters it runs from `cellStart` to `cellEnd`, and the placeholder is drawn
+// from `valueStart` to `valueEnd`, where the value it stands for would sit. A
+// field with no padding of its own has all four inner offsets equal.
+export interface EmptyCell {
+	readonly before: number;
+	readonly cellStart: number;
+	readonly valueStart: number;
+	readonly valueEnd: number;
+	readonly cellEnd: number;
+	readonly after: number;
+}
+
+function pointCell(at: number, delimiter: number, after: number): EmptyCell {
+	return {
+		before: at - delimiter,
+		cellStart: at,
+		valueStart: at,
+		valueEnd: at,
+		cellEnd: at,
+		after,
+	};
+}
+
 // Markdown's empty cells, as the padding between one delimiter and the next.
 // The GFM grammar parses the table itself, so these boundaries come from the
 // same parse that highlights it, and an empty cell produces no `TableCell` node
 // at all: what marks it is two delimiters with only padding between them.
 function markdownEmptyCells(
-	view: EditorView,
+	state: EditorState,
 	from: number,
 	to: number,
-): readonly Range<Decoration>[] {
-	const ranges: Range<Decoration>[] = [];
-	let previousEnd: number | null = null;
-	let previousLine: number | null = null;
+): readonly EmptyCell[] {
+	const cells: EmptyCell[] = [];
+	let previous: { from: number; to: number; line: number } | null = null;
 
-	syntaxTree(view.state).iterate({
+	syntaxTree(state).iterate({
 		from,
 		to,
 		enter: (node) => {
 			if (node.name !== "TableDelimiter") return;
-			const line = view.state.doc.lineAt(node.from).number;
+			const line = state.doc.lineAt(node.from).number;
 			const gap =
-				previousEnd === null
-					? ""
-					: view.state.doc.sliceString(previousEnd, node.from);
-			if (previousEnd !== null && previousLine === line && gap.trim() === "") {
+				previous === null ? "" : state.doc.sliceString(previous.to, node.from);
+			if (previous !== null && previous.line === line && gap.trim() === "") {
 				// Markdown writes a cell as `| value |`, so the space on each side
 				// of the value belongs to the column. Everything between them is
 				// the padding the placeholder is drawn instead of, which starts it
 				// exactly where the value it stands for would have started.
-				const cellFrom = gap.startsWith(" ") ? previousEnd + 1 : previousEnd;
-				const cellTo =
+				const valueStart = gap.startsWith(" ") ? previous.to + 1 : previous.to;
+				const valueEnd =
 					gap.length > 1 && gap.endsWith(" ") ? node.from - 1 : node.from;
-				ranges.push(emptyValueRange(cellFrom, Math.max(cellFrom, cellTo)));
+				cells.push({
+					before: previous.from,
+					cellStart: previous.to,
+					valueStart,
+					valueEnd: Math.max(valueStart, valueEnd),
+					cellEnd: node.from,
+					after: node.to,
+				});
 			}
-			previousEnd = node.to;
-			previousLine = view.state.doc.lineAt(node.to).number;
+			previous = { from: node.from, to: node.to, line };
 		},
 	});
 
-	return ranges;
+	return cells;
+}
+
+// Every empty field the syntax hides between `from` and `to`, whole lines.
+export function emptyCells(
+	state: EditorState,
+	syntax: EmptyValueSyntax,
+	from: number,
+	to: number,
+): readonly EmptyCell[] {
+	if (syntax.kind === "markdown") return markdownEmptyCells(state, from, to);
+
+	const firstLine = state.doc.lineAt(from).number;
+	const lastLine = state.doc.lineAt(to).number;
+	const cells: EmptyCell[] = [];
+
+	if (syntax.kind === "jira") {
+		for (let number = firstLine; number <= lastLine; number += 1) {
+			const line = state.doc.line(number);
+			// A header line's delimiter is a doubled pipe.
+			const delimiter = isJiraHeaderLine(line.text) ? 2 : 1;
+			for (const offset of jiraEmptyOffsets(line.text)) {
+				const at = line.from + offset;
+				cells.push(pointCell(at, delimiter, at + delimiter));
+			}
+		}
+		return cells;
+	}
+
+	// A quoted value may have opened on a line above the range, so the scan
+	// starts at the document rather than at the first requested line. At the
+	// roughly 200-row scale this product targets (AGENTS.md) that is a single
+	// pass over a few kilobytes of text.
+	const width = syntax.separator.length;
+	let inQuotes = false;
+	for (let number = 1; number <= lastLine; number += 1) {
+		const line = state.doc.line(number);
+		const scan = scanDelimitedLine(line.text, syntax.separator, inQuotes);
+		if (number >= firstLine) {
+			for (const offset of scan.offsets) {
+				const at = line.from + offset;
+				cells.push(pointCell(at, width, Math.min(at + width, line.to)));
+			}
+		}
+		inQuotes = scan.endsInQuotes;
+	}
+	return cells;
 }
 
 function buildDecorations(
@@ -268,46 +348,38 @@ function buildDecorations(
 	syntax: EmptyValueSyntax,
 ): DecorationSet {
 	const ranges: Range<Decoration>[] = [];
-
 	for (const { from, to } of view.visibleRanges) {
-		if (syntax.kind === "markdown") {
-			ranges.push(...markdownEmptyCells(view, from, to));
-			continue;
-		}
-
-		const firstLine = view.state.doc.lineAt(from).number;
-		const lastLine = view.state.doc.lineAt(to).number;
-
-		if (syntax.kind === "jira") {
-			for (let number = firstLine; number <= lastLine; number += 1) {
-				const line = view.state.doc.line(number);
-				for (const offset of jiraEmptyOffsets(line.text)) {
-					const at = line.from + offset;
-					ranges.push(emptyValueRange(at, at));
-				}
-			}
-			continue;
-		}
-
-		// A quoted value may have opened on a line above the viewport, so the
-		// scan starts at the document rather than at the first visible line. At
-		// the roughly 200-row scale this product targets (AGENTS.md) that is a
-		// single pass over a few kilobytes of text.
-		let inQuotes = false;
-		for (let number = 1; number <= lastLine; number += 1) {
-			const line = view.state.doc.line(number);
-			const scan = scanDelimitedLine(line.text, syntax.separator, inQuotes);
-			if (number >= firstLine) {
-				for (const offset of scan.offsets) {
-					const at = line.from + offset;
-					ranges.push(emptyValueRange(at, at));
-				}
-			}
-			inQuotes = scan.endsInQuotes;
+		for (const cell of emptyCells(view.state, syntax, from, to)) {
+			ranges.push(emptyValueRange(cell.valueStart, cell.valueEnd));
 		}
 	}
-
 	return Decoration.set(ranges, true);
+}
+
+// Where a lone caret may stand in an empty field: one place, where the value
+// would start. The padding around a placeholder offers the caret a stop on
+// each side of the word and one inside each space, four places in a field
+// that holds nothing, and a caret drawn past the placeholder was measured
+// against the word's box instead of the text line. So a caret arriving
+// anywhere in an empty field lands at its value start, and a caret leaving
+// that stop steps over the whole field, delimiter included, in the direction
+// it moved. Returns null where the caret is not in an empty field.
+export function snapToEmptyCell(
+	cells: readonly EmptyCell[],
+	previous: number,
+	next: number,
+): number | null {
+	const cellAt = (offset: number) =>
+		cells.find((cell) => offset >= cell.cellStart && offset <= cell.cellEnd);
+	const cell = cellAt(next);
+	if (!cell) return null;
+	// Arriving, from anywhere: the one stop is the value start.
+	if (previous !== cell.valueStart) return cell.valueStart;
+	if (next === previous) return cell.valueStart;
+	// Leaving the stop: past the delimiter in the direction of travel, and
+	// straight into the next field's stop when that one is empty too.
+	const beyond = next > previous ? cell.after : cell.before;
+	return cellAt(beyond)?.valueStart ?? beyond;
 }
 
 export function emptyValueMarkers(syntax: EmptyValueSyntax) {
@@ -337,5 +409,33 @@ export function emptyValueMarkers(syntax: EmptyValueSyntax) {
 		EditorView.atomicRanges.of(
 			(view) => view.plugin(plugin)?.decorations ?? Decoration.none,
 		),
+		EditorState.transactionFilter.of((tr) => snapCaret(tr, syntax)),
+	];
+}
+
+// Applies the one-stop rule to a lone caret that lands in an empty field. Only a
+// selection change does this: an edit places its own caret, and a range the user
+// is extending keeps both of its ends where they were put. The caret is pinned
+// to the side before the placeholder, which is where typing inserts the value.
+function snapCaret(
+	tr: Transaction,
+	syntax: EmptyValueSyntax,
+): Transaction | readonly TransactionSpec[] {
+	const selection = tr.selection;
+	if (!selection || tr.docChanged || selection.ranges.length !== 1) return tr;
+	const next = selection.main;
+	if (!next.empty) return tr;
+
+	const state = tr.startState;
+	const line = state.doc.lineAt(next.head);
+	const target = snapToEmptyCell(
+		emptyCells(state, syntax, line.from, line.to),
+		state.selection.main.head,
+		next.head,
+	);
+	if (target === null || (target === next.head && next.assoc < 0)) return tr;
+	return [
+		tr,
+		{ selection: EditorSelection.cursor(target, -1), sequential: true },
 	];
 }

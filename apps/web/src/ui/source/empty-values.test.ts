@@ -1,12 +1,16 @@
+import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
 import { csvCodec } from "@/formats/csv";
 import { jiraCodec } from "@/formats/jira";
 import { jsonCodec } from "@/formats/json";
 import { tsvCodec } from "@/formats/tsv";
 import {
+	type EmptyCell,
+	emptyCells,
 	emptyValueSyntax,
 	jiraEmptyOffsets,
 	scanDelimitedLine,
+	snapToEmptyCell,
 } from "./empty-values";
 
 // The markers only ever describe what a codec would read, so every case here
@@ -130,5 +134,75 @@ describe("jiraEmptyOffsets", () => {
 			const empty = row.filter((cell) => cell === "").length;
 			expect(jiraEmptyOffsets(lines[index] ?? "")).toHaveLength(empty);
 		}
+	});
+});
+
+describe("emptyCells", () => {
+	const cellsOf = (text: string, separator: string) =>
+		emptyCells(
+			EditorState.create({ doc: text }),
+			{ kind: "delimited", separator },
+			0,
+			text.length,
+		);
+
+	it("spans an empty delimited field from one separator to the next", () => {
+		expect(cellsOf("a,,b", ",")).toEqual([
+			{
+				before: 1,
+				cellStart: 2,
+				valueStart: 2,
+				valueEnd: 2,
+				cellEnd: 2,
+				after: 3,
+			},
+		]);
+	});
+
+	it("stops a trailing empty field at the end of its line", () => {
+		expect(cellsOf("a,\nb,c", ",")).toEqual([
+			{
+				before: 1,
+				cellStart: 2,
+				valueStart: 2,
+				valueEnd: 2,
+				cellEnd: 2,
+				after: 2,
+			},
+		]);
+	});
+});
+
+// `|  |  |`: two empty Markdown cells, each a space of padding on either side of
+// where the value would start.
+const twoEmptyCells: readonly EmptyCell[] = [
+	{ before: 0, cellStart: 1, valueStart: 2, valueEnd: 2, cellEnd: 3, after: 4 },
+	{ before: 3, cellStart: 4, valueStart: 5, valueEnd: 5, cellEnd: 6, after: 7 },
+];
+
+describe("snapToEmptyCell", () => {
+	it("lands a caret arriving from the left on the value start", () => {
+		expect(snapToEmptyCell(twoEmptyCells, 0, 1)).toBe(2);
+	});
+
+	it("lands a click anywhere in the field on the value start", () => {
+		for (const offset of [1, 2, 3]) {
+			expect(snapToEmptyCell(twoEmptyCells, 99, offset)).toBe(2);
+		}
+	});
+
+	it("steps from one empty field's stop straight to the next one's", () => {
+		expect(snapToEmptyCell(twoEmptyCells, 2, 3)).toBe(5);
+		expect(snapToEmptyCell(twoEmptyCells, 5, 4)).toBe(2);
+	});
+
+	it("steps past the delimiter when the neighbouring field has content", () => {
+		expect(snapToEmptyCell(twoEmptyCells, 5, 6)).toBe(7);
+		expect(snapToEmptyCell(twoEmptyCells, 2, 1)).toBe(0);
+	});
+
+	it("leaves a caret outside every empty field alone", () => {
+		expect(snapToEmptyCell(twoEmptyCells, 0, 7)).toBeNull();
+		expect(snapToEmptyCell([], 0, 1)).toBeNull();
 	});
 });

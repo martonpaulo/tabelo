@@ -419,6 +419,17 @@ otherwise: it holds no document position, the caret steps over it rather than
 into it, it cannot be selected or typed through, and it never reaches the text,
 the clipboard, a download, or storage.
 
+**An empty field has one caret stop.** The padding around a placeholder would
+otherwise offer the caret a place after the opening delimiter, one on each side
+of the word, and one before the closing delimiter: four stops in a field that
+holds nothing. A lone caret arriving anywhere in an empty field, by key or by
+click, lands where the value would start, just before the placeholder, and the
+next move in either direction leaves the whole field, delimiter included, and
+lands on the neighbouring empty field's stop when there is one. A range being
+extended is left alone. The placeholder is sized like a text run rather than
+like the line, so the caret beside it is drawn on the text line like every
+other caret. Decided on #345.
+
 **An escape sequence is drawn as what it means, in the room it took.** `&#32;`,
 `<br>`, `\|`, `\\`, and `&amp;` are notation the codec had to write, and read as
 text they are both unreadable and out of proportion: five characters where the
