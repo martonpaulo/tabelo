@@ -193,6 +193,46 @@ test("a zoom step carries the line numbers and the caret onto the resized lines"
 	expect(resized.onTheirLines).toBe(true);
 });
 
+// #367: the gutter is its digits plus one gap on each side, so a short document
+// does not push its numbers away from their text into reserved room. A
+// direction, not a size: the room after the widest number is never more than
+// the room before it, whether the numbers have one digit or two.
+test("line numbers sit no further from their text than from the pane edge", async ({
+	tabelo,
+}) => {
+	const source = tabelo.source("markdown");
+	const gaps = () =>
+		tabelo.pane("markdown").evaluate((pane) => {
+			const gutter = pane.querySelector(".cm-lineNumbers");
+			const numbers = [
+				...pane.querySelectorAll<HTMLElement>(
+					".cm-lineNumbers .cm-gutterElement",
+				),
+			].filter((element) => getComputedStyle(element).visibility !== "hidden");
+			const widest = numbers.at(-1)?.firstChild;
+			if (!gutter || !widest) return null;
+			const range = document.createRange();
+			range.selectNodeContents(widest);
+			const digits = range.getBoundingClientRect();
+			const box = gutter.getBoundingClientRect();
+			return {
+				before: digits.left - box.left,
+				after: box.right - digits.right,
+			};
+		});
+
+	for (const table of [
+		peopleTable,
+		`${peopleTable}\n${peopleTable.split("\n").slice(2).join("\n")}`,
+	]) {
+		await source.fill(table);
+		await expect.poll(gaps).not.toBeNull();
+		const measured = await gaps();
+		if (!measured) throw new Error("no line numbers");
+		expect(measured.after).toBeLessThanOrEqual(measured.before + 0.5);
+	}
+});
+
 // The band between the gutter and the first character used to belong to
 // `.cm-line`'s left padding, which `drawSelection` never paints over: a
 // selected line was highlighted from its first character while the active line

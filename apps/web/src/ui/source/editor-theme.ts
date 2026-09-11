@@ -128,15 +128,13 @@ export const editorTheme = EditorView.theme({
 		userSelect: "none",
 	},
 	".cm-lineNumbers .cm-gutterElement": {
-		// The trailing value carries the source text's leading space as well as
-		// the gutter's own, because the line itself cannot hold it without
-		// unpainting the selection there. See the note on `.cm-line` above. The
-		// distance a reader sees between a number and its text is unchanged; only
-		// which side of the divider owns it moved.
-		padding: "0 calc(var(--spacing) * 5) 0 calc(var(--spacing) * 2)",
-		// Grows with the digits it holds, so a zoomed-in editor does not clip
-		// three-figure line numbers.
-		minWidth: "calc(var(--pane-zoom, 1) * 2.5rem)",
+		// One gap on each side of the digits, and no minimum width: CodeMirror
+		// sizes the gutter to its widest number, so it fits one, two, or three
+		// digits at any zoom without reserving room for digits that are not
+		// there (#367). The trailing gap is also the source text's leading space,
+		// because the line itself cannot hold it without unpainting the
+		// selection there. See the note on `.cm-line` above.
+		padding: "0 calc(var(--spacing) * 3)",
 	},
 	".cm-activeLine": { backgroundColor: "var(--active-line-fill)" },
 	".cm-activeLineGutter": {

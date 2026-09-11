@@ -511,6 +511,12 @@ CodeMirror instance through its wrapping compartment so the caret, selection,
 draft, and local undo history survive the change. A newly created pane starts
 unwrapped; changing or rearranging a view retains the preference of the pane.
 
+The line-number gutter is its widest number plus one gap, `--spacing` × 3, on
+each side (#367). It reserves no minimum width, so it fits one, two, or three
+digits at any pane zoom without holding room for digits that are not there.
+The trailing gap doubles as the source text's leading space, because the line
+itself cannot carry it without leaving a band the selection never paints.
+
 The visual table mirrors structure rather than source punctuation: its header
 row and the rendered preview use the shared editable table-header surface,
 while body cells keep the normal content treatment. Header text position shows
