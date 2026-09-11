@@ -358,9 +358,12 @@ export const copy = {
 		lastRemainingColumn: "A table must keep at least one column.",
 		headerRowRequired: "Every table keeps its header row.",
 		// Inserting, moving, and pasting each need one place to act. A selection
-		// holding several separate areas names several, so the action says so
-		// rather than picking one of them.
-		singleAreaRequired: "This needs one selected area, not several.",
+		// holding several separate areas names several, so the action refuses
+		// rather than picking one of them, and says how to make one: the modifier
+		// click keeps areas separate even when they touch, which is exactly the
+		// selection that lands a user here.
+		singleAreaRequired:
+			"Use Shift-click or drag to select one area instead of several.",
 		singleCellRequired: "Select one data cell to change its type.",
 		// The focus move stops at the same edges the arrow keys do, and says
 		// which edge it is already sitting on rather than doing nothing.

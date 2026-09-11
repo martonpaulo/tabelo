@@ -324,6 +324,33 @@ test("actions needing one area are disabled with a reason, never hidden", async 
 	).toBeEnabled();
 });
 
+// The reported case: two columns that touch. The modifier keeps them two areas
+// however close they sit, so the one-area actions stay refused and explain
+// themselves; Shift makes the same two columns one area, and they unlock.
+test("adjacent columns stay separate under the modifier and join under Shift", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	const menu = page.getByRole("menu");
+	const moveRight = menu.getByRole("menuitem", {
+		name: copy.actions.moveRight,
+	});
+
+	await columnHandle(tabelo, 1).click();
+	await columnHandle(tabelo, 2).click({ modifiers: [modifier] });
+	await openCellMenu(page, tabelo);
+	await expect(moveRight).toBeDisabled();
+	await expect(moveRight).toHaveAccessibleDescription(/\S/);
+	await page.keyboard.press("Escape");
+	await expect(menu).toHaveCount(0);
+
+	await columnHandle(tabelo, 1).click();
+	await columnHandle(tabelo, 2).click({ modifiers: ["Shift"] });
+	await openCellMenu(page, tabelo);
+	await expect(moveRight).toBeEnabled();
+});
+
 test("Alt+Right refuses several areas without changing them", async ({
 	page,
 	tabelo,
