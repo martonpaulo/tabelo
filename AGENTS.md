@@ -488,6 +488,10 @@ preference to exercise per task.
   tracking issue.
 - Keep one canonical source for each rule. Secondary documents summarize or link
   to it instead of restating it.
+- A consequential decision is recorded in its canonical document, with the
+  deciding issue cited beside the rule ("Decided on #N"), and indexed once in
+  `docs/product.md` `## Decision index`. No issue serves as a decision register:
+  an issue is where a decision is argued, the document is where it lives.
 - Be direct and evidence-based. State assumptions, uncertainty, risks, and
   blockers. Ask only when a material decision cannot be discovered safely.
 - Do not turn analysis, research, or a read-only audit into implementation

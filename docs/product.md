@@ -108,3 +108,84 @@ baseline, and neither should be given an invented one.
   `apps/web` by CI. The application is its own landing page.
 - The product stores no secrets and holds no user account state.
 - Roughly 200 rows is the working scale, not a limit to engineer past.
+
+## Decision index
+
+The consequential product and interaction decisions, where each one is recorded,
+and the issue that decided it. This is an index, not a second copy: the rule
+itself lives in the document named, which is the canonical owner, and that
+document cites the deciding issue beside the rule. When a decision changes, the
+owning document is amended in the same change and this row follows it. A
+reversible implementation choice does not belong here.
+
+### Product and workspace
+
+| Decision | Current outcome | Recorded in | Decided on |
+| :--- | :--- | :--- | :--- |
+| Product scope | A single-table editor, permanently | this document | #92 |
+| Pane count | One through four panes; a fresh visit opens two; a stacked window grows to two | ADR 0006 | #91, #219 |
+| Layout set | Eight presets, filtered to the current pane count | ADR 0006 | #91, #72 |
+| Layout entry point | Global App-menu command opening the shared visual dialog | ADR 0006 | #72 |
+| Add view | Pane-edge controls plus the flat global command | ADR 0006 | #69 |
+| Move pane | One command opening a destination dialog; no pane dragging | design system §3 | #73 |
+| Download | The global format chooser is canonical | design system §3 | #70 |
+| Palette | One unconditional dark palette; no theme preference | ADR 0010 | #289 |
+| Grid wrapping | Per column, opt-in, off by default | design system §9 | #41 |
+| Source wrapping | Per pane, opt-in, off by default | design system §3 | #95 |
+
+### Documents, formats, and persistence
+
+| Decision | Current outcome | Recorded in | Decided on |
+| :--- | :--- | :--- | :--- |
+| Header import | Read an explicit format header; otherwise ask rather than guess | `AGENTS.md` domain rules | #23 |
+| Table name | Renamed from the App Menu, outside undo; the browser title is `Table name · Tabelo` | design system §3 | #82 |
+| Column width owner | A workspace preference keyed by column id | `CONTEXT.md` | #137 |
+| Column width commands | Pointer resize, Fit column to content, and a keyboard resize | design system §9 | #81 |
+| Cell types | Carried, never inferred from appearance | ADR 0008 | #147 |
+| JSON shape | An array of row objects with explicit serializer preconditions | `CONTEXT.md` | #42, #145 |
+| CSV export header | Always included | `AGENTS.md` domain rules | #148 |
+| Persistence migrations | An explicit forward-only chain; unreadable data is kept and explained by reason | `AGENTS.md` architecture | #184, #32 |
+| Codec escaping | Every escaping codec round-trips content losslessly | ADR 0002 | #183, #188 |
+
+### Interaction and menus
+
+| Decision | Current outcome | Recorded in | Decided on |
+| :--- | :--- | :--- | :--- |
+| Keyboard navigation | Two levels: Enter enters a pane, Escape leaves it | design system §9 | #24, #54 |
+| Row and column reorder | Keyboard and menu path plus pointer drag; no pane drag | design system §9 | #136, #139 |
+| Column resize shortcut | `Alt`+`Shift`+Left/Right on the focused column | design system §9 | #81 |
+| Fit with wrapping | Fit is disabled with a reason while the column wraps | design system §9 | #81 |
+| Menu grouping | Content, display, then pane actions | design system §3 | #70 |
+| Group titles | Alignment, Edit, Move; no single-item title | design system §3 | #75, #81 |
+| Cascading menus | Only for flat, immediate, self-explanatory command lists | design system §3 | #149, #155 |
+| New table | Confirm when work exists; success returns to the welcome surface | `AGENTS.md` domain rules | #39, #46 |
+| Floating menu identity | Global commands; New table is destructive; identity includes copyright | design system §6 | #71 |
+| Pinning | Optional first data row and first data column only | design system §9 | #160 |
+| Sort, find, and fill | Sorting and find are in scope; fill repeats and offers a numeric series | design system §9 | #143, #144, #150 |
+| `Mod`+`D` | Belongs to a focused editable source editor, unconditionally | design system §9 | #232 |
+| Empty source field | One caret stop, at the value start | design system §2 | #345 |
+
+### Accessibility and presentation
+
+| Decision | Current outcome | Recorded in | Decided on |
+| :--- | :--- | :--- | :--- |
+| Notices | A fixed overlay, never layout content | design system §5 | #44 |
+| Active pane | A non-layout-shifting boundary | design system §5 | #64 |
+| Destructive contrast | The token and the variant both own the correction | design system §2 | #109 |
+| Precondition correction | Lead the user to the first offending cell when possible | design system §4 | #146 |
+| Grid lines | Subtle where the grid continues, strong where chrome meets the table; no state recolours a line | design system §9 | #346 |
+| Selection on letters and numbers | A neutral surface and semibold label, never the selection fill | design system §9 | #291 |
+| Copied mark and focus | Both stay visible on a focused copied cell | design system §4 | #223 |
+| Project mark | `logo.svg` is the one source for every icon | design system §6 | #307 |
+| Cognitive-accessibility claims | No condition-specific claim without representative task sessions | design system §9 | #80 |
+
+### Superseded outcomes
+
+Recorded so they are not proposed again by accident: a two-pane minimum; seven
+layouts without Single; Layout inside the pane menu; per-view Download and the
+retirement of the global chooser; removing Download or Layout from the global
+menu; one and only one cascading submenu; arbitrary freeze boundaries; opaque
+strings as the permanent cell model; a Light, Dark, and System preference; no
+familiar spreadsheet interaction under any circumstances; the preview's first
+row aligned with the grid's first row (#233); a separate blue-field icon source
+(#307).
