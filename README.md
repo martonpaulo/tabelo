@@ -1,8 +1,6 @@
 # Tabelo
 
-<p align="center">
-  <img src="apps/web/public/logo.svg" width="96" height="96" alt="Tabelo logo" />
-</p>
+<img src="apps/web/public/social-card.jpg" width="100%" alt="Tabelo: edit one table in every view, always in sync. The Markdown and Table panes of one workspace showing the same table." />
 
 [![CI](https://github.com/martonpaulo/tabelo/actions/workflows/ci.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/ci.yml)
 [![Deploy](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml)
