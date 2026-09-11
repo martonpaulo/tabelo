@@ -52,6 +52,7 @@ export function createProductMetadata({
 		`<meta property="og:site_name" content="${name}" />`,
 		`<meta property="og:locale" content="en_US" />`,
 		`<meta name="twitter:card" content="${product.twitterCard}" />`,
+		`<meta name="twitter:title" content="${title}" />`,
 	];
 
 	// Only the deploy workflow sets SITE_ORIGIN. Local builds have no public

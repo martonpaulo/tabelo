@@ -67,3 +67,20 @@ test("the first visit and the page source credit the author and link the source"
 	// Once the app is up there is still exactly one page heading.
 	await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
 });
+
+// #373: a link preview shows the same title as the tab. The three are written
+// from one owner, so what is checked is that none of them drifts or goes
+// missing, not what they say.
+test("the page title, og:title, and twitter:title agree", async ({
+	request,
+}) => {
+	const html = await (await request.get("/")).text();
+	const title = html.match(/<title>([^<]+)<\/title>/)?.[1];
+	const meta = (attribute: string, key: string) =>
+		html.match(
+			new RegExp(`<meta ${attribute}="${key}" content="([^"]+)"`),
+		)?.[1];
+	expect(title).toBeTruthy();
+	expect(meta("property", "og:title")).toBe(title);
+	expect(meta("name", "twitter:title")).toBe(title);
+});

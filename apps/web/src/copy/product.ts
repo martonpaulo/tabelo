@@ -13,7 +13,9 @@ export const product = {
 	repositoryUrl: "https://github.com/martonpaulo/tabelo",
 	creditLabel: "Made by",
 	sourceLabel: "Source on GitHub",
-	documentTitle: "Tabelo: Edit one table in every view",
+	// The shared title pattern of the owner's sites (#373): ` · ` between parts,
+	// the product first on its home page, and no owner name on a product site.
+	documentTitle: "Tabelo · Edit one table in every view",
 	description:
 		"Edit one table visually or through synchronized text formats, entirely in your browser",
 	openGraphType: "website",
