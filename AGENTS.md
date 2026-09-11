@@ -392,6 +392,13 @@ selected tests and derives the shard matrix from the cap recorded in
 old and new path, so moving a file cannot reduce coverage. Mixed changes always
 use the highest applicable level.
 
+Deploy publishes only when the built site can differ from the live one. It
+compares the commit of the last successful Pages deployment with the new head
+through the same script, so a change that touches only tests, specs, tooling,
+or documentation builds nothing and deploys nothing, and a deploy that was
+skipped or lost is carried by the next one that publishes. A manual Deploy run
+always publishes.
+
 Never claim a check passed unless it ran successfully.
 
 A behaviour that crosses a UI boundary belongs in the browser suite, not only

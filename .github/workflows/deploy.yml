@@ -28,24 +28,70 @@ jobs:
       github.event.workflow_run.event == 'workflow_dispatch') &&
       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Reads which commit the live site was built from.
+      deployments: read
     concurrency:
       group: pages-build
       cancel-in-progress: true
+    outputs:
+      deploy: ${{ steps.site.outputs.affects_site }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
+      # Publish only when the built site can differ from the one already live.
+      # The comparison is against the last successful Pages deployment, not
+      # against the previous commit, so a commit whose deploy was skipped or
+      # lost is still carried by the next one that publishes. The path rules
+      # are CI's own (classify-changes.sh), and a manual run always publishes.
+      - name: Decide whether the site changed
+        id: site
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "affects_site=true" | tee -a "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          live=""
+          for id in $(gh api "repos/$REPO/deployments?environment=github-pages&per_page=20" -q '.[].id'); do
+            state=$(gh api "repos/$REPO/deployments/$id/statuses?per_page=1" -q '.[0].state // empty')
+            if [[ "$state" == "success" ]]; then
+              live=$(gh api "repos/$REPO/deployments/$id" -q '.sha')
+              break
+            fi
+          done
+          if [[ "$live" == "$HEAD_SHA" ]]; then
+            echo "affects_site=false" | tee -a "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$RUNNER_TEMP/changed_files.txt"
+          : > "$changed"
+          if [[ -n "$live" ]]; then
+            .github/scripts/changed-files.sh "$REPO" "$live" "$HEAD_SHA" > "$changed" || : > "$changed"
+          fi
+          echo "Live site is ${live:-unknown}; $(wc -l < "$changed") path(s) changed since."
+          .github/scripts/classify-changes.sh < "$changed" | grep '^affects_site=' | tee -a "$GITHUB_OUTPUT"
+
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        if: ${{ steps.site.outputs.affects_site == 'true' }}
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: ${{ steps.site.outputs.affects_site == 'true' }}
         with:
           node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+        if: ${{ steps.site.outputs.affects_site == 'true' }}
 
       - name: Build
+        if: ${{ steps.site.outputs.affects_site == 'true' }}
         run: pnpm build
         env:
           # Pages serves this project from the root of its own subdomain.
@@ -55,17 +101,21 @@ jobs:
       # Pages has no SPA rewrite rule. Serving index.html as 404.html lets deep
       # links reach the client router instead of GitHub's error page.
       - name: Add SPA fallback
+        if: ${{ steps.site.outputs.affects_site == 'true' }}
         run: cp apps/web/dist/index.html apps/web/dist/404.html
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        if: ${{ steps.site.outputs.affects_site == 'true' }}
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        if: ${{ steps.site.outputs.affects_site == 'true' }}
         with:
           path: apps/web/dist
 
   deploy:
     name: Deploy to GitHub Pages
     needs: build-pages
+    if: ${{ needs.build-pages.outputs.deploy == 'true' }}
     runs-on: ubuntu-latest
     # Deployments queue instead of racing: a queued deployment superseded by a
     # newer one is skipped automatically, but cancel-in-progress stays false
