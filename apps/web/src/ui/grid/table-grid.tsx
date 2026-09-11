@@ -128,11 +128,16 @@ function ClipboardSourceEdge({ top, right, bottom, left }: ClipboardEdges) {
 			className={cn(
 				// Preflight leaves every border at zero width, so naming the style
 				// once and then only the sides that exist draws exactly those sides.
+				//
+				// Each outer side also steps inside the focus outline's band, so the
+				// focused cell of a copied range keeps both marks visible. Only the
+				// outer sides move: an interior side stays flush with the cell, which
+				// is what keeps the per-cell segments joined into one rectangle.
 				"pointer-events-none absolute inset-0 z-10 border-selection-edge border-dashed",
-				top && "border-t-2",
-				right && "border-r-2",
-				bottom && "border-b-2",
-				left && "border-l-2",
+				top && "top-selection-edge border-t-2",
+				right && "right-selection-edge border-r-2",
+				bottom && "bottom-selection-edge border-b-2",
+				left && "left-selection-edge border-l-2",
 			)}
 		/>
 	);
