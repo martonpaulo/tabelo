@@ -133,7 +133,7 @@ test("a zoom step carries the line numbers and the caret onto the resized lines"
 						)
 					: [];
 				const content = editor?.querySelector(".cm-content");
-				const caret = editor?.querySelector(".cm-cursor-primary");
+				const caret = editor?.querySelector(".cm-tabeloCaret-primary");
 				const activeLine = editor?.querySelector(".cm-activeLine");
 
 				const encloses = (outer: DOMRect, inner: DOMRect) =>
@@ -214,7 +214,11 @@ test("a selected line is highlighted from the same edge the line starts at", asy
 			const editor = node.querySelector(".cm-editor");
 			const line = editor?.querySelector(".cm-content .cm-line");
 			const highlights = editor
-				? [...editor.querySelectorAll(".cm-selectionBackground")]
+				? [
+						...editor.querySelectorAll(
+							".cm-tabeloSelectionLayer .cm-selectionBackground",
+						),
+					]
 				: [];
 			if (!line || highlights.length === 0) return false;
 			const start = line.getBoundingClientRect().left;
@@ -224,4 +228,89 @@ test("a selected line is highlighted from the same edge the line starts at", asy
 		});
 
 	await expect.poll(highlightReachesTheLineStart).toBe(true);
+});
+
+// #268: a selection band covers the line box it sits in, top to bottom, the way
+// the active-line fill beside it does, including a selection on one line only,
+// which is the common case a whole-document selection hides. Containment, not
+// an exact height.
+test("a selection band covers the whole line box, on one line or several", async ({
+	tabelo,
+	page,
+}) => {
+	const source = tabelo.source("markdown");
+	await source.fill(peopleTable);
+	await expect(tabelo.cell(5, 1)).toHaveText("Amora");
+	const pane = tabelo.pane("markdown");
+
+	const bandsCoverTheirLines = () =>
+		pane.evaluate((node) => {
+			const bands = [
+				...node.querySelectorAll(
+					".cm-tabeloSelectionLayer .cm-selectionBackground",
+				),
+			].map((band) => band.getBoundingClientRect());
+			const lines = [...node.querySelectorAll(".cm-content .cm-line")].map(
+				(line) => line.getBoundingClientRect(),
+			);
+			if (bands.length === 0) return false;
+			// Every line a band touches is covered by the band from its top to its
+			// bottom.
+			return bands.every((band) =>
+				lines
+					.filter(
+						(line) => line.bottom > band.top + 1 && line.top < band.bottom - 1,
+					)
+					.every(
+						(line) =>
+							band.top <= line.top + 0.5 && band.bottom >= line.bottom - 0.5,
+					),
+			);
+		});
+
+	// One word on one line.
+	await source.focus();
+	await page.keyboard.press("ControlOrMeta+Home");
+	await page.keyboard.press("ArrowDown");
+	await page.keyboard.press("ArrowDown");
+	await page.keyboard.press("End");
+	await page.keyboard.press("Shift+ArrowLeft");
+	await page.keyboard.press("Shift+ArrowLeft");
+	await expect.poll(bandsCoverTheirLines).toBe(true);
+
+	// Several lines, partly selected at both ends.
+	await page.keyboard.press("Shift+ArrowDown");
+	await page.keyboard.press("Shift+ArrowDown");
+	await expect.poll(bandsCoverTheirLines).toBe(true);
+});
+
+// #359: the caret is one hairline, placed on whole device pixels at every
+// column, so it looks the same at the start of a line and in the middle of it.
+test("the source caret sits on whole device pixels at every column", async ({
+	tabelo,
+	page,
+}) => {
+	const source = tabelo.source("markdown");
+	await source.fill(peopleTable);
+	await source.focus();
+	const caretOnPixel = () =>
+		tabelo.pane("markdown").evaluate((node) => {
+			const caret = node.querySelector<HTMLElement>(".cm-tabeloCaret-primary");
+			if (!caret) return false;
+			const box = caret.getBoundingClientRect();
+			const ratio = window.devicePixelRatio;
+			const edge = box.left * ratio;
+			// The hairline is 0.0625rem, one CSS pixel at the default size.
+			return (
+				Math.abs(edge - Math.round(edge)) < 0.01 &&
+				Number.parseFloat(getComputedStyle(caret).borderLeftWidth) === 1
+			);
+		});
+
+	await page.keyboard.press("ControlOrMeta+Home");
+	await expect.poll(caretOnPixel).toBe(true);
+	for (let step = 0; step < 7; step += 1) {
+		await page.keyboard.press("ArrowRight");
+		await expect.poll(caretOnPixel).toBe(true);
+	}
 });

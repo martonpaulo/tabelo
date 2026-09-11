@@ -41,6 +41,7 @@ import {
 import type { SpaceIndicators } from "@/preferences/contract";
 import type { HighlightLanguage, ViewId } from "@/views/types";
 import { csvLanguage } from "./csv-language";
+import { drawnSelection } from "./drawn-selection";
 import { syntaxTheme } from "./editor-theme";
 import { emptyValueMarkers, emptyValueSyntax } from "./empty-values";
 import { escapeSequenceGlyphs, escapeSyntax } from "./escape-sequences";
@@ -348,6 +349,7 @@ export function SourceEditor({
 					// single transaction, possible at all.
 					EditorState.allowMultipleSelections.of(true),
 					drawSelection(),
+					drawnSelection,
 					highlightActiveLine(),
 					highlightActiveLineGutter(),
 					wrapCompartment.of(wrapExtension(wrap)),

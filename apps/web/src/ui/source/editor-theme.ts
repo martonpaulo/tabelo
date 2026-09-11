@@ -103,7 +103,7 @@ export const editorTheme = EditorView.theme({
 	// reset zeroes padding on this element with a precedence a theme rule does
 	// not beat, so a vertical value written here is silently dropped and the
 	// numbers beside it end up measuring a different row than the text does.
-	// There is deliberately no leading value. `drawSelection` measures its layer
+	// There is deliberately no leading value. The selection layer measures
 	// from the line's content box, so a left padding here leaves a band between
 	// the gutter and the highlight that nothing paints, while `.cm-activeLine`
 	// below fills the whole line box and does reach the gutter: the two would
@@ -143,11 +143,23 @@ export const editorTheme = EditorView.theme({
 		backgroundColor: "var(--active-line-fill)",
 		color: "var(--foreground)",
 	},
-	".cm-cursor, .cm-dropCursor": {
-		borderLeft: "0.125rem solid var(--selection-edge)",
+	// `drawSelection`'s own layers are replaced by the ones in drawn-selection.ts,
+	// which fix their geometry; its selection and cursor layers stay mounted and
+	// are simply not shown.
+	".cm-selectionLayer, .cm-cursorLayer": { display: "none" },
+	".cm-tabeloCaretLayer": { pointerEvents: "none" },
+	// One hairline, the width of the browser's own caret in every other text
+	// field. Its position is snapped to device pixels where it is measured, so
+	// it is equally sharp at every column (#359).
+	".cm-tabeloCaret, .cm-dropCursor": {
+		display: "none",
+		borderLeft: "var(--hairline-w) solid var(--selection-edge)",
 		height: "calc(var(--pane-zoom, 1) * 1.25rem) !important",
-		marginLeft: "calc(-1 * var(--hairline-w))",
 		marginTop: "calc(var(--pane-zoom, 1) * -0.125rem)",
+	},
+	"&.cm-focused .cm-tabeloCaret, .cm-dropCursor": { display: "block" },
+	"&.cm-focused > .cm-scroller > .cm-tabeloCaretLayer": {
+		animation: "steps(1) cm-blink 1.2s infinite",
 	},
 	"&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
 		// CodeMirror's base theme uses a more specific light/dark selector for

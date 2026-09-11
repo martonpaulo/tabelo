@@ -158,11 +158,11 @@ test("the newest occurrence becomes the primary selection", async ({
 // either is undrawn, so the poll retries rather than deciding on half a layout.
 async function cursorDrop(pane: Locator): Promise<number | null> {
 	const primary = await pane
-		.locator(".cm-cursor-primary")
+		.locator(".cm-tabeloCaret-primary")
 		.first()
 		.boundingBox();
 	const secondary = await pane
-		.locator(".cm-cursor-secondary")
+		.locator(".cm-tabeloCaret-secondary")
 		.first()
 		.boundingBox();
 	if (!primary || !secondary) return null;

@@ -491,7 +491,7 @@ test("source focus belongs to the pane and its selection matches the native one"
 	await tabelo.source("markdown").click();
 
 	await expect(pane.locator(".cm-content")).toHaveCSS("outline-style", "none");
-	await expect(pane.locator(".cm-cursor")).toHaveCSS(
+	await expect(pane.locator(".cm-tabeloCaret-primary")).toHaveCSS(
 		"border-left-style",
 		"solid",
 	);
@@ -501,7 +501,7 @@ test("source focus belongs to the pane and its selection matches the native one"
 	const selectionColours = () =>
 		pane.locator(".cm-editor").evaluate((editor) => {
 			const drawn = editor.querySelector<HTMLElement>(
-				".cm-selectionBackground",
+				".cm-tabeloSelectionLayer .cm-selectionBackground",
 			);
 			const content = editor.querySelector<HTMLElement>(".cm-content");
 			return {

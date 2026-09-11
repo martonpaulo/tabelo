@@ -368,7 +368,7 @@ test("an empty field gives the caret one stop, on the text line", async ({
 	const pane = tabelo.pane("markdown");
 	const markers = pane.locator(marker);
 	await expect(markers).toHaveCount(2);
-	const caret = pane.locator(".cm-cursor").first();
+	const caret = pane.locator(".cm-tabeloCaret-primary");
 	const centre = async (locator: Locator) => {
 		const box = await locator.boundingBox();
 		if (!box) throw new Error("not rendered");
