@@ -52,18 +52,30 @@ jobs:
 
           failures = []
 
-          # `Issue #12 - Description` for one, `Issues #70, #73 - Description` for several.
-          single = re.fullmatch(r"Issue #(\d+) - (\S.*)", title)
-          plural = re.fullmatch(r"Issues ((?:#\d+, )+#\d+) - (\S.*)", title)
-          if single:
-              title_issues = [int(single.group(1))]
-          elif plural:
-              title_issues = [int(n) for n in re.findall(r"#(\d+)", plural.group(1))]
+          # Conventional Commits, with the issue numbers as the subject's suffix:
+          #   feat(grid): add the export button (#54)
+          #   fix: normalize carriage returns (#54, #61)
+          #
+          # Squash merge makes this title the subject of the only commit that reaches the default
+          # branch, so it is the same grammar the commit rule already requires. The previous
+          # `Issue #<n> - ...` form put a shape on the default branch that no changelog, release
+          # tool, or version inference reads.
+          conventional = re.fullmatch(
+              r"(?P<type>build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)"
+              r"(?:\((?P<scope>[^()\n]+)\))?"
+              r"(?P<breaking>!)?"
+              r": (?P<description>\S.*?)"
+              r" \((?P<issues>#\d+(?:, #\d+)*)\)",
+              title,
+          )
+          if conventional:
+              title_issues = [int(n) for n in re.findall(r"#(\d+)", conventional.group("issues"))]
           else:
               title_issues = []
               failures.append(
-                  "title must read 'Issue #<n> - <description>', or "
-                  "'Issues #<a>, #<b> - <description>' when it closes several; got: " + repr(title)
+                  "title must be a Conventional Commits subject ending in its issue numbers, "
+                  "for example 'feat(grid): add the export button (#54)' or "
+                  "'fix: normalize carriage returns (#54, #61)'; got: " + repr(title)
               )
 
           if title_issues != sorted(set(title_issues)):

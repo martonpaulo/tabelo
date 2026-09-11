@@ -74,12 +74,15 @@ describes the migration and its downstream effects.
   auto-merge at all. The repository's GitHub settings allow squash only, so the
   setting and this policy cannot drift apart. The cost is real and accepted:
   `main` gets one commit per pull request instead of one per concern
-- The pull request title is what reaches `main`, so it carries the Conventional
-  Commits prefix and the `(#<issue number>)` suffix. Under the previous rebase
-  policy each commit carried its own; under squash the title is the only subject
-  that survives, which is why `pr-conventions` is a required check rather than a
-  courtesy. One concern per commit still applies on the branch, where it is what
-  makes a review readable
+- Pull request title: a Conventional Commits subject ending in the issue
+  numbers it closes, for example `feat(grid): add the export button (#54)` or
+  `fix: normalize carriage returns (#54, #61)`. It is a separate rule from the
+  commit subject above because squash merge makes the title, not any branch
+  commit, the subject that reaches `main`; the two share one grammar so the
+  history reads the same either way. `.github/workflows/pr-conventions.yml`
+  enforces it as a required check, and the title's issue set must match the
+  body's `Closes #<n>` lines exactly. One concern per commit still applies on
+  the branch, where it is what makes a review readable
 - Delete branches after merge: enabled
 - Release, signing, and secret storage: **not applicable**. Nothing is
   downloaded, installed, or signed. Deployment is GitHub Pages via GitHub
@@ -87,16 +90,22 @@ describes the migration and its downstream effects.
 - Agent automation: `enabled`
 - Implementation agent: `claude`
 - Review agent: `codex`
-- Skills baseline revision: `478435d682218fb51a83bef36b60efad737679ee`
-- Skills baseline applied: `2026-09-07`
+- Skills baseline revision: `f0deb03a95008e34c28f8496dc98d0b1d9fe7e69`
+- Skills baseline applied: `2026-09-11`
 - Skills baseline divergence `merge-policy` at
-  `478435d682218fb51a83bef36b60efad737679ee`: the baseline's template text
+  `f0deb03a95008e34c28f8496dc98d0b1d9fe7e69`: the baseline's template text
   records merge commits and forbids squashing, while its orchestration step
   defaults an orchestrated repository to squash because Agent Orchestrator's
   merge action is squash-only. The two disagree; Tabelo follows the
   orchestration default, as every other orchestrated repository here does
+- Skills baseline divergence `worker-rules-pr-title` at
+  `f0deb03a95008e34c28f8496dc98d0b1d9fe7e69`: the baseline's worker-rules
+  template still describes the `Issue #<n> - <description>` pull request title
+  that its own `pr-conventions` workflow asset stopped accepting in the same
+  revision. Tabelo follows the workflow, which is the enforced rule, and
+  `.ao/worker-rules.md` describes the Conventional Commits title
 
-The three agent roles are the only mechanism that decides who does the work.
+The two agent roles are the only mechanism that decides who does the work.
 No issue label overrides them: the `implementer:`, `reviewer:`, and
 `orchestrator:` label families are reserved and inert, because the orchestrator
 resolves each role from the project configuration and reads no label to fill
@@ -969,8 +978,8 @@ condition for resumption.
 - Check status and branch before editing and before the final report.
 - Use Conventional Commits in English. One commit per concern, and end the
   subject with its issue number when the commit belongs to one.
-- Title the pull request the same way, because squash merge makes that title the
-  subject of the only commit that reaches `main`. `pr-conventions` checks it.
+- Title the pull request by the pull request title rule in `## Project identity
+  and policy`.
 - Merge with `gh pr merge <number> --squash --delete-branch`, or leave it to
   `skd merge` on an orchestrated pull request.
 - Inspect the exact payload before publishing it: the staged diff before a

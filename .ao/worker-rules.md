@@ -83,10 +83,11 @@ the owner's machine while they are using it.
 
 ## Pull request naming
 
-The title is `Issue #<n> - <description>`, or `Issues #<a>, #<b> - <description>` when the pull
-request closes several. Not a conventional-commit subject: that shape belongs to the **commit**, and
-the two are deliberately different. The body's first lines are one `Closes #<n>` per issue, and the
-title's issue set must match them exactly.
+The title is a Conventional Commits subject ending in the issue numbers it closes, for example
+`feat(grid): add the export button (#54)` or `fix: normalize carriage returns (#54, #61)`. Squash
+merge makes it the subject of the only commit that reaches `main`, so it follows the same grammar as
+a commit subject. The body's first lines are one `Closes #<n>` per issue, and the title's issue set
+must match them exactly.
 
 A check enforces this, so getting it wrong costs a failed run and a correction rather than a wrong
 title. Getting it right the first time costs nothing.
@@ -178,7 +179,7 @@ records what was done.
 
 ## Roles and who fills them
 
-Three roles, one repository default each. The names match Agent Orchestrator's own roles.
+Two roles, one repository default each. The names match Agent Orchestrator's own roles.
 
 | Role | Where it is decided | This repository's default |
 | --- | --- | --- |
