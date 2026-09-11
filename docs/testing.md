@@ -41,7 +41,7 @@ figures include the fixed checkout, install, and browser-install cost.
 ## Execution budgets
 
 The target is a browser shard job below five minutes, including its fixed setup
-cost. `.github/workflows/ci.yml` owns one `TESTS_PER_SHARD` constant, currently
+cost. `.github/workflows/validate.yml` owns one `TESTS_PER_SHARD` constant, currently
 250. The Check job lists the selected Chromium tests, counts the JSON report,
 and derives `ceil(test count / TESTS_PER_SHARD)`. Both the 419-test baseline and
 the audited 414-test suite produce two balanced shards. A third runner is not

@@ -79,10 +79,12 @@ describes the migration and its downstream effects.
   `fix: normalize carriage returns (#54, #61)`. It is a separate rule from the
   commit subject above because squash merge makes the title, not any branch
   commit, the subject that reaches `main`; the two share one grammar so the
-  history reads the same either way. `.github/workflows/pr-conventions.yml`
-  enforces it as a required check, and the title's issue set must match the
-  body's `Closes #<n>` lines exactly. One concern per commit still applies on
-  the branch, where it is what makes a review readable
+  history reads the same either way. No workflow enforces it: the
+  `pr-conventions` check was removed on 2026-09-12 because it failed every bot
+  pull request permanently while this repository accepts direct commits to
+  `main`. The title's issue set must still match the body's `Closes #<n>` lines
+  exactly. One concern per commit still applies on the branch, where it is what
+  makes a review readable
 - Delete branches after merge: enabled
 - Release, signing, and secret storage: **not applicable**. Nothing is
   downloaded, installed, or signed. Deployment is GitHub Pages via GitHub
@@ -100,10 +102,9 @@ describes the migration and its downstream effects.
   orchestration default, as every other orchestrated repository here does
 - Skills baseline divergence `worker-rules-pr-title` at
   `f0deb03a95008e34c28f8496dc98d0b1d9fe7e69`: the baseline's worker-rules
-  template still describes the `Issue #<n> - <description>` pull request title
-  that its own `pr-conventions` workflow asset stopped accepting in the same
-  revision. Tabelo follows the workflow, which is the enforced rule, and
-  `.ao/worker-rules.md` describes the Conventional Commits title
+  template still describes the `Issue #<n> - <description>` pull request title.
+  Tabelo uses the Conventional Commits title recorded above, as
+  `.ao/worker-rules.md` describes
 
 The two agent roles are the only mechanism that decides who does the work.
 No issue label overrides them: the `implementer:`, `reviewer:`, and

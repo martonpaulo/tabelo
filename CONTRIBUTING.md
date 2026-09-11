@@ -36,8 +36,7 @@ the working agreements this repository actually follows.
 ## Branches, commits, and pull requests
 
 Work happens on a branch and arrives through a pull request. The conventions are recorded in
-[`AGENTS.md`](AGENTS.md) and the pull request title is enforced by
-[`.github/workflows/pr-conventions.yml`](.github/workflows/pr-conventions.yml):
+[`AGENTS.md`](AGENTS.md):
 
 - **Branch name**: `type/agent/issue-number/short-description`, where `type` is one of `feature`,
   `hotfix`, `fix`, `chore`, `docs`, `refactor`, `test`, `agent` identifies who is working (use
@@ -52,8 +51,7 @@ Work happens on a branch and arrives through a pull request. The conventions are
   and that set must match the title's numbers exactly.
 - Pull requests are **squash merged** and the branch is deleted afterwards.
 
-The conventions check publishes its verdict as the `pr-conventions` commit status and re-runs on its
-own when you edit the title or body, so a wrong title is a fix in the GitHub UI, not a new push.
+Nothing enforces the title automatically, so a wrong one is corrected in the GitHub UI before merge.
 
 <br />
 

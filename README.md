@@ -7,7 +7,7 @@
 Edit one table as a grid, Markdown, CSV, TSV, HTML, Jira, JSON or records, with every view
 synchronized and everything running in your browser.
 
-[![CI](https://github.com/martonpaulo/tabelo/actions/workflows/ci.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/ci.yml) [![Deploy](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml) [![React 19.2](https://img.shields.io/badge/React-19.2-informational.svg)](https://react.dev) [![Vite 8.1](https://img.shields.io/badge/Vite-8.1-informational.svg)](https://vite.dev) [![TypeScript 6.0](https://img.shields.io/badge/TypeScript-6.0-informational.svg)](https://www.typescriptlang.org)
+[![Validate](https://github.com/martonpaulo/tabelo/actions/workflows/validate.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/validate.yml) [![Deploy](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml) [![React 19.2](https://img.shields.io/badge/React-19.2-informational.svg)](https://react.dev) [![Vite 8.1](https://img.shields.io/badge/Vite-8.1-informational.svg)](https://vite.dev) [![TypeScript 6.0](https://img.shields.io/badge/TypeScript-6.0-informational.svg)](https://www.typescriptlang.org)
 
 </div>
 

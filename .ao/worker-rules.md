@@ -154,7 +154,7 @@ Never invent a product decision, a provenance label, or a new `status:` value.
 
 ## Automatic merge
 
-Auto-merge: available under the predicates below. `main` requires one approving review plus the `Check` and `pr-conventions` status checks, and the repository merges by squash, which is the method `skd merge` uses.
+Auto-merge: available under the predicates below. `main` requires one approving review plus the `Check` status check, and the repository merges by squash, which is the method `skd merge` uses.
 
 **You do not merge, and you do not arm auto-merge.** `skd merge` is the single actor. It
 evaluates the predicates -- CI green on the exact reviewed commit, an approved review from a
