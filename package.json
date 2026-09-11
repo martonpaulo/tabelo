@@ -24,6 +24,7 @@
 		"dev:web": "pnpm --filter web dev",
 		"check": "biome check --write .",
 		"check:dead-code": "knip",
+		"validate": "pnpm check && pnpm check:dead-code && pnpm check-types && pnpm test",
 		"lint": "biome check .",
 		"prepare": "husky",
 		"postinstall": "node apps/web/write-launch-config.js"

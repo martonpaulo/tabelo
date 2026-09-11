@@ -49,6 +49,7 @@ side without serving each other's build.
 
 | Command                 | What it does                                   |
 | :---------------------- | :--------------------------------------------- |
+| `pnpm validate`         | The full gate before a commit                  |
 | `pnpm dev`              | Dev server                                     |
 | `pnpm build`            | Production build                               |
 | `pnpm test`             | Unit and property tests                        |
@@ -82,8 +83,9 @@ supports. There is no second project to opt into and no cross-browser command to
 opening a pull request.
 
 > [!TIP]
-> Before you commit: `pnpm check && pnpm check-types && pnpm test`. Add `pnpm test:e2e` when the
-> change crosses a UI boundary, which is the coverage CI selects for you anyway.
+> Before you commit: `pnpm validate` — that is `pnpm check`, `pnpm check:dead-code`,
+> `pnpm check-types` and `pnpm test`. Add `pnpm test:e2e` when the change crosses a UI boundary,
+> which is the coverage CI selects for you anyway.
 
 <br />
 

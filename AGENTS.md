@@ -325,7 +325,10 @@ reads a cell through it. See `docs/adr/0008`.
 
 ## Build and validate
 
-Prefer the smallest relevant check.
+`pnpm validate` is the full gate before a commit: `pnpm check`,
+`pnpm check:dead-code`, `pnpm check-types` and `pnpm test`, in that order. Add
+`pnpm test:e2e` when the change crosses a UI boundary. While iterating, prefer
+the smallest relevant check.
 
 - `pnpm dev`: run the app locally. The dev and preview ports are derived from
   the worktree path so parallel checkouts cannot serve or test each other's

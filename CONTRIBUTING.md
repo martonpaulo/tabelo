@@ -59,11 +59,12 @@ Nothing enforces the title automatically, so a wrong one is corrected in the Git
 
 ```bash
 pnpm install
-pnpm check && pnpm check-types && pnpm test
+pnpm validate
 ```
 
-Add `pnpm test:e2e` when the change crosses a UI boundary, which is the coverage CI selects for you
-anyway; the first run needs `pnpm test:e2e:install` to fetch Chromium.
+`pnpm validate` is the one command: `pnpm check`, `pnpm check:dead-code`, `pnpm check-types` and
+`pnpm test`, in that order. Add `pnpm test:e2e` when the change crosses a UI boundary, which is the
+coverage CI selects for you anyway; the first run needs `pnpm test:e2e:install` to fetch Chromium.
 
 `pnpm check:dead-code` runs Knip, which is strict here: an unused file, export, or dependency is a
 finding, so remove what your change orphaned rather than leaving it behind.
