@@ -989,7 +989,7 @@ not a polish item.
 | Hover or keyboard highlight | Shared `bg-accent` interaction background |
 | Focus | 0.125rem `--selection-edge` outline, inset. Never remove it |
 | Selected | `bg-selection-fill`, plus outline when it is the focused cell |
-| Copied | 0.125rem dashed `--selection-edge` border, drawn only on the outer sides of the copied range and inset by the focus outline's width (`--selection-edge-w`), so it sits just inside the focus outline rather than under it |
+| Copied | 0.125rem dashed `--selection-edge` border on the range's own outer edges. A focused cell inside the range draws focus and copy as one static two-tone border: the solid focus line on all four sides with `--foreground` dashes over it on the outer sides |
 | Carried cell type | Strings use the editable header row's plain foreground; numbers, booleans, and null use the cross-view semantic value token selected by `cellValueType`, reinforced by weight, italics, numeric spacing, literal shape, and the accessible type name |
 | Divergent cell type | Compact textual `CellTypeMark` inside the cell, never alignment or colour alone |
 | Disabled | `opacity-50`, no hover or highlight state, `not-allowed` on the actual hit layer, and a tooltip explaining why. Never hide a disabled action |
@@ -1011,12 +1011,13 @@ range are drawn, so it reads as one outline rather than a grid of dashes.
 **It is static.** It never becomes marching ants: §7 puts grid geometry and cell
 selection outside motion, and a status that pulses is exactly what that rule
 forbids. The dash pattern, not the colour, separates it from the solid focus
-outline, so it carries meaning without colour. That only holds while both lines
-are visible, so the two never share a band: the focus outline keeps the cell's
-edge and the copied mark steps one outline width inside it. A focused cell in a
-copied range shows a solid line with a dashed one just within. Only the outer
-sides step in; an interior side stays flush, which keeps the per-cell segments
-joined into one rectangle.
+outline, so it carries meaning without colour. Where a cell is both focused and
+copied the two would share one band, and a browser paints a cell's outline over
+anything its children draw, so the dashes would vanish under the focus line.
+That cell therefore draws both as one static two-tone marquee: the solid focus
+line on all four sides and light dashes over it on the range's outer sides, on
+the cell's real edge. Stepping the mark inside the focus outline was tried on
+#223 and read as doubled when focused and detached when not; #349 replaced it.
 
 **Copy marks; cut does not.** Cut empties the cells at once rather than on
 paste, so there is no pending move to describe and a mark would outline blank

@@ -50,7 +50,6 @@
 	--spacing-grid-col-min: var(--grid-col-w-min);
 	--spacing-pane-stack: var(--pane-stack-h);
 	--spacing-fab: var(--fab-size);
-	--spacing-selection-edge: var(--selection-edge-w);
 	--radius-interactive: var(--control-radius);
 	--radius-surface: var(--surface-radius);
 
@@ -130,10 +129,7 @@
 	   work in, accepting that reaching the next pane means scrolling. */
 	--pane-stack-h: 60vh;
 	--fab-size: 3rem;
-	/* The width of the selection edge: the focus outline every cell draws. The
-	   copied-range mark steps inside it by exactly this much, so a cell that is
-	   both focused and copied shows the solid outline and the dashed mark side
-	   by side instead of one line over the other. */
+	/* The width of the selection edge: the focus outline every control draws. */
 	--selection-edge-w: 0.125rem;
 
 	/* The notice layer. Notices float over the workspace and over the floating

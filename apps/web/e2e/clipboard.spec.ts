@@ -228,6 +228,29 @@ test("the copied range stays marked while the selection moves to the destination
 	await expect(mark(tabelo, 2, 3)).toHaveCount(0);
 });
 
+// #349: a cell that is both focused and copied draws the two states as one
+// mark, because a browser paints the cell's own outline over whatever its
+// children draw. The focus moves to the mark and away from it with the focus.
+test("a focused copied cell carries focus and copy in one mark", async ({
+	page,
+	tabelo,
+}) => {
+	await copyRange(tabelo);
+	const focusMark = (row: number, column: number) =>
+		tabelo.cell(row, column).locator("[data-copied-focus]");
+
+	// The copy leaves focus on the range's last cell.
+	await expect(focusMark(3, 2)).toHaveCount(1);
+	await expect(mark(tabelo, 3, 2)).toHaveCount(1);
+
+	await page.keyboard.press("ArrowRight");
+	await expect(focusMark(3, 2)).toHaveCount(0);
+	await expect(mark(tabelo, 3, 2)).toHaveCount(1);
+	// Outside the range, focus is the cell's own outline again.
+	await expect(tabelo.cell(3, 3)).toBeFocused();
+	await expect(focusMark(3, 3)).toHaveCount(0);
+});
+
 test("Escape clears the mark before it collapses the selection", async ({
 	page,
 	tabelo,

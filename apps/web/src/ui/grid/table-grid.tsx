@@ -121,34 +121,54 @@ interface ClipboardEdges {
 // static status does not pulse: see docs/design-system.md §7. The dash pattern,
 // not the colour, is what distinguishes it from the solid focus outline, so the
 // mark does not depend on colour alone.
-function ClipboardSourceEdge({ top, right, bottom, left }: ClipboardEdges) {
+//
+// A focused cell inside the range draws its focus here too, as one two-tone
+// border: the solid focus line on all four sides, and the dashes over it in the
+// foreground colour on the range's outer sides, a static two-tone marquee. The cell's own outline cannot do
+// this, because a browser paints an element's outline over its children, so
+// dashes drawn by a child vanish under it (#223, #349).
+function ClipboardSourceEdge({
+	top,
+	right,
+	bottom,
+	left,
+	focused,
+}: ClipboardEdges & { readonly focused: boolean }) {
+	// Preflight leaves every border at zero width, so naming the style once and
+	// then only the sides that exist draws exactly those sides.
+	const sides = cn(
+		top && "border-t-2",
+		right && "border-r-2",
+		bottom && "border-b-2",
+		left && "border-l-2",
+	);
 	return (
-		<span
-			aria-hidden
-			// The technical contract the browser suite reads: which cells carry the
-			// mark, and which of them own an edge of it. There is no ARIA state for
-			// "the clipboard came from here", and inventing one on a gridcell would
-			// replace the cell's name with it. See docs/design-system.md §9.
-			data-clipboard-source={
-				[top && "top", right && "right", bottom && "bottom", left && "left"]
-					.filter(Boolean)
-					.join(" ") || "inside"
-			}
-			className={cn(
-				// Preflight leaves every border at zero width, so naming the style
-				// once and then only the sides that exist draws exactly those sides.
-				//
-				// Each outer side also steps inside the focus outline's band, so the
-				// focused cell of a copied range keeps both marks visible. Only the
-				// outer sides move: an interior side stays flush with the cell, which
-				// is what keeps the per-cell segments joined into one rectangle.
-				"pointer-events-none absolute inset-0 z-10 border-selection-edge border-dashed",
-				top && "top-selection-edge border-t-2",
-				right && "right-selection-edge border-r-2",
-				bottom && "bottom-selection-edge border-b-2",
-				left && "left-selection-edge border-l-2",
-			)}
-		/>
+		<>
+			{focused ? (
+				<span
+					aria-hidden
+					data-copied-focus
+					className="pointer-events-none absolute inset-0 z-10 border-2 border-selection-edge"
+				/>
+			) : null}
+			<span
+				aria-hidden
+				// The technical contract the browser suite reads: which cells carry the
+				// mark, and which of them own an edge of it. There is no ARIA state for
+				// "the clipboard came from here", and inventing one on a gridcell would
+				// replace the cell's name with it. See docs/design-system.md §9.
+				data-clipboard-source={
+					[top && "top", right && "right", bottom && "bottom", left && "left"]
+						.filter(Boolean)
+						.join(" ") || "inside"
+				}
+				className={cn(
+					"pointer-events-none absolute inset-0 z-10 border-dashed",
+					focused ? "border-foreground" : "border-selection-edge",
+					sides,
+				)}
+			/>
+		</>
 	);
 }
 
@@ -1633,7 +1653,12 @@ const DataRow = memo(function DataRow({
 									? "bg-sticky-selection-fill"
 									: "bg-selection-fill"
 								: "bg-background",
-							isFocus && "outline-2 outline-selection-edge -outline-offset-2",
+							// A copied cell draws its focus with the copied mark instead;
+							// see ClipboardSourceEdge.
+							isFocus &&
+								(copiedEdges
+									? "outline-none"
+									: "outline-2 outline-selection-edge -outline-offset-2"),
 						)}
 						onPointerDown={(event) => {
 							if (event.button !== 0) return;
@@ -1713,7 +1738,9 @@ const DataRow = memo(function DataRow({
 								{divergent ? <CellTypeMark type={type} context="cell" /> : null}
 							</span>
 						)}
-						{copiedEdges ? <ClipboardSourceEdge {...copiedEdges} /> : null}
+						{copiedEdges ? (
+							<ClipboardSourceEdge {...copiedEdges} focused={isFocus} />
+						) : null}
 					</td>
 				);
 			})}
@@ -2060,7 +2087,10 @@ function HeaderCell({
 				// body rows scroll under this cell, and a translucent fill would let
 				// their text read through it. See index.css.
 				selected ? "bg-sticky-selection-fill" : "bg-sticky-table-header",
-				focus && "outline-2 outline-selection-edge -outline-offset-2",
+				focus &&
+					(copiedEdges
+						? "outline-none"
+						: "outline-2 outline-selection-edge -outline-offset-2"),
 			)}
 			onPointerDown={(event) => {
 				if (event.button !== 0) return;
@@ -2109,7 +2139,9 @@ function HeaderCell({
 					{markedValue(header, markStart, markEnd)}
 				</span>
 			)}
-			{copiedEdges ? <ClipboardSourceEdge {...copiedEdges} /> : null}
+			{copiedEdges ? (
+				<ClipboardSourceEdge {...copiedEdges} focused={focus} />
+			) : null}
 		</th>
 	);
 }

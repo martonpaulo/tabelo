@@ -175,7 +175,7 @@ reversible implementation choice does not belong here.
 | Precondition correction | Lead the user to the first offending cell when possible | design system §4 | #146 |
 | Grid lines | Subtle where the grid continues, strong where chrome meets the table; no state recolours a line | design system §9 | #346 |
 | Selection on letters and numbers | A neutral surface and semibold label, never the selection fill | design system §9 | #291 |
-| Copied mark and focus | Both stay visible on a focused copied cell | design system §4 | #223 |
+| Copied mark and focus | One two-tone marquee on a focused copied cell, on the range's real edge | design system §4 | #223, #349 |
 | Project mark | `logo.svg` is the one source for every icon | design system §6 | #307 |
 | Cognitive-accessibility claims | No condition-specific claim without representative task sessions | design system §9 | #80 |
 
@@ -188,4 +188,5 @@ menu; one and only one cascading submenu; arbitrary freeze boundaries; opaque
 strings as the permanent cell model; a Light, Dark, and System preference; no
 familiar spreadsheet interaction under any circumstances; the preview's first
 row aligned with the grid's first row (#233); a separate blue-field icon source
-(#307); a blank table's shape drawn in the rendered preview (#357).
+(#307); the copied mark stepped inside the focus outline (#223); a blank table's
+shape drawn in the rendered preview (#357).
