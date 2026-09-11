@@ -5,6 +5,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
+import { useRef } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
 import {
@@ -13,6 +14,7 @@ import {
 	DialogCancel,
 	DialogConfirm,
 } from "@/ui/primitives/dialog-buttons";
+import { paneEntryTarget } from "@/ui/primitives/panel";
 
 export function HeaderRowDialog({
 	onImported,
@@ -20,10 +22,27 @@ export function HeaderRowDialog({
 	readonly onImported: () => void;
 }) {
 	const open = useTabeloStore((state) => state.pendingImport !== null);
+	const answered = useRef(false);
 
 	const answer = (headerRow: boolean) => {
+		answered.current = true;
 		useTabeloStore.getState().answerPendingImport(headerRow);
 		onImported();
+	};
+
+	// An answer replaces the document, so the cell that opened the question no
+	// longer exists and the dialog would hand focus to nothing; the workspace
+	// then fell back to the pane itself, one level out, where the arrow keys do
+	// nothing (#350). Focus goes where entering the active pane would put it.
+	// A cancel changes nothing, so the primitive's own return still holds.
+	const finalFocus = () => {
+		if (!answered.current) return true;
+		answered.current = false;
+		const { activePaneId } = useTabeloStore.getState().workspace;
+		const pane = document.querySelector<HTMLElement>(
+			`[data-pane-id="${activePaneId}"]`,
+		);
+		return (pane && paneEntryTarget(pane)) ?? true;
 	};
 
 	return (
@@ -33,7 +52,7 @@ export function HeaderRowDialog({
 				if (!nextOpen) useTabeloStore.getState().cancelPendingImport();
 			}}
 		>
-			<DialogContent showCloseButton={false}>
+			<DialogContent showCloseButton={false} finalFocus={finalFocus}>
 				<DialogHeader>
 					<DialogTitle>{copy.headerImport.title}</DialogTitle>
 					<DialogDescription>{copy.headerImport.description}</DialogDescription>

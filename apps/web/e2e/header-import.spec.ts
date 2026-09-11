@@ -40,6 +40,34 @@ test("keeping row 1 as data creates empty headers and one undo step", async ({
 	await expect(tabelo.cell(1, 1)).toHaveText("");
 });
 
+// #350: answering replaces the document, so the cell that held focus is gone.
+// Focus has to land back in the grid, where the next key is a grid key, not
+// on the pane one level out where arrows do nothing.
+for (const answer of ["asHeaders", "asData"] as const) {
+	test(`the grid keeps the keyboard after answering ${answer}`, async ({
+		page,
+		tabelo,
+	}) => {
+		await tabelo.cell(1, 1).click();
+		await tabelo.paste(
+			"Name\tCity\nIngrid\tRio\nPaulo\tMadrid",
+			undefined,
+			null,
+		);
+		await headerDialog(page)
+			.getByRole("button", { name: copy.headerImport[answer] })
+			.click();
+		await expect(headerDialog(page)).toHaveCount(0);
+
+		const grid = tabelo.grid();
+		await expect(grid.locator('[data-grid-active="true"]')).toBeFocused();
+		await page.keyboard.press("ArrowRight");
+		await expect(
+			grid.locator('[data-cell$=":1"][data-grid-active="true"]'),
+		).toBeFocused();
+	});
+}
+
 test("cancelling a replacement import preserves content and focus", async ({
 	page,
 	tabelo,

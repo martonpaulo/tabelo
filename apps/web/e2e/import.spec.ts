@@ -226,8 +226,9 @@ test("a spreadsheet paste opens the TSV source and focuses the table", async ({
 		paneLabel("tsv"),
 		paneLabel("grid"),
 	]);
-	// The surface that owned focus is gone, so focus is placed rather than lost.
-	await expect(tabelo.pane("grid")).toBeFocused();
+	// The surface that owned focus is gone, so focus is placed rather than lost,
+	// inside the table where the next key is a grid key (#350).
+	await expect(tabelo.cell(1, 1)).toBeFocused();
 });
 
 test("a paste from inside the grid keeps the table reachable", async ({
@@ -235,8 +236,9 @@ test("a paste from inside the grid keeps the table reachable", async ({
 	tabelo,
 }) => {
 	// The arrangement mounts the grid in the other pane, so the cell that was
-	// focused is gone. Focus is placed on the pane the table moved into rather
-	// than dropped to the document, and the keyboard still drives the table.
+	// focused is gone. Focus is placed inside the table it moved into rather
+	// than dropped to the document, so the keyboard drives the table at once,
+	// with no Enter to get back in (#350).
 	await tabelo.cell(1, 1).click();
 	await expect(tabelo.cell(1, 1)).toBeFocused();
 
@@ -246,9 +248,6 @@ test("a paste from inside the grid keeps the table reachable", async ({
 		paneLabel("jira"),
 		paneLabel("grid"),
 	]);
-	await expect(tabelo.pane("grid")).toBeFocused();
-
-	await page.keyboard.press("Enter");
 	await expect(tabelo.cell(1, 1)).toBeFocused();
 	await page.keyboard.press("ArrowRight");
 	await expect(tabelo.cell(1, 2)).toBeFocused();

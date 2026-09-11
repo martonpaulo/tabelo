@@ -7,6 +7,25 @@ import { forwardRef, type ReactNode } from "react";
 // contents are slotted, not configured through props.
 // See docs/design-system.md §3.
 
+// What entering a pane lands on: the grid's focused cell, a source editor, or a
+// view that names its own entry target. Failing all three, the body: a preview
+// has nothing to focus but still has to be scrollable once entered. Shared by
+// Enter on the pane and by anything else that must hand focus back into a pane
+// whose previous focus target no longer exists.
+export function paneEntryTarget(pane: HTMLElement): HTMLElement | null {
+	const body = pane.querySelector<HTMLElement>('[data-slot="panel-body"]');
+	if (!body) return null;
+	return (
+		body.querySelector<HTMLElement>(
+			'[data-grid-active="true"], [role="textbox"], [data-pane-entry]',
+		) ??
+		body.querySelector<HTMLElement>(
+			'[tabindex]:not([tabindex="-1"]), button:not([disabled])',
+		) ??
+		body
+	);
+}
+
 const PanelRoot = forwardRef<HTMLElement, React.ComponentProps<"section">>(
 	function PanelRoot({ children, className, onKeyDown, ...props }, ref) {
 		return (
@@ -26,24 +45,7 @@ const PanelRoot = forwardRef<HTMLElement, React.ComponentProps<"section">>(
 						// triggers: those are chrome and sit beside the pane in the
 						// workspace ring, so a search over the whole pane would find
 						// one of them first and Enter would go nowhere useful.
-						const body = event.currentTarget.querySelector<HTMLElement>(
-							'[data-slot="panel-body"]',
-						);
-						if (body) {
-							// The grid's focused cell, a source editor, or a view that
-							// names its own entry target. Failing all three, the body:
-							// a preview has nothing to focus but still has to be
-							// scrollable once entered.
-							const target =
-								body.querySelector<HTMLElement>(
-									'[data-grid-active="true"], [role="textbox"], [data-pane-entry]',
-								) ??
-								body.querySelector<HTMLElement>(
-									'[tabindex]:not([tabindex="-1"]), button:not([disabled])',
-								) ??
-								body;
-							target.focus();
-						}
+						paneEntryTarget(event.currentTarget)?.focus();
 					}
 					if (event.key === "Escape" && !event.defaultPrevented) {
 						event.preventDefault();

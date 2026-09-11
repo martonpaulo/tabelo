@@ -2,6 +2,7 @@ import { cn } from "@tabelo/ui/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
+import { paneEntryTarget } from "@/ui/primitives/panel";
 import {
 	gridAreaOf,
 	layoutColumnSplitExtent,
@@ -217,9 +218,11 @@ export function Workspace({
 	// Focus that was inside a pane whose content has just been replaced is
 	// dropped to the document, and the grid deliberately declines to take it
 	// back: it never steals focus that is outside it. So the workspace places
-	// focus itself, on the active pane's frame, the same landing a pane the
-	// workspace creates uses. Only when focus was genuinely lost, so a caller
-	// that restores focus to its own opener still wins, and never on the first
+	// focus itself, where entering the active pane would put it: the grid's
+	// focused cell, a source editor, or the view's own entry target. Landing on
+	// the pane's frame, one level out, left the arrows doing nothing right after
+	// a paste (#350). Only when focus was genuinely lost, so a caller that
+	// restores focus to its own opener still wins, and never on the first
 	// render, where nothing has moved and a page load must not take focus.
 	useEffect(() => {
 		const changed = lastPaneViews.current !== paneViews;
@@ -227,9 +230,10 @@ export function Workspace({
 		if (!changed) return;
 		const active = window.document.activeElement;
 		if (active !== null && active !== window.document.body) return;
-		containerRef.current
-			?.querySelector<HTMLElement>(`[data-pane-id="${workspace.activePaneId}"]`)
-			?.focus();
+		const pane = containerRef.current?.querySelector<HTMLElement>(
+			`[data-pane-id="${workspace.activePaneId}"]`,
+		);
+		if (pane) (paneEntryTarget(pane) ?? pane).focus();
 	}, [paneViews, workspace.activePaneId]);
 
 	// A resizer is only meaningful where its axis actually splits, and stacking
