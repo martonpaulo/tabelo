@@ -213,3 +213,62 @@ test("the cell menu exposes explicit conversions and disables invalid ones", asy
 		await expect(option).toBeDisabled();
 	}
 });
+
+// #371: conversions that lose nothing run at once, and one that replaces a
+// value, or invents a boolean for an empty cell, asks first. Either way it is
+// one history step, and undo returns the exact previous value and type.
+test("a lossy or inventing Cell type change asks first; a lossless one does not", async ({
+	page,
+	tabelo,
+}) => {
+	const cell = tabelo.cell(1, 1);
+	const dialog = page.getByRole("dialog");
+
+	// An empty cell becomes null at once.
+	await tabelo.editCell(1, 2, "Rio");
+	await chooseCellType(page, tabelo, "null");
+	await expect(dialog).toBeHidden();
+	await expect(cell).toHaveAttribute("data-cell-type", "null");
+
+	// Null to boolean invents a value, so it asks; Cancel changes nothing.
+	await cell.click({ button: "right" });
+	await (await openCellTypeMenu(page))
+		.getByRole("menuitemradio", {
+			name: copy.cellTypes.real.boolean,
+			exact: true,
+		})
+		.click();
+	await expect(dialog).toBeVisible();
+	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
+	await expect(dialog).toBeHidden();
+	await expect(cell).toHaveAttribute("data-cell-type", "null");
+	await expect(cell).toBeFocused();
+
+	// The number 2 becomes true only after confirming, and undo gives back 2.
+	await enterCellText(tabelo, 1, 1, "2");
+	await chooseCellType(page, tabelo, "number");
+	await expect(dialog).toBeHidden();
+	await expect(cell).toHaveAttribute("data-cell-type", "number");
+	await cell.click({ button: "right" });
+	await (await openCellTypeMenu(page))
+		.getByRole("menuitemradio", {
+			name: copy.cellTypes.real.boolean,
+			exact: true,
+		})
+		.click();
+	await expect(dialog).toBeVisible();
+	await dialog
+		.getByRole("button", { name: copy.cellTypeChange.confirm })
+		.click();
+	await expect(cell).toHaveAttribute("data-cell-type", "boolean");
+	await tabelo.runAppCommand("undo");
+	await expect(cell).toHaveAttribute("data-cell-type", "number");
+	await expect(cell).toHaveAttribute("title", "2");
+
+	// Zero to false comes back as zero, so it runs at once.
+	await enterCellText(tabelo, 1, 1, "0");
+	await chooseCellType(page, tabelo, "number");
+	await chooseCellType(page, tabelo, "boolean");
+	await expect(dialog).toBeHidden();
+	await expect(cell).toHaveAttribute("data-cell-type", "boolean");
+});

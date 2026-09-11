@@ -32,6 +32,10 @@ import type { CellValueType } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { ContextMenuSelectionOption } from "@/ui/primitives/context-menu-selection-option";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
+import {
+	CellTypeChangeDialog,
+	type PendingCellTypeChange,
+} from "./cell-type-change-dialog";
 import { cellTypeOptions } from "./cell-type-options";
 import { targetAxisForMenu, targetCellForMenu } from "./menu-target";
 import { revealGridCell } from "./reveal-cell";
@@ -61,7 +65,12 @@ function singleSelectedCell(selection: GridSelection): CellPosition | null {
 	return range.focus;
 }
 
-function CellTypeMenuGroup() {
+function CellTypeMenuGroup({
+	onConfirmChange,
+}: {
+	// A change the core says to confirm first goes here instead of running.
+	readonly onConfirmChange: (change: PendingCellTypeChange) => void;
+}) {
 	const labelId = useId();
 	const document = useTabeloStore((state) => state.document);
 	const selection = useTabeloStore((state) => state.selection);
@@ -88,11 +97,22 @@ function CellTypeMenuGroup() {
 					aria-labelledby={labelId}
 					value={currentType ?? ""}
 					onValueChange={(next) => {
-						if (target) {
-							useTabeloStore
-								.getState()
-								.setCellType(target.row, target.column, next as CellValueType);
+						if (!target || value === undefined) return;
+						const type = next as CellValueType;
+						const change = convertCellValue(value, type);
+						if (change.ok && change.confirm) {
+							onConfirmChange({
+								position: target,
+								target: type,
+								before: value,
+								after: change.value,
+								confirm: change.confirm,
+							});
+							return;
 						}
+						useTabeloStore
+							.getState()
+							.setCellType(target.row, target.column, type);
 					}}
 				>
 					{cellTypeOptions.map((option) => {
@@ -136,6 +156,16 @@ export function GridContextMenu({
 	readonly wrapperRef?: RefObject<HTMLDivElement | null>;
 }) {
 	const [axis, setAxis] = useState<ContextAxis>("cell");
+	// A Cell type change waiting for the user's confirmation (#371). The last
+	// position outlives it, so focus can go back to that cell once the dialog
+	// has closed.
+	const [pendingChange, setPendingChange] =
+		useState<PendingCellTypeChange | null>(null);
+	const changedCell = useRef<CellPosition | null>(null);
+	const requestChange = (change: PendingCellTypeChange) => {
+		changedCell.current = change.position;
+		setPendingChange(change);
+	};
 
 	// Whether this opening of the menu ended in one of its own commands. Only
 	// then does the grid take focus back explicitly; a dismissal is somebody
@@ -192,97 +222,121 @@ export function GridContextMenu({
 	);
 
 	return (
-		<ContextMenu
-			onOpenChange={(open) => {
-				if (open) commandRan.current = false;
-			}}
-		>
-			<ContextMenuTrigger
-				render={
-					<div
-						ref={wrapperRef}
-						data-grid-surface
-						className="relative min-w-max"
-					/>
-				}
-				onContextMenuCapture={(event: React.MouseEvent) => {
-					const target = event.target as HTMLElement | null;
-
-					// Right-clicking outside the current selection moves it there
-					// first, so the menu always acts on what was clicked.
-					const cell = target?.closest<HTMLElement>("[data-cell]");
-					const rowHeader = target?.closest<HTMLElement>("[data-row-header]");
-					const columnHeader = target?.closest<HTMLElement>(
-						"[data-column-header]",
-					);
-
-					if (columnHeader) {
-						setAxis("column");
-						targetAxisForMenu(
-							"column",
-							Number(columnHeader.dataset.columnHeader),
-						);
-						return;
-					}
-					if (rowHeader) {
-						setAxis("row");
-						targetAxisForMenu("row", Number(rowHeader.dataset.rowHeader));
-						return;
-					}
-					if (cell) {
-						const [row, column] = (cell.dataset.cell ?? "0:0")
-							.split(":")
-							.map(Number);
-						setAxis("cell");
-						targetCellForMenu(row ?? 0, column ?? 0);
-						return;
-					}
-					setAxis("cell");
+		<>
+			<ContextMenu
+				onOpenChange={(open) => {
+					if (open) commandRan.current = false;
 				}}
 			>
-				{children}
-			</ContextMenuTrigger>
+				<ContextMenuTrigger
+					render={
+						<div
+							ref={wrapperRef}
+							data-grid-surface
+							className="relative min-w-max"
+						/>
+					}
+					onContextMenuCapture={(event: React.MouseEvent) => {
+						const target = event.target as HTMLElement | null;
 
-			<ContextMenuContent className="w-auto min-w-56" finalFocus={finalFocus}>
-				{axis === "cell" ? (
-					<>
-						<CellTypeMenuGroup />
-						<ContextMenuSeparator />
-					</>
-				) : null}
-				{buildTableActions({ axis }).map((group, index) => (
-					<Fragment key={group.id}>
-						{index > 0 ? <ContextMenuSeparator /> : null}
-						{group.submenu && group.label ? (
-							<ContextMenuGroup>
-								<ContextMenuSub>
-									<ContextMenuSubTrigger>
-										<group.submenu.icon aria-hidden />
-										{group.label}
-									</ContextMenuSubTrigger>
-									<ContextMenuSubContent
-										aria-label={group.label}
-										// A command chosen here closes the whole menu, so it
-										// hands focus back the way a first-level one does.
-										finalFocus={finalFocus}
-									>
-										{group.actions.map(item)}
-									</ContextMenuSubContent>
-								</ContextMenuSub>
-							</ContextMenuGroup>
-						) : (
-							<ContextMenuGroup aria-labelledby={group.labelId}>
-								{group.label && group.labelId ? (
-									<ContextMenuLabel id={group.labelId}>
-										{group.label}
-									</ContextMenuLabel>
-								) : null}
-								{group.actions.map(item)}
-							</ContextMenuGroup>
-						)}
-					</Fragment>
-				))}
-			</ContextMenuContent>
-		</ContextMenu>
+						// Right-clicking outside the current selection moves it there
+						// first, so the menu always acts on what was clicked.
+						const cell = target?.closest<HTMLElement>("[data-cell]");
+						const rowHeader = target?.closest<HTMLElement>("[data-row-header]");
+						const columnHeader = target?.closest<HTMLElement>(
+							"[data-column-header]",
+						);
+
+						if (columnHeader) {
+							setAxis("column");
+							targetAxisForMenu(
+								"column",
+								Number(columnHeader.dataset.columnHeader),
+							);
+							return;
+						}
+						if (rowHeader) {
+							setAxis("row");
+							targetAxisForMenu("row", Number(rowHeader.dataset.rowHeader));
+							return;
+						}
+						if (cell) {
+							const [row, column] = (cell.dataset.cell ?? "0:0")
+								.split(":")
+								.map(Number);
+							setAxis("cell");
+							targetCellForMenu(row ?? 0, column ?? 0);
+							return;
+						}
+						setAxis("cell");
+					}}
+				>
+					{children}
+				</ContextMenuTrigger>
+
+				<ContextMenuContent className="w-auto min-w-56" finalFocus={finalFocus}>
+					{axis === "cell" ? (
+						<>
+							<CellTypeMenuGroup onConfirmChange={requestChange} />
+							<ContextMenuSeparator />
+						</>
+					) : null}
+					{buildTableActions({ axis }).map((group, index) => (
+						<Fragment key={group.id}>
+							{index > 0 ? <ContextMenuSeparator /> : null}
+							{group.submenu && group.label ? (
+								<ContextMenuGroup>
+									<ContextMenuSub>
+										<ContextMenuSubTrigger>
+											<group.submenu.icon aria-hidden />
+											{group.label}
+										</ContextMenuSubTrigger>
+										<ContextMenuSubContent
+											aria-label={group.label}
+											// A command chosen here closes the whole menu, so it
+											// hands focus back the way a first-level one does.
+											finalFocus={finalFocus}
+										>
+											{group.actions.map(item)}
+										</ContextMenuSubContent>
+									</ContextMenuSub>
+								</ContextMenuGroup>
+							) : (
+								<ContextMenuGroup aria-labelledby={group.labelId}>
+									{group.label && group.labelId ? (
+										<ContextMenuLabel id={group.labelId}>
+											{group.label}
+										</ContextMenuLabel>
+									) : null}
+									{group.actions.map(item)}
+								</ContextMenuGroup>
+							)}
+						</Fragment>
+					))}
+				</ContextMenuContent>
+			</ContextMenu>
+			<CellTypeChangeDialog
+				change={pendingChange}
+				onCancel={() => setPendingChange(null)}
+				onConfirm={(change) => {
+					useTabeloStore
+						.getState()
+						.setCellType(
+							change.position.row,
+							change.position.column,
+							change.target,
+						);
+					setPendingChange(null);
+				}}
+				finalFocus={() => {
+					const position = changedCell.current;
+					return position
+						? (wrapperRef?.current?.querySelector<HTMLElement>(
+								`[data-cell="${position.row}:${position.column}"]`,
+							) ?? null)
+						: null;
+				}}
+			/>
+		</>
 	);
 }

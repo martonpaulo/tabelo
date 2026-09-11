@@ -600,6 +600,19 @@ export const copy = {
 		saveError: "The table name could not be saved. Try again.",
 	},
 
+	// Confirming a Cell type change that replaces a value (#371). Values are
+	// shown the way a person could tell them apart: text in quotes, so an empty
+	// cell reads as "" and the number 35 is not mistaken for the text "35".
+	cellTypeChange: {
+		title: (label: string) => `Change this cell to ${label.toLowerCase()}?`,
+		fillsEmpty: (after: string) => `The empty cell becomes ${after}.`,
+		losesOriginal: (before: string, after: string, back: string | null) =>
+			back === null
+				? `${before} becomes ${after}. Changing the type back cannot bring ${before} back.`
+				: `${before} becomes ${after}. Changing the type back gives ${back}, not ${before}.`,
+		confirm: "Change type",
+	},
+
 	// Typing a column's exact width (#370). Widths are rem, the unit the width
 	// announcements already speak, so the number here and the one read out
 	// after a keyboard resize are the same number.

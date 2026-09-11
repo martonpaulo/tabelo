@@ -558,7 +558,11 @@ and boolean. Changing it updates the column expectation only and never converts
 existing cells. A data cell's context menu owns the corresponding `Cell type`
 radio group for string, number, boolean, and null. A valid different choice is
 one explicit conversion and one document-history step. A conversion that the
-current value cannot represent stays visible but disabled with its reason. The
+current value cannot represent stays visible but disabled with its reason. One
+that would lose the value it replaces, or invent a boolean for an empty cell,
+asks first in a dialog naming the value before, the value after, and what
+changing the type back would give; the table and the loss rule live in ADR 0008
+(#371). The
 group requires exactly one selected data cell and never picks one silently from
 a larger or non-contiguous selection.
 
