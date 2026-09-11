@@ -8,7 +8,7 @@
 
 **One table, multiple views, zero copy-and-paste between them.**
 
-Tabelo is a small table editor for the moments when a spreadsheet is too much,
+Tabelo is a table editor for the moments when a spreadsheet is too much,
 but hand-editing pipes and commas is no fun either. Change a cell in the visual
 table and the Markdown updates. Fix the CSV and the table updates. Open
 up to four views and they all stay in sync.
