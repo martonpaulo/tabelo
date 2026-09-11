@@ -700,9 +700,9 @@ close, stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
 Every action collection uses the menu primitive's semantic Group, in dropdown
 and context menus alike. A visible group title is reserved for Expected type and
 Edit. It is canonical copy rendered through GroupLabel, and the Group is named
-with `aria-labelledby`. Clipboard, Insert, Remove, and the single
-self-explanatory Fit column to content action remain untitled semantic groups,
-without an empty label. Alignment, Cell type, Move, Fill, and Move focus are
+with `aria-labelledby`. Clipboard, Insert, Remove, and the self-explanatory
+width actions (Fit column to content, Set column width) remain untitled
+semantic groups, without an empty label. Alignment, Cell type, Move, Fill, and Move focus are
 named by their submenu trigger and by that menu's own accessible name instead,
 so their items travel into the child menu without a GroupLabel of their own. Group labels
 are non-interactive and arrow-key navigation skips them. App and pane menus
@@ -1639,8 +1639,14 @@ the grid commits the open editor before the destination takes focus, just like
 that proves it: the drag handle stays pointer-only and `aria-hidden`, while
 `Alt`+`Shift`+Left/Right resizes the focused column and announces the resulting
 width or limit through the grid status channel. The column menu adds Fit column
-to content for the common automatic case, not stepping commands or a live
-numeric readout. The modifier click that builds a selection out of several
+to content for the common automatic case and Set column width for an exact
+one (#370), not stepping commands or a live numeric readout. Set column width
+opens a dialog, because a typed number is a choice a menu cannot hold: it takes
+the width in rem, the unit the announcements speak, refuses a value outside the
+bounds rather than clamping it, says when the column is at the default, and
+offers Use default to go back to it. Rows have no height setting: a row is as
+tall as its text, and a fixed height would clip a wrapped value (#370).
+The modifier click that builds a selection out of several
 areas is the same obligation, and the two `Space` chords above are its answer.
 
 **An equal is an addition, never a replacement.** Reordering ships both ways:

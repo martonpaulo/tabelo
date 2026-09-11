@@ -55,6 +55,7 @@ import {
 	expectedCellValueType,
 } from "./cell-type";
 import { CellTypeMark } from "./cell-type-mark";
+import { ColumnWidthDialog } from "./column-width-dialog";
 import { FillHandle } from "./fill-handle";
 import { FillPreview, type FillPreviewSetter } from "./fill-preview";
 import { GridContextMenu } from "./grid-context-menu";
@@ -385,6 +386,17 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		null,
 	);
 	const [typedDialogOpen, setTypedDialogOpen] = useState(false);
+	// The column whose exact width is being typed (#370). The ref outlives the
+	// closing state so focus can return to that column's header after the
+	// dialog's exit transition, when the state is already null.
+	const [widthDialogColumn, setWidthDialogColumn] = useState<number | null>(
+		null,
+	);
+	const widthDialogColumnRef = useRef<number | null>(null);
+	const openWidthDialog = useCallback((column: number) => {
+		widthDialogColumnRef.current = column;
+		setWidthDialogColumn(column);
+	}, []);
 	// The synchronous mirror lets pointer capture know that blurring an editor
 	// opened a modal before React has committed the state update. The pointer
 	// must not also select whatever happened to be underneath that dialog.
@@ -1408,7 +1420,19 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			{/* The one root behind every gutter trigger above. It sits outside the
 			    table so it is never a child of a <tr>, and it portals its popup
 			    anyway, so its position in the tree carries no layout. */}
-			<AxisMenuPopupHost handle={axisMenuHandle} />
+			<AxisMenuPopupHost
+				handle={axisMenuHandle}
+				onSetColumnWidth={openWidthDialog}
+			/>
+			<ColumnWidthDialog
+				column={widthDialogColumn}
+				onClose={() => setWidthDialogColumn(null)}
+				finalFocus={() =>
+					gridRef.current?.querySelector<HTMLElement>(
+						`[data-cell="${HEADER_ROW}:${widthDialogColumnRef.current}"]`,
+					) ?? null
+				}
+			/>
 			<TypedCellDecisionDialog
 				decision={typedDecision}
 				open={typedDialogOpen}

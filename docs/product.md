@@ -140,6 +140,7 @@ reversible implementation choice does not belong here.
 | Header import | Read an explicit format header; otherwise ask rather than guess | `AGENTS.md` domain rules | #23 |
 | Table name | Renamed from the App Menu, outside undo; the browser title is `Table name · Tabelo` | design system §3 | #82 |
 | Column width owner | A workspace preference keyed by column id | `CONTEXT.md` | #137 |
+| Column and row size | A column width can be typed exactly or reset to the default; rows have no height setting and follow their text | design system §9 | #370 |
 | Column width commands | Pointer resize, Fit column to content, and a keyboard resize | design system §9 | #81 |
 | Cell types | Carried, never inferred from appearance | ADR 0008 | #147 |
 | JSON shape | An array of row objects with explicit serializer preconditions | `CONTEXT.md` | #42, #145 |

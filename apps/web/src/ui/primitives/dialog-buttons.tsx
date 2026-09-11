@@ -70,8 +70,27 @@ export function DialogConfirm({
 	);
 }
 
+// An ordinary alternative can be unavailable too, with the same written reason
+// and keyboard reach as Confirm above.
 export function DialogAlternative({
+	disabledReason,
 	...props
-}: Omit<React.ComponentProps<typeof Button>, "variant" | "size">) {
-	return <Button {...props} data-variant="ghost" variant="ghost" />;
+}: Omit<
+	React.ComponentProps<typeof Button>,
+	"variant" | "size" | "disabled" | "focusableWhenDisabled"
+> & {
+	readonly disabledReason?: string;
+}) {
+	const unavailable = disabledReason !== undefined;
+	return (
+		<DisabledTooltip reason={disabledReason}>
+			<Button
+				{...props}
+				disabled={unavailable}
+				focusableWhenDisabled={unavailable}
+				data-variant="ghost"
+				variant="ghost"
+			/>
+		</DisabledTooltip>
+	);
 }

@@ -73,3 +73,25 @@ export function atMinimumColumnWidth(width: number | undefined): boolean {
 export function atMaximumColumnWidth(width: number | undefined): boolean {
 	return resolveColumnWidth(width) >= MAX_COLUMN_WIDTH - COLUMN_WIDTH_TOLERANCE;
 }
+
+export type ColumnWidthEntry =
+	| { readonly ok: true; readonly width: number }
+	| {
+			readonly ok: false;
+			readonly reason: "not-a-number" | "too-small" | "too-large";
+	  };
+
+// A width typed as a number (#370). It is refused rather than clamped when it
+// falls outside the bounds, because the user asked for that exact number and
+// quietly getting another one is the surprise the dialog exists to avoid. An
+// accepted value keeps the stored precision every other path uses.
+export function parseColumnWidth(text: string): ColumnWidthEntry {
+	const match = /^(\d+(?:\.\d+)?|\.\d+)\s*(?:rem)?$/i.exec(text.trim());
+	const value = match?.[1] === undefined ? Number.NaN : Number(match[1]);
+	if (!Number.isFinite(value)) return { ok: false, reason: "not-a-number" };
+	if (value < MIN_COLUMN_WIDTH - COLUMN_WIDTH_TOLERANCE)
+		return { ok: false, reason: "too-small" };
+	if (value > MAX_COLUMN_WIDTH + COLUMN_WIDTH_TOLERANCE)
+		return { ok: false, reason: "too-large" };
+	return { ok: true, width: clampColumnWidth(value) };
+}

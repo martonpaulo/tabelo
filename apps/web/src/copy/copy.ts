@@ -552,6 +552,7 @@ export const copy = {
 		selectRow: "Select row",
 		selectColumn: "Select column",
 		fitColumnToContent: "Fit column to content",
+		setColumnWidth: "Set column width",
 		wrapColumnText: "Wrap text",
 		// Offered on the first data row and the first data column only, which is
 		// the axis each one pins, so the label says what it does rather than
@@ -591,6 +592,24 @@ export const copy = {
 		tooLong: "Use 120 characters or fewer.",
 		unchanged: "Enter a different table name.",
 		saveError: "The table name could not be saved. Try again.",
+	},
+
+	// Typing a column's exact width (#370). Widths are rem, the unit the width
+	// announcements already speak, so the number here and the one read out
+	// after a keyboard resize are the same number.
+	columnWidth: {
+		dialogTitle: (column: string) => `Column ${column} width`,
+		description: (min: number, max: number, fallback: number) =>
+			`A width from ${min} to ${max} rem. The default is ${fallback} rem.`,
+		label: "Width in rem",
+		isDefault: "This is the default width.",
+		useDefault: "Use default",
+		alreadyDefault: "This column already has the default width.",
+		confirm: "Set width",
+		unchanged: "Enter a different width.",
+		notANumber: "Enter a number, for example 12.",
+		tooSmall: (min: number) => `Use ${min} rem or more.`,
+		tooLarge: (max: number) => `Use ${max} rem or less.`,
 	},
 
 	addView: {

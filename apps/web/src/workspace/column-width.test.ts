@@ -9,6 +9,7 @@ import {
 	isSameColumnWidth,
 	MAX_COLUMN_WIDTH,
 	MIN_COLUMN_WIDTH,
+	parseColumnWidth,
 	resolveColumnWidth,
 	stepColumnWidth,
 } from "./column-width";
@@ -55,5 +56,48 @@ describe("workspace column width arithmetic", () => {
 		expect(isSameColumnWidth(12.5, 13)).toBe(false);
 		expect(atMinimumColumnWidth(MIN_COLUMN_WIDTH)).toBe(true);
 		expect(atMaximumColumnWidth(MAX_COLUMN_WIDTH)).toBe(true);
+	});
+});
+
+describe("typed column width", () => {
+	it("accepts a plain number of rem, with or without the unit", () => {
+		expect(parseColumnWidth("12")).toEqual({ ok: true, width: 12 });
+		expect(parseColumnWidth(" 12.5 rem ")).toEqual({ ok: true, width: 12.5 });
+		expect(parseColumnWidth(".5e1")).toEqual({
+			ok: false,
+			reason: "not-a-number",
+		});
+	});
+
+	it("keeps the stored precision of one sixteenth of a rem", () => {
+		expect(parseColumnWidth("12.03")).toEqual({ ok: true, width: 12 });
+	});
+
+	it("refuses anything that is not a number", () => {
+		for (const text of ["", " ", "wide", "12px", "-5", "1,5", "Infinity"]) {
+			expect(parseColumnWidth(text)).toEqual({
+				ok: false,
+				reason: "not-a-number",
+			});
+		}
+	});
+
+	it("refuses a width outside the bounds instead of silently clamping it", () => {
+		expect(parseColumnWidth(String(MIN_COLUMN_WIDTH - 1))).toEqual({
+			ok: false,
+			reason: "too-small",
+		});
+		expect(parseColumnWidth(String(MAX_COLUMN_WIDTH + 1))).toEqual({
+			ok: false,
+			reason: "too-large",
+		});
+		expect(parseColumnWidth(String(MIN_COLUMN_WIDTH))).toEqual({
+			ok: true,
+			width: MIN_COLUMN_WIDTH,
+		});
+		expect(parseColumnWidth(String(MAX_COLUMN_WIDTH))).toEqual({
+			ok: true,
+			width: MAX_COLUMN_WIDTH,
+		});
 	});
 });

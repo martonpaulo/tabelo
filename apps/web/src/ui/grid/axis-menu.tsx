@@ -27,6 +27,7 @@ import {
 	ChevronsLeftRight,
 	MoreVertical,
 	Pin,
+	Ruler,
 	WrapText,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -99,6 +100,12 @@ interface AxisMenuPayload {
 	readonly axis: PinnedGridAxis;
 	readonly index: number;
 	readonly measureFitWidth?: () => number | undefined;
+}
+
+// What the grid lends every menu body: commands that open a surface the menu
+// cannot hold, like the column width dialog (#370).
+interface AxisMenuHostActions {
+	readonly onSetColumnWidth?: (index: number) => void;
 }
 
 export type AxisMenuHandle = DropdownMenuHandle<AxisMenuPayload>;
@@ -189,9 +196,10 @@ export function AxisMenuTrigger({
 // The one root every trigger opens. Mount it once anywhere inside the grid.
 export function AxisMenuPopupHost({
 	handle,
+	onSetColumnWidth,
 }: {
 	readonly handle: AxisMenuHandle;
-}) {
+} & AxisMenuHostActions) {
 	return (
 		<DropdownMenu handle={handle}>
 			{({ payload }) =>
@@ -205,6 +213,7 @@ export function AxisMenuPopupHost({
 						<AxisMenuBody
 							key={`${payload.axis}:${payload.index}`}
 							{...payload}
+							onSetColumnWidth={onSetColumnWidth}
 						/>
 					</DropdownMenuContent>
 				) : null
@@ -215,7 +224,12 @@ export function AxisMenuPopupHost({
 
 // Only ever rendered while its menu is open, so a broader store read here costs
 // nothing per keystroke the way one in the trigger would.
-function AxisMenuBody({ axis, index, measureFitWidth }: AxisMenuPayload) {
+function AxisMenuBody({
+	axis,
+	index,
+	measureFitWidth,
+	onSetColumnWidth,
+}: AxisMenuPayload & AxisMenuHostActions) {
 	const column = useTabeloStore((state) =>
 		axis === "column" ? state.document.columns[index] : undefined,
 	);
@@ -271,6 +285,12 @@ function AxisMenuBody({ axis, index, measureFitWidth }: AxisMenuPayload) {
 								{copy.actions.fitColumnToContent}
 							</DropdownMenuItem>
 						</DisabledTooltip>
+						{onSetColumnWidth ? (
+							<DropdownMenuItem onClick={() => onSetColumnWidth(index)}>
+								<Ruler aria-hidden />
+								{copy.actions.setColumnWidth}
+							</DropdownMenuItem>
+						) : null}
 						<DropdownMenuCheckboxItem
 							checked={wrapped}
 							closeOnClick={false}

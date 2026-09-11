@@ -1308,3 +1308,54 @@ test("editing a wrapped cell keeps its row tall enough for the editor", async ({
 		.evaluate((cell) => cell.getBoundingClientRect().top);
 	expect(nextRowTop).toBeGreaterThanOrEqual(Math.floor(editorBottom));
 });
+
+// #370: a column's width can be typed exactly and returned to the default. The
+// assertions are directions (wider, back narrower, unchanged), never sizes.
+test("a typed column width applies, refuses out-of-range values, and resets", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editHeader(1, "Name");
+	const header = tabelo.header(1);
+	const width = async () => (await header.boundingBox())?.width ?? 0;
+	const original = await width();
+
+	const openDialog = async () => {
+		const menu = await tabelo.openColumnMenu(1);
+		await menu
+			.getByRole("menuitem", { name: copy.actions.setColumnWidth })
+			.click();
+		const dialog = page.getByRole("dialog");
+		await expect(dialog).toBeVisible();
+		return dialog;
+	};
+
+	// A default column says so, and has nothing to reset.
+	let dialog = await openDialog();
+	const field = dialog.getByRole("textbox");
+	await expect(field).toBeFocused();
+	await expect(
+		dialog.getByRole("button", { name: copy.columnWidth.useDefault }),
+	).toHaveAttribute("aria-disabled", "true");
+
+	// Out of range is refused with a message, and the dialog stays open.
+	await page.keyboard.type("1000");
+	await page.keyboard.press("Enter");
+	await expect(field).toHaveAttribute("aria-invalid", "true");
+	await expect(dialog.getByRole("alert")).toBeVisible();
+
+	// A valid number applies, and focus returns to the column's header.
+	await field.fill("20");
+	await page.keyboard.press("Enter");
+	await expect(dialog).toBeHidden();
+	await expect.poll(width).toBeGreaterThan(original);
+	await expect(header).toBeFocused();
+
+	// Use default puts it back.
+	dialog = await openDialog();
+	await dialog
+		.getByRole("button", { name: copy.columnWidth.useDefault })
+		.click();
+	await expect(dialog).toBeHidden();
+	await expect.poll(width).toBeLessThan(original + 1);
+});
