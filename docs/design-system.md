@@ -1825,12 +1825,29 @@ unchanged and the non-sticky users of the same tokens are untouched. Any other
 sticky cell that carries a tint reuses that utility rather than raising a token
 to full opacity.
 
-The numbered row gutter is interface chrome, not selected data. It never takes
-`--selection-fill`, even when its row or the whole table is selected. Every
-number is right-aligned and normal weight, including row 1, matching source and
-read-only view line gutters. Row 1 keeps the same row-actions control as every
-data row; actions that cannot apply to the required header remain disabled and
-explain why.
+The numbered row gutter and the column index strip are interface chrome, not
+selected data, but they show where the selection is. A row number or column
+letter that any selected area reaches takes `--surface-axis-selected`, a
+neutral step above the chrome it sits on, and its label turns from muted
+normal weight to semibold foreground; under forced colours it takes the system
+highlight pair. The header row's number takes part like any other. The surface
+stays darker than `--line-subtle`, so every divider still reads across it and
+the line rule above holds in every state. It never takes `--selection-fill`:
+that colour means selected data, and chrome painted the same way reads as part
+of the selection. Two other treatments were tried and rejected on #291: an edge
+line on the side facing the table read as a stray fragment of the focus
+outline, and a lighter fill swallowed the grid lines until they had to be
+redrawn in another colour.
+
+The mark is derived from the selection on every render and is never stored as a
+second record of it. It is presentation only: `aria-selected` and the selection
+announcement stay on the cells, and an axis that merely contains selected cells
+is not exposed as if the whole row or column were selected. Reorder grips and
+axis-menu triggers still follow focus alone. At rest every number is
+right-aligned and normal weight, including row 1, matching source and read-only
+view line gutters. Row 1 keeps the same row-actions control as every data row;
+actions that cannot apply to the required header remain disabled and explain
+why.
 
 Cell wrapping is a persisted workspace preference per column, keyed by the
 column's stable id and off by default. It never changes the document, codecs,

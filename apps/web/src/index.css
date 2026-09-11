@@ -13,6 +13,7 @@
 	--color-surface-header: var(--surface-header);
 	--color-surface-table-header: var(--surface-table-header);
 	--color-surface-gutter: var(--surface-gutter);
+	--color-surface-axis-selected: var(--surface-axis-selected);
 	--color-surface-readonly: var(--surface-readonly);
 	--color-surface-floating: var(--surface-floating);
 
@@ -79,6 +80,11 @@
 	--surface-header: #333333;
 	--surface-table-header: rgb(77 166 255 / 10%);
 	--surface-gutter: #333333;
+	/* A column letter or row number that the selection reaches. A neutral step
+	   above the chrome it sits on, never the selection tint: that colour means
+	   selected data, and the letters and numbers are controls. It stays darker
+	   than `--line-subtle` so every divider still reads across it. */
+	--surface-axis-selected: #3d3d3d;
 	--surface-readonly: #242424;
 	--surface-floating: #3a3a3a;
 
@@ -266,6 +272,15 @@ textarea,
 @media (forced-colors: active) {
 	[data-cell-type-mark] {
 		color: CanvasText;
+	}
+
+	/* Forced colours drops the neutral surface that marks where the selection
+	   is, so the letters and numbers the selection reaches take the system's
+	   own highlight pair instead of losing the mark. */
+	[data-axis-selected] {
+		forced-color-adjust: none;
+		background-color: Highlight;
+		color: HighlightText;
 	}
 
 	/* Forced colours paints no background image, so the source views' space dot

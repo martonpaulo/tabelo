@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
+import { HEADER_ROW } from "@/core/selection";
 import { expect, test } from "./fixtures";
 import type { TabeloPage } from "./helpers";
 
@@ -194,36 +195,12 @@ test("Mod+A then Backspace clears the headers along with the cells", async ({
 	await expect(tabelo.header(1)).toHaveText("Name");
 
 	await tabelo.cell(1, 1).click();
-	const stripFill = await tabelo
-		.columnIndex(1)
-		.evaluate((element) => getComputedStyle(element).backgroundColor);
-	const gutterFills = await tabelo
-		.grid()
-		.locator("[data-row-header]")
-		.evaluateAll((gutters) =>
-			gutters.map((gutter) => getComputedStyle(gutter).backgroundColor),
-		);
 	await tabelo.page.keyboard.press(`${modifier}+a`);
 
 	// The selection says it covers the header row, and this is the assertion the
 	// defect inverted: the next keystroke has to honour it.
 	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "true");
 	await expect(tabelo.header(2)).toHaveAttribute("aria-selected", "true");
-	await expect
-		.poll(() =>
-			tabelo
-				.columnIndex(1)
-				.evaluate((element) => getComputedStyle(element).backgroundColor),
-		)
-		.toBe(stripFill);
-	expect(
-		await tabelo
-			.grid()
-			.locator("[data-row-header]")
-			.evaluateAll((gutters) =>
-				gutters.map((gutter) => getComputedStyle(gutter).backgroundColor),
-			),
-	).toEqual(gutterFills);
 
 	await tabelo.page.keyboard.press("Backspace");
 
@@ -235,6 +212,58 @@ test("Mod+A then Backspace clears the headers along with the cells", async ({
 	await tabelo.runAppCommand("undo");
 	await expect(tabelo.header(1)).toHaveText("Name");
 	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+});
+
+// The letters and row numbers show where the selection is, so the user can
+// find their place from the edge of the grid. Which ones carry the mark is the
+// technical contract; the mark itself is a neutral surface, never the fill that
+// means selected data, which is read here as the pair the cells would paint.
+function axisMarked(locator: Locator): Promise<boolean> {
+	return locator.evaluate((element) =>
+		element.hasAttribute("data-axis-selected"),
+	);
+}
+
+test("the letters and row numbers of a selection are marked, and only those", async ({
+	tabelo,
+}) => {
+	await tabelo.paste(
+		"Name\tCity\tRole\nIngrid\tRio\tDesigner\nPaulo\tMadrid\tDeveloper",
+	);
+	const letter = (column: number) => axisMarked(tabelo.columnIndex(column));
+	const number = (row: number) =>
+		axisMarked(tabelo.grid().locator(`[data-row-header="${row}"]`));
+
+	// One cell: its own letter and number, nothing beside them.
+	await tabelo.cell(1, 1).click();
+	await expect.poll(() => letter(1)).toBe(true);
+	expect(await letter(2)).toBe(false);
+	expect(await number(0)).toBe(true);
+	expect(await number(1)).toBe(false);
+	expect(await number(HEADER_ROW)).toBe(false);
+
+	// The mark is chrome, so it never wears the selected cells' own fill.
+	const fill = (locator: Locator) =>
+		locator.evaluate((element) => getComputedStyle(element).backgroundColor);
+	expect(await fill(tabelo.columnIndex(1))).not.toBe(
+		await fill(tabelo.cell(1, 1)),
+	);
+	expect(await fill(tabelo.columnIndex(1))).not.toBe(
+		await fill(tabelo.columnIndex(2)),
+	);
+
+	// A range: every letter and number it touches, and nothing beyond it.
+	await tabelo.cell(2, 2).click({ modifiers: ["Shift"] });
+	await expect.poll(() => letter(2)).toBe(true);
+	expect(await number(1)).toBe(true);
+	expect(await letter(3)).toBe(false);
+
+	// The editable header row takes part like any other row.
+	await tabelo.header(3).click();
+	await expect.poll(() => number(HEADER_ROW)).toBe(true);
+	expect(await letter(3)).toBe(true);
+	expect(await letter(1)).toBe(false);
+	expect(await number(0)).toBe(false);
 });
 
 test("Shift and arrows extend the selection into the header row", async ({

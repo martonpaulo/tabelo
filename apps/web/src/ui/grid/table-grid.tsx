@@ -81,6 +81,15 @@ import {
 } from "./use-grid-autoscroll";
 import { usePinnedAxes } from "./use-pinned-axes";
 
+// Where the selection is, marked on the chrome at the grid's edge. Never the
+// selection fill: that colour means selected data, and the letters and numbers
+// are controls, so painting them alike made the gutter read as part of the
+// selection. They take a neutral surface one step up and a full-strength,
+// heavier label instead, and never touch a line: the grid's dividers mean the
+// same thing whatever is selected. See docs/design-system.md.
+const selectedAxisClass =
+	"bg-surface-axis-selected font-semibold text-foreground";
+
 const alignClass: Record<Alignment, string> = {
 	default: "text-left",
 	left: "text-left",
@@ -365,6 +374,9 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		document.columns.length,
 	);
 	const focus = activeRange(selection).focus;
+	const headerRowSelected = rects.some(
+		(rect) => HEADER_ROW >= rect.top && HEADER_ROW <= rect.bottom,
+	);
 	const fillSource = selectionFillRefusal(
 		selection,
 		document.rows.length,
@@ -1129,6 +1141,9 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							header={column.header}
 							expectedType={column.expectedType}
 							focused={focus.column === columnIndex}
+							selected={rects.some(
+								(rect) => columnIndex >= rect.left && columnIndex <= rect.right,
+							)}
 							width={resolveColumnWidth(columnWidths[column.id])}
 							zoom={zoom}
 							pinned={pinnedColumn && columnIndex === 0}
@@ -1189,7 +1204,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								// Before the strip existed this lookup found nothing and the
 								// menu fell through to cell actions on a non-cell.
 								data-row-header={HEADER_ROW}
-								className="sticky top-grid-strip left-0 z-30 border-line-strong border-r border-b border-b-line-subtle bg-surface-gutter px-1 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums"
+								className={cn(
+									"sticky top-grid-strip left-0 z-30 border-line-strong border-r border-b border-b-line-subtle bg-surface-gutter px-1 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums",
+									headerRowSelected && selectedAxisClass,
+								)}
+								data-axis-selected={headerRowSelected || undefined}
 								onPointerEnter={() => {
 									if (draggingRef.current !== "row") return;
 									selectRow(HEADER_ROW, "extend");
@@ -1481,9 +1500,14 @@ const DataRow = memo(function DataRow({
 					// The row's number and its menu are how the row identifies itself,
 					// so they hold position with it. Pinned it sticks on both axes and
 					// joins the corner layer, like the header row's own gutter cell.
+					// A row holding any selected cell marks its number, from the
+					// same spans that paint its cells, so there is no second record
+					// of which rows are selected.
+					selectedSpans !== "" && selectedAxisClass,
 					pinnedRow ? "top-(--grid-pin-top) z-30" : "z-10",
 					pinnedRow && "border-b-line-strong",
 				)}
+				data-axis-selected={selectedSpans !== "" || undefined}
 				onPointerEnter={() => {
 					if (draggingRef.current !== "row") return;
 					selectRow(rowIndex, "extend");
@@ -1713,6 +1737,10 @@ interface ColumnIndexCellProps {
 	readonly expectedType: ExpectedColumnType;
 	// The column the user is working in, which is where its actions appear.
 	readonly focused: boolean;
+	// Whether any selected area reaches this column. Presentation only: it
+	// marks the letter so the user can find their place from the edge of the
+	// grid, while focus alone still decides where the column's actions appear.
+	readonly selected: boolean;
 	// The stored width is in rem. Zoom scales what is rendered, so the drag
 	// gesture converts viewport pixels back before writing a width down.
 	readonly width: number;
@@ -1776,6 +1804,7 @@ function ColumnIndexCell({
 	header,
 	expectedType,
 	focused,
+	selected,
 	width,
 	zoom,
 	pinned,
@@ -1830,6 +1859,7 @@ function ColumnIndexCell({
 			data-column-header={columnIndex}
 			data-column-letter={letter}
 			data-expected-type={expectedType}
+			data-axis-selected={selected || undefined}
 			className={cn(
 				// The line between two letters is the column's own divider, carried
 				// up from the table, so it matches the cells below it; the strip's
@@ -1837,6 +1867,7 @@ function ColumnIndexCell({
 				// line.
 				"group/col min-w-0 border-r border-r-line-subtle border-b border-b-line-strong",
 				"bg-surface-header px-1 text-center font-index font-normal text-muted-foreground text-xs",
+				selected && selectedAxisClass,
 				// Pinned it sticks sideways and joins the corner layer, beside the
 				// dead corner where the letters meet the row numbers. The strip
 				// itself owns the vertical stickiness for every cell.
