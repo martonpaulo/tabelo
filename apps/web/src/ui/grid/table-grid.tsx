@@ -1664,7 +1664,7 @@ const DataRow = memo(function DataRow({
 										"min-w-0",
 										wrapped
 											? "whitespace-pre-wrap break-words"
-											: "overflow-hidden whitespace-pre",
+											: "overflow-hidden text-ellipsis whitespace-pre",
 										type !== "string" && "font-value",
 										cellTypePresentationClass(type),
 									)}
@@ -2057,7 +2057,7 @@ function HeaderCell({
 						"block leading-content-line-box",
 						wrapped
 							? "min-h-grid-row whitespace-pre-wrap break-words"
-							: "h-content-line-box overflow-hidden whitespace-pre",
+							: "h-content-line-box overflow-hidden text-ellipsis whitespace-pre",
 					)}
 				>
 					{markedValue(header, markStart, markEnd)}
