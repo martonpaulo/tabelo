@@ -177,14 +177,20 @@ function storageNotice(issue: StorageIssue | null): AppNotice | null {
 	if (issue.kind === "unreadable") {
 		return {
 			...base,
-			message: copy.notices.savedTableUnreadable,
-			detail: recoveryFailure(issue.replacementFailure),
+			message: copy.notices.savedTableUnreadable[issue.reason],
+			detail:
+				recoveryFailure(issue.replacementFailure) ??
+				copy.notices.recoveryFileNote,
 			actions: [
 				{
 					id: "download-original",
 					label: copy.notices.downloadOriginal,
+					// The saved data exactly as it was found, never reserialized, so
+					// the file is evidence as well as a way back. Its envelope is
+					// JSON, so it is named and typed as JSON even when the bytes no
+					// longer parse, which is itself one of the reasons it is here.
 					run: () =>
-						downloadText("tabelo-recovery.txt", "text/plain", issue.raw),
+						downloadText(RECOVERY_FILENAME, "application/json", issue.raw),
 				},
 				{
 					id: "replace-saved-data",
@@ -210,6 +216,8 @@ function storageNotice(issue: StorageIssue | null): AppNotice | null {
 		],
 	};
 }
+
+const RECOVERY_FILENAME = "tabelo-recovery.json";
 
 function recoveryFailure(
 	failure: "unavailable" | "quota" | undefined,

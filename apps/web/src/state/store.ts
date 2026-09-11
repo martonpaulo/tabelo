@@ -95,6 +95,7 @@ import {
 	prepareImport,
 	tableShapeLimitError,
 } from "@/import/prepare";
+import type { PersistenceFailureReason } from "@/persistence/schema";
 import {
 	loadState,
 	preserveUnreadableAndSave,
@@ -245,6 +246,9 @@ export type StorageIssue =
 	| { readonly kind: "quota" }
 	| {
 			readonly kind: "unreadable";
+			// Why the saved bytes could not be opened, carried as a code so the
+			// interface can say whether they are old or damaged. See #32.
+			readonly reason: PersistenceFailureReason;
 			readonly raw: string;
 			readonly replacementFailure?: "unavailable" | "quota";
 	  };
@@ -766,7 +770,13 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		}
 		if (outcome.status === "unreadable") {
 			// The stored payload stays untouched so it can be recovered by hand.
-			set({ storageIssue: { kind: "unreadable", raw: outcome.raw } });
+			set({
+				storageIssue: {
+					kind: "unreadable",
+					reason: outcome.reason,
+					raw: outcome.raw,
+				},
+			});
 		}
 	},
 

@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { documentFromMatrix } from "@/core/document";
+import type { PersistenceFailureReason } from "@/persistence/schema";
+import * as files from "@/platform/files";
 import { conditionNoticeIds } from "@/state/notice-queue";
 import { useTabeloStore } from "@/state/store";
 import {
@@ -63,19 +65,61 @@ describe("what is shown", () => {
 describe("conditions are state, not messages", () => {
 	it("keeps reflecting the condition it describes as that condition changes", () => {
 		useTabeloStore.setState({
-			storageIssue: { kind: "unreadable", raw: "{}" },
+			storageIssue: { kind: "unreadable", reason: "invalid-json", raw: "{}" },
 		});
-		expect(find(conditionNoticeIds.storage)?.detail).toBeUndefined();
+		const before = find(conditionNoticeIds.storage)?.detail;
 
 		useTabeloStore.setState({
 			storageIssue: {
 				kind: "unreadable",
+				reason: "invalid-json",
 				raw: "{}",
 				replacementFailure: "quota",
 			},
 		});
 
 		expect(find(conditionNoticeIds.storage)?.detail).toBeDefined();
+		expect(find(conditionNoticeIds.storage)?.detail).not.toBe(before);
+	});
+
+	// #32: "saved by a newer Tabelo" and "damaged" set opposite expectations,
+	// so the two must not read alike. Compared with each other rather than
+	// with the copy that renders them.
+	it("tells saved-by-another-version apart from damaged", () => {
+		const messageFor = (reason: PersistenceFailureReason) => {
+			useTabeloStore.setState({
+				storageIssue: { kind: "unreadable", reason, raw: "{}" },
+			});
+			return find(conditionNoticeIds.storage)?.message;
+		};
+		const damaged = messageFor("current-schema-invalid");
+
+		expect(messageFor("future-version")).not.toBe(damaged);
+		expect(messageFor("migration-failed")).not.toBe(damaged);
+		expect(messageFor("future-version")).not.toBe(
+			messageFor("migration-failed"),
+		);
+	});
+
+	it("downloads the saved bytes untouched, as a JSON file", () => {
+		const raw = '{"version": 99, "keep": "exactly\tthis"';
+		const download = vi
+			.spyOn(files, "downloadText")
+			.mockImplementation(() => {});
+		useTabeloStore.setState({
+			storageIssue: { kind: "unreadable", reason: "future-version", raw },
+		});
+
+		find(conditionNoticeIds.storage)
+			?.actions.find((action) => action.id === "download-original")
+			?.run();
+
+		expect(download).toHaveBeenCalledTimes(1);
+		const [filename, mimeType, contents] = download.mock.calls[0] ?? [];
+		expect(filename).toMatch(/\.json$/);
+		expect(mimeType).toBe("application/json");
+		expect(contents).toBe(raw);
+		download.mockRestore();
 	});
 
 	it("dismisses one notice without touching the others", () => {

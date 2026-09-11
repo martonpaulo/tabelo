@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { copy } from "@/copy/copy";
 import v1 from "@/persistence/fixtures/v1.json" with { type: "json" };
 import v4 from "@/persistence/fixtures/v4.json" with { type: "json" };
@@ -184,6 +185,37 @@ test("unreadable storage stays byte-exact until explicit replacement", async ({
 			JSON.parse(window.localStorage.getItem("tabelo.document") ?? "null"),
 		),
 	).toMatchObject({ version: CURRENT_VERSION, draft: null });
+});
+
+// #32: a table saved by a newer Tabelo is not damaged, and the notice has to
+// say which of the two it is. The recovery file is the saved bytes as found.
+test("a table from a newer version is named as such and downloads as found", async ({
+	tabelo,
+}) => {
+	const raw = JSON.stringify({ version: CURRENT_VERSION + 1, future: "shape" });
+	await tabelo.page.addInitScript((value) => {
+		window.localStorage.setItem("tabelo.document", value);
+	}, raw);
+	await tabelo.page.reload();
+	await expect(tabelo.notice()).toBeVisible();
+	const newer = await tabelo.notice().textContent();
+
+	const waiting = tabelo.page.waitForEvent("download");
+	await tabelo.page
+		.getByRole("button", { name: copy.notices.downloadOriginal })
+		.click();
+	const download = await waiting;
+	expect(download.suggestedFilename()).toMatch(/\.json$/);
+	const path = await download.path();
+	expect(readFileSync(path, "utf8")).toBe(raw);
+
+	// The same notice for damaged bytes reads differently.
+	await tabelo.page.addInitScript(() => {
+		window.localStorage.setItem("tabelo.document", "{damaged");
+	});
+	await tabelo.page.reload();
+	await expect(tabelo.notice()).toBeVisible();
+	expect(await tabelo.notice().textContent()).not.toBe(newer);
 });
 
 test("quota notice clears after a later successful write", async ({

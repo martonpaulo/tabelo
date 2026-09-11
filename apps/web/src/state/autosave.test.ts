@@ -66,6 +66,25 @@ describe("autosave lifecycle", () => {
 		expect(restored.hasHeldContent).toBe(true);
 	});
 
+	// #32: the reason persistence found reaches the store instead of being
+	// flattened into one "could not be opened", and the bytes stay as found.
+	it.each([
+		["future-version", JSON.stringify({ version: CURRENT_VERSION + 1 })],
+		["invalid-json", "{not json"],
+		["current-schema-invalid", JSON.stringify({ version: CURRENT_VERSION })],
+	] as const)("carries the %s reason into the storage issue", (reason, raw) => {
+		window.localStorage.setItem(STORAGE_KEY, raw);
+		useTabeloStore.setState(initialState, true);
+		useTabeloStore.getState().hydrate();
+
+		expect(useTabeloStore.getState().storageIssue).toEqual({
+			kind: "unreadable",
+			reason,
+			raw,
+		});
+		expect(window.localStorage.getItem(STORAGE_KEY)).toBe(raw);
+	});
+
 	it("saves and reloads the table name outside document history", () => {
 		const before = useTabeloStore.getState();
 		expect(before.renameTable("Project roles")).toEqual({ status: "saved" });
@@ -96,7 +115,7 @@ describe("autosave lifecycle", () => {
 		const raw = "{keep me unchanged";
 		window.localStorage.setItem(STORAGE_KEY, raw);
 		useTabeloStore.setState({
-			storageIssue: { kind: "unreadable", raw },
+			storageIssue: { kind: "unreadable", reason: "invalid-json", raw },
 		});
 
 		expect(useTabeloStore.getState().renameTable("Project roles")).toEqual({
@@ -196,7 +215,7 @@ describe("autosave lifecycle", () => {
 		const raw = "{keep me unchanged";
 		window.localStorage.setItem(STORAGE_KEY, raw);
 		useTabeloStore.setState({
-			storageIssue: { kind: "unreadable", raw },
+			storageIssue: { kind: "unreadable", reason: "invalid-json", raw },
 		});
 		stopAutosave = startAutosave();
 

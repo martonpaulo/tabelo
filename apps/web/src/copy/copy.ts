@@ -706,8 +706,22 @@ export const copy = {
 		storageUnavailable:
 			"Browser storage is unavailable. Download a copy before closing.",
 		storageQuota: "Browser storage is full. Download a copy before closing.",
-		savedTableUnreadable:
-			"The saved table could not be opened. The original data was kept.",
+		// One sentence per reason, because "saved by a newer Tabelo" and
+		// "damaged" set opposite expectations: only the first means the data is
+		// probably intact. Each also says what the download is, since the file
+		// is the saved data as it was found and cannot be imported as a table.
+		savedTableUnreadable: {
+			"future-version":
+				"This table was saved by a newer version of Tabelo and cannot be opened here. The saved data was kept unchanged.",
+			"migration-failed":
+				"This table was saved by an older version of Tabelo and could not be updated. The saved data was kept unchanged.",
+			"current-schema-invalid":
+				"The saved table is damaged and could not be opened. The saved data was kept unchanged.",
+			"invalid-json":
+				"The saved table is damaged and could not be read. The saved data was kept unchanged.",
+		},
+		recoveryFileNote:
+			"Download original saves that data as it was found, for recovery by hand; it is not a table to import.",
 		storageRecoveryUnavailable: "No recovery copy: storage is unavailable.",
 		storageRecoveryQuota: "No recovery copy: storage is full.",
 		// The fill already happened and the table is correct as it stands. This
