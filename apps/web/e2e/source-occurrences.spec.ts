@@ -191,7 +191,13 @@ test("typing replaces every selected occurrence and one undo restores them", asy
 	await expect(tabelo.cell(3, 2)).toHaveText("Rio");
 });
 
-test("a caret leaves the key to the browser", async ({ page, tabelo }) => {
+// The key belongs to a focused, editable source editor whether or not there is
+// anything to add, so its outcome never depends on a condition the user cannot
+// see before pressing it.
+test("a caret still claims the key and changes nothing", async ({
+	page,
+	tabelo,
+}) => {
 	const editor = await seed(tabelo);
 	await editor.click();
 	await editor.press("ControlOrMeta+Home");
@@ -199,11 +205,11 @@ test("a caret leaves the key to the browser", async ({ page, tabelo }) => {
 
 	await editor.press("ControlOrMeta+d");
 
-	expect(await modDClaims(page)).toEqual([false]);
+	expect(await modDClaims(page)).toEqual([true]);
 	await expect(summary(tabelo.pane("markdown"))).toHaveCount(0);
 });
 
-test("a claimed press is the only one the editor swallows", async ({
+test("a press with nothing left to add is claimed and leaves the count", async ({
 	page,
 	tabelo,
 }) => {
@@ -214,9 +220,24 @@ test("a claimed press is the only one the editor swallows", async ({
 	// Two that apply, then one with nothing left to add.
 	await editor.press("ControlOrMeta+d");
 	await editor.press("ControlOrMeta+d");
+	await expectCounts(tabelo.pane("markdown"), [RIO, RIO]);
 	await editor.press("ControlOrMeta+d");
 
-	expect(await modDClaims(page)).toEqual([true, true, false]);
+	expect(await modDClaims(page)).toEqual([true, true, true]);
+	await expectCounts(tabelo.pane("markdown"), [RIO, RIO]);
+});
+
+test("outside a source editor the key is left to the browser", async ({
+	page,
+	tabelo,
+}) => {
+	await seed(tabelo);
+	await tabelo.cell(1, 1).click();
+	await watchModD(page);
+
+	await page.keyboard.press("ControlOrMeta+d");
+
+	expect(await modDClaims(page)).toEqual([false]);
 });
 
 test("the summary clears when the selection collapses", async ({ tabelo }) => {

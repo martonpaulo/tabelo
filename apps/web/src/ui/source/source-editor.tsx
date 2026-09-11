@@ -387,13 +387,18 @@ export function SourceEditor({
 								},
 							},
 							{
-								// Deliberately without `preventDefault`: CodeMirror then
-								// swallows the key only when this returns true, which is
-								// what keeps a caret, a read-only view, or a selection of
-								// differing text from suppressing the browser's own Mod+D.
+								// Mod+D belongs to a focused, editable source editor
+								// outright, including when there is no occurrence to add:
+								// a key whose outcome depended on an invisible condition
+								// would bookmark the page one press and select text the
+								// next. A read-only view has no claim on it, so it returns
+								// false and the browser keeps its own Mod+D there. Escape
+								// leaves the pane, which is how the bookmark shortcut stays
+								// reachable. See docs/design-system.md §9.
 								key: "Mod-d",
 								run: (target) => {
-									if (!selectNextOccurrenceAsPrimary(target)) return false;
+									if (!target.state.facet(EditorView.editable)) return false;
+									if (!selectNextOccurrenceAsPrimary(target)) return true;
 									const summary = occurrenceSummary(target.state);
 									if (summary) handlers.current.onOccurrenceAdded(summary);
 									return true;

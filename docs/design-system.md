@@ -1669,6 +1669,18 @@ case: every gesture except the modifier produces exactly one.
   instead of painting it twice. It changes no document state and adds no
   history step.
 
+**`Mod`+`D` belongs to a focused, editable source editor, unconditionally.**
+It adds the next occurrence of the selected text to the selection, and while an
+editable source editor has focus it takes the key every time, including when
+there is no next occurrence to add; a press with nothing to add changes nothing.
+The browser's own `Mod`+`D` bookmarks the page, and it cannot be given a
+different modifier the way the two `Space` chords were, because the browser
+claims it on every platform. So the key is taken for exactly as long as the
+user is inside the pane that uses it: a read-only view, the grid, a dialog, a
+menu, and the page background all leave it to the browser, and `Escape`, which
+always exits the pane, gives it back. An outcome that depended on whether a
+next match happened to exist would be a shortcut the user cannot predict.
+
 **Find is a second way of moving the selection, never a second highlight.**
 `Mod`+`F` opens the grid pane's find bar (§3) and `Escape` closes it,
 returning the caret to the grid. The chord fires from the grid surface only: a
