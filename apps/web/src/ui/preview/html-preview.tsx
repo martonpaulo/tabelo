@@ -44,13 +44,7 @@ export default function HtmlPreview() {
 			// make an overflowing scroller a tab stop in the workspace ring.
 			data-pane-entry
 			tabIndex={-1}
-			// The top offset is the grid's own index-strip height, not the pane's
-			// usual padding: the grid has no equivalent to a preview row, only a
-			// chrome strip above its first one, so lining the preview's first row
-			// up with the grid's first row means starting it one strip down
-			// instead of flush with the pane. Every later preview row then lands
-			// on a grid row line too, since both share the same row height.
-			className="tabelo-scroll-boundary h-full select-text overflow-auto px-4 pt-grid-strip pb-4"
+			className="tabelo-scroll-boundary h-full select-text overflow-auto p-4"
 		>
 			{document.rows.length === 0 ? (
 				<div
