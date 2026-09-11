@@ -1225,3 +1225,45 @@ test("Mod+D adds the next cell with exactly the same value", async ({
 	expect(await selected(2, 2)).toBe("false");
 	expect(await selected(1, 2)).toBe("true");
 });
+
+// #374: the lines of one wrapped value follow at the text's own line height,
+// not one single-line box apart, so the value reads as one paragraph. A
+// threshold, not an exact pitch: the gap between two of its lines is less than
+// the height a one-line value takes in the same wrapped column.
+test("the lines of one wrapped value are closer together than two single-line values", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(
+		1,
+		1,
+		"A deliberately long cell value that wraps across several visual lines while remaining one keyboard cell",
+	);
+	await tabelo.editCell(2, 1, "Rio");
+	await tabelo.cell(1, 1).click();
+	const item = await tabelo.openPaneMenu("grid");
+	await item
+		.getByRole("menuitemcheckbox", { name: copy.workspace.wrapAllColumns })
+		.click();
+	await page.keyboard.press("Escape");
+
+	const lineTops = (row: number) =>
+		tabelo.cell(row, 1).evaluate((cell) => {
+			const value = cell.querySelector("[data-cell-value]");
+			const range = document.createRange();
+			if (value?.firstChild) range.selectNodeContents(value.firstChild);
+			const tops = [...range.getClientRects()].map((rect) =>
+				Math.round(rect.top),
+			);
+			return {
+				lines: [...new Set(tops)].sort((a, b) => a - b),
+				height: value?.getBoundingClientRect().height ?? 0,
+			};
+		});
+	await expect
+		.poll(async () => (await lineTops(1)).lines.length)
+		.toBeGreaterThan(1);
+	const [first = 0, second = 0] = (await lineTops(1)).lines;
+	const singleLine = (await lineTops(2)).height;
+	expect(second - first).toBeLessThan(singleLine);
+});

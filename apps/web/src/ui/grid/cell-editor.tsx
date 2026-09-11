@@ -133,7 +133,7 @@ export function CellEditor({
 				}
 			}}
 			className={cn(
-				"absolute inset-0 z-10 h-full w-full cursor-text resize-none break-words bg-background px-2 text-content leading-content-line-box",
+				"absolute inset-0 z-10 h-full w-full cursor-text resize-none break-words bg-background px-2 py-content-line-inset text-content leading-content-line",
 				"outline-2 outline-selection-edge -outline-offset-2",
 				monospace && "font-value",
 				align,

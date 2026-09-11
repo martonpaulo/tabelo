@@ -69,6 +69,13 @@
 	--text-cell-type-mark--line-height: calc(var(--pane-zoom, 1) * 1.25rem);
 	--spacing-content-line: calc(var(--pane-zoom, 1) * 1.25rem);
 	--spacing-content-line-box: calc(var(--pane-zoom, 1) * 2rem);
+	/* The space above a wrapped value's first line that puts it where a
+	   one-line cell's text sits, so later lines follow at the text's own line
+	   height instead of a whole row apart (#374). */
+	--spacing-content-line-inset: calc(
+		(var(--spacing-content-line-box) - var(--spacing-content-line)) /
+		2
+	);
 }
 
 :root {

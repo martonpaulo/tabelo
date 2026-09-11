@@ -1746,8 +1746,11 @@ const DataRow = memo(function DataRow({
 									data-cell-value
 									className={cn(
 										"min-w-0",
+										// Wrapped lines follow at the text's own line height, with
+										// the one-line box's spare height split above and below, so
+										// they read as one value rather than as rows (#374).
 										wrapped
-											? "whitespace-pre-wrap break-words"
+											? "whitespace-pre-wrap break-words py-content-line-inset leading-content-line"
 											: "overflow-hidden text-ellipsis whitespace-pre",
 										type !== "string" && "font-value",
 										cellTypePresentationClass(type),
@@ -2157,10 +2160,11 @@ function HeaderCell({
 				<span
 					data-column-content={columnIndex}
 					className={cn(
-						"block leading-content-line-box",
+						"block",
+						// The same line pitch as a wrapped data cell (#374).
 						wrapped
-							? "min-h-grid-row whitespace-pre-wrap break-words"
-							: "h-content-line-box overflow-hidden text-ellipsis whitespace-pre",
+							? "min-h-grid-row whitespace-pre-wrap break-words py-content-line-inset leading-content-line"
+							: "h-content-line-box overflow-hidden text-ellipsis whitespace-pre leading-content-line-box",
 					)}
 				>
 					{markedValue(header, markStart, markEnd)}

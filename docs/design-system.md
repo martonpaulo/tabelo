@@ -318,9 +318,17 @@ One pane can scale what it displays without touching the rest of the app.
 | `--text-cell-type-mark` | `text-cell-type-mark` | A compact real-type mark that scales with grid content |
 | `--spacing-content-line` | `h-content-line` | A one-line clip box that scales with it |
 | `--spacing-content-line-box` | `h-content-line-box` | A line rhythm token shared by grid and source |
+| `--spacing-content-line-inset` | `py-content-line-inset` | Half the box's spare height, above and below a wrapped value |
 
 `--pane-zoom` is set on the pane body and nowhere else. At 100% both utilities
 resolve to exactly `text-sm`, so the default rendering is unchanged.
+
+**A wrapped value is one paragraph** (#374). Its lines follow at
+`leading-content-line`, the text's own line height, and the box's spare height
+is split once above the first line and once below the last. So its first line
+sits where a single-line value would, and its later lines read as the same
+value, not as separate rows. The grid's wrapped value, its wrapped header, and
+the cell editor all use that layout, so opening an editor moves no text.
 
 **Only content scales.** Pane headers, titles, controls, hit targets, focus
 rings, the grid's row-number gutter, and menu text keep their size at every zoom
