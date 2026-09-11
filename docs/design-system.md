@@ -328,7 +328,8 @@ resolve to exactly `text-sm`, so the default rendering is unchanged.
 is split once above the first line and once below the last. So its first line
 sits where a single-line value would, and its later lines read as the same
 value, not as separate rows. The grid's wrapped value, its wrapped header, and
-the cell editor all use that layout, so opening an editor moves no text.
+the cell editor all take that layout from one shared class, so opening an
+editor moves no text.
 
 **Only content scales.** Pane headers, titles, controls, hit targets, focus
 rings, the grid's row-number gutter, and menu text keep their size at every zoom
@@ -1617,6 +1618,12 @@ cell in that direction, onto the header row too. An edit started with `Enter`,
 `F2`, or a double click is for changing the text: the arrows move the caret.
 `F2` switches between the two while the editor is open. Arrows with a modifier
 always belong to the text. The header editor keeps every arrow for the caret.
+
+An editor never changes the height of the row it sits in (#375). In a wrapped
+column the value is what makes the row tall, so the editor keeps supplying that
+height from its draft and the row grows as lines are typed. In an unwrapped
+column the editor grows over the rows below instead, because that column's
+rows are one line by the owner's choice and the edit is momentary.
 
 Moving the pointer to another cell, header, grid control, or surface outside
 the grid commits the open editor before the destination takes focus, just like

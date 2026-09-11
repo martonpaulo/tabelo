@@ -47,7 +47,7 @@ import {
 	createAxisMenuHandle,
 } from "./axis-menu";
 import { AxisReorderGrip } from "./axis-reorder-grip";
-import { CellEditor, type EditorExit } from "./cell-editor";
+import { CellEditor, type EditorExit, wrappedLinesClass } from "./cell-editor";
 import {
 	cellTypeDiverges,
 	cellTypePresentationClass,
@@ -1723,6 +1723,7 @@ const DataRow = memo(function DataRow({
 								align={alignClass[column.align]}
 								ariaLabel={`${copy.a11y.cellEditor(rowIndex, columnIndex)}${describesType ? `, ${copy.a11y.realCellType(type)}` : ""}`}
 								monospace={type !== "string"}
+								wrapped={wrapped}
 								onFinish={(next, exit) =>
 									onFinishCellEdit(
 										{ row: rowIndex, column: columnIndex },
@@ -1746,11 +1747,8 @@ const DataRow = memo(function DataRow({
 									data-cell-value
 									className={cn(
 										"min-w-0",
-										// Wrapped lines follow at the text's own line height, with
-										// the one-line box's spare height split above and below, so
-										// they read as one value rather than as rows (#374).
 										wrapped
-											? "whitespace-pre-wrap break-words py-content-line-inset leading-content-line"
+											? wrappedLinesClass
 											: "overflow-hidden text-ellipsis whitespace-pre",
 										type !== "string" && "font-value",
 										cellTypePresentationClass(type),
@@ -2150,6 +2148,7 @@ function HeaderCell({
 					initialValue={seed ?? header}
 					align={alignClass[align]}
 					ariaLabel={copy.a11y.headerEditor(header, columnIndex)}
+					wrapped={wrapped}
 					onFinish={(next, exit) => {
 						const store = useTabeloStore.getState();
 						if (exit !== "cancel") store.editHeader(columnIndex, next);
@@ -2163,7 +2162,7 @@ function HeaderCell({
 						"block",
 						// The same line pitch as a wrapped data cell (#374).
 						wrapped
-							? "min-h-grid-row whitespace-pre-wrap break-words py-content-line-inset leading-content-line"
+							? cn("min-h-grid-row", wrappedLinesClass)
 							: "h-content-line-box overflow-hidden text-ellipsis whitespace-pre leading-content-line-box",
 					)}
 				>

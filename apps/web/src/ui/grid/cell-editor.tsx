@@ -27,11 +27,21 @@ const arrowExits: Partial<Record<string, EditorExit>> = {
 	ArrowRight: "next-column",
 };
 
+// How a wrapped value lays out its lines: the text's own line height, with the
+// single-line box's spare height split above and below (#374). The grid's
+// wrapped value and header spans use it, and so does the editor's sizer below,
+// which is what keeps a wrapped row the same height while it is edited.
+export const wrappedLinesClass =
+	"whitespace-pre-wrap break-words py-content-line-inset leading-content-line";
+
 interface CellEditorProps {
 	readonly initialValue: string;
 	readonly align: string;
 	readonly ariaLabel: string;
 	readonly monospace?: boolean;
+	// In a wrapped column the row's height comes from the value, so the editor
+	// has to keep supplying it: see the sizer below.
+	readonly wrapped?: boolean;
 	// Without one the editor keeps every arrow for the caret, which is what the
 	// header editor wants.
 	readonly initialMode?: CellEditMode;
@@ -43,6 +53,7 @@ export function CellEditor({
 	align,
 	ariaLabel,
 	monospace = false,
+	wrapped = false,
 	initialMode = "edit",
 	onFinish,
 }: CellEditorProps) {
@@ -65,14 +76,15 @@ export function CellEditor({
 	// its wrapped content, momentarily, is what lets the cell's own value stay
 	// legible without changing the column's wrap preference or the document.
 	// value drives the remeasure on every keystroke even though the effect body
-	// reads it through the DOM (scrollHeight), not as a variable.
+	// reads it through the DOM (scrollHeight), not as a variable. A wrapped
+	// column needs none of this: its row already grows with the sizer.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: see above
 	useLayoutEffect(() => {
 		const element = ref.current;
-		if (!element) return;
+		if (!element || wrapped) return;
 		element.style.height = "0px";
 		element.style.height = `${element.scrollHeight}px`;
-	}, [value]);
+	}, [value, wrapped]);
 
 	const finish = (exit: EditorExit) => {
 		if (finished.current) return;
@@ -80,7 +92,7 @@ export function CellEditor({
 		onFinish(value, exit);
 	};
 
-	return (
+	const editor = (
 		<textarea
 			ref={ref}
 			aria-label={ariaLabel}
@@ -132,12 +144,36 @@ export function CellEditor({
 					finish(arrowExit);
 				}
 			}}
+			// overflow-hidden because the editor is always as tall as its text, and
+			// a scrollbar shown while it measures at height 0 would narrow the text
+			// and add a line that is not there.
 			className={cn(
-				"absolute inset-0 z-10 h-full w-full cursor-text resize-none break-words bg-background px-2 py-content-line-inset text-content leading-content-line",
+				"absolute inset-0 z-10 h-full w-full cursor-text resize-none overflow-hidden break-words bg-background px-2 py-content-line-inset text-content leading-content-line",
 				"outline-2 outline-selection-edge -outline-offset-2",
 				monospace && "font-value",
 				align,
 			)}
 		/>
+	);
+	if (!wrapped) return editor;
+	// The textarea is an overlay, so on its own it gives the row no height and a
+	// wrapped row would collapse to one line while it is edited (#375). This
+	// invisible copy of the draft sits in the cell's flow with the wrapped
+	// value's own layout, so the row keeps the value's height and grows as it is
+	// typed. The trailing space gives a final line break a line to occupy.
+	return (
+		<>
+			<span
+				aria-hidden
+				className={cn(
+					"invisible block min-h-grid-row",
+					wrappedLinesClass,
+					monospace && "font-value",
+				)}
+			>
+				{`${value} `}
+			</span>
+			{editor}
+		</>
 	);
 }

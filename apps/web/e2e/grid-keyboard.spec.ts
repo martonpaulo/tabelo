@@ -1267,3 +1267,44 @@ test("the lines of one wrapped value are closer together than two single-line va
 	const singleLine = (await lineTops(2)).height;
 	expect(second - first).toBeLessThan(singleLine);
 });
+
+// #375: a wrapped row keeps its height while one of its cells is edited, so the
+// editor never spills over the row below and nothing jumps when the edit starts.
+// Thresholds only: the row does not shrink, and the next row starts below the
+// editor rather than under it.
+test("editing a wrapped cell keeps its row tall enough for the editor", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(
+		1,
+		1,
+		"A deliberately long cell value that wraps across several visual lines while remaining one keyboard cell",
+	);
+	await tabelo.cell(1, 1).click();
+	const item = await tabelo.openPaneMenu("grid");
+	await item
+		.getByRole("menuitemcheckbox", { name: copy.workspace.wrapAllColumns })
+		.click();
+	await page.keyboard.press("Escape");
+
+	const rowHeight = () =>
+		tabelo
+			.cell(1, 1)
+			.evaluate(
+				(cell) => cell.closest("tr")?.getBoundingClientRect().height ?? 0,
+			);
+	const displayed = await rowHeight();
+
+	await tabelo.cell(1, 1).dblclick();
+	const editor = tabelo.cell(1, 1).locator("textarea");
+	await expect(editor).toBeFocused();
+	expect(await rowHeight()).toBeGreaterThanOrEqual(displayed);
+	const editorBottom = await editor.evaluate(
+		(element) => element.getBoundingClientRect().bottom,
+	);
+	const nextRowTop = await tabelo
+		.cell(2, 1)
+		.evaluate((cell) => cell.getBoundingClientRect().top);
+	expect(nextRowTop).toBeGreaterThanOrEqual(Math.floor(editorBottom));
+});
