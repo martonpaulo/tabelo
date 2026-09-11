@@ -36,6 +36,21 @@ export default defineConfig({
 							name: "react",
 							test: /node_modules[\\/](?:react-dom|react|scheduler)[\\/]/,
 						},
+						// The same reasoning for the rest of what first paint loads from
+						// node_modules. Without these two groups every deploy invalidated
+						// one 544 kB chunk holding both the application and about 300 kB
+						// of vendor code that changes far less often. Named explicitly
+						// rather than matched as all of node_modules, because a catch-all
+						// would pull the lazily loaded source-view dependencies into the
+						// eager graph.
+						{
+							name: "base-ui",
+							test: /node_modules[\\/](?:@base-ui|@floating-ui)[\\/]/,
+						},
+						{
+							name: "vendor",
+							test: /node_modules[\\/](?:zod|tailwind-merge|papaparse|lucide-react)[\\/]/,
+						},
 					],
 				},
 			},
