@@ -228,16 +228,17 @@ test("the copied range stays marked while the selection moves to the destination
 	await expect(mark(tabelo, 2, 3)).toHaveCount(0);
 });
 
-// #349: a cell that is both focused and copied draws the two states as one
-// mark, because a browser paints the cell's own outline over whatever its
-// children draw. The focus moves to the mark and away from it with the focus.
+// #349: a cell that is both focused and copied draws both states, because
+// focus is a mark of its own beside the copied one rather than the cell's
+// outline, which a browser would paint over the dashes (#365 moved every
+// focused cell to that mark). Focus moves between cells; the copy stays.
 test("a focused copied cell carries focus and copy in one mark", async ({
 	page,
 	tabelo,
 }) => {
 	await copyRange(tabelo);
 	const focusMark = (row: number, column: number) =>
-		tabelo.cell(row, column).locator("[data-copied-focus]");
+		tabelo.cell(row, column).locator("[data-focus-mark]");
 
 	// The copy leaves focus on the range's last cell.
 	await expect(focusMark(3, 2)).toHaveCount(1);
@@ -246,9 +247,42 @@ test("a focused copied cell carries focus and copy in one mark", async ({
 	await page.keyboard.press("ArrowRight");
 	await expect(focusMark(3, 2)).toHaveCount(0);
 	await expect(mark(tabelo, 3, 2)).toHaveCount(1);
-	// Outside the range, focus is the cell's own outline again.
+	// Outside the range, the focus mark follows on its own.
 	await expect(tabelo.cell(3, 3)).toBeFocused();
-	await expect(focusMark(3, 3)).toHaveCount(0);
+	await expect(focusMark(3, 3)).toHaveCount(1);
+	await expect(mark(tabelo, 3, 3)).toHaveCount(0);
+});
+
+// #365: marks are drawn on the grid lines around a cell, so a copied cell's
+// dashes and the focused neighbour's line meet on the line they share instead
+// of leaving it bare between them. Directions only: each mark covers the line
+// it sits on, and the two overlap there.
+test("a copied mark and the focus beside it meet on their shared line", async ({
+	page,
+	tabelo,
+}) => {
+	await copyRange(tabelo);
+	await page.keyboard.press("ArrowRight");
+	await expect(tabelo.cell(3, 3)).toBeFocused();
+
+	const box = async (locator: Locator) => {
+		const found = await locator.boundingBox();
+		if (!found) throw new Error("not rendered");
+		return found;
+	};
+	const copiedCell = await box(tabelo.cell(3, 2));
+	const copied = await box(mark(tabelo, 3, 2));
+	const focusedCell = await box(tabelo.cell(3, 3));
+	const focus = await box(tabelo.cell(3, 3).locator("[data-focus-mark]"));
+
+	// The copied cell's mark covers its own right-hand line.
+	expect(copied.x + copied.width).toBeGreaterThanOrEqual(
+		copiedCell.x + copiedCell.width,
+	);
+	// The focused cell's mark reaches back over that same line.
+	expect(focus.x).toBeLessThan(focusedCell.x);
+	// So the two overlap rather than leave a gap.
+	expect(copied.x + copied.width).toBeGreaterThan(focus.x);
 });
 
 test("Escape clears the mark before it collapses the selection", async ({

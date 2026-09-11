@@ -198,7 +198,7 @@ and is not what the rule asks for.
 | Token | Utility | Use |
 | :--- | :--- | :--- |
 | `--selection-fill` | `bg-selection-fill` | Background of selected cells |
-| `--selection-edge` | `outline-selection-edge` | The focused cell's outline, focus rings, resize affordance |
+| `--selection-edge` | `border-selection-edge` | The focused cell's mark, focus rings, resize affordance |
 | `--text-selection-fill` | CSS selection | Native and source-editor text selection |
 | `--primary` / `--primary-foreground` | `bg-primary text-primary-foreground` | The solid accent with a contrast-paired label: the primary decision button, a checked control, and the grid's current find match |
 
@@ -1006,8 +1006,8 @@ not a polish item.
 | :--- | :--- |
 | Rest | No background |
 | Hover or keyboard highlight | Shared `bg-accent` interaction background |
-| Focus | 0.125rem `--selection-edge` outline, inset. Never remove it |
-| Selected | `bg-selection-fill`, plus outline when it is the focused cell |
+| Focus | 0.125rem `--selection-edge` outline, inset. Never remove it. A grid cell draws the same line as a cell mark instead of an outline (see below) |
+| Selected | `bg-selection-fill`, plus the focus mark when it is the focused cell |
 | Copied | 0.125rem dashed `--selection-edge` border on the range's own outer edges. A focused cell inside the range draws focus and copy as one static two-tone border: the solid focus line on all four sides with `--foreground` dashes over it on the outer sides |
 | Carried cell type | Strings use the editable header row's plain foreground; numbers, booleans, and null use the cross-view semantic value token selected by `cellValueType`, reinforced by weight, italics, numeric spacing, literal shape, and the accessible type name |
 | Divergent cell type | Compact textual `CellTypeMark` inside the cell, never alignment or colour alone |
@@ -1027,13 +1027,27 @@ table: the cells already resolve per-pane zoom, column width, wrapped row
 height, and the sticky chrome layers. Only the sides on the boundary of the
 range are drawn, so it reads as one outline rather than a grid of dashes.
 
+**Cell marks sit on the grid lines** (#365). Focus, the copied mark, and the
+fill preview are all marks on a cell's edges, and all of them are placed by one
+rule: a mark covers the grid lines around its cells, not the space just inside
+them. A cell owns the lines to its right and below, so a mark always covers
+those, and it reaches one hairline back over the lines above and to the left,
+which its neighbours own. Two marks on the same line therefore overlap on it,
+and a focused cell beside a copied one reads as sharing an edge. The exception
+is a line owned by sticky chrome (the header row above the first data row, the
+index strip above the header, the gutter beside the first column, a pinned row
+or column): chrome paints over anything that reaches under it, so there the
+mark stays inside the cell and keeps its full width. The open cell editor is
+not a cell mark: it can outgrow its cell, so it draws its own frame and the
+focus mark stands down while it is open.
+
 **It is static.** It never becomes marching ants: §7 puts grid geometry and cell
 selection outside motion, and a status that pulses is exactly what that rule
 forbids. The dash pattern, not the colour, separates it from the solid focus
-outline, so it carries meaning without colour. Where a cell is both focused and
-copied the two would share one band, and a browser paints a cell's outline over
-anything its children draw, so the dashes would vanish under the focus line.
-That cell therefore draws both as one static two-tone marquee: the solid focus
+line, so it carries meaning without colour. Where a cell is both focused and
+copied the two share one band, and a cell's own outline would be painted over
+anything its children draw, which is one reason focus is a mark rather than an
+outline. That cell draws both as one static two-tone marquee: the solid focus
 line on all four sides and light dashes over it on the range's outer sides, on
 the cell's real edge. Stepping the mark inside the focus outline was tried on
 #223 and read as doubled when focused and detached when not; #349 replaced it.

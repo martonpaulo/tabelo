@@ -34,11 +34,15 @@ export function FillPreview({
 			aria-hidden
 			data-fill-preview={geometry.target}
 			className="pointer-events-none absolute z-30 border-2 border-selection-edge border-dashed bg-selection-fill/50"
+			// The geometry runs from the first cell's top-left corner to the last
+			// cell's bottom-right grid line. Reaching one hairline further up and
+			// left puts the preview's edges on the grid lines around the cells, the
+			// same rule every cell mark follows (#365).
 			style={{
-				top: `${geometry.top}rem`,
-				left: `${geometry.left}rem`,
-				width: `${geometry.width}rem`,
-				height: `${geometry.height}rem`,
+				top: `calc(${geometry.top}rem - var(--hairline-w))`,
+				left: `calc(${geometry.left}rem - var(--hairline-w))`,
+				width: `calc(${geometry.width}rem + var(--hairline-w))`,
+				height: `calc(${geometry.height}rem + var(--hairline-w))`,
 			}}
 		/>
 	);

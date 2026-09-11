@@ -109,7 +109,8 @@ test("the grid exposes real and expected types without replacing cell names", as
 
 	await numberCell.click();
 	await expect(numberCell).toHaveAttribute("aria-selected", "true");
-	await expect(numberCell).toHaveCSS("outline-style", "solid");
+	// Focus is drawn as a mark on the cell's edges (#365), whatever its type.
+	await expect(numberCell.locator("[data-focus-mark]")).toHaveCount(1);
 
 	const columnIndex = tabelo.columnIndex(1);
 	await expect(columnIndex).toHaveAttribute("data-expected-type", "text");

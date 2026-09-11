@@ -265,6 +265,17 @@ body {
 	);
 }
 
+/* A grid cell clips its content like `overflow: hidden`, but lets one hairline
+   through on every side, which is exactly the grid line around it. That is
+   where the marks on a cell's edges are drawn, so a mark in one cell and a mark
+   in its neighbour meet on the line they share instead of leaving it bare
+   between them (#365). Clip, not hidden: only `clip` honours a clip margin.
+   https://developer.mozilla.org/docs/Web/CSS/overflow-clip-margin */
+@utility cell-clip {
+	overflow: clip;
+	overflow-clip-margin: var(--hairline-w);
+}
+
 ::selection {
 	background-color: var(--text-selection-fill);
 }
@@ -324,6 +335,15 @@ textarea,
 :focus-visible {
 	outline: var(--selection-edge-w) solid var(--selection-edge);
 	outline-offset: calc(-1 * var(--selection-edge-w));
+}
+
+/* Grid cells are the one exception, and only in how the line is drawn: a cell
+   shows the same focus line as a mark on the grid lines around it, so it meets
+   the copied mark and the neighbouring cell's marks on their shared line (#365).
+   An outline cannot reach the neighbour's line, and a browser paints it over
+   the cell's own marks. */
+[data-cell]:focus-visible {
+	outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

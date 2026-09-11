@@ -112,7 +112,31 @@ interface ClipboardEdges {
 	readonly left: boolean;
 }
 
-// The mark showing which cells the clipboard was last filled from. It is drawn
+// Where every mark on a cell's edge is drawn (#365): on the grid lines around
+// the cell, the lines included. A cell owns the lines on its right and bottom,
+// and its neighbours own the ones on its left and top, so a mark kept inside
+// its own cell stops one line short of a mark in the next cell and the two
+// never meet. So a mark always covers the cell's own right and bottom lines,
+// and reaches one hairline back over the top and left lines when an ordinary
+// cell owns them. When sticky chrome owns that line instead (the header row
+// above the first data row, the index strip above the header, the gutter
+// beside the first column, a pinned row or column), the chrome paints over
+// the reach and would leave that side one hairline thinner, so the mark stays
+// inside there. The cell lets the hairline through with `cell-clip`
+// (index.css); the fill preview follows the same rule from its own geometry.
+//
+// No z-index: a mark paints above its own cell because it comes last in it,
+// and a pinned or sticky layer still covers it when the cell scrolls beneath.
+function cellMarkClass(reachTop: boolean, reachLeft: boolean) {
+	return cn(
+		"pointer-events-none absolute -right-hairline -bottom-hairline",
+		reachTop ? "-top-hairline" : "top-0",
+		reachLeft ? "-left-hairline" : "left-0",
+	);
+}
+
+// The marks a cell draws on its own edges: the solid focus line, and the
+// dashes showing which cells the clipboard was last filled from. Both are drawn
 // by the cells themselves rather than by one floating rectangle over the table:
 // the cells already resolve per-pane zoom, column resizing, wrapped row
 // heights, and the two sticky chrome layers, and a measured overlay would have
@@ -120,55 +144,74 @@ interface ClipboardEdges {
 //
 // Static, never animated. Grid geometry and cell selection do not animate, and
 // static status does not pulse: see docs/design-system.md §7. The dash pattern,
-// not the colour, is what distinguishes it from the solid focus outline, so the
-// mark does not depend on colour alone.
+// not the colour, is what distinguishes the copied mark from the solid focus
+// line, so the mark does not depend on colour alone.
 //
-// A focused cell inside the range draws its focus here too, as one two-tone
-// border: the solid focus line on all four sides, and the dashes over it in the
-// foreground colour on the range's outer sides, a static two-tone marquee. The cell's own outline cannot do
-// this, because a browser paints an element's outline over its children, so
-// dashes drawn by a child vanish under it (#223, #349).
-function ClipboardSourceEdge({
-	top,
-	right,
-	bottom,
-	left,
+// A focused cell inside the copied range shows both, as one two-tone border:
+// the solid focus line on all four sides, and the dashes over it in the
+// foreground colour on the range's outer sides, a static two-tone marquee.
+// Focus is a child here rather than the cell's outline, because a browser
+// paints an element's outline over its children, so the dashes would vanish
+// under it (#223, #349), and an outline cannot reach the neighbour's line.
+function CellMarks({
+	copied,
 	focused,
-}: ClipboardEdges & { readonly focused: boolean }) {
+	reachTop,
+	reachLeft,
+}: {
+	readonly copied: ClipboardEdges | null;
+	readonly focused: boolean;
+	// Whether the lines above and to the left belong to an ordinary cell; see
+	// cellMarkClass.
+	readonly reachTop: boolean;
+	readonly reachLeft: boolean;
+}) {
+	const place = cellMarkClass(reachTop, reachLeft);
 	// Preflight leaves every border at zero width, so naming the style once and
 	// then only the sides that exist draws exactly those sides.
-	const sides = cn(
-		top && "border-t-2",
-		right && "border-r-2",
-		bottom && "border-b-2",
-		left && "border-l-2",
-	);
+	const sides =
+		copied &&
+		cn(
+			copied.top && "border-t-2",
+			copied.right && "border-r-2",
+			copied.bottom && "border-b-2",
+			copied.left && "border-l-2",
+		);
 	return (
 		<>
 			{focused ? (
 				<span
 					aria-hidden
-					data-copied-focus
-					className="pointer-events-none absolute inset-0 z-10 border-2 border-selection-edge"
+					data-focus-mark
+					className={cn(place, "border-2 border-selection-edge")}
 				/>
 			) : null}
-			<span
-				aria-hidden
-				// The technical contract the browser suite reads: which cells carry the
-				// mark, and which of them own an edge of it. There is no ARIA state for
-				// "the clipboard came from here", and inventing one on a gridcell would
-				// replace the cell's name with it. See docs/design-system.md §9.
-				data-clipboard-source={
-					[top && "top", right && "right", bottom && "bottom", left && "left"]
-						.filter(Boolean)
-						.join(" ") || "inside"
-				}
-				className={cn(
-					"pointer-events-none absolute inset-0 z-10 border-dashed",
-					focused ? "border-foreground" : "border-selection-edge",
-					sides,
-				)}
-			/>
+			{copied ? (
+				<span
+					aria-hidden
+					// The technical contract the browser suite reads: which cells carry
+					// the mark, and which of them own an edge of it. There is no ARIA
+					// state for "the clipboard came from here", and inventing one on a
+					// gridcell would replace the cell's name with it. See
+					// docs/design-system.md §9.
+					data-clipboard-source={
+						[
+							copied.top && "top",
+							copied.right && "right",
+							copied.bottom && "bottom",
+							copied.left && "left",
+						]
+							.filter(Boolean)
+							.join(" ") || "inside"
+					}
+					className={cn(
+						place,
+						"border-dashed",
+						focused ? "border-foreground" : "border-selection-edge",
+						sides,
+					)}
+				/>
+			) : null}
 		</>
 	);
 }
@@ -1312,6 +1355,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									align={column.align}
 									wrapped={wrappedColumns.includes(column.id)}
 									pinned={pinnedColumn && columnIndex === 0}
+									afterPinnedColumn={pinnedColumn && columnIndex === 1}
 									selected={rects.some((candidate) =>
 										rectContains(candidate, HEADER_ROW, columnIndex),
 									)}
@@ -1391,6 +1435,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								wrappedColumns={wrappedColumns}
 								pinnedRow={pinnedRow && rowIndex === 0}
 								pinnedColumn={pinnedColumn}
+								belowPinnedRow={pinnedRow && rowIndex === 1}
 								selectRow={selectRow}
 								onFinishCellEdit={finishCellEdit}
 								draggingRef={draggingRef}
@@ -1491,6 +1536,8 @@ interface DataRowProps {
 	// document change and every row is still reconciled away.
 	readonly pinnedRow: boolean;
 	readonly pinnedColumn: boolean;
+	// Whether the row above is the pinned one, whose edge is chrome.
+	readonly belowPinnedRow: boolean;
 	readonly selectRow: (row: number, intent: SelectIntent) => void;
 	readonly onFinishCellEdit: (
 		position: CellPosition,
@@ -1521,6 +1568,7 @@ const DataRow = memo(function DataRow({
 	wrappedColumns,
 	pinnedRow,
 	pinnedColumn,
+	belowPinnedRow,
 	selectRow,
 	onFinishCellEdit,
 	draggingRef,
@@ -1691,7 +1739,7 @@ const DataRow = memo(function DataRow({
 							// its editor can grow and wrap over the rows below it while
 							// the value is too long for the column, without touching
 							// the wrap preference or any other row's height.
-							isEditing ? "z-20 overflow-visible" : "overflow-hidden",
+							isEditing ? "z-20 overflow-visible" : "cell-clip",
 							alignClass[column.align],
 							// A pinned cell has live rows and columns passing underneath
 							// it, so its selection tint is the sticky composition rather
@@ -1703,12 +1751,9 @@ const DataRow = memo(function DataRow({
 									? "bg-sticky-selection-fill"
 									: "bg-selection-fill"
 								: "bg-background",
-							// A copied cell draws its focus with the copied mark instead;
-							// see ClipboardSourceEdge.
-							isFocus &&
-								(copiedEdges
-									? "outline-none"
-									: "outline-2 outline-selection-edge -outline-offset-2"),
+							// Focus is drawn by CellMarks, on the grid lines around the
+							// cell, so the cell's own outline stays off.
+							isFocus && "outline-none",
 						)}
 						onPointerDown={(event) => {
 							if (event.button !== 0) return;
@@ -1790,9 +1835,16 @@ const DataRow = memo(function DataRow({
 								{divergent ? <CellTypeMark type={type} context="cell" /> : null}
 							</span>
 						)}
-						{copiedEdges ? (
-							<ClipboardSourceEdge {...copiedEdges} focused={isFocus} />
-						) : null}
+						{/* An open editor draws its own frame, which can outgrow the
+						    cell, so the focus mark stands down while it is open. */}
+						<CellMarks
+							copied={copiedEdges}
+							focused={isFocus && !isEditing}
+							reachTop={rowIndex > 0 && !belowPinnedRow}
+							reachLeft={
+								columnIndex > 0 && !(pinnedColumn && columnIndex === 1)
+							}
+						/>
 					</td>
 				);
 			})}
@@ -2060,6 +2112,8 @@ interface HeaderCellProps {
 	// Whether this header belongs to the pinned first data column. See
 	// ColumnIndexCell: the header is part of the column it names.
 	readonly pinned: boolean;
+	// Whether the column to its left is the pinned one, whose edge is chrome.
+	readonly afterPinnedColumn: boolean;
 	readonly selected: boolean;
 	// A column selection reaches the header row, so a copied column marks it too.
 	readonly copiedEdges: ClipboardEdges | null;
@@ -2083,6 +2137,7 @@ function HeaderCell({
 	align,
 	wrapped,
 	pinned,
+	afterPinnedColumn,
 	selected,
 	copiedEdges,
 	focus,
@@ -2133,16 +2188,13 @@ function HeaderCell({
 				// See the data cell's identical rule: editing overrides clipping so a
 				// header longer than its column can grow and wrap while it's being
 				// typed, without changing the column's wrap preference.
-				editing ? "overflow-visible" : "overflow-hidden",
+				editing ? "overflow-visible" : "cell-clip",
 				alignClass[align],
 				// Both fills are the sticky compositions rather than the bare tints:
 				// body rows scroll under this cell, and a translucent fill would let
 				// their text read through it. See index.css.
 				selected ? "bg-sticky-selection-fill" : "bg-sticky-table-header",
-				focus &&
-					(copiedEdges
-						? "outline-none"
-						: "outline-2 outline-selection-edge -outline-offset-2"),
+				focus && "outline-none",
 			)}
 			onPointerDown={(event) => {
 				if (event.button !== 0) return;
@@ -2193,9 +2245,12 @@ function HeaderCell({
 					{markedValue(header, markStart, markEnd)}
 				</span>
 			)}
-			{copiedEdges ? (
-				<ClipboardSourceEdge {...copiedEdges} focused={focus} />
-			) : null}
+			<CellMarks
+				copied={copiedEdges}
+				focused={focus && !editing}
+				reachTop={false}
+				reachLeft={columnIndex > 0 && !afterPinnedColumn}
+			/>
 		</th>
 	);
 }
