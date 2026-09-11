@@ -289,3 +289,103 @@ test("fill autoscroll remains usable with reduced motion", async ({
 	await page.mouse.up();
 	await expect(tabelo.cell(1, right + 1)).toHaveText("seed");
 });
+
+// #356: the handle belongs at the selection's corner, and stays there when the
+// grid's geometry changes under an unchanged selection. A threshold, not a
+// position: the handle's centre is within one handle of the corner.
+test("the fill handle follows its corner when the grid's geometry changes", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Rio");
+	await tabelo.editCell(1, 2, "Designer");
+	await tabelo.cell(1, 1).click();
+	const handle = fillHandle(tabelo);
+	await expect(handle).toBeVisible();
+
+	const nearCorner = async () => {
+		const cell = await tabelo.cell(1, 1).boundingBox();
+		const box = await handle.boundingBox();
+		if (!cell || !box) return false;
+		const { x, y } = await centre(handle);
+		const reach = Math.max(box.width, box.height);
+		return (
+			Math.abs(x - (cell.x + cell.width)) <= reach &&
+			Math.abs(y - (cell.y + cell.height)) <= reach
+		);
+	};
+	expect(await nearCorner()).toBe(true);
+
+	// Widen the selected column from the keyboard: the corner moves right.
+	await page.keyboard.press("Alt+Shift+ArrowRight");
+	await page.keyboard.press("Alt+Shift+ArrowRight");
+	await expect.poll(nearCorner).toBe(true);
+
+	// Wrap a long value into the row: the corner moves down.
+	await tabelo.editCell(
+		1,
+		2,
+		"A deliberately long value that wraps across several visual lines",
+	);
+	await tabelo.cell(1, 1).click();
+	await expect.poll(nearCorner).toBe(true);
+	// The pane command, because the column's own menu selects the column.
+	const menu = await tabelo.openPaneMenu("grid");
+	await menu
+		.getByRole("menuitemcheckbox", { name: copy.workspace.wrapAllColumns })
+		.click();
+	await page.keyboard.press("Escape");
+	await expect.poll(nearCorner).toBe(true);
+});
+
+// #356: a sticky cell stays put while the table scrolls under it, so a handle
+// placed in the table's scrolling coordinates is left behind by one scroll:
+// select a cell of the pinned first row while scrolled down, scroll back, and
+// the handle was still down where the cell had been.
+test("the fill handle stays on a pinned cell while the table scrolls", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(
+		[
+			"name",
+			...Array.from({ length: 60 }, (_, index) => `Ingrid ${index}`),
+		].join("\n"),
+	);
+	await tabelo.dismissNotices();
+	await tabelo
+		.grid()
+		.getByRole("button", {
+			name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(0)}`,
+			exact: true,
+		})
+		.click();
+	await page
+		.getByRole("menuitemcheckbox", { name: copy.actions.pinFirstRow })
+		.click();
+	await page.keyboard.press("Escape");
+
+	const scroller = tabelo.pane("grid").locator('[data-slot="panel-body"]');
+	await scroller.evaluate((element) => {
+		element.scrollTop = 600;
+	});
+	await tabelo.cell(1, 1).click();
+	const handle = fillHandle(tabelo);
+	await expect(handle).toBeVisible();
+	await scroller.evaluate((element) => {
+		element.scrollTop = 0;
+	});
+
+	const nearCorner = async () => {
+		const cell = await tabelo.cell(1, 1).boundingBox();
+		const box = await handle.boundingBox();
+		if (!cell || !box) return false;
+		const { x, y } = await centre(handle);
+		const reach = Math.max(box.width, box.height);
+		return (
+			Math.abs(x - (cell.x + cell.width)) <= reach &&
+			Math.abs(y - (cell.y + cell.height)) <= reach
+		);
+	};
+	await expect.poll(nearCorner).toBe(true);
+});

@@ -41,25 +41,51 @@ export function FillHandle({
 			return;
 		}
 
-		const box = cell.getBoundingClientRect();
-		const wrapperBox = wrapper.getBoundingClientRect();
-		const rootFontSize = Number.parseFloat(
-			getComputedStyle(grid.ownerDocument.documentElement).fontSize,
-		);
-		setPosition({
-			top:
-				((source.top !== source.bottom && corner.row === source.top
-					? box.top
-					: box.bottom) -
-					wrapperBox.top) /
-				rootFontSize,
-			left:
-				((source.left !== source.right && corner.column === source.left
-					? box.left
-					: box.right) -
-					wrapperBox.left) /
-				rootFontSize,
-		});
+		const measure = () => {
+			const box = cell.getBoundingClientRect();
+			const wrapperBox = wrapper.getBoundingClientRect();
+			const rootFontSize = Number.parseFloat(
+				getComputedStyle(grid.ownerDocument.documentElement).fontSize,
+			);
+			setPosition({
+				top:
+					((source.top !== source.bottom && corner.row === source.top
+						? box.top
+						: box.bottom) -
+						wrapperBox.top) /
+					rootFontSize,
+				left:
+					((source.left !== source.right && corner.column === source.left
+						? box.left
+						: box.right) -
+						wrapperBox.left) /
+					rootFontSize,
+			});
+		};
+		measure();
+
+		// The handle is placed in the table's scrolling coordinates, which is
+		// right for an ordinary cell: both scroll together. A sticky cell (a
+		// pinned row or column) stays put while the table scrolls under it, so
+		// its handle has to be placed again on every scroll, or one scroll
+		// leaves it over an unrelated cell (#356). Coalesced to one measurement
+		// per frame, and only for a sticky corner.
+		if (getComputedStyle(cell).position !== "sticky") return;
+		const scroller = grid.closest<HTMLElement>('[data-slot="panel-body"]');
+		if (!scroller) return;
+		let frame = 0;
+		const onScroll = () => {
+			if (frame !== 0) return;
+			frame = requestAnimationFrame(() => {
+				frame = 0;
+				measure();
+			});
+		};
+		scroller.addEventListener("scroll", onScroll, { passive: true });
+		return () => {
+			scroller.removeEventListener("scroll", onScroll);
+			cancelAnimationFrame(frame);
+		};
 	}, [corner.column, corner.row, gridRef, source, wrapperRef]);
 
 	if (!position) return null;
