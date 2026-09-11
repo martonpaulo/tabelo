@@ -288,6 +288,7 @@ export const copy = {
 		zoomIn: "Zoom in",
 		resetZoom: "Reset zoom",
 		wrapSource: "Wrap lines",
+		wrapAllColumns: "Wrap all columns",
 		// Both halves of one piece of feedback: the pane header shows this and
 		// the polite live region speaks it. How many occurrences the user has
 		// gathered, out of how many the source holds.

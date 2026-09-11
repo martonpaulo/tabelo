@@ -320,6 +320,27 @@ describe("rearranging at a fixed pane count", () => {
 });
 
 describe("column wrapping preference", () => {
+	// #360: one command for every column, through the same per-column record.
+	it("wraps and unwraps every column at once without a second record", () => {
+		const before = useTabeloStore.getState();
+		const ids = before.document.columns.map((column) => column.id);
+		const first = ids[0];
+		if (!first) throw new Error("the default document has no columns");
+		before.toggleColumnWrap(first);
+
+		useTabeloStore.getState().setAllColumnsWrap(true);
+		let current = useTabeloStore.getState();
+		expect([...current.workspace.wrappedColumns].sort()).toEqual(
+			[...ids].sort(),
+		);
+		expect(current.document).toBe(before.document);
+		expect(current.past).toBe(before.past);
+
+		current.setAllColumnsWrap(false);
+		current = useTabeloStore.getState();
+		expect(current.workspace.wrappedColumns).toEqual([]);
+	});
+
 	it("uses stable ids, stays outside history, and prunes deleted columns", () => {
 		const before = useTabeloStore.getState();
 		const target = before.document.columns[0];

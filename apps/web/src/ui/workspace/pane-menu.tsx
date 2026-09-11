@@ -95,6 +95,11 @@ export function PaneMenu({
 		(state) => smallerLayout(state.workspace.layout) !== undefined,
 	);
 	const canMove = useTabeloStore((state) => state.workspace.panes.length > 1);
+	const columnWrap = useTabeloStore((state) => {
+		const wrapped = state.workspace.wrappedColumns.length;
+		if (wrapped === 0) return "none";
+		return wrapped >= state.document.columns.length ? "all" : "some";
+	});
 	const document = useTabeloStore((state) => state.document);
 	const currentViewFailure = view.codec
 		? canSerialize(view.codec, document)
@@ -276,6 +281,30 @@ export function PaneMenu({
 									{copy.shortcuts.find}
 								</DropdownMenuShortcut>
 							</DropdownMenuItem>
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							{/* A bulk command over the per-column preference, the grid's
+							    counterpart of a source pane's Wrap lines. Checked when every
+							    column wraps, and mixed when only some do; choosing it from
+							    either state wraps them all (#360). */}
+							<DropdownMenuCheckboxItem
+								checked={columnWrap === "all"}
+								// Only overridden for the mixed state: passing undefined would
+								// replace the checked state the primitive states itself.
+								{...(columnWrap === "some"
+									? { "aria-checked": "mixed" as const }
+									: {})}
+								closeOnClick={false}
+								onCheckedChange={() =>
+									useTabeloStore
+										.getState()
+										.setAllColumnsWrap(columnWrap !== "all")
+								}
+							>
+								<WrapText aria-hidden />
+								{copy.workspace.wrapAllColumns}
+							</DropdownMenuCheckboxItem>
 						</DropdownMenuGroup>
 					</>
 				) : null}

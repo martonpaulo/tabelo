@@ -1887,7 +1887,9 @@ breaks, wraps long text inside the authoritative column width, and lets each
 row grow to its tallest cell while `--grid-row-h` remains the floor. Row numbers
 stay on the first visual line of that variable-height row, and arrow keys still
 move one cell rather than one visual line. The semantic checked item in the
-column menu is the sole control for this preference. Fit is disabled while the
+column menu is the per-column control for this preference; the grid pane menu's
+checked Wrap all columns item sets every column's preference at once, reads as
+mixed when only some columns wrap, and is not a second record (#360). Fit is disabled while the
 column wraps, with a written reason to turn wrapping off first.
 
 **An empty header stays empty.** Nothing generates a name for a column the user

@@ -1099,3 +1099,60 @@ test("the new chords leave ordinary typing and Space alone", async ({
 	await editor.press("Enter");
 	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
 });
+
+// #360: one pane command wraps every column, through the same per-column
+// preference the column menu toggles; with only some columns wrapped it reads
+// as mixed, and choosing it wraps them all.
+test("the grid pane can wrap every column at once", async ({
+	page,
+	tabelo,
+}) => {
+	const wrapAll = async () => {
+		const menu = await tabelo.openPaneMenu("grid");
+		return menu.getByRole("menuitemcheckbox", {
+			name: copy.workspace.wrapAllColumns,
+		});
+	};
+	const columnWrapped = async (column: number) => {
+		await page.keyboard.press("Escape");
+		await tabelo.columnIndex(column).hover();
+		await tabelo
+			.columnIndex(column)
+			.getByRole("button", {
+				name: new RegExp(`^${copy.actions.columnActions}:`),
+			})
+			.click();
+		const item = page
+			.getByRole("menu", {
+				name: new RegExp(`^${copy.actions.columnActions}:`),
+			})
+			.getByRole("menuitemcheckbox", { name: copy.actions.wrapColumnText });
+		const checked = (await item.getAttribute("aria-checked")) === "true";
+		await page.keyboard.press("Escape");
+		return checked;
+	};
+
+	let item = await wrapAll();
+	await expect(item).toHaveAttribute("aria-checked", "false");
+	await item.click();
+	await expect(item).toHaveAttribute("aria-checked", "true");
+	expect(await columnWrapped(1)).toBe(true);
+	expect(await columnWrapped(3)).toBe(true);
+
+	// Unwrap one column from its own menu: the pane command now reads mixed.
+	await tabelo.columnIndex(1).hover();
+	await tabelo
+		.columnIndex(1)
+		.getByRole("button", {
+			name: new RegExp(`^${copy.actions.columnActions}:`),
+		})
+		.click();
+	await page
+		.getByRole("menuitemcheckbox", { name: copy.actions.wrapColumnText })
+		.click();
+	await page.keyboard.press("Escape");
+	item = await wrapAll();
+	await expect(item).toHaveAttribute("aria-checked", "mixed");
+	await item.click();
+	await expect(item).toHaveAttribute("aria-checked", "true");
+});

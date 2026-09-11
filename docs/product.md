@@ -130,7 +130,7 @@ reversible implementation choice does not belong here.
 | Move pane | One command opening a destination dialog; no pane dragging | design system §3 | #73 |
 | Download | The global format chooser is canonical | design system §3 | #70 |
 | Palette | One unconditional dark palette; no theme preference | ADR 0010 | #289 |
-| Grid wrapping | Per column, opt-in, off by default | design system §9 | #41 |
+| Grid wrapping | Per column, opt-in, off by default; one pane command wraps all columns | design system §9 | #41, #360 |
 | Source wrapping | Per pane, opt-in, off by default | design system §3 | #95 |
 
 ### Documents, formats, and persistence

@@ -338,6 +338,7 @@ export interface TabeloState {
 	setPaneZoom: (paneId: string, zoom: number) => void;
 	setPaneWrap: (paneId: string, wrap: boolean) => void;
 	toggleColumnWrap: (columnId: string) => void;
+	setAllColumnsWrap: (wrapped: boolean) => void;
 	setPinnedAxis: (axis: PinnedGridAxis, pinned: boolean) => void;
 	setColumnRatio: (ratio: number) => void;
 	setRowRatio: (ratio: number) => void;
@@ -1204,6 +1205,19 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				},
 			};
 		}),
+
+	// Every column at once, through the same per-column record, so there is one
+	// answer to "does this column wrap" and no grid-wide flag to reconcile with
+	// it (#360).
+	setAllColumnsWrap: (wrapped) =>
+		set((state) => ({
+			workspace: {
+				...state.workspace,
+				wrappedColumns: wrapped
+					? state.document.columns.map((column) => column.id)
+					: [],
+			},
+		})),
 
 	// Pinning is a workspace display preference like wrapping above it: it never
 	// touches the document, so it consumes no history step and reaches no codec.
