@@ -13,6 +13,19 @@ test("opens a clean workspace through accessible product labels", async ({
 	await expect(
 		page.locator('head > meta[property="og:description"]'),
 	).toHaveCount(1);
+	// One set of icon links, all from the one mark (#307): the generator owns
+	// them, so a second hand-written set or a second source image shows up here
+	// as a duplicate.
+	await expect(page.locator('head > link[rel="icon"]')).toHaveCount(2);
+	await expect(
+		page.locator('head > link[rel="icon"][type="image/svg+xml"]'),
+	).toHaveAttribute("href", /\/logo\.svg$/);
+	await expect(
+		page.locator('head > link[rel="icon"][href$="favicon.ico"]'),
+	).toHaveAttribute("sizes", "48x48");
+	await expect(page.locator('head > link[rel="apple-touch-icon"]')).toHaveCount(
+		1,
+	);
 	await expect(tabelo.pane("grid")).toBeVisible();
 	await expect(tabelo.pane("markdown")).toBeVisible();
 	// The strip is chrome, so it must not inflate the row count: one header row

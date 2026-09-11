@@ -1347,12 +1347,16 @@ revealed by edge hover or keyboard focus, never by hovering the pane body.
 The floating trigger has a stable accessible name, and every command inside its
 menu keeps a visible label. It displays the project mark rather than a generic
 menu glyph. The mark is a small table grid whose blue header row and two active
-centre cells form a compact T. `logo.svg` is the browser and interface source:
+centre cells form a compact T. `logo.svg` is the one source for the mark
+everywhere, the interface, the favicon, and every generated installable icon:
 its rounded grid interior is an opaque dark surface, while the padding outside
 that silhouette stays transparent. It uses one fixed palette in every browser
-theme. `logo-maskable.svg` supplies a full blue field and safe-area geometry
-for generated installable icons. Both must remain legible at 1rem, use only
-product colours, and keep the grid silhouette intact.
+theme. The generator keeps that transparent exterior in the favicon and the
+ordinary PWA icons, and composites the maskable and Apple outputs, whose
+platforms fill transparency with a colour of their own, onto `#1f1f1f` with the
+safe-area padding those contexts need. Decided on #307, replacing the separate
+blue-field source. The mark must remain legible at 1rem, use only product
+colours, and keep the grid silhouette intact.
 
 ---
 
