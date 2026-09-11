@@ -638,21 +638,18 @@ test("a header drag that reaches a data row still autoscrolls into both", async 
 }) => {
 	await tabelo.paste(wideTable());
 	const scroller = tabelo.pane("grid").locator('[data-slot="panel-body"]');
-	const scrollerBox = await scroller.boundingBox();
-	if (!scrollerBox) throw new Error("the grid pane did not lay out");
 
-	const start = await tabelo.header(2).boundingBox();
-	const dataRow = await tabelo.cell(1, 2).boundingBox();
-	if (!start || !dataRow) throw new Error("the grid did not lay out both rows");
-
-	await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+	// Both endpoints are resolved at action time, for the reason the case
+	// above gives: a width settling after paste moves any box read earlier.
+	await tabelo.header(2).hover();
 	await page.mouse.down();
 	// Down into the first data row, then out past the trailing pane edge at
 	// that row's height.
-	await page.mouse.move(
-		dataRow.x + dataRow.width / 2,
-		dataRow.y + dataRow.height / 2,
-	);
+	const dataCell = tabelo.cell(1, 2);
+	await dataCell.hover();
+	const dataRow = await dataCell.boundingBox();
+	const scrollerBox = await scroller.boundingBox();
+	if (!dataRow || !scrollerBox) throw new Error("the grid did not lay out");
 	await page.mouse.move(
 		scrollerBox.x + scrollerBox.width + 8,
 		dataRow.y + dataRow.height / 2,
