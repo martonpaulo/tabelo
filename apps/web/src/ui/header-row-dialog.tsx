@@ -38,6 +38,20 @@ export function HeaderRowDialog({
 	const finalFocus = () => {
 		if (!answered.current) return true;
 		answered.current = false;
+		// This runs after the close transition, so anything the user focused in
+		// the meantime wins: only focus that is still lost is placed.
+		// Lost means the body, the closing dialog's own portal (its buttons and
+		// focus guards), or a pane frame, which is where the primitive's own
+		// fallback lands when the element that opened the dialog is gone.
+		const active = window.document.activeElement;
+		if (
+			active !== null &&
+			active !== window.document.body &&
+			!active.closest("[data-base-ui-portal]") &&
+			!active.hasAttribute("data-pane-id")
+		) {
+			return false;
+		}
 		const { activePaneId } = useTabeloStore.getState().workspace;
 		const pane = document.querySelector<HTMLElement>(
 			`[data-pane-id="${activePaneId}"]`,
