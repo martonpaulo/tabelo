@@ -122,6 +122,10 @@
 	--grid-row-h: calc(var(--pane-zoom, 1) * 2rem);
 	--grid-col-w: 10.5rem;
 	--grid-col-w-min: 4.5rem;
+	/* The three tracks every axis control lays out on: a grip, the letter or
+	   number, and the menu trigger. One template, so the header row's number,
+	   every row number, and every column letter line up by construction. */
+	--grid-axis-cols: 1.25rem minmax(0, 1fr) 1.25rem;
 	/* How tall a pane stays once the workspace stacks. Enough of the table to
 	   work in, accepting that reaching the next pane means scrolling. */
 	--pane-stack-h: 60vh;

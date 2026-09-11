@@ -85,7 +85,11 @@ Author interface geometry, spacing, radii, typography, and breakpoints in
 interface proportional when the user changes the browser's base font size.
 Use `rounded-interactive` for controls and `rounded-surface` for panels
 and contained or floating surfaces. Structural table geometry stays square. If
-you need a value that has no token, that is a pattern break: follow §0.
+you need a value that has no token, that is a pattern break: follow §0. The
+vendored shadcn primitives under `packages/ui/src/components` keep upstream's
+own internal geometry, arbitrary values included, so a future shadcn update
+stays a clean merge; the rule binds every file Tabelo authors, including
+Tabelo's own modules in that package such as `menu-styles.ts`.
 Platform metadata and standalone SVG assets are the narrow exception because
 they cannot consume CSS variables; they repeat an existing token exactly and
 must never introduce another palette value.

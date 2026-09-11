@@ -124,7 +124,7 @@ export const editorTheme = EditorView.theme({
 		// have run before the editor is first shown.
 		lineHeight: contentLineBox,
 		border: "none",
-		borderRight: "0.0625rem solid var(--line-subtle)",
+		borderRight: "var(--hairline-w) solid var(--line-subtle)",
 		userSelect: "none",
 	},
 	".cm-lineNumbers .cm-gutterElement": {
@@ -146,7 +146,7 @@ export const editorTheme = EditorView.theme({
 	".cm-cursor, .cm-dropCursor": {
 		borderLeft: "0.125rem solid var(--selection-edge)",
 		height: "calc(var(--pane-zoom, 1) * 1.25rem) !important",
-		marginLeft: "-0.0625rem",
+		marginLeft: "calc(-1 * var(--hairline-w))",
 		marginTop: "calc(var(--pane-zoom, 1) * -0.125rem)",
 	},
 	"&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
@@ -296,8 +296,8 @@ export const editorTheme = EditorView.theme({
 	// here for.
 	".cm-tabeloEscapeSource": {
 		position: "absolute",
-		width: "0.0625rem",
-		height: "0.0625rem",
+		width: "var(--hairline-w)",
+		height: "var(--hairline-w)",
 		overflow: "hidden",
 		clipPath: "inset(50%)",
 		whiteSpace: "nowrap",
@@ -322,7 +322,7 @@ export const editorTheme = EditorView.theme({
 	// because CodeMirror is styled from a JavaScript theme that Tailwind never
 	// sees. Keep them in step with `packages/ui/src/components/tooltip.tsx`.
 	".cm-tooltip": {
-		border: "0.0625rem solid var(--line-floating)",
+		border: "var(--hairline-w) solid var(--line-floating)",
 		borderRadius: "var(--control-radius)",
 		backgroundColor: "var(--popover)",
 		color: "var(--popover-foreground)",

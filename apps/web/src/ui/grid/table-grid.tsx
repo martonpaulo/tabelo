@@ -1214,7 +1214,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									selectRow(HEADER_ROW, "extend");
 								}}
 							>
-								<div className="grid h-content-line-box grid-cols-[1.25rem_minmax(0,1fr)_1.25rem] items-center gap-1">
+								<div className="grid h-content-line-box grid-cols-(--grid-axis-cols) items-center gap-1">
 									{/* No reorder grip: every table keeps exactly one header row
 								    and it is always the first, so there is nowhere for it to
 								    go. The track stays so its number lines up with every
@@ -1513,7 +1513,7 @@ const DataRow = memo(function DataRow({
 					selectRow(rowIndex, "extend");
 				}}
 			>
-				<div className="grid h-content-line-box grid-cols-[1.25rem_minmax(0,1fr)_1.25rem] items-center gap-1">
+				<div className="grid h-content-line-box grid-cols-(--grid-axis-cols) items-center gap-1">
 					<AxisReorderGrip
 						axis="row"
 						index={rowIndex}
@@ -1889,7 +1889,7 @@ function ColumnIndexCell({
 			    leading track balanced the trigger's width on the other side and
 			    was empty; the reorder grip now occupies it, so the letter stays
 			    exactly where it was. */}
-			<div className="grid h-full grid-cols-[1.25rem_minmax(0,1fr)_1.25rem] items-center gap-1">
+			<div className="grid h-full grid-cols-(--grid-axis-cols) items-center gap-1">
 				<AxisReorderGrip
 					axis="column"
 					index={columnIndex}
