@@ -163,33 +163,36 @@ export function AxisMenuTrigger({
 			: "group-hover/row:opacity-100 group-focus-within/row:opacity-100";
 
 	return (
-		<DropdownMenuTrigger
-			handle={handle}
-			payload={{ axis, index, measureFitWidth }}
-			aria-label={axisMenuLabel(
+		<ControlTooltip
+			name={axisMenuLabel(
 				axis,
 				index,
 				column?.header ?? "",
 				column?.expectedType,
 			)}
-			data-expected-type={column?.expectedType}
-			tabIndex={entered ? 0 : -1}
-			// The icon stays small so the grid stays quiet, while the ::after box
-			// grows the target to the control minimum without taking any
-			// layout: the row gutter has no room to spare. Same technique as the
-			// checkbox and radio primitives.
-			className={cn(
-				"relative inline-flex size-5 shrink-0 items-center justify-center rounded",
-				"after:absolute after:-inset-1 after:content-['']",
-				"text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-				controlStateTransitionStyles,
-				"focus-visible:opacity-100 data-popup-open:opacity-100",
-				revealed ? "opacity-100" : "opacity-0",
-				groupClass,
-			)}
 		>
-			<Icon aria-hidden className="size-3.5" />
-		</DropdownMenuTrigger>
+			<DropdownMenuTrigger
+				handle={handle}
+				payload={{ axis, index, measureFitWidth }}
+				data-expected-type={column?.expectedType}
+				tabIndex={entered ? 0 : -1}
+				// The icon stays small so the grid stays quiet, while the ::after box
+				// grows the target to the control minimum without taking any
+				// layout: the row gutter has no room to spare. Same technique as the
+				// checkbox and radio primitives.
+				className={cn(
+					"relative inline-flex size-5 shrink-0 items-center justify-center rounded",
+					"after:absolute after:-inset-1 after:content-['']",
+					"text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+					controlStateTransitionStyles,
+					"focus-visible:opacity-100 data-popup-open:opacity-100",
+					revealed ? "opacity-100" : "opacity-0",
+					groupClass,
+				)}
+			>
+				<Icon aria-hidden className="size-3.5" />
+			</DropdownMenuTrigger>
+		</ControlTooltip>
 	);
 }
 

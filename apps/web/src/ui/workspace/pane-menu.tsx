@@ -124,18 +124,13 @@ export function PaneMenu({
 			    labelled button repeated the word "Pane" on every pane at once. The
 			    accessible name is the only signal left, so it names the view: with
 			    four panes open, "Pane actions" alone would not say which. */}
-			<DropdownMenuTrigger
-				render={
-					<Button
-						ref={triggerRef}
-						variant="ghost"
-						size="icon-sm"
-						aria-label={`${copy.workspace.paneActions}: ${view.label}`}
-					/>
-				}
-			>
-				<ChevronDown aria-hidden className="opacity-60" />
-			</DropdownMenuTrigger>
+			<ControlTooltip name={`${copy.workspace.paneActions}: ${view.label}`}>
+				<DropdownMenuTrigger
+					render={<Button ref={triggerRef} variant="ghost" size="icon-sm" />}
+				>
+					<ChevronDown aria-hidden className="opacity-60" />
+				</DropdownMenuTrigger>
+			</ControlTooltip>
 
 			<DropdownMenuContent align="end" className="w-auto min-w-64">
 				{/* Copy leads when this view exposes a clipboard capability. The

@@ -6,6 +6,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
 import { GridFindBar } from "@/ui/grid/find-bar";
+import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { Panel } from "@/ui/primitives/panel";
 import type { OccurrenceSummary } from "@/ui/source/occurrence-selection";
 import { getView } from "@/views/registry";
@@ -237,27 +238,28 @@ function SplitControl({
 					: "absolute top-0 right-0 z-20 h-full w-2",
 			)}
 		>
-			<button
-				type="button"
-				aria-label={copy.a11y.addViewAt(edge, copy.a11y.pane(view))}
-				onClick={onSplit}
-				className={cn(
-					"absolute inline-flex size-8 items-center justify-center rounded-interactive",
-					"cursor-pointer bg-surface-floating text-muted-foreground ring-1 ring-line-subtle",
-					"opacity-0 hover:text-foreground",
-					disclosureTransitionStyles,
-					// Plain focus, not focus-visible: a control that has the focus while
-					// staying invisible is the failure this reveal rule exists to
-					// prevent, and focus-visible would not match a programmatic focus.
-					"focus:opacity-100 group-hover/split-edge:opacity-100",
-					"focus-visible:outline-2 focus-visible:outline-selection-edge",
-					edge === "bottom"
-						? "bottom-1 left-1/2 -translate-x-1/2"
-						: "top-1/2 right-1 -translate-y-1/2",
-				)}
-			>
-				<Plus aria-hidden className="size-5" />
-			</button>
+			<ControlTooltip name={copy.a11y.addViewAt(edge, copy.a11y.pane(view))}>
+				<button
+					type="button"
+					onClick={onSplit}
+					className={cn(
+						"absolute inline-flex size-8 items-center justify-center rounded-interactive",
+						"cursor-pointer bg-surface-floating text-muted-foreground ring-1 ring-line-subtle",
+						"opacity-0 hover:text-foreground",
+						disclosureTransitionStyles,
+						// Plain focus, not focus-visible: a control that has the focus while
+						// staying invisible is the failure this reveal rule exists to
+						// prevent, and focus-visible would not match a programmatic focus.
+						"focus:opacity-100 group-hover/split-edge:opacity-100",
+						"focus-visible:outline-2 focus-visible:outline-selection-edge",
+						edge === "bottom"
+							? "bottom-1 left-1/2 -translate-x-1/2"
+							: "top-1/2 right-1 -translate-y-1/2",
+					)}
+				>
+					<Plus aria-hidden className="size-5" />
+				</button>
+			</ControlTooltip>
 		</div>
 	);
 }

@@ -184,23 +184,24 @@ export function GridFindBar() {
 			onKeyDown={onKeyDown}
 		>
 			<div className="flex items-start gap-1.5">
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					aria-label={
-						find.replacing ? copy.find.hideReplace : copy.find.showReplace
-					}
-					aria-expanded={find.replacing}
-					onClick={() =>
-						useTabeloStore.getState().setFindReplacing(!find.replacing)
-					}
+				<ControlTooltip
+					name={find.replacing ? copy.find.hideReplace : copy.find.showReplace}
 				>
-					{find.replacing ? (
-						<ChevronDown aria-hidden />
-					) : (
-						<ChevronRight aria-hidden />
-					)}
-				</Button>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-expanded={find.replacing}
+						onClick={() =>
+							useTabeloStore.getState().setFindReplacing(!find.replacing)
+						}
+					>
+						{find.replacing ? (
+							<ChevronDown aria-hidden />
+						) : (
+							<ChevronRight aria-hidden />
+						)}
+					</Button>
+				</ControlTooltip>
 
 				<FindField
 					label={copy.find.query}
@@ -229,23 +230,21 @@ export function GridFindBar() {
 						: null}
 				</span>
 
-				<ControlTooltip reason={stepReason}>
+				<ControlTooltip name={copy.find.previous} reason={stepReason}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
 						disabled={total === 0}
-						aria-label={copy.find.previous}
 						onClick={() => step(-1)}
 					>
 						<ChevronUp aria-hidden />
 					</Button>
 				</ControlTooltip>
-				<ControlTooltip reason={stepReason}>
+				<ControlTooltip name={copy.find.next} reason={stepReason}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
 						disabled={total === 0}
-						aria-label={copy.find.next}
 						onClick={() => step(1)}
 					>
 						<ChevronDown aria-hidden />
@@ -255,37 +254,34 @@ export function GridFindBar() {
 				    result straight to the operations that already act on a selection:
 				    clear, copy, delete, alignment. The grid's own extent
 				    announcement says how many, so nothing is announced twice. */}
-				<ControlTooltip reason={noMatchReason}>
+				<ControlTooltip name={copy.find.selectAll} reason={noMatchReason}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
 						disabled={total === 0}
-						aria-label={copy.find.selectAll}
 						onClick={() => useTabeloStore.getState().selectAllMatches()}
 					>
 						<SquareDashedMousePointer aria-hidden />
 					</Button>
 				</ControlTooltip>
-				<Toggle
-					size="sm"
-					pressed={find.caseSensitive}
-					aria-label={copy.find.matchCase}
-					onPressedChange={(pressed) => {
-						useTabeloStore.getState().setFindCaseSensitive(pressed);
-						announcePosition();
-					}}
-				>
-					<CaseSensitive aria-hidden />
-				</Toggle>
+				<ControlTooltip name={copy.find.matchCase}>
+					<Toggle
+						size="sm"
+						pressed={find.caseSensitive}
+						onPressedChange={(pressed) => {
+							useTabeloStore.getState().setFindCaseSensitive(pressed);
+							announcePosition();
+						}}
+					>
+						<CaseSensitive aria-hidden />
+					</Toggle>
+				</ControlTooltip>
 
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					aria-label={copy.find.close}
-					onClick={close}
-				>
-					<X aria-hidden />
-				</Button>
+				<ControlTooltip name={copy.find.close}>
+					<Button variant="ghost" size="icon-sm" onClick={close}>
+						<X aria-hidden />
+					</Button>
+				</ControlTooltip>
 			</div>
 
 			{find.replacing ? (
@@ -304,23 +300,21 @@ export function GridFindBar() {
 							replaceOne();
 						}}
 					/>
-					<ControlTooltip reason={noMatchReason}>
+					<ControlTooltip name={copy.find.replace} reason={noMatchReason}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							disabled={total === 0}
-							aria-label={copy.find.replace}
 							onClick={replaceOne}
 						>
 							<Replace aria-hidden />
 						</Button>
 					</ControlTooltip>
-					<ControlTooltip reason={noMatchReason}>
+					<ControlTooltip name={copy.find.replaceAll} reason={noMatchReason}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							disabled={total === 0}
-							aria-label={copy.find.replaceAll}
 							onClick={replaceAll}
 						>
 							<ReplaceAll aria-hidden />

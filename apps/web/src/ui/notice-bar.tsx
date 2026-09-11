@@ -10,6 +10,7 @@ import {
 	appNotices,
 	autoDismissDelay,
 } from "@/ui/notices";
+import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { LiveRegions } from "@/ui/primitives/live-region";
 import { Notice } from "@/ui/primitives/notice";
 
@@ -153,15 +154,16 @@ function NoticeRow({ notice }: { readonly notice: AppNotice }) {
 					) : null}
 				</div>
 				{notice.dismissible ? (
-					<Button
-						variant="ghost"
-						size="icon-xs"
-						aria-label={copy.actions.dismiss}
-						className="shrink-0"
-						onClick={() => useTabeloStore.getState().dismissNotice(id)}
-					>
-						<X aria-hidden />
-					</Button>
+					<ControlTooltip name={copy.actions.dismiss}>
+						<Button
+							variant="ghost"
+							size="icon-xs"
+							className="shrink-0"
+							onClick={() => useTabeloStore.getState().dismissNotice(id)}
+						>
+							<X aria-hidden />
+						</Button>
+					</ControlTooltip>
 				) : null}
 			</div>
 		</Notice>

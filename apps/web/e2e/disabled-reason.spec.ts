@@ -149,3 +149,52 @@ test("the find bar exposes its no-results reason on its controls", async ({
 		(await tooltip.innerText()).trim(),
 	);
 });
+
+// #277: an icon-only action shows its name on keyboard focus, in the same words
+// as its accessible name, and says it once: the tooltip is hidden from the
+// accessibility tree, which already has the name. Nothing here asserts copy;
+// what is compared is the control's own name against its own tooltip.
+test("an icon-only action names itself on focus without a second announcement", async ({
+	page,
+	tabelo,
+}) => {
+	const trigger = tabelo.paneMenuTrigger("grid");
+	// A key press first puts the page in keyboard modality, so the focus below
+	// is the kind a keyboard user produces.
+	await page.keyboard.press("Shift");
+	await trigger.focus();
+
+	const tooltip = page.locator('[role="tooltip"][data-open]');
+	await expect(tooltip).toHaveCount(1);
+	const name = await trigger.getAttribute("aria-label");
+	expect(name).toBeTruthy();
+	await expect(tooltip).toHaveText(name ?? "");
+	await expect(tooltip).toHaveAttribute("aria-hidden", "true");
+	await expect(trigger).toHaveAccessibleDescription("");
+
+	// The tooltip rides on the trigger itself, so the menu still opens on the
+	// first press.
+	await page.keyboard.press("Enter");
+	await expect(page.getByRole("menu")).toBeVisible();
+});
+
+// A disabled icon-only action shows one tooltip, and it is the refusal: the
+// user who cannot use the control needs the reason, not the name.
+test("a disabled icon-only action shows its reason in its one tooltip", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Rio");
+	await page.keyboard.press("ControlOrMeta+f");
+	const bar = page.getByRole("region", { name: copy.find.title });
+	await expect(bar).toBeVisible();
+	const previous = bar.getByRole("button", { name: copy.find.previous });
+	await expect(previous).toBeDisabled();
+
+	await previous.hover();
+	const tooltip = page.locator('[role="tooltip"][data-open]');
+	await expect(tooltip).toHaveCount(1);
+	const shown = (await tooltip.innerText()).trim();
+	await expect(previous).toHaveAccessibleDescription(shown);
+	expect(shown).not.toBe(await previous.getAttribute("aria-label"));
+});

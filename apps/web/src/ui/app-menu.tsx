@@ -119,41 +119,44 @@ export function AppMenu({
 			onOpenChange={menuDialog.onOpenChange}
 			onOpenChangeComplete={menuDialog.onOpenChangeComplete}
 		>
-			<DropdownMenuTrigger
-				render={
-					<Button
-						ref={triggerRef}
-						aria-label={
-							pwaUpdate.ready
-								? copy.actions.openAppMenuWithUpdate
-								: copy.actions.openAppMenu
-						}
-						variant="ghost"
-						size="icon-lg"
-						// Resting flush with the workspace behind it, so it reads as part
-						// of the canvas rather than a panel sitting on top; the surface
-						// and shadow that make it read as a floating control only appear
-						// once a pointer actually reaches it. Ghost rather than outline
-						// because outline carries a resting border and fill of its own in
-						// dark mode, which no transparent override on this element can
-						// win against.
-						className="fixed right-3 bottom-3 z-40 size-fab hover:bg-surface-floating hover:shadow-lg"
-					/>
+			<ControlTooltip
+				name={
+					pwaUpdate.ready
+						? copy.actions.openAppMenuWithUpdate
+						: copy.actions.openAppMenu
 				}
 			>
-				<img
-					aria-hidden
-					alt=""
-					src={`${import.meta.env.BASE_URL}logo.svg`}
-					className="size-7"
-				/>
-				{pwaUpdate.ready ? (
-					<span
+				<DropdownMenuTrigger
+					render={
+						<Button
+							ref={triggerRef}
+							variant="ghost"
+							size="icon-lg"
+							// Resting flush with the workspace behind it, so it reads as part
+							// of the canvas rather than a panel sitting on top; the surface
+							// and shadow that make it read as a floating control only appear
+							// once a pointer actually reaches it. Ghost rather than outline
+							// because outline carries a resting border and fill of its own in
+							// dark mode, which no transparent override on this element can
+							// win against.
+							className="fixed right-3 bottom-3 z-40 size-fab hover:bg-surface-floating hover:shadow-lg"
+						/>
+					}
+				>
+					<img
 						aria-hidden
-						className="absolute top-1 right-1 size-2 rounded-full bg-selection-edge ring-2 ring-line-floating"
+						alt=""
+						src={`${import.meta.env.BASE_URL}logo.svg`}
+						className="size-7"
 					/>
-				) : null}
-			</DropdownMenuTrigger>
+					{pwaUpdate.ready ? (
+						<span
+							aria-hidden
+							className="absolute top-1 right-1 size-2 rounded-full bg-selection-edge ring-2 ring-line-floating"
+						/>
+					) : null}
+				</DropdownMenuTrigger>
+			</ControlTooltip>
 
 			<DropdownMenuContent
 				aria-label={copy.actions.openAppMenu}

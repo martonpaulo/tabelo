@@ -638,6 +638,21 @@ shared disabled-tooltip pattern keeps an `sr-only` copy mounted and associates
 the control with it through `aria-describedby`; the transient popup is never
 the description's only owner.
 
+**An icon-only action names itself** (#277). A control whose only content is
+an icon shows its name on hover and on keyboard focus, and the name is written
+once: `ControlTooltip`'s `name` becomes both the control's `aria-label` and the
+tooltip, so the words shown and the words announced cannot drift apart. That
+tooltip is hidden from the accessibility tree, which already has the name, so
+nothing is announced twice, and it rides on the control itself rather than a
+wrapper, so a menu trigger still opens on the first press. A control carries
+one tooltip: `ControlTooltip` takes the name and the disabled reason together,
+shows the reason whenever there is one (the user who cannot use a control needs
+the refusal, not its name), and refuses to be nested inside another. Three
+icon-only controls carry none, each for a stated reason: the fill handle and
+the pane splitter are drag targets, where a floating layer would open over the
+cells or panes the drag is reaching, and the dialog close button is never
+rendered, because every dialog closes through Cancel and `Escape`.
+
 No tooltip picks its own side. The primitive's placement flips when the
 preferred side does not fit, and hard-coding a side is how one tooltip ends up
 opening away from the control it explains.
@@ -1509,7 +1524,8 @@ These are requirements, not aspirations:
   longer chord or an undocumented key sequence is not. `copy.shortcuts` is the
   metadata this is checked over, and a unit test fails when any legend there
   names four keys.
-- Every control has an accessible name; icon-only controls use `aria-label`.
+- Every control has an accessible name. An icon-only action takes it from
+  `ControlTooltip`'s `name`, which also shows it on hover and focus (§3).
 - Focus is always visible and never trapped.
 - Interface chrome is not text-selectable. Source text and rendered view
   content remain selectable; the visual grid uses structural cell selection
