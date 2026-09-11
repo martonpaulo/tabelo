@@ -293,6 +293,17 @@ on 2026-09-11, same machine, with the method of the #275 entry for the first.
 | Parsing each projection for its rows is a new per-edit cost | `pnpm bench` parse, 200 rows: Markdown 0.33 ms (0.55 ms escape-heavy), Jira 0.31 ms, CSV and TSV 0.18 ms | **Accepted.** Under 0.6 ms per source pane per document change, only for the four formats that declare row mapping, and never while a draft owns the pane (its own parse already carries the rows). |
 | Reading CSV and TSV row by row to get each row's end is slower | the same bench before and after the step-mode parse: 0.129 ms and 0.131 ms at 200 rows, 0.60 ms both at 1000 | **Disproved.** Within the run-to-run noise. |
 
+### Committing a pasted 200-row table (#364)
+
+The owner reports views feeling slow after pasting a long table. Measured on
+2026-09-11 in the production build, headless Chromium, by pasting 200 rows by
+8 columns into a blank table, answering the header question, and sampling the
+CPU at 0.1 ms across the answer with the CDP profiler.
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| Tabelo's data path (parse, identifiers, reconciliation) is the paste freeze | one long task of 153 to 168 ms. React render and commit about 50 ms; a forced synchronous style and layout of about 45 ms inside the new source editor's first selection read, and about 58 ms under a later `focus()`; garbage collection about 20 ms. No Tabelo function above 3 ms self time | **Disproved.** The freeze is the first layout of the freshly rendered grid and editor, forced synchronously by the editor's constructor and by focus, not computation. Editing, typing, and scrolling afterwards produced no long task in the earlier measurement on the issue. Still open: the owner's exact view and action, which was not reproduced. |
+
 ### Adding an entry
 
 An entry belongs here when a suspicion has been measured, whatever the answer.
