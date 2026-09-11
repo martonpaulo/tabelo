@@ -1,29 +1,39 @@
 <!-- Source of truth for social-card.png. After editing, regenerate with:
      rsvg-convert -w 1200 -h 630 social-card.svg -o social-card.png
-     magick social-card.png -strip -colors 256 -define png:compression-level=9 PNG8:social-card.png -->
+     magick social-card.png -strip -colors 256 -define png:compression-level=9 PNG8:social-card.png
+     The sample rows are the shared roster in apps/web/src/core/sample-data.ts. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Tabelo: edit one table in every view">
+  <defs>
+    <clipPath id="table-outline"><rect width="420" height="434" rx="18"/></clipPath>
+  </defs>
   <rect width="1200" height="630" fill="#1f1f1f"/>
-  <g transform="translate(700 92)">
-    <rect width="420" height="446" rx="18" fill="#141414" stroke="#3a3a3a" stroke-width="2"/>
-    <rect x="1" y="1" width="418" height="72" rx="17" fill="#4da6ff" fill-opacity=".22"/>
+  <g transform="translate(700 98)">
+    <rect width="420" height="434" rx="18" fill="#141414"/>
+    <g clip-path="url(#table-outline)">
+      <!-- Header row: square where it meets the body, rounded only by the outline. -->
+      <rect width="420" height="74" fill="#4da6ff" fill-opacity=".22"/>
+      <!-- One selected cell, as the grid draws it. -->
+      <rect x="176" y="146" width="244" height="72" fill="#4da6ff" fill-opacity=".18"/>
+    </g>
     <g fill="#e8e8e8" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="21">
-      <text x="30" y="46">name</text><text x="200" y="46">score</text>
-      <text x="30" y="128">ana</text><text x="200" y="128">42</text>
-      <text x="30" y="200">bruno</text><text x="200" y="200">17</text>
-      <text x="30" y="272">chen</text><text x="200" y="272">93</text>
-      <text x="30" y="344">dara</text><text x="200" y="344">55</text>
-      <text x="30" y="416">eli</text><text x="200" y="416">28</text>
+      <!-- Each baseline sits at its row's centre plus a third of the font size. -->
+      <text x="30" y="44">name</text><text x="200" y="44">age</text>
+      <text x="30" y="117">Ingrid</text><text x="200" y="117">35</text>
+      <text x="30" y="189">Paulo</text><text x="200" y="189">35</text>
+      <text x="30" y="261">Mabel</text><text x="200" y="261">45</text>
+      <text x="30" y="333">Felix</text><text x="200" y="333">60</text>
+      <text x="30" y="405">Amora</text><text x="200" y="405">25</text>
     </g>
-    <g stroke="#3a3a3a" stroke-width="2">
-      <path d="M0 74h420M0 146h420M0 218h420M0 290h420M0 362h420M176 0v446"/>
+    <g stroke="#3a3a3a" stroke-width="2" fill="none">
+      <path d="M0 74h420M0 146h420M0 218h420M0 290h420M0 362h420M176 0v434"/>
+      <rect x="1" y="1" width="418" height="432" rx="17"/>
     </g>
-    <rect x="176" y="146" width="244" height="72" fill="#4da6ff" fill-opacity=".18"/>
   </g>
   <g font-family="Inter,Avenir Next,Segoe UI,system-ui,Arial,sans-serif">
     <text x="80" y="250" fill="#ffffff" font-size="86" font-weight="700">Tabelo</text>
-    <text x="80" y="322" fill="#4da6ff" font-size="34" font-weight="600">Edit one table in every view, always in sync</text>
-    <text x="80" y="382" fill="#a8a8a8" font-size="26">Markdown · CSV · TSV · JSON · HTML · Jira</text>
-    <text x="80" y="424" fill="#a8a8a8" font-size="26">Nothing you paste leaves your browser.</text>
+    <text x="80" y="318" fill="#4da6ff" font-size="29" font-weight="600">Edit one table in every view, always in sync</text>
+    <text x="80" y="378" fill="#a8a8a8" font-size="26">Markdown · CSV · TSV · JSON · HTML · Jira</text>
+    <text x="80" y="420" fill="#a8a8a8" font-size="26">Nothing you paste leaves your browser.</text>
     <text x="80" y="552" fill="#6f6f6f" font-size="24">tabelo.martonpaulo.com</text>
   </g>
 </svg>
