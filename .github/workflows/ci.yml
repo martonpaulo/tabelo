@@ -165,8 +165,10 @@ jobs:
             exit 0
           fi
 
+          # The selection is a space-separated spec list, one argument each.
+          read -ra specs <<< "$TEST_ARGS"
           PLAYWRIGHT_JSON_OUTPUT_NAME="$RUNNER_TEMP/playwright-list.json" \
-            pnpm --filter web exec playwright test $TEST_ARGS \
+            pnpm --filter web exec playwright test "${specs[@]}" \
               --project=chromium --list --reporter=json
 
           jq -e '.errors | length == 0' "$RUNNER_TEMP/playwright-list.json" \
