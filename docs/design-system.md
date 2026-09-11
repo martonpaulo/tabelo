@@ -532,7 +532,10 @@ BlinkMacSystemFont, sans-serif`. The source editor keeps the existing
 | Role | Classes |
 | :--- | :--- |
 | Pane title | `text-sm font-medium` |
+| Dialog title | `text-sm font-semibold`, owned by the shared `DialogTitle` and never overridden per dialog |
+| Dialog section | `text-sm font-medium` |
 | Control label | `text-sm font-medium` |
+| Nested setting | `text-sm font-normal`: a setting inside a dialog section, and the options it owns |
 | Table cell | `text-sm` |
 | Native cell value | `text-content font-value` |
 | Source editor | `text-sm font-source` |
@@ -542,7 +545,11 @@ BlinkMacSystemFont, sans-serif`. The source editor keeps the existing
 Critical control, pane, menu, notice, onboarding, and error labels never fall
 below `text-sm` (0.875rem). `text-xs` is reserved for optional descriptions,
 shortcuts, file extensions, and secondary status detail. There is no
-`text-base` and nothing larger in the product interface. There are no headings
+`text-base` and nothing larger in the product interface. A dialog therefore
+builds its hierarchy from weight inside one size: its title is the one
+semibold line, a section title is medium, and the settings inside a section are
+normal weight, so the title never competes with the choices it introduces. A
+top-level choice in a dialog without sections keeps the control-label weight. There are no headings
 above `h2`: the app has one screen.
 
 ---

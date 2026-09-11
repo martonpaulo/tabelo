@@ -52,7 +52,7 @@ function IndicatorToggle({
 	return (
 		<Label className="flex min-h-control-md items-center gap-3 text-sm leading-snug">
 			<span className="grid flex-1 gap-0.5">
-				<span className="font-medium">{label}</span>
+				<span>{label}</span>
 				<span className="text-muted-foreground text-xs">{description}</span>
 			</span>
 			<Checkbox checked={checked} onCheckedChange={onCheckedChange} />
@@ -157,11 +157,16 @@ export function SettingsDialog({
 						/>
 
 						<div className="grid gap-2">
-							<h4 id={spaceLabelId} className="text-muted-foreground text-xs">
+							<h4 id={spaceLabelId} className="font-normal text-sm">
 								{copy.settings.spaceIndicators.label}
 							</h4>
 							<SingleSelectionList
 								aria-labelledby={spaceLabelId}
+								// Its options sit one level below the section, beside Tabs and
+								// Empty values rather than above them, so their labels take the
+								// nested-setting weight. Scoped here: the same option anatomy
+								// keeps its control-label weight in every other dialog.
+								className="[&_[data-slot=menu-option-label]]:font-normal"
 								value={draft.spaceIndicators}
 								onValueChange={(value) =>
 									updateDraft({ spaceIndicators: value as SpaceIndicators })
