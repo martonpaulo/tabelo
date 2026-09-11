@@ -9,7 +9,7 @@ import {
 	DropdownMenuSubTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
 import { Fragment } from "react";
-import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
+import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import {
 	buildTableActions,
 	type TableAction,
@@ -30,7 +30,7 @@ export function DropdownTableActions({
 	beforeRun,
 }: DropdownTableActionsProps) {
 	const item = (action: TableAction) => (
-		<DisabledTooltip
+		<ControlTooltip
 			key={action.id}
 			reason={action.disabled ? action.disabledReason : undefined}
 		>
@@ -48,7 +48,7 @@ export function DropdownTableActions({
 					<DropdownMenuShortcut>{action.shortcut}</DropdownMenuShortcut>
 				) : null}
 			</DropdownMenuItem>
-		</DisabledTooltip>
+		</ControlTooltip>
 	);
 
 	return buildTableActions({ axis }).map((group, groupIndex) => (

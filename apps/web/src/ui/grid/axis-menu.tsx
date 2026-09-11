@@ -35,7 +35,7 @@ import { copy } from "@/copy/copy";
 import type { SortDirection } from "@/core/operations";
 import type { Alignment, ExpectedColumnType } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
-import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
+import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { MenuSelectionOption } from "@/ui/primitives/menu-selection-option";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import { isSameColumnWidth } from "@/workspace/column-width";
@@ -272,7 +272,7 @@ function AxisMenuBody({
 			{axis === "column" ? (
 				<>
 					<DropdownMenuGroup>
-						<DisabledTooltip reason={fitReason}>
+						<ControlTooltip reason={fitReason}>
 							<DropdownMenuItem
 								disabled={fitReason !== undefined}
 								onClick={() => {
@@ -284,7 +284,7 @@ function AxisMenuBody({
 								<ChevronsLeftRight aria-hidden />
 								{copy.actions.fitColumnToContent}
 							</DropdownMenuItem>
-						</DisabledTooltip>
+						</ControlTooltip>
 						{onSetColumnWidth ? (
 							<DropdownMenuItem onClick={() => onSetColumnWidth(index)}>
 								<Ruler aria-hidden />
@@ -377,7 +377,7 @@ function ColumnSortGroup({ index }: { readonly index: number }) {
 
 	return (
 		<DropdownMenuGroup>
-			<DisabledTooltip reason={reason}>
+			<ControlTooltip reason={reason}>
 				<DropdownMenuItem
 					disabled={reason !== undefined}
 					onClick={() => sort("ascending")}
@@ -385,8 +385,8 @@ function ColumnSortGroup({ index }: { readonly index: number }) {
 					<ArrowUpNarrowWide aria-hidden />
 					{copy.actions.sortAscending}
 				</DropdownMenuItem>
-			</DisabledTooltip>
-			<DisabledTooltip reason={reason}>
+			</ControlTooltip>
+			<ControlTooltip reason={reason}>
 				<DropdownMenuItem
 					disabled={reason !== undefined}
 					onClick={() => sort("descending")}
@@ -394,7 +394,7 @@ function ColumnSortGroup({ index }: { readonly index: number }) {
 					<ArrowDownWideNarrow aria-hidden />
 					{copy.actions.sortDescending}
 				</DropdownMenuItem>
-			</DisabledTooltip>
+			</ControlTooltip>
 		</DropdownMenuGroup>
 	);
 }

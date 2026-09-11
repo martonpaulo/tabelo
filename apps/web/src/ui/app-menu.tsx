@@ -40,7 +40,7 @@ import {
 import { useTabeloStore } from "@/state/store";
 import { copyCodecToClipboard } from "@/ui/clipboard-actions";
 import { preconditionRecovery } from "@/ui/precondition-recovery";
-import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
+import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
 import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
@@ -194,7 +194,7 @@ export function AppMenu({
 					<>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
-							<DisabledTooltip
+							<ControlTooltip
 								reason={
 									pwaUpdate.updating
 										? copy.disabled.updateInProgress
@@ -208,27 +208,27 @@ export function AppMenu({
 									<RefreshCw aria-hidden />
 									<MenuOption {...copy.appUpdate} />
 								</DropdownMenuItem>
-							</DisabledTooltip>
+							</ControlTooltip>
 						</DropdownMenuGroup>
 					</>
 				) : null}
 
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
-					<DisabledTooltip reason={canUndo ? undefined : copy.disabled.undo}>
+					<ControlTooltip reason={canUndo ? undefined : copy.disabled.undo}>
 						<DropdownMenuItem disabled={!canUndo} onClick={() => run("undo")}>
 							<Undo2 aria-hidden />
 							{copy.actions.undo}
 							<DropdownMenuShortcut>{copy.shortcuts.undo}</DropdownMenuShortcut>
 						</DropdownMenuItem>
-					</DisabledTooltip>
-					<DisabledTooltip reason={canRedo ? undefined : copy.disabled.redo}>
+					</ControlTooltip>
+					<ControlTooltip reason={canRedo ? undefined : copy.disabled.redo}>
 						<DropdownMenuItem disabled={!canRedo} onClick={() => run("redo")}>
 							<Redo2 aria-hidden />
 							{copy.actions.redo}
 							<DropdownMenuShortcut>{copy.shortcuts.redo}</DropdownMenuShortcut>
 						</DropdownMenuItem>
-					</DisabledTooltip>
+					</ControlTooltip>
 				</DropdownMenuGroup>
 
 				<DropdownMenuSeparator />
@@ -262,7 +262,7 @@ export function AppMenu({
 
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
-					<DisabledTooltip reason={addViewRefusal}>
+					<ControlTooltip reason={addViewRefusal}>
 						<DropdownMenuItem
 							disabled={addViewRefusal !== undefined}
 							onClick={() => menuDialog.runAfterClose(onAddView)}
@@ -270,8 +270,8 @@ export function AppMenu({
 							<PanelRightOpen aria-hidden />
 							{copy.workspace.addView}
 						</DropdownMenuItem>
-					</DisabledTooltip>
-					<DisabledTooltip
+					</ControlTooltip>
+					<ControlTooltip
 						reason={
 							canChangeLayout ? undefined : copy.disabled.layoutOnlyArrangement
 						}
@@ -283,7 +283,7 @@ export function AppMenu({
 							<LayoutGrid aria-hidden />
 							{copy.workspace.layout}
 						</DropdownMenuItem>
-					</DisabledTooltip>
+					</ControlTooltip>
 					<DropdownMenuItem
 						onClick={() => menuDialog.runAfterClose(onSettings)}
 					>
@@ -348,7 +348,7 @@ function CopyAsSubmenu({
 						// chooser and the pane menu already show, in the same words: the
 						// row stays disabled and the correction stands beside it.
 						<Fragment key={codec.id}>
-							<DisabledTooltip
+							<ControlTooltip
 								reason={
 									failure ? copy.disabled.codecPrecondition(failure) : undefined
 								}
@@ -360,7 +360,7 @@ function CopyAsSubmenu({
 									<Icon aria-hidden />
 									{view.label}
 								</DropdownMenuItem>
-							</DisabledTooltip>
+							</ControlTooltip>
 							{recovery ? (
 								<RecoveryMenuItem
 									recovery={recovery}

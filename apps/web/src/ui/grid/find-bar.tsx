@@ -14,7 +14,7 @@ import {
 import { useEffect, useRef } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
-import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
+import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 
 // The grid pane's find and replace bar: a band at the foot of the pane, below
 // the table and above nothing. It belongs to the pane the way the header does,
@@ -229,7 +229,7 @@ export function GridFindBar() {
 						: null}
 				</span>
 
-				<DisabledTooltip reason={stepReason}>
+				<ControlTooltip reason={stepReason}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
@@ -239,8 +239,8 @@ export function GridFindBar() {
 					>
 						<ChevronUp aria-hidden />
 					</Button>
-				</DisabledTooltip>
-				<DisabledTooltip reason={stepReason}>
+				</ControlTooltip>
+				<ControlTooltip reason={stepReason}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
@@ -250,12 +250,12 @@ export function GridFindBar() {
 					>
 						<ChevronDown aria-hidden />
 					</Button>
-				</DisabledTooltip>
+				</ControlTooltip>
 				{/* Every matching cell becomes one selected area, which hands the
 				    result straight to the operations that already act on a selection:
 				    clear, copy, delete, alignment. The grid's own extent
 				    announcement says how many, so nothing is announced twice. */}
-				<DisabledTooltip reason={noMatchReason}>
+				<ControlTooltip reason={noMatchReason}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
@@ -265,7 +265,7 @@ export function GridFindBar() {
 					>
 						<SquareDashedMousePointer aria-hidden />
 					</Button>
-				</DisabledTooltip>
+				</ControlTooltip>
 				<Toggle
 					size="sm"
 					pressed={find.caseSensitive}
@@ -304,7 +304,7 @@ export function GridFindBar() {
 							replaceOne();
 						}}
 					/>
-					<DisabledTooltip reason={noMatchReason}>
+					<ControlTooltip reason={noMatchReason}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
@@ -314,8 +314,8 @@ export function GridFindBar() {
 						>
 							<Replace aria-hidden />
 						</Button>
-					</DisabledTooltip>
-					<DisabledTooltip reason={noMatchReason}>
+					</ControlTooltip>
+					<ControlTooltip reason={noMatchReason}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
@@ -325,7 +325,7 @@ export function GridFindBar() {
 						>
 							<ReplaceAll aria-hidden />
 						</Button>
-					</DisabledTooltip>
+					</ControlTooltip>
 				</div>
 			) : null}
 		</section>

@@ -31,7 +31,7 @@ import {
 	copyToClipboard,
 } from "@/ui/clipboard-actions";
 import { preconditionRecovery } from "@/ui/precondition-recovery";
-import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
+import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import type { ViewDefinition } from "@/views/types";
@@ -144,7 +144,7 @@ export function PaneMenu({
 				{canCopy ? (
 					<>
 						<DropdownMenuGroup>
-							<DisabledTooltip
+							<ControlTooltip
 								reason={
 									currentViewFailure
 										? copy.disabled.codecPrecondition(currentViewFailure)
@@ -174,7 +174,7 @@ export function PaneMenu({
 										? copy.actions.copySource
 										: copy.actions.copyFormattedTable}
 								</DropdownMenuItem>
-							</DisabledTooltip>
+							</ControlTooltip>
 							{/* Beside the refused command, never in place of it: the copy
 							    item stays disabled and this is a second, ordinary command.
 							    See docs/design-system.md §4. */}
@@ -207,7 +207,7 @@ export function PaneMenu({
 					<DropdownMenuLabel>
 						{copy.workspace.zoom(paneZoomPercent(zoom))}
 					</DropdownMenuLabel>
-					<DisabledTooltip
+					<ControlTooltip
 						reason={
 							zoom <= MIN_PANE_ZOOM ? copy.disabled.zoomMinimum : undefined
 						}
@@ -224,8 +224,8 @@ export function PaneMenu({
 								{copy.shortcuts.zoomOut}
 							</DropdownMenuShortcut>
 						</DropdownMenuItem>
-					</DisabledTooltip>
-					<DisabledTooltip
+					</ControlTooltip>
+					<ControlTooltip
 						reason={
 							zoom === DEFAULT_PANE_ZOOM ? copy.disabled.zoomDefault : undefined
 						}
@@ -242,8 +242,8 @@ export function PaneMenu({
 								{copy.shortcuts.resetZoom}
 							</DropdownMenuShortcut>
 						</DropdownMenuItem>
-					</DisabledTooltip>
-					<DisabledTooltip
+					</ControlTooltip>
+					<ControlTooltip
 						reason={
 							zoom >= MAX_PANE_ZOOM ? copy.disabled.zoomMaximum : undefined
 						}
@@ -260,7 +260,7 @@ export function PaneMenu({
 								{copy.shortcuts.zoomIn}
 							</DropdownMenuShortcut>
 						</DropdownMenuItem>
-					</DisabledTooltip>
+					</ControlTooltip>
 				</DropdownMenuGroup>
 
 				{/* Find is keyboard-first, and this is the affordance that keeps it
@@ -338,7 +338,7 @@ export function PaneMenu({
 						<Replace aria-hidden />
 						{copy.workspace.changeView}
 					</DropdownMenuItem>
-					<DisabledTooltip
+					<ControlTooltip
 						reason={canMove ? undefined : copy.disabled.moveOnlyView}
 					>
 						<DropdownMenuItem
@@ -350,13 +350,13 @@ export function PaneMenu({
 							<MoveIcon aria-hidden />
 							{copy.workspace.movePane}
 						</DropdownMenuItem>
-					</DisabledTooltip>
+					</ControlTooltip>
 
 					{/* Adding a view is not here. It belongs to the edge a pane would be
 					    split along, because that edge is what decides where the new pane
 					    lands, and a menu item cannot say which edge it means.
 					    See docs/adr/0006. */}
-					<DisabledTooltip
+					<ControlTooltip
 						reason={canClose ? undefined : copy.disabled.closeOnlyView}
 					>
 						<DropdownMenuItem
@@ -366,7 +366,7 @@ export function PaneMenu({
 							<X aria-hidden />
 							{copy.workspace.closeView}
 						</DropdownMenuItem>
-					</DisabledTooltip>
+					</ControlTooltip>
 				</DropdownMenuGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>

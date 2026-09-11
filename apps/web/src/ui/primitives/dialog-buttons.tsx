@@ -2,7 +2,7 @@ import { Button } from "@tabelo/ui/components/button";
 import { DialogClose, DialogFooter } from "@tabelo/ui/components/dialog";
 import { cn } from "@tabelo/ui/lib/utils";
 import type * as React from "react";
-import { DisabledTooltip } from "./disabled-tooltip";
+import { ControlTooltip } from "./control-tooltip";
 
 // docs/design-system.md §3 "Button hierarchy": Confirm is the filled default,
 // destructive Confirm is `destructive`, Cancel is the borderless `ghost`.
@@ -52,7 +52,7 @@ export function DialogConfirm({
 	const unavailable = disabledReason !== undefined;
 
 	return (
-		<DisabledTooltip reason={disabledReason}>
+		<ControlTooltip reason={disabledReason}>
 			<Button
 				{...props}
 				disabled={unavailable}
@@ -66,7 +66,7 @@ export function DialogConfirm({
 				data-variant={variant}
 				variant={variant}
 			/>
-		</DisabledTooltip>
+		</ControlTooltip>
 	);
 }
 
@@ -83,7 +83,7 @@ export function DialogAlternative({
 }) {
 	const unavailable = disabledReason !== undefined;
 	return (
-		<DisabledTooltip reason={disabledReason}>
+		<ControlTooltip reason={disabledReason}>
 			<Button
 				{...props}
 				disabled={unavailable}
@@ -91,6 +91,6 @@ export function DialogAlternative({
 				data-variant="ghost"
 				variant="ghost"
 			/>
-		</DisabledTooltip>
+		</ControlTooltip>
 	);
 }

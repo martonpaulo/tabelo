@@ -1,6 +1,6 @@
 import { DropdownMenuRadioItem } from "@tabelo/ui/components/dropdown-menu";
 import type { ReactNode } from "react";
-import { DisabledTooltip } from "./disabled-tooltip";
+import { ControlTooltip } from "./control-tooltip";
 import {
 	type SelectionOptionAvailability,
 	SelectionOptionContent,
@@ -22,7 +22,7 @@ export function MenuSelectionOption({
 	readonly availability?: SelectionOptionAvailability;
 }) {
 	return (
-		<DisabledTooltip reason={availability?.reason}>
+		<ControlTooltip reason={availability?.reason}>
 			<DropdownMenuRadioItem
 				value={value}
 				hideIndicator
@@ -39,6 +39,6 @@ export function MenuSelectionOption({
 					availability={availability}
 				/>
 			</DropdownMenuRadioItem>
-		</DisabledTooltip>
+		</ControlTooltip>
 	);
 }

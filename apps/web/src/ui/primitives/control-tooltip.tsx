@@ -9,7 +9,7 @@ type DescribableProps = {
 	readonly "aria-describedby"?: string;
 };
 
-export function DisabledTooltip({
+export function ControlTooltip({
 	reason,
 	children,
 }: {

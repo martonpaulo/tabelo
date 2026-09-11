@@ -5,7 +5,7 @@ import { RadioGroup, RadioGroupItem } from "@tabelo/ui/components/radio-group";
 import { cn } from "@tabelo/ui/lib/utils";
 import { useId } from "react";
 import type { PreconditionRecovery } from "@/ui/precondition-recovery";
-import { DisabledTooltip } from "./disabled-tooltip";
+import { ControlTooltip } from "./control-tooltip";
 import { RecoveryButton } from "./recovery-command";
 import {
 	SelectionOptionContent,
@@ -51,7 +51,7 @@ export function SingleSelectionOption({
 	const disabled = availability !== undefined;
 
 	const option = (
-		<DisabledTooltip reason={availability?.reason}>
+		<ControlTooltip reason={availability?.reason}>
 			<Label
 				htmlFor={radioId}
 				data-selected={selected ? "true" : undefined}
@@ -80,7 +80,7 @@ export function SingleSelectionOption({
 					className="absolute inset-0 z-10 size-full cursor-pointer border-0 opacity-0 after:hidden focus-visible:ring-0 data-disabled:cursor-not-allowed data-disabled:opacity-0"
 				/>
 			</Label>
-		</DisabledTooltip>
+		</ControlTooltip>
 	);
 
 	if (!recovery) return option;

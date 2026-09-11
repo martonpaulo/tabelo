@@ -31,7 +31,7 @@ import { convertCellValue } from "@/core/typed-input";
 import type { CellValueType } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { ContextMenuSelectionOption } from "@/ui/primitives/context-menu-selection-option";
-import { DisabledTooltip } from "@/ui/primitives/disabled-tooltip";
+import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { cellTypeOptions } from "./cell-type-options";
 import { targetAxisForMenu, targetCellForMenu } from "./menu-target";
 import { revealGridCell } from "./reveal-cell";
@@ -170,7 +170,7 @@ export function GridContextMenu({
 	};
 
 	const item = (action: TableAction) => (
-		<DisabledTooltip
+		<ControlTooltip
 			key={action.id}
 			reason={action.disabled ? action.disabledReason : undefined}
 		>
@@ -188,7 +188,7 @@ export function GridContextMenu({
 					<ContextMenuShortcut>{action.shortcut}</ContextMenuShortcut>
 				) : null}
 			</ContextMenuItem>
-		</DisabledTooltip>
+		</ControlTooltip>
 	);
 
 	return (

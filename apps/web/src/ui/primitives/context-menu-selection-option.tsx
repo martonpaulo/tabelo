@@ -1,6 +1,6 @@
 import { ContextMenuRadioItem } from "@tabelo/ui/components/context-menu";
 import type { ReactNode } from "react";
-import { DisabledTooltip } from "./disabled-tooltip";
+import { ControlTooltip } from "./control-tooltip";
 import {
 	type SelectionOptionAvailability,
 	SelectionOptionContent,
@@ -22,7 +22,7 @@ export function ContextMenuSelectionOption({
 	readonly availability?: SelectionOptionAvailability;
 }) {
 	return (
-		<DisabledTooltip reason={availability?.reason}>
+		<ControlTooltip reason={availability?.reason}>
 			<ContextMenuRadioItem
 				value={value}
 				hideIndicator
@@ -39,6 +39,6 @@ export function ContextMenuSelectionOption({
 					availability={availability}
 				/>
 			</ContextMenuRadioItem>
-		</DisabledTooltip>
+		</ControlTooltip>
 	);
 }
