@@ -161,11 +161,13 @@ export function AppMenu({
 				className="w-auto min-w-64 max-w-[calc(100vw-1.5rem)]"
 			>
 				{/* Static identity, outside every group: a menu group holds actions.
-				    It takes the items' own inset so its text lines up with theirs,
-				    and one grid spaces every line of it. */}
+				    It takes the items' own inset so its text lines up with theirs.
+				    Two contexts, split by the separator: what the product is and
+				    who made it, then which document is open, sitting directly on
+				    the action that renames it (#358). */}
 				<div
 					className={cn(
-						"grid gap-1 whitespace-normal text-sm",
+						"grid gap-2 whitespace-normal text-sm",
 						menuItemInsetStyles,
 					)}
 				>
@@ -173,10 +175,14 @@ export function AppMenu({
 					<span className="block text-muted-foreground text-xs">
 						{copy.app.copyright}
 					</span>
-					<span className="block text-muted-foreground text-xs">
-						{tableName}
-					</span>
 				</div>
+				<DropdownMenuSeparator />
+				<p
+					data-slot="app-menu-table-name"
+					className={cn("truncate text-sm", menuItemInsetStyles)}
+				>
+					{tableName}
+				</p>
 				<DropdownMenuGroup>
 					<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onRename)}>
 						<Pencil aria-hidden />
