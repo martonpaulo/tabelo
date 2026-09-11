@@ -9,5 +9,8 @@
 	// file uses it, which describes a redundant `export` keyword rather than
 	// dead code. That class is the majority of the raw report here, and the
 	// remaining findings are unreadable underneath it.
-	"ignoreExportsUsedInFile": true
+	"ignoreExportsUsedInFile": true,
+	// ImageMagick is a system tool the social-card script calls after the
+	// Playwright screenshot (4:4:4 JPEG); it is not an npm dependency.
+	"ignoreBinaries": ["magick"]
 }

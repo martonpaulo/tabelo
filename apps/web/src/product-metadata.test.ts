@@ -19,10 +19,10 @@ describe("createProductMetadata", () => {
 			'<meta property="og:url" content="https://tabelo.martonpaulo.com/" />',
 		);
 		expect(metadata).toContain(
-			'<meta property="og:image" content="https://tabelo.martonpaulo.com/social-card.png" />',
+			'<meta property="og:image" content="https://tabelo.martonpaulo.com/social-card.jpg" />',
 		);
 		expect(metadata).toContain(
-			'<meta name="twitter:image" content="https://tabelo.martonpaulo.com/social-card.png" />',
+			'<meta name="twitter:image" content="https://tabelo.martonpaulo.com/social-card.jpg" />',
 		);
 		expect(metadata).toContain(
 			'<meta property="og:site_name" content="Tabelo" />',
@@ -42,7 +42,7 @@ describe("createProductMetadata", () => {
 			'<link rel="canonical" href="https://tabelo.martonpaulo.com/preview/" />',
 		);
 		expect(metadata).toContain(
-			'<meta property="og:image" content="https://tabelo.martonpaulo.com/preview/social-card.png" />',
+			'<meta property="og:image" content="https://tabelo.martonpaulo.com/preview/social-card.jpg" />',
 		);
 	});
 
@@ -59,8 +59,28 @@ describe("createProductMetadata", () => {
 		const node = JSON.parse((jsonLd as RegExpMatchArray)[1] as string);
 		expect(node["@type"]).toBe("SoftwareApplication");
 		expect(node.url).toBe("https://tabelo.martonpaulo.com/");
-		expect(node.image).toBe("https://tabelo.martonpaulo.com/social-card.png");
+		expect(node.image).toBe("https://tabelo.martonpaulo.com/social-card.jpg");
 		expect(node.offers.price).toBe("0");
+	});
+
+	it("names the site for search results with a WebSite node", () => {
+		const metadata = createProductMetadata({
+			basePath: "/",
+			siteOrigin: "https://tabelo.martonpaulo.com",
+		});
+
+		const nodes = [
+			...metadata.matchAll(
+				/<script type="application\/ld\+json">(.*?)<\/script>/gs,
+			),
+		].map((match) => JSON.parse(match[1] as string));
+		const website = nodes.find((node) => node["@type"] === "WebSite");
+		expect(website).toEqual({
+			"@context": "https://schema.org",
+			"@type": "WebSite",
+			name: "Tabelo",
+			url: "https://tabelo.martonpaulo.com/",
+		});
 	});
 
 	it("omits URL-bearing metadata from a build without a site origin", () => {

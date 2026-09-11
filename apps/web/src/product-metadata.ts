@@ -62,7 +62,7 @@ export function createProductMetadata({
 		const canonicalUrl = new URL(basePath, siteOrigin);
 		// The 1200x630 card is what a link preview crops to; the PWA icon is square
 		// and every platform letterboxes it.
-		const imageUrl = new URL("social-card.png", canonicalUrl);
+		const imageUrl = new URL("social-card.jpg", canonicalUrl);
 		const canonical = escapeHtmlAttribute(canonicalUrl.toString());
 		const image = escapeHtmlAttribute(imageUrl.toString());
 		tags.push(
@@ -71,7 +71,8 @@ export function createProductMetadata({
 			`<meta name="twitter:image" content="${image}" />`,
 			`<meta property="og:image:width" content="1200" />`,
 			`<meta property="og:image:height" content="630" />`,
-			`<meta property="og:image:alt" content="${title}" />`,
+			`<meta property="og:image:type" content="image/jpeg" />`,
+			`<meta property="og:image:alt" content="${escapeHtmlAttribute(product.socialCardAlt)}" />`,
 			`<link rel="canonical" href="${canonical}" />`,
 			// One SoftwareApplication node: it is what a search engine reads to
 			// show the product as an application rather than as a page.
@@ -95,6 +96,14 @@ export function createProductMetadata({
 					name: product.author.name,
 					url: product.author.url,
 				},
+			})}</script>`,
+			// Google names the site in its results from a WebSite node on the home page;
+			// without one it shows the bare hostname (#377).
+			`<script type="application/ld+json">${escapeJsonLd({
+				"@context": "https://schema.org",
+				"@type": "WebSite",
+				name: product.name,
+				url: canonicalUrl.toString(),
 			})}</script>`,
 		);
 	}

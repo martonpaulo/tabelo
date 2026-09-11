@@ -135,7 +135,7 @@ reversible implementation choice does not belong here.
 | Move pane | One command opening a destination dialog; no pane dragging | design system §3 | #73 |
 | Download | The global format chooser is canonical | design system §3 | #70 |
 | Palette | One unconditional dark palette; no theme preference | ADR 0010 | #289 |
-| Page titles | `Tabelo · Edit one table in every view` on the shell, `{table name} · Tabelo` once a table is open; no not-found title, because every deeper path is the app, normalized to `/` | `AGENTS.md` identity, `copy/product.ts` | #373 |
+| Page titles | `Tabelo · Table editor for Markdown, CSV, JSON and more` on the shell, `{table name} · Tabelo` once a table is open; no not-found title, because every deeper path is the app, normalized to `/` | `AGENTS.md` identity, `copy/product.ts` | #373 |
 | Grid wrapping | Per column, opt-in, off by default; one pane command wraps all columns | design system §9 | #41, #360 |
 | Source wrapping | Per pane, opt-in, off by default | design system §3 | #95 |
 | Automatic source rewriting | Only named structural-assistance features: smallest deterministic range, one undo step with the triggering edit, invalid drafts untouched, switchable off per buffer | `AGENTS.md` domain rules | #294 |
