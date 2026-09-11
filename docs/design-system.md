@@ -940,7 +940,10 @@ irreversible path. One group never presents both emphasized colours.
 
 Single-selection dialogs grow to show their complete option list. The option
 list, dialog surface, and action row never own horizontal or vertical scrolling
-and never show incidental scrollbars. The footer remains after the complete
+and never show incidental scrollbars. A dialog body that does scroll, such as
+Settings, scrolls vertically only: it states `overflow-x-hidden`, prose inside a
+flex or grid item carries `min-w-0` so it wraps, and nothing invisible, such as
+a control's enlarged hit area, may widen it. Decided on #273. The footer remains after the complete
 list with the shared content separation.
 Neutral dismissal and ordinary alternative actions both use the borderless
 ghost treatment. An alternative never introduces an outline that makes it look

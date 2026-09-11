@@ -544,3 +544,28 @@ test("a settings toggle is reached by Tab and toggled by Space", async ({
 	await page.keyboard.press("Space");
 	expect(await toggle.isChecked()).toBe(!before);
 });
+
+// #273: the Settings body scrolls vertically only. A checkbox's enlarged hit
+// area reached past its right edge and gave the body a horizontal scrollbar.
+for (const width of [390, 1280]) {
+	test(`the settings body has no horizontal scrollbar at ${width}px`, async ({
+		page,
+		tabelo,
+	}) => {
+		await tabelo.workspace.waitFor({ state: "visible" });
+		await page.setViewportSize({ width, height: 800 });
+		const dialog = await openSettings(page);
+		const body = dialog.locator("[data-slot='settings-body']");
+		// A sideways wheel over the body is what a user would do to reach
+		// something off to the right; it must have nowhere to go.
+		await body.hover();
+		await page.mouse.wheel(200, 0);
+		await expect
+			.poll(() => body.evaluate((element) => element.scrollLeft))
+			.toBe(0);
+		// Polled once more after a beat of layout: a scroll that did happen
+		// lands asynchronously, so a single zero read proves nothing.
+		await page.mouse.wheel(200, 0);
+		expect(await body.evaluate((element) => element.scrollLeft)).toBe(0);
+	});
+}

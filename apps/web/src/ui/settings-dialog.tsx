@@ -125,7 +125,15 @@ export function SettingsDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="min-h-0 overflow-y-auto">
+				{/* The body scrolls vertically only. A checkbox's enlarged hit area
+				    (an invisible pseudo-element reaching past its box) sat flush
+				    with the right edge and made the body scroll sideways by it.
+				    Each row is a whole-row label, so clipping that invisible
+				    margin loses no target, and no visible content is clipped. */}
+				<div
+					data-slot="settings-body"
+					className="min-h-0 overflow-y-auto overflow-x-hidden"
+				>
 					<section className="grid gap-4" aria-labelledby={indicatorsLabelId}>
 						<div>
 							<h3 id={indicatorsLabelId} className="font-medium text-sm">
