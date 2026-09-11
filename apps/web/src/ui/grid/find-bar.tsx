@@ -217,6 +217,8 @@ export function GridFindBar() {
 					}}
 				/>
 
+				{/* The buttons below stay in the tab order while there is nothing to
+				    step through, so their reason reaches the keyboard too (#376). */}
 				{/* Passive text, never a control: it states which occurrence the grid
 				    is marking, which is the written half of a cue that is otherwise
 				    only a colour. Tabular figures and a reserved width keep the
@@ -235,6 +237,7 @@ export function GridFindBar() {
 						variant="ghost"
 						size="icon-sm"
 						disabled={total === 0}
+						focusableWhenDisabled={total === 0}
 						onClick={() => step(-1)}
 					>
 						<ChevronUp aria-hidden />
@@ -245,6 +248,7 @@ export function GridFindBar() {
 						variant="ghost"
 						size="icon-sm"
 						disabled={total === 0}
+						focusableWhenDisabled={total === 0}
 						onClick={() => step(1)}
 					>
 						<ChevronDown aria-hidden />
@@ -259,6 +263,7 @@ export function GridFindBar() {
 						variant="ghost"
 						size="icon-sm"
 						disabled={total === 0}
+						focusableWhenDisabled={total === 0}
 						onClick={() => useTabeloStore.getState().selectAllMatches()}
 					>
 						<SquareDashedMousePointer aria-hidden />
@@ -305,6 +310,7 @@ export function GridFindBar() {
 							variant="ghost"
 							size="icon-sm"
 							disabled={total === 0}
+							focusableWhenDisabled={total === 0}
 							onClick={replaceOne}
 						>
 							<Replace aria-hidden />
@@ -315,6 +321,7 @@ export function GridFindBar() {
 							variant="ghost"
 							size="icon-sm"
 							disabled={total === 0}
+							focusableWhenDisabled={total === 0}
 							onClick={replaceAll}
 						>
 							<ReplaceAll aria-hidden />

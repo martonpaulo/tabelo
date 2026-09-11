@@ -198,3 +198,29 @@ test("a disabled icon-only action shows its reason in its one tooltip", async ({
 	await expect(previous).toHaveAccessibleDescription(shown);
 	expect(shown).not.toBe(await previous.getAttribute("aria-label"));
 });
+
+// #376: an unavailable find-bar button stays in the tab order, so its reason
+// reaches a keyboard user and not only a pointer.
+test("the find bar's unavailable buttons are reachable by keyboard", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("ControlOrMeta+f");
+	const findBar = page.getByRole("region", { name: copy.find.title });
+	await findBar
+		.getByRole("textbox", { name: copy.find.query })
+		.fill("no match");
+	const next = findBar.getByRole("button", { name: copy.find.next });
+
+	await tabTo(page, next);
+	await expect(next).toHaveAttribute("aria-disabled", "true");
+	const tooltip = page.locator('[role="tooltip"][data-open]');
+	await expect(tooltip).toBeVisible();
+	await expect(next).toHaveAccessibleDescription(
+		(await tooltip.innerText()).trim(),
+	);
+	// Unavailable still means inert: Enter steps nowhere.
+	await page.keyboard.press("Enter");
+	await expect(next).toBeFocused();
+});
