@@ -151,7 +151,7 @@ reversible implementation choice does not belong here.
 
 | Decision | Current outcome | Recorded in | Decided on |
 | :--- | :--- | :--- | :--- |
-| Keyboard navigation | Two levels: Enter enters a pane, Escape leaves it; focus lost to a replaced pane lands inside the active pane | design system §9 | #24, #54, #350 |
+| Keyboard navigation | Two levels: Enter enters a pane, Escape leaves it; focus lost to a replaced pane lands inside the active pane; cell edits follow Google Sheets' enter and edit modes | design system §9 | #24, #54, #350, #366 |
 | Row and column reorder | Keyboard and menu path plus pointer drag; no pane drag | design system §9 | #136, #139 |
 | Column resize shortcut | `Alt`+`Shift`+Left/Right on the focused column | design system §9 | #81 |
 | Fit with wrapping | Fit is disabled with a reason while the column wraps | design system §9 | #81 |

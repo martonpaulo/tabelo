@@ -9,14 +9,32 @@ export type EditorExit =
 	| "commit"
 	| "cancel"
 	| "next-row"
+	| "previous-row"
 	| "next-column"
 	| "previous-column";
+
+// Google Sheets' two edit modes, which the owner asked the grid to match (#366).
+// An edit started by typing over a cell is "enter": it is quick entry, so every
+// arrow key commits and moves to the neighbouring cell. An edit started with
+// F2, Enter, or a double click is "edit": the user came to change the text, so
+// the arrows move the caret. F2 switches between the two while editing.
+export type CellEditMode = "enter" | "edit";
+
+const arrowExits: Partial<Record<string, EditorExit>> = {
+	ArrowUp: "previous-row",
+	ArrowDown: "next-row",
+	ArrowLeft: "previous-column",
+	ArrowRight: "next-column",
+};
 
 interface CellEditorProps {
 	readonly initialValue: string;
 	readonly align: string;
 	readonly ariaLabel: string;
 	readonly monospace?: boolean;
+	// Without one the editor keeps every arrow for the caret, which is what the
+	// header editor wants.
+	readonly initialMode?: CellEditMode;
 	readonly onFinish: (value: string, exit: EditorExit) => void;
 }
 
@@ -25,9 +43,11 @@ export function CellEditor({
 	align,
 	ariaLabel,
 	monospace = false,
+	initialMode = "edit",
 	onFinish,
 }: CellEditorProps) {
 	const [value, setValue] = useState(initialValue);
+	const [mode, setMode] = useState<CellEditMode>(initialMode);
 	const ref = useRef<HTMLTextAreaElement>(null);
 	// Guards against the blur handler firing a second commit after Enter.
 	const finished = useRef(false);
@@ -92,8 +112,25 @@ export function CellEditor({
 					finish(event.shiftKey ? "previous-column" : "next-column");
 					return;
 				}
-				// Everything else belongs to the textarea, including arrow keys.
-				// while editing, arrows move the caret, not the selection.
+				if (event.key === "F2") {
+					event.preventDefault();
+					setMode((current) => (current === "enter" ? "edit" : "enter"));
+					return;
+				}
+				// In enter mode a bare arrow commits and moves; with a modifier, or in
+				// edit mode, it belongs to the textarea and moves the caret.
+				const arrowExit = arrowExits[event.key];
+				if (
+					mode === "enter" &&
+					arrowExit &&
+					!event.shiftKey &&
+					!event.altKey &&
+					!event.metaKey &&
+					!event.ctrlKey
+				) {
+					event.preventDefault();
+					finish(arrowExit);
+				}
 			}}
 			className={cn(
 				"absolute inset-0 z-10 h-full w-full cursor-text resize-none break-words bg-background px-2 text-content leading-content-line-box",

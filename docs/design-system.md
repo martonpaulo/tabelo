@@ -1603,6 +1603,13 @@ While a cell or header editor is open it owns every key, and the grid's own
 handler stands down: a `Backspace` in an editor must never delete the row the
 editor is sitting in.
 
+A cell editor has the two modes Google Sheets has (#366). An edit started by
+typing over the cell is quick entry: a bare arrow key commits it and moves one
+cell in that direction, onto the header row too. An edit started with `Enter`,
+`F2`, or a double click is for changing the text: the arrows move the caret.
+`F2` switches between the two while the editor is open. Arrows with a modifier
+always belong to the text. The header editor keeps every arrow for the caret.
+
 Moving the pointer to another cell, header, grid control, or surface outside
 the grid commits the open editor before the destination takes focus, just like
 `Enter` or `Tab`. `Escape` is the only exit that discards the in-progress value.

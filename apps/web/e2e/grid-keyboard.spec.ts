@@ -1156,3 +1156,39 @@ test("the grid pane can wrap every column at once", async ({
 	await item.click();
 	await expect(item).toHaveAttribute("aria-checked", "true");
 });
+
+// #366: the two edit modes Google Sheets has. Typing over a cell is quick
+// entry, where an arrow commits and moves; an edit opened with F2 keeps the
+// arrows for the caret, and F2 switches between the two.
+test("arrows commit quick entry and move the caret in an F2 edit", async ({
+	page,
+	tabelo,
+}) => {
+	const editor = tabelo.grid().getByRole("textbox");
+
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.type("Ingrid");
+	await page.keyboard.press("ArrowDown");
+	await expect(editor).toHaveCount(0);
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect(tabelo.cell(2, 1)).toBeFocused();
+
+	await page.keyboard.type("Paulo");
+	await page.keyboard.press("ArrowUp");
+	await expect(tabelo.cell(2, 1)).toHaveText("Paulo");
+	await expect(tabelo.cell(1, 1)).toBeFocused();
+
+	// An F2 edit: the arrows stay in the text.
+	await page.keyboard.press("F2");
+	await expect(editor).toBeFocused();
+	await page.keyboard.press("ArrowLeft");
+	await page.keyboard.press("ArrowDown");
+	await expect(editor).toBeFocused();
+
+	// F2 again turns it into quick entry, and the next arrow leaves.
+	await page.keyboard.press("F2");
+	await page.keyboard.press("ArrowRight");
+	await expect(editor).toHaveCount(0);
+	await expect(tabelo.cell(1, 2)).toBeFocused();
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+});

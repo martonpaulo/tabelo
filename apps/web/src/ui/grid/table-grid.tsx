@@ -320,6 +320,12 @@ function moveAfterCellEdit(position: CellPosition, exit: EditorExit) {
 			row: Math.min(position.row + 1, store.document.rows.length - 1),
 			column: position.column,
 		});
+	} else if (exit === "previous-row") {
+		// Row 1 is the header, which is a cell like any other to move onto.
+		store.selectCell({
+			row: Math.max(position.row - 1, HEADER_ROW),
+			column: position.column,
+		});
 	} else if (exit === "next-column") {
 		store.selectCell({
 			row: position.row,
@@ -1693,6 +1699,7 @@ const DataRow = memo(function DataRow({
 						{isEditing ? (
 							<CellEditor
 								initialValue={editingSeed ?? value}
+								initialMode={editingSeed === null ? "edit" : "enter"}
 								align={alignClass[column.align]}
 								ariaLabel={`${copy.a11y.cellEditor(rowIndex, columnIndex)}${describesType ? `, ${copy.a11y.realCellType(type)}` : ""}`}
 								monospace={type !== "string"}
