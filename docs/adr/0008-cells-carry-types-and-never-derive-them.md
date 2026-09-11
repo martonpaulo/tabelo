@@ -138,3 +138,37 @@ ADR 0001 is amended: its "opaque strings throughout" sentence described the
 model this replaces. What survives from it, and matters more, is that Tabelo
 does not reinterpret content. A carried type is not a reinterpretation; a
 derived one would be.
+
+## Amendment: the Cell type conversion table (#371)
+
+The cell menu's conversion used to read a value only through its text: a
+boolean could not become a number, a number could not become a boolean, and an
+empty cell could not become a boolean, so most of the menu stood blocked. The
+owner asked for the common conversions, with a confirmation that says what a
+value becomes and what is lost. The table lives once, in the core
+(`convertCellValue`), and every surface reads it:
+
+| target | accepts | refuses |
+| :--- | :--- | :--- |
+| string | every value, as its text | nothing |
+| null | every value | nothing |
+| number | decimal text (the forms typed entry accepts), `false` as 0, `true` as 1 | empty cells, other text |
+| boolean | `"true"` / `"false"` (trimmed, any case), 0 as `false` and any other number as `true`, an empty cell as `false` | other text |
+
+This is still not inference. The user chose the target; the table only says
+how a value reaches it.
+
+A conversion runs at once when it loses nothing, and **losing nothing is
+defined by the round trip**: converting the new value back to the original type
+gives exactly the original value and type. So `0` to `false`, `"true"` to
+`true`, `35` to `"35"`, and an empty cell to null run at once, while `2` to
+`true` (back is 1), `"TRUE"` to `true` (back is `"true"`), `"007"` to 7 (back is
+`"7"`), and `"Rio"` to null ask first. The confirmation names the value before,
+the value after, and what converting back would give. One case asks without a
+loss, by the owner's decision: an empty cell becoming a boolean invents a value,
+so it asks too; an empty cell becoming null never asks.
+
+This replaces the earlier rule that a valid non-canonical spelling converts
+immediately because choosing a type is already explicit: the choice is still
+explicit, but a spelling it discards is a loss, and a loss is confirmed. Either
+path is one history step, and undo restores the exact previous value and type.

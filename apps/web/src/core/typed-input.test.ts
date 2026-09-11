@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { cellValueType } from "./cell-value";
 import { convertCellValue, parseExpectedValue } from "./typed-input";
+import type { CellValue, CellValueType } from "./types";
 
 describe("expected-type input", () => {
 	it.each(["007", "1e5", "true", "0123", "'hello"])(
@@ -77,33 +79,80 @@ describe("expected-type input", () => {
 	});
 });
 
+// The conversion table the Cell type command uses (#371, docs/adr/0008). Each
+// row is a value, a target, and what comes out: the new value and whether the
+// user is asked first, or a refusal.
 describe("explicit cell type conversion", () => {
-	it("converts through the canonical text projection", () => {
-		expect(convertCellValue("007", "number")).toEqual({ ok: true, value: 7 });
-		expect(convertCellValue(7, "string")).toEqual({ ok: true, value: "7" });
-		expect(convertCellValue("TRUE", "boolean")).toEqual({
-			ok: true,
-			value: true,
-		});
+	const lossOf = (back: CellValue | null) => ({ kind: "loses-original", back });
+	const empty = { kind: "fills-empty" };
+
+	it.each<[CellValue, CellValueType, CellValue | "refused", object | null]>([
+		// To string: always, and back again whenever the text reads back.
+		[35, "string", "35", null],
+		[true, "string", "true", null],
+		[null, "string", "", null],
+		// To null: always. Only an empty cell goes without asking.
+		["", "null", null, null],
+		["Rio", "null", null, lossOf("")],
+		[35, "null", null, lossOf(null)],
+		// Converting back fills the empty cell with false again, so nothing
+		// is lost and nothing is asked.
+		[false, "null", null, null],
+		// To number: decimal text and booleans; empty cells have no number.
+		["35", "number", 35, null],
+		["007", "number", 7, lossOf("7")],
+		[" 35 ", "number", 35, lossOf("35")],
+		[false, "number", 0, null],
+		[true, "number", 1, null],
+		["", "number", "refused", null],
+		[null, "number", "refused", null],
+		["Rio", "number", "refused", null],
+		["'7", "number", "refused", null],
+		// To boolean: its words, zero and non-zero, and empty as false.
+		["true", "boolean", true, null],
+		["false", "boolean", false, null],
+		["TRUE", "boolean", true, lossOf("true")],
+		[0, "boolean", false, null],
+		[1, "boolean", true, null],
+		[2, "boolean", true, lossOf(1)],
+		[-0.5, "boolean", true, lossOf(1)],
+		["", "boolean", false, empty],
+		[null, "boolean", false, empty],
+		["yes", "boolean", "refused", null],
+		["1", "boolean", "refused", null],
+		// The same type is never a change.
+		[false, "boolean", false, null],
+		["Rio", "string", "Rio", null],
+	])("%j to %s gives %j", (value, target, expected, confirm) => {
+		const result = convertCellValue(value, target);
+		if (expected === "refused") {
+			expect(result).toEqual({ ok: false });
+			return;
+		}
+		expect(result).toEqual({ ok: true, value: expected, confirm });
 	});
 
-	it("does not treat an existing apostrophe as editor escape syntax", () => {
-		expect(convertCellValue("'7", "number")).toEqual({ ok: false });
-	});
-
-	it("refuses incompatible scalar conversions", () => {
-		expect(convertCellValue(true, "number")).toEqual({ ok: false });
-		expect(convertCellValue(1, "boolean")).toEqual({ ok: false });
-	});
-
-	it("allows an explicit null and preserves an already matching type", () => {
-		expect(convertCellValue("content", "null")).toEqual({
-			ok: true,
-			value: null,
-		});
-		expect(convertCellValue(false, "boolean")).toEqual({
-			ok: true,
-			value: false,
-		});
+	it("never asks about a conversion that converts back exactly", () => {
+		const values: CellValue[] = [
+			"",
+			"Rio",
+			"35",
+			"true",
+			0,
+			1,
+			35,
+			true,
+			false,
+			null,
+		];
+		const targets: CellValueType[] = ["string", "number", "boolean", "null"];
+		for (const value of values) {
+			for (const target of targets) {
+				const result = convertCellValue(value, target);
+				if (!result.ok || result.confirm?.kind !== "loses-original") continue;
+				const back = convertCellValue(result.value, cellValueType(value));
+				expect(back.ok && back.value === value).toBe(false);
+			}
+		}
 	});
 });

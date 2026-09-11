@@ -19,8 +19,25 @@ export type ExpectedTypeParseResult =
 			readonly stringValue: string;
 	  };
 
+// Why a conversion the user chose should still be confirmed before it runs
+// (#371): it either loses the value it replaces, or it invents a value for an
+// empty cell. Null means it can run at once.
+export type ConversionConfirmation =
+	| {
+			readonly kind: "loses-original";
+			// What converting the new value back to the original type gives,
+			// which is how the loss is shown: `2` becomes `true`, and `true` back
+			// is `1`. Null when no value of the original type comes back.
+			readonly back: CellValue | null;
+	  }
+	| { readonly kind: "fills-empty" };
+
 export type CellTypeConversionResult =
-	| { readonly ok: true; readonly value: CellValue }
+	| {
+			readonly ok: true;
+			readonly value: CellValue;
+			readonly confirm: ConversionConfirmation | null;
+	  }
 	| { readonly ok: false };
 
 // Decimal input accepts the familiar forms a person can deliberately type,
@@ -71,17 +88,74 @@ export function parseExpectedValue(
 	};
 }
 
-// Selecting a cell type is already an explicit conversion command, so a valid
-// non-canonical spelling can convert immediately. Apostrophe escaping belongs
-// to editor input and is deliberately not reinterpreted in an existing value.
+// The conversion table for the Cell type command (#371, docs/adr/0008). Each
+// target accepts what it can represent and refuses the rest:
+//
+// - string: every value, as the text every view shows for it.
+// - null: every value. An empty cell is null or the empty string.
+// - number: decimal text (the same forms typed entry accepts), and booleans as
+//   0 and 1. Empty cells and other text are refused: no number is there.
+// - boolean: the text "true" or "false" (trimmed, any case), numbers as zero
+//   for false and anything else for true, and empty cells as false.
+//
+// This reads the value the user is converting and nothing else; it is not type
+// inference, because the user chose the target.
+function convertRaw(
+	value: CellValue,
+	target: CellValueType,
+): CellValue | undefined {
+	if (cellValueType(value) === target) return value;
+	switch (target) {
+		case "string":
+			return cellText(value);
+		case "null":
+			return null;
+		case "number":
+			if (typeof value === "boolean") return value ? 1 : 0;
+			if (typeof value === "string") {
+				return parseNativeValue(value, "number") ?? undefined;
+			}
+			return undefined;
+		case "boolean":
+			if (value === null || value === "") return false;
+			if (typeof value === "number") return value !== 0;
+			if (typeof value === "string") {
+				return parseNativeValue(value, "boolean") ?? undefined;
+			}
+			return undefined;
+	}
+}
+
+const isEmptyValue = (value: CellValue) => value === null || value === "";
+
+// The same carried type and the same value: `35` and `"35"` differ.
+const sameValue = (left: CellValue, right: CellValue) =>
+	cellValueType(left) === cellValueType(right) && left === right;
+
+// Selecting a cell type is an explicit conversion command, so it may replace a
+// value. What it may not do is replace one silently: a conversion that loses
+// the original, meaning converting back does not return it exactly, asks
+// first, and so does inventing a boolean for an empty cell. Everything else,
+// including every conversion of an empty cell to null, runs at once.
 export function convertCellValue(
 	value: CellValue,
 	targetType: CellValueType,
 ): CellTypeConversionResult {
-	if (cellValueType(value) === targetType) return { ok: true, value };
-	if (targetType === "null") return { ok: true, value: null };
-	if (targetType === "string") return { ok: true, value: cellText(value) };
-
-	const converted = parseNativeValue(cellText(value), targetType);
-	return converted === null ? { ok: false } : { ok: true, value: converted };
+	const converted = convertRaw(value, targetType);
+	if (converted === undefined) return { ok: false };
+	if (sameValue(converted, value)) {
+		return { ok: true, value: converted, confirm: null };
+	}
+	if (isEmptyValue(value) && targetType === "boolean") {
+		return { ok: true, value: converted, confirm: { kind: "fills-empty" } };
+	}
+	const back = convertRaw(converted, cellValueType(value));
+	const lossless = back !== undefined && sameValue(back, value);
+	return {
+		ok: true,
+		value: converted,
+		confirm: lossless
+			? null
+			: { kind: "loses-original", back: back === undefined ? null : back },
+	};
 }
