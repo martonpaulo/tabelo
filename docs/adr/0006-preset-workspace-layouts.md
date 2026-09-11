@@ -98,6 +98,15 @@ leaves. A preset gains its entries the moment it exists. This replaced a single
 larger target per layout, which could not express two columns reaching both
 split left and split right depending on which pane is cut.
 
+**Amended on #219: a stacked window holds two panes.** Below the 56.25rem
+stacking breakpoint every pane takes the full width at 60vh, so four panes is
+most of three screens of scrolling. There the workspace may grow to two panes
+rather than four: Add view stays in the menu, disabled with a written reason,
+and no pane shows an edge split. The cap bounds growth only. A workspace that
+already holds more panes keeps every one of them and its chosen preset when
+the window narrows, which is what keeps "remembered, not discarded" true, and
+persisted workspaces with more panes than the current window allows stay valid.
+
 A pane is cut across each axis it spans whole, so every control lands on an
 **outer** edge of the workspace. None sits on the divider between two panes, so
 which pane is being split is never ambiguous, and the edge doubles as the

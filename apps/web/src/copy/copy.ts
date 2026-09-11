@@ -344,6 +344,7 @@ export const copy = {
 		moveOnlyView: "Add another view before moving this pane.",
 		chooseMoveDestination: "Choose an available pane position first.",
 		addViewMaximum: "The maximum is four views.",
+		addViewNarrow: "A narrow window holds two views. Widen it to add another.",
 		undo: "There is nothing to undo.",
 		redo: "There is nothing to redo.",
 		fitWrappedColumn: "Turn off Wrap text to fit this column.",

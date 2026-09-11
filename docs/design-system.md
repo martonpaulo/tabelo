@@ -1165,6 +1165,9 @@ per keystroke.
   keyboard focus remains visible. This framing applies at every supported width.
 - The page never scrolls. Panes scroll independently.
 - Below 56.25rem panes stack; the chosen layout is remembered, not discarded.
+  Stacked, the workspace grows to two panes at most: Add view is disabled with
+  its reason and edge splits disappear, but no open pane is ever closed. See
+  `docs/adr/0006`.
   Stacking **abandons** the tiling rather than narrowing it: the grid becomes a
   single column, panes stop naming slots, each keeps `min-h-pane-stack` so it
   stays worth scrolling to, and the workspace, not the page, scrolls between

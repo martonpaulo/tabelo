@@ -44,8 +44,13 @@ import { MenuOption } from "@/ui/primitives/menu-option";
 import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import type { PwaUpdate } from "@/ui/pwa-update";
+import { useStackedWorkspace } from "@/ui/workspace/stacking";
 import { getView } from "@/views/registry";
-import { layoutsForPaneCount, splitOptions } from "@/workspace/layout";
+import {
+	layoutsForPaneCount,
+	paneCapacity,
+	splitOptions,
+} from "@/workspace/layout";
 
 interface AppMenuProps {
 	readonly onImport: () => void;
@@ -75,9 +80,18 @@ export function AppMenu({
 	const tableName = useTabeloStore((state) => state.name);
 	const canRedoDocument = useTabeloStore((state) => state.future.length > 0);
 	const activePaneId = useTabeloStore((state) => state.workspace.activePaneId);
-	const canAddView = useTabeloStore(
-		(state) => splitOptions(state.workspace).length > 0,
-	);
+	const stacked = useStackedWorkspace();
+	// Why Add view is refused, if it is: the presets tile no more panes, or the
+	// window is too narrow for another one. The narrow cap only ever stops a
+	// workspace from growing; see paneCapacity.
+	const addViewRefusal = useTabeloStore((state) => {
+		if (splitOptions(state.workspace, paneCapacity(stacked)).length > 0) {
+			return undefined;
+		}
+		return splitOptions(state.workspace).length > 0
+			? copy.disabled.addViewNarrow
+			: copy.disabled.addViewMaximum;
+	});
 	// One pane and four panes each have a single arrangement, so there is nothing
 	// for the dialog to offer. The command stays in place, disabled and explained,
 	// rather than appearing and disappearing as the pane count changes.
@@ -241,11 +255,9 @@ export function AppMenu({
 
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
-					<DisabledTooltip
-						reason={canAddView ? undefined : copy.disabled.addViewMaximum}
-					>
+					<DisabledTooltip reason={addViewRefusal}>
 						<DropdownMenuItem
-							disabled={!canAddView}
+							disabled={addViewRefusal !== undefined}
 							onClick={() => menuDialog.runAfterClose(onAddView)}
 						>
 							<PanelRightOpen aria-hidden />

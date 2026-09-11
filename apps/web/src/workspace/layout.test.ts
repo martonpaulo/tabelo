@@ -14,6 +14,7 @@ import {
 	movePane,
 	movePaneDestinations,
 	openImportWorkspace,
+	paneCapacity,
 	paneCount,
 	panePositionId,
 	SLOT_ORDER,
@@ -335,6 +336,24 @@ describe("pane count transitions", () => {
 		expect(
 			splitOptions(workspaceFor(id)).map((option) => option.layout),
 		).toEqual(expected);
+	});
+
+	// #219: a stacked window holds two panes. The cap stops growth only, so a
+	// wider workspace carried into a narrow window keeps its panes and simply
+	// offers no further split.
+	it("stops growth at the stacked capacity without touching open panes", () => {
+		const stacked = paneCapacity(true);
+		expect(stacked).toBeLessThan(paneCapacity(false));
+		expect(
+			splitOptions(workspaceFor("single"), stacked).length,
+		).toBeGreaterThan(0);
+		for (const id of layoutIds.filter(
+			(layout) => paneCount(layout) >= stacked,
+		)) {
+			const workspace = workspaceFor(id);
+			expect(splitOptions(workspace, stacked)).toEqual([]);
+			expect(workspace.panes).toHaveLength(paneCount(id));
+		}
 	});
 
 	// One option per axis the pane spans whole: none for a single slot, one for

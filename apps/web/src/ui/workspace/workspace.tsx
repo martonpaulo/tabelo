@@ -6,6 +6,7 @@ import {
 	gridAreaOf,
 	layoutColumnSplitExtent,
 	layoutRowSplitExtent,
+	paneCapacity,
 	type SplitExtent,
 	type SplitOption,
 	splitOptions,
@@ -240,9 +241,10 @@ export function Workspace({
 		: layoutColumnSplitExtent(workspace.layout);
 	const rowExtent = stacked ? null : layoutRowSplitExtent(workspace.layout);
 
-	// Where the workspace can still grow. Empty at four panes, which is what
-	// removes every control rather than disabling one.
-	const options = splitOptions(workspace);
+	// Where the workspace can still grow. Empty at the pane capacity, which is
+	// what removes every edge control rather than disabling one.
+	const capacity = paneCapacity(stacked);
+	const options = splitOptions(workspace, capacity);
 
 	// The global command deliberately chooses the first valid split in workspace
 	// reading order. It reuses the same derived options as the edge controls, so
@@ -251,11 +253,14 @@ export function Workspace({
 		if (handledAddViewRequest.current === addViewRequest) return;
 		handledAddViewRequest.current = addViewRequest;
 		if (!interactive) return;
-		const option = splitOptions(useTabeloStore.getState().workspace)[0];
+		const option = splitOptions(
+			useTabeloStore.getState().workspace,
+			capacity,
+		)[0];
 		if (!option) return;
 		dialogOpenerRef.current = addViewOpenerRef.current;
 		setDialog({ kind: "add-view", option });
-	}, [addViewOpenerRef, addViewRequest, interactive]);
+	}, [addViewOpenerRef, addViewRequest, interactive, capacity]);
 
 	return (
 		<main

@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
+import { listViews } from "@/views/registry";
 import { expect, test } from "./fixtures";
 
 // Below the stacking width the 2x2 tiling is abandoned rather than squeezed.
@@ -118,6 +119,42 @@ test("a stacked workspace exposes no resizer for an axis that no longer splits",
 
 	await page.setViewportSize({ width: 1280, height: 720 });
 	await expect(page.getByRole("separator")).toHaveCount(2);
+});
+
+// #219: a narrow window holds two views. The cap stops Add view and removes
+// the pane-edge split controls, and it never closes what is already open.
+test("a narrow window stops Add view at two panes and keeps every open pane", async ({
+	page,
+	tabelo,
+}) => {
+	const addView = async () => {
+		const menu = await tabelo.openAppMenu();
+		const item = menu.getByRole("menuitem", { name: copy.workspace.addView });
+		const state = {
+			disabled: (await item.getAttribute("aria-disabled")) === "true",
+			described: ((await item.getAttribute("aria-describedby")) ?? "") !== "",
+		};
+		await page.keyboard.press("Escape");
+		await expect(menu).toBeHidden();
+		return state;
+	};
+
+	await tabelo.chooseLayout("quad");
+	await page.setViewportSize({ width: 390, height: 700 });
+	await expect(tabelo.panes()).toHaveCount(4);
+	expect((await addView()).disabled).toBe(true);
+
+	await tabelo.goToPaneCount(2);
+	expect(await addView()).toEqual({ disabled: true, described: true });
+	// No pane offers an edge split either.
+	for (const { id } of listViews()) {
+		await expect(tabelo.splitControl(id, "bottom")).toHaveCount(0);
+		await expect(tabelo.splitControl(id, "right")).toHaveCount(0);
+	}
+
+	await page.setViewportSize({ width: 1280, height: 720 });
+	expect((await addView()).disabled).toBe(false);
+	await expect(tabelo.panes()).toHaveCount(2);
 });
 
 test("every stacked pane is reachable by scrolling and by keyboard", async ({

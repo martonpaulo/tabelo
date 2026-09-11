@@ -526,7 +526,15 @@ function halvings(slots: readonly SlotId[]): readonly Halving[] {
 // This replaced a single target per layout. Two columns reaches both Split left
 // and Split right, depending on which of its two panes is the one being cut, so
 // one answer per layout could not express it.
-export function splitOptions(workspace: Workspace): readonly SplitOption[] {
+//
+// `capacity` bounds how many panes the workspace may grow to, and bounds adding
+// only: a workspace already holding more keeps every pane, it just cannot grow.
+// See `paneCapacity` and docs/adr/0006.
+export function splitOptions(
+	workspace: Workspace,
+	capacity: number = WIDE_PANE_CAPACITY,
+): readonly SplitOption[] {
+	if (workspace.panes.length >= capacity) return [];
 	return workspace.panes.flatMap<SplitOption>((pane) =>
 		halvings(pane.slots).flatMap<SplitOption>(({ edge, halves }) => {
 			const shapes = workspace.panes.flatMap((candidate) =>
@@ -538,6 +546,18 @@ export function splitOptions(workspace: Workspace): readonly SplitOption[] {
 			return target ? [{ paneId: pane.id, edge, layout: target.id }] : [];
 		}),
 	);
+}
+
+// How many panes a workspace may grow to. Four is the most the presets tile.
+// Below the stacking breakpoint every pane takes the full width at 60vh, so four
+// of them is most of three screens of scrolling; two still shows one table
+// through two views, which is what the product is for. Resizing never closes a
+// pane: the cap governs Add view, not what is already open.
+const WIDE_PANE_CAPACITY = 4;
+const STACKED_PANE_CAPACITY = 2;
+
+export function paneCapacity(stacked: boolean): number {
+	return stacked ? STACKED_PANE_CAPACITY : WIDE_PANE_CAPACITY;
 }
 
 // The arrangement the first content of a session opens into: the format it
