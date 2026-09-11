@@ -559,17 +559,23 @@ test("a header drag that autoscrolls sideways keeps the data rows out of it", as
 }) => {
 	await tabelo.paste(wideTable());
 	const scroller = tabelo.pane("grid").locator('[data-slot="panel-body"]');
-	const scrollerBox = await scroller.boundingBox();
-	if (!scrollerBox) throw new Error("the grid pane did not lay out");
+	const header = tabelo.header(2);
 
-	const start = await tabelo.header(2).boundingBox();
-	if (!start) throw new Error("the header did not lay out");
-	const headerHeight = start.y + start.height / 2;
-
-	await page.mouse.move(start.x + start.width / 2, headerHeight);
+	// The press target is resolved at action time, as dragBetween does. A column
+	// width still settling after paste moves a box read beforehand, and a press
+	// that misses the header never starts the drag this case is about.
+	await header.hover();
 	await page.mouse.down();
+
+	// Measured once the drag has started, so both reflect the settled layout.
+	const pressed = await header.boundingBox();
+	const scrollerBox = await scroller.boundingBox();
+	if (!pressed || !scrollerBox) throw new Error("the grid did not lay out");
 	// Past the trailing pane edge, still at the header's own height.
-	await page.mouse.move(scrollerBox.x + scrollerBox.width + 8, headerHeight);
+	await page.mouse.move(
+		scrollerBox.x + scrollerBox.width + 8,
+		pressed.y + pressed.height / 2,
+	);
 
 	await expect
 		.poll(() => scroller.evaluate((element) => element.scrollLeft))
