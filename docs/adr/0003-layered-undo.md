@@ -54,3 +54,13 @@ Undo is layered, and the layer is chosen by focus.
   not just an accessibility concern.
 - Redo has to respect the same layering, including after a superseded draft is
   restored.
+
+## Amendment: an assisted edit is one local step (#294)
+
+A structural-assistance feature adds its adjustment to the transaction of the
+user edit that triggered it, so the pair is one editor-history step: one undo
+removes both, and redo restores both. That transaction is user-originated and
+enters local history like any keystroke. It is distinct from a
+synchronization transaction, which rewrites the text from the document and
+stays excluded from local history. Switching a feature's escape mode on or off
+changes no text and creates no history step at all.

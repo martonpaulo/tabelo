@@ -68,3 +68,15 @@ never derived from how the text looks.
   period receives written status feedback.
 - Real-time collaboration is deliberately out of reach without revisiting this
   ADR. That is an accepted trade, not an oversight.
+
+## Amendment: structural assistance produces the draft (#294)
+
+A source view may carry named structural-assistance features that adjust a
+small range of the text as the user types. What they produce is still the
+current draft, and nothing else: synchronization parses the final combined
+transaction, the user's edit and the adjustment together, exactly as it would
+parse text the user typed. Assistance never regenerates source from the table
+document, never rewrites text outside the range its trigger names, and never
+touches a draft that does not parse, which stays byte-exact and recoverable
+while every other view holds the last valid parse. The table document remains
+the only owner of committed data.

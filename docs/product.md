@@ -42,6 +42,11 @@ the exact text format the person came for.
 - Keeps working when a draft does not parse. Every other view holds the last
   valid parse and stays editable, and the broken draft stays recoverable
   through undo rather than being discarded.
+- Keeps every source view a real text editor first. A named structural
+  assistance may make a narrow, reversible adjustment where the source itself
+  makes the result unambiguous, such as keeping the Markdown alignment divider
+  in step with its header, and it can always be switched off for the text in
+  front of the user. It never reformats a draft on its own.
 - Accepts pasted and imported data, reading the header row from formats that
   declare it and asking before replacing the table when CSV, TSV, or plain text
   does not.
@@ -133,6 +138,7 @@ reversible implementation choice does not belong here.
 | Page titles | `Tabelo · Edit one table in every view` on the shell, `{table name} · Tabelo` once a table is open; no not-found title, because every deeper path is the app, normalized to `/` | `AGENTS.md` identity, `copy/product.ts` | #373 |
 | Grid wrapping | Per column, opt-in, off by default; one pane command wraps all columns | design system §9 | #41, #360 |
 | Source wrapping | Per pane, opt-in, off by default | design system §3 | #95 |
+| Automatic source rewriting | Only named structural-assistance features: smallest deterministic range, one undo step with the triggering edit, invalid drafts untouched, switchable off per buffer | `AGENTS.md` domain rules | #294 |
 
 ### Documents, formats, and persistence
 

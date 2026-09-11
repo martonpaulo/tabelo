@@ -190,6 +190,17 @@ vocabulary and `docs/adr/` for the reasoning.
   or IndexedDB. Refuse oversized input with a clear, actionable message before
   it can freeze or crash the tab. An engine limit or allocation failure is a
   defect, not an acceptable oversized-input path.
+- **Source text is free; structural assistance is narrow** (#294). A source
+  view is a text editor first: it never protects a range, rejects a keystroke,
+  normalizes a draft in the background, or keeps a hidden canonical source. A
+  named structural-assistance feature may rewrite source automatically only
+  when it declares its syntax and trigger, derives the change from the current
+  draft alone, changes the smallest deterministic range, lands the change in
+  the same editor transaction and local undo step as the user edit that
+  triggered it, leaves an invalid draft untouched and recoverable, and offers
+  a temporary escape mode that makes the buffer plain text again. It is editor
+  behaviour, never document state, persistence state, or a second
+  representation.
 - **Exactly one draft can be pending at a time.** The view being typed into owns
   it; every other view is a pure projection of the document. There is never a
   question of which pending edit wins.

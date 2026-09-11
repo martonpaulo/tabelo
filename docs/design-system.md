@@ -527,6 +527,18 @@ CodeMirror instance through its wrapping compartment so the caret, selection,
 draft, and local undo history survive the change. A newly created pane starts
 unwrapped; changing or rearranging a view retains the preference of the pane.
 
+**Structural assistance can always be switched off** (#294). A source view
+whose format has a structural-assistance feature (the first is the Markdown
+alignment divider, #297) shows one checked `Structural assistance` item in its
+pane actions menu, beside `Wrap lines`. Turning it off reconfigures the live
+editor through its own compartment: the text, caret, selection, and history
+stay exactly as they are, and from then on the buffer is plain text. Turning it
+back on rewrites nothing by itself; only the next eligible edit is adjusted
+again. The switch belongs to the pane's current buffer and to nothing else: it
+creates no history step, is never persisted, and resets to on when the draft is
+discarded or superseded, when the pane changes view or closes, and when the
+page reloads. A view with no such feature shows no item.
+
 The line-number gutter is its widest number plus one gap, `--spacing` × 3, on
 each side (#367). It reserves no minimum width, so it fits one, two, or three
 digits at any pane zoom without holding room for digits that are not there.

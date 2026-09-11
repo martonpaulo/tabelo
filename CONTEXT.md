@@ -201,6 +201,16 @@ through undo.
 
 Related to: Draft, Document timeline
 
+### Structural assistance
+
+A named source-editor feature that rewrites a small, deterministic range of the
+current draft in the same transaction as the user edit that triggered it, such
+as keeping the Markdown alignment divider in step with its header. It is
+transient editor behaviour: never document state, never persisted, never a
+hidden canonical source. Each one can be switched off for the current buffer.
+
+Related to: Draft, Document timeline
+
 ### Document timeline
 
 The single ordered history of table document states. Each committed parse and
