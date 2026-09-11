@@ -174,7 +174,7 @@ export function SettingsDialog({
 								// Empty values rather than above them, so their labels take the
 								// nested-setting weight. Scoped here: the same option anatomy
 								// keeps its control-label weight in every other dialog.
-								className="[&_[data-slot=menu-option-label]]:font-normal"
+								className="pl-3 [&_[data-slot=menu-option-label]]:font-normal"
 								value={draft.spaceIndicators}
 								onValueChange={(value) =>
 									updateDraft({ spaceIndicators: value as SpaceIndicators })

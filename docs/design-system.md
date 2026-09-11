@@ -547,7 +547,7 @@ BlinkMacSystemFont, sans-serif`. The source editor keeps the existing
 | Role | Classes |
 | :--- | :--- |
 | Pane title | `text-sm font-medium` |
-| Dialog title | `text-sm font-semibold`, owned by the shared `DialogTitle` and never overridden per dialog |
+| Dialog title | `text-base font-semibold`, owned by the shared `DialogTitle` and never overridden per dialog: the one interface text above `text-sm` |
 | Dialog section | `text-sm font-medium` |
 | Control label | `text-sm font-medium` |
 | Nested setting | `text-sm font-normal`: a setting inside a dialog section, and the options it owns |
@@ -560,11 +560,13 @@ BlinkMacSystemFont, sans-serif`. The source editor keeps the existing
 Critical control, pane, menu, notice, onboarding, and error labels never fall
 below `text-sm` (0.875rem). `text-xs` is reserved for optional descriptions,
 shortcuts, file extensions, and secondary status detail. There is no
-`text-base` and nothing larger in the product interface. A dialog therefore
-builds its hierarchy from weight inside one size: its title is the one
-semibold line, a section title is medium, and the settings inside a section are
-normal weight, so the title never competes with the choices it introduces. A
-top-level choice in a dialog without sections keeps the control-label weight. There are no headings
+`text-base` and nothing larger in the product interface, with one exception:
+the dialog title. Weight alone inside one size was tried on #293 and the steps
+were too small to see, so on #352 the title took one size step up. A dialog's
+hierarchy is then the `text-base` semibold title, a medium section title, and
+normal-weight settings, with the options a setting owns indented under it, so
+no level reads as a peer of the next. A top-level choice in a dialog without
+sections keeps the control-label weight. There are no headings
 above `h2`: the app has one screen.
 
 ---
@@ -903,7 +905,7 @@ than independent booleans. Raising `z-index` is not a hierarchy fix.
 | :--- | :--- |
 | Surface | `rounded-surface`, `bg-popover`, one shadow: a floating layer |
 | Body text | `text-sm`; the same 0.875rem floor as everywhere else |
-| Title | `DialogTitle`, `text-sm font-medium` |
+| Title | `DialogTitle`, `text-base font-semibold` (see Typography) |
 | Supporting copy | `DialogDescription`, one sentence saying what to choose |
 | Dismissal | Escape and an explicit Cancel; focus returns to what opened it |
 | Button hierarchy | One right-aligned, non-wrapping action row; below the `sm` breakpoint the actions stack at full width in the same order instead. Cancel or another neutral dismissal comes first, ordinary alternatives follow, and exactly one emphasized decision comes last. That decision is destructive red or primary blue, never both |
