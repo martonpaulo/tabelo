@@ -188,4 +188,4 @@ menu; one and only one cascading submenu; arbitrary freeze boundaries; opaque
 strings as the permanent cell model; a Light, Dark, and System preference; no
 familiar spreadsheet interaction under any circumstances; the preview's first
 row aligned with the grid's first row (#233); a separate blue-field icon source
-(#307).
+(#307); a blank table's shape drawn in the rendered preview (#357).

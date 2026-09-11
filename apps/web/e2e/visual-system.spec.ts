@@ -326,6 +326,8 @@ test("only view content participates in native text selection", async ({
 	);
 	await tabelo.page.keyboard.press("Escape");
 
+	// A blank table shows the preview's empty state (#357), so give it a value.
+	await tabelo.editCell(1, 1, "Ingrid");
 	await tabelo.choosePaneView("markdown", "html-preview");
 	await expect(tabelo.pane("html-preview").locator("table")).toHaveCSS(
 		"user-select",

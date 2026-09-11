@@ -207,3 +207,18 @@ test("a table with headers but no values keeps its blank shape", async ({
 	await expect(table.getByRole("columnheader")).toHaveCount(2);
 	await expect(table.locator("tbody tr")).toHaveCount(2);
 });
+
+// #357: a table with nothing in it, headers included, has nothing to read, so
+// the preview shows its empty state instead of a grid of blank cells, and the
+// table appears as soon as it holds a value.
+test("a table with no content shows the empty state until it holds a value", async ({
+	tabelo,
+}) => {
+	const pane = await openPreview(tabelo);
+	await expect(pane.locator('[data-slot="preview-empty"]')).toBeVisible();
+	await expect(previewTable(pane)).toHaveCount(0);
+
+	await tabelo.editCell(1, 1, "Ingrid");
+	await expect(previewTable(pane)).toHaveCount(1);
+	await expect(pane.locator('[data-slot="preview-empty"]')).toHaveCount(0);
+});

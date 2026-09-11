@@ -6,9 +6,9 @@ import type { Column, ColumnId, Row, RowId, TableDocument } from "@/core/types";
 // reader can't act on, so it is left out rather than shown as an empty band.
 // Emptiness is judged against the full document, independently for rows and
 // columns, so hiding one never changes whether the other counts as empty. A
-// document with no content anywhere is a different case, not "every row and
-// column is individually empty": a freshly started table still shows its blank
-// shape rather than nothing.
+// document with no content at all never reaches this: the preview shows its
+// empty state instead (#357). What does reach it with every cell empty is a
+// table whose headers are named, which keeps its shape rather than collapsing.
 //
 // This is presentation, not document semantics: the document keeps the rows and
 // columns this leaves out, and only the rendered view omits them.
@@ -34,10 +34,9 @@ export function visibleShape(document: TableDocument): VisibleShape {
 		}
 	}
 
-	// Nothing anywhere holds a value, so this is a table nobody has typed into
-	// rather than one whose rows and columns happen to be individually empty.
-	// It keeps its shape. Without this case the filters below would collapse it
-	// to no columns and no rows.
+	// No cell holds a value, though the headers may: the table keeps its shape.
+	// Without this case the filters below would collapse it to no columns and
+	// no rows.
 	if (filledColumns.size === 0) {
 		return { columns: document.columns, rows: document.rows };
 	}

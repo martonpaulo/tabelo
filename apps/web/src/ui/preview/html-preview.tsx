@@ -2,6 +2,7 @@ import { cn } from "@tabelo/ui/lib/utils";
 import { memo, useMemo } from "react";
 import { copy } from "@/copy/copy";
 import { cellTextAt } from "@/core/cell-value";
+import { isDocumentBlank } from "@/core/document";
 import type { Alignment, Column, Row } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { visibleShape } from "./visible-shape";
@@ -46,7 +47,9 @@ export default function HtmlPreview() {
 			tabIndex={-1}
 			className="tabelo-scroll-boundary h-full select-text overflow-auto p-4"
 		>
-			{document.rows.length === 0 ? (
+			{/* A table with nothing in it has nothing to read, so it shows the
+			    empty state rather than a grid of blank cells (#357). */}
+			{document.rows.length === 0 || isDocumentBlank(document) ? (
 				<div
 					data-slot="preview-empty"
 					className="flex h-full flex-col items-center justify-center text-center"
