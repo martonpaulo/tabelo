@@ -35,9 +35,11 @@ pnpm install
 pnpm dev
 ```
 
-Then open the URL it prints. The dev server starts at `http://localhost:3001` in CI and on a plain
-checkout; every other worktree gets its own port derived from its path, so several checkouts can run
-side by side without serving each other's build.
+Then open the URL it prints, which on a plain checkout and in CI is
+[http://localhost:3001](http://localhost:3001).
+
+Every other worktree gets its own port derived from its path, so several checkouts can run side by
+side without serving each other's build.
 
 <br />
 
