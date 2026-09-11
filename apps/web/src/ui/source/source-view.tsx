@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo } from "react";
 import { copy } from "@/copy/copy";
+import type { SourceRowRange } from "@/formats/types";
 import { usePreferences } from "@/preferences/use-preferences";
 import { textForView, useTabeloStore } from "@/state/store";
 import { PaneEntryContext } from "@/ui/workspace/use-pane-entry";
@@ -13,6 +14,8 @@ import { sourceFeedbackIds } from "./source-feedback";
 // One component serves every source format. What differs between Markdown, CSV,
 // TSV, HTML, Jira, and JSON is entirely described by the registry: codec, highlight
 // language, editability, so there is nothing here that names a format.
+
+const NO_ROWS: readonly SourceRowRange[] = [];
 
 interface SourceViewProps {
 	readonly paneId: string;
@@ -52,6 +55,19 @@ export default function SourceView({
 	);
 
 	const invalid = draft?.status === "invalid";
+
+	// The rows the separators follow (#296). A draft brings them from the parse
+	// that judged it, and only a clean one has any: an invalid draft, even in
+	// its grace period, shows no structure. A projection is this codec's own
+	// output of the document, parsed once per document change, and only when
+	// the format declares it can map rows at all.
+	const rows = useMemo((): readonly SourceRowRange[] => {
+		if (draft) return draft.status === "clean" ? draft.rows : NO_ROWS;
+		const codec = view.codec;
+		if (!codec?.mapsSourceRows || !projected.ok) return NO_ROWS;
+		const parsed = codec.parse(projected.text);
+		return parsed.ok ? (parsed.rows ?? NO_ROWS) : NO_ROWS;
+	}, [draft, projected, view]);
 	const diagnostics = useMemo((): readonly SourceDiagnostic[] => {
 		if (!draft) return [];
 		const severity = draft.status === "invalid" ? "error" : "warning";
@@ -99,6 +115,7 @@ export default function SourceView({
 				emptyValueIndicators={emptyValueIndicators}
 				fieldSeparator={view.codec?.fieldSeparator}
 				diagnostics={diagnostics}
+				rows={rows}
 				invalid={invalid}
 				entered={entered}
 				describedBy={description ? feedbackIds.description : undefined}

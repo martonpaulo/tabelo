@@ -279,6 +279,20 @@ stores.** The speed was never in doubt; the interoperability is what fails.
 `e2e/clipboard-transports.spec.ts` holds the result, and fails on exactly the
 two crossing combinations if the transport is moved again.
 
+### Row boundaries in source views
+
+#296 draws a hairline under every semantic row of a source view, and two
+suspicions follow from how: one pseudo-element per bounded line is the shape
+#275 found expensive for whitespace spans, and a pane with no draft parses its
+projection once per document change to learn where the rows are. Both measured
+on 2026-09-11, same machine, with the method of the #275 entry for the first.
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| A `position: relative` line with an `::after` stroke costs what #275's spans did | 180 rAF-paced scroll steps over a 200-row Markdown table, three runs per arm: layout 12.1 to 13.7 ms with strokes, 12.4 to 12.9 ms without; style recalculation 33 to 38 ms in both | **Disproved.** One empty pseudo-element per line, at most 199 of them and no glyph to shape, is not what made #275's spans expensive. |
+| Parsing each projection for its rows is a new per-edit cost | `pnpm bench` parse, 200 rows: Markdown 0.33 ms (0.55 ms escape-heavy), Jira 0.31 ms, CSV and TSV 0.18 ms | **Accepted.** Under 0.6 ms per source pane per document change, only for the four formats that declare row mapping, and never while a draft owns the pane (its own parse already carries the rows). |
+| Reading CSV and TSV row by row to get each row's end is slower | the same bench before and after the step-mode parse: 0.129 ms and 0.131 ms at 200 rows, 0.60 ms both at 1000 | **Disproved.** Within the run-to-run noise. |
+
 ### Adding an entry
 
 An entry belongs here when a suspicion has been measured, whatever the answer.

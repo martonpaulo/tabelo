@@ -137,6 +137,21 @@ export const editorTheme = EditorView.theme({
 		padding: "0 calc(var(--spacing) * 3)",
 	},
 	".cm-activeLine": { backgroundColor: "var(--active-line-fill)" },
+	// The boundary under a semantic table row (#296). Painted, never laid out:
+	// the stroke sits on the bottom edge of the row's last line, over every
+	// wrapped fragment of it, and takes no height, width, or caret offset. The
+	// line grid token, because it is table structure, not a status.
+	".cm-tabeloRowEnd": { position: "relative" },
+	".cm-tabeloRowEnd::after": {
+		content: '""',
+		position: "absolute",
+		left: "0",
+		right: "0",
+		bottom: "0",
+		height: "var(--hairline-w)",
+		backgroundColor: "var(--line-subtle)",
+		pointerEvents: "none",
+	},
 	".cm-activeLineGutter": {
 		backgroundColor: "var(--active-line-fill)",
 		color: "var(--foreground)",

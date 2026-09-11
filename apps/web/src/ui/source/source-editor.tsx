@@ -34,6 +34,7 @@ import {
 	type ViewUpdate,
 } from "@codemirror/view";
 import { useEffect, useLayoutEffect, useRef } from "react";
+import type { SourceRowRange } from "@/formats/types";
 import {
 	notifyLocalHistoryChanged,
 	registerLocalHistory,
@@ -54,6 +55,7 @@ import {
 	selectNextOccurrenceAsPrimary,
 } from "./occurrence-selection";
 import { recordsLanguage } from "./records-language";
+import { setSourceRows, sourceRowSeparators } from "./row-separators";
 import { SourceContextMenu } from "./source-context-menu";
 import { indicatorClasses, spaceScope } from "./whitespace-indicators";
 
@@ -266,6 +268,9 @@ interface SourceEditorProps {
 	readonly emptyValueIndicators: boolean;
 	readonly fieldSeparator?: string;
 	readonly diagnostics: readonly SourceDiagnostic[];
+	// Where the table's rows sit in `value`, for the boundaries between them
+	// (#296). Empty when the text does not parse or the format cannot map rows.
+	readonly rows: readonly SourceRowRange[];
 	readonly invalid: boolean;
 	readonly entered: boolean;
 	readonly describedBy?: string;
@@ -298,6 +303,7 @@ export function SourceEditor({
 	emptyValueIndicators,
 	fieldSeparator,
 	diagnostics,
+	rows,
 	invalid,
 	entered,
 	describedBy,
@@ -351,6 +357,7 @@ export function SourceEditor({
 					EditorState.allowMultipleSelections.of(true),
 					drawSelection(),
 					drawnSelection,
+					sourceRowSeparators,
 					highlightActiveLine(),
 					highlightActiveLineGutter(),
 					wrapCompartment.of(wrapExtension(wrap)),
@@ -503,6 +510,16 @@ export function SourceEditor({
 			annotations: [fromSync.of(true), Transaction.addToHistory.of(false)],
 		});
 	}, [value]);
+
+	// After the text above, so the rows always describe the text the editor now
+	// holds; the field refuses rows parsed from any other text.
+	useEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: setSourceRows.of({ rows, length: value.length }),
+		});
+	}, [rows, value]);
 
 	// Marking the cached metrics stale in the commit that publishes the new scale
 	// has CodeMirror remeasure before that frame is painted, so the line numbers

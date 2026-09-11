@@ -301,6 +301,14 @@ textarea,
 		color: HighlightText;
 	}
 
+	/* A row boundary in a source view is a painted background, which forced
+	   colours would drop; it takes the system's muted text colour instead, so
+	   the table structure survives without becoming a status (#296). */
+	.cm-tabeloRowEnd::after {
+		forced-color-adjust: none;
+		background-color: GrayText;
+	}
+
 	/* Forced colours paints no background image, so the source views' space dot
 	   would be the one annotation left with nothing, while the tab arrow and the
 	   empty-field placeholder survive as generated content. The glyph returns

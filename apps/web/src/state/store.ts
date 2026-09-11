@@ -87,6 +87,7 @@ import type {
 	OutputOptions,
 	ParseIssue,
 	PreconditionFailure,
+	SourceRowRange,
 } from "@/formats/types";
 import { defaultOutputOptions } from "@/formats/types";
 import {
@@ -180,6 +181,10 @@ export interface Draft {
 	readonly status: DraftStatus;
 	readonly issues: readonly ParseIssue[];
 	readonly warnings: readonly ParseIssue[];
+	// Where the parsed table's rows sit in `text`, for the source view's row
+	// separators (#296). Empty unless the text parses, so an invalid draft never
+	// shows structure it does not have. Derived from the parse, never persisted.
+	readonly rows: readonly SourceRowRange[];
 }
 
 // A pane change the user asked for that would destroy text the document has
@@ -573,12 +578,14 @@ function deriveDraft(
 				status: "clean",
 				issues: [],
 				warnings: result.warnings ?? [],
+				rows: result.rows ?? [],
 			}
 		: {
 				...draft,
 				status: "invalid",
 				issues: result.issues,
 				warnings: [],
+				rows: [],
 			};
 }
 
@@ -877,6 +884,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				status: continuingVisibleError ? "invalid" : "invalid-grace",
 				issues: result.issues,
 				warnings: [],
+				rows: [],
 			};
 
 			if (!continuingGrace) clearInvalidTimer();
@@ -934,6 +942,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				status: "clean",
 				issues: [],
 				warnings: result.warnings ?? [],
+				rows: result.rows ?? [],
 			},
 			pendingImport: null,
 			inputError: null,

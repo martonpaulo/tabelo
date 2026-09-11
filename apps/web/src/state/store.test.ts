@@ -183,6 +183,7 @@ describe("transactional input", () => {
 				status: "invalid",
 				issues: [],
 				warnings: [],
+				rows: [],
 			},
 		});
 		const before = useTabeloStore.getState();

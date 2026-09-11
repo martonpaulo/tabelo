@@ -25,6 +25,7 @@ function draft(overrides: Partial<Draft>): Draft {
 		status: "invalid",
 		issues: [],
 		warnings: [],
+		rows: [],
 		...overrides,
 	};
 }
