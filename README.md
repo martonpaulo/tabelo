@@ -21,6 +21,7 @@ It exists because moving a table between a wiki, a ticket, a spreadsheet and a c
 means retyping it, and every retype is a chance to lose a line break, an alignment marker or a
 leading zero. Here **one canonical document** backs every format, so a round trip through CSV or
 Jira and back leaves the table exactly as it was.
+
 <br />
 
 ---
@@ -97,6 +98,7 @@ workflows use only the `GITHUB_TOKEN` that GitHub Actions provides on its own.
 | `TABELO_PREVIEW_PORT`  | Local dev       | Overrides the path-derived preview server port                    |
 | `TABELO_PWA_DEV`       | Local dev       | Enables the service worker in dev, for working on the worker itself |
 | `CI`                   | CI              | Set by GitHub Actions; pins the canonical ports and the Playwright retry policy |
+
 <br />
 
 ---
@@ -274,6 +276,7 @@ Your data never leaves your browser. There is no backend, no account, and no
 telemetry of any kind. The document lives in `localStorage` on your machine.
 Clear your browser storage and it is gone: there is no copy anywhere else,
 including with us.
+
 <br />
 
 ---
