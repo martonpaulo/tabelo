@@ -727,7 +727,7 @@ for (const viewport of [
 	});
 }
 
-test("start actions keep the shared one-row priority order across widths", async ({
+test("start actions keep the shared priority order across widths", async ({
 	page,
 }) => {
 	await page.goto("/");
@@ -746,10 +746,14 @@ test("start actions keep the shared one-row priority order across widths", async
 	await expect(buttons[2]).toHaveAttribute("data-variant", "default");
 
 	const group = buttons[0].locator("..");
-	const assertActionPriority = async () => {
-		await expect(group).toHaveCSS("flex-direction", "row");
+	// One right-aligned row while it fits; below the small breakpoint the same
+	// actions stack in the same order instead of overflowing (#355).
+	const assertActionPriority = async (direction: "row" | "column") => {
+		await expect(group).toHaveCSS("flex-direction", direction);
 		await expect(group).toHaveCSS("flex-wrap", "nowrap");
-		await expect(group).toHaveCSS("justify-content", "flex-end");
+		if (direction === "row") {
+			await expect(group).toHaveCSS("justify-content", "flex-end");
+		}
 		expect(
 			await group.evaluate(
 				(element) => Number.parseFloat(getComputedStyle(element).marginTop) > 0,
@@ -764,11 +768,11 @@ test("start actions keep the shared one-row priority order across widths", async
 	};
 
 	await page.setViewportSize({ width: 320, height: 568 });
-	await assertActionPriority();
+	await assertActionPriority("column");
 
 	await page.setViewportSize({ width: 800, height: 600 });
-	await assertActionPriority();
+	await assertActionPriority("row");
 
 	await page.setViewportSize({ width: 1200, height: 800 });
-	await assertActionPriority();
+	await assertActionPriority("row");
 });

@@ -1,5 +1,6 @@
 import { Button } from "@tabelo/ui/components/button";
 import { DialogClose, DialogFooter } from "@tabelo/ui/components/dialog";
+import { cn } from "@tabelo/ui/lib/utils";
 import type * as React from "react";
 import { DisabledTooltip } from "./disabled-tooltip";
 
@@ -7,10 +8,20 @@ import { DisabledTooltip } from "./disabled-tooltip";
 // destructive Confirm is `destructive`, Cancel is the borderless `ghost`.
 // These wrappers exist so a dialog footer cannot drift from that rule.
 
+// One right-aligned row while it fits. Below the small breakpoint a row of
+// three labelled actions is wider than a phone, so the actions stack at full
+// width in the same DOM and focus order, the decisive one still last.
 export function DialogActions({
+	className,
 	...props
 }: React.ComponentProps<typeof DialogFooter>) {
-	return <DialogFooter data-slot="dialog-actions" {...props} />;
+	return (
+		<DialogFooter
+			data-slot="dialog-actions"
+			className={cn("max-sm:flex-col max-sm:items-stretch", className)}
+			{...props}
+		/>
+	);
 }
 
 export function DialogCancel({

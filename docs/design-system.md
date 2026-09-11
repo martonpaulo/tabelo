@@ -906,7 +906,7 @@ than independent booleans. Raising `z-index` is not a hierarchy fix.
 | Title | `DialogTitle`, `text-sm font-medium` |
 | Supporting copy | `DialogDescription`, one sentence saying what to choose |
 | Dismissal | Escape and an explicit Cancel; focus returns to what opened it |
-| Button hierarchy | One right-aligned, non-wrapping action row. Cancel or another neutral dismissal comes first, ordinary alternatives follow, and exactly one emphasized decision comes last. That decision is destructive red or primary blue, never both |
+| Button hierarchy | One right-aligned, non-wrapping action row; below the `sm` breakpoint the actions stack at full width in the same order instead. Cancel or another neutral dismissal comes first, ordinary alternatives follow, and exactly one emphasized decision comes last. That decision is destructive red or primary blue, never both |
 | Confirmation | One primary verb naming the operation: "Download", not "OK" |
 
 Compose `packages/ui`'s `Dialog`; do not build a second modal. Prefer the
@@ -928,7 +928,10 @@ adjacent labels. A missing status or metadata child reserves no space.
 
 Dialog action buttons use the shared action group and shared button wrappers.
 They stay right-aligned in one non-wrapping row without changing DOM or focus
-order, and the action group itself never scrolls. One shared, deliberately
+order, and the action group itself never scrolls. Below the `sm` breakpoint,
+where three labelled actions are wider than a phone, the same actions stack
+vertically at full width, still in DOM order with the decisive one last, rather
+than overflowing the surface. Decided on #355. One shared, deliberately
 generous top spacing separates the footer from the dialog content in every
 dialog. A neutral dismissal comes first, ordinary reversible alternatives
 follow, and exactly one decisive action comes last at the far right. That last

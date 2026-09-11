@@ -146,3 +146,36 @@ test("an unknown path redirects to the only application route", async ({
 	).toBeVisible();
 	await expect(page).toHaveURL(/\/$/);
 });
+
+// #355: on a phone-width screen the three start actions used to sit on one
+// row wider than the card, cutting the first one off. Every action has to stay
+// inside the card and the card inside the viewport. Thresholds, not geometry.
+for (const width of [320, 390, 600]) {
+	test(`the welcome keeps every start action on screen at ${width}px`, async ({
+		page,
+		tabelo,
+	}) => {
+		await page.setViewportSize({ width, height: 700 });
+		await tabelo.runAppCommand("newTable");
+		const welcome = page.getByRole("region", { name: copy.empty.title });
+		await expect(welcome).toBeVisible();
+		const card = await welcome.boundingBox();
+		if (!card) throw new Error("the welcome did not lay out");
+		expect(card.x).toBeGreaterThanOrEqual(0);
+		expect(card.x + card.width).toBeLessThanOrEqual(width);
+
+		const actions = welcome.getByRole("button");
+		await expect(actions).toHaveCount(3);
+		for (const action of await actions.all()) {
+			const box = await action.boundingBox();
+			if (!box) throw new Error("an action did not lay out");
+			expect(box.x).toBeGreaterThanOrEqual(card.x);
+			expect(box.x + box.width).toBeLessThanOrEqual(card.x + card.width);
+		}
+		expect(
+			await page.evaluate(
+				() => document.documentElement.scrollWidth - window.innerWidth,
+			),
+		).toBeLessThanOrEqual(0);
+	});
+}
