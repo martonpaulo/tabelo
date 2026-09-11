@@ -1192,3 +1192,36 @@ test("arrows commit quick entry and move the caret in an F2 edit", async ({
 	await expect(tabelo.cell(1, 2)).toBeFocused();
 	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 });
+
+// #361: Mod+D in the grid adds the next cell holding exactly the same value,
+// and claims the key even when nothing is left to add.
+test("Mod+D adds the next cell with exactly the same value", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste("Name\tCity\nIngrid\tRio\nPaulo\tMadrid\nMabel\tRio");
+	const selected = (row: number, column: number) =>
+		tabelo.cell(row, column).getAttribute("aria-selected");
+
+	await tabelo.cell(1, 2).click();
+	await page.keyboard.press("ControlOrMeta+d");
+	await expect.poll(() => selected(3, 2)).toBe("true");
+	expect(await selected(1, 2)).toBe("true");
+	expect(await selected(2, 2)).toBe("false");
+	await expect(tabelo.cell(3, 2)).toBeFocused();
+
+	// Nothing left to add: the press is still the grid's and changes nothing.
+	await page.evaluate(() => {
+		const claimed: boolean[] = [];
+		Object.defineProperty(window, "__modD", { value: claimed });
+		document.addEventListener("keydown", (event) => {
+			if (event.key.toLowerCase() === "d") claimed.push(event.defaultPrevented);
+		});
+	});
+	await page.keyboard.press("ControlOrMeta+d");
+	expect(
+		await page.evaluate(() => (window as { __modD?: boolean[] }).__modD),
+	).toEqual([true]);
+	expect(await selected(2, 2)).toBe("false");
+	expect(await selected(1, 2)).toBe("true");
+});

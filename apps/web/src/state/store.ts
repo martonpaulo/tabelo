@@ -15,6 +15,7 @@ import {
 	positionAfterReplacement,
 	replaceMatches,
 } from "@/core/find";
+import { nextMatchingCell } from "@/core/matching-cells";
 import {
 	clearCells,
 	deleteColumns,
@@ -352,6 +353,10 @@ export interface TabeloState {
 	// The modifier gesture: add this region to the selection, or take it away
 	// when it is already part of one.
 	toggleSelectionRegion: (position: CellPosition, mode?: SelectionMode) => void;
+	selectNextMatchingCell: () => {
+		readonly selected: number;
+		readonly total: number;
+	};
 	moveFocusKeepingRegions: (position: CellPosition) => void;
 	setEditing: (position: CellPosition | null, seed?: string) => void;
 	setEditingHeader: (index: number | null, seed?: string) => void;
@@ -1331,6 +1336,22 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set((state) => ({
 			selection: extendActiveRange(state.selection, position),
 		})),
+
+	// Mod+D in the grid (#361). The rule lives in core/matching-cells.ts; this
+	// applies its result and returns the counts for the interface to announce.
+	selectNextMatchingCell: () => {
+		const state = get();
+		const step = nextMatchingCell(state.document, state.selection);
+		if (step.selection) {
+			set({
+				selection: step.selection,
+				editing: null,
+				editingSeed: null,
+				editingHeader: null,
+			});
+		}
+		return { selected: step.selected, total: step.total };
+	},
 
 	toggleSelectionRegion: (position, mode = "cell") =>
 		set((state) => ({

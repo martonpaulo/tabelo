@@ -1725,9 +1725,13 @@ there is no next occurrence to add; a press with nothing to add changes nothing.
 The browser's own `Mod`+`D` bookmarks the page, and it cannot be given a
 different modifier the way the two `Space` chords were, because the browser
 claims it on every platform. So the key is taken for exactly as long as the
-user is inside the pane that uses it: a read-only view, the grid, a dialog, a
-menu, and the page background all leave it to the browser, and `Escape`, which
-always exits the pane, gives it back. An outcome that depended on whether a
+user is inside a pane that uses it: a read-only view, a dialog, a menu, and the
+page background all leave it to the browser, and `Escape`, which always exits
+the pane, gives it back. The grid uses it too (#361): with a cell focused, each
+press adds the next cell, in reading order and wrapping, whose value is exactly
+the first cell's value (same carried type, same value, no case folding) as a
+new area, and announces how many are gathered; with nothing left to add it
+still claims the key and changes nothing. An outcome that depended on whether a
 next match happened to exist would be a shortcut the user cannot predict.
 
 **Find is a second way of moving the selection, never a second highlight.**

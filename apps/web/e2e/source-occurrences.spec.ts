@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 import type { TabeloPage } from "./helpers";
 
@@ -227,12 +228,14 @@ test("a press with nothing left to add is claimed and leaves the count", async (
 	await expectCounts(tabelo.pane("markdown"), [RIO, RIO]);
 });
 
-test("outside a source editor the key is left to the browser", async ({
+// The grid takes the key too, for its own next matching cell (#361); every
+// surface that is neither leaves it to the browser.
+test("outside the editors the key is left to the browser", async ({
 	page,
 	tabelo,
 }) => {
 	await seed(tabelo);
-	await tabelo.cell(1, 1).click();
+	await page.getByRole("button", { name: copy.actions.openAppMenu }).focus();
 	await watchModD(page);
 
 	await page.keyboard.press("ControlOrMeta+d");

@@ -754,6 +754,26 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			return;
 		}
 
+		// The grid's counterpart of a source editor's next occurrence (#361),
+		// claimed on every press for the same reason it is there: an outcome that
+		// depended on whether a match existed would bookmark the page one press
+		// and select a cell the next.
+		if (
+			mod &&
+			!event.shiftKey &&
+			!event.altKey &&
+			event.key.toLowerCase() === "d"
+		) {
+			event.preventDefault();
+			const { selected, total } = store.selectNextMatchingCell();
+			if (total > 0) {
+				store.announceStatus(
+					copy.workspace.occurrencesSelected(selected, total),
+				);
+			}
+			return;
+		}
+
 		// Shift distinguishes keyboard resizing from the existing Alt+arrow reorder
 		// path. The focused column owns the gesture even when the selection spans
 		// several cells, matching the pointer handle's exact target.

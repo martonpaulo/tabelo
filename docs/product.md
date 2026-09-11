@@ -162,7 +162,7 @@ reversible implementation choice does not belong here.
 | Floating menu identity | Global commands; New table is destructive; identity includes copyright | design system §6 | #71 |
 | Pinning | Optional first data row and first data column only | design system §9 | #160 |
 | Sort, find, and fill | Sorting and find are in scope; fill repeats and offers a numeric series | design system §9 | #143, #144, #150 |
-| `Mod`+`D` | Belongs to a focused editable source editor, unconditionally | design system §9 | #232 |
+| `Mod`+`D` | Belongs to a focused editable source editor and to the grid, unconditionally; the grid adds the next cell with exactly the same value | design system §9 | #232, #361 |
 | Empty source field | One caret stop, at the value start | design system §2 | #345 |
 
 ### Accessibility and presentation
