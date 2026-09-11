@@ -54,6 +54,7 @@ import {
 	selectNextOccurrenceAsPrimary,
 } from "./occurrence-selection";
 import { recordsLanguage } from "./records-language";
+import { SourceContextMenu } from "./source-context-menu";
 import { indicatorClasses, spaceScope } from "./whitespace-indicators";
 
 // Marks a transaction as coming from synchronization rather than the user.
@@ -617,5 +618,15 @@ export function SourceEditor({
 		});
 	}, [ariaLabel, invalid, describedBy, entered]);
 
-	return <div ref={hostRef} className="h-full min-h-0 [&_.cm-editor]:h-full" />;
+	return (
+		<SourceContextMenu
+			paneId={paneId}
+			viewRef={viewRef}
+			onOccurrenceAdded={(summary) =>
+				handlers.current.onOccurrenceAdded(summary)
+			}
+		>
+			<div ref={hostRef} className="h-full min-h-0 [&_.cm-editor]:h-full" />
+		</SourceContextMenu>
+	);
 }

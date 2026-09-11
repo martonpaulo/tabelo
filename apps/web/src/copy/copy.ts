@@ -348,6 +348,9 @@ export const copy = {
 		addViewNarrow: "A narrow window holds two views. Widen it to add another.",
 		undo: "There is nothing to undo.",
 		redo: "There is nothing to redo.",
+		sourceNothingSelected: "Select some text first.",
+		sourceReadOnly: "This view is read-only.",
+		noOccurrence: "Select text first. The next match of it is added.",
 		fitWrappedColumn: "Turn off Wrap text to fit this column.",
 		columnAlreadyFitted: "This column already fits its content.",
 		columnFitUnavailable: "This column cannot be measured right now.",
@@ -535,6 +538,9 @@ export const copy = {
 		copy: "Copy",
 		cut: "Cut",
 		paste: "Paste",
+		// Source-view text commands, offered by its context menu (#234).
+		selectAllText: "Select all",
+		selectNextOccurrence: "Select next occurrence",
 		rowActions: "Row actions",
 		columnActions: "Column actions",
 		copySource: "Copy source",
@@ -865,6 +871,8 @@ export const copy = {
 		copy: "Mod+C",
 		cut: "Mod+X",
 		paste: "Mod+V",
+		selectAll: "Mod+A",
+		selectNextOccurrence: "Mod+D",
 		// Alt keeps these clear of Mod+plus, Mod+minus, and Mod+0, which belong to
 		// the browser and stay the way to scale the whole interface.
 		zoomOut: "Mod+Alt+-",

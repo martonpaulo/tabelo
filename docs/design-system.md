@@ -1000,7 +1000,9 @@ the modal overlay.
 
 Actions are described once and rendered many times. `ui/grid/table-actions.ts`
 is the single list of table operations; the axis menus and context menu are
-renderers over it. Never write an action inline in a
+renderers over it. A source view's context menu is the text counterpart and
+lists only commands the editor's keymap binds, so it never gains an action the
+keyboard lacks. Never write an action inline in a
 menu. That is how a menu and a toolbar drift apart.
 
 A component in `primitives/` must not import from the store. If it needs
@@ -1571,6 +1573,20 @@ all.
 `Enter` lands on what the view says is its content: the grid's focused cell,
 the source editor, or, for a view with nothing focusable in it, its scroll
 container, so the arrow keys still work.
+
+**The context-menu gesture opens Tabelo's menu in both editing views** (#234).
+Right-click, the Menu key, and `Shift`+`F10` are one request, so the grid and
+every source view answer all three with their own menu, and a keyboard user
+reaches it exactly as a pointer user does. The source view's menu offers only
+commands its keymap already binds, each with that shortcut: Cut, Copy, Paste,
+Undo, Redo, Select all, and Select next occurrence. `Shift`+right-click in a
+source view is left to the browser, because inside a text surface the browser's
+menu holds things worth keeping: spelling suggestions, look up, its text
+actions. The grid takes the gesture outright, since a cell offers the browser
+nothing of the kind. The bypass is recorded here rather than printed inside the
+menu, which holds commands only. A right-click inside the selection keeps it;
+`Escape` closes the menu and returns focus to the text, and a second `Escape`
+leaves the pane.
 
 | Key | Effect |
 | :--- | :--- |
