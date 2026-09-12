@@ -40,7 +40,7 @@ describe("classify-changes", () => {
 				"apps/web/src/core/matching-cells.test.ts",
 				"apps/web/src/formats/fixtures/roster.csv",
 				"apps/web/vitest.config.ts",
-				"biome.json",
+				"biome.jsonc",
 			]),
 		).toEqual(nothing);
 	});

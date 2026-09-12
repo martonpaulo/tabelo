@@ -269,7 +269,7 @@ Do not add without an explicit, demonstrated need:
 Keep these concerns independent. The dependency direction points inward: UI may
 depend on the core, never the reverse.
 
-Four of these boundaries are executable rather than prose. `biome.json` scopes
+Four of these boundaries are executable rather than prose. `biome.jsonc` scopes
 `style/noRestrictedImports` to the owning subtree so that the core and the
 codecs cannot import React or a UI package, the view registry cannot import
 CodeMirror or a UI component, and `packages/ui` cannot import application code.
@@ -688,7 +688,7 @@ here:
 - Update the smallest canonical documentation section when a durable contract
   changes. Do not create empty documentation for possible future use.
 - Keep the README easy to scan. Preserve third-party licenses and notices.
-- `biome.json` disables three a11y rules for `packages/ui/src/components/**`
+- `biome.jsonc` disables three a11y rules for `packages/ui/src/components/**`
   only. Those are vendored shadcn primitives, and the linter cannot see the
   `htmlFor`, role, and handler wiring that consumers supply. The exemption
   covers vendored primitives exclusively: never widen it to Tabelo's own

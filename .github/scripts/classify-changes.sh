@@ -52,7 +52,7 @@ while IFS= read -r file || [[ -n "$file" ]]; do
 	# gate covers them and the built site does not contain them.
 	if [[ "$file" =~ \.test\.tsx?$ ]] ||
 		[[ "$file" =~ \.bench\.tsx?$ ]] ||
-		[[ "$file" == "biome.json" ]] ||
+		[[ "$file" == "biome.jsonc" ]] ||
 		[[ "$file" =~ (^|/)vitest\..*\.ts$ ]] ||
 		[[ "$file" =~ (^|/)fixtures/ ]]; then
 		continue
