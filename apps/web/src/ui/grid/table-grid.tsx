@@ -1815,7 +1815,10 @@ const DataRow = memo(function DataRow({
 								<span
 									data-cell-value
 									className={cn(
-										"min-w-0",
+										/* Every cell value carries tabular figures, not only the
+										   numbers: a column of values is read by comparing the
+										   digits down it, and a string cell can hold digits too. */
+										"min-w-0 tabular-nums",
 										wrapped
 											? wrappedLinesClass
 											: "overflow-hidden text-ellipsis whitespace-pre",

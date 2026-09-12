@@ -52,12 +52,35 @@
 	--sidebar-accent-foreground: oklch(0.985 0 0);
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.556 0 0);
+
+	/* The standard's three weights and its measures. Declared outside `@theme`
+	   on purpose: Tailwind's `--font-weight-*` and container namespaces would
+	   mint utilities whose names collide with the family utilities this site
+	   will gain when it takes `--font-display` (skill-deck/docs/typography-standard.md). */
+	--weight-body: 400;
+	--weight-strong: 600;
+	--weight-display: 700;
+	--measure: 68ch;
+	--measure-narrow: 44ch;
+	--measure-title: 16ch;
 }
 
 @theme inline {
 	--spacing-hairline: var(--hairline-w);
+	/* The Microsoft stack is a recorded product decision, not drift: the product
+	   imitates a spreadsheet and Segoe/Aptos/Calibri is the reference
+	   (skill-deck/docs/typography-standard.md, and docs/design-system.md). */
 	--font-sans:
 		"Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+	/*
+	 * The fleet typography standard agrees with Tailwind here rather than
+	 * overriding it: the framework keeps its own `--text-*` ladder and its
+	 * paired line heights, and only the tracking the standard actually fixes is
+	 * taken (skill-deck/docs/typography-standard.md).
+	 */
+	--tracking-display: -0.03em;
+	--tracking-body: -0.01em;
+	--tracking-eyebrow: 0.12em;
 	--color-sidebar-ring: var(--sidebar-ring);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -101,6 +124,15 @@
 @layer base {
 	* {
 		@apply border-border outline-ring/50;
+	}
+	/* Rule 4 of the typography standard: headings balance, paragraphs do not. */
+	h1,
+	h2,
+	h3 {
+		text-wrap: balance;
+	}
+	p {
+		text-wrap: pretty;
 	}
 	body {
 		@apply font-sans bg-background text-foreground;
