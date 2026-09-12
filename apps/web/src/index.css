@@ -170,8 +170,9 @@
 	--input: var(--line-subtle);
 	--ring: var(--selection-edge);
 
+	/* The canonical fleet monospace spelling (skill-deck/docs/typography-standard.md). */
 	--font-family-source:
-		ui-monospace, "SF Mono", "Cascadia Mono", "Menlo", monospace;
+		ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 	--font-family-index: var(--font-family-source);
 }
 
