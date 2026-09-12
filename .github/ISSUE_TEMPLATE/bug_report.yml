@@ -1,0 +1,75 @@
+name: Bug report
+description: Report something in Tabelo that does not work the way it should.
+title: "bug: "
+labels: ["type: bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Everything runs in your browser, so a table you paste into this issue is the table we will
+        see. Reduce it to the smallest one that still reproduces the problem.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Name the views involved and paste the smallest table that still reproduces it.
+      placeholder: |
+        1. Paste this CSV…
+        2. Switch to the Markdown view…
+        3. Observe…
+    validations:
+      required: true
+
+  - type: dropdown
+    id: views
+    attributes:
+      label: Which view or format is affected?
+      multiple: true
+      options:
+        - Grid
+        - Markdown
+        - CSV
+        - TSV
+        - HTML
+        - Jira
+        - JSON
+        - Records
+        - Import or export
+        - Not specific to one view
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Firefox 141 on macOS 26
+    validations:
+      required: true
+
+  - type: dropdown
+    id: private-window
+    attributes:
+      label: Does it still happen in a private window?
+      description: A private window rules out an extension and the workspace already stored in your browser.
+      options:
+        - "Yes"
+        - "No"
+        - Not checked
+    validations:
+      required: true
