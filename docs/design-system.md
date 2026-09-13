@@ -1121,13 +1121,14 @@ transient: never document state, never a history step, never persisted.
 A dialog confirm is disabled when it would produce no state change. The shared
 confirm wrapper owns its required disabled tooltip, so feature dialogs cannot
 create an unexplained inactive primary button. It is **explained unavailable**
-rather than natively disabled: the button keeps its place in the tab order,
+rather than natively disabled (#151): the button keeps its place in the tab order,
 reports `aria-disabled`, and swallows pointer click, `Enter`, and `Space`, so
 the written reason opens from focus and not from hover alone. A native
 `disabled` attribute is for a control that promises no interaction and carries
 no reason to read; the moment a reason exists, it must be reachable without a
 pointer. This applies to the current layout in Layout and the current pane
-view in Change view. Download remains enabled because producing a file is an
+view in Change view, and to the find bar's buttons while there is nothing to
+step through (#376). Download remains enabled because producing a file is an
 action even when its format choice did not change; destructive New table and
 first-visit creation also still perform real actions.
 
@@ -1137,8 +1138,8 @@ hover, and on keyboard focus; the generic accent foreground never leaks into a
 destructive row.
 
 An unchecked checkbox remains visibly identifiable as a control. Its shared
-primitive owns a contrasting outline and transparent interior in both colour
-schemes; the absence of a checkmark must never make the control disappear into
+primitive owns a contrasting outline and transparent interior against the one
+palette (#289); the absence of a checkmark must never make the control disappear into
 its parent surface or turn it into a heavy filled square.
 
 Unavailable selection options distinguish two causes. An option already used
@@ -1160,7 +1161,7 @@ blocked replaces its content with one keyboard-focusable written status. The
 status is announced to assistive technology and identifies affected rows or
 columns without relying on the grid being visible.
 
-**A refusal that names a position offers the correction beside it.** The
+**A refusal that names a position offers the correction beside it** (#146). The
 refused choice stays natively disabled with its reason, and an ordinary enabled
 `Fix table` command sits immediately after it as a sibling: never nested inside
 the disabled option, its label, or its full-row overlay. A control must not
