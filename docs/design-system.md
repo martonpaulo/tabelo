@@ -752,7 +752,7 @@ A group whose items are *actions* rather than states, such as zoom, add, and
 close, stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
 
 Every action collection uses the menu primitive's semantic Group, in dropdown
-and context menus alike. A visible group title is reserved for Expected type and
+and context menus alike (#75). A visible group title is reserved for Expected type and
 Edit. It is canonical copy rendered through GroupLabel, and the Group is named
 with `aria-labelledby`. Clipboard, Insert, Remove, and the self-explanatory
 width actions (Fit column to content, Set column width) remain untitled
@@ -765,13 +765,13 @@ follow the same grouping contract.
 A submenu is allowed for exactly one shape: **a flat list of immediate,
 self-explanatory commands that needs no explanatory state**. Every row performs
 its command the moment it is chosen, there is nothing to state beforehand, and
-nothing to unwind afterwards. The approved members are the global `Copy as`,
+nothing to unwind afterwards. The approved members are the global `Copy as` (#149),
 whose rows are the codec registry and which is the standing example; column
-`Alignment` and cell `Cell type`, which keep their radio-group semantics
+`Alignment` (#155) and cell `Cell type`, which keep their radio-group semantics
 wherever they are placed; and the three named groups of four directional
 commands in the grid's menus, `Move`, `Fill`, and `Move focus, keep
 selection`, folded in on #369 because a flat grid context menu had grown taller
-than a laptop screen. Clipboard, Insert, Edit, and Delete stay on the first
+than a laptop screen. Clipboard, Insert, Edit, and Remove stay on the first
 level, one click away. Nothing else nests, and a submenu never contains a
 second submenu.
 
@@ -852,7 +852,7 @@ until the user chooses an empty table, pastes, or imports. This is an onboarding
 surface, not a dialog: it does not claim modal semantics and never appears
 automatically over saved content, an unfinished draft, or a table the user
 emptied during the current visit. An explicit New table command resets the
-document first and then returns to this surface. A trusted `Mod`+`V` paste event
+document first and then returns to this surface (#46). A trusted `Mod`+`V` paste event
 starts the table directly while the surface is open.
 
 **The first content of a session decides what the workspace opens as.** A
@@ -875,7 +875,7 @@ intrinsic width and the action row never becomes a scroll container.
 
 ### A pane's own tool bar
 
-The grid's find bar is the one surface of this shape, and adding a second one is
+The grid's find bar (#144) is the one surface of this shape, and adding a second one is
 a pattern break under §0. It is not a dialog and not a floating layer: it is a
 tool the user works **alongside** the table for as long as the errand lasts, so
 it belongs to the pane the way the header does.
@@ -920,7 +920,7 @@ hold without cascading: a choice with its own options, one that needs stating
 before it happens, or the layout gallery opened from the global menu. The
 download chooser holds format-specific output choices. New table also uses a
 dialog when the current visit has held valid content or a pending draft would
-be lost; an untouched session returns to onboarding without interruption.
+be lost; an untouched session returns to onboarding without interruption (#46).
 
 Adding a view qualifies under **"needs stating before it happens"**, not under
 length. Seven views are something a menu holds comfortably, so the list is not
@@ -934,7 +934,7 @@ disable it and explain, where a menu that did the same would be a menu whose
 items mostly do nothing. The choice is also unwound by Cancel with nothing
 changed, which is the shape of a decision rather than of a command.
 
-Moving a pane also qualifies because the choice is spatial. The Move pane
+Moving a pane also qualifies because the choice is spatial (#73). The Move pane
 dialog shows every other occupied position in the current preset through a
 small layout diagram and a worded name such as "Top left" or "Right, full
 height". The diagram is supplemental; the words carry the destination for
@@ -945,8 +945,10 @@ Settings is the other deliberate exception. Preferences are not immediate menu
 commands: they form one draft that the user visits, previews, and either applies
 together or unwinds with Cancel. A dialog supplies that transactional boundary
 and one extensible preferences list without turning the App menu into stored
-toggle state. Theme is a labelled single-selection group; global binary display
-preferences are labelled checkbox rows in the same list. Per-pane preferences,
+toggle state. It holds the global source display preferences (#55): tabs and
+empty values are labelled checkbox rows, and spaces is a nested
+single-selection group. There is no theme choice, because there is one palette
+(#289). Per-pane preferences,
 including source wrapping and pane zoom, remain in the pane menu.
 
 Rename table uses the same transactional boundary for one persisted text value.
@@ -954,7 +956,7 @@ Its labelled input starts with the current name, validates before saving, and
 keeps both the prior name and the dialog open when durable storage refuses the
 change.
 
-Typed grid entry has one deliberate decision dialog. Committing valid number or
+Typed grid entry has one deliberate decision dialog (#201). Committing valid number or
 boolean input whose canonical representation differs from the draft asks
 whether to convert it or keep the entered text exactly. Committing invalid
 typed input asks whether to keep editing or store it as text. Dismissal is
