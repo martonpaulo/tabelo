@@ -1691,7 +1691,8 @@ is in, and the menu is what carries the areas already selected past the move to
 the next column. The menu opens from the focused cell with the `ContextMenu`
 key as well as with a right-click, and closing it returns focus to the cell the
 action moved to, revealed clear of the sticky chrome like every other focus
-move. `Alt`+`Shift` remains column width only when the modifier is absent.
+move. `Alt`+`Shift` with the left or right arrow sets column width only while
+`Mod` is not held (#137; the guard in `table-grid.tsx` requires `!mod`).
 
 Every arrow chord this grid does not name is left to the browser. A removed or
 unassigned combination returns without preventing the default rather than
