@@ -1324,16 +1324,16 @@ per keystroke.
   own parse diagnostics are not notices; they decorate the text and use
   tooltips, as above.
 - There is no app header. One floating action button is the document-level
-  command surface at every viewport width. It is a floating layer and takes the
-  floating surface and elevation, with no resting border. Its menu contains the Tabelo identity
-  and description, the current table name with a Rename command, Undo, Redo,
-  New table, Import, Download, Add view, Layout,
-  and a link to the GitHub repository. The trigger has a stable accessible name
+  command surface at every viewport width. It rests flush with the workspace, with no surface, border, or shadow of its
+  own, and takes the floating surface and shadow only on hover (2ba36ed,
+  d9f4322). Its menu contains the Tabelo identity and description, the current
+  table name with a Rename command, Undo, Redo, New table, Import, the
+  `Copy as` submenu (#149), Download, Add view, Layout, Settings, and a link to
+  the GitHub repository. The trigger has a stable accessible name
   and never replaces visible menu labels with unexplained icons. Global Add
   view chooses the first valid split in workspace reading order and opens the
   same view chooser as the pane-edge command. It does not ask for placement or
-  maintain a second placement policy. The trigger keeps a panel surface and
-  elevation without a visible resting border; keyboard focus still uses the
+  maintain a second placement policy. Keyboard focus on the trigger uses the
   shared focus treatment.
 - A ready service-worker update adds one static accent dot to the FAB and a
   written "Reload to update" action to its menu. The trigger's accessible name
@@ -1366,10 +1366,11 @@ per keystroke.
 - Editable pane bodies use the main panel surface. A non-editable pane uses the
   read-only surface and the written "Read only" label. Never rely on a muted
   background alone to communicate editability.
-- The pane actions menu is flat and follows one semantic reading order. An
-  applicable capability-driven Copy command comes first. Zoom and conditional
-  source wrapping form one contiguous display group. Change view and structural
-  pane actions form the final group. Separators communicate those groups without
+- The pane actions menu is flat and follows one semantic reading order (#70).
+  An applicable capability-driven Copy command comes first, and zoom follows as
+  its own group. A grid pane then adds Find (#144) and Wrap all columns (#360),
+  each in its own group; a source pane adds Wrap lines. Change view and the
+  structural pane actions form the final group. Separators communicate those groups without
   visible titles. Changing a view opens one dialog; zooming and closing remain
   plain menu items. A command that does not apply is absent when capability
   decides it, while a temporarily unavailable structural command remains in
@@ -1377,12 +1378,12 @@ per keystroke.
 - Download and Layout remain document-level commands in the floating menu and
   keep their dialogs. Add view remains in the floating menu and on splittable
   pane edges; it never moves into the pane actions menu.
-- Layout offers only the arrangements of the pane count that is open: two
+- Layout offers only the arrangements of the pane count that is open (#72): two
   columns or two rows at two panes, the four asymmetric splits at three. It
   never adds or closes a pane, which Add view and Close view own. At one and
   four panes there is a single arrangement, so the command stays in place,
   disabled with a written reason, rather than disappearing.
-- Move pane sits between Change view and Close view in the final pane group. It
+- Move pane sits between Change view and Close view in the final pane group (#73). It
   opens the spatial destination dialog and offers every other occupied position
   in the current preset. Choosing a destination swaps positions while pane id,
   view, zoom, wrap, draft ownership, and active state move together. The pane
@@ -1394,11 +1395,10 @@ per keystroke.
   tooltip explaining that it is already open. The current
   pane's own view remains selected and enabled. No workspace may show two
   instances of the same registered view.
-- Add view is disabled, not hidden, at four panes. Close view is disabled, not
-  hidden, at one pane. Both expose the shared written disabled reason.
-- The global Add view command remains visible and disabled at four panes, with
-  a tooltip explaining the limit. Pane-edge controls exist only where a split
-  is possible.
+- Add view, in the floating menu, is disabled, not hidden, at four panes, and
+  at two while the workspace is stacked (#219). Close view is disabled, not
+  hidden, at one pane. Both expose the shared written disabled reason
+  (9aa08dc). Pane-edge controls exist only where a split is possible.
 - Nothing may reflow because of a selection change or a status change.
 - Two-pane layouts may breathe, but do not enlarge controls or introduce an
   otherwise absent card. Four-pane layouts keep the same 0.875rem critical labels,
