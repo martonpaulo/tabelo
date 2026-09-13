@@ -1601,8 +1601,8 @@ These are requirements, not aspirations:
 One rule shapes the rest: **the workspace is a two-level ring. `Tab` walks between panes; `Enter` enters a pane, and `Escape` exits it.** A widget that answers every key is a trap, so the escape hatch is unconditional.
 
 **What is at the workspace level is fixed per pane, never per row or per
-column.** The ring holds the pane frame and the two triggers in its header, and
-that is all: the header is chrome that belongs beside the pane, not content
+column.** The ring holds the pane frame and the one trigger in its header, the
+pane actions chevron (§5), and that is all: the header is chrome that belongs beside the pane, not content
 inside it. Everything the view itself contains, including every select handle
 and axis menu the grid grows, is reachable only after entering. So the number
 of stops the ring holds is a property of the layout and never of the table.
@@ -1657,7 +1657,8 @@ leaves the pane.
 | `Mod`+`F` | Open the find bar and put the caret in it. Taken from the browser deliberately: its own find searches the rendered chrome rather than the table |
 | Any printable character | Replace the cell and start editing |
 
-**A jump reads what the grid shows, and follows one rule on both axes.** When
+**A jump reads what the grid shows, and follows one rule on both axes** (#142).
+When
 the next cell continues the non-empty run the focus is already in, the target
 is that run's far edge; otherwise the jump crosses the gap to the next cell
 holding something; and when nothing holds anything in that direction, it lands
@@ -1682,8 +1683,8 @@ inserts nor falls through into editing.
 Moving the focus while keeping several selected areas has **no chord at all**.
 Every arrow combination inside the limit is spent: `Alt` reorders,
 `Mod`+`Alt` fills, `Alt`+`Shift` sets column width, and the jump above took
-`Mod`. So it lives in the cell context menu instead, as the flat **Move focus,
-keep selection** group, whose four directions carry no shortcut legend and are
+`Mod`. So it lives in the cell context menu instead, as the **Move focus,
+keep selection** submenu (#369), whose four directions carry no shortcut legend and are
 disabled at the table's edges with the reason written out. That is what keeps
 multi-area selection off the pointer: `Ctrl`+`Space` adds the column the focus
 is in, and the menu is what carries the areas already selected past the move to
@@ -1723,7 +1724,7 @@ rows are one line by the owner's choice and the edit is momentary.
 
 Moving the pointer to another cell, header, grid control, or surface outside
 the grid commits the open editor before the destination takes focus, just like
-`Enter` or `Tab`. `Escape` is the only exit that discards the in-progress value.
+`Enter` or `Tab` (#135). `Escape` is the only exit that discards the in-progress value.
 
 **Every pointer affordance needs a keyboard equal.** Column width is the case
 that proves it: the drag handle stays pointer-only and `aria-hidden`, while
@@ -1739,13 +1740,13 @@ tall as its text, and a fixed height would clip a wrapped value (#370).
 The modifier click that builds a selection out of several
 areas is the same obligation, and the two `Space` chords above are its answer.
 
-**An equal is an addition, never a replacement.** Reordering ships both ways:
+**An equal is an addition, never a replacement** (#139). Reordering ships both ways:
 `Alt`+arrows and the menu's four Move actions stay exactly as they are and
 remain the accessible path, and dragging a reorder grip is offered beside them.
 Both routes end in the same store action, so a drag can never produce a document
 shape the keyboard could not, and both are one history step.
 
-Copy fill follows the same rule. One handle sits at the active corner of one
+Copy fill follows the same rule (#203). One handle sits at the active corner of one
 contiguous data-cell selection, and the cell context menu keeps Fill up, down,
 left, and right visible. `Mod`+`Alt`+arrows are the direct keyboard equal. All
 three routes end in the same store action, tile the source values without
@@ -1765,7 +1766,7 @@ because §7 never animates grid geometry. `Escape`, pointer cancellation, lost
 capture, window blur, or a release back inside the source clears the preview and
 changes nothing.
 
-**A series is a second command, never a reading of the first.** A fill repeats
+**A series is a second command, never a reading of the first** (#204). A fill repeats
 what was selected and stops there. When the repeated cells were a single row or
 column of at least two cells that already held numbers, separated by one
 constant step, the fill leaves behind an offer: an info notice carrying `Fill
@@ -1933,7 +1934,7 @@ right alignment; the editable cell carries no separate alignment or menu icon.
 An `aria-label` on a gridcell is a defect: it replaces the content with
 coordinates and repeats them on every arrow key.
 
-The real type supplements that content instead of replacing it. Every native
+The real type supplements that content instead of replacing it (#200). Every native
 number, boolean, and null, plus any string that diverges from its column
 expectation, includes visually hidden full type text inside the gridcell.
 The visible compact mark appears only for divergence. A null cell therefore
@@ -1941,7 +1942,8 @@ has a written accessible value even though its `cellText` projection is empty.
 Opening its editor retains the native-value typeface and includes the real type
 in the editor's accessible name. Neither treatment adds another focus target.
 
-Grid entry follows the column expectation without turning it into inference.
+Grid entry follows the column expectation without turning it into inference
+(#201).
 Text columns store every character as a string, including leading zeroes,
 exponents, boolean words, and apostrophes. Number and boolean columns accept
 canonical input as that native type. One leading apostrophe explicitly stores
@@ -1952,7 +1954,7 @@ opening and committing an unchanged editor preserves the existing real type.
 
 **A header cell holds editable text and nothing else.** It is a cell for every
 purpose the user can observe: it is selectable, it answers Enter, F2, and
-typing, and `Backspace` clears it. Deleting its row is not a refusal either:
+typing, and `Backspace` clears it. Deleting its row is not a refusal either (#140):
 `Mod`+`Backspace` and the Delete rows menu item remove it and promote the first
 surviving row into the header, so the table passes from one header row to one
 header row and the gesture means the same thing on row 1 as on any other row.
@@ -1960,7 +1962,7 @@ Everything that acts on the column as a whole (selecting it, its menu, its
 resize handle) belongs to the column index strip, not to the header cell.
 
 Because it is a row, **the boundary under the header row is an ordinary row
-boundary**: `--line-subtle`, the same one every pair of data rows draws, across
+boundary** (#157): `--line-subtle`, the same one every pair of data rows draws, across
 the gutter and the cells alike.
 
 **The grid draws two kinds of line, and a line's kind never changes with
@@ -2029,7 +2031,7 @@ has not named. An unnamed column is identified by its letter on the index strip,
 and that letter is what its accessible name falls back to, so the announcement
 is never silent and no invented text ever reaches the document.
 
-That one letter is the column's identity in three places, from one shared
+That one letter is the column's identity in three places (#145), from one shared
 helper so they can never disagree: the index strip shows it, the accessible name
 falls back to it, and the JSON view keys an unnamed column by it. The last is a
 deliberate format-local exception, not generated document content: the header
@@ -2107,7 +2109,7 @@ which is why only an unpinned strip cell adds `relative` for its resize handle.
 ### Pinning the first data row and column
 
 The chrome above is always sticky. Two data layers are sticky **only when the
-user asks for them**, from a checkbox in the axis menu of the first data row and
+user asks for them** (#160), from a checkbox in the axis menu of the first data row and
 of the first data column, which are the only row and column either preference can
 reach. There is no freeze boundary of N rows or N columns: that is the
 spreadsheet shape the product declines, and two booleans answer the same need
@@ -2147,7 +2149,8 @@ cell. The grid measures each pinned layer and publishes it as a custom property,
 which the declaration adds when present and ignores when absent. Absent means
 unpinned, so the fallback is zero rather than a size.
 
-**The grid moves its own focus, though, and does not rely on it.** Chrome
+**The grid moves its own focus, though, and does not rely on it** (#139).
+Chrome
 honours only part of `scroll-padding-left` when it reveals a focused cell,
 delivering roughly half, so the clearance shrank as the gutter grew and the
 contract survived on a few pixels of slack. The grid therefore focuses with
@@ -2168,7 +2171,7 @@ be set to 64rem against a pane a fraction of that wide, so this is an ordinary
 arrangement, not an extreme one.
 
 Dragging a cell, row number, or column letter past the pane edge autoscrolls the
-grid on the axes that gesture owns and continues extending the selection. A
+grid (#141) on the axes that gesture owns and continues extending the selection. A
 reorder grip autoscrolls the same way and keeps moving the drop line instead,
 while a fill handle extends its preview. One controller owns every grid drag,
 clamps velocity, and stops at the document edge; reorder and fill gestures
