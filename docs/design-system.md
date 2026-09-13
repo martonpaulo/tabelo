@@ -61,7 +61,8 @@ source code or visual asset from that project is copied into Tabelo.
   visual anchor.
 - **Friendly.** Buttons and fields use a 0.25rem control radius. Panels, menus,
   dialogs, notices, and other contained or floating surfaces use a 0.5rem surface
-  radius. There are no pills or arbitrarily rounded containers.
+  radius, except the tooltip, which keeps the control radius (§3 Tooltip). There
+  are no pills or arbitrarily rounded containers.
 - **Neutral with one blue accent.** Neutral greys distinguish surfaces before
   lines do. Blue marks focus, selection, and checked or active controls. Status
   colours are the only other colours and always have written meaning.
@@ -206,14 +207,14 @@ and is not what the rule asks for.
 | `--selection-edge` | `border-selection-edge` | The focused cell's mark, focus rings, resize affordance |
 | `--text-selection-fill` | CSS selection | Native and source-editor text selection |
 | `--primary` / `--primary-foreground` | `bg-primary text-primary-foreground` | The solid accent with a contrast-paired label: the primary decision button, a checked control, and the grid's current find match |
+| `--active-line-fill` | Source editor theme | Current source line without competing with selected text |
 
 The find match is the one place the solid accent fills a run of text rather than
 outlining a control. It earns it: the cell underneath already wears
 `--selection-fill`, so a second translucent tint over the first is the weakest
 possible way to say "these characters", and the pale tone is reserved for fills
 that sit under content rather than replace its ground. The paired foreground is
-what keeps the marked characters readable.
-| `--active-line-fill` | Source editor theme | Current source line without competing with selected text |
+what keeps the marked characters readable (#144).
 
 The accent family is blue. Use its solid tone only for focus,
 selection, and checked or active controls; use the pale tone for hover or
@@ -258,7 +259,7 @@ for diagnostics and destructive state.
 **Colour never carries meaning alone.** A source diagnostic combines underline
 shape with written tooltip text. This is not optional.
 
-**A status colour means only its status.** Syntax highlighting never borrows
+**A status colour means only its status** (#53, #287). Syntax highlighting never borrows
 one: an escaped pipe or an HTML attribute name is not a source that parsed with
 a warning, and lending the amber to either leaves it carrying two meanings at
 once. The only status colour the source editor spends is `--status-warning` on
@@ -306,8 +307,8 @@ column headers, resize tracks, and layout glyphs stay square because their
 geometry communicates table structure.
 
 Column width is a persisted workspace preference keyed by stable column id,
-never table document state or a document-history step. Pointer resize,
-keyboard resize, and Fit share one arithmetic owner: 4.5rem through 64rem,
+never table document state or a document-history step (#137). Pointer resize,
+keyboard resize, and Fit (#81) share one arithmetic owner: 4.5rem through 64rem,
 stored to one sixteenth of a rem. Reordering follows the id, deletion removes
 the orphaned preference, and duplication copies the source preference to the
 new adjacent id.
@@ -350,7 +351,7 @@ browser zoom remains the way to scale the whole interface. `Mod`+`Alt`+`+` and
 `Mod`+`Alt`+`-` step the active pane; `Mod`+`Alt`+`0` resets it. The `Alt` is
 load-bearing: `Mod`+`+`, `Mod`+`-`, and `Mod`+`0` belong to the browser and are
 never intercepted, because a user pressing them wants the chrome, hit targets,
-and focus rings that pane zoom deliberately leaves alone.
+and focus rings that pane zoom deliberately leaves alone. Decided on #30.
 
 ### Syntax and table structure
 
@@ -394,7 +395,7 @@ offset, or text, and it takes `GrayText` in forced colours. It is never an
 alternating background and never a status colour.
 
 **Structure recedes, while semantic values and notation stay related across
-views.** Syntax highlighting always keeps tokens upright. Italics are reserved
+views** (#269). Syntax highlighting always keeps tokens upright. Italics are reserved
 for content the user explicitly marked as emphasis; types, comments, element
 names, escapes, entities, annotations, and other grammar indicators never add
 italics of their own.
@@ -406,7 +407,7 @@ only: they do not change grammar, parsing, cell values, or source text. A status
 colour is never spent on a token.
 
 **Whitespace, empty values, and escape sequences are annotated, never
-written.** The formats Tabelo edits are whitespace-significant and full of
+written** (#55, #287). The formats Tabelo edits are whitespace-significant and full of
 positions that hold a value the user cannot see: a tab and a run of spaces look
 alike in TSV, `a,,b` has a middle field, `||a|||b||` is hard to count, and
 `&#32;` is five characters standing for one space nobody can spell. Four glyph
@@ -464,7 +465,8 @@ extended is left alone. The placeholder is sized like a text run rather than
 like the line, so the caret beside it is drawn on the text line like every
 other caret. Decided on #345.
 
-**An escape sequence is drawn as what it means, in the room it took.** `&#32;`,
+**An escape sequence is drawn as what it means, in the room it took** (#287).
+`&#32;`,
 `<br>`, `\|`, `\\`, and `&amp;` are notation the codec had to write, and read as
 text they are both unreadable and out of proportion: five characters where the
 value is one. Each is replaced by the single character it resolves to, and the
@@ -557,8 +559,8 @@ alignment without an extra icon inside the editable cell. A native source
 selection must paint over the header treatment just as it does over any other
 line.
 
-Cell types are carried from the document and never inferred from visible text.
-A number, boolean, or null value uses the dedicated `font-value` token, which
+Cell types are carried from the document and never inferred from visible text
+(#200). A number, boolean, or null value uses the dedicated `font-value` token, which
 aliases the source monospace stack without making source typography the owner
 of grid presentation. Alignment stays independent metadata and never signals a
 type. When a real type differs from its column expectation, one compact textual
