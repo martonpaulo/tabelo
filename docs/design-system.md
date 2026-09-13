@@ -29,7 +29,12 @@ not invent one silently and do not force the current one. Report to the user:
 5. your recommendation: extend the existing pattern, or add a new one.
 
 Then wait for a decision. Once decided, record it here in the same edit that
-introduces the code.
+introduces the code, in the section that owns the subject, and cite the issue,
+pull request, or commit that decided it (`#N` or a short commit hash). A rule
+never lives only in an issue: a coordination or tracking issue is a queue, not
+the record, and a decision left there is one this document does not have.
+Where a rule replaces an earlier one, rewrite the paragraph rather than
+appending the change as chronology (#85).
 
 **Also report, do not silently fix, when you find an existing pattern break**:
 a raw hex value, a one-off spacing, a control that does not match its family, a
