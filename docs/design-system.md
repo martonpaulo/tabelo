@@ -1430,9 +1430,7 @@ because the view name beside it already carries the pane's identity: a second
 labelled button there repeated the word "Pane" once per open pane. Its
 accessible name is then the only signal it has, so that name states both the
 action and the view.
-Tooltip pointers use the shared Base UI arrow with one clipped triangular
-shape. Do not reintroduce a rotated square or build feature-specific pointers.
-Those axis affordances stay visually quiet with a small icon at rest, but their
+The grid's axis affordances stay visually quiet with a small icon at rest, but their
 target is grown to the 1.75rem control minimum with an `::after`
 box rather than by taking layout the row gutter does not have. They appear on
 hover, on `focus-within` of the row or column, while the menu is open, and for
@@ -1465,6 +1463,10 @@ platforms fill transparency with a colour of their own, onto `#1f1f1f` with the
 safe-area padding those contexts need. Decided on #307, replacing the separate
 blue-field source. The mark must remain legible at 1rem, use only product
 colours, and keep the grid silhouette intact.
+
+Tooltip pointers use the shared Base UI arrow with one clipped triangular
+shape. Do not reintroduce a rotated square or build feature-specific pointers
+(c3dc59a).
 
 ---
 
