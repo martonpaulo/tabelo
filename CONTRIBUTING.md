@@ -38,10 +38,9 @@ the working agreements this repository actually follows.
 Work happens on a branch and arrives through a pull request. The conventions are recorded in
 [`AGENTS.md`](AGENTS.md):
 
-- **Branch name**: `type/agent/issue-number/short-description`, where `type` is one of `feature`,
-  `hotfix`, `fix`, `chore`, `docs`, `refactor`, `test`, `agent` identifies who is working (use
-  `perso` for the maintainer), and `issue-number` is `issue-NNN`, zero-padded to three digits — for
-  example `feature/perso/issue-024/two-level-keyboard-navigation`.
+- **Branch name**: [Conventional Branch](https://conventionalbranch.org/), `type/<issue numbers>-short-description`,
+  where `type` is one of `feature`, `fix`, `hotfix`, `chore`, `docs`, `refactor`, `test`, `release` — for
+  example `feature/24-two-level-keyboard-navigation`, or `chore/update-readme` when no issue exists.
 - **Commit subject**: a Conventional Commits subject; one made for an issue ends with the issue
   number, for example `feat: add the export button (#54)`. A commit belonging to no issue carries no
   suffix. One concern per commit.
