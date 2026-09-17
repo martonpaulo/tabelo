@@ -35,12 +35,11 @@ while IFS= read -r file || [[ -n "$file" ]]; do
 		continue
 	fi
 
-	# Documentation, agent guidance, and orchestration: nothing to run.
+	# Documentation and agent guidance: nothing to run.
 	if [[ "$file" == *.md ]] ||
 		[[ "$file" == docs/* ]] ||
 		[[ "$file" == "LICENSE" ]] ||
 		[[ "$file" == .agents/* ]] ||
-		[[ "$file" == .ao/* ]] ||
 		[[ "$file" == .claude/* ]] ||
 		[[ "$file" == .gemini/* ]] ||
 		[[ "$file" == .github/instructions/* ]] ||

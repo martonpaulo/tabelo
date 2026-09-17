@@ -67,12 +67,11 @@ describes the migration and its downstream effects.
   example `feat: add the export button (#54)`. It is the issue number, never
   the pull request's, and a commit belonging to no issue carries no suffix
 - Merge policy: **merge commit**, `gh pr merge <number> --merge
-  --delete-branch`, so every branch commit reaches `main`. Squash was adopted
-  only because Agent Orchestrator's merge action was squash-only; that
-  integration was removed on 2026-09-17 (martonpaulo/skill-deck#271), and the
-  owner restored the preference for keeping branch commits
-  (martonpaulo/skill-deck#277). The repository's GitHub settings allow merge
-  commits only, so the setting and this policy cannot drift apart
+  --delete-branch`, so every branch commit reaches `main`. Squash was the
+  policy until 2026-09-17, when the owner restored the preference for keeping
+  branch commits (martonpaulo/skill-deck#277). The repository's GitHub
+  settings allow merge commits only, so the setting and this policy cannot
+  drift apart
 - Pull request title: a Conventional Commits subject ending in the issue
   numbers it closes, for example `feat(grid): add the export button (#54)` or
   `fix: normalize carriage returns (#54, #61)`. It is a separate rule from the
@@ -87,23 +86,8 @@ describes the migration and its downstream effects.
 - Release, signing, and secret storage: **not applicable**. Nothing is
   downloaded, installed, or signed. Deployment is GitHub Pages via GitHub
   Actions using the built-in `GITHUB_TOKEN`; this project stores no secrets
-- Agent automation: `enabled`
-- Implementation agent: `claude`
-- Review agent: `codex`
 - Skills baseline revision: `f0deb03a95008e34c28f8496dc98d0b1d9fe7e69`
 - Skills baseline applied: `2026-09-11`
-- Skills baseline divergence `worker-rules-pr-title` at
-  `f0deb03a95008e34c28f8496dc98d0b1d9fe7e69`: the baseline's worker-rules
-  template still describes the `Issue #<n> - <description>` pull request title.
-  Tabelo uses the Conventional Commits title recorded above, as
-  `.ao/worker-rules.md` describes
-
-The two agent roles are the only mechanism that decides who does the work.
-No issue label overrides them: the `implementer:`, `reviewer:`, and
-`orchestrator:` label families are reserved and inert, because the orchestrator
-resolves each role from the project configuration and reads no label to fill
-one. Running a different harness on one issue means spawning that session
-explicitly.
 
 ## Product
 
@@ -382,9 +366,9 @@ GitHub does not report a path-filtered trigger as skipped. It leaves the check
 expected and waiting, which would make a documentation-only pull request
 unmergeable forever. Cost is controlled inside the job instead. The Check job
 therefore always runs on a pull request, and browser coverage is selected by the
-highest-risk changed path: documentation, agent guidance, and orchestration
-files need no browser run, and neither do unit tests, fixtures, or unit-test
-tooling; browser specs and their helpers run the full Chromium suite;
+highest-risk changed path: documentation and agent guidance files need no
+browser run, and neither do unit tests, fixtures, or unit-test tooling; browser
+specs and their helpers run the full Chromium suite;
 product identity and interface copy run the Chromium smoke suite; the global
 stylesheet runs the smoke and visual-system suites; all other application
 changes and unknown paths run the full Chromium suite; workflow, pipeline
@@ -437,10 +421,9 @@ when it applies, what it defers to. Remove an entry when its skill is gone, and
 add one when a new skill is written.
 
 This repository owns no issue-implementation skill of its own. Driving a named
-issue number from scope contract to pull request is the general workflow's job,
-which is also what the orchestrated lane invokes. Its part here is to route the
-specialist work to the skills below and to obey this file; the skills below own
-the parts they name.
+issue number from scope contract to pull request is the general workflow's job.
+Its part here is to route the specialist work to the skills below and to obey
+this file; the skills below own the parts they name.
 
 - `codec-contract`: owns parsing, serialization, format sniffing, import,
   paste, clipboard, download, output options, and round-trip preservation.
@@ -463,10 +446,9 @@ the parts they name.
   question, written under `.scratch/prototypes/`.
 - `resolve-conflicts`: owns an in-progress Git merge, rebase, cherry-pick, or
   revert conflict. Applies only when Git is already conflicted.
-Pull request review is not in this list either. It belongs to the review agent
-recorded in `## Project identity and policy`, which posts its verdict through
-the orchestrator. GitHub Copilot review is not a second reviewer here: its
-repository ruleset is disabled, and two reviewers claiming one job is the defect
+Pull request review is not in this list either. It belongs to the general
+`issue-review` workflow, invoked by the maintainer. GitHub Copilot review is
+not a second reviewer here: its repository ruleset is disabled, and two reviewers claiming one job is the defect
 the precedence rule below exists to prevent.
 
 Six of these (`debug`, `domain-model`, `module-design`, `research`,
@@ -737,13 +719,12 @@ decision, and end with an exact response format the user can copy.
 ### Raise the card through the question tool
 
 A card written only as Markdown is a message, and a message ends the turn. The
-agent stops, the orchestrator marks the session idle, and a genuinely blocking
+agent stops, the client shows the session as finished, and a genuinely blocking
 decision looks answered. The card is the record; it is not the asking.
 
 So whenever the client offers a native structured-question facility, put the
-question through it. The tool call is what holds the turn open and what makes
-an orchestrated session report blocked rather than finished. Map the card onto
-it directly: the heading becomes the question, each row of the options table
+question through it. The tool call is what holds the turn open and what puts
+the session in the *needs you* column. Map the card onto it directly: the heading becomes the question, each row of the options table
 becomes one option with its tradeoffs as the description, and the recommended
 option goes first, marked as recommended.
 
@@ -1022,8 +1003,7 @@ condition for resumption.
 
 ## Agent execution
 
-Rules for any executor working from a clone of this repository, including a
-cloud executor that reads only committed files and cannot ask a question.
+Rules for any executor working from a clone of this repository.
 
 - Run tests with `pnpm test`, types with `pnpm check-types`, and format and lint
   with `pnpm check`. A change is not done while any of the three fails on the
@@ -1032,12 +1012,11 @@ cloud executor that reads only committed files and cannot ask a question.
 - Branch as `type/agent/issue-NNN/short-description` and commit with
   Conventional Commits, the subject ending in `(#<issue number>)`.
 - Never push to `main` and never merge: open a pull request and stop. Merge
-  belongs to the maintainer, or to GitHub auto-merge under the predicates in
-  `.ao/worker-rules.md`.
+  belongs to the maintainer.
 - Start the pull request body with one `Closes #<n>` line per resolved issue,
   then the problem, the implementation, the validation commands with their
   actual results, and the residual risk.
-- Do not touch: `.ao/`, `.github/workflows/`, `LICENSE`.
+- Do not touch: `.github/workflows/`, `LICENSE`.
 - `AGENTS.md` is protected by section, not as a file. `## Project identity and
   policy` is governance and never moves under an executor. Every other section
   documents this code, so a change that makes a recorded rule untrue updates it
