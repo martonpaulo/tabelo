@@ -15,7 +15,8 @@ visibility, versioning model, localization strategy,
 landing-page contract, or release policy only through an explicit task that
 describes the migration and its downstream effects.
 
-- Project and public name: `Tabelo`
+- Project name: `tabelo`
+- Public name: `Tabelo`
 - Description: edit one table visually or through synchronized text formats, entirely in your browser
 - Repository: `martonpaulo/tabelo` (public)
 - Public identifiers: workspace app `web`; internal packages `@tabelo/ui` and
