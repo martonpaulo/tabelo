@@ -41,16 +41,15 @@ describes the migration and its downstream effects.
   consequence of it rather than a second owner. Do not add a browser-specific
   workaround, a polyfill, or a fallback for a non-Chromium engine, and do not
   keep one whose only reason was such an engine
-- Branch workflow: **branch and pull request by default.** A task or issue gets
-  its own branch named under the scheme below; direct commits to `main` are
-  reserved for quick, low-risk fixes, most often made by the maintainer
-  directly. An agent may commit straight to `main` only for that kind of
-  fix, or when the user explicitly asks for the work to happen on `main`
+- Branch workflow: **branch and pull request, always.** A task or issue gets
+  its own branch named under the scheme below. Since 2026-09-17 a ruleset on
+  `main` requires a pull request and a green `Check` job, with no required
+  approval, as a trial of enforced checks (martonpaulo/skill-deck#283), so a
+  direct push to `main` is rejected; do not bypass or remove the ruleset
 - Commit policy: commit automatically on task completion, one concern per
   commit, on whichever branch the branch workflow above selects
 - Push policy: push automatically after committing. On a task branch, push the
-  branch and open the pull request automatically once validation passes; on
-  `main`, push `origin/main` directly
+  branch and open the pull request automatically once validation passes
 - Product versioning: **unversioned**. The deployed site is always the current
   version. No version number, tag, or release name ever appears anywhere in
   the product. The `0.0.0` in workspace manifests is a package-manager
@@ -67,19 +66,18 @@ describes the migration and its downstream effects.
 - Commit subject: a commit made for an issue ends with `(#<issue number>)`, for
   example `feat: add the export button (#54)`. It is the issue number, never
   the pull request's, and a commit belonging to no issue carries no suffix
-- Merge policy: **squash merge**, `gh pr merge <number> --squash
-  --delete-branch`. This reverses the earlier rebase-only rule, and the reason
-  is the orchestrated lane: Agent Orchestrator merges through its own action,
-  that action is squash-only, and a repository it cannot merge cannot use
-  auto-merge at all. The repository's GitHub settings allow squash only, so the
-  setting and this policy cannot drift apart. The cost is real and accepted:
-  `main` gets one commit per pull request instead of one per concern
+- Merge policy: **merge commit**, `gh pr merge <number> --merge
+  --delete-branch`, so every branch commit reaches `main`. Squash was adopted
+  only because Agent Orchestrator's merge action was squash-only; that
+  integration was removed on 2026-09-17 (martonpaulo/skill-deck#271), and the
+  owner restored the preference for keeping branch commits
+  (martonpaulo/skill-deck#277). The repository's GitHub settings allow merge
+  commits only, so the setting and this policy cannot drift apart
 - Pull request title: a Conventional Commits subject ending in the issue
   numbers it closes, for example `feat(grid): add the export button (#54)` or
   `fix: normalize carriage returns (#54, #61)`. It is a separate rule from the
-  commit subject above because squash merge makes the title, not any branch
-  commit, the subject that reaches `main`; the two share one grammar so the
-  history reads the same either way. No workflow enforces it: the
+  commit subject above because the title becomes the merge commit's subject on
+  `main`; the two share one grammar so the history reads the same either way. No workflow enforces it: the
   `pr-conventions` check was removed on 2026-09-12 because it failed every bot
   pull request permanently while this repository accepts direct commits to
   `main`. The title's issue set must still match the body's `Closes #<n>` lines
@@ -94,12 +92,6 @@ describes the migration and its downstream effects.
 - Review agent: `codex`
 - Skills baseline revision: `f0deb03a95008e34c28f8496dc98d0b1d9fe7e69`
 - Skills baseline applied: `2026-09-11`
-- Skills baseline divergence `merge-policy` at
-  `f0deb03a95008e34c28f8496dc98d0b1d9fe7e69`: the baseline's template text
-  records merge commits and forbids squashing, while its orchestration step
-  defaults an orchestrated repository to squash because Agent Orchestrator's
-  merge action is squash-only. The two disagree; Tabelo follows the
-  orchestration default, as every other orchestrated repository here does
 - Skills baseline divergence `worker-rules-pr-title` at
   `f0deb03a95008e34c28f8496dc98d0b1d9fe7e69`: the baseline's worker-rules
   template still describes the `Issue #<n> - <description>` pull request title.
@@ -1011,8 +1003,8 @@ condition for resumption.
   subject with its issue number when the commit belongs to one.
 - Title the pull request by the pull request title rule in `## Project identity
   and policy`.
-- Merge with `gh pr merge <number> --squash --delete-branch`, or leave it to
-  `skd merge` on an orchestrated pull request.
+- Merge with `gh pr merge <number> --merge --delete-branch`, or leave it to
+  `skd merge`, which merges only with a cross-family review at the head.
 - Inspect the exact payload before publishing it: the staged diff before a
   commit, the outgoing commit range before a push, and the final text before an
   issue, pull request, comment, or review. Never commit secrets, caches,
