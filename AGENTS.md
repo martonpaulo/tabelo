@@ -58,14 +58,14 @@ describes the migration and its downstream effects.
   the product. The `0.0.0` in workspace manifests is a package-manager
   placeholder, not a product version, and is never bumped as if it were a
   release. There is no `CHANGELOG.md`, no tags, and no release process
-- Branch naming: `type/agent/issue-number/short-description`. `type` is one of
-  `feature`, `hotfix`, `fix`, `chore`, `docs`, `refactor`, `test`. `agent` is
-  the acting coding agent (for example `claude`, `codex`), or `perso` for
-  branches created directly by the maintainer. `issue-number` is the GitHub
-  issue number as `issue-NNN`, zero-padded to three digits. `short-description`
-  is a kebab-case summary. Examples:
-  `hotfix/codex/issue-083/gutter-alignment-across-pane-zoom-levels`,
-  `feature/claude/issue-024/two-level-keyboard-navigation`
+- Branch naming: [Conventional Branch](https://conventionalbranch.org/),
+  `type/<issue numbers>-short-description`. `type` is one of `feature`, `fix`,
+  `hotfix`, `chore`, `docs`, `refactor`, `test`, `release`. Issue numbers are
+  every issue the branch closes, sorted, without leading zeros; omit them when
+  no issue exists. `short-description` is two to four kebab-case words.
+  Examples: `fix/83-gutter-alignment-across-zoom`,
+  `feature/24-two-level-keyboard-navigation`, `chore/align-repository-layout`.
+  Never rename a pushed branch with an open pull request: GitHub closes it.
 - Commit subject: a commit made for an issue ends with `(#<issue number>)`, for
   example `feat: add the export button (#54)`. It is the issue number, never
   the pull request's, and a commit belonging to no issue carries no suffix
@@ -1012,7 +1012,7 @@ Rules for any executor working from a clone of this repository.
   with `pnpm check`. A change is not done while any of the three fails on the
   exact current head. `pnpm test:e2e` is the browser gate: run it whole before
   reporting, per `## Build and validate`.
-- Branch as `type/agent/issue-NNN/short-description` and commit with
+- Branch as `type/<issue numbers>-short-description` and commit with
   Conventional Commits, the subject ending in `(#<issue number>)`.
 - Never push to `main` and never merge: open a pull request and stop. Merge
   belongs to the maintainer.
