@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 // one script, so a wrong answer here either spends runners for nothing or,
 // worse, lets an interface change skip the browser suite or the deploy.
 const script = fileURLToPath(
-	new URL("../../.github/scripts/classify-changes.sh", import.meta.url),
+	new URL("../../scripts/classify-changes.sh", import.meta.url),
 );
 
 function classify(paths: readonly string[]) {
@@ -78,7 +78,7 @@ describe("classify-changes", () => {
 	it("treats the pipeline's own configuration as the highest level", () => {
 		for (const path of [
 			".github/workflows/deploy.yml",
-			".github/scripts/classify-changes.sh",
+			"scripts/classify-changes.sh",
 			"apps/web/playwright.config.ts",
 		]) {
 			expect(classify([path])).toEqual({ ...fullSuite, affects_site: "true" });

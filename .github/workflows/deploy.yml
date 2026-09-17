@@ -73,10 +73,10 @@ jobs:
           changed="$RUNNER_TEMP/changed_files.txt"
           : > "$changed"
           if [[ -n "$live" ]]; then
-            .github/scripts/changed-files.sh "$REPO" "$live" "$HEAD_SHA" > "$changed" || : > "$changed"
+            scripts/changed-files.sh "$REPO" "$live" "$HEAD_SHA" > "$changed" || : > "$changed"
           fi
           echo "Live site is ${live:-unknown}; $(wc -l < "$changed") path(s) changed since."
-          .github/scripts/classify-changes.sh < "$changed" | grep '^affects_site=' | tee -a "$GITHUB_OUTPUT"
+          scripts/classify-changes.sh < "$changed" | grep '^affects_site=' | tee -a "$GITHUB_OUTPUT"
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         if: ${{ steps.site.outputs.affects_site == 'true' }}

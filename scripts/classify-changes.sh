@@ -26,7 +26,7 @@ while IFS= read -r file || [[ -n "$file" ]]; do
 	# The pipeline's own configuration: the full suite, and a rebuild, because a
 	# change here can change what is built or how it is checked.
 	if [[ "$file" == .github/workflows/* ]] ||
-		[[ "$file" == .github/scripts/* ]] ||
+		[[ "$file" == scripts/* ]] ||
 		[[ "$file" == "apps/web/playwright.config.ts" ]] ||
 		[[ "$file" == "apps/web/e2e-workers.ts" ]] ||
 		[[ "$file" == "apps/web/worktree-ports.ts" ]]; then
@@ -35,12 +35,11 @@ while IFS= read -r file || [[ -n "$file" ]]; do
 		continue
 	fi
 
-	# Documentation, agent guidance, and orchestration: nothing to run.
+	# Documentation and agent guidance: nothing to run.
 	if [[ "$file" == *.md ]] ||
 		[[ "$file" == docs/* ]] ||
 		[[ "$file" == "LICENSE" ]] ||
 		[[ "$file" == .agents/* ]] ||
-		[[ "$file" == .ao/* ]] ||
 		[[ "$file" == .claude/* ]] ||
 		[[ "$file" == .gemini/* ]] ||
 		[[ "$file" == .github/instructions/* ]] ||
