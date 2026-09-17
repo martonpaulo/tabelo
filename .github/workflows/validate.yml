@@ -84,13 +84,13 @@ jobs:
               base=$(gh run list --repo "$REPO" --workflow ci.yml --branch main \
                 --event push --status success --limit 1 --json headSha -q '.[0].headSha' || true)
               if [[ -n "$base" ]]; then
-                .github/scripts/changed-files.sh "$REPO" "$base" "${{ github.sha }}" \
+                scripts/changed-files.sh "$REPO" "$base" "${{ github.sha }}" \
                   > "$changed" || : > "$changed"
               fi
               ;;
           esac
           echo "Classifying $(wc -l < "$changed") changed path(s)."
-          .github/scripts/classify-changes.sh < "$changed" | tee -a "$GITHUB_OUTPUT"
+          scripts/classify-changes.sh < "$changed" | tee -a "$GITHUB_OUTPUT"
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 

@@ -26,7 +26,7 @@ while IFS= read -r file || [[ -n "$file" ]]; do
 	# The pipeline's own configuration: the full suite, and a rebuild, because a
 	# change here can change what is built or how it is checked.
 	if [[ "$file" == .github/workflows/* ]] ||
-		[[ "$file" == .github/scripts/* ]] ||
+		[[ "$file" == scripts/* ]] ||
 		[[ "$file" == "apps/web/playwright.config.ts" ]] ||
 		[[ "$file" == "apps/web/e2e-workers.ts" ]] ||
 		[[ "$file" == "apps/web/worktree-ports.ts" ]]; then

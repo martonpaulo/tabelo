@@ -389,7 +389,7 @@ product identity and interface copy run the Chromium smoke suite; the global
 stylesheet runs the smoke and visual-system suites; all other application
 changes and unknown paths run the full Chromium suite; workflow, pipeline
 script, or Playwright configuration runs that same full suite. One script,
-`.github/scripts/classify-changes.sh`, owns those rules for every event. A pull
+`scripts/classify-changes.sh`, owns those rules for every event. A pull
 request is classified by its own files; a push to `main` by every file changed
 since the last commit on `main` whose CI passed, so a push that cancelled an
 unfinished run inherits that run's changes; a manual run, or a history the
@@ -481,7 +481,7 @@ the process around it. A task no project skill claims follows normal skill
 triggering. Two skills claiming the same job is a defect to resolve, not a
 preference to exercise per task.
 
-## Reference paths
+## Agent skill paths
 
 - Product definition: `docs/product.md`
 - Domain glossary: `CONTEXT.md`
