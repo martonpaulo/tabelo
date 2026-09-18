@@ -351,6 +351,49 @@ test("typing into an empty field replaces the placeholder with the value", async
 	await expect(pane.locator(marker)).toHaveCount(1);
 });
 
+// The placeholder is not text, so it cannot be selected on its own: a double
+// click on it places the caret in its field instead of selecting the padding it
+// stands over. A wider selection still runs across it, as a selection runs
+// across whitespace markers in any editor.
+test("a double click on a placeholder places the caret", async ({
+	tabelo,
+	page,
+}) => {
+	await seed(
+		tabelo,
+		[
+			["Name", "City", "Role"].join("\t"),
+			[first.name, "", "Designer"].join("\t"),
+		].join("\n"),
+	);
+	const pane = tabelo.pane("markdown");
+	const placeholder = pane.locator(marker);
+	await expect(placeholder).toHaveCount(1);
+	const bandsOverPlaceholder = () =>
+		pane.evaluate((node, selector) => {
+			const word = node.querySelector(selector)?.getBoundingClientRect();
+			if (!word) return -1;
+			return [...node.querySelectorAll(".cm-selectionBackground")]
+				.map((band) => band.getBoundingClientRect())
+				.filter(
+					(band) =>
+						band.width > 0 &&
+						band.left < word.right - 1 &&
+						band.right > word.left + 1 &&
+						band.top < word.bottom &&
+						band.bottom > word.top,
+				).length;
+		}, marker);
+
+	await placeholder.dblclick();
+	await expect
+		.poll(() => page.evaluate(() => window.getSelection()?.toString() ?? ""))
+		.toBe("");
+	expect(await bandsOverPlaceholder()).toBe(0);
+	await page.keyboard.type(first.city);
+	await expect(tabelo.cell(1, 2)).toHaveText(first.city);
+});
+
 // An empty field has one caret stop, where its value would start. The padding
 // around the placeholder used to offer four in a field holding nothing, and the
 // stop past the placeholder was drawn above the text line. Asserted as order

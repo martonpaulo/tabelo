@@ -424,9 +424,30 @@ function snapCaret(
 	const selection = tr.selection;
 	if (!selection || tr.docChanged || selection.ranges.length !== 1) return tr;
 	const next = selection.main;
-	if (!next.empty) return tr;
-
 	const state = tr.startState;
+
+	// A double or triple click on a placeholder selects the padding it stands
+	// over, which draws a selection around a word nobody typed. A pointer
+	// selection that stays inside one empty field is a click on that field, so
+	// it becomes the field's one caret stop.
+	if (!next.empty) {
+		if (!tr.isUserEvent("select.pointer")) return tr;
+		const field = emptyCells(
+			state,
+			syntax,
+			state.doc.lineAt(next.from).from,
+			state.doc.lineAt(next.to).to,
+		).find((cell) => next.from >= cell.cellStart && next.to <= cell.cellEnd);
+		if (!field) return tr;
+		return [
+			tr,
+			{
+				selection: EditorSelection.cursor(field.valueStart, -1),
+				sequential: true,
+			},
+		];
+	}
+
 	const line = state.doc.lineAt(next.head);
 	const target = snapToEmptyCell(
 		emptyCells(state, syntax, line.from, line.to),
