@@ -24,8 +24,11 @@ export function RecoveryButton({
 }) {
 	return (
 		<Button
-			variant="outline"
+			variant="secondary"
 			size="xs"
+			// One step above the option block it sits on, so it reads as a
+			// control rather than as part of the dimmed choice.
+			className="bg-accent"
 			aria-label={copy.a11y.fixTableFor(target)}
 			aria-description={recovery.reason}
 			onClick={() => {

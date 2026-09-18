@@ -70,6 +70,8 @@ export function SingleSelectionOption({
 					optionBlockStyles,
 					controlStateTransitionStyles,
 					optionBlockStateStyles,
+					// Room at the trailing edge for the correction drawn over it.
+					recovery && !compact && "pr-32",
 					"focus-within:outline-(--focus-ring) focus-within:outline-2 focus-within:outline-offset-2",
 				)}
 			>
@@ -102,13 +104,19 @@ export function SingleSelectionOption({
 
 	if (!recovery) return option;
 
+	// The correction is drawn inside the refused option's block, at its
+	// trailing edge, so it reads as that option's own action (owner,
+	// 2026-09-19). In the DOM it stays a sibling of the disabled radio, never
+	// inside it, and sits above the radio's full-block hit area.
 	return (
-		<div>
+		<div className="relative" data-recovery-layout={compact ? "tile" : "row"}>
 			{option}
-			{/* Indented under the option it repairs, matching the download
-			    options, so it reads as belonging to that row rather than as a
-			    choice of its own. */}
-			<div className={compact ? "mt-1" : "mt-1 pl-9"}>
+			<div
+				className={cn(
+					"absolute z-20",
+					compact ? "right-3 bottom-2" : "top-1/2 right-3 -translate-y-1/2",
+				)}
+			>
 				<RecoveryButton
 					recovery={recovery}
 					target={label}
