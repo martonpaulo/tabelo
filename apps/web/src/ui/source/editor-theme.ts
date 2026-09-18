@@ -77,13 +77,20 @@ const spaceDot = {
 const spaceGlyphProperty = { "--tabelo-space-glyph": `"${SPACE_GLYPH}"` };
 
 export const editorTheme = EditorView.theme({
+	// The text sits in an inset rounded box inside its pane, its line numbers
+	// inside the same box (owner, 2026-09-19): the source reads as one block of
+	// code rather than as a page with a numbered band down its edge.
 	"&": {
-		height: "100%",
+		height: "calc(100% - var(--spacing) * 5)",
+		margin: "calc(var(--spacing) * 2.5)",
+		borderRadius: "var(--control-radius)",
+		overflow: "hidden",
 		fontSize: contentFontSize,
-		backgroundColor: "var(--surface-panel)",
+		backgroundColor: "var(--surface-code)",
 		color: "var(--foreground)",
 	},
 	".cm-scroller": {
+		paddingTop: "calc(var(--spacing) * 1.5)",
 		fontFamily: "var(--font-family-source)",
 		lineHeight: contentLineBox,
 		overscrollBehavior: "contain",
@@ -111,9 +118,11 @@ export const editorTheme = EditorView.theme({
 	// back here, or onto `.cm-content`, reopens the gap, because both leave
 	// character zero the same distance from the gutter.
 	".cm-line": { padding: "0 calc(var(--spacing) * 3) 0 0" },
+	// The numbers share the code box's surface, with no band or dividing line
+	// of their own; their tone and the active line's lift tell them apart.
 	".cm-gutters": {
-		backgroundColor: "var(--surface-gutter)",
-		color: "var(--muted-foreground)",
+		backgroundColor: "var(--surface-code)",
+		color: "var(--line-number)",
 		fontFamily: "var(--font-family-index)",
 		fontSize: contentFontSize,
 		// The same row box the content uses, so a number's natural height
@@ -123,7 +132,6 @@ export const editorTheme = EditorView.theme({
 		// have run before the editor is first shown.
 		lineHeight: contentLineBox,
 		border: "none",
-		borderRight: "var(--hairline-w) solid var(--line-subtle)",
 		userSelect: "none",
 	},
 	".cm-lineNumbers .cm-gutterElement": {
@@ -165,7 +173,7 @@ export const editorTheme = EditorView.theme({
 		zIndex: "1",
 		maxHeight: "50%",
 		overflow: "hidden",
-		backgroundColor: "var(--surface-panel)",
+		backgroundColor: "var(--surface-code)",
 		borderBottom: "var(--hairline-w) solid var(--line-strong)",
 		pointerEvents: "none",
 		userSelect: "none",

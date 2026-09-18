@@ -130,6 +130,8 @@ user-issued resizing.
 | `--surface-table-header` | `bg-surface-table-header` | The editable table header row in the grid and the rendered preview. The source views mark their header in the syntax tokens instead: see "Syntax and table structure". The grid's sticky row composites it over an opaque base: see §9 |
 | `--surface-gutter` | `bg-surface-gutter` | The grid's row-number gutter |
 | `--surface-readonly` | `bg-surface-readonly` | A pane body that cannot be edited |
+| `--surface-code` | `bg-surface-code` | The inset rounded box a source view's text and line numbers sit in (owner, 2026-09-19) |
+| `--line-number` | CodeMirror gutter | Source line numbers: the dimmest tone that still reads at 4.5:1 on `--surface-code` |
 | `--surface-floating` | `bg-surface-floating` | Menus, tooltips, and dialogs above panes |
 
 Order matters: app is furthest back, gutter and interface chrome sit above the

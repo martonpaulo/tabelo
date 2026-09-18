@@ -97,6 +97,11 @@
 	   than `--line-subtle` so every divider still reads across it. */
 	--surface-axis-selected: #3a3a37;
 	--surface-readonly: #222221;
+	/* The inset box a source view's text sits in, one step below the pane,
+	   with its line numbers at the dimmest tone that still reads at 4.5:1 on it
+	   (owner, 2026-09-19). */
+	--surface-code: #1f1f1e;
+	--line-number: #8a8984;
 	--surface-floating: #2c2c2a;
 
 	--line-subtle: #3a3a37;

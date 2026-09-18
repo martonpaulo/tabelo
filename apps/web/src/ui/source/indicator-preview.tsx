@@ -61,7 +61,7 @@ export default function IndicatorPreview({
 		<div
 			ref={hostRef}
 			data-slot="indicator-preview"
-			className="overflow-hidden rounded-interactive border border-line-subtle"
+			className="overflow-hidden rounded-interactive [&_.cm-editor]:m-0 [&_.cm-editor]:h-auto"
 		/>
 	);
 }
