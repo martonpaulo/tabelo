@@ -1,7 +1,14 @@
-import stringWidth from "string-width";
 import { cellTextAt } from "@/core/cell-value";
-import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
-import type { Alignment, TableDocument } from "@/core/types";
+import type { TableDocument } from "@/core/types";
+import {
+	alignmentMarker,
+	alignmentOf,
+	displayWidth,
+	isDelimiterRow,
+	MIN_DIVIDER_WIDTH,
+	reservedWidth,
+	splitRow,
+} from "./markdown-grammar";
 import {
 	firstLineBlock,
 	lineSpans,
@@ -88,19 +95,9 @@ export function escapeCell(value: string): string {
 // encoding uses, so a non-breaking space is not mistaken for an ordinary one.
 const NEEDS_ESCAPING = /^\s|\s$|[&\\|\n\r<]/u;
 
-// `.length` is the display width only inside printable ASCII. #186 chose
-// `string-width` so CJK and emoji align in a monospaced editor, and measuring
-// anything outside this range by length would reintroduce that defect while
-// looking correct in a Latin fixture.
-const ASCII_PRINTABLE = /^[\x20-\x7e]*$/;
-
 export interface EscapedCell {
 	readonly text: string;
 	readonly width: number;
-}
-
-function displayWidth(text: string): number {
-	return ASCII_PRINTABLE.test(text) ? text.length : stringWidth(text);
 }
 
 // One escaping implementation with two entry points. The serializer needs each
@@ -203,40 +200,6 @@ export function unescapeCell(value: string): string {
 		out += char;
 	}
 	return out;
-}
-
-// Splits one table line into raw cells, honouring escaped pipes.
-function splitRow(line: string): string[] {
-	return pipeCellSpans(line).map(({ from, to }) => line.slice(from, to).trim());
-}
-
-const DELIMITER_CELL = /^:?-+:?$/;
-
-function isDelimiterRow(cells: readonly string[]): boolean {
-	return cells.length > 0 && cells.every((cell) => DELIMITER_CELL.test(cell));
-}
-
-function alignmentOf(cell: string): Alignment {
-	const left = cell.startsWith(":");
-	const right = cell.endsWith(":");
-	if (left && right) return "center";
-	if (right) return "right";
-	if (left) return "left";
-	return "default";
-}
-
-function alignmentMarker(align: Alignment, width: number): string {
-	const dashes = "-".repeat(Math.max(3, width));
-	switch (align) {
-		case "left":
-			return `:${dashes.slice(1)}`;
-		case "right":
-			return `${dashes.slice(1)}:`;
-		case "center":
-			return `:${dashes.slice(2)}:`;
-		default:
-			return dashes;
-	}
 }
 
 // The header row owns the alignment divider under it: the divider is how
@@ -395,10 +358,9 @@ function serializeMarkdown(document: TableDocument): string {
 	// placeholder's length and is padded from an actual width of zero. Both are
 	// derived from the one measurement the cell carries, so the escape pass and
 	// the padding pass never measure the same cell twice.
-	const widths: number[] = document.columns.map(() => 3);
+	const widths: number[] = document.columns.map(() => MIN_DIVIDER_WIDTH);
 	const reserve = (index: number, cell: EscapedCell): EscapedCell => {
-		const reserved =
-			cell.text === "" ? EMPTY_VALUE_PLACEHOLDER.length : cell.width;
+		const reserved = reservedWidth(cell.text, cell.width);
 		const current = widths[index];
 		if (current === undefined) {
 			throw new Error("Markdown column width is missing.");
