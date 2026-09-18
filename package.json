@@ -30,12 +30,12 @@
 		"postinstall": "node apps/web/write-launch-config.js"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.5.12",
+		"@biomejs/biome": "2.5.13",
 		"@tabelo/config": "workspace:*",
 		"@types/node": "catalog:",
 		"husky": "^9.1.7",
-		"knip": "^6.32.0",
-		"lint-staged": "^17.0.7",
+		"knip": "^6.35.1",
+		"lint-staged": "^17.5.1",
 		"typescript": "catalog:"
 	},
 	"lint-staged": {
