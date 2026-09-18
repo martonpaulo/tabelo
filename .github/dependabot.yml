@@ -1,0 +1,38 @@
+# Fleet Dependabot configuration (skill-deck docs/fleet-conventions.md, #265).
+# Majors are ignored and reviewed by hand; the cooldown keeps a day-old release out of a pull request.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Madrid
+    cooldown:
+      default-days: 3
+      semver-major-days: 30
+      semver-minor-days: 3
+      semver-patch-days: 3
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+    groups:
+      production-dependencies:
+        dependency-type: production
+        update-types: [minor, patch]
+      development-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:15"
+      timezone: Europe/Madrid
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 5

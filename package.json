@@ -30,7 +30,7 @@
 		"postinstall": "node apps/web/write-launch-config.js"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.2",
+		"@biomejs/biome": "2.5.12",
 		"@tabelo/config": "workspace:*",
 		"@types/node": "catalog:",
 		"husky": "^9.1.7",
