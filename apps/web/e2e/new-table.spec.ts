@@ -142,7 +142,7 @@ test("an unknown path redirects to the only application route", async ({
 }) => {
 	await page.goto("/not-a-tabelo-route");
 	await expect(
-		page.getByRole("heading", { name: copy.empty.title }),
+		page.getByRole("heading", { name: copy.empty.title, exact: true }),
 	).toBeVisible();
 	await expect(page).toHaveURL(/\/$/);
 });
@@ -179,3 +179,25 @@ for (const width of [320, 390, 600]) {
 		).toBeLessThanOrEqual(0);
 	});
 }
+
+// The import option shows the platform's open-file shortcut, and it works from
+// the start surface without reaching for the pointer.
+test("the start surface opens the file chooser with the open-file shortcut", async ({
+	page,
+}) => {
+	await page.goto("/");
+	await expect(
+		page.getByRole("heading", { name: copy.empty.title, exact: true }),
+	).toBeVisible();
+	const chooserPromise = page.waitForEvent("filechooser");
+	await page.keyboard.press("ControlOrMeta+O");
+	const chooser = await chooserPromise;
+	await chooser.setFiles({
+		name: "people.csv",
+		mimeType: "text/csv",
+		buffer: Buffer.from("Name,City\nIngrid,Rio"),
+	});
+	await expect(
+		page.getByRole("dialog", { name: copy.headerImport.title }),
+	).toBeVisible();
+});

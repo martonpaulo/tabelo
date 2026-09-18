@@ -430,7 +430,7 @@ test("the initial surface accepts the standard paste event directly", async ({
 }) => {
 	await page.goto("/");
 	await expect(
-		page.getByRole("heading", { name: copy.empty.title }),
+		page.getByRole("heading", { name: copy.empty.title, exact: true }),
 	).toBeVisible();
 	await page.evaluate(() => {
 		const clipboardData = new DataTransfer();
@@ -445,7 +445,7 @@ test("the initial surface accepts the standard paste event directly", async ({
 		.click();
 
 	await expect(
-		page.getByRole("heading", { name: copy.empty.title }),
+		page.getByRole("heading", { name: copy.empty.title, exact: true }),
 	).toHaveCount(0);
 	await expect(page.getByRole("columnheader", { name: "Name" })).toBeVisible();
 	await expect(page.getByRole("gridcell").first()).toContainText("Ingrid");
@@ -456,7 +456,7 @@ test("an empty first visit shows one centered start surface over an inert blurre
 }) => {
 	await page.goto("/");
 	const startSurface = page
-		.getByRole("heading", { name: copy.empty.title })
+		.getByRole("heading", { name: copy.empty.title, exact: true })
 		.locator("..");
 	const overlay = startSurface.locator("..");
 
@@ -729,52 +729,46 @@ for (const viewport of [
 	});
 }
 
-test("start actions keep the shared priority order across widths", async ({
+test("start actions keep one priority order across widths", async ({
 	page,
 }) => {
 	await page.goto("/");
 
+	// The empty table is the one option that always works, so it comes first,
+	// filled, and the other two follow it in reading and focus order.
 	const buttons = [
+		page.getByRole("button", { name: copy.empty.emptyAction }),
 		page.getByRole("button", { name: copy.empty.pasteHint }),
 		page.getByRole("button", { name: copy.actions.importFile }),
-		page.getByRole("button", { name: copy.empty.emptyAction }),
 	] as const;
 
 	for (const button of buttons) {
 		await expect(button).toBeVisible();
 	}
-	await expect(buttons[0]).toHaveAttribute("data-variant", "ghost");
+	await expect(buttons[0]).toHaveAttribute("data-variant", "default");
 	await expect(buttons[1]).toHaveAttribute("data-variant", "ghost");
-	await expect(buttons[2]).toHaveAttribute("data-variant", "default");
+	await expect(buttons[2]).toHaveAttribute("data-variant", "ghost");
 
 	const group = buttons[0].locator("..");
-	// One right-aligned row while it fits; below the small breakpoint the same
-	// actions stack in the same order instead of overflowing (#355).
-	const assertActionPriority = async (direction: "row" | "column") => {
-		await expect(group).toHaveCSS("flex-direction", direction);
-		await expect(group).toHaveCSS("flex-wrap", "nowrap");
-		if (direction === "row") {
-			await expect(group).toHaveCSS("justify-content", "flex-end");
-		}
-		expect(
-			await group.evaluate(
-				(element) => Number.parseFloat(getComputedStyle(element).marginTop) > 0,
-			),
-		).toBe(true);
+	// One stacked column at every width, so a phone never cuts an option off
+	// (#355).
+	const assertActionPriority = async () => {
+		await expect(group).toHaveCSS("flex-direction", "column");
 		await buttons[0].focus();
 		await expect(buttons[0]).toBeFocused();
 		await page.keyboard.press("Tab");
 		await expect(buttons[1]).toBeFocused();
 		await page.keyboard.press("Tab");
 		await expect(buttons[2]).toBeFocused();
+		expect(
+			await page.evaluate(
+				() => document.documentElement.scrollWidth <= window.innerWidth,
+			),
+		).toBe(true);
 	};
 
-	await page.setViewportSize({ width: 320, height: 568 });
-	await assertActionPriority("column");
-
-	await page.setViewportSize({ width: 800, height: 600 });
-	await assertActionPriority("row");
-
-	await page.setViewportSize({ width: 1200, height: 800 });
-	await assertActionPriority("row");
+	for (const width of [320, 800, 1200]) {
+		await page.setViewportSize({ width, height: 700 });
+		await assertActionPriority();
+	}
 });

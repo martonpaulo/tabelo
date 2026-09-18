@@ -663,16 +663,19 @@ export const copy = {
 	},
 
 	empty: {
-		title: "Start with a table",
-		body: "Use an empty table, paste from the clipboard, or import a table file.",
+		// The surface is named by the product, which is what it introduces.
+		title: product.name,
 		// Said once, on first sight: what the product is, who made it, and where
 		// its source lives (#362). The same words reach the HTML shell at build
 		// time, so a reader without JavaScript and a search engine see them too.
 		intro: product.description,
 		credit: product.creditLabel,
 		source: product.sourceLabel,
-		emptyAction: "Use an empty table",
+		emptyAction: "Start with an empty table",
+		emptyDetail: (columns: number) => `${columns} columns, ready to type`,
 		pasteHint: "Paste a table",
+		pasteDetail: "From a spreadsheet, a page, or text",
+		importDetail: (extensions: readonly string[]) => extensions.join(", "),
 		sourceTitle: "Nothing here yet",
 		sourceBody: (label: string) => `Paste ${label} here to create the table.`,
 		previewTitle: "Nothing to read yet",
