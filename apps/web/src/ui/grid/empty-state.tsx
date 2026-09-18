@@ -38,6 +38,9 @@ export function EmptyState({
 }) {
 	const sectionRef = useRef<HTMLElement>(null);
 
+	// The surface takes focus so a screen reader starts on it and Enter starts
+	// the empty table. It is a container, not a control, so it draws no focus
+	// ring: the ring belongs to the options, the first of which is one Tab away.
 	useLayoutEffect(() => {
 		sectionRef.current?.focus();
 	}, []);
@@ -83,7 +86,7 @@ export function EmptyState({
 						onStartEmpty();
 					}
 				}}
-				className="w-[min(26rem,calc(100vw-2rem))] rounded-surface bg-popover p-6 text-popover-foreground shadow-md ring-1 ring-line-strong focus-visible:outline-2 focus-visible:outline-selection-edge focus-visible:-outline-offset-2"
+				className="w-[min(26rem,calc(100vw-2rem))] rounded-surface bg-popover p-6 text-popover-foreground shadow-md outline-none ring-1 ring-line-strong"
 			>
 				<h2
 					id="empty-state-title"
