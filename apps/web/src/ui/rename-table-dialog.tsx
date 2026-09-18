@@ -9,7 +9,7 @@ import { Input } from "@tabelo/ui/components/input";
 import { Label } from "@tabelo/ui/components/label";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { copy } from "@/copy/copy";
-import { validateTableName } from "@/copy/product";
+import { DEFAULT_TABLE_NAME, validateTableName } from "@/copy/product";
 import { useTabeloStore } from "@/state/store";
 import {
 	DialogActions,
@@ -27,7 +27,11 @@ export function RenameTableDialog({
 	readonly onOpenChange: (open: boolean) => void;
 }) {
 	const currentName = useTabeloStore((state) => state.name);
-	const [draft, setDraft] = useState(currentName);
+	// An unnamed table starts the field empty with the default name as its
+	// placeholder, and an empty field means that default (owner, 2026-09-19):
+	// the default is a name the product chose, not text to delete first.
+	const initialDraft = currentName === DEFAULT_TABLE_NAME ? "" : currentName;
+	const [draft, setDraft] = useState(initialDraft);
 	const [error, setError] = useState<NameError>(null);
 	const titleId = useId();
 	const descriptionId = useId();
@@ -36,20 +40,22 @@ export function RenameTableDialog({
 
 	useEffect(() => {
 		if (!open) return;
-		setDraft(currentName);
+		setDraft(initialDraft);
 		setError(null);
-	}, [currentName, open]);
+	}, [initialDraft, open]);
 
 	const close = (nextOpen: boolean) => {
 		if (nextOpen) return;
-		setDraft(currentName);
+		setDraft(initialDraft);
 		setError(null);
 		onOpenChange(false);
 	};
 
 	const submit = (event: FormEvent) => {
 		event.preventDefault();
-		const validated = validateTableName(draft);
+		const validated = validateTableName(
+			draft.trim() === "" ? DEFAULT_TABLE_NAME : draft,
+		);
 		if (!validated.ok) {
 			setError(validated.reason);
 			return;
@@ -62,7 +68,9 @@ export function RenameTableDialog({
 		onOpenChange(false);
 	};
 
-	const validated = validateTableName(draft);
+	const validated = validateTableName(
+		draft.trim() === "" ? DEFAULT_TABLE_NAME : draft,
+	);
 	const unchanged = validated.ok && validated.name === currentName;
 	const errorMessage =
 		error === "empty"
@@ -95,6 +103,7 @@ export function RenameTableDialog({
 							id={inputId}
 							autoFocus
 							value={draft}
+							placeholder={DEFAULT_TABLE_NAME}
 							aria-invalid={errorMessage ? true : undefined}
 							aria-describedby={errorMessage ? errorId : undefined}
 							onChange={(event) => {
