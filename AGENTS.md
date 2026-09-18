@@ -89,8 +89,8 @@ describes the migration and its downstream effects.
 - Release, signing, and secret storage: **not applicable**. Nothing is
   downloaded, installed, or signed. Deployment is GitHub Pages via GitHub
   Actions using the built-in `GITHUB_TOKEN`; this project stores no secrets
-- Skills baseline revision: `f0deb03a95008e34c28f8496dc98d0b1d9fe7e69`
-- Skills baseline applied: `2026-09-11`
+- Skills baseline revision: `0bc967f285693b1589401d00c7fd5f1e1b3e460a`
+- Skills baseline applied: `2026-09-18`
 
 ## Product
 
