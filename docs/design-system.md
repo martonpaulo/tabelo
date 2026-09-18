@@ -126,7 +126,7 @@ user-issued resizing.
 | :--- | :--- | :--- |
 | `--surface-app` | `bg-surface-app` | The page behind the panes |
 | `--surface-panel` | `bg-surface-panel` | A pane's content area |
-| `--surface-header` | `bg-surface-header` | Pane headers and interface chrome |
+| `--surface-header` | `bg-surface-header` | Interface chrome such as the grid's column strip. A pane header is not on it: it sits on the pane's own surface with no dividing line, so a pane has two layers, the pane and its content (owner, 2026-09-19) |
 | `--surface-table-header` | `bg-surface-table-header` | The editable table header row in the grid and the rendered preview. The source views mark their header in the syntax tokens instead: see "Syntax and table structure". The grid's sticky row composites it over an opaque base: see §9 |
 | `--surface-gutter` | `bg-surface-gutter` | The grid's row-number gutter |
 | `--surface-readonly` | `bg-surface-readonly` | A pane body that cannot be edited |

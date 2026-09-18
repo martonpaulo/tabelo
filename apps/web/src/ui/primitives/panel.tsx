@@ -71,7 +71,7 @@ function PanelHeader({
 	return (
 		<header
 			className={cn(
-				"flex h-panel-header shrink-0 items-center gap-1.5 border-line-subtle border-b bg-surface-header px-3",
+				"flex h-panel-header shrink-0 items-center gap-1.5 px-3",
 				className,
 			)}
 		>
