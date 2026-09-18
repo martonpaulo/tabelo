@@ -129,7 +129,6 @@ user-issued resizing.
 | `--surface-header` | `bg-surface-header` | Interface chrome such as the grid's column strip. A pane header is not on it: it sits on the pane's own surface with no dividing line, so a pane has two layers, the pane and its content (owner, 2026-09-19) |
 | `--surface-table-header` | `bg-surface-table-header` | The editable table header row in the grid and the rendered preview. The source views mark their header in the syntax tokens instead: see "Syntax and table structure". The grid's sticky row composites it over an opaque base: see §9 |
 | `--surface-gutter` | `bg-surface-gutter` | The grid's row-number gutter |
-| `--surface-readonly` | `bg-surface-readonly` | A pane body that cannot be edited |
 | `--surface-code` | `bg-surface-code` | The inset rounded box a source view's text and line numbers sit in (owner, 2026-09-19) |
 | `--line-number` | CodeMirror gutter | Source line numbers: the dimmest tone that still reads at 4.5:1 on `--surface-code` |
 | `--surface-floating` | `bg-surface-floating` | Menus, tooltips, and dialogs above panes |
@@ -140,9 +139,9 @@ contrast ratio: they group content, they do not identify a component. What has
 to be seen is the boundary of anything floating, and that is `--line-floating`
 below. The table-header surface is a quiet accent tint, so headers remain
 recognizable as mutable table data instead of reading as disabled chrome. Use
-tones to group related content before adding a line. Editable pane bodies use
-`--surface-panel`; a read-only pane uses
-`--surface-readonly` and a written "Read only" cue in its header.
+tones to group related content before adding a line. Every pane's content, editable
+or read-only, sits in one `--surface-code` box (owner, 2026-09-19); a read-only
+pane says so with the written "Read only" cue in its header, not with a tone.
 
 ### Lines
 

@@ -15,7 +15,6 @@
 	--color-surface-table-header: var(--surface-table-header);
 	--color-surface-gutter: var(--surface-gutter);
 	--color-surface-axis-selected: var(--surface-axis-selected);
-	--color-surface-readonly: var(--surface-readonly);
 	--color-surface-code: var(--surface-code);
 	--color-surface-floating: var(--surface-floating);
 
@@ -97,7 +96,6 @@
 	   selected data, and the letters and numbers are controls. It stays darker
 	   than `--line-subtle` so every divider still reads across it. */
 	--surface-axis-selected: #3a3a37;
-	--surface-readonly: #222221;
 	/* The inset box a source view's text sits in, one step below the pane,
 	   with its line numbers at the dimmest tone that still reads at 4.5:1 on it
 	   (owner, 2026-09-19). */
@@ -268,13 +266,14 @@ body {
    because the source editor, the rendered preview, and every selected data cell
    share them and none of those is sticky; here each one is painted as a
    background layer over the pane's own surface instead, so the colour at rest is
-   unchanged. The base is `--surface-panel` rather than `--background`, because
+   unchanged. The base is `--surface-code`, the box every pane's content sits
+   in, rather than `--background`, because
    the vendored shadcn tokens declare their own `--background` and this file
    only wins by import order; the pane surface is the unambiguous name for what
    a grid cell sits on.
    Reuse this for any other sticky cell that carries a tint. */
 @utility bg-sticky-table-header {
-	background-color: var(--surface-panel);
+	background-color: var(--surface-code);
 	background-image: linear-gradient(
 		var(--surface-table-header),
 		var(--surface-table-header)
@@ -282,7 +281,7 @@ body {
 }
 
 @utility bg-sticky-selection-fill {
-	background-color: var(--surface-panel);
+	background-color: var(--surface-code);
 	background-image: linear-gradient(
 		var(--selection-fill),
 		var(--selection-fill)

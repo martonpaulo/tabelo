@@ -188,9 +188,9 @@ export const Pane = memo(function Pane({
 						// the scrollport by the space the table does not use.
 						view.kind === "grid" && "tabelo-grid-scroller flex flex-col",
 						view.kind === "source" && "overflow-hidden",
-						view.capabilities.editable
-							? "bg-surface-panel"
-							: "bg-surface-readonly",
+						// Editable and read-only content share the one content box
+						// surface (owner, 2026-09-19); the header's read-only badge
+						// is what says a pane cannot be edited.
 					)}
 				>
 					<PaneOccurrencesContext.Provider value={setOccurrences}>

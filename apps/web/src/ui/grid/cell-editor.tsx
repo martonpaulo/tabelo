@@ -148,7 +148,7 @@ export function CellEditor({
 			// a scrollbar shown while it measures at height 0 would narrow the text
 			// and add a line that is not there.
 			className={cn(
-				"absolute inset-0 z-10 h-full w-full cursor-text resize-none overflow-hidden break-words bg-background px-2 py-content-line-inset text-content leading-content-line",
+				"absolute inset-0 z-10 h-full w-full cursor-text resize-none overflow-hidden break-words bg-surface-code px-2 py-content-line-inset text-content leading-content-line",
 				"outline-2 outline-selection-edge -outline-offset-2",
 				monospace && "font-value",
 				align,

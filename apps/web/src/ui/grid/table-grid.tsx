@@ -1773,13 +1773,13 @@ const DataRow = memo(function DataRow({
 							// A pinned cell has live rows and columns passing underneath
 							// it, so its selection tint is the sticky composition rather
 							// than the bare translucent token. See the header cell and
-							// index.css. Unselected needs nothing: `bg-background` is
-							// already the opaque pane surface.
+							// index.css. Unselected needs nothing: `bg-surface-code` is
+							// already the opaque surface of the pane's content box.
 							inSelection
 								? pinnedRow || pinnedCell
 									? "bg-sticky-selection-fill"
 									: "bg-selection-fill"
-								: "bg-background",
+								: "bg-surface-code",
 							// Focus is drawn by CellMarks, on the grid lines around the
 							// cell, so the cell's own outline stays off.
 							isFocus && "outline-none",

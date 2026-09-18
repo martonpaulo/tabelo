@@ -16,7 +16,7 @@ export function BlockedState({
 		<div
 			role="status"
 			aria-label={copy.a11y.blockedView}
-			className="flex h-full items-center justify-center overflow-y-auto bg-surface-readonly p-4 text-center text-muted-foreground text-sm"
+			className="flex h-full items-center justify-center overflow-y-auto p-4 text-center text-muted-foreground text-sm"
 		>
 			<p className="max-w-md select-text text-pretty">
 				{copy.source.blocked(failure)}
