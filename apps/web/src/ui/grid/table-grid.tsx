@@ -85,11 +85,10 @@ import { usePinnedAxes } from "./use-pinned-axes";
 // Where the selection is, marked on the chrome at the grid's edge. Never the
 // selection fill: that colour means selected data, and the letters and numbers
 // are controls, so painting them alike made the gutter read as part of the
-// selection. They take a neutral surface one step up and a full-strength,
-// heavier label instead, and never touch a line: the grid's dividers mean the
-// same thing whatever is selected. See docs/design-system.md.
-const selectedAxisClass =
-	"bg-surface-axis-selected font-semibold text-foreground";
+// selection. They take a full-strength, heavier label instead, with no band of
+// their own in the modern table (owner, 2026-09-19), and never touch a line.
+// See docs/design-system.md.
+const selectedAxisClass = "font-semibold text-foreground";
 
 const alignClass: Record<Alignment, string> = {
 	default: "text-left",
@@ -2028,7 +2027,7 @@ function ColumnIndexCell({
 				// content surface with no band, no dividers, and no line under
 				// them; only the header row's bottom edge and the row lines draw.
 				"group/col min-w-0",
-				"bg-surface-code px-1 text-center font-index font-normal text-muted-foreground text-xs",
+				"bg-surface-code px-2 text-left font-index font-normal text-muted-foreground text-xs",
 				selected && selectedAxisClass,
 				// Pinned it sticks sideways and joins the corner layer, beside the
 				// dead corner where the letters meet the row numbers. The strip
@@ -2065,7 +2064,7 @@ function ColumnIndexCell({
 					type="button"
 					tabIndex={entered ? 0 : -1}
 					aria-label={`${copy.actions.selectColumn}: ${copy.a11y.columnWithExpectedType(header, columnIndex, expectedType)}`}
-					className="min-w-0 cursor-pointer truncate rounded-interactive px-1 text-center hover:text-foreground"
+					className="min-w-0 cursor-pointer truncate rounded-interactive px-1 text-left hover:text-foreground"
 					onPointerDown={(event) => {
 						if (event.button !== 0) return;
 						onDragStart();
