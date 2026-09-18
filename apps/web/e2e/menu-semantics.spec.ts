@@ -234,114 +234,59 @@ test("option highlights include descriptions and disabled rows stay inert", asyn
 	await expect(redoItem).toHaveAccessibleName(/Shift/);
 });
 
-test("column choices use the shared one-line radio anatomy", async ({
-	page,
+test("column choices are segmented radio groups that keep radio semantics", async ({
 	tabelo,
 }) => {
-	await tabelo
-		.gridSurface()
-		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		})
-		.first()
-		.click();
-	const menu = page.getByRole("menu", {
-		name: new RegExp(`^${copy.actions.columnActions}:`),
-	});
+	const menu = await tabelo.openColumnMenu(1);
 	const expectedType = menu.getByRole("group", {
 		name: copy.actions.expectedType,
 	});
+	const alignment = menu.getByRole("group", { name: copy.actions.alignment });
 
 	await expect(expectedType.getByRole("menuitemradio")).toHaveCount(3);
-	await expect(menu.locator('[data-slot="selection-option-icon"]')).toHaveCount(
-		3,
-	);
+	await expect(alignment.getByRole("menuitemradio")).toHaveCount(4);
+	for (const group of [expectedType, alignment]) {
+		await expect(
+			group.getByRole("menuitemradio", { checked: true }),
+		).toHaveCount(1);
+	}
 	await expect(
 		menu.locator('[data-slot="dropdown-menu-radio-item-indicator"]'),
 	).toHaveCount(0);
-	await expect(
-		expectedType.getByRole("menuitemradio", { checked: true }),
-	).toHaveCount(1);
 
-	// Alignment kept every one of those semantics when it moved behind a
-	// submenu trigger: the same radio anatomy, one checked value read from the
-	// column, and a choice that survives closing and reopening the menu.
-	await page.keyboard.press("Escape");
-	const alignment = await tabelo.openAlignmentSubmenu(1);
-	await expect(alignment.getByRole("menuitemradio")).toHaveCount(4);
-	await expect(
-		alignment.locator('[data-slot="selection-option-icon"]'),
-	).toHaveCount(4);
-	await expect(
-		alignment.locator('[data-slot="dropdown-menu-radio-item-indicator"]'),
-	).toHaveCount(0);
-	await expect(
-		alignment.getByRole("menuitemradio", { checked: true }),
-	).toHaveCount(1);
-
+	// A choice is read back from the column, not from the last click.
 	await alignment
 		.getByRole("menuitemradio", { name: copy.actions.alignCenter })
 		.click();
+	await expect(menu).toBeHidden();
 	await expect(
-		(await tabelo.openAlignmentSubmenu(1)).getByRole("menuitemradio", {
+		(await tabelo.openAlignmentGroup(1)).getByRole("menuitemradio", {
 			name: copy.actions.alignCenter,
 		}),
 	).toBeChecked();
 });
 
-test("the alignment submenu opens, closes, and returns focus from the keyboard", async ({
+test("a segmented choice is reachable and chosen from the keyboard", async ({
 	page,
 	tabelo,
 }) => {
 	const trigger = tabelo.columnIndex(1).getByRole("button", {
 		name: new RegExp(`^${copy.actions.columnActions}:`),
 	});
-	await trigger.click();
-	const root = page.getByRole("menu", {
-		name: new RegExp(`^${copy.actions.columnActions}:`),
+	const group = await tabelo.openAlignmentGroup(1);
+	const right = group.getByRole("menuitemradio", {
+		name: copy.actions.alignRight,
 	});
-	const submenu = page.getByRole("menu", { name: copy.actions.alignment });
-	const submenuTrigger = root.getByRole("menuitem", {
-		name: copy.actions.alignment,
-	});
-
-	// ArrowRight opens the child menu and moves into it; ArrowLeft returns to
-	// the trigger without closing the menu the user started from.
-	await submenuTrigger.focus();
-	await page.keyboard.press("ArrowRight");
-	await expect(submenu).toBeVisible();
-	await expect(
-		submenu.getByRole("menuitemradio", { name: copy.actions.alignDefault }),
-	).toBeFocused();
-	await page.keyboard.press("ArrowLeft");
-	await expect(submenu).toBeHidden();
-	await expect(root).toBeVisible();
-	await expect(submenuTrigger).toBeFocused();
-
-	// Escape from inside the child menu unwinds one level at a time, and the
-	// grid trigger gets focus back at the end rather than the document body.
-	await page.keyboard.press("ArrowRight");
-	await expect(submenu).toBeVisible();
-	await page.keyboard.press("Escape");
-	await expect(submenu).toBeHidden();
-	await expect(root).toBeVisible();
-	await page.keyboard.press("Escape");
-	await expect(root).toBeHidden();
+	await right.focus();
+	await expect(right).toBeFocused();
+	await page.keyboard.press("Enter");
+	await expect(group).toBeHidden();
 	await expect(trigger).toBeFocused();
-});
-
-test("the alignment submenu stays inside a narrow viewport", async ({
-	page,
-	tabelo,
-}) => {
-	await page.setViewportSize({ width: 320, height: 568 });
-	const submenu = await tabelo.openAlignmentSubmenu(1);
-	const box = await submenu.boundingBox();
-	expect(box).not.toBeNull();
-	expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
-	expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(320);
-	expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);
-	expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(568);
+	await expect(
+		(await tabelo.openAlignmentGroup(1)).getByRole("menuitemradio", {
+			name: copy.actions.alignRight,
+		}),
+	).toBeChecked();
 });
 
 test("table menus preserve named groups and fold directional ones into submenus", async ({
@@ -367,12 +312,14 @@ test("table menus preserve named groups and fold directional ones into submenus"
 		menu.getByRole("group", { name: copy.actions.edit }),
 	).toHaveCount(1);
 	// A group of directional commands is one row that opens its own menu
-	// (#369), like Alignment, rather than a labelled run of four rows.
-	for (const label of [copy.actions.alignment, copy.actions.move]) {
-		await expect(
-			menu.getByRole("menuitem", { name: label, exact: true }),
-		).toHaveAttribute("aria-haspopup", "menu");
-	}
+	// (#369), rather than a labelled run of four rows. Alignment is a
+	// segmented group of its own on the first level.
+	await expect(
+		menu.getByRole("group", { name: copy.actions.alignment }),
+	).toHaveCount(1);
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.move, exact: true }),
+	).toHaveAttribute("aria-haspopup", "menu");
 	await expect(
 		menu.getByRole("group", { name: copy.actions.move, exact: true }),
 	).toHaveCount(0);
@@ -391,7 +338,6 @@ test("table menus preserve named groups and fold directional ones into submenus"
 		context.getByRole("group", { name: copy.actions.edit }),
 	).toHaveCount(1);
 	for (const label of [
-		copy.actions.cellType,
 		copy.actions.move,
 		copy.actions.fill,
 		copy.actions.moveFocus,
@@ -403,7 +349,7 @@ test("table menus preserve named groups and fold directional ones into submenus"
 			context.getByRole("group", { name: label, exact: true }),
 		).toHaveCount(0);
 	}
-	const cellType = await openSubmenu(page, context, copy.actions.cellType);
+	const cellType = context.getByRole("group", { name: copy.actions.cellType });
 	await expect(cellType.getByRole("menuitemradio")).toHaveCount(4);
 });
 

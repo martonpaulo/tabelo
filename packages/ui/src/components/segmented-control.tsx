@@ -1,5 +1,9 @@
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
+import {
+	segmentedGroupStyles,
+	segmentedItemStyles,
+} from "@tabelo/ui/components/menu-styles";
 import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 
@@ -11,10 +15,7 @@ function SegmentedControl({ className, ...props }: RadioGroupPrimitive.Props) {
 	return (
 		<RadioGroupPrimitive
 			data-slot="segmented-control"
-			className={cn(
-				"grid auto-cols-fr grid-flow-col gap-0.5 rounded-interactive bg-surface-app p-0.5",
-				className,
-			)}
+			className={cn(segmentedGroupStyles, className)}
 			{...props}
 		/>
 	);
@@ -28,7 +29,7 @@ function SegmentedControlItem({
 		<RadioPrimitive.Root
 			data-slot="segmented-control-item"
 			className={cn(
-				"flex min-h-control-sm cursor-pointer items-center justify-center rounded-indicator px-2 py-1 text-center text-muted-foreground text-xs leading-tight not-data-checked:hover:bg-accent not-data-checked:hover:text-accent-foreground data-disabled:cursor-not-allowed data-checked:bg-primary data-checked:text-primary-foreground data-disabled:opacity-50",
+				segmentedItemStyles,
 				controlStateTransitionStyles,
 				className,
 			)}

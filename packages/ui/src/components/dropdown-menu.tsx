@@ -1,8 +1,11 @@
-"use client";
+import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
+
+("use client");
 
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import {
 	menuCheckboxIndicatorStyles,
+	menuCheckboxThumbStyles,
 	menuChoiceItemLayoutStyles,
 	menuDestructiveItemStateStyles,
 	menuInteractiveItemStateStyles,
@@ -13,12 +16,13 @@ import {
 	menuShortcutStyles,
 	menuSingleSelectionItemStateStyles,
 	menuSubTriggerLayoutStyles,
+	segmentedItemStyles,
 	singleSelectionIndicatorFillStyles,
 	singleSelectionIndicatorShapeStyles,
 } from "@tabelo/ui/components/menu-styles";
 import { ShortcutKeys } from "@tabelo/ui/components/shortcut-keys";
 import { cn } from "@tabelo/ui/lib/utils";
-import { CheckIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
 
 // Generic over the payload Base UI already carries from a trigger to its root,
@@ -220,9 +224,7 @@ function DropdownMenuCheckboxItem({
 				className={menuCheckboxIndicatorStyles}
 				data-slot="dropdown-menu-checkbox-item-indicator"
 			>
-				<MenuPrimitive.CheckboxItemIndicator>
-					<CheckIcon />
-				</MenuPrimitive.CheckboxItemIndicator>
+				<span className={menuCheckboxThumbStyles} />
 			</span>
 			{children}
 		</MenuPrimitive.CheckboxItem>
@@ -278,6 +280,26 @@ function DropdownMenuRadioItem({
 	);
 }
 
+// One value of a segmented radio group inside a menu: the same drawing as the
+// shared SegmentedControl, with the menu's radio semantics and keyboard model.
+// Group it in a DropdownMenuRadioGroup carrying `segmentedGroupStyles`.
+function DropdownMenuSegmentedItem({
+	className,
+	...props
+}: MenuPrimitive.RadioItem.Props) {
+	return (
+		<MenuPrimitive.RadioItem
+			data-slot="dropdown-menu-segmented-item"
+			className={cn(
+				segmentedItemStyles,
+				controlStateTransitionStyles,
+				className,
+			)}
+			{...props}
+		/>
+	);
+}
+
 function DropdownMenuSeparator({
 	className,
 	...props
@@ -321,6 +343,7 @@ export {
 	DropdownMenuPortal,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
+	DropdownMenuSegmentedItem,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
 	DropdownMenuSub,

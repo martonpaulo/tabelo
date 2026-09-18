@@ -17,7 +17,7 @@ export const menuLabelStyles =
 
 export const menuItemLayoutStyles = `relative flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive ${menuItemInsetStyles} text-sm leading-snug outline-hidden data-disabled:cursor-not-allowed data-inset:pl-7 data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
 
-export const menuChoiceItemLayoutStyles = `relative flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive py-2 pr-10 pl-2 text-sm leading-snug outline-hidden data-disabled:cursor-not-allowed data-inset:pl-7 data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
+export const menuChoiceItemLayoutStyles = `relative flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive py-2 pr-12 pl-2 text-sm leading-snug outline-hidden data-disabled:cursor-not-allowed data-inset:pl-7 data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
 
 export const menuInteractiveItemStateStyles =
 	"not-data-disabled:hover:bg-accent not-data-disabled:hover:text-accent-foreground not-data-disabled:hover:**:text-accent-foreground not-data-disabled:focus:bg-accent not-data-disabled:focus:text-accent-foreground not-data-disabled:focus:**:text-accent-foreground";
@@ -43,15 +43,23 @@ export const optionBlockStateStyles =
 export const menuShortcutStyles =
 	"ml-auto inline-flex items-center gap-0.5 font-sans text-muted-foreground text-xs leading-none tracking-normal";
 
+// A shortcut is one run of text in the interface face, "⌘C" on Apple keyboards and
+// "Ctrl+C" elsewhere, the same spelling the start surface shows (2026-09-19).
 export const menuShortcutKeyStyles =
-	"min-w-5 rounded-interactive bg-muted px-1 py-0.5 text-center font-sans text-xs leading-none tracking-normal";
+	"font-sans text-xs leading-none tracking-normal";
 
 // The two menu indicators wear the product's own checkbox and radio anatomy:
 // the same 1rem box, the same control radius, the same unfilled outline, and
 // the same primary fill once chosen. A menu is not the place to invent a third
 // way of drawing a choice. See docs/design-system.md §3.
+// A menu's on/off item wears the shared Switch's anatomy at menu size: an
+// outlined track with the thumb at the start, the solid primary with the thumb
+// at the end once on. Settings and menus then draw one kind of on/off choice.
 export const menuCheckboxIndicatorStyles =
-	"pointer-events-none absolute right-2 flex size-4 shrink-0 items-center justify-center rounded-indicator border border-control-outline text-primary-foreground group-data-checked/menu-choice:border-primary group-data-checked/menu-choice:bg-primary";
+	"pointer-events-none absolute right-2 flex h-4 w-7 shrink-0 items-center rounded-full border border-control-outline group-data-checked/menu-choice:border-primary group-data-checked/menu-choice:bg-primary";
+
+export const menuCheckboxThumbStyles =
+	"block size-2.5 translate-x-0.5 rounded-full bg-control-outline transition-transform duration-100 ease-out group-data-checked/menu-choice:translate-x-3.5 group-data-checked/menu-choice:bg-primary-foreground";
 
 export const singleSelectionIndicatorShapeStyles =
 	"relative flex size-4 shrink-0 items-center justify-center rounded-full border border-control-outline";
@@ -62,3 +70,18 @@ export const singleSelectionIndicatorFillStyles =
 export const menuSubTriggerLayoutStyles = `flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive ${menuItemInsetStyles} text-sm leading-snug outline-hidden data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
 
 export const menuSeparatorStyles = "-mx-1 my-2 h-hairline bg-border";
+
+// Two to four short, mutually exclusive values laid side by side: the shared
+// SegmentedControl in a dialog and the segmented radio group in a menu draw
+// with these same two strings, so a choice like a column's expected type or
+// alignment reads the same in both places (2026-09-19).
+export const segmentedGroupStyles =
+	"grid auto-cols-fr grid-flow-col gap-0.5 rounded-interactive bg-surface-app p-0.5";
+
+export const segmentedItemStyles =
+	"flex min-h-control-sm cursor-pointer select-none items-center justify-center gap-1 rounded-indicator px-2 py-1 text-center text-muted-foreground text-xs leading-tight outline-hidden not-data-checked:hover:bg-accent not-data-checked:hover:text-accent-foreground not-data-checked:data-highlighted:bg-accent not-data-checked:data-highlighted:text-accent-foreground data-checked:bg-primary data-checked:text-primary-foreground data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:shrink-0";
+
+// A command drawn as one segment of a row of related commands, such as the pane
+// zoom's out, reset, and in: the segment geometry, the menu's own highlight.
+export const menuInlineItemStyles =
+	"min-h-control-sm justify-center gap-1.5 rounded-indicator px-2 py-1 text-xs";

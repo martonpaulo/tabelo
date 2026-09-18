@@ -288,6 +288,8 @@ export const copy = {
 		resizeColumns: "Resize columns",
 		resizeRows: "Resize rows",
 		zoom: (percent: number) => `Zoom ${percent}%`,
+		zoomPercent: (percent: number) => `${percent}%`,
+		zoomLabel: "Zoom",
 		zoomOut: "Zoom out",
 		zoomIn: "Zoom in",
 		resetZoom: "Reset zoom",

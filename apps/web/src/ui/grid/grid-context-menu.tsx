@@ -5,6 +5,7 @@ import {
 	ContextMenuItem,
 	ContextMenuLabel,
 	ContextMenuRadioGroup,
+	ContextMenuSegmentedItem,
 	ContextMenuSeparator,
 	ContextMenuShortcut,
 	ContextMenuSub,
@@ -12,6 +13,8 @@ import {
 	ContextMenuSubTrigger,
 	ContextMenuTrigger,
 } from "@tabelo/ui/components/context-menu";
+import { segmentedGroupStyles } from "@tabelo/ui/components/menu-styles";
+import { cn } from "@tabelo/ui/lib/utils";
 import {
 	Fragment,
 	type ReactNode,
@@ -30,7 +33,6 @@ import {
 import { convertCellValue } from "@/core/typed-input";
 import type { CellValueType } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
-import { ContextMenuSelectionOption } from "@/ui/primitives/context-menu-selection-option";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import {
 	CellTypeChangeDialog,
@@ -79,66 +81,54 @@ function CellTypeMenuGroup({
 	const row = target ? document.rows[target.row] : undefined;
 	const value = row && column ? readCell(row, column.id) : undefined;
 	const currentType = value === undefined ? undefined : cellValueType(value);
-	// The trigger wears the current type's icon, so the first level still says
-	// which type the cell holds, as the Alignment submenu does for a column.
-	const TriggerIcon = (
-		cellTypeOptions.find((option) => option.value === currentType) ??
-		cellTypeOptions[0]
-	)?.icon;
 
 	return (
-		<ContextMenuSub>
-			<ContextMenuSubTrigger>
-				{TriggerIcon ? <TriggerIcon aria-hidden /> : null}
-				<span id={labelId}>{copy.actions.cellType}</span>
-			</ContextMenuSubTrigger>
-			<ContextMenuSubContent aria-label={copy.actions.cellType}>
-				<ContextMenuRadioGroup
-					aria-labelledby={labelId}
-					value={currentType ?? ""}
-					onValueChange={(next) => {
-						if (!target || value === undefined) return;
-						const type = next as CellValueType;
-						const change = convertCellValue(value, type);
-						if (change.ok && change.confirm) {
-							onConfirmChange({
-								position: target,
-								target: type,
-								before: value,
-								after: change.value,
-								confirm: change.confirm,
-							});
-							return;
-						}
-						useTabeloStore
-							.getState()
-							.setCellType(target.row, target.column, type);
-					}}
-				>
-					{cellTypeOptions.map((option) => {
-						const unavailable =
-							value === undefined || !convertCellValue(value, option.value).ok;
-						const reason =
-							value === undefined
-								? copy.disabled.singleCellRequired
-								: unavailable
-									? copy.disabled.cellTypeConversion(option.label)
-									: undefined;
-						return (
-							<ContextMenuSelectionOption
-								key={option.value}
+		<ContextMenuRadioGroup
+			aria-labelledby={labelId}
+			value={currentType ?? ""}
+			onValueChange={(next) => {
+				if (!target || value === undefined) return;
+				const type = next as CellValueType;
+				const change = convertCellValue(value, type);
+				if (change.ok && change.confirm) {
+					onConfirmChange({
+						position: target,
+						target: type,
+						before: value,
+						after: change.value,
+						confirm: change.confirm,
+					});
+					return;
+				}
+				useTabeloStore.getState().setCellType(target.row, target.column, type);
+			}}
+		>
+			<ContextMenuLabel id={labelId}>{copy.actions.cellType}</ContextMenuLabel>
+			<div className={cn(segmentedGroupStyles, "mx-1 mb-1")}>
+				{cellTypeOptions.map((option) => {
+					const unavailable =
+						value === undefined || !convertCellValue(value, option.value).ok;
+					const reason =
+						value === undefined
+							? copy.disabled.singleCellRequired
+							: unavailable
+								? copy.disabled.cellTypeConversion(option.label)
+								: undefined;
+					return (
+						<ControlTooltip key={option.value} reason={reason}>
+							<ContextMenuSegmentedItem
 								value={option.value}
-								icon={<option.icon />}
-								label={option.label}
-								availability={
-									reason ? { kind: "unavailable", reason } : undefined
-								}
-							/>
-						);
-					})}
-				</ContextMenuRadioGroup>
-			</ContextMenuSubContent>
-		</ContextMenuSub>
+								disabled={reason !== undefined}
+								aria-description={reason}
+							>
+								<option.icon aria-hidden />
+								{option.label}
+							</ContextMenuSegmentedItem>
+						</ControlTooltip>
+					);
+				})}
+			</div>
+		</ContextMenuRadioGroup>
 	);
 }
 

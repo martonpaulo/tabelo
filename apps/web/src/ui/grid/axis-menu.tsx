@@ -8,12 +8,11 @@ import {
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
+	DropdownMenuSegmentedItem,
 	DropdownMenuSeparator,
-	DropdownMenuSub,
-	DropdownMenuSubContent,
-	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
+import { segmentedGroupStyles } from "@tabelo/ui/components/menu-styles";
 import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
@@ -36,7 +35,6 @@ import type { SortDirection } from "@/core/operations";
 import type { Alignment, ExpectedColumnType } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
-import { MenuSelectionOption } from "@/ui/primitives/menu-selection-option";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import { isSameColumnWidth } from "@/workspace/column-width";
 import type { PinnedGridAxis } from "@/workspace/layout";
@@ -274,6 +272,33 @@ function AxisMenuBody({
 		<>
 			{axis === "column" ? (
 				<>
+					<DropdownMenuRadioGroup
+						aria-labelledby="column-expected-type-label"
+						value={column?.expectedType ?? "text"}
+						onValueChange={(next) =>
+							useTabeloStore
+								.getState()
+								.setColumnExpectedType(index, next as ExpectedColumnType)
+						}
+					>
+						<DropdownMenuLabel id="column-expected-type-label">
+							{copy.actions.expectedType}
+						</DropdownMenuLabel>
+						<div className={cn(segmentedGroupStyles, "mx-1 mb-1")}>
+							{expectedTypeOptions.map((option) => (
+								<DropdownMenuSegmentedItem
+									key={option.value}
+									value={option.value}
+								>
+									<option.icon aria-hidden />
+									{option.label}
+								</DropdownMenuSegmentedItem>
+							))}
+						</div>
+					</DropdownMenuRadioGroup>
+					<ColumnAlignmentGroup index={index} align={column?.align} />
+					<DropdownMenuSeparator />
+
 					<DropdownMenuGroup>
 						<ControlTooltip reason={fitReason}>
 							<DropdownMenuItem
@@ -308,32 +333,6 @@ function AxisMenuBody({
 						</DropdownMenuCheckboxItem>
 						{pinnable ? <PinAxisItem axis={axis} pinned={pinned} /> : null}
 					</DropdownMenuGroup>
-					<DropdownMenuSeparator />
-
-					<DropdownMenuRadioGroup
-						aria-labelledby="column-expected-type-label"
-						value={column?.expectedType ?? "text"}
-						onValueChange={(next) =>
-							useTabeloStore
-								.getState()
-								.setColumnExpectedType(index, next as ExpectedColumnType)
-						}
-					>
-						<DropdownMenuLabel id="column-expected-type-label">
-							{copy.actions.expectedType}
-						</DropdownMenuLabel>
-						{expectedTypeOptions.map((option) => (
-							<MenuSelectionOption
-								key={option.value}
-								value={option.value}
-								icon={<option.icon />}
-								label={option.label}
-							/>
-						))}
-					</DropdownMenuRadioGroup>
-					<DropdownMenuSeparator />
-
-					<ColumnAlignmentSubmenu index={index} align={column?.align} />
 					<DropdownMenuSeparator />
 
 					<ColumnSortGroup index={index} />
@@ -402,56 +401,41 @@ function ColumnSortGroup({ index }: { readonly index: number }) {
 	);
 }
 
-// A submenu rather than four rows in the root menu: alignment is a flat list of
-// immediate choices with nothing to state beforehand, which is the whole of the
-// class docs/design-system.md §3 allows one for. The radio semantics travel with
-// it, so the checked value is still read from the column rather than the last
-// click.
-function ColumnAlignmentSubmenu({
+// Four immediate choices laid side by side at the top of the column menu, the
+// same segmented drawing as the expected type above them. Each segment is an
+// icon with its full name as its accessible name, and the radio semantics read
+// the checked value from the column rather than the last click (2026-09-19,
+// replacing the submenu).
+function ColumnAlignmentGroup({
 	index,
 	align,
 }: {
 	readonly index: number;
 	readonly align?: Alignment;
 }) {
-	const current = align ?? "default";
-	// The trigger wears the column's own alignment, so the root menu still says
-	// which one is set without a second line of copy explaining it.
-	const TriggerIcon =
-		alignments.find((option) => option.value === current)?.icon ?? AlignJustify;
-
 	return (
-		<DropdownMenuSub>
-			<DropdownMenuSubTrigger>
-				<TriggerIcon aria-hidden />
+		<DropdownMenuRadioGroup
+			aria-labelledby="column-alignment-label"
+			value={align ?? "default"}
+			onValueChange={(next) =>
+				useTabeloStore.getState().setColumnAlignment(index, next as Alignment)
+			}
+		>
+			<DropdownMenuLabel id="column-alignment-label">
 				{copy.actions.alignment}
-			</DropdownMenuSubTrigger>
-			{/* No width of its own: the primitive already sizes a submenu to its
-			    content above a shared floor, and the shared spacing rhythm comes
-			    with it. */}
-			<DropdownMenuSubContent aria-label={copy.actions.alignment}>
-				{/* A column has one alignment, so these are radio items rather than
-				    a tinted background that only a sighted user can read. The
-				    group takes no name of its own: the menu around it already
-				    carries one, and two would be announced twice. */}
-				<DropdownMenuRadioGroup
-					value={current}
-					onValueChange={(next) =>
-						useTabeloStore
-							.getState()
-							.setColumnAlignment(index, next as Alignment)
-					}
-				>
-					{alignments.map((option) => (
-						<MenuSelectionOption
-							key={option.value}
+			</DropdownMenuLabel>
+			<div className={cn(segmentedGroupStyles, "mx-1 mb-1")}>
+				{alignments.map((option) => (
+					<ControlTooltip key={option.value} name={option.label}>
+						<DropdownMenuSegmentedItem
 							value={option.value}
-							icon={<option.icon />}
-							label={option.label}
-						/>
-					))}
-				</DropdownMenuRadioGroup>
-			</DropdownMenuSubContent>
-		</DropdownMenuSub>
+							aria-label={option.label}
+						>
+							<option.icon aria-hidden />
+						</DropdownMenuSegmentedItem>
+					</ControlTooltip>
+				))}
+			</div>
+		</DropdownMenuRadioGroup>
 	);
 }

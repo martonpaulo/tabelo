@@ -319,6 +319,13 @@ test("the axis and context menus describe the same actions", async ({
 	expect(fromRow.some((label) => label?.includes("column"))).toBe(false);
 });
 
+// How many keys a shortcut legend names, read from the words a screen reader
+// hears ("Option plus Enter") rather than from how the legend is drawn.
+async function keyCount(item: Locator): Promise<number> {
+	const words = await item.locator(".sr-only").first().textContent();
+	return (words ?? "").split(" plus ").length;
+}
+
 test("both menu surfaces show the same insert legends", async ({
 	page,
 	tabelo,
@@ -326,7 +333,7 @@ test("both menu surfaces show the same insert legends", async ({
 	const apple = process.platform === "darwin";
 	// The expectation comes from the OS running the browser rather than from
 	// the app's own platform detection, so the two have to agree independently.
-	const columnKeys = apple ? ["⌥", "↵"] : ["Alt", "Enter"];
+	const columnKeys = apple ? "⌥↵" : "Alt+Enter";
 
 	const columnMenu = await tabelo.openColumnMenu(1);
 	const fromAxis = columnMenu.getByRole("menuitem", {
@@ -348,21 +355,27 @@ test("both menu surfaces show the same insert legends", async ({
 	).toHaveText(columnKeys);
 	// Rows take the platform modifier, columns take Alt, and Shift chooses the
 	// preceding side. Three keys is the ceiling for all four.
-	await expect(
-		contextMenu
-			.getByRole("menuitem", { name: copy.actions.insertColumnsLeft(1) })
-			.locator("kbd"),
-	).toHaveCount(3);
-	await expect(
-		contextMenu
-			.getByRole("menuitem", { name: copy.actions.insertRowsBelow(1) })
-			.locator("kbd"),
-	).toHaveCount(2);
-	await expect(
-		contextMenu
-			.getByRole("menuitem", { name: copy.actions.insertRowsAbove(1) })
-			.locator("kbd"),
-	).toHaveCount(3);
+	expect(
+		await keyCount(
+			contextMenu.getByRole("menuitem", {
+				name: copy.actions.insertColumnsLeft(1),
+			}),
+		),
+	).toBe(3);
+	expect(
+		await keyCount(
+			contextMenu.getByRole("menuitem", {
+				name: copy.actions.insertRowsBelow(1),
+			}),
+		),
+	).toBe(2);
+	expect(
+		await keyCount(
+			contextMenu.getByRole("menuitem", {
+				name: copy.actions.insertRowsAbove(1),
+			}),
+		),
+	).toBe(3);
 });
 
 test("context menu refuses to delete every selected column", async ({

@@ -2,7 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import type { CellValueType, ExpectedColumnType } from "@/core/types";
 import { expect, test } from "./fixtures";
-import { openSubmenu, type TabeloPage } from "./helpers";
+import type { TabeloPage } from "./helpers";
 
 async function setExpectedType(
 	page: Page,
@@ -44,13 +44,11 @@ async function enterCellText(
 	await editor.press("Enter");
 }
 
-// Cell type is a submenu of the cell's context menu (#369).
-function openCellTypeMenu(page: Page): Promise<Locator> {
-	return openSubmenu(
-		page,
-		page.locator('[data-slot="context-menu-content"]'),
-		copy.actions.cellType,
-	);
+// Cell type is a segmented radio group at the top of the cell's context menu.
+async function openCellTypeMenu(page: Page): Promise<Locator> {
+	const context = page.locator('[data-slot="context-menu-content"]');
+	await context.waitFor({ state: "visible" });
+	return context.getByRole("group", { name: copy.actions.cellType });
 }
 
 async function chooseCellType(

@@ -11,6 +11,11 @@ import {
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
 import {
+	menuInlineItemStyles,
+	segmentedGroupStyles,
+} from "@tabelo/ui/components/menu-styles";
+import { cn } from "@tabelo/ui/lib/utils";
+import {
 	ChevronDown,
 	ClipboardCopy,
 	Move as MoveIcon,
@@ -210,62 +215,73 @@ export function PaneMenu({
 				    https://w3c.github.io/aria/#conflict_resolution_presentation_none */}
 				<DropdownMenuGroup aria-live="polite">
 					<DropdownMenuLabel>
-						{copy.workspace.zoom(paneZoomPercent(zoom))}
+						<span aria-hidden>{copy.workspace.zoomLabel}</span>
+						<span className="sr-only">
+							{copy.workspace.zoom(paneZoomPercent(zoom))}
+						</span>
 					</DropdownMenuLabel>
-					<ControlTooltip
-						reason={
-							zoom <= MIN_PANE_ZOOM ? copy.disabled.zoomMinimum : undefined
-						}
-					>
-						<DropdownMenuItem
-							aria-label={copy.workspace.zoomOut}
-							closeOnClick={false}
-							disabled={zoom <= MIN_PANE_ZOOM}
-							onClick={() => setZoom(stepPaneZoom(zoom, -1))}
+					{/* One compact row, out, reset, in, drawn like a segmented group:
+					    three commands on one value read better side by side than as
+					    three full rows (2026-09-19). Each keeps its name, shortcut
+					    hint, and disabled reason. */}
+					<div className={cn(segmentedGroupStyles, "mx-1 mb-1")}>
+						<ControlTooltip
+							reason={
+								zoom <= MIN_PANE_ZOOM ? copy.disabled.zoomMinimum : undefined
+							}
 						>
-							<ZoomOut aria-hidden />
-							{copy.workspace.zoomOut}
-							<DropdownMenuShortcut aria-hidden>
-								{copy.shortcuts.zoomOut}
-							</DropdownMenuShortcut>
-						</DropdownMenuItem>
-					</ControlTooltip>
-					<ControlTooltip
-						reason={
-							zoom === DEFAULT_PANE_ZOOM ? copy.disabled.zoomDefault : undefined
-						}
-					>
-						<DropdownMenuItem
-							aria-label={copy.workspace.resetZoom}
-							closeOnClick={false}
-							disabled={zoom === DEFAULT_PANE_ZOOM}
-							onClick={() => setZoom(DEFAULT_PANE_ZOOM)}
+							<DropdownMenuItem
+								aria-label={copy.workspace.zoomOut}
+								aria-keyshortcuts={copy.shortcuts.zoomOut}
+								closeOnClick={false}
+								disabled={zoom <= MIN_PANE_ZOOM}
+								onClick={() => setZoom(stepPaneZoom(zoom, -1))}
+								className={menuInlineItemStyles}
+							>
+								<ZoomOut aria-hidden />
+							</DropdownMenuItem>
+						</ControlTooltip>
+						<ControlTooltip
+							reason={
+								zoom === DEFAULT_PANE_ZOOM
+									? copy.disabled.zoomDefault
+									: undefined
+							}
 						>
-							<RotateCcw aria-hidden />
-							{copy.workspace.resetZoom}
-							<DropdownMenuShortcut aria-hidden>
-								{copy.shortcuts.resetZoom}
-							</DropdownMenuShortcut>
-						</DropdownMenuItem>
-					</ControlTooltip>
-					<ControlTooltip
-						reason={
-							zoom >= MAX_PANE_ZOOM ? copy.disabled.zoomMaximum : undefined
-						}
-					>
-						<DropdownMenuItem
-							aria-label={copy.workspace.zoomIn}
-							closeOnClick={false}
-							disabled={zoom >= MAX_PANE_ZOOM}
-							onClick={() => setZoom(stepPaneZoom(zoom, 1))}
+							<DropdownMenuItem
+								aria-label={copy.workspace.resetZoom}
+								aria-keyshortcuts={copy.shortcuts.resetZoom}
+								closeOnClick={false}
+								disabled={zoom === DEFAULT_PANE_ZOOM}
+								onClick={() => setZoom(DEFAULT_PANE_ZOOM)}
+								className={cn(
+									menuInlineItemStyles,
+									"data-disabled:opacity-100",
+								)}
+							>
+								<RotateCcw aria-hidden />
+								<span aria-hidden>
+									{copy.workspace.zoomPercent(paneZoomPercent(zoom))}
+								</span>
+							</DropdownMenuItem>
+						</ControlTooltip>
+						<ControlTooltip
+							reason={
+								zoom >= MAX_PANE_ZOOM ? copy.disabled.zoomMaximum : undefined
+							}
 						>
-							<ZoomIn aria-hidden />
-							{copy.workspace.zoomIn}
-							<DropdownMenuShortcut aria-hidden>
-								{copy.shortcuts.zoomIn}
-							</DropdownMenuShortcut>
-						</DropdownMenuItem>
-					</ControlTooltip>
+							<DropdownMenuItem
+								aria-label={copy.workspace.zoomIn}
+								aria-keyshortcuts={copy.shortcuts.zoomIn}
+								closeOnClick={false}
+								disabled={zoom >= MAX_PANE_ZOOM}
+								onClick={() => setZoom(stepPaneZoom(zoom, 1))}
+								className={menuInlineItemStyles}
+							>
+								<ZoomIn aria-hidden />
+							</DropdownMenuItem>
+						</ControlTooltip>
+					</div>
 				</DropdownMenuGroup>
 
 				{/* Find is keyboard-first, and this is the affordance that keeps it

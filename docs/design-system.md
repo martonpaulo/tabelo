@@ -242,7 +242,7 @@ number `1`, in accordance with ADR 0008.
 | :--- | :--- | :--- | :--- |
 | `--value-string` | `text-value-string` | Quoted source strings | Literal shape and normal weight |
 | `--value-number` | `text-value-number` | JSON numbers and carried number cells | 600 weight and tabular numerals |
-| `--value-boolean` | `text-value-boolean` | JSON booleans and carried boolean cells | 600 weight in sources; grid type presentation also uses italics |
+| `--value-boolean` | `text-value-boolean` | JSON booleans and carried boolean cells | 600 weight in sources and the grid, upright (owner, 2026-09-19) |
 | `--value-null` | `text-value-null` | JSON null and carried null cells | Literal shape in sources; grid type presentation also uses italics |
 | `--syntax-notation` | `text-syntax-notation` | Element names, escapes, entities, and other notation | Token shape and grammar position |
 | `--syntax-link` | `text-syntax-link` | Links, URLs, and autolinks | Underline on the link text and the address shape |

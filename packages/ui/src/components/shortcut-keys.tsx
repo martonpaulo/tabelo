@@ -70,15 +70,9 @@ export function ShortcutKeys({ shortcut }: { readonly shortcut: string }) {
 			<span className="sr-only">
 				{keys.map((key) => key.label).join(" plus ")}
 			</span>
-			{keys.map((key, index) => (
-				<kbd
-					aria-hidden
-					className={menuShortcutKeyStyles}
-					key={`${key.label}-${index}`}
-				>
-					{key.display}
-				</kbd>
-			))}
+			<kbd aria-hidden className={menuShortcutKeyStyles}>
+				{keys.map((key) => key.display).join(isApplePlatform() ? "" : "+")}
+			</kbd>
 		</>
 	);
 }

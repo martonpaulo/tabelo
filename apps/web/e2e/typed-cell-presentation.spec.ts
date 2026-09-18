@@ -104,7 +104,7 @@ test("the grid exposes real and expected types without replacing cell names", as
 	expect(new Set(presentations.map(({ color }) => color)).size).toBe(4);
 	expect(numberPresentation.fontWeight).toBeGreaterThanOrEqual(600);
 	expect(booleanPresentation.fontWeight).toBeGreaterThanOrEqual(600);
-	expect(booleanPresentation.fontStyle).toBe("italic");
+	expect(booleanPresentation.fontStyle).toBe("normal");
 	expect(nullPresentation.fontStyle).toBe("italic");
 
 	await numberCell.click();

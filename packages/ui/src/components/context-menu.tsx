@@ -1,6 +1,7 @@
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
 import {
 	menuCheckboxIndicatorStyles,
+	menuCheckboxThumbStyles,
 	menuChoiceItemLayoutStyles,
 	menuDestructiveItemStateStyles,
 	menuInteractiveItemStateStyles,
@@ -11,12 +12,14 @@ import {
 	menuShortcutStyles,
 	menuSingleSelectionItemStateStyles,
 	menuSubTriggerLayoutStyles,
+	segmentedItemStyles,
 	singleSelectionIndicatorFillStyles,
 	singleSelectionIndicatorShapeStyles,
 } from "@tabelo/ui/components/menu-styles";
+import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { ShortcutKeys } from "@tabelo/ui/components/shortcut-keys";
 import { cn } from "@tabelo/ui/lib/utils";
-import { CheckIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
 
 function ContextMenu({ ...props }: ContextMenuPrimitive.Root.Props) {
@@ -203,9 +206,7 @@ function ContextMenuCheckboxItem({
 				className={menuCheckboxIndicatorStyles}
 				data-slot="context-menu-checkbox-item-indicator"
 			>
-				<ContextMenuPrimitive.CheckboxItemIndicator>
-					<CheckIcon />
-				</ContextMenuPrimitive.CheckboxItemIndicator>
+				<span className={menuCheckboxThumbStyles} />
 			</span>
 			{children}
 		</ContextMenuPrimitive.CheckboxItem>
@@ -263,6 +264,26 @@ function ContextMenuRadioItem({
 	);
 }
 
+// One value of a segmented radio group inside a menu: the same drawing as the
+// shared SegmentedControl, with the menu's radio semantics and keyboard model.
+// Group it in a ContextMenuRadioGroup carrying `segmentedGroupStyles`.
+function ContextMenuSegmentedItem({
+	className,
+	...props
+}: ContextMenuPrimitive.RadioItem.Props) {
+	return (
+		<ContextMenuPrimitive.RadioItem
+			data-slot="context-menu-segmented-item"
+			className={cn(
+				segmentedItemStyles,
+				controlStateTransitionStyles,
+				className,
+			)}
+			{...props}
+		/>
+	);
+}
+
 function ContextMenuSeparator({
 	className,
 	...props
@@ -304,6 +325,7 @@ export {
 	ContextMenuPortal,
 	ContextMenuRadioGroup,
 	ContextMenuRadioItem,
+	ContextMenuSegmentedItem,
 	ContextMenuSeparator,
 	ContextMenuShortcut,
 	ContextMenuSub,

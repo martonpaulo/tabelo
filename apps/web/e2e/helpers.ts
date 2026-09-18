@@ -410,23 +410,16 @@ export class TabeloPage {
 		return menu;
 	}
 
-	// Alignment is a submenu, so it is its own menu once open and is addressed
-	// by its own accessible name rather than through the root menu's tree.
-	async openAlignmentSubmenu(column: number): Promise<Locator> {
-		const parent = await this.openColumnMenu(column);
-		const submenu = this.page.getByRole("menu", {
-			name: copy.actions.alignment,
-		});
-		await parent
-			.getByRole("menuitem", { name: copy.actions.alignment })
-			.click();
-		await submenu.waitFor({ state: "visible" });
-		return submenu;
+	// Alignment is a segmented radio group at the top of the column menu,
+	// addressed through the menu by its accessible name.
+	async openAlignmentGroup(column: number): Promise<Locator> {
+		const menu = await this.openColumnMenu(column);
+		return menu.getByRole("group", { name: copy.actions.alignment });
 	}
 
 	async setColumnAlignment(column: number, label: string): Promise<void> {
-		const submenu = await this.openAlignmentSubmenu(column);
-		await submenu.getByRole("menuitemradio", { name: label }).click();
+		const group = await this.openAlignmentGroup(column);
+		await group.getByRole("menuitemradio", { name: label }).click();
 	}
 
 	async openAppMenu(): Promise<Locator> {
