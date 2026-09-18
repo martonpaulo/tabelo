@@ -151,6 +151,25 @@ export const editorTheme = EditorView.theme({
 		backgroundColor: "var(--line-subtle)",
 		pointerEvents: "none",
 	},
+	// The pinned header (#252), a read-only copy of the header row floating over
+	// the top of the text while the real one is scrolled away. It paints the
+	// pane surface, opaque, because live rows pass underneath it, and its edge is
+	// the strong line the grid's pinned layers already draw: the boundary, not a
+	// tint, is what says it stands in front. It never takes more than half the
+	// pane, so a tall wrapped or multi-line header still leaves room to edit, and
+	// it takes no pointer: a press over it is sent to the real header.
+	".cm-tabeloPinnedHeader": {
+		position: "absolute",
+		top: "0",
+		left: "0",
+		zIndex: "1",
+		maxHeight: "50%",
+		overflow: "hidden",
+		backgroundColor: "var(--surface-panel)",
+		borderBottom: "var(--hairline-w) solid var(--line-strong)",
+		pointerEvents: "none",
+		userSelect: "none",
+	},
 	".cm-activeLineGutter": {
 		backgroundColor: "var(--active-line-fill)",
 		color: "var(--foreground)",

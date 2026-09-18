@@ -61,6 +61,39 @@ describe("semantic source rows", () => {
 		]);
 	});
 
+	// The header row is what a source pane pins (#252), so it has to come out
+	// whole however the format spells it.
+	it.each([
+		[
+			"an unnamed Markdown header",
+			markdownCodec,
+			"|  |  |\n| --- | --- |\n| Ingrid | Rio |",
+			"|  |  |\n| --- | --- |",
+		],
+		[
+			"an escaped Markdown header",
+			markdownCodec,
+			"| a \\| b | c<br>d |\n| --- | --- |\n| Ingrid | Rio |",
+			"| a \\| b | c<br>d |\n| --- | --- |",
+		],
+		[
+			"an escaped Jira header",
+			jiraCodec,
+			"||a \\| b||c||\n|Ingrid|Rio|",
+			"||a \\| b||c||",
+		],
+		["an unnamed CSV header", csvCodec, ",\nIngrid,Rio", ","],
+		["an unnamed TSV header", tsvCodec, "\t\nIngrid\tRio", "\t"],
+		[
+			"a quoted multi-line CSV header",
+			csvCodec,
+			'name,"note\nsecond line"\nIngrid,Rio',
+			'name,"note\nsecond line"',
+		],
+	] as const)("maps %s as the first row", (_, codec, text, header) => {
+		expect(rowTexts(text, codec.parse(text))?.[0]).toBe(header);
+	});
+
 	it("still maps rows when the parse only warns", () => {
 		const text = "| name | city |\n| --- | --- |\n| Ingrid |";
 		const result = markdownCodec.parse(text);

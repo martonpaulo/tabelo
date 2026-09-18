@@ -183,6 +183,7 @@ reversible implementation choice does not belong here.
 | Active pane | A non-layout-shifting boundary | design system §5 | #64 |
 | Destructive contrast | The token and the variant both own the correction | design system §2 | #109 |
 | Precondition correction | Lead the user to the first offending cell when possible | design system §4 | #146 |
+| Pinned source header | The codec's first mapped row, Markdown divider included, stays at the top of a scrolled source pane as an inert copy | design system §2 | #252 |
 | Grid lines | Subtle where the grid continues, strong where chrome meets the table; no state recolours a line | design system §9 | #346 |
 | Selection on letters and numbers | A neutral surface and semibold label, never the selection fill | design system §9 | #291 |
 | Copied mark and focus | One two-tone marquee on a focused copied cell, on the range's real edge | design system §4 | #223, #349 |

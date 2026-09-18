@@ -63,6 +63,7 @@ import {
 	occurrenceSummary,
 	selectNextOccurrenceAsPrimary,
 } from "./occurrence-selection";
+import { pinnedHeader, pinnedHeaderSetup } from "./pinned-header";
 import { recordsLanguage } from "./records-language";
 import { setSourceRows, sourceRowSeparators } from "./row-separators";
 import { SourceContextMenu } from "./source-context-menu";
@@ -84,6 +85,7 @@ const wrapCompartment = new Compartment();
 const indicatorCompartment = new Compartment();
 const tabCompartment = new Compartment();
 const assistanceCompartment = new Compartment();
+const pinnedHeaderCompartment = new Compartment();
 
 // Everything the editor draws at the pane's scale, the text, the gutter width,
 // and the caret, reads `--pane-zoom` from the cascade, and the pane body is the
@@ -145,6 +147,23 @@ export function indicatorExtensions(
 		escapes ? escapeSequenceGlyphs(escapes) : [],
 		classes ? EditorView.editorAttributes.of({ class: classes }) : [],
 	];
+}
+
+// What the pinned header's copy shares with the editor (#252), so it renders the
+// header exactly as the editor does: the same grammar, markers, and wrapping,
+// and the same zoom signal to remeasure with.
+function pinnedHeaderExtension(
+	language: HighlightLanguage,
+	wrap: boolean,
+	zoom: number,
+	indicators: Extension,
+): Extension {
+	return pinnedHeaderSetup.of([
+		languageFor(language),
+		indicators,
+		wrapExtension(wrap),
+		metricsSignal(zoom),
+	]);
 }
 
 export interface SourceDiagnostic {
@@ -426,6 +445,21 @@ export function SourceEditor({
 					diagnosticsCompartment.of(diagnosticExtension(diagnostics)),
 					editableCompartment.of(EditorView.editable.of(editable)),
 					syntaxTheme,
+					pinnedHeader,
+					pinnedHeaderCompartment.of(
+						pinnedHeaderExtension(
+							language,
+							wrap,
+							zoom,
+							indicatorExtensions(
+								spaceIndicators,
+								tabIndicators,
+								emptyValueIndicators,
+								language,
+								fieldSeparator,
+							),
+						),
+					),
 					attributesCompartment.of(
 						EditorView.contentAttributes.of(
 							contentAttributes(ariaLabel, invalid, describedBy, entered),
@@ -683,6 +717,38 @@ export function SourceEditor({
 		tabIndicators,
 		emptyValueIndicators,
 		language,
+		fieldSeparator,
+	]);
+
+	// The pinned header follows every setting that changes how the header is
+	// drawn. A layout effect, like the zoom and wrap ones above, so the copy is
+	// remeasured in the same frame as the editor rather than one frame late.
+	useLayoutEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: pinnedHeaderCompartment.reconfigure(
+				pinnedHeaderExtension(
+					language,
+					wrap,
+					zoom,
+					indicatorExtensions(
+						spaceIndicators,
+						tabIndicators,
+						emptyValueIndicators,
+						language,
+						fieldSeparator,
+					),
+				),
+			),
+		});
+	}, [
+		language,
+		wrap,
+		zoom,
+		spaceIndicators,
+		tabIndicators,
+		emptyValueIndicators,
 		fieldSeparator,
 	]);
 

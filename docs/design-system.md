@@ -400,6 +400,33 @@ decoration painted by the theme, so it adds no height, width, padding, caret
 offset, or text, and it takes `GrayText` in forced colours. It is never an
 alternating background and never a status colour.
 
+**The header row stays in sight while the rows scroll** (decided on #252). Once
+the first line of a source view's header row has scrolled above the top of the
+pane, a copy of that row is pinned there, the way the grid's header row sticks.
+Which text is the header comes from the same row mapping as the boundaries
+above: the first `SourceRowRange` the parse returns. So the views that declare
+`mapsSourceRows` pin it and no other view does; a CSV or TSV header with a
+quoted line break is pinned whole; and a draft that does not parse pins
+nothing, like it draws no boundaries. Markdown pins its alignment divider with
+the header line, because the codec counts the divider as part of the header
+row and it is where the column alignment, which is document state, is spelled;
+pinning the header line alone would need a second, Markdown-only answer to
+what the header is, for one line of pane height. The copy is a second,
+read-only CodeMirror view over the same text with every line outside the
+header collapsed, fed the pane's own language, indicators, wrapping, and zoom,
+so it is the same rendering rather than a lookalike: the escape glyphs,
+whitespace and empty-value markers, and the line-number gutter all line up with
+the rows below, and it scrolls sideways with them. It floats over the text
+instead of taking room from it, so showing or hiding it never moves a line,
+and a caret revealed by scrolling keeps clear of it. It paints the opaque pane
+surface, and its bottom edge is the strong line the grid's pinned layers use,
+which is also the cue that survives forced colours. It never grows past half
+the pane; a taller header is clipped there. The copy is presentation only: it
+is inert and hidden from assistive technology, takes no pointer or focus, and
+reaches no text, clipboard, download, draft, or history. A press on it goes to
+the real header, where the caret lands on the same character, and the real
+header is the only one a reader can select, copy, or hear.
+
 **Structure recedes, while semantic values and notation stay related across
 views** (#269). Syntax highlighting always keeps tokens upright. Italics are reserved
 for content the user explicitly marked as emphasis; types, comments, element
