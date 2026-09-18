@@ -1,5 +1,10 @@
 import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { cn } from "@tabelo/ui/lib/utils";
+import {
+	IconAlertOctagon,
+	IconAlertTriangle,
+	IconInfoCircle,
+} from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import type { NoticeSeverity } from "@/state/notice-queue";
 
@@ -13,13 +18,19 @@ import type { NoticeSeverity } from "@/state/notice-queue";
 // this component's job. A live region has to exist before its text does, so
 // the app mounts one pair for every notice: see ./live-region.tsx.
 
-const severitySurface: Record<NoticeSeverity, string> = {
-	info: "bg-surface-header",
-	// Warning and error share the one status surface this design line has.
-	// They differ in how they are announced and in whether they may expire on
-	// their own, not in how loud they look. See docs/design-system.md §4.
-	warning: "bg-destructive/10",
-	error: "bg-destructive/10",
+// Severity is carried by an icon in its own colour on a neutral surface, not
+// by a tinted block (owner, 2026-09-19): the shape says "notice", the icon says
+// how serious, and a symbol never depends on colour alone.
+const severityIcon: Record<NoticeSeverity, typeof IconInfoCircle> = {
+	info: IconInfoCircle,
+	warning: IconAlertTriangle,
+	error: IconAlertOctagon,
+};
+
+const severityTone: Record<NoticeSeverity, string> = {
+	info: "text-selection-edge",
+	warning: "text-status-warning",
+	error: "text-destructive",
 };
 
 export function Notice({
@@ -36,6 +47,7 @@ export function Notice({
 	readonly className?: string;
 	readonly children: ReactNode;
 }) {
+	const Icon = severityIcon[severity];
 	return (
 		<div
 			// The severity is readable from the DOM so that behaviour depending on
@@ -49,11 +61,17 @@ export function Notice({
 		>
 			<div
 				className={cn(
-					"flex flex-wrap items-center gap-2 rounded-surface px-3 py-2 text-sm",
-					severitySurface[severity],
+					"flex items-start gap-3 rounded-surface px-3 py-2.5 text-sm",
+					!floating && "bg-muted",
 				)}
 			>
-				{children}
+				<Icon
+					aria-hidden
+					className={cn("mt-0.5 size-4.5 shrink-0", severityTone[severity])}
+				/>
+				<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+					{children}
+				</div>
 			</div>
 		</div>
 	);

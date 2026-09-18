@@ -123,28 +123,22 @@ function NoticeRow({ notice }: { readonly notice: AppNotice }) {
 			    with the message length. */}
 			<div className="flex w-full items-start gap-2">
 				<div className="flex min-w-0 flex-1 flex-col gap-1">
-					<span>
-						{notice.message}
-						{notice.detail ? (
-							<span className="text-muted-foreground"> {notice.detail}</span>
-						) : null}
-					</span>
+					<span className="font-medium">{notice.message}</span>
+					{notice.detail ? (
+						<span className="text-muted-foreground text-xs">
+							{notice.detail}
+						</span>
+					) : null}
 					{notice.actions.length > 0 ? (
-						// A notice's action is the quiet way out of a condition, not a
-						// decision the surface is asking for, so it stays a tertiary
-						// control with no outline. Weight, not colour, is what separates
-						// it from the message: notification guidance puts the action in
-						// the body-strong style, and blue here would compete with the
-						// one accent this product spends on focus and selection. No
-						// capitals and no italics: both cost legibility for the readers
-						// who can least afford it.
-						<div className="flex flex-wrap justify-end gap-1">
+						// A notice's action is the quiet way out of a condition, drawn as
+						// the neutral secondary button under the message, never in the
+						// accent this product spends on focus and selection.
+						<div className="mt-1 flex flex-wrap gap-1">
 							{notice.actions.map((action) => (
 								<Button
 									key={action.id}
-									variant="ghost"
+									variant="secondary"
 									size="xs"
-									className="font-semibold"
 									onClick={action.run}
 								>
 									{action.label}
