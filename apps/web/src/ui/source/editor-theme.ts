@@ -81,8 +81,9 @@ export const editorTheme = EditorView.theme({
 	// inside the same box (owner, 2026-09-19): the source reads as one block of
 	// code rather than as a page with a numbered band down its edge.
 	"&": {
-		height: "calc(100% - var(--spacing) * 5)",
-		margin: "calc(var(--spacing) * 2.5)",
+		height: "calc(100% - var(--spacing) * 2.5)",
+		// No top margin: the pane header above already leaves the room.
+		margin: "0 calc(var(--spacing) * 2.5) calc(var(--spacing) * 2.5)",
 		borderRadius: "var(--control-radius)",
 		overflow: "hidden",
 		fontSize: contentFontSize,
