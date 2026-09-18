@@ -141,7 +141,12 @@ export const editorTheme = EditorView.theme({
 		// there (#367). The trailing gap is also the source text's leading space,
 		// because the line itself cannot hold it without unpainting the
 		// selection there. See the note on `.cm-line` above.
-		padding: "0 calc(var(--spacing) * 3)",
+		// A wider inset on the outside than toward the text, and the digits
+		// set flush right, so the numbers read as a column of their own inside
+		// the code box rather than as part of the first character (owner,
+		// 2026-09-19).
+		padding: "0 calc(var(--spacing) * 4) 0 calc(var(--spacing) * 5)",
+		textAlign: "right",
 	},
 	".cm-activeLine": { backgroundColor: "var(--active-line-fill)" },
 	// The boundary under a semantic table row (#296). Painted, never laid out:
