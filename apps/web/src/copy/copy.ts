@@ -802,6 +802,7 @@ export const copy = {
 	},
 
 	a11y: {
+		opensInNewTab: "(opens in a new tab)",
 		grid: "Table editor",
 		workspace: "Workspace",
 		notices: "Notices",

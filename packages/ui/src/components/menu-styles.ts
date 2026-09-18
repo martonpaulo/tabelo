@@ -29,7 +29,7 @@ export const menuSingleSelectionItemStateStyles =
 	"data-checked:bg-selection-fill data-checked:text-foreground data-checked:hover:bg-selection-fill data-checked:focus:bg-selection-fill";
 
 export const dialogSingleSelectionItemStateStyles =
-	"not-data-[disabled=true]:hover:bg-accent not-data-[disabled=true]:hover:text-accent-foreground not-data-[disabled=true]:hover:**:text-accent-foreground not-data-[disabled=true]:focus-within:text-accent-foreground not-data-[disabled=true]:focus-within:**:text-accent-foreground data-[selected=true]:bg-selection-fill data-[selected=true]:text-foreground data-[selected=true]:hover:bg-selection-fill";
+	"not-data-[disabled=true]:not-data-[selected=true]:hover:bg-accent not-data-[disabled=true]:not-data-[selected=true]:hover:text-accent-foreground not-data-[disabled=true]:not-data-[selected=true]:hover:**:text-accent-foreground not-data-[disabled=true]:not-data-[selected=true]:focus-within:text-accent-foreground not-data-[disabled=true]:not-data-[selected=true]:focus-within:**:text-accent-foreground data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground data-[selected=true]:**:text-primary-foreground";
 
 export const menuShortcutStyles =
 	"ml-auto inline-flex items-center gap-0.5 font-sans text-muted-foreground text-xs leading-none tracking-normal";
@@ -42,7 +42,7 @@ export const menuShortcutKeyStyles =
 // the same primary fill once chosen. A menu is not the place to invent a third
 // way of drawing a choice. See docs/design-system.md §3.
 export const menuCheckboxIndicatorStyles =
-	"pointer-events-none absolute right-2 flex size-4 shrink-0 items-center justify-center rounded-interactive border border-control-outline text-primary-foreground group-data-checked/menu-choice:border-primary group-data-checked/menu-choice:bg-primary";
+	"pointer-events-none absolute right-2 flex size-4 shrink-0 items-center justify-center rounded-indicator border border-control-outline text-primary-foreground group-data-checked/menu-choice:border-primary group-data-checked/menu-choice:bg-primary";
 
 export const singleSelectionIndicatorShapeStyles =
 	"relative flex size-4 shrink-0 items-center justify-center rounded-full border border-control-outline";

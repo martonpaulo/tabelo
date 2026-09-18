@@ -50,8 +50,11 @@ Tabelo is a **calm, compact, neutral table utility**. It follows the shadcn
 `base-lyra` style already configured in `packages/ui/components.json` without
 importing card-heavy dashboard styling.
 
-The neutral palette, system sans-serif stack, and 0.25rem/0.5rem radius scale are
-inspired by [petrroll/markdown-to-teams](https://github.com/petrroll/markdown-to-teams).
+The neutral palette and radius scale were first inspired by
+[petrroll/markdown-to-teams](https://github.com/petrroll/markdown-to-teams). On
+2026-09-18 the owner replaced them with the look of the approved start surface:
+warm neutral greys one step apart per layer, Inter, a deeper primary blue that
+carries white text, and a 0.5rem/0.75rem radius scale.
 This is visual direction, not a template: Tabelo keeps its own blue accent,
 stronger element hierarchy, and explicit editable/read-only distinction. No
 source code or visual asset from that project is copied into Tabelo.
@@ -59,10 +62,12 @@ source code or visual asset from that project is copied into Tabelo.
 - **Structured.** Grid cells, row and column headers, resize affordances, pane
   edges, and major workspace divisions are rectilinear. The table remains the
   visual anchor.
-- **Friendly.** Buttons and fields use a 0.25rem control radius. Panels, menus,
-  dialogs, notices, and other contained or floating surfaces use a 0.5rem surface
-  radius, except the tooltip, which keeps the control radius (§3 Tooltip). There
-  are no pills or arbitrarily rounded containers.
+- **Friendly.** Buttons, fields, menu items, and option blocks use a 0.5rem
+  control radius; a checkbox uses the 0.25rem indicator radius so it never reads
+  as a radio. Panels, menus, dialogs, notices, and other contained or floating
+  surfaces use a 0.75rem surface radius, except the tooltip, which keeps the
+  control radius (§3 Tooltip). There are no pills or arbitrarily rounded
+  containers.
 - **Neutral with one blue accent.** Neutral greys distinguish surfaces before
   lines do. Blue marks focus, selection, and checked or active controls. Status
   colours are the only other colours and always have written meaning.
@@ -299,8 +304,9 @@ what used to be two passes over every visual change is now one.
 | `--grid-row-h` | `min-h-grid-row` | calc(var(--pane-zoom, 1) * 2rem): minimum table row height |
 | `--grid-col-w` | `w-grid-col` | 10.5rem: default column width |
 | `--grid-col-w-min` | `w-grid-col-min` | 4.5rem: resize floor |
-| `--control-radius` | `rounded-interactive` | 0.25rem: buttons, fields, menu items, badges |
-| `--surface-radius` | `rounded-surface` | 0.5rem: panes, menus, dialogs, notices, empty states |
+| `--control-radius` | `rounded-interactive` | 0.5rem: buttons, fields, menu items, option blocks, badges |
+| `--indicator-radius` | `rounded-indicator` | 0.25rem: a checkbox's 1rem box |
+| `--surface-radius` | `rounded-surface` | 0.75rem: panes, menus, dialogs, notices, empty states |
 
 The two radii communicate hierarchy rather than decoration. Grid cells, row or
 column headers, resize tracks, and layout glyphs stay square because their
@@ -606,7 +612,7 @@ decides the type. The source editor keeps the existing
 | :--- | :--- |
 | Pane title | `text-sm font-medium` |
 | Start surface title | `text-xl font-semibold`: the product name on the first-visit surface, the one text above the dialog title |
-| Dialog title | `text-base font-semibold`, owned by the shared `DialogTitle` and never overridden per dialog |
+| Dialog title | `text-lg font-semibold`, owned by the shared `DialogTitle` and never overridden per dialog |
 | Dialog section | `text-sm font-medium` |
 | Control label | `text-sm font-medium` |
 | Nested setting | `text-sm font-normal`: a setting inside a dialog section, and the options it owns |
@@ -672,7 +678,7 @@ pnpm dlx shadcn@latest add <name> -c packages/ui
 
 There is one tooltip appearance in the product, and `packages/ui`'s `Tooltip`
 owns it: the floating surface, one shadow, the `--line-floating` boundary, the
-0.25rem control radius, 0.75rem type, the shared padding, and the shared
+0.5rem control radius, 0.75rem type, the shared padding, and the shared
 clipped triangular pointer (§6). A tooltip explains its trigger and never
 carries the only copy of something the user needs, because it is transient and
 because pointer-only affordances fail §9. Every tooltip opens on keyboard focus

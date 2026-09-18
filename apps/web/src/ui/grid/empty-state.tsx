@@ -2,6 +2,7 @@ import { modShortcut } from "@tabelo/ui/lib/platform";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
 	ClipboardPaste,
+	ExternalLink,
 	FileUp,
 	type LucideIcon,
 	Plus,
@@ -77,6 +78,7 @@ export function EmptyState({
 				ref={sectionRef}
 				aria-labelledby="empty-state-title"
 				tabIndex={-1}
+				data-focus-container
 				// Enter on the surface itself starts the empty table, the option the
 				// surface marks as primary. Enter on a focused option is that
 				// option's own activation and is left alone.
@@ -126,28 +128,44 @@ export function EmptyState({
 						onClick={startImport}
 					/>
 				</div>
-				<p className="mt-6 text-center text-muted-foreground text-xs">
-					{copy.empty.credit}{" "}
-					<a
-						href={product.author.url}
-						target="_blank"
-						rel="noreferrer"
-						className="text-foreground underline underline-offset-2"
-					>
-						{product.author.name}
-					</a>
-					{" · "}
-					<a
-						href={product.repositoryUrl}
-						target="_blank"
-						rel="noreferrer"
-						className="text-foreground underline underline-offset-2"
-					>
-						{copy.empty.source}
-					</a>
-				</p>
+				<div className="mt-6 flex flex-col items-center gap-1 text-muted-foreground text-xs">
+					<p>
+						{copy.empty.credit}{" "}
+						<ExternalLinkText href={product.author.url}>
+							{product.author.name}
+						</ExternalLinkText>
+					</p>
+					<p>
+						<ExternalLinkText href={product.repositoryUrl}>
+							{copy.empty.source}
+						</ExternalLinkText>
+					</p>
+				</div>
 			</section>
 		</div>
+	);
+}
+
+// A link that leaves Tabelo says so before it is followed: the arrow is the
+// visible cue, and the accessible name says it opens in a new tab.
+function ExternalLinkText({
+	href,
+	children,
+}: {
+	readonly href: string;
+	readonly children: string;
+}) {
+	return (
+		<a
+			href={href}
+			target="_blank"
+			rel="noreferrer"
+			className="inline-flex items-center gap-1 underline-offset-2 transition-colors hover:text-foreground hover:underline"
+		>
+			{children}
+			<ExternalLink aria-hidden className="size-3" />
+			<span className="sr-only">{copy.a11y.opensInNewTab}</span>
+		</a>
 	);
 }
 
@@ -175,7 +193,7 @@ function Option({
 			data-variant={primary ? "default" : "ghost"}
 			onClick={onClick}
 			className={cn(
-				"flex w-full cursor-pointer items-center gap-3 rounded-surface px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-selection-edge focus-visible:outline-offset-2",
+				"flex w-full cursor-pointer items-center gap-3 rounded-interactive px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-selection-edge focus-visible:outline-offset-2",
 				primary
 					? "bg-primary text-primary-foreground hover:bg-primary/90"
 					: "bg-muted text-foreground hover:bg-muted/70",

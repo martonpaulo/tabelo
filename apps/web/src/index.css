@@ -52,6 +52,7 @@
 	--spacing-pane-stack: var(--pane-stack-h);
 	--spacing-fab: var(--fab-size);
 	--radius-interactive: var(--control-radius);
+	--radius-indicator: var(--indicator-radius);
 	--radius-surface: var(--surface-radius);
 
 	--font-source: var(--font-family-source);
@@ -105,7 +106,7 @@
 	   3:1 that WCAG 1.4.11 asks of anything required to identify a component,
 	   against every surface a floating layer can cover.
 	   https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html */
-	--line-floating: #949490;
+	--line-floating: #807e79;
 	--control-outline: #8a8984;
 
 	--selection-fill: rgb(77 166 255 / 24%);
@@ -149,8 +150,11 @@
 	   another number picked in a component. */
 	--z-notice: 45;
 
-	--control-radius: 0.25rem;
-	--surface-radius: 0.5rem;
+	--control-radius: 0.5rem;
+	--surface-radius: 0.75rem;
+	/* A checkbox is a 1rem box: the control radius would round it into a
+	   circle, which is the radio button's shape. */
+	--indicator-radius: 0.25rem;
 	--icon-stroke-width: 1.5;
 	--radius: var(--control-radius);
 
@@ -171,8 +175,11 @@
 	   control on a menu or dialog rather than as a hole in it. */
 	--muted: #353532;
 	--muted-foreground: #b4b2a9;
-	--accent: #17324a;
-	--accent-foreground: #75b6e7;
+	/* A pointer or keyboard highlight is a neutral lift, one step above the
+	   floating surface; blue is kept for what is chosen, not what is pointed
+	   at (2026-09-18 restyle). */
+	--accent: #3a3a37;
+	--accent-foreground: var(--foreground);
 	--destructive: #fca5a5;
 	--border: var(--line-subtle);
 	--input: var(--line-subtle);
@@ -360,6 +367,21 @@ textarea,
    An outline cannot reach the neighbour's line, and a browser paints it over
    the cell's own marks. */
 [data-cell]:focus-visible {
+	outline: none;
+}
+
+/* A menu, a dialog, or the start surface takes focus itself when it opens,
+   so the next key reaches its items. It is a container, not a control: the line belongs to the item
+   the keyboard is on, and a ring around the whole popup read as a heavy
+   border (2026-09-18). This sits beside the rule above because an unlayered
+   rule outranks a component's `outline-none` utility. */
+:is(
+	[role="menu"],
+	[role="listbox"],
+	[role="dialog"],
+	[role="alertdialog"],
+	[data-focus-container]
+):focus-visible {
 	outline: none;
 }
 

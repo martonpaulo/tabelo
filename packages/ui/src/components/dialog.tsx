@@ -59,7 +59,7 @@ function DialogContent({
 			<DialogPrimitive.Popup
 				data-slot="dialog-content"
 				className={cn(
-					`fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-surface p-4 text-popover-foreground text-sm/relaxed outline-none sm:w-auto sm:min-w-sm sm:max-w-xl ${floatingSurfaceStyles}`,
+					`fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-surface p-6 text-popover-foreground text-sm/relaxed outline-none sm:w-auto sm:min-w-sm sm:max-w-xl ${floatingSurfaceStyles}`,
 					popupTransitionStyles,
 					className,
 				)}
@@ -110,7 +110,7 @@ function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
 	return (
 		<DialogPrimitive.Title
 			data-slot="dialog-title"
-			className={cn("font-semibold text-base", className)}
+			className={cn("font-semibold text-lg", className)}
 			{...props}
 		/>
 	);
