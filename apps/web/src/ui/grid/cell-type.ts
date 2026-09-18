@@ -8,13 +8,6 @@ import type {
 export { cellValueType, expectedCellValueType } from "@/core/cell-value";
 export type { CellValueType } from "@/core/types";
 
-export const CELL_TYPE_MARKS = {
-	string: "text",
-	number: "num",
-	boolean: "bool",
-	null: "null",
-} as const satisfies Record<CellValueType, string>;
-
 const CELL_TYPE_PRESENTATION_CLASSES = {
 	string: "text-foreground",
 	number: "text-value-number font-semibold tabular-nums",
@@ -26,9 +19,13 @@ export function cellTypePresentationClass(type: CellValueType): string {
 	return CELL_TYPE_PRESENTATION_CLASSES[type];
 }
 
+// An empty string is an empty cell, not text that disagrees with its column:
+// marking every blank cell of a number column drew a symbol down the whole
+// column (owner, 2026-09-19). A null is a stated value and keeps its mark.
 export function cellTypeDiverges(
 	value: CellValue,
 	expectedType: ExpectedColumnType,
 ): boolean {
+	if (value === "") return false;
 	return cellValueType(value) !== expectedCellValueType(expectedType);
 }

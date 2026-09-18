@@ -30,15 +30,15 @@ test("the grid exposes real and expected types without replacing cell names", as
 	await expect(numberCell).toHaveAttribute("data-cell-type-divergent", "true");
 	await expect(stringCell).not.toHaveAttribute("data-cell-type-divergent");
 
-	await expect(numberCell.locator('[data-cell-type-mark="number"]')).toHaveText(
-		"num",
-	);
-	await expect(
-		booleanCell.locator('[data-cell-type-mark="boolean"]'),
-	).toHaveText("bool");
-	await expect(nullCell.locator('[data-cell-type-mark="null"]')).toHaveText(
-		"null",
-	);
+	for (const [cell, type] of [
+		[numberCell, "number"],
+		[booleanCell, "boolean"],
+		[nullCell, "null"],
+	] as const) {
+		await expect(
+			cell.locator(`[data-cell-type-mark="${type}"] svg`),
+		).toBeVisible();
+	}
 	await expect(
 		stringCell.locator('[data-cell-type-mark-context="cell"]'),
 	).toHaveCount(0);
@@ -51,28 +51,23 @@ test("the grid exposes real and expected types without replacing cell names", as
 	await expect(nullCell).toHaveAccessibleName(/null/i);
 	await expect(stringCell).toHaveAccessibleName("1");
 
-	const [numberFont, booleanFont, nullFont, stringFont, markFont] =
-		await Promise.all([
-			numberCell
-				.locator("[data-cell-value]")
-				.evaluate((element) => getComputedStyle(element).fontFamily),
-			booleanCell
-				.locator("[data-cell-value]")
-				.evaluate((element) => getComputedStyle(element).fontFamily),
-			nullCell
-				.locator("[data-cell-value]")
-				.evaluate((element) => getComputedStyle(element).fontFamily),
-			stringCell
-				.locator("[data-cell-value]")
-				.evaluate((element) => getComputedStyle(element).fontFamily),
-			numberCell
-				.locator('[data-cell-type-mark="number"]')
-				.evaluate((element) => getComputedStyle(element).fontFamily),
-		]);
+	const [numberFont, booleanFont, nullFont, stringFont] = await Promise.all([
+		numberCell
+			.locator("[data-cell-value]")
+			.evaluate((element) => getComputedStyle(element).fontFamily),
+		booleanCell
+			.locator("[data-cell-value]")
+			.evaluate((element) => getComputedStyle(element).fontFamily),
+		nullCell
+			.locator("[data-cell-value]")
+			.evaluate((element) => getComputedStyle(element).fontFamily),
+		stringCell
+			.locator("[data-cell-value]")
+			.evaluate((element) => getComputedStyle(element).fontFamily),
+	]);
 	expect(booleanFont).toBe(numberFont);
 	expect(nullFont).toBe(numberFont);
 	expect(numberFont).not.toBe(stringFont);
-	expect(markFont).toBe(stringFont);
 	await expect(numberCell).toHaveCSS("text-align", "left");
 
 	const presentationOf = (cell: typeof numberCell) =>
@@ -115,8 +110,8 @@ test("the grid exposes real and expected types without replacing cell names", as
 	const columnIndex = tabelo.columnIndex(1);
 	await expect(columnIndex).toHaveAttribute("data-expected-type", "text");
 	await expect(
-		columnIndex.locator('[data-cell-type-mark-context="column"]'),
-	).toHaveText("text");
+		columnIndex.locator('[data-cell-type-mark="string"] svg'),
+	).toBeVisible();
 	const selectColumn = columnIndex.getByRole("button", {
 		name: /select column: qty, expected type text/i,
 	});
@@ -204,9 +199,9 @@ test("a mixed column distinguishes real type from its number expectation", async
 		numberCell.locator('[data-cell-type-mark-context="cell"]'),
 	).toHaveCount(0);
 	await expect(stringCell).toHaveAttribute("data-cell-type-divergent", "true");
-	await expect(stringCell.locator('[data-cell-type-mark="string"]')).toHaveText(
-		"text",
-	);
+	await expect(
+		stringCell.locator('[data-cell-type-mark="string"] svg'),
+	).toBeVisible();
 	await expect(numberCell).toHaveCSS("text-align", "center");
 	await expect(stringCell).toHaveCSS("text-align", "center");
 	await expect(numberCell).toHaveAccessibleName(/number/i);
@@ -215,8 +210,8 @@ test("a mixed column distinguishes real type from its number expectation", async
 	const columnIndex = tabelo.columnIndex(1);
 	await expect(columnIndex).toHaveAttribute("data-expected-type", "number");
 	await expect(
-		columnIndex.locator('[data-cell-type-mark-context="column"]'),
-	).toHaveText("num");
+		columnIndex.locator('[data-cell-type-mark="number"] svg'),
+	).toBeVisible();
 	await expect(
 		columnIndex.getByRole("button", {
 			name: /select column: value, expected type number/i,
@@ -237,9 +232,12 @@ test("type marks remain legible under forced colours, zoom, and wrapping", async
 		await mark.evaluate((element) => getComputedStyle(element).color),
 	).not.toBe("rgba(0, 0, 0, 0)");
 
-	const sizeBeforeZoom = await mark.evaluate((element) =>
-		Number.parseFloat(getComputedStyle(element).fontSize),
-	);
+	// The symbol follows the pane's zoom: a direction, never a size.
+	const symbolWidth = () =>
+		mark
+			.locator("svg")
+			.evaluate((element) => element.getBoundingClientRect().width);
+	const sizeBeforeZoom = await symbolWidth();
 	await cell.click();
 	const paneMenu = page.getByRole("menu", {
 		name: `${copy.workspace.paneActions}: ${copy.views.grid.label}`,
@@ -247,10 +245,7 @@ test("type marks remain legible under forced colours, zoom, and wrapping", async
 	await tabelo.runPaneCommand("grid", "zoomIn");
 	await page.keyboard.press("Escape");
 	await paneMenu.waitFor({ state: "hidden" });
-	const sizeAfterZoom = await mark.evaluate((element) =>
-		Number.parseFloat(getComputedStyle(element).fontSize),
-	);
-	expect(sizeAfterZoom).toBeGreaterThan(sizeBeforeZoom);
+	await expect.poll(symbolWidth).toBeGreaterThan(sizeBeforeZoom);
 
 	const columnActions = tabelo.gridSurface().getByRole("button", {
 		name: /column actions: qty, expected type text/i,

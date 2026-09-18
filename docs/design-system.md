@@ -2043,7 +2043,10 @@ coordinates and repeats them on every arrow key.
 The real type supplements that content instead of replacing it (#200). Every native
 number, boolean, and null, plus any string that diverges from its column
 expectation, includes visually hidden full type text inside the gridcell.
-The visible compact mark appears only for divergence. A null cell therefore
+The visible compact mark appears only for divergence, and is the same symbol
+the Cell type menu shows for that type rather than an abbreviation. An empty
+string never counts as divergence: a blank cell is blank, whatever its column
+expects (owner, 2026-09-19). A null cell therefore
 has a written accessible value even though its `cellText` projection is empty.
 Opening its editor retains the native-value typeface and includes the real type
 in the editor's accessible name. Neither treatment adds another focus target.

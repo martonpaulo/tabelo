@@ -11,6 +11,8 @@ describe("grid cell type presentation", () => {
 		["7", "number", true],
 		[7, "text", true],
 		[false, "number", true],
+		["", "number", false],
+		["", "boolean", false],
 	] as const satisfies readonly [CellValue, ExpectedColumnType, boolean][])(
 		"reports whether %p diverges from %s",
 		(value, expected, diverges) => {
