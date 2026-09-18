@@ -89,7 +89,7 @@
 	--surface-app: #1c1c1b;
 	--surface-panel: #262624;
 	--surface-header: #30302d;
-	--surface-table-header: rgb(77 166 255 / 10%);
+	--surface-table-header: transparent;
 	--surface-gutter: #30302d;
 	/* A column letter or row number that the selection reaches. A neutral step
 	   above the chrome it sits on, never the selection tint: that colour means

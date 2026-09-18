@@ -1261,7 +1261,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				>
 					{/* Where the letters meet the row numbers is a dead corner, not a
 					    control. */}
-					<div className="sticky left-0 z-30 border-line-strong border-r border-b bg-surface-header" />
+					<div className="sticky left-0 z-30 bg-surface-code" />
 					{document.columns.map((column, columnIndex) => (
 						<ColumnIndexCell
 							key={column.id}
@@ -1335,7 +1335,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								// menu fell through to cell actions on a non-cell.
 								data-row-header={HEADER_ROW}
 								className={cn(
-									"sticky top-grid-strip left-0 z-30 border-line-strong border-r border-b border-b-line-subtle bg-surface-gutter px-1 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums",
+									"sticky top-grid-strip left-0 z-30 border-b border-b-line-strong bg-surface-code px-1 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums",
 									headerRowSelected && selectedAxisClass,
 								)}
 								data-axis-selected={headerRowSelected || undefined}
@@ -1642,7 +1642,7 @@ const DataRow = memo(function DataRow({
 					// The right edge is where chrome meets the table, so it takes the
 					// strong line the header row's gutter cell already draws; the
 					// edge between two numbers is a row boundary like any other.
-					"sticky left-0 border-r border-r-line-strong border-b border-b-line-subtle bg-surface-gutter align-top",
+					"sticky left-0 border-b border-b-line-subtle bg-surface-code align-top",
 					"px-1 text-right font-index font-normal text-muted-foreground text-xs tabular-nums",
 					// The row's number and its menu are how the row identifies itself,
 					// so they hold position with it. Pinned it sticks on both axes and
@@ -1740,7 +1740,7 @@ const DataRow = memo(function DataRow({
 						// across a 200-row table. See docs/design-system.md §3.
 						title={value || undefined}
 						className={cn(
-							"border-line-subtle border-r border-b px-2 align-top",
+							"border-line-subtle border-b px-2 align-top",
 							"cursor-cell select-none",
 							// One position, never two. `relative` is what the clipboard
 							// mark resolves against, and a pinned cell's own `sticky`
@@ -2024,12 +2024,11 @@ function ColumnIndexCell({
 			data-expected-type={expectedType}
 			data-axis-selected={selected || undefined}
 			className={cn(
-				// The line between two letters is the column's own divider, carried
-				// up from the table, so it matches the cells below it; the strip's
-				// bottom edge is where chrome meets the table and takes the strong
-				// line.
-				"group/col min-w-0 border-r border-r-line-subtle border-b border-b-line-strong",
-				"bg-surface-header px-1 text-center font-index font-normal text-muted-foreground text-xs",
+				// The modern table (owner, 2026-09-19): the letters sit on the
+				// content surface with no band, no dividers, and no line under
+				// them; only the header row's bottom edge and the row lines draw.
+				"group/col min-w-0",
+				"bg-surface-code px-1 text-center font-index font-normal text-muted-foreground text-xs",
 				selected && selectedAxisClass,
 				// Pinned it sticks sideways and joins the corner layer, beside the
 				// dead corner where the letters meet the row numbers. The strip
@@ -2205,10 +2204,10 @@ function HeaderCell({
 				// resolves against, and the later rule would win and turn the sticky
 				// offset into a static shift. Same rule as the column resize handle.
 				//
-				// The header row is a row of the table, so every edge it draws is an
-				// ordinary grid line: its sides are the columns' own dividers and
-				// the boundary under it is a row boundary like any other.
-				"sticky border-line-subtle border-r border-b align-top",
+				// The header row carries no side dividers, like every row of the
+				// modern table, and the one strong line under it is what separates
+				// the names from the data (owner, 2026-09-19).
+				"sticky border-b border-b-line-strong align-top",
 				"cursor-cell select-none px-2 font-semibold",
 				// Sticks below the index strip rather than at the very top, so the
 				// two chrome layers stack instead of covering one another.
