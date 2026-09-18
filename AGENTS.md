@@ -44,15 +44,17 @@ describes the migration and its downstream effects.
   consequence of it rather than a second owner. Do not add a browser-specific
   workaround, a polyfill, or a fallback for a non-Chromium engine, and do not
   keep one whose only reason was such an engine
-- Branch workflow: **branch and pull request, always.** A task or issue gets
-  its own branch named under the scheme below. Since 2026-09-17 a ruleset on
-  `main` requires a pull request and a green `Check` job, with no required
-  approval, as a trial of enforced checks (martonpaulo/skill-deck#283), so a
-  direct push to `main` is rejected; do not bypass or remove the ruleset
+- Branch workflow: **commit directly to `main`.** Decided by the owner on
+  2026-09-18, replacing the branch-and-pull-request trial that began on
+  2026-09-17 (martonpaulo/skill-deck#283): the review round trip cost more time
+  than it caught. The `main: pull request and green Check` ruleset is disabled,
+  not deleted. Work on several issues at once happens in local worktrees on
+  short-lived branches named under the scheme below; each is rebased onto
+  `main` and pushed to `main` directly, never through a pull request
 - Commit policy: commit automatically on task completion, one concern per
-  commit, on whichever branch the branch workflow above selects
-- Push policy: push automatically after committing. On a task branch, push the
-  branch and open the pull request automatically once validation passes
+  commit, landing on `main` as the branch workflow above describes
+- Push policy: push `main` automatically after committing. No pull request is
+  opened, and no automated reviewer is waited for
 - Product versioning: **unversioned**. The deployed site is always the current
   version. No version number, tag, or release name ever appears anywhere in
   the product. The `0.0.0` in workspace manifests is a package-manager
@@ -335,7 +337,10 @@ the smallest relevant check.
   app itself, so it needs no running dev server. First run only:
   `pnpm test:e2e:install`. Iterate with `pnpm test:e2e:changed` after an edit
   and `pnpm test:e2e:failed` after a fix, or narrow with a spec name or
-  `-g "<title>"`; neither is a gate, so run the suite whole before reporting.
+  `-g "<title>"`. Run the specs a change can affect, not the whole suite: CI
+  runs the full Chromium suite on every push to `main`, and a local full run
+  is reserved for a change whose reach a focused run cannot bound, such as
+  the synchronization or history core (owner decision, 2026-09-18).
   `pnpm test:e2e:serve` keeps a warm preview server across those rounds
 - Pass a focused spec path or Playwright option directly after the root script.
   Never add a standalone `--` after `pnpm test:e2e`: it ends option parsing and
@@ -1010,15 +1015,13 @@ Rules for any executor working from a clone of this repository.
 
 - Run tests with `pnpm test`, types with `pnpm check-types`, and format and lint
   with `pnpm check`. A change is not done while any of the three fails on the
-  exact current head. `pnpm test:e2e` is the browser gate: run it whole before
-  reporting, per `## Build and validate`.
+  exact current head. Run the affected browser specs with `pnpm test:e2e`,
+  per `## Build and validate`; CI runs the whole suite after the push.
 - Branch as `type/<issue numbers>-short-description` and commit with
   Conventional Commits, the subject ending in `(#<issue number>)`.
-- Never push to `main` and never merge: open a pull request and stop. Merge
-  belongs to the maintainer.
-- Start the pull request body with one `Closes #<n>` line per resolved issue,
-  then the problem, the implementation, the validation commands with their
-  actual results, and the residual risk.
+- Push to `main` directly. A commit that resolves an issue says
+  `Closes #<n>` in its body, so the push closes it; the commit body carries
+  the problem, the implementation, and the validation actually run.
 - Do not touch: `.github/workflows/`, `LICENSE`.
 - `AGENTS.md` is protected by section, not as a file. `## Project identity and
   policy` is governance and never moves under an executor. Every other section
