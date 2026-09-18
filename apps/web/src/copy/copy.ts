@@ -290,6 +290,8 @@ export const copy = {
 		zoom: (percent: number) => `Zoom ${percent}%`,
 		zoomPercent: (percent: number) => `${percent}%`,
 		zoomLabel: "Zoom",
+		tableSize: (columns: number, rows: number) =>
+			`${columns} ${columns === 1 ? "column" : "columns"} · ${rows} ${rows === 1 ? "row" : "rows"}`,
 		zoomOut: "Zoom out",
 		zoomIn: "Zoom in",
 		resetZoom: "Reset zoom",

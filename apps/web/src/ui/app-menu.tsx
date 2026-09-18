@@ -17,10 +17,12 @@ import {
 	IconAdjustmentsHorizontal,
 	IconArrowBackUp,
 	IconArrowForwardUp,
+	IconBrandGithub,
 	IconClipboardCopy,
 	IconDownload,
 	IconExternalLink,
 	IconFilePlus,
+	IconFileText,
 	IconLayoutGrid,
 	IconLayoutSidebarRightExpand,
 	IconPencil,
@@ -79,6 +81,8 @@ export function AppMenu({
 	const menuDialog = useMenuDialogCommand();
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
 	const tableName = useTabeloStore((state) => state.name);
+	const columnCount = useTabeloStore((state) => state.document.columns.length);
+	const rowCount = useTabeloStore((state) => state.document.rows.length);
 	const canRedoDocument = useTabeloStore((state) => state.future.length > 0);
 	const activePaneId = useTabeloStore((state) => state.workspace.activePaneId);
 	const stacked = useStackedWorkspace();
@@ -164,33 +168,44 @@ export function AppMenu({
 				side="top"
 				className="w-auto min-w-64 max-w-[calc(100vw-1.5rem)]"
 			>
-				{/* Static identity, outside every group: a menu group holds actions.
-				    It takes the items' own inset so its text lines up with theirs.
-				    Two contexts, split by the separator: what the product is and
-				    who made it, then which document is open, sitting directly on
-				    the action that renames it (#358). */}
+				{/* The product mark and name, then the open table as one block that
+				    renames it: what the product is sits on the start surface, and
+				    this menu starts from the document at hand (owner, 2026-09-19;
+				    #358 kept identity and document as separate contexts). */}
 				<div
 					className={cn(
-						"grid gap-2 whitespace-normal text-sm",
+						"flex items-center gap-2 font-medium text-sm",
 						menuItemInsetStyles,
 					)}
 				>
-					<MenuOption label={copy.app.name} description={copy.app.tagline} />
-					<span className="block text-muted-foreground text-xs">
-						{copy.app.copyright}
-					</span>
+					<img
+						aria-hidden
+						alt=""
+						src={`${import.meta.env.BASE_URL}logo.svg`}
+						className="size-4"
+					/>
+					{copy.app.name}
 				</div>
-				<DropdownMenuSeparator />
-				<p
-					data-slot="app-menu-table-name"
-					className={cn("truncate text-sm", menuItemInsetStyles)}
-				>
-					{tableName}
-				</p>
 				<DropdownMenuGroup>
-					<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onRename)}>
-						<IconPencil aria-hidden />
-						{copy.actions.renameTable}
+					<DropdownMenuItem
+						aria-label={copy.actions.renameTable}
+						aria-description={tableName}
+						onClick={() => menuDialog.runAfterClose(onRename)}
+						className="mx-1 mb-1 bg-muted"
+					>
+						<IconFileText aria-hidden />
+						<span className="grid min-w-0 flex-1 gap-0.5">
+							<span
+								data-slot="app-menu-table-name"
+								className="truncate font-medium"
+							>
+								{tableName}
+							</span>
+							<span className="text-muted-foreground text-xs">
+								{copy.workspace.tableSize(columnCount, rowCount)}
+							</span>
+						</span>
+						<IconPencil aria-hidden className="text-muted-foreground" />
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 				{pwaUpdate.ready ? (
@@ -217,19 +232,32 @@ export function AppMenu({
 				) : null}
 
 				<DropdownMenuSeparator />
-				<DropdownMenuGroup>
+				{/* Undo and redo side by side: two halves of one control. */}
+				<DropdownMenuGroup className="mx-1 grid grid-cols-2 gap-1">
 					<ControlTooltip reason={canUndo ? undefined : copy.disabled.undo}>
-						<DropdownMenuItem disabled={!canUndo} onClick={() => run("undo")}>
+						<DropdownMenuItem
+							disabled={!canUndo}
+							onClick={() => run("undo")}
+							className="justify-center bg-muted"
+						>
 							<IconArrowBackUp aria-hidden />
 							{copy.actions.undo}
-							<DropdownMenuShortcut>{copy.shortcuts.undo}</DropdownMenuShortcut>
+							<DropdownMenuShortcut className="ml-0">
+								{copy.shortcuts.undo}
+							</DropdownMenuShortcut>
 						</DropdownMenuItem>
 					</ControlTooltip>
 					<ControlTooltip reason={canRedo ? undefined : copy.disabled.redo}>
-						<DropdownMenuItem disabled={!canRedo} onClick={() => run("redo")}>
+						<DropdownMenuItem
+							disabled={!canRedo}
+							onClick={() => run("redo")}
+							className="justify-center bg-muted"
+						>
 							<IconArrowForwardUp aria-hidden />
 							{copy.actions.redo}
-							<DropdownMenuShortcut>{copy.shortcuts.redo}</DropdownMenuShortcut>
+							<DropdownMenuShortcut className="ml-0">
+								{copy.shortcuts.redo}
+							</DropdownMenuShortcut>
 						</DropdownMenuItem>
 					</ControlTooltip>
 				</DropdownMenuGroup>
@@ -306,10 +334,23 @@ export function AppMenu({
 							/>
 						}
 					>
-						<IconExternalLink aria-hidden />
+						<IconBrandGithub aria-hidden />
 						{copy.actions.github}
+						<IconExternalLink
+							aria-hidden
+							className="ml-auto text-muted-foreground"
+						/>
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
+				<p
+					className={cn(
+						"text-muted-foreground text-xs",
+						menuItemInsetStyles,
+						"pt-0",
+					)}
+				>
+					{copy.app.copyright}
+				</p>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
