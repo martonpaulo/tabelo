@@ -18,8 +18,7 @@ import {
 //   the active-line fill beside it covers whole.
 // - Its caret is a 2px border at whatever fractional position the glyphs give,
 //   so it blurred across three device pixels mid-line and was clipped under the
-//   gutter at column 0, and it was twice the width of the native caret every
-//   other text field in the product draws.
+//   gutter at column 0.
 //
 // Both layers below are CodeMirror's public `layer` API. The editor theme hides
 // the two layers `drawSelection` would otherwise show.
@@ -87,8 +86,8 @@ function snapToDevicePixel(value: number): number {
 	return Math.round(value * ratio) / ratio;
 }
 
-// The caret the product draws: one hairline wide, like the browser's own caret
-// in every other text field, and placed on whole device pixels. Every selection
+// The caret the product draws: two hairlines wide and placed on whole device
+// pixels, so every column shows it at the same width. Every selection
 // gets one, at its head, as `drawSelection` does, so several occurrences still
 // show where typing will land.
 const caretLayer = layer({
