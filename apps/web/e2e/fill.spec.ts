@@ -321,6 +321,19 @@ test("the fill handle follows its corner when the grid's geometry changes", asyn
 	await page.keyboard.press("Alt+Shift+ArrowRight");
 	await expect.poll(nearCorner).toBe(true);
 
+	// Narrow it with the pointer handle, which changes the width without
+	// touching the selection: the corner moves left and the handle follows.
+	const resizer = tabelo
+		.columnIndex(1)
+		.locator('[aria-hidden][class*="cursor-col-resize"]');
+	const edge = await resizer.boundingBox();
+	expect(edge).not.toBeNull();
+	await page.mouse.move((edge?.x ?? 0) + 2, (edge?.y ?? 0) + 2);
+	await page.mouse.down();
+	await page.mouse.move((edge?.x ?? 0) - 80, (edge?.y ?? 0) + 2);
+	await page.mouse.up();
+	await expect.poll(nearCorner).toBe(true);
+
 	// Wrap a long value into the row: the corner moves down.
 	await tabelo.editCell(
 		1,

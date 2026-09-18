@@ -64,15 +64,25 @@ export function FillHandle({
 		};
 		measure();
 
+		// A column or row resize moves the corner without changing the selection,
+		// so the handle is placed again whenever the table or the corner cell
+		// changes size. The table covers every column to the corner's left, and
+		// the cell covers its own row and column.
+		const resize = new ResizeObserver(measure);
+		resize.observe(grid);
+		resize.observe(cell);
+
 		// The handle is placed in the table's scrolling coordinates, which is
 		// right for an ordinary cell: both scroll together. A sticky cell (a
 		// pinned row or column) stays put while the table scrolls under it, so
 		// its handle has to be placed again on every scroll, or one scroll
 		// leaves it over an unrelated cell (#356). Coalesced to one measurement
 		// per frame, and only for a sticky corner.
-		if (getComputedStyle(cell).position !== "sticky") return;
+		if (getComputedStyle(cell).position !== "sticky") {
+			return () => resize.disconnect();
+		}
 		const scroller = grid.closest<HTMLElement>('[data-slot="panel-body"]');
-		if (!scroller) return;
+		if (!scroller) return () => resize.disconnect();
 		let frame = 0;
 		const onScroll = () => {
 			if (frame !== 0) return;
@@ -85,6 +95,7 @@ export function FillHandle({
 		return () => {
 			scroller.removeEventListener("scroll", onScroll);
 			cancelAnimationFrame(frame);
+			resize.disconnect();
 		};
 	}, [corner.column, corner.row, gridRef, source, wrapperRef]);
 
