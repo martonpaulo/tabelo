@@ -413,7 +413,7 @@ alike in TSV, `a,,b` has a middle field, `||a|||b||` is hard to count, and
 `&#32;` is five characters standing for one space nobody can spell. Four glyph
 families answer that, all of them CodeMirror decorations over unchanged text:
 `·` for a space and `→` for a tab, on the per-character marks
-`highlightWhitespace()` provides; `(empty)` where a delimited syntax hides an
+`highlightWhitespace()` provides; `empty` where a delimited syntax hides an
 empty field; and one glyph over each escape sequence, showing the character the
 sequence stands for. The last two are the ones this project draws itself,
 because no editor has a concept of a field or of a codec's escaping grammar. The

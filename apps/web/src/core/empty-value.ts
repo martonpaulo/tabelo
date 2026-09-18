@@ -9,4 +9,4 @@
 // exports it, so it is still written once and still read from one place.
 //
 // Changing it changes the padding of every Markdown table this product writes.
-export const EMPTY_VALUE_PLACEHOLDER = "(empty)";
+export const EMPTY_VALUE_PLACEHOLDER = "empty";
