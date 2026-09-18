@@ -290,6 +290,9 @@ function DropdownMenuSegmentedItem({
 	return (
 		<MenuPrimitive.RadioItem
 			data-slot="dropdown-menu-segmented-item"
+			// A choice made, like any menu command: Base UI keeps a radio
+			// item's menu open unless told otherwise.
+			closeOnClick
 			className={cn(
 				segmentedItemStyles,
 				controlStateTransitionStyles,
