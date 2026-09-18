@@ -77,15 +77,9 @@ const spaceDot = {
 const spaceGlyphProperty = { "--tabelo-space-glyph": `"${SPACE_GLYPH}"` };
 
 export const editorTheme = EditorView.theme({
-	// The text sits in an inset rounded box inside its pane, its line numbers
-	// inside the same box (owner, 2026-09-19): the source reads as one block of
-	// code rather than as a page with a numbered band down its edge.
+	// The pane body draws the inset code box (panel.tsx); the editor fills it.
 	"&": {
-		height: "calc(100% - var(--spacing) * 2.5)",
-		// No top margin: the pane header above already leaves the room.
-		margin: "0 calc(var(--spacing) * 2.5) calc(var(--spacing) * 2.5)",
-		borderRadius: "var(--control-radius)",
-		overflow: "hidden",
+		height: "100%",
 		fontSize: contentFontSize,
 		backgroundColor: "var(--surface-code)",
 		color: "var(--foreground)",

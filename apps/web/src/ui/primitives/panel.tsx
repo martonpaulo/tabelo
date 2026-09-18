@@ -99,7 +99,10 @@ function PanelBody({
 			// focusable for entry without making it a tab stop.
 			tabIndex={-1}
 			className={cn(
-				"tabelo-scroll-boundary relative min-h-0 flex-1 overflow-auto",
+				// Every view's content sits in one inset rounded box below the
+				// pane header, so a table, a source, and a preview share one shape
+				// (owner, 2026-09-19): two layers, the pane and its content.
+				"tabelo-scroll-boundary relative mx-2 mb-2 min-h-0 flex-1 overflow-auto rounded-interactive bg-surface-code",
 				className,
 			)}
 			{...props}
