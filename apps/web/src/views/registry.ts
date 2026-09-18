@@ -1,13 +1,13 @@
 import {
-	Braces,
-	Code2,
-	Eye,
-	FileText,
-	List,
-	Sheet,
-	Table2,
-	Tags,
-} from "lucide-react";
+	IconBraces,
+	IconCode,
+	IconEye,
+	IconFileSpreadsheet,
+	IconFileText,
+	IconList,
+	IconTable,
+	IconTags,
+} from "@tabler/icons-react";
 import { copy } from "@/copy/copy";
 import {
 	csvCodec,
@@ -66,7 +66,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	grid: {
 		id: "grid",
 		...copy.views.grid,
-		icon: Table2,
+		icon: IconTable,
 		kind: "grid",
 		highlight: "plain",
 		capabilities: gridCapabilities,
@@ -79,7 +79,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	markdown: {
 		id: "markdown",
 		...copy.views.markdown,
-		icon: FileText,
+		icon: IconFileText,
 		kind: "source",
 		codec: markdownCodec,
 		highlight: "markdown",
@@ -91,7 +91,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	csv: {
 		id: "csv",
 		...copy.views.csv,
-		icon: Sheet,
+		icon: IconFileSpreadsheet,
 		kind: "source",
 		codec: csvCodec,
 		highlight: "delimited",
@@ -102,7 +102,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	tsv: {
 		id: "tsv",
 		...copy.views.tsv,
-		icon: Sheet,
+		icon: IconFileSpreadsheet,
 		kind: "source",
 		codec: tsvCodec,
 		highlight: "delimited",
@@ -113,7 +113,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	html: {
 		id: "html",
 		...copy.views.html,
-		icon: Code2,
+		icon: IconCode,
 		kind: "source",
 		codec: htmlCodec,
 		highlight: "html",
@@ -124,7 +124,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	jira: {
 		id: "jira",
 		...copy.views.jira,
-		icon: Tags,
+		icon: IconTags,
 		kind: "source",
 		codec: jiraCodec,
 		highlight: "jira",
@@ -135,7 +135,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	json: {
 		id: "json",
 		...copy.views.json,
-		icon: Braces,
+		icon: IconBraces,
 		kind: "source",
 		codec: jsonCodec,
 		highlight: "json",
@@ -146,7 +146,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	records: {
 		id: "records",
 		...copy.views.records,
-		icon: List,
+		icon: IconList,
 		kind: "source",
 		codec: recordsCodec,
 		highlight: "records",
@@ -157,7 +157,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	"html-preview": {
 		id: "html-preview",
 		...copy.views["html-preview"],
-		icon: Eye,
+		icon: IconEye,
 		kind: "preview",
 		// Borrows the HTML codec to serialize for download; it never parses,
 		// which is what makes this view read-only.

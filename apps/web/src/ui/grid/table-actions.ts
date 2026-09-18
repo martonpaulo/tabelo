@@ -1,30 +1,30 @@
 import {
-	ArrowDown,
-	ArrowDownToLine,
-	ArrowLeft,
-	ArrowLeftToLine,
-	ArrowRight,
-	ArrowRightToLine,
-	ArrowUp,
-	ArrowUpToLine,
-	ClipboardPaste,
-	Copy,
-	Eraser,
-	Focus,
-	type LucideIcon,
-	Move,
-	MoveDown,
-	MoveLeft,
-	MoveRight,
-	MoveUp,
-	PaintBucket,
-	Scissors,
-	SquareArrowDown,
-	SquareArrowLeft,
-	SquareArrowRight,
-	SquareArrowUp,
-	Trash2,
-} from "lucide-react";
+	IconArrowBarToDown,
+	IconArrowBarToLeft,
+	IconArrowBarToRight,
+	IconArrowBarToUp,
+	IconArrowDown,
+	IconArrowLeft,
+	IconArrowNarrowDown,
+	IconArrowNarrowLeft,
+	IconArrowNarrowRight,
+	IconArrowNarrowUp,
+	IconArrowRight,
+	IconArrowsMove,
+	IconArrowUp,
+	IconBucketDroplet,
+	IconClipboard,
+	IconCopy,
+	IconEraser,
+	IconFocusCentered,
+	IconScissors,
+	IconSquareArrowDown,
+	IconSquareArrowLeft,
+	IconSquareArrowRight,
+	IconSquareArrowUp,
+	IconTrash,
+	type TablerIcon,
+} from "@tabler/icons-react";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import {
@@ -52,7 +52,7 @@ import { copyToClipboard, pasteFromClipboard } from "@/ui/clipboard-actions";
 export interface TableAction {
 	readonly id: string;
 	readonly label: string;
-	readonly icon: LucideIcon;
+	readonly icon: TablerIcon;
 	readonly shortcut?: string;
 	readonly disabled?: boolean;
 	readonly disabledReason?: string;
@@ -66,7 +66,7 @@ export interface TableActionGroup {
 	readonly labelId?: string;
 	// A named group of directional commands shown as one submenu, so the menu's
 	// first level stays short. Every renderer draws it the same way (#369).
-	readonly submenu?: { readonly icon: LucideIcon };
+	readonly submenu?: { readonly icon: TablerIcon };
 	readonly actions: readonly TableAction[];
 }
 
@@ -215,10 +215,10 @@ export function buildTableActions(
 		1,
 	);
 	const fillDirections = [
-		["up", ArrowUp, copy.actions.fillUp, copy.shortcuts.fillUp],
-		["down", ArrowDown, copy.actions.fillDown, copy.shortcuts.fillDown],
-		["left", ArrowLeft, copy.actions.fillLeft, copy.shortcuts.fillLeft],
-		["right", ArrowRight, copy.actions.fillRight, copy.shortcuts.fillRight],
+		["up", IconArrowUp, copy.actions.fillUp, copy.shortcuts.fillUp],
+		["down", IconArrowDown, copy.actions.fillDown, copy.shortcuts.fillDown],
+		["left", IconArrowLeft, copy.actions.fillLeft, copy.shortcuts.fillLeft],
+		["right", IconArrowRight, copy.actions.fillRight, copy.shortcuts.fillRight],
 	] as const;
 
 	// Moving the focus without discarding the areas already selected. It used
@@ -228,22 +228,27 @@ export function buildTableActions(
 	// replaces the selection. The square-arrow family keeps it distinct from
 	// the three directional groups the menu already carries.
 	const focusDirections = [
-		["up", SquareArrowUp, copy.actions.moveFocusUp, copy.disabled.focusTopRow],
+		[
+			"up",
+			IconSquareArrowUp,
+			copy.actions.moveFocusUp,
+			copy.disabled.focusTopRow,
+		],
 		[
 			"down",
-			SquareArrowDown,
+			IconSquareArrowDown,
 			copy.actions.moveFocusDown,
 			copy.disabled.focusLastRow,
 		],
 		[
 			"left",
-			SquareArrowLeft,
+			IconSquareArrowLeft,
 			copy.actions.moveFocusLeft,
 			copy.disabled.focusFirstColumn,
 		],
 		[
 			"right",
-			SquareArrowRight,
+			IconSquareArrowRight,
 			copy.actions.moveFocusRight,
 			copy.disabled.focusLastColumn,
 		],
@@ -251,7 +256,7 @@ export function buildTableActions(
 
 	// Three directional groups share one menu, so each takes its own glyph
 	// family: insert lands against a boundary line, move is the long-stemmed
-	// Move arrow, and fill keeps the plain arrow it drags along.
+	// narrow arrow, and fill keeps the plain arrow it drags along.
 	const insert: TableAction[] = [];
 	if (showRows) {
 		// Inserting beside the header row still adds one data row, so the label
@@ -262,7 +267,7 @@ export function buildTableActions(
 				id: "row-above",
 				shortcut: copy.shortcuts.addRowAbove,
 				label: copy.actions.insertRowsAbove(insertCount),
-				icon: ArrowUpToLine,
+				icon: IconArrowBarToUp,
 				disabled: severalAreas,
 				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addRowAbove(),
@@ -271,7 +276,7 @@ export function buildTableActions(
 				id: "row-below",
 				shortcut: copy.shortcuts.addRowBelow,
 				label: copy.actions.insertRowsBelow(insertCount),
-				icon: ArrowDownToLine,
+				icon: IconArrowBarToDown,
 				disabled: severalAreas,
 				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addRowBelow(),
@@ -284,7 +289,7 @@ export function buildTableActions(
 				id: "column-left",
 				shortcut: copy.shortcuts.addColumnLeft,
 				label: copy.actions.insertColumnsLeft(columnCount),
-				icon: ArrowLeftToLine,
+				icon: IconArrowBarToLeft,
 				disabled: severalAreas,
 				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addColumnLeft(),
@@ -293,7 +298,7 @@ export function buildTableActions(
 				id: "column-right",
 				shortcut: copy.shortcuts.addColumnRight,
 				label: copy.actions.insertColumnsRight(columnCount),
-				icon: ArrowRightToLine,
+				icon: IconArrowBarToRight,
 				disabled: severalAreas,
 				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addColumnRight(),
@@ -305,14 +310,14 @@ export function buildTableActions(
 		{
 			id: "copy",
 			label: copy.actions.copy,
-			icon: Copy,
+			icon: IconCopy,
 			shortcut: copy.shortcuts.copy,
 			run: () => void copySelectionToClipboard("copy"),
 		},
 		{
 			id: "cut",
 			label: copy.actions.cut,
-			icon: Scissors,
+			icon: IconScissors,
 			shortcut: copy.shortcuts.cut,
 			run: () => {
 				void copySelectionToClipboard("cut").then((ok) => {
@@ -323,7 +328,7 @@ export function buildTableActions(
 		{
 			id: "paste",
 			label: copy.actions.paste,
-			icon: ClipboardPaste,
+			icon: IconClipboard,
 			shortcut: copy.shortcuts.paste,
 			disabled: severalAreas,
 			disabledReason: copy.disabled.singleAreaRequired,
@@ -338,7 +343,7 @@ export function buildTableActions(
 			label: duplicatesColumns
 				? copy.actions.duplicateColumns(columnCount)
 				: copy.actions.duplicateRows(rowCount),
-			icon: Copy,
+			icon: IconCopy,
 			// Duplicating the header row is not a thing a table can do: it would
 			// give the document a second one.
 			disabled: !duplicatesColumns && noDataRows,
@@ -351,7 +356,7 @@ export function buildTableActions(
 		{
 			id: "clear",
 			label: copy.actions.clear,
-			icon: Eraser,
+			icon: IconEraser,
 			shortcut: copy.shortcuts.clear,
 			run: () => store.clearSelection(),
 		},
@@ -363,7 +368,7 @@ export function buildTableActions(
 			{
 				id: "move-up",
 				label: copy.actions.moveUp,
-				icon: MoveUp,
+				icon: IconArrowNarrowUp,
 				shortcut: copy.shortcuts.moveUp,
 				disabled: moveUpRefusal !== null,
 				disabledReason:
@@ -375,7 +380,7 @@ export function buildTableActions(
 			{
 				id: "move-down",
 				label: copy.actions.moveDown,
-				icon: MoveDown,
+				icon: IconArrowNarrowDown,
 				shortcut: copy.shortcuts.moveDown,
 				disabled: moveDownRefusal !== null,
 				disabledReason:
@@ -438,7 +443,7 @@ export function buildTableActions(
 			{
 				id: "move-left",
 				label: copy.actions.moveLeft,
-				icon: MoveLeft,
+				icon: IconArrowNarrowLeft,
 				shortcut: copy.shortcuts.moveLeft,
 				disabled: moveLeftRefusal !== null,
 				disabledReason:
@@ -450,7 +455,7 @@ export function buildTableActions(
 			{
 				id: "move-right",
 				label: copy.actions.moveRight,
-				icon: MoveRight,
+				icon: IconArrowNarrowRight,
 				shortcut: copy.shortcuts.moveRight,
 				disabled: moveRightRefusal !== null,
 				disabledReason:
@@ -467,7 +472,7 @@ export function buildTableActions(
 		remove.push({
 			id: "delete-rows",
 			label: copy.actions.deleteRows(removableRowCount),
-			icon: Trash2,
+			icon: IconTrash,
 			shortcut: copy.shortcuts.deleteStructure,
 			danger: true,
 			// A selection covering the header promotes rather than empties the
@@ -481,7 +486,7 @@ export function buildTableActions(
 		remove.push({
 			id: "delete-columns",
 			label: copy.actions.deleteColumns(columnCount),
-			icon: Trash2,
+			icon: IconTrash,
 			danger: true,
 			disabled: deletionGuard.wouldRemoveAllColumns,
 			disabledReason: copy.disabled.lastRemainingColumn,
@@ -502,21 +507,21 @@ export function buildTableActions(
 			id: "move",
 			label: copy.actions.move,
 			labelId: "table-actions-move-label",
-			submenu: { icon: Move },
+			submenu: { icon: IconArrowsMove },
 			actions: move,
 		},
 		{
 			id: "fill",
 			label: copy.actions.fill,
 			labelId: "table-actions-fill-label",
-			submenu: { icon: PaintBucket },
+			submenu: { icon: IconBucketDroplet },
 			actions: fill,
 		},
 		{
 			id: "focus",
 			label: copy.actions.moveFocus,
 			labelId: "table-actions-focus-label",
-			submenu: { icon: Focus },
+			submenu: { icon: IconFocusCentered },
 			actions: focus,
 		},
 		{ id: "remove", actions: remove },

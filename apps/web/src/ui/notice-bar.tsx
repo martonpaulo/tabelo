@@ -1,5 +1,5 @@
 import { Button } from "@tabelo/ui/components/button";
-import { X } from "lucide-react";
+import { IconX } from "@tabler/icons-react";
 import { useEffect, useMemo } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
@@ -161,7 +161,7 @@ function NoticeRow({ notice }: { readonly notice: AppNotice }) {
 							className="shrink-0"
 							onClick={() => useTabeloStore.getState().dismissNotice(id)}
 						>
-							<X aria-hidden />
+							<IconX aria-hidden />
 						</Button>
 					</ControlTooltip>
 				) : null}

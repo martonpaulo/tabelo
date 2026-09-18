@@ -14,19 +14,19 @@ import {
 import { menuItemInsetStyles } from "@tabelo/ui/components/menu-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
-	ClipboardCopy,
-	Download,
-	ExternalLink,
-	FilePlus2,
-	LayoutGrid,
-	PanelRightOpen,
-	Pencil,
-	Redo2,
-	RefreshCw,
-	Settings2,
-	Undo2,
-	Upload,
-} from "lucide-react";
+	IconAdjustmentsHorizontal,
+	IconArrowBackUp,
+	IconArrowForwardUp,
+	IconClipboardCopy,
+	IconDownload,
+	IconExternalLink,
+	IconFilePlus,
+	IconLayoutGrid,
+	IconLayoutSidebarRightExpand,
+	IconPencil,
+	IconRefresh,
+	IconUpload,
+} from "@tabler/icons-react";
 import { Fragment, type RefObject, useSyncExternalStore } from "react";
 import { copy } from "@/copy/copy";
 import { product } from "@/copy/product";
@@ -189,7 +189,7 @@ export function AppMenu({
 				</p>
 				<DropdownMenuGroup>
 					<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onRename)}>
-						<Pencil aria-hidden />
+						<IconPencil aria-hidden />
 						{copy.actions.renameTable}
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
@@ -208,7 +208,7 @@ export function AppMenu({
 									disabled={pwaUpdate.updating}
 									onClick={pwaUpdate.apply}
 								>
-									<RefreshCw aria-hidden />
+									<IconRefresh aria-hidden />
 									<MenuOption {...copy.appUpdate} />
 								</DropdownMenuItem>
 							</ControlTooltip>
@@ -220,14 +220,14 @@ export function AppMenu({
 				<DropdownMenuGroup>
 					<ControlTooltip reason={canUndo ? undefined : copy.disabled.undo}>
 						<DropdownMenuItem disabled={!canUndo} onClick={() => run("undo")}>
-							<Undo2 aria-hidden />
+							<IconArrowBackUp aria-hidden />
 							{copy.actions.undo}
 							<DropdownMenuShortcut>{copy.shortcuts.undo}</DropdownMenuShortcut>
 						</DropdownMenuItem>
 					</ControlTooltip>
 					<ControlTooltip reason={canRedo ? undefined : copy.disabled.redo}>
 						<DropdownMenuItem disabled={!canRedo} onClick={() => run("redo")}>
-							<Redo2 aria-hidden />
+							<IconArrowForwardUp aria-hidden />
 							{copy.actions.redo}
 							<DropdownMenuShortcut>{copy.shortcuts.redo}</DropdownMenuShortcut>
 						</DropdownMenuItem>
@@ -240,7 +240,7 @@ export function AppMenu({
 						variant="destructive"
 						onClick={() => menuDialog.runAfterClose(onNewTable)}
 					>
-						<FilePlus2 aria-hidden />
+						<IconFilePlus aria-hidden />
 						{copy.actions.newTable}
 					</DropdownMenuItem>
 					{/* Import runs on the click itself, not after the menu's close
@@ -251,14 +251,14 @@ export function AppMenu({
 					    browser then drops the request without a word. Every other
 					    command here opens an in-app dialog and still waits. */}
 					<DropdownMenuItem onClick={onImport}>
-						<Upload aria-hidden />
+						<IconUpload aria-hidden />
 						{copy.actions.importFile}
 					</DropdownMenuItem>
 					<CopyAsSubmenu runAfterClose={menuDialog.runAfterClose} />
 					<DropdownMenuItem
 						onClick={() => menuDialog.runAfterClose(onDownload)}
 					>
-						<Download aria-hidden />
+						<IconDownload aria-hidden />
 						{copy.actions.downloadTable}
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
@@ -270,7 +270,7 @@ export function AppMenu({
 							disabled={addViewRefusal !== undefined}
 							onClick={() => menuDialog.runAfterClose(onAddView)}
 						>
-							<PanelRightOpen aria-hidden />
+							<IconLayoutSidebarRightExpand aria-hidden />
 							{copy.workspace.addView}
 						</DropdownMenuItem>
 					</ControlTooltip>
@@ -283,14 +283,14 @@ export function AppMenu({
 							disabled={!canChangeLayout}
 							onClick={() => menuDialog.runAfterClose(onLayout)}
 						>
-							<LayoutGrid aria-hidden />
+							<IconLayoutGrid aria-hidden />
 							{copy.workspace.layout}
 						</DropdownMenuItem>
 					</ControlTooltip>
 					<DropdownMenuItem
 						onClick={() => menuDialog.runAfterClose(onSettings)}
 					>
-						<Settings2 aria-hidden />
+						<IconAdjustmentsHorizontal aria-hidden />
 						{copy.settings.title}
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
@@ -306,7 +306,7 @@ export function AppMenu({
 							/>
 						}
 					>
-						<ExternalLink aria-hidden />
+						<IconExternalLink aria-hidden />
 						{copy.actions.github}
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
@@ -333,7 +333,7 @@ function CopyAsSubmenu({
 	return (
 		<DropdownMenuSub>
 			<DropdownMenuSubTrigger>
-				<ClipboardCopy aria-hidden />
+				<IconClipboardCopy aria-hidden />
 				{copy.actions.copyAs}
 			</DropdownMenuSubTrigger>
 			{/* No width of its own: the primitive already sizes a submenu to its

@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import type { TablerIcon } from "@tabler/icons-react";
 import type { CodecId, TableCodec } from "@/formats/types";
 
 export type ViewId = "grid" | CodecId | "html-preview";
@@ -50,7 +50,7 @@ export interface ViewDefinition {
 	// Used where space is tight, such as a pane header on a narrow slot.
 	readonly shortLabel: string;
 	readonly description: string;
-	readonly icon: LucideIcon;
+	readonly icon: TablerIcon;
 	readonly kind: ViewKind;
 	// Present for every view that reads or writes a text format. The grid has
 	// none; the rendered preview borrows the HTML codec to serialize only.

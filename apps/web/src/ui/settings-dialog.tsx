@@ -13,7 +13,7 @@ import {
 } from "@tabelo/ui/components/segmented-control";
 import { Switch } from "@tabelo/ui/components/switch";
 import { cn } from "@tabelo/ui/lib/utils";
-import { Settings } from "lucide-react";
+import { IconSettings } from "@tabler/icons-react";
 import { lazy, Suspense, useId, useState } from "react";
 import { copy } from "@/copy/copy";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
@@ -110,7 +110,7 @@ export function SettingsDialog({
 			>
 				<DialogHeader>
 					<DialogTitle id={titleId} className="flex items-center gap-2">
-						<Settings aria-hidden className="size-5 text-selection-edge" />
+						<IconSettings aria-hidden className="size-5 text-selection-edge" />
 						{copy.settings.title}
 					</DialogTitle>
 					<DialogDescription id={descriptionId}>

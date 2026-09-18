@@ -1,6 +1,6 @@
 import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { cn } from "@tabelo/ui/lib/utils";
-import { GripHorizontal, GripVertical } from "lucide-react";
+import { IconGripHorizontal, IconGripVertical } from "@tabler/icons-react";
 import type { ReorderAxis } from "./grid-drag";
 
 // The drag target for reordering, one per data row and per column.
@@ -37,7 +37,7 @@ export function AxisReorderGrip({
 }: AxisReorderGripProps) {
 	// A row is reordered up and down, so its grip is the tall one; a column is
 	// reordered left and right, so its grip lies on its side.
-	const Icon = axis === "row" ? GripVertical : GripHorizontal;
+	const Icon = axis === "row" ? IconGripVertical : IconGripHorizontal;
 	const groupClass =
 		axis === "column"
 			? "group-hover/col:opacity-100 group-focus-within/col:opacity-100"

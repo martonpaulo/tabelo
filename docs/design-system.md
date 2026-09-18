@@ -1474,16 +1474,19 @@ per keystroke.
 
 ## 6. Icons
 
-Lucide only, `size-4` inside `control-md` and `size-3.5` inside `control-sm`.
-All Lucide icons use the shared 1.5 stroke weight. Always `aria-hidden`, because
-the accessible name comes from the button.
+Tabler outline icons only (`@tabler/icons-react`), `size-4` inside `control-md`
+and `size-3.5` inside `control-sm`. Tabler replaced Lucide by owner decision on
+2026-09-19, so the product draws from the same set as the approved mockups. Every
+icon uses the shared 1.5 stroke weight, applied once through the `.tabler-icon`
+rule in the global stylesheet, never per call site. Always `aria-hidden`,
+because the accessible name comes from the button.
 
 Directional glyphs are shared by three different table operations, so each one
 takes its own family and no two of them may collapse back onto the plain arrow:
-insert lands against a boundary line (`ArrowUpToLine` and its three siblings),
-move is the long-stemmed `MoveUp` family, and fill keeps the plain `ArrowUp`
-family it drags along. The four directions of a family are chosen as a set, not
-one at a time.
+insert lands against a boundary line (`IconArrowBarToUp` and its three
+siblings), move is the long-stemmed `IconArrowNarrowUp` family, and fill keeps
+the plain `IconArrowUp` family it drags along. The four directions of a family
+are chosen as a set, not one at a time.
 
 Icon-only buttons are limited to the globally stable floating action trigger,
 the grid's per-row and per-column affordances, and the pane header's actions

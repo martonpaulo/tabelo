@@ -10,14 +10,14 @@ import {
 	ContextMenuTrigger,
 } from "@tabelo/ui/components/context-menu";
 import {
-	ClipboardPaste,
-	Copy,
-	Redo2,
-	Scissors,
-	TextCursorInput,
-	TextSelect,
-	Undo2,
-} from "lucide-react";
+	IconArrowBackUp,
+	IconArrowForwardUp,
+	IconClipboard,
+	IconCopy,
+	IconCursorText,
+	IconScissors,
+	IconSelectAll,
+} from "@tabler/icons-react";
 import {
 	Fragment,
 	type ReactElement,
@@ -175,7 +175,7 @@ export function SourceContextMenu({
 	type Item = {
 		readonly id: string;
 		readonly label: string;
-		readonly icon: typeof Copy;
+		readonly icon: typeof IconCopy;
 		readonly shortcut: string;
 		readonly reason?: string;
 		readonly run: () => void;
@@ -185,7 +185,7 @@ export function SourceContextMenu({
 			{
 				id: "cut",
 				label: copy.actions.cut,
-				icon: Scissors,
+				icon: IconScissors,
 				shortcut: copy.shortcuts.cut,
 				reason: readOnly ?? nothingSelected,
 				run: () => void writeSelection(true),
@@ -193,7 +193,7 @@ export function SourceContextMenu({
 			{
 				id: "copy",
 				label: copy.actions.copy,
-				icon: Copy,
+				icon: IconCopy,
 				shortcut: copy.shortcuts.copy,
 				reason: nothingSelected,
 				run: () => void writeSelection(false),
@@ -201,7 +201,7 @@ export function SourceContextMenu({
 			{
 				id: "paste",
 				label: copy.actions.paste,
-				icon: ClipboardPaste,
+				icon: IconClipboard,
 				shortcut: copy.shortcuts.paste,
 				reason: readOnly,
 				run: () => void paste(),
@@ -211,7 +211,7 @@ export function SourceContextMenu({
 			{
 				id: "undo",
 				label: copy.actions.undo,
-				icon: Undo2,
+				icon: IconArrowBackUp,
 				shortcut: copy.shortcuts.undo,
 				reason: state.canUndo ? undefined : copy.disabled.undo,
 				run: () => history("undo"),
@@ -219,7 +219,7 @@ export function SourceContextMenu({
 			{
 				id: "redo",
 				label: copy.actions.redo,
-				icon: Redo2,
+				icon: IconArrowForwardUp,
 				shortcut: copy.shortcuts.redo,
 				reason: state.canRedo ? undefined : copy.disabled.redo,
 				run: () => history("redo"),
@@ -229,7 +229,7 @@ export function SourceContextMenu({
 			{
 				id: "select-all",
 				label: copy.actions.selectAllText,
-				icon: TextSelect,
+				icon: IconSelectAll,
 				shortcut: copy.shortcuts.selectAll,
 				run: () => {
 					const editor = view();
@@ -239,7 +239,7 @@ export function SourceContextMenu({
 			{
 				id: "next-occurrence",
 				label: copy.actions.selectNextOccurrence,
-				icon: TextCursorInput,
+				icon: IconCursorText,
 				shortcut: copy.shortcuts.selectNextOccurrence,
 				reason:
 					readOnly ??

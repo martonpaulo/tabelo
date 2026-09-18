@@ -215,7 +215,9 @@ body {
 	user-select: none;
 }
 
-.lucide {
+/* Every Tabler icon carries this class and sets its stroke as a presentation
+   attribute, which any stylesheet rule outranks, so one rule owns the weight. */
+.tabler-icon {
 	stroke-width: var(--icon-stroke-width);
 }
 

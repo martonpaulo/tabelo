@@ -19,7 +19,7 @@ import {
 import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { ShortcutKeys } from "@tabelo/ui/components/shortcut-keys";
 import { cn } from "@tabelo/ui/lib/utils";
-import { ChevronRightIcon } from "lucide-react";
+import { IconChevronRight } from "@tabler/icons-react";
 import type * as React from "react";
 
 function ContextMenu({ ...props }: ContextMenuPrimitive.Root.Props) {
@@ -162,7 +162,7 @@ function ContextMenuSubTrigger({
 			{...props}
 		>
 			{children}
-			<ChevronRightIcon className="ml-auto" />
+			<IconChevronRight className="ml-auto" />
 		</ContextMenuPrimitive.SubmenuTrigger>
 	);
 }

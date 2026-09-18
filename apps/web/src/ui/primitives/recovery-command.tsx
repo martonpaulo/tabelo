@@ -1,6 +1,6 @@
 import { Button } from "@tabelo/ui/components/button";
 import { DropdownMenuItem } from "@tabelo/ui/components/dropdown-menu";
-import { Wrench } from "lucide-react";
+import { IconTool } from "@tabler/icons-react";
 import { copy } from "@/copy/copy";
 import type { PreconditionRecovery } from "@/ui/precondition-recovery";
 
@@ -33,7 +33,7 @@ export function RecoveryButton({
 				recovery.run();
 			}}
 		>
-			<Wrench aria-hidden />
+			<IconTool aria-hidden />
 			{recovery.label}
 		</Button>
 	);
@@ -54,7 +54,7 @@ export function RecoveryMenuItem({
 			aria-description={recovery.reason}
 			onClick={() => onRun(recovery.run)}
 		>
-			<Wrench aria-hidden />
+			<IconTool aria-hidden />
 			{recovery.label}
 		</DropdownMenuItem>
 	);

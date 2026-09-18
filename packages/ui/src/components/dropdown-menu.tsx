@@ -22,7 +22,7 @@ import {
 } from "@tabelo/ui/components/menu-styles";
 import { ShortcutKeys } from "@tabelo/ui/components/shortcut-keys";
 import { cn } from "@tabelo/ui/lib/utils";
-import { ChevronRightIcon } from "lucide-react";
+import { IconChevronRight } from "@tabler/icons-react";
 import type * as React from "react";
 
 // Generic over the payload Base UI already carries from a trigger to its root,
@@ -169,7 +169,7 @@ function DropdownMenuSubTrigger({
 			{...props}
 		>
 			{children}
-			<ChevronRightIcon className="cn-rtl-flip ml-auto" />
+			<IconChevronRight className="cn-rtl-flip ml-auto" />
 		</MenuPrimitive.SubmenuTrigger>
 	);
 }

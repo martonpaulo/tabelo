@@ -1,7 +1,7 @@
 import { disclosureTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { activePanelSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { cn } from "@tabelo/ui/lib/utils";
-import { Plus } from "lucide-react";
+import { IconPlus } from "@tabler/icons-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
@@ -288,7 +288,7 @@ function SplitControl({
 							: "top-1/2 right-1 -translate-y-1/2",
 					)}
 				>
-					<Plus aria-hidden className="size-5" />
+					<IconPlus aria-hidden className="size-5" />
 				</button>
 			</ControlTooltip>
 		</div>

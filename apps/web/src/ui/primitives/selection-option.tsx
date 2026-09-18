@@ -1,5 +1,5 @@
 import { cn } from "@tabelo/ui/lib/utils";
-import { CircleAlert, Eye } from "lucide-react";
+import { IconAlertCircle, IconEye } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { copy } from "@/copy/copy";
 import { MenuOption } from "./menu-option";
@@ -29,7 +29,7 @@ export function SelectionOptionContent({
 	availability,
 }: SelectionOptionContentProps) {
 	const unavailable = availability?.kind === "unavailable";
-	const StatusIcon = unavailable ? CircleAlert : Eye;
+	const StatusIcon = unavailable ? IconAlertCircle : IconEye;
 	const statusLabel = unavailable
 		? copy.disabled.unavailableStatus
 		: copy.disabled.inUseStatus;

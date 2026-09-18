@@ -2,15 +2,15 @@ import { Button } from "@tabelo/ui/components/button";
 import { Textarea } from "@tabelo/ui/components/textarea";
 import { Toggle } from "@tabelo/ui/components/toggle";
 import {
-	CaseSensitive,
-	ChevronDown,
-	ChevronRight,
-	ChevronUp,
-	Replace,
-	ReplaceAll,
-	SquareDashedMousePointer,
-	X,
-} from "lucide-react";
+	IconArrowsExchange,
+	IconChevronDown,
+	IconChevronRight,
+	IconChevronUp,
+	IconLetterCase,
+	IconMarquee2,
+	IconReplace,
+	IconX,
+} from "@tabler/icons-react";
 import { useEffect, useRef } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
@@ -196,9 +196,9 @@ export function GridFindBar() {
 						}
 					>
 						{find.replacing ? (
-							<ChevronDown aria-hidden />
+							<IconChevronDown aria-hidden />
 						) : (
-							<ChevronRight aria-hidden />
+							<IconChevronRight aria-hidden />
 						)}
 					</Button>
 				</ControlTooltip>
@@ -240,7 +240,7 @@ export function GridFindBar() {
 						focusableWhenDisabled={total === 0}
 						onClick={() => step(-1)}
 					>
-						<ChevronUp aria-hidden />
+						<IconChevronUp aria-hidden />
 					</Button>
 				</ControlTooltip>
 				<ControlTooltip name={copy.find.next} reason={stepReason}>
@@ -251,7 +251,7 @@ export function GridFindBar() {
 						focusableWhenDisabled={total === 0}
 						onClick={() => step(1)}
 					>
-						<ChevronDown aria-hidden />
+						<IconChevronDown aria-hidden />
 					</Button>
 				</ControlTooltip>
 				{/* Every matching cell becomes one selected area, which hands the
@@ -266,7 +266,7 @@ export function GridFindBar() {
 						focusableWhenDisabled={total === 0}
 						onClick={() => useTabeloStore.getState().selectAllMatches()}
 					>
-						<SquareDashedMousePointer aria-hidden />
+						<IconMarquee2 aria-hidden />
 					</Button>
 				</ControlTooltip>
 				<ControlTooltip name={copy.find.matchCase}>
@@ -278,13 +278,13 @@ export function GridFindBar() {
 							announcePosition();
 						}}
 					>
-						<CaseSensitive aria-hidden />
+						<IconLetterCase aria-hidden />
 					</Toggle>
 				</ControlTooltip>
 
 				<ControlTooltip name={copy.find.close}>
 					<Button variant="ghost" size="icon-sm" onClick={close}>
-						<X aria-hidden />
+						<IconX aria-hidden />
 					</Button>
 				</ControlTooltip>
 			</div>
@@ -313,7 +313,7 @@ export function GridFindBar() {
 							focusableWhenDisabled={total === 0}
 							onClick={replaceOne}
 						>
-							<Replace aria-hidden />
+							<IconReplace aria-hidden />
 						</Button>
 					</ControlTooltip>
 					<ControlTooltip name={copy.find.replaceAll} reason={noMatchReason}>
@@ -324,7 +324,7 @@ export function GridFindBar() {
 							focusableWhenDisabled={total === 0}
 							onClick={replaceAll}
 						>
-							<ReplaceAll aria-hidden />
+							<IconArrowsExchange aria-hidden />
 						</Button>
 					</ControlTooltip>
 				</div>

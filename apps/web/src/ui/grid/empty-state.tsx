@@ -6,13 +6,13 @@ import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-style
 import { modShortcut } from "@tabelo/ui/lib/platform";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
-	ClipboardPaste,
-	ExternalLink,
-	FileUp,
-	type LucideIcon,
-	Plus,
-	Table2,
-} from "lucide-react";
+	IconClipboard,
+	IconExternalLink,
+	IconFileUpload,
+	IconPlus,
+	IconTable,
+	type TablerIcon,
+} from "@tabler/icons-react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { copy } from "@/copy/copy";
 import { product } from "@/copy/product";
@@ -100,7 +100,7 @@ export function EmptyState({
 					id="empty-state-title"
 					className="flex items-center gap-2 font-semibold text-xl"
 				>
-					<Table2 aria-hidden className="size-6 text-selection-edge" />
+					<IconTable aria-hidden className="size-6 text-selection-edge" />
 					{copy.empty.title}
 				</h2>
 				<p className="mt-2 text-muted-foreground text-sm leading-relaxed">
@@ -109,14 +109,14 @@ export function EmptyState({
 				<div className="mt-6 flex flex-col gap-2">
 					<Option
 						primary
-						icon={Plus}
+						icon={IconPlus}
 						label={copy.empty.emptyAction}
 						detail={copy.empty.emptyDetail(DEFAULT_COLUMN_COUNT)}
 						shortcut={{ keys: "Enter", shown: "Enter" }}
 						onClick={onStartEmpty}
 					/>
 					<Option
-						icon={ClipboardPaste}
+						icon={IconClipboard}
 						label={copy.empty.pasteHint}
 						detail={copy.empty.pasteDetail}
 						shortcut={{ keys: "Meta+V Control+V", shown: modShortcut("V") }}
@@ -127,7 +127,7 @@ export function EmptyState({
 						}}
 					/>
 					<Option
-						icon={FileUp}
+						icon={IconFileUpload}
 						label={copy.actions.importFile}
 						detail={copy.empty.importDetail(importExtensions)}
 						shortcut={{ keys: "Meta+O Control+O", shown: modShortcut("O") }}
@@ -169,7 +169,7 @@ function ExternalLinkText({
 			className="inline-flex items-center gap-1 underline-offset-2 transition-colors hover:text-foreground hover:underline"
 		>
 			{children}
-			<ExternalLink aria-hidden className="size-3" />
+			<IconExternalLink aria-hidden className="size-3" />
 			<span className="sr-only">{copy.a11y.opensInNewTab}</span>
 		</a>
 	);
@@ -184,7 +184,7 @@ function Option({
 	onClick,
 }: {
 	readonly primary?: boolean;
-	readonly icon: LucideIcon;
+	readonly icon: TablerIcon;
 	readonly label: string;
 	readonly detail: string;
 	// `keys` is the ARIA spelling for assistive technology; `shown` is the

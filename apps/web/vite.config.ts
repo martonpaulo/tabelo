@@ -52,7 +52,7 @@ export default defineConfig({
 						},
 						{
 							name: "vendor",
-							test: /node_modules[\\/](?:zod|tailwind-merge|papaparse|lucide-react)[\\/]/,
+							test: /node_modules[\\/](?:zod|tailwind-merge|papaparse|@tabler[\\/]icons-react)[\\/]/,
 						},
 					],
 				},

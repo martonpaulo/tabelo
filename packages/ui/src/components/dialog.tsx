@@ -9,7 +9,7 @@ import {
 
 import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { cn } from "@tabelo/ui/lib/utils";
-import { XIcon } from "lucide-react";
+import { IconX } from "@tabler/icons-react";
 import type * as React from "react";
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
@@ -77,7 +77,7 @@ function DialogContent({
 							/>
 						}
 					>
-						<XIcon />
+						<IconX />
 						<span className="sr-only">Close</span>
 					</DialogPrimitive.Close>
 				)}

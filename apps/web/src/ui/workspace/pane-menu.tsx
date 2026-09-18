@@ -16,18 +16,18 @@ import {
 } from "@tabelo/ui/components/menu-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
-	ChevronDown,
-	ClipboardCopy,
-	Move as MoveIcon,
-	Replace,
-	RotateCcw,
-	Ruler,
-	Search,
-	WrapText,
-	X,
-	ZoomIn,
-	ZoomOut,
-} from "lucide-react";
+	IconArrowsMove,
+	IconChevronDown,
+	IconClipboardCopy,
+	IconReplace,
+	IconRotate,
+	IconRuler,
+	IconSearch,
+	IconTextWrap,
+	IconX,
+	IconZoomIn,
+	IconZoomOut,
+} from "@tabler/icons-react";
 import { useRef } from "react";
 import { copy } from "@/copy/copy";
 import { canSerialize } from "@/formats";
@@ -143,7 +143,7 @@ export function PaneMenu({
 				<DropdownMenuTrigger
 					render={<Button ref={triggerRef} variant="ghost" size="icon-sm" />}
 				>
-					<ChevronDown aria-hidden className="opacity-60" />
+					<IconChevronDown aria-hidden className="opacity-60" />
 				</DropdownMenuTrigger>
 			</ControlTooltip>
 
@@ -179,7 +179,7 @@ export function PaneMenu({
 										}
 									}}
 								>
-									<ClipboardCopy aria-hidden />
+									<IconClipboardCopy aria-hidden />
 									{view.capabilities.textClipboard
 										? copy.actions.copySource
 										: copy.actions.copyFormattedTable}
@@ -238,7 +238,7 @@ export function PaneMenu({
 								onClick={() => setZoom(stepPaneZoom(zoom, -1))}
 								className={menuInlineItemStyles}
 							>
-								<ZoomOut aria-hidden />
+								<IconZoomOut aria-hidden />
 							</DropdownMenuItem>
 						</ControlTooltip>
 						<ControlTooltip
@@ -259,7 +259,7 @@ export function PaneMenu({
 									"data-disabled:opacity-100",
 								)}
 							>
-								<RotateCcw aria-hidden />
+								<IconRotate aria-hidden />
 								<span aria-hidden>
 									{copy.workspace.zoomPercent(paneZoomPercent(zoom))}
 								</span>
@@ -278,7 +278,7 @@ export function PaneMenu({
 								onClick={() => setZoom(stepPaneZoom(zoom, 1))}
 								className={menuInlineItemStyles}
 							>
-								<ZoomIn aria-hidden />
+								<IconZoomIn aria-hidden />
 							</DropdownMenuItem>
 						</ControlTooltip>
 					</div>
@@ -296,7 +296,7 @@ export function PaneMenu({
 							<DropdownMenuItem
 								onClick={() => useTabeloStore.getState().openFind()}
 							>
-								<Search aria-hidden />
+								<IconSearch aria-hidden />
 								{copy.find.title}
 								<DropdownMenuShortcut aria-hidden>
 									{copy.shortcuts.find}
@@ -323,7 +323,7 @@ export function PaneMenu({
 										.setAllColumnsWrap(columnWrap !== "all")
 								}
 							>
-								<WrapText aria-hidden />
+								<IconTextWrap aria-hidden />
 								{copy.workspace.wrapAllColumns}
 							</DropdownMenuCheckboxItem>
 						</DropdownMenuGroup>
@@ -341,7 +341,7 @@ export function PaneMenu({
 									useTabeloStore.getState().setPaneWrap(paneId, checked)
 								}
 							>
-								<WrapText aria-hidden />
+								<IconTextWrap aria-hidden />
 								{copy.workspace.wrapSource}
 							</DropdownMenuCheckboxItem>
 							{/* Switching it off makes the buffer plain text until the
@@ -354,7 +354,7 @@ export function PaneMenu({
 									closeOnClick={false}
 									onCheckedChange={onAssistanceChange}
 								>
-									<Ruler aria-hidden />
+									<IconRuler aria-hidden />
 									{copy.workspace.structuralAssistance}
 								</DropdownMenuCheckboxItem>
 							) : null}
@@ -370,7 +370,7 @@ export function PaneMenu({
 							menuDialog.runAfterClose(() => onChangeView(triggerRef.current))
 						}
 					>
-						<Replace aria-hidden />
+						<IconReplace aria-hidden />
 						{copy.workspace.changeView}
 					</DropdownMenuItem>
 					<ControlTooltip
@@ -382,7 +382,7 @@ export function PaneMenu({
 								menuDialog.runAfterClose(() => onMovePane(triggerRef.current))
 							}
 						>
-							<MoveIcon aria-hidden />
+							<IconArrowsMove aria-hidden />
 							{copy.workspace.movePane}
 						</DropdownMenuItem>
 					</ControlTooltip>
@@ -398,7 +398,7 @@ export function PaneMenu({
 							disabled={!canClose}
 							onClick={() => useTabeloStore.getState().closePane(paneId)}
 						>
-							<X aria-hidden />
+							<IconX aria-hidden />
 							{copy.workspace.closeView}
 						</DropdownMenuItem>
 					</ControlTooltip>

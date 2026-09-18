@@ -16,19 +16,19 @@ import { segmentedGroupStyles } from "@tabelo/ui/components/menu-styles";
 import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
-	AlignCenter,
-	AlignJustify,
-	AlignLeft,
-	AlignRight,
-	ArrowDownWideNarrow,
-	ArrowUpNarrowWide,
-	ChevronDown,
-	ChevronsLeftRight,
-	MoreVertical,
-	Pin,
-	Ruler,
-	WrapText,
-} from "lucide-react";
+	IconAlignCenter,
+	IconAlignJustified,
+	IconAlignLeft,
+	IconAlignRight,
+	IconArrowsHorizontal,
+	IconChevronDown,
+	IconDotsVertical,
+	IconPin,
+	IconRuler,
+	IconSortAscending,
+	IconSortDescending,
+	IconTextWrap,
+} from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { copy } from "@/copy/copy";
 import type { SortDirection } from "@/core/operations";
@@ -56,12 +56,16 @@ import { targetAxisForMenu } from "./menu-target";
 const alignments: {
 	value: Alignment;
 	label: string;
-	icon: typeof AlignLeft;
+	icon: typeof IconAlignLeft;
 }[] = [
-	{ value: "default", label: copy.actions.alignDefault, icon: AlignJustify },
-	{ value: "left", label: copy.actions.alignLeft, icon: AlignLeft },
-	{ value: "center", label: copy.actions.alignCenter, icon: AlignCenter },
-	{ value: "right", label: copy.actions.alignRight, icon: AlignRight },
+	{
+		value: "default",
+		label: copy.actions.alignDefault,
+		icon: IconAlignJustified,
+	},
+	{ value: "left", label: copy.actions.alignLeft, icon: IconAlignLeft },
+	{ value: "center", label: copy.actions.alignCenter, icon: IconAlignCenter },
+	{ value: "right", label: copy.actions.alignRight, icon: IconAlignRight },
 ];
 
 // The first data row and the first data column on their own axes. The header
@@ -87,7 +91,7 @@ function PinAxisItem({
 				useTabeloStore.getState().setPinnedAxis(axis, next)
 			}
 		>
-			<Pin aria-hidden />
+			<IconPin aria-hidden />
 			{axis === "row" ? copy.actions.pinFirstRow : copy.actions.pinFirstColumn}
 		</DropdownMenuCheckboxItem>
 	);
@@ -152,7 +156,7 @@ export function AxisMenuTrigger({
 		axis === "column" ? state.document.columns[index] : undefined,
 	);
 
-	const Icon = axis === "column" ? ChevronDown : MoreVertical;
+	const Icon = axis === "column" ? IconChevronDown : IconDotsVertical;
 	// Anywhere in the row or column counts, not just the icon itself: hovering,
 	// tabbing into it, or having the selection there all bring it out.
 	const groupClass =
@@ -309,13 +313,13 @@ function AxisMenuBody({
 									}
 								}}
 							>
-								<ChevronsLeftRight aria-hidden />
+								<IconArrowsHorizontal aria-hidden />
 								{copy.actions.fitColumnToContent}
 							</DropdownMenuItem>
 						</ControlTooltip>
 						{onSetColumnWidth ? (
 							<DropdownMenuItem onClick={() => onSetColumnWidth(index)}>
-								<Ruler aria-hidden />
+								<IconRuler aria-hidden />
 								{copy.actions.setColumnWidth}
 							</DropdownMenuItem>
 						) : null}
@@ -328,7 +332,7 @@ function AxisMenuBody({
 								}
 							}}
 						>
-							<WrapText aria-hidden />
+							<IconTextWrap aria-hidden />
 							{copy.actions.wrapColumnText}
 						</DropdownMenuCheckboxItem>
 						{pinnable ? <PinAxisItem axis={axis} pinned={pinned} /> : null}
@@ -384,7 +388,7 @@ function ColumnSortGroup({ index }: { readonly index: number }) {
 					disabled={reason !== undefined}
 					onClick={() => sort("ascending")}
 				>
-					<ArrowUpNarrowWide aria-hidden />
+					<IconSortAscending aria-hidden />
 					{copy.actions.sortAscending}
 				</DropdownMenuItem>
 			</ControlTooltip>
@@ -393,7 +397,7 @@ function ColumnSortGroup({ index }: { readonly index: number }) {
 					disabled={reason !== undefined}
 					onClick={() => sort("descending")}
 				>
-					<ArrowDownWideNarrow aria-hidden />
+					<IconSortDescending aria-hidden />
 					{copy.actions.sortDescending}
 				</DropdownMenuItem>
 			</ControlTooltip>
