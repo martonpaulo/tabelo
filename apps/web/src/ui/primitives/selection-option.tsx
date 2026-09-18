@@ -109,30 +109,36 @@ export function CompactOptionContent({
 				>
 					{icon}
 				</span>
-				{availability ? (
-					<span
-						data-availability={availability.kind}
-						data-slot="selection-option-status"
-						className={cn(
-							"inline-flex items-center gap-1 text-xs",
-							unavailable ? "text-destructive/70" : "text-muted-foreground",
-						)}
-					>
-						<StatusIcon aria-hidden className="size-3.5" />
-						<span>
-							{unavailable
-								? copy.disabled.unavailableStatus
-								: copy.disabled.inUseStatus}
+				<span className="flex items-center gap-2">
+					{availability ? (
+						<span
+							data-availability={availability.kind}
+							data-slot="selection-option-status"
+							className={cn(
+								"inline-flex items-center gap-1 text-xs",
+								unavailable ? "text-destructive/70" : "text-muted-foreground",
+							)}
+						>
+							<StatusIcon aria-hidden className="size-3.5" />
+							<span>
+								{unavailable
+									? copy.disabled.unavailableStatus
+									: copy.disabled.inUseStatus}
+							</span>
 						</span>
-					</span>
-				) : metadata ? (
-					<span
-						data-slot="selection-option-metadata"
-						className="text-muted-foreground text-xs"
-					>
-						{metadata}
-					</span>
-				) : null}
+					) : null}
+					{metadata ? (
+						<span
+							data-slot="selection-option-metadata"
+							className={cn(
+								"text-muted-foreground text-xs",
+								availability && "opacity-50",
+							)}
+						>
+							{metadata}
+						</span>
+					) : null}
+				</span>
 			</span>
 			<span
 				data-slot="menu-option-label"
