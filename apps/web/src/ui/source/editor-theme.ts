@@ -2,11 +2,10 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { copy } from "@/copy/copy";
+import { SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";
 import {
 	ALL_SPACES_CLASS,
-	SPACE_GLYPH,
 	SPACE_SCOPE_CLASS,
-	TAB_GLYPH,
 	TAB_INDICATOR_CLASS,
 } from "./whitespace-indicators";
 

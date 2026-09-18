@@ -13,7 +13,7 @@ import { matchJiraEscape } from "@/formats/jira";
 import { matchMarkdownEscape } from "@/formats/markdown";
 import type { EscapeMatch, EscapeMatcher } from "@/formats/types";
 import type { HighlightLanguage } from "@/views/types";
-import { SPACE_GLYPH, TAB_GLYPH } from "./whitespace-indicators";
+import { SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";
 
 // An escape sequence is notation: five characters of `&#32;` standing for one
 // space the format cannot write directly. Read as text it is unreadable, and it

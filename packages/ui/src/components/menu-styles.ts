@@ -38,7 +38,7 @@ export const optionBlockStyles =
 	"relative flex min-h-control-md w-full items-center gap-3 rounded-interactive bg-muted px-3 py-2.5 text-left text-sm leading-snug [&_[data-slot=selection-option-icon]>svg:not([class*='size-'])]:size-5";
 
 export const optionBlockStateStyles =
-	"cursor-pointer not-data-[disabled=true]:not-data-[selected=true]:not-data-[emphasis=primary]:hover:bg-accent data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground data-[selected=true]:**:text-primary-foreground data-[emphasis=primary]:bg-primary data-[emphasis=primary]:text-primary-foreground data-[emphasis=primary]:**:text-primary-foreground data-[emphasis=primary]:hover:bg-primary/90 data-[disabled=true]:cursor-not-allowed";
+	"cursor-pointer not-data-[disabled=true]:not-data-[selected=true]:not-data-[emphasis=primary]:hover:bg-accent not-data-[disabled=true]:not-data-[selected=true]:not-data-[emphasis=primary]:hover:text-accent-foreground not-data-[disabled=true]:not-data-[selected=true]:not-data-[emphasis=primary]:hover:**:text-accent-foreground data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground data-[selected=true]:**:text-primary-foreground data-[emphasis=primary]:bg-primary data-[emphasis=primary]:text-primary-foreground data-[emphasis=primary]:**:text-primary-foreground data-[emphasis=primary]:hover:bg-primary/90 data-[disabled=true]:cursor-not-allowed";
 
 export const menuShortcutStyles =
 	"ml-auto inline-flex items-center gap-0.5 font-sans text-muted-foreground text-xs leading-none tracking-normal";

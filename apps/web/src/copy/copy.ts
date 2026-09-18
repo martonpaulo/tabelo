@@ -232,34 +232,38 @@ export const copy = {
 
 	settings: {
 		title: "Settings",
-		description: "Choose display preferences for Tabelo",
-		apply: "Apply settings",
+		description:
+			"Text views can mark characters you can't see. The table itself never changes.",
+		done: "Done",
+		reset: "Reset to defaults",
+		previewLabel: "Preview",
+		preview: "Preview of a text view with the chosen marks",
 		indicators: {
-			label: "Source indicators",
-			description: "Show what the text itself cannot",
+			label: "Show in text views",
 		},
 		spaceIndicators: {
 			label: "Spaces",
 			options: {
-				none: { label: "Never", description: "Leave every space unmarked" },
+				none: { label: "Never", description: "No space is marked." },
 				boundary: {
 					label: "Around values",
-					description: "Runs of spaces, and spaces at a line's edges",
+					description: "Runs of spaces, and spaces at the edges of a value.",
 				},
 				trailing: {
-					label: "At the end of a line",
-					description: "The spaces nobody meant to type",
+					label: "Line ends",
+					description:
+						"Spaces at the end of a line, the ones nobody meant to type.",
 				},
-				all: { label: "Always", description: "Every space in the source" },
+				all: { label: "Always", description: "Every space in the text." },
 			},
 		},
 		tabIndicators: {
 			label: "Tabs",
-			description: "The delimiter a TSV row is built from",
+			description: "An arrow where a tab separates values",
 		},
 		emptyValueIndicators: {
 			label: "Empty values",
-			description: "A placeholder where a field holds nothing",
+			description: "A word where a field holds nothing",
 		},
 		saveError:
 			"Settings could not be saved. Allow browser storage or free some space, then try again.",
@@ -338,7 +342,6 @@ export const copy = {
 		layoutAlreadyApplied: "This layout is already applied.",
 		layoutOnlyArrangement:
 			"This number of views has only one arrangement. Add or close a view to change it.",
-		settingsAlreadyApplied: "These settings are already applied.",
 		viewAlreadyShown: "This view is already shown in this pane.",
 		zoomMinimum: "Zoom is already at 50%.",
 		zoomDefault: "Zoom is already at 100%.",

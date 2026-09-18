@@ -121,7 +121,7 @@ function wrapExtension(wrap: boolean) {
 // never changes what is in the document: every one of these is a decoration,
 // so none of them can reach the text, the draft, the clipboard, a download,
 // or the history timeline.
-function indicatorExtensions(
+export function indicatorExtensions(
 	spaces: SpaceIndicators,
 	tabs: boolean,
 	emptyValues: boolean,
@@ -239,7 +239,7 @@ function contentAttributes(
 
 // Highlighting is chosen by name so the registry never imports CodeMirror,
 // which is what lets the whole editor stay in a lazily loaded chunk.
-function languageFor(language: HighlightLanguage) {
+export function languageFor(language: HighlightLanguage) {
 	switch (language) {
 		case "markdown":
 			// The GFM base is what parses the table itself, so the header cells,

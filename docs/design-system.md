@@ -953,17 +953,29 @@ height". The diagram is supplemental; the words carry the destination for
 assistive technology. Choosing one swaps the two pane positions without
 changing the preset or pane count.
 
-Settings is the other deliberate exception. Preferences are not immediate menu
-commands: they form one draft that the user visits, previews, and either applies
-together or unwinds with Cancel. A dialog supplies that transactional boundary
-and one extensible preferences list without turning the App menu into stored
-toggle state. It holds the global source display preferences (#55): tabs and
-empty values are labelled checkbox rows, and spaces is a nested
-single-selection group. There is no theme choice, because there is one palette
-(#289). Per-pane preferences,
-including source wrapping and pane zoom, remain in the pane menu.
+Settings is the other deliberate exception. It holds the global source display
+preferences (#55), and each one applies as it changes: a read-only preview at
+the top of the dialog is a real source editor built from the same indicator
+extensions every text view uses, so the effect is visible before the dialog
+closes and no Apply step is left to confirm. The footer is `Reset to defaults`
+and `Done`. Empty values and tabs are option blocks whose icon is the mark they
+draw and whose control is a `Switch`; spaces is one option block holding a
+`SegmentedControl` of its four modes, with the chosen mode's description above
+it. A write the browser refuses is reported in place and the controls show what
+was actually saved. The owner replaced the earlier transactional draft with
+this on 2026-09-18. There is no theme choice, because there is one palette
+(#289). Per-pane preferences, including source wrapping and pane zoom, remain in
+the pane menu.
 
-Rename table uses the same transactional boundary for one persisted text value.
+`Switch` and `SegmentedControl` live in `packages/ui` and are the only way to
+draw their two kinds of choice. A `Switch` is an on/off setting that takes
+effect at once; an on/off choice that waits for a confirm, such as a download
+option, stays a checkbox. A `SegmentedControl` is one value out of two to four
+short, mutually exclusive ones that fit side by side; longer or described
+choices stay option blocks. Both keep native semantics underneath (switch and
+radio group).
+
+Rename table uses a transactional boundary for one persisted text value.
 Its labelled input starts with the current name, validates before saving, and
 keeps both the prior name and the dialog open when durable storage refuses the
 change.

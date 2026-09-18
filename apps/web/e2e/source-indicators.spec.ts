@@ -76,11 +76,12 @@ async function setIndicators(page: Page, choice: IndicatorChoice) {
 		[choice.emptyValues, copy.settings.emptyValueIndicators.label],
 	] as const) {
 		if (enabled === undefined) continue;
-		const checkbox = dialog.getByRole("checkbox", { name: label });
-		if (enabled) await checkbox.check();
-		else await checkbox.uncheck();
+		const toggle = dialog.getByRole("switch", { name: label });
+		if (enabled) await toggle.check();
+		else await toggle.uncheck();
 	}
-	await dialog.getByRole("button", { name: copy.settings.apply }).click();
+	// Settings apply as they change; Done only closes.
+	await dialog.getByRole("button", { name: copy.settings.done }).click();
 	await expect(dialog).toBeHidden();
 }
 
@@ -562,22 +563,20 @@ test("indicators leave the caret, the pane's wrapping, and editing alone", async
 	expect(await typeAtOffset()).toBe(withoutMarkers);
 });
 
-// The settings toggles use the same checkbox primitive the download chooser's
-// output options do. These were already reachable when the chooser's were not,
-// which is why the fix belongs to the primitive rather than to either dialog.
-// Asserted here so the side that happened to work cannot quietly stop (#320).
+// A settings switch is reached by Tab and toggled by Space, and the change
+// applies at once, before the dialog closes (#320, 2026-09-18 redesign).
 test("a settings toggle is reached by Tab and toggled by Space", async ({
 	page,
 	tabelo,
 }) => {
 	await expect(tabelo.workspace).toBeVisible();
 	const dialog = await openSettings(page);
-	const toggle = dialog.getByRole("checkbox", {
+	const toggle = dialog.getByRole("switch", {
 		name: copy.settings.tabIndicators.label,
 	});
 	const before = await toggle.isChecked();
 
-	await dialog.getByRole("button", { name: copy.settings.apply }).focus();
+	await dialog.getByRole("button", { name: copy.settings.done }).focus();
 	for (let stop = 0; stop < 12; stop += 1) {
 		if (await toggle.evaluate((el) => el === document.activeElement)) break;
 		await page.keyboard.press("Tab");

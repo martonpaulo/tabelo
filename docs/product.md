@@ -187,6 +187,7 @@ reversible implementation choice does not belong here.
 | Selection on letters and numbers | A neutral surface and semibold label, never the selection fill | design system §9 | #291 |
 | Copied mark and focus | One two-tone marquee on a focused copied cell, on the range's real edge | design system §4 | #223, #349 |
 | Project mark | `logo.svg` is the one source for every icon | design system §6 | #307 |
+| Settings | Display preferences apply as they change, with a live preview, `Switch` rows, and a `SegmentedControl` for spaces | design system §3 | owner, 2026-09-18 |
 | Cognitive-accessibility claims | No condition-specific claim without representative task sessions | design system §9 | #80 |
 
 ### Superseded outcomes

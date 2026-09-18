@@ -1,4 +1,4 @@
-import { Checkbox } from "@tabelo/ui/components/checkbox";
+import { Button } from "@tabelo/ui/components/button";
 import {
 	Dialog,
 	DialogContent,
@@ -6,68 +6,72 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
-import { Label } from "@tabelo/ui/components/label";
-import { Brackets, Ellipsis, EyeOff, PilcrowRight } from "lucide-react";
-import { useEffect, useId, useState } from "react";
-import { copy } from "@/copy/copy";
+import { optionBlockStyles } from "@tabelo/ui/components/menu-styles";
 import {
+	SegmentedControl,
+	SegmentedControlItem,
+} from "@tabelo/ui/components/segmented-control";
+import { Switch } from "@tabelo/ui/components/switch";
+import { cn } from "@tabelo/ui/lib/utils";
+import { Settings } from "lucide-react";
+import { lazy, Suspense, useId, useState } from "react";
+import { copy } from "@/copy/copy";
+import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
+import {
+	DEFAULT_PREFERENCES,
 	type Preferences,
 	SPACE_INDICATOR_VALUES,
 	type SpaceIndicators,
 } from "@/preferences/contract";
 import { preferencesStore } from "@/preferences/store";
 import { usePreferences } from "@/preferences/use-preferences";
-import {
-	DialogActions,
-	DialogCancel,
-	DialogConfirm,
-} from "@/ui/primitives/dialog-buttons";
-import {
-	SingleSelectionList,
-	SingleSelectionOption,
-} from "@/ui/primitives/single-selection-list";
+import { MenuOption } from "@/ui/primitives/menu-option";
+import { SPACE_GLYPH, TAB_GLYPH } from "@/ui/source/indicator-glyphs";
 
-const spaceIndicatorIcons = {
-	none: EyeOff,
-	// Brackets for the padding around a value, a pilcrow pointing at where a
-	// line ends, and an ellipsis for a row of dots all the way across.
-	boundary: Brackets,
-	trailing: PilcrowRight,
-	all: Ellipsis,
-} as const;
+// The preview is a real read-only source editor, so it waits for the editor
+// chunk the same way a text view does.
+const IndicatorPreview = lazy(() => import("@/ui/source/indicator-preview"));
 
-// One row treatment for the indicator switches, so both read as the same kind
-// of choice as the option rows above them.
-function IndicatorToggle({
+// The mark a setting draws, shown as its icon, so the row and what the preview
+// draws can be matched by eye.
+function Glyph({ children }: { readonly children: string }) {
+	return (
+		<span
+			aria-hidden
+			className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-indicator bg-surface-app px-1.5 font-source text-muted-foreground text-xs"
+		>
+			{children}
+		</span>
+	);
+}
+
+function SwitchOption({
+	glyph,
 	label,
 	description,
 	checked,
 	onCheckedChange,
 }: {
+	readonly glyph: string;
 	readonly label: string;
 	readonly description: string;
 	readonly checked: boolean;
 	readonly onCheckedChange: (checked: boolean) => void;
 }) {
+	const id = useId();
 	return (
-		<Label className="flex min-h-control-md items-center gap-3 text-sm leading-snug">
-			<span className="grid flex-1 gap-0.5">
-				<span>{label}</span>
-				<span className="text-muted-foreground text-xs">{description}</span>
-			</span>
-			<Checkbox checked={checked} onCheckedChange={onCheckedChange} />
-		</Label>
+		<label htmlFor={id} className={cn(optionBlockStyles, "cursor-pointer")}>
+			<Glyph>{glyph}</Glyph>
+			<MenuOption label={label} description={description} />
+			<Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+		</label>
 	);
 }
 
-function preferencesMatch(left: Preferences, right: Preferences): boolean {
-	return (
-		left.spaceIndicators === right.spaceIndicators &&
-		left.tabIndicators === right.tabIndicators &&
-		left.emptyValueIndicators === right.emptyValueIndicators
-	);
-}
-
+// Settings apply as they are changed: the preview shows the effect before the
+// dialog closes, so there is nothing left for an Apply step to confirm
+// (owner decision, 2026-09-18). A write the browser refuses is reported in
+// place and the controls fall back to what was actually saved.
 export function SettingsDialog({
 	open,
 	onOpenChange,
@@ -75,43 +79,29 @@ export function SettingsDialog({
 	readonly open: boolean;
 	readonly onOpenChange: (open: boolean) => void;
 }) {
-	const committed = usePreferences();
-	const [draft, setDraft] = useState<Preferences>(committed);
+	const preferences = usePreferences();
 	const [saveError, setSaveError] = useState(false);
 	const titleId = useId();
 	const descriptionId = useId();
 	const indicatorsLabelId = useId();
 	const spaceLabelId = useId();
+	const spaceDescriptionId = useId();
 
-	useEffect(() => {
-		if (!open) return;
-		setDraft(committed);
-		setSaveError(false);
-	}, [committed, open]);
-
-	const updateDraft = (change: Partial<Preferences>) => {
-		setSaveError(false);
-		setDraft((current) => ({ ...current, ...change }));
+	const commit = (next: Preferences) => {
+		setSaveError(preferencesStore.commit(next).status !== "saved");
 	};
-
-	const close = (nextOpen: boolean) => {
-		if (nextOpen) return;
-		setSaveError(false);
-		onOpenChange(false);
-	};
-
-	const apply = () => {
-		const outcome = preferencesStore.commit(draft);
-		if (outcome.status === "saved") {
-			onOpenChange(false);
-			return;
-		}
-		setDraft(preferencesStore.getSnapshot());
-		setSaveError(true);
-	};
+	const update = (change: Partial<Preferences>) =>
+		commit({ ...preferences, ...change });
 
 	return (
-		<Dialog open={open} onOpenChange={close}>
+		<Dialog
+			open={open}
+			onOpenChange={(nextOpen) => {
+				if (nextOpen) return;
+				setSaveError(false);
+				onOpenChange(false);
+			}}
+		>
 			<DialogContent
 				showCloseButton={false}
 				aria-labelledby={titleId}
@@ -119,80 +109,86 @@ export function SettingsDialog({
 				className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] sm:w-md"
 			>
 				<DialogHeader>
-					<DialogTitle id={titleId}>{copy.settings.title}</DialogTitle>
+					<DialogTitle id={titleId} className="flex items-center gap-2">
+						<Settings aria-hidden className="size-5 text-selection-edge" />
+						{copy.settings.title}
+					</DialogTitle>
 					<DialogDescription id={descriptionId}>
 						{copy.settings.description}
 					</DialogDescription>
 				</DialogHeader>
 
-				{/* The body scrolls vertically only. A checkbox's enlarged hit area
-				    (an invisible pseudo-element reaching past its box) sat flush
-				    with the right edge and made the body scroll sideways by it.
-				    Each row is a whole-row label, so clipping that invisible
-				    margin loses no target, and no visible content is clipped. */}
 				<div
 					data-slot="settings-body"
-					className="min-h-0 overflow-y-auto overflow-x-hidden"
+					className="grid min-h-0 content-start gap-4 overflow-y-auto overflow-x-hidden"
 				>
-					<section className="grid gap-4" aria-labelledby={indicatorsLabelId}>
-						<div>
-							<h3 id={indicatorsLabelId} className="font-medium text-sm">
-								{copy.settings.indicators.label}
-							</h3>
-							<p className="text-muted-foreground text-xs">
-								{copy.settings.indicators.description}
-							</p>
-						</div>
-
-						{/* Three separate choices rather than one switch: a tab is a
-						    delimiter, the placeholder reports a value, and spaces are
-						    the only one a reader has an opinion about. The two answered
-						    by yes or no come first, so the list that scrolls is the one
-						    that visibly continues. */}
-						<IndicatorToggle
-							{...copy.settings.tabIndicators}
-							checked={draft.tabIndicators}
-							onCheckedChange={(checked) =>
-								updateDraft({ tabIndicators: checked })
+					<div className="grid gap-1.5">
+						<p className="text-muted-foreground text-xs">
+							{copy.settings.previewLabel}
+						</p>
+						<Suspense
+							fallback={
+								<div className="h-24 rounded-interactive bg-surface-app" />
 							}
-						/>
-						<IndicatorToggle
+						>
+							<IndicatorPreview
+								preferences={preferences}
+								label={copy.settings.preview}
+							/>
+						</Suspense>
+					</div>
+
+					<section className="grid gap-1.5" aria-labelledby={indicatorsLabelId}>
+						<h3 id={indicatorsLabelId} className="mb-1 font-medium text-sm">
+							{copy.settings.indicators.label}
+						</h3>
+						<SwitchOption
+							glyph={EMPTY_VALUE_PLACEHOLDER}
 							{...copy.settings.emptyValueIndicators}
-							checked={draft.emptyValueIndicators}
+							checked={preferences.emptyValueIndicators}
 							onCheckedChange={(checked) =>
-								updateDraft({ emptyValueIndicators: checked })
+								update({ emptyValueIndicators: checked })
 							}
 						/>
-
-						<div className="grid gap-2">
-							<h4 id={spaceLabelId} className="font-normal text-sm">
-								{copy.settings.spaceIndicators.label}
-							</h4>
-							<SingleSelectionList
+						<SwitchOption
+							glyph={TAB_GLYPH}
+							{...copy.settings.tabIndicators}
+							checked={preferences.tabIndicators}
+							onCheckedChange={(checked) => update({ tabIndicators: checked })}
+						/>
+						<div className={cn(optionBlockStyles, "grid gap-3")}>
+							<div className="flex items-center gap-3">
+								<Glyph>{SPACE_GLYPH}</Glyph>
+								<span className="grid min-w-0 flex-1 gap-0.5">
+									<span id={spaceLabelId} className="font-medium">
+										{copy.settings.spaceIndicators.label}
+									</span>
+									<span
+										id={spaceDescriptionId}
+										className="text-muted-foreground text-xs"
+									>
+										{
+											copy.settings.spaceIndicators.options[
+												preferences.spaceIndicators
+											].description
+										}
+									</span>
+								</span>
+							</div>
+							<SegmentedControl
 								aria-labelledby={spaceLabelId}
-								// Its options sit one level below the section, beside Tabs and
-								// Empty values rather than above them, so their labels take the
-								// nested-setting weight. Scoped here: the same option anatomy
-								// keeps its control-label weight in every other dialog.
-								className="pl-3 [&_[data-slot=menu-option-label]]:font-normal"
-								value={draft.spaceIndicators}
+								aria-describedby={spaceDescriptionId}
+								value={preferences.spaceIndicators}
 								onValueChange={(value) =>
-									updateDraft({ spaceIndicators: value as SpaceIndicators })
+									update({ spaceIndicators: value as SpaceIndicators })
 								}
 							>
-								{SPACE_INDICATOR_VALUES.map((mode) => {
-									const Icon = spaceIndicatorIcons[mode];
-									return (
-										<SingleSelectionOption
-											key={mode}
-											value={mode}
-											selected={draft.spaceIndicators === mode}
-											icon={<Icon />}
-											{...copy.settings.spaceIndicators.options[mode]}
-										/>
-									);
-								})}
-							</SingleSelectionList>
+								{SPACE_INDICATOR_VALUES.map((mode) => (
+									<SegmentedControlItem key={mode} value={mode}>
+										{copy.settings.spaceIndicators.options[mode].label}
+									</SegmentedControlItem>
+								))}
+							</SegmentedControl>
 						</div>
 					</section>
 				</div>
@@ -203,19 +199,18 @@ export function SettingsDialog({
 					</p>
 				) : null}
 
-				<DialogActions>
-					<DialogCancel>{copy.actions.cancel}</DialogCancel>
-					<DialogConfirm
-						disabledReason={
-							preferencesMatch(draft, committed)
-								? copy.disabled.settingsAlreadyApplied
-								: undefined
-						}
-						onClick={apply}
+				<div className="flex items-center justify-between gap-2">
+					<Button
+						variant="ghost"
+						className="text-muted-foreground"
+						onClick={() => commit(DEFAULT_PREFERENCES)}
 					>
-						{copy.settings.apply}
-					</DialogConfirm>
-				</DialogActions>
+						{copy.settings.reset}
+					</Button>
+					<Button onClick={() => onOpenChange(false)}>
+						{copy.settings.done}
+					</Button>
+				</div>
 			</DialogContent>
 		</Dialog>
 	);
