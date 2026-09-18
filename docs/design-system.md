@@ -135,9 +135,9 @@ user-issued resizing.
 
 Order matters: app is furthest back, gutter and interface chrome sit above the
 panel. Neighbouring surfaces are close in tone on purpose and are not held to a
-contrast ratio: they group content, they do not identify a component. What has
-to be seen is the boundary of anything floating, and that is `--line-floating`
-below. The table-header surface is a quiet accent tint, so headers remain
+contrast ratio: they group content, they do not identify a component. A
+floating layer is set apart by its own surface and a deep shadow, with a soft
+`--line-floating` edge (owner, 2026-09-19). The table-header surface is a quiet accent tint, so headers remain
 recognizable as mutable table data instead of reading as disabled chrome. Use
 tones to group related content before adding a line. Every pane's content, editable
 or read-only, sits in one `--surface-code` box (owner, 2026-09-19); a read-only
@@ -149,7 +149,9 @@ pane says so with the written "Read only" cue in its header, not with a tone.
 | :--- | :--- | :--- |
 | `--line-subtle` | `border-line-subtle` | Grid cell borders, control separators |
 | `--line-strong` | `border-line-strong` | Boundaries between panes |
-| `--line-floating` | `ring-line-floating` | The boundary of anything that floats: menus, tooltips, dialogs, notices |
+| `--line-floating` | `ring-line-floating` | The soft boundary of anything that floats: menus, tooltips, dialogs, notices |
+| `--line-pane` | pane edge | A pane's own edge, almost the pane's tone |
+| `--active-pane-edge` | active pane edge | The active pane's translucent blue edge |
 | `--control-outline` | `border-control-outline` | Unfilled small controls that must remain identifiable against their surface |
 
 Borders are always 0.0625rem. Use them for the table grid, pane boundaries, or an
@@ -194,16 +196,15 @@ surface that needs a boundary composes one of them. Writing `ring-1`, a bare
 `border-<colour>`, or a second stroke on a rounded surface is a pattern break,
 and a browser test walks the live DOM to catch it.
 
-Two of these carry a contrast floor and are tested for it. `--line-floating`
-and `--control-outline` reach at least 3:1 against every surface they can
-appear over, because
+`--control-outline` carries a contrast floor and is tested for it: it reaches
+at least 3:1 against every surface it can appear over, because
 [WCAG 1.4.11](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)
-requires that much of anything needed to identify a component. A floating
-layer's own surface is deliberately close in tone to what it covers, so the
-boundary, not the fill, is what proves the layer is there. `--line-subtle` and
-`--line-strong` are structure inside content the user is already looking at and
-carry no such floor: raising them to 3:1 would turn the table into a wireframe
-and is not what the rule asks for.
+requires that much of anything needed to identify a control. `--line-floating`
+carried the same floor until the owner chose soft borders on 2026-09-19: a
+menu or dialog is now identified by its lighter surface, its shadow, and its
+content, the way comparable editors draw them, and its edge is only a soft
+line. `--line-subtle`, `--line-strong`, and `--line-pane` are structure inside
+content the user is already looking at and carry no floor either.
 
 ### Accent
 

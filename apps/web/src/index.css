@@ -105,12 +105,15 @@
 
 	--line-subtle: #3a3a37;
 	--line-strong: #4a4a46;
-	/* Structure lines separate content that is already there. This one has to
-	   prove a layer is floating above unrelated content, so it carries the
-	   3:1 that WCAG 1.4.11 asks of anything required to identify a component,
-	   against every surface a floating layer can cover.
-	   https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html */
-	--line-floating: #807e79;
+	/* The boundary of anything floating. Soft on purpose (owner, 2026-09-19):
+	   a menu or dialog is told apart by its own surface and its shadow, as in
+	   the editors the product is compared with, not by a bright outline. This
+	   reverses the 3:1 floor the line used to carry. */
+	--line-floating: #454541;
+	/* A pane's own edge: almost the pane's tone, so panes read as quiet
+	   blocks; the active pane adds a translucent blue edge on top. */
+	--line-pane: #30302d;
+	--active-pane-edge: rgb(77 166 255 / 45%);
 	--control-outline: #8a8984;
 
 	--selection-fill: rgb(77 166 255 / 24%);

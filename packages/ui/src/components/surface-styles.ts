@@ -18,15 +18,15 @@
 
 export const hairlineStyles = "tabelo-hairline border";
 
-// Menus, tooltips, dialogs, and notices: the floating boundary at its tested
-// contrast, over the floating surface, with the one shadow a floating layer
-// carries.
-export const floatingSurfaceStyles = `${hairlineStyles} [--hairline-color:var(--line-floating)] [--hairline-fill:var(--popover)] shadow-xl`;
+// Menus, tooltips, dialogs, and notices: a soft boundary over the floating
+// surface, set apart from what it covers by a deep two-layer shadow
+// (owner, 2026-09-19).
+export const floatingSurfaceStyles = `${hairlineStyles} [--hairline-color:var(--line-floating)] [--hairline-fill:var(--popover)] shadow-[0_0.75rem_2rem_rgb(0_0_0/0.55),0_0.125rem_0.375rem_rgb(0_0_0/0.4)]`;
 
 // The same treatment for a surface that sits in the layout rather than over
 // it: the subtle boundary and no shadow.
-export const panelSurfaceStyles = `${hairlineStyles} [--hairline-color:var(--line-subtle)] [--hairline-fill:var(--surface-panel)]`;
+export const panelSurfaceStyles = `${hairlineStyles} [--hairline-color:var(--line-pane)] [--hairline-fill:var(--surface-panel)]`;
 
 // A panel that is the active one of several. Only the boundary colour changes.
 export const activePanelSurfaceStyles =
-	"[--hairline-color:var(--selection-edge)]";
+	"[--hairline-color:var(--active-pane-edge)]";

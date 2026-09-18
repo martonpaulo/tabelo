@@ -631,20 +631,6 @@ test("text and focus tokens meet their contrast floors", async ({ page }) => {
 		expect(
 			await contrastBetween(page, "--destructive", "--popover"),
 		).toBeGreaterThanOrEqual(4.5);
-		// A floating layer has to be identifiable against everything it can
-		// cover, which is WCAG 1.4.11's 3:1 for non-text. Its own surface is
-		// close in tone to the surfaces underneath by design, so the boundary is
-		// what carries that job.
-		for (const covered of [
-			"--surface-floating",
-			"--surface-panel",
-			"--surface-app",
-			"--surface-header",
-		]) {
-			expect(
-				await contrastBetween(page, "--line-floating", covered),
-			).toBeGreaterThanOrEqual(3);
-		}
 		// The warning colour is a graphical object: it draws the source
 		// underline and the syntax tokens that carry no second cue of their own.
 		expect(
