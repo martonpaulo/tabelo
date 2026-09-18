@@ -137,7 +137,6 @@ export function ColumnWidthDialog({
 							// Selected on arrival so a typed number replaces the current one.
 							onFocus={(event) => event.currentTarget.select()}
 							value={draft}
-							className="text-sm md:text-sm"
 							aria-invalid={error ? true : undefined}
 							aria-describedby={hintId}
 							onChange={(event) => {

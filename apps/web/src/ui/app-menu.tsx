@@ -139,7 +139,7 @@ export function AppMenu({
 							// because outline carries a resting border and fill of its own in
 							// dark mode, which no transparent override on this element can
 							// win against.
-							className="fixed right-3 bottom-3 z-40 size-fab hover:bg-surface-floating hover:shadow-lg"
+							className="fixed right-3 bottom-3 z-40 size-fab hover:shadow-lg"
 						/>
 					}
 				>
@@ -152,7 +152,7 @@ export function AppMenu({
 					{pwaUpdate.ready ? (
 						<span
 							aria-hidden
-							className="absolute top-1 right-1 size-2 rounded-full bg-selection-edge ring-2 ring-line-floating"
+							className="absolute top-1 right-1 size-2 rounded-full border-2 border-surface-app bg-selection-edge"
 						/>
 					) : null}
 				</DropdownMenuTrigger>

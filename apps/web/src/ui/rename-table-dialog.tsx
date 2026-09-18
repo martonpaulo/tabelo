@@ -95,7 +95,6 @@ export function RenameTableDialog({
 							id={inputId}
 							autoFocus
 							value={draft}
-							className="text-sm md:text-sm"
 							aria-invalid={errorMessage ? true : undefined}
 							aria-describedby={errorMessage ? errorId : undefined}
 							onChange={(event) => {
