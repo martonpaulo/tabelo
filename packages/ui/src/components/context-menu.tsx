@@ -148,6 +148,14 @@ function ContextMenuSubTrigger({
 				"focus:bg-accent focus:text-accent-foreground data-open:bg-accent data-open:text-accent-foreground",
 				className,
 			)}
+			// Base UI 1.8 drops `aria-expanded` from an open submenu trigger in a
+			// production build while keeping `data-popup-open`, so a screen reader
+			// stops hearing that the submenu is open. The state it already tracks
+			// is written back onto the element.
+			render={(renderProps, state) => (
+				// biome-ignore lint/a11y/useAriaPropsSupportedByRole: the role, tabIndex, and handlers arrive in renderProps from Base UI.
+				<div {...renderProps} aria-expanded={state.open} />
+			)}
 			{...props}
 		>
 			{children}
