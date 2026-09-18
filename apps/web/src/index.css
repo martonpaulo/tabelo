@@ -120,6 +120,7 @@
 	--text-selection-fill: rgb(77 166 255 / 32%);
 	--active-line-fill: rgb(77 166 255 / 9%);
 	--selection-edge: #4da6ff;
+	--focus-ring: var(--selection-edge);
 
 	--value-string: #a6da95;
 	--value-number: #8bd5ca;
@@ -356,35 +357,40 @@ textarea,
 	}
 }
 
-/* One focus treatment for the whole app, including inside the grid.
-   Keyboard operation is a first-class path here, not a fallback. */
-:focus-visible {
-	outline: var(--selection-edge-w) solid var(--selection-edge);
-	outline-offset: calc(-1 * var(--selection-edge-w));
-}
+@layer base {
+	/* One focus treatment for the whole app (owner, 2026-09-19): a two-hairline
+	   ring drawn outside the control with a gap, so it never merges with a chosen
+	   option's blue fill or a control's own edge. Keyboard operation is a
+	   first-class path here, not a fallback. In the base layer so the few places
+	   that must draw it inset, such as a pane frame that fills its container, can
+	   say so with a utility. */
+	:focus-visible {
+		outline: var(--selection-edge-w) solid var(--focus-ring);
+		outline-offset: var(--selection-edge-w);
+	}
 
-/* Grid cells are the one exception, and only in how the line is drawn: a cell
-   shows the same focus line as a mark on the grid lines around it, so it meets
-   the copied mark and the neighbouring cell's marks on their shared line (#365).
-   An outline cannot reach the neighbour's line, and a browser paints it over
-   the cell's own marks. */
-[data-cell]:focus-visible {
-	outline: none;
-}
+	/* Grid cells are the one exception, and only in how the line is drawn: a cell
+	   shows the same focus line as a mark on the grid lines around it, so it meets
+	   the copied mark and the neighbouring cell's marks on their shared line (#365).
+	   An outline cannot reach the neighbour's line, and a browser paints it over
+	   the cell's own marks. */
+	[data-cell]:focus-visible {
+		outline: none;
+	}
 
-/* A menu, a dialog, or the start surface takes focus itself when it opens,
-   so the next key reaches its items. It is a container, not a control: the line belongs to the item
-   the keyboard is on, and a ring around the whole popup read as a heavy
-   border (2026-09-18). This sits beside the rule above because an unlayered
-   rule outranks a component's `outline-none` utility. */
-:is(
-	[role="menu"],
-	[role="listbox"],
-	[role="dialog"],
-	[role="alertdialog"],
-	[data-focus-container]
-):focus-visible {
-	outline: none;
+	/* A menu, a dialog, or the start surface takes focus itself when it opens,
+	   so the next key reaches its items. It is a container, not a control: the line belongs to the item
+	   the keyboard is on, and a ring around the whole popup read as a heavy
+	   border (2026-09-18). */
+	:is(
+		[role="menu"],
+		[role="listbox"],
+		[role="dialog"],
+		[role="alertdialog"],
+		[data-focus-container]
+	):focus-visible {
+		outline: none;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {

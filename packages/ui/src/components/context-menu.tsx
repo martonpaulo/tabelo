@@ -279,6 +279,8 @@ function ContextMenuSegmentedItem({
 			closeOnClick
 			className={cn(
 				segmentedItemStyles,
+				// In a menu the highlight is the keyboard cue, as on every row.
+				"outline-hidden",
 				controlStateTransitionStyles,
 				className,
 			)}

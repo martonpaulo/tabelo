@@ -79,7 +79,7 @@ export const segmentedGroupStyles =
 	"grid auto-cols-fr grid-flow-col gap-0.5 rounded-interactive bg-surface-app p-0.5";
 
 export const segmentedItemStyles =
-	"flex min-h-control-sm cursor-pointer select-none items-center justify-center gap-1 rounded-indicator px-2 py-1 text-center text-muted-foreground text-xs leading-tight outline-hidden not-data-checked:hover:bg-accent not-data-checked:hover:text-accent-foreground not-data-checked:data-highlighted:bg-accent not-data-checked:data-highlighted:text-accent-foreground data-checked:bg-primary data-checked:text-primary-foreground data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:shrink-0";
+	"flex min-h-control-sm cursor-pointer select-none items-center justify-center gap-1 rounded-indicator px-2 py-1 text-center text-muted-foreground text-xs leading-tight not-data-checked:hover:bg-accent not-data-checked:hover:text-accent-foreground not-data-checked:data-highlighted:bg-accent not-data-checked:data-highlighted:text-accent-foreground data-checked:bg-primary data-checked:text-primary-foreground data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:shrink-0";
 
 // A command drawn as one segment of a row of related commands, such as the pane
 // zoom's out, reset, and in: the segment geometry, the menu's own highlight.

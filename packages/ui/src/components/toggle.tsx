@@ -4,7 +4,7 @@ import { cn } from "@tabelo/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 
 const toggleVariants = cva(
-	`group/toggle inline-flex cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-interactive font-medium text-xs outline-none not-aria-pressed:hover:bg-accent not-aria-pressed:hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`,
+	`group/toggle inline-flex cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-interactive font-medium text-xs not-aria-pressed:hover:bg-accent not-aria-pressed:hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`,
 	{
 		variants: {
 			variant: {

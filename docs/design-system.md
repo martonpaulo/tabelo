@@ -1111,7 +1111,7 @@ not a polish item.
 | :--- | :--- |
 | Rest | No background |
 | Hover or keyboard highlight | Shared `bg-accent` interaction background |
-| Focus | 0.125rem `--selection-edge` outline, inset. Never remove it. A grid cell draws the same line as a cell mark instead of an outline (see below) |
+| Focus | One treatment everywhere (owner, 2026-09-19): a 0.125rem `--focus-ring` outline drawn outside the control with a 0.125rem gap, from the base-layer `:focus-visible` rule; components add no ring, border, or shadow of their own for focus. A pane frame that fills its container draws it inset. Menu rows show the highlight instead. A grid cell draws the same line as a cell mark instead of an outline (see below). Never remove it |
 | Selected | `bg-selection-fill`, plus the focus mark when it is the focused cell |
 | Copied | 0.125rem dashed `--selection-edge` border on the range's own outer edges. A focused cell inside the range draws focus and copy as one static two-tone border: the solid focus line on all four sides with `--foreground` dashes over it on the outer sides |
 | Carried cell type | Strings use the editable header row's plain foreground; numbers, booleans, and null use the cross-view semantic value token selected by `cellValueType`, reinforced by weight, italics, numeric spacing, literal shape, and the accessible type name |

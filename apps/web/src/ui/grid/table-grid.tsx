@@ -2096,7 +2096,7 @@ function ColumnIndexCell({
 			    focused grid column has Alt+Shift+Left/Right as its keyboard equal. */}
 			<div
 				aria-hidden
-				className="absolute top-0 right-0 z-20 h-full w-2 cursor-col-resize touch-none hover:bg-selection-edge/40"
+				className="absolute top-0 right-0 z-20 h-full w-2 cursor-col-resize touch-none after:absolute after:inset-y-1 after:right-0 after:w-hairline after:rounded-full hover:after:bg-selection-edge"
 				onPointerDown={(event) => {
 					event.preventDefault();
 					event.currentTarget.setPointerCapture(event.pointerId);

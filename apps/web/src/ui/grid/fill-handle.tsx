@@ -110,7 +110,7 @@ export function FillHandle({
 			data-fill-handle
 			className={cn(
 				"absolute z-40 inline-flex h-control-sm w-control-sm -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-interactive",
-				"cursor-crosshair touch-none outline-none focus-visible:ring-2 focus-visible:ring-selection-edge",
+				"cursor-crosshair touch-none",
 			)}
 			style={{ top: `${position.top}rem`, left: `${position.left}rem` }}
 			onPointerDown={onPointerDown}

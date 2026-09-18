@@ -70,7 +70,7 @@ export function SingleSelectionOption({
 					optionBlockStyles,
 					controlStateTransitionStyles,
 					optionBlockStateStyles,
-					"focus-within:outline-2 focus-within:outline-selection-edge focus-within:-outline-offset-2",
+					"focus-within:outline-(--focus-ring) focus-within:outline-2 focus-within:outline-offset-2",
 				)}
 			>
 				{compact ? (

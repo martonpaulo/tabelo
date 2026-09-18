@@ -461,11 +461,11 @@ test("an output option is reached by Tab and toggled by Space", async ({
 		}
 		await expect(option).toBeFocused();
 
-		// Keyboard focus must be visible, not merely present. The indicator is a
-		// ring the theme paints through focus-visible, so the assertion is that
-		// some ring is drawn, never which size or colour it is.
+		// Keyboard focus must be visible, not merely present. The indicator is
+		// the one focus outline the theme draws through focus-visible, so the
+		// assertion is that an outline is drawn, never its size or colour.
 		expect(
-			await option.evaluate((el) => getComputedStyle(el).boxShadow),
+			await option.evaluate((el) => getComputedStyle(el).outlineStyle),
 		).not.toBe("none");
 
 		await page.keyboard.press("Space");

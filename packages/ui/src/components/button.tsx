@@ -4,7 +4,7 @@ import { cn } from "@tabelo/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 
 const buttonVariants = cva(
-	`group/button inline-flex shrink-0 cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-interactive border border-transparent bg-clip-padding font-medium text-sm outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 active:not-aria-[haspopup]:not-aria-disabled:translate-y-[0.0625rem] disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${pressableControlTransitionStyles}`,
+	`group/button inline-flex shrink-0 cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-interactive border border-transparent bg-clip-padding font-medium text-sm active:not-aria-[haspopup]:not-aria-disabled:translate-y-[0.0625rem] disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${pressableControlTransitionStyles}`,
 	{
 		variants: {
 			variant: {
@@ -16,7 +16,7 @@ const buttonVariants = cva(
 				ghost:
 					"hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground",
 				destructive:
-					"text-destructive hover:bg-destructive/10 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:hover:bg-destructive/20",
+					"text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20",
 				link: "text-primary underline-offset-4 hover:underline",
 			},
 			size: {
