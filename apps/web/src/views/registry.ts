@@ -1,12 +1,13 @@
 import {
-	IconBraces,
-	IconCode,
+	IconBrandJira,
+	IconCsv,
 	IconEye,
 	IconFileSpreadsheet,
-	IconFileText,
-	IconList,
+	IconHtml,
+	IconJson,
+	IconListDetails,
+	IconMarkdown,
 	IconTable,
-	IconTags,
 } from "@tabler/icons-react";
 import { copy } from "@/copy/copy";
 import {
@@ -79,7 +80,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	markdown: {
 		id: "markdown",
 		...copy.views.markdown,
-		icon: IconFileText,
+		icon: IconMarkdown,
 		kind: "source",
 		codec: markdownCodec,
 		highlight: "markdown",
@@ -91,7 +92,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	csv: {
 		id: "csv",
 		...copy.views.csv,
-		icon: IconFileSpreadsheet,
+		icon: IconCsv,
 		kind: "source",
 		codec: csvCodec,
 		highlight: "delimited",
@@ -113,7 +114,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	html: {
 		id: "html",
 		...copy.views.html,
-		icon: IconCode,
+		icon: IconHtml,
 		kind: "source",
 		codec: htmlCodec,
 		highlight: "html",
@@ -124,7 +125,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	jira: {
 		id: "jira",
 		...copy.views.jira,
-		icon: IconTags,
+		icon: IconBrandJira,
 		kind: "source",
 		codec: jiraCodec,
 		highlight: "jira",
@@ -135,7 +136,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	json: {
 		id: "json",
 		...copy.views.json,
-		icon: IconBraces,
+		icon: IconJson,
 		kind: "source",
 		codec: jsonCodec,
 		highlight: "json",
@@ -146,7 +147,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	records: {
 		id: "records",
 		...copy.views.records,
-		icon: IconList,
+		icon: IconListDetails,
 		kind: "source",
 		codec: recordsCodec,
 		highlight: "records",
