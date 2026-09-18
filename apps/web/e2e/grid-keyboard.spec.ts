@@ -710,6 +710,32 @@ test("the documented grid commands still work", async ({ page, tabelo }) => {
 	expect(await tabelo.grid().getByRole("row").count()).toBe(rowsBefore - 1);
 });
 
+// Deleting the focused cell's row removes the element that held focus. The
+// grid keeps the keyboard: a second deletion and plain typing both still land.
+test("the grid keeps the keyboard after deleting the focused row", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.editCell(2, 1, "Paulo");
+	await tabelo.editCell(3, 1, "Mabel");
+	const rows = () => tabelo.grid().getByRole("row").count();
+	const before = await rows();
+
+	await tabelo.cell(1, 1).click();
+	await page.keyboard.press("ControlOrMeta+Backspace");
+	await expect.poll(rows).toBe(before - 1);
+	await expect(tabelo.cell(1, 1)).toBeFocused();
+
+	await page.keyboard.press("ControlOrMeta+Backspace");
+	await expect.poll(rows).toBe(before - 2);
+	await expect(tabelo.cell(1, 1)).toHaveText("Mabel");
+
+	await page.keyboard.type("Felix");
+	await page.keyboard.press("Enter");
+	await expect(tabelo.cell(1, 1)).toHaveText("Felix");
+});
+
 test("Mod+A selects the header row and every body cell", async ({
 	page,
 	tabelo,

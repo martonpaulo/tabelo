@@ -487,6 +487,35 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// Everything else stands down as it always did, a menu having portalled its
 	// popup out, the find bar being the surface's sibling, and another pane
 	// being elsewhere entirely.
+
+	// Deleting the focused cell's row or column removes the element that holds
+	// focus, and the browser hands focus to the body, where every later key
+	// reaches nobody. A focusout whose target is gone a moment later is that
+	// removal rather than the user leaving, so focus goes to the cell that now
+	// stands at the focused position. Leaving by click or Tab keeps its target
+	// in the document and is left alone.
+	const focusRef = useRef(focus);
+	focusRef.current = focus;
+	useEffect(() => {
+		const grid = gridRef.current;
+		if (!grid) return;
+		const onFocusOut = (event: FocusEvent) => {
+			const left = event.target;
+			if (!(left instanceof HTMLElement) || event.relatedTarget) return;
+			queueMicrotask(() => {
+				if (left.isConnected) return;
+				const active = window.document.activeElement;
+				if (active && active !== window.document.body) return;
+				const { row, column } = focusRef.current;
+				grid
+					.querySelector<HTMLElement>(`[data-cell="${row}:${column}"]`)
+					?.focus({ preventScroll: true });
+			});
+		};
+		grid.addEventListener("focusout", onFocusOut);
+		return () => grid.removeEventListener("focusout", onFocusOut);
+	}, []);
+
 	useEffect(() => {
 		const isEditing = editing !== null || editingHeader !== null;
 		const justFinishedEditing = wasEditingRef.current && !isEditing;
