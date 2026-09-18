@@ -16,6 +16,7 @@ import {
 	Move as MoveIcon,
 	Replace,
 	RotateCcw,
+	Ruler,
 	Search,
 	WrapText,
 	X,
@@ -74,11 +75,17 @@ export function PaneMenu({
 	view,
 	onChangeView,
 	onMovePane,
+	assistanceEnabled,
+	onAssistanceChange,
 }: {
 	readonly paneId: string;
 	readonly view: ViewDefinition;
 	readonly onChangeView: (opener: HTMLButtonElement | null) => void;
 	readonly onMovePane: (opener: HTMLButtonElement | null) => void;
+	// The pane's structural-assistance switch (#297). Offered only when the
+	// view's format declares a feature and the view can be typed into.
+	readonly assistanceEnabled: boolean;
+	readonly onAssistanceChange: (enabled: boolean) => void;
 }) {
 	const triggerRef = useRef<HTMLButtonElement>(null);
 	const menuDialog = useMenuDialogCommand();
@@ -105,6 +112,9 @@ export function PaneMenu({
 		? canSerialize(view.codec, document)
 		: null;
 	const recovery = preconditionRecovery(currentViewFailure);
+	const offersAssistance =
+		view.capabilities.editable &&
+		view.codec?.structuralAssistance !== undefined;
 	const canCopy =
 		view.capabilities.textClipboard ||
 		(view.capabilities.structuredClipboard &&
@@ -318,6 +328,20 @@ export function PaneMenu({
 								<WrapText aria-hidden />
 								{copy.workspace.wrapSource}
 							</DropdownMenuCheckboxItem>
+							{/* Switching it off makes the buffer plain text until the
+							    buffer is gone; it changes no text and adds no history step.
+							    See docs/design-system.md, "Structural assistance can
+							    always be switched off". */}
+							{offersAssistance ? (
+								<DropdownMenuCheckboxItem
+									checked={assistanceEnabled}
+									closeOnClick={false}
+									onCheckedChange={onAssistanceChange}
+								>
+									<Ruler aria-hidden />
+									{copy.workspace.structuralAssistance}
+								</DropdownMenuCheckboxItem>
+							) : null}
 						</DropdownMenuGroup>
 					</>
 				) : null}

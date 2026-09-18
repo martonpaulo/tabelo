@@ -289,6 +289,8 @@ export const copy = {
 		resetZoom: "Reset zoom",
 		wrapSource: "Wrap lines",
 		wrapAllColumns: "Wrap all columns",
+		// The checked escape mode for a format's structural assistance (#297).
+		structuralAssistance: "Structural assistance",
 		// Both halves of one piece of feedback: the pane header shows this and
 		// the polite live region speaks it. How many occurrences the user has
 		// gathered, out of how many the source holds.

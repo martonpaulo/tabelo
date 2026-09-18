@@ -1380,7 +1380,12 @@ per keystroke.
 - The pane actions menu is flat and follows one semantic reading order (#70).
   An applicable capability-driven Copy command comes first, and zoom follows as
   its own group. A grid pane then adds Find (#144) and Wrap all columns (#360),
-  each in its own group; a source pane adds Wrap lines. Change view and the
+  each in its own group; a source pane adds Wrap lines, followed in the same
+  group by the checked Structural assistance item when the view's format
+  declares a structural-assistance feature (#297). Both are ordinary checked
+  menu items, reached and toggled from the keyboard like every other pane
+  command, with their state exposed through native checked semantics. Change
+  view and the
   structural pane actions form the final group. Separators communicate those groups without
   visible titles. Changing a view opens one dialog; zooming and closing remain
   plain menu items. A command that does not apply is absent when capability

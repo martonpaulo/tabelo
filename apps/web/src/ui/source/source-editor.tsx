@@ -35,7 +35,11 @@ import {
 } from "@codemirror/view";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { minimalChange } from "@/formats/minimal-change";
-import type { SourceFieldRange, SourceRowRange } from "@/formats/types";
+import type {
+	SourceFieldRange,
+	SourceRowRange,
+	StructuralAssistance,
+} from "@/formats/types";
 import {
 	notifyLocalHistoryChanged,
 	registerLocalHistory,
@@ -62,6 +66,7 @@ import {
 import { recordsLanguage } from "./records-language";
 import { setSourceRows, sourceRowSeparators } from "./row-separators";
 import { SourceContextMenu } from "./source-context-menu";
+import { assistanceExtension } from "./structural-assistance";
 import { indicatorClasses, spaceScope } from "./whitespace-indicators";
 
 // Marks a transaction as coming from synchronization rather than the user.
@@ -78,6 +83,7 @@ const metricsCompartment = new Compartment();
 const wrapCompartment = new Compartment();
 const indicatorCompartment = new Compartment();
 const tabCompartment = new Compartment();
+const assistanceCompartment = new Compartment();
 
 // Everything the editor draws at the pane's scale, the text, the gutter width,
 // and the caret, reads `--pane-zoom` from the cascade, and the pane body is the
@@ -284,6 +290,13 @@ interface SourceEditorProps {
 	// grammar finds in the text, for the views that move between fields (#54).
 	readonly tabBehaviour: SourceTabBehaviour | null;
 	readonly sourceFields?: (text: string) => readonly SourceFieldRange[];
+	// The format's structural assistance, and whether the pane currently has it
+	// switched on. Absent means the format has none.
+	readonly structuralAssistance?: StructuralAssistance;
+	readonly assistanceEnabled: boolean;
+	// Called when text arrives from outside the editor, replacing the buffer the
+	// user was editing: synchronization, a document undo, a view change.
+	readonly onBufferReplaced: () => void;
 	// The three global display preferences from #93, and the separator this
 	// view's format writes, which is what tells the empty-value marker where a
 	// field ends. All of them are read here rather than stored: no pane owns
@@ -325,6 +338,9 @@ export function SourceEditor({
 	language,
 	tabBehaviour,
 	sourceFields,
+	structuralAssistance,
+	assistanceEnabled,
+	onBufferReplaced,
 	spaceIndicators,
 	tabIndicators,
 	emptyValueIndicators,
@@ -350,6 +366,7 @@ export function SourceEditor({
 	const handlers = useRef({
 		sourceFields,
 		onChange,
+		onBufferReplaced,
 		onUndoBeyondLocal,
 		onRedoBeyondLocal,
 		onOccurrencesChange,
@@ -358,6 +375,7 @@ export function SourceEditor({
 	handlers.current = {
 		sourceFields,
 		onChange,
+		onBufferReplaced,
 		onUndoBeyondLocal,
 		onRedoBeyondLocal,
 		onOccurrencesChange,
@@ -402,6 +420,9 @@ export function SourceEditor({
 					languageCompartment.of(languageFor(language)),
 					// Above the default keymap, which would otherwise take Enter.
 					tabCompartment.of(tabExtension(tabBehaviour, handlers)),
+					assistanceCompartment.of(
+						assistanceExtension(structuralAssistance, assistanceEnabled),
+					),
 					diagnosticsCompartment.of(diagnosticExtension(diagnostics)),
 					editableCompartment.of(EditorView.editable.of(editable)),
 					syntaxTheme,
@@ -549,6 +570,7 @@ export function SourceEditor({
 			changes: change,
 			annotations: [fromSync.of(true), Transaction.addToHistory.of(false)],
 		});
+		handlers.current.onBufferReplaced();
 	}, [value]);
 
 	// After the text above, so the rows always describe the text the editor now
@@ -625,6 +647,19 @@ export function SourceEditor({
 			effects: tabCompartment.reconfigure(tabExtension(tabBehaviour, handlers)),
 		});
 	}, [tabBehaviour]);
+
+	// Switching assistance off or on changes no text and records no history: the
+	// transaction carries only the reconfiguration. Turning it back on rewrites
+	// nothing by itself; the next eligible edit is the first one adjusted.
+	useEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: assistanceCompartment.reconfigure(
+				assistanceExtension(structuralAssistance, assistanceEnabled),
+			),
+		});
+	}, [structuralAssistance, assistanceEnabled]);
 
 	// Reconfigured rather than remounted, so switching the preference keeps the
 	// caret, the selection, the pane's own wrap choice, and the local undo

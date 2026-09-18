@@ -139,6 +139,7 @@ reversible implementation choice does not belong here.
 | Grid wrapping | Per column, opt-in, off by default; one pane command wraps all columns | design system §9 | #41, #360 |
 | Source wrapping | Per pane, opt-in, off by default | design system §3 | #95 |
 | Automatic source rewriting | Only named structural-assistance features: smallest deterministic range, one undo step with the triggering edit, invalid drafts untouched, switchable off per buffer | `AGENTS.md` domain rules | #294 |
+| Markdown divider assistance | The alignment divider follows the header, rows, columns, and valid markers of the current draft, and is left alone whenever the draft is ambiguous; the first codec-declared structural-assistance feature | ADR 0005 | #297 |
 
 ### Documents, formats, and persistence
 

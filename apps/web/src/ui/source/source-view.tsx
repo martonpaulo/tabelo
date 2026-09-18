@@ -3,6 +3,7 @@ import { copy } from "@/copy/copy";
 import type { SourceRowRange } from "@/formats/types";
 import { usePreferences } from "@/preferences/use-preferences";
 import { textForView, useTabeloStore } from "@/state/store";
+import { usePaneAssistance } from "@/ui/workspace/use-pane-assistance";
 import { PaneEntryContext } from "@/ui/workspace/use-pane-entry";
 import { useReportPaneOccurrences } from "@/ui/workspace/use-pane-occurrences";
 import { getView } from "@/views/registry";
@@ -33,6 +34,7 @@ export default function SourceView({
 	const view = getView(viewId);
 	const document = useTabeloStore((state) => state.document);
 	const entered = useContext(PaneEntryContext);
+	const assistance = usePaneAssistance();
 	// The indicator preferences drive every marker in every pane: see #93.
 	// Nothing about them is pane state, so they neither reach the workspace nor
 	// survive as a copy here.
@@ -112,6 +114,11 @@ export default function SourceView({
 				language={view.highlight}
 				tabBehaviour={view.capabilities.sourceTab}
 				sourceFields={view.codec?.sourceFields}
+				structuralAssistance={
+					editable ? view.codec?.structuralAssistance : undefined
+				}
+				assistanceEnabled={assistance.enabled}
+				onBufferReplaced={assistance.onBufferReplaced}
 				spaceIndicators={spaceIndicators}
 				tabIndicators={tabIndicators}
 				emptyValueIndicators={emptyValueIndicators}

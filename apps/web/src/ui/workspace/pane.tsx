@@ -2,7 +2,7 @@ import { disclosureTransitionStyles } from "@tabelo/ui/components/motion-styles"
 import { activePanelSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import { Plus } from "lucide-react";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
 import { GridFindBar } from "@/ui/grid/find-bar";
@@ -19,6 +19,7 @@ import {
 } from "@/workspace/layout";
 import { PaneContent } from "./pane-content";
 import { PaneIdentity, PaneMenu } from "./pane-menu";
+import { PaneAssistanceContext } from "./use-pane-assistance";
 import { PaneEntryContext, usePaneEntry } from "./use-pane-entry";
 import { PaneOccurrencesContext } from "./use-pane-occurrences";
 
@@ -93,6 +94,32 @@ export const Pane = memo(function Pane({
 		null,
 	);
 
+	// The structural-assistance switch for this pane's current buffer (#297).
+	// Local React state, so it is never persisted and a reload or the pane
+	// closing starts it on again. It lasts while the same buffer is edited,
+	// clean or invalid, and turns back on the moment that buffer is gone: the
+	// view changes, the pane's draft is discarded or superseded, or text from
+	// outside replaces what was being edited, which is also how a draft brought
+	// back by document undo starts with it on.
+	const [assistanceEnabled, setAssistanceEnabled] = useState(true);
+	const enableAssistance = useCallback(() => setAssistanceEnabled(true), []);
+	const ownsDraft = useTabeloStore((state) => state.draft?.paneId === pane.id);
+	const heldDraft = useRef(ownsDraft);
+	useEffect(() => {
+		if (heldDraft.current && !ownsDraft) enableAssistance();
+		heldDraft.current = ownsDraft;
+	}, [ownsDraft, enableAssistance]);
+	const servedView = useRef(pane.view);
+	useEffect(() => {
+		if (servedView.current === pane.view) return;
+		servedView.current = pane.view;
+		enableAssistance();
+	}, [pane.view, enableAssistance]);
+	const assistance = useMemo(
+		() => ({ enabled: assistanceEnabled, onBufferReplaced: enableAssistance }),
+		[assistanceEnabled, enableAssistance],
+	);
+
 	return (
 		<PaneEntryContext.Provider value={entered}>
 			<Panel
@@ -147,6 +174,8 @@ export const Pane = memo(function Pane({
 						view={view}
 						onChangeView={(opener) => onChangeView(pane.id, opener)}
 						onMovePane={(opener) => onMovePane(pane.id, opener)}
+						assistanceEnabled={assistanceEnabled}
+						onAssistanceChange={setAssistanceEnabled}
 					/>
 				</Panel.Header>
 
@@ -165,12 +194,14 @@ export const Pane = memo(function Pane({
 					)}
 				>
 					<PaneOccurrencesContext.Provider value={setOccurrences}>
-						<PaneContent
-							paneId={pane.id}
-							view={view}
-							zoom={pane.zoom}
-							wrap={pane.wrap}
-						/>
+						<PaneAssistanceContext.Provider value={assistance}>
+							<PaneContent
+								paneId={pane.id}
+								view={view}
+								zoom={pane.zoom}
+								wrap={pane.wrap}
+							/>
+						</PaneAssistanceContext.Provider>
 					</PaneOccurrencesContext.Provider>
 					{/* Inside the scroller rather than below it, so the pane's own
 					    horizontal scrollbar stays at the very bottom edge instead of
