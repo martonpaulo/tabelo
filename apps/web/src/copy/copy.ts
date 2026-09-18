@@ -655,6 +655,8 @@ export const copy = {
 	download: {
 		title: "Download table",
 		hint: "Choose a file format",
+		savedAs: "Saved as",
+		downloadAs: (extension: string) => `Download .${extension}`,
 		format: "File format",
 		options: "Options",
 		// Output-only choices, listed by the id the codec declares.

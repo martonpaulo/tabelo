@@ -57,6 +57,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 	const outputOptions = useTabeloStore((state) => state.outputOptions);
 	const titleId = useId();
 	const hintId = useId();
+	const formatDescriptionId = useId();
 
 	const selectedCodec =
 		codecs.find((candidate) => candidate.id === selected) ??
@@ -102,7 +103,10 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 				<DialogHeader>
 					<DialogTitle id={titleId}>{copy.download.title}</DialogTitle>
 					<DialogDescription id={hintId} className="text-sm">
-						{copy.download.hint}
+						{copy.download.hint}. {copy.download.savedAs}{" "}
+						<span className="font-medium text-foreground">
+							{tableDownloadFilename(tableName, codec.extension)}
+						</span>
 					</DialogDescription>
 				</DialogHeader>
 
@@ -123,6 +127,8 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 
 				<SingleSelectionList
 					aria-label={copy.download.format}
+					aria-describedby={formatDescriptionId}
+					className="grid-cols-2"
 					value={codec.id}
 					onValueChange={(value) => setSelected(value as CodecId)}
 				>
@@ -134,12 +140,8 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 								id={candidate.id}
 								icon={<view.icon />}
 								label={view.label}
-								description={view.description}
 								extension={candidate.extension}
 								selected={candidate.id === codec.id}
-								options={
-									candidate.id === codec.id ? options : ([] as OutputOptionId[])
-								}
 								failure={canSerialize(candidate, document)}
 								onRecover={() => onOpenChange(false)}
 							/>
@@ -147,10 +149,24 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 					})}
 				</SingleSelectionList>
 
+				{/* The chosen format described once, below the grid, and the
+				    options it declares under that description: they belong to the
+				    format they modify. */}
+				<div className="grid gap-1.5">
+					<p id={formatDescriptionId} className="text-muted-foreground text-sm">
+						{getView(codec.id).description}
+					</p>
+					{options.map((option) => (
+						<OutputOption key={option} option={option} />
+					))}
+				</div>
+
 				<DialogActions>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>
 					<DialogConfirm onClick={download}>
-						{copy.actions.download}
+						{copy.download.downloadAs(
+							codec.extension.split(".").at(-1) ?? codec.extension,
+						)}
 					</DialogConfirm>
 				</DialogActions>
 			</DialogContent>
@@ -162,30 +178,27 @@ interface FormatChoiceProps {
 	readonly id: CodecId;
 	readonly icon: ReactNode;
 	readonly label: string;
-	readonly description: string;
 	readonly extension: string;
 	readonly selected: boolean;
-	readonly options: readonly OutputOptionId[];
 	readonly failure: PreconditionFailure | null;
 	readonly onRecover: () => void;
 }
 
-// The options belong to the format they modify, so they sit under it rather
-// than in a separate block that would have to name the format again.
+// One tile of the format grid. A format the table cannot be written in takes
+// the whole row, so its refusal and correction have room beside the name.
 function FormatChoice({
 	id,
 	icon,
 	label,
-	description,
 	extension,
 	selected,
-	options,
 	failure,
 	onRecover,
 }: FormatChoiceProps) {
 	return (
-		<div>
+		<div className={failure ? "col-span-2" : undefined}>
 			<SingleSelectionOption
+				compact
 				value={id}
 				selected={selected}
 				availability={
@@ -200,16 +213,8 @@ function FormatChoice({
 				onRecover={onRecover}
 				icon={icon}
 				label={label}
-				description={description}
 				metadata={`.${extension}`}
 			/>
-			{options.length > 0 ? (
-				<div className="mt-1.5 pl-9">
-					{options.map((option) => (
-						<OutputOption key={option} option={option} />
-					))}
-				</div>
-			) : null}
 		</div>
 	);
 }

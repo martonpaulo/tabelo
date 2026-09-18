@@ -85,3 +85,61 @@ export function SelectionOptionContent({
 		</>
 	);
 }
+
+// The same choice as a tile: the icon and its trailing metadata or status on
+// one row, the label under them. For short choices laid out in a grid.
+export function CompactOptionContent({
+	icon,
+	label,
+	metadata,
+	availability,
+}: Omit<SelectionOptionContentProps, "description">) {
+	const unavailable = availability?.kind === "unavailable";
+	const StatusIcon = unavailable ? IconAlertCircle : IconEye;
+	return (
+		<span className="grid w-full min-w-0 gap-1">
+			<span className="flex items-center justify-between gap-2">
+				<span
+					aria-hidden
+					data-slot="selection-option-icon"
+					className={cn(
+						"flex size-6 shrink-0 items-center [&>svg:not([class*='size-'])]:size-5",
+						availability && "opacity-50",
+					)}
+				>
+					{icon}
+				</span>
+				{availability ? (
+					<span
+						data-availability={availability.kind}
+						data-slot="selection-option-status"
+						className={cn(
+							"inline-flex items-center gap-1 text-xs",
+							unavailable ? "text-destructive/70" : "text-muted-foreground",
+						)}
+					>
+						<StatusIcon aria-hidden className="size-3.5" />
+						<span>
+							{unavailable
+								? copy.disabled.unavailableStatus
+								: copy.disabled.inUseStatus}
+						</span>
+					</span>
+				) : metadata ? (
+					<span
+						data-slot="selection-option-metadata"
+						className="text-muted-foreground text-xs"
+					>
+						{metadata}
+					</span>
+				) : null}
+			</span>
+			<span
+				data-slot="menu-option-label"
+				className={cn("truncate font-medium", availability && "opacity-50")}
+			>
+				{label}
+			</span>
+		</span>
+	);
+}

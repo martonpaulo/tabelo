@@ -11,6 +11,7 @@ import type { PreconditionRecovery } from "@/ui/precondition-recovery";
 import { ControlTooltip } from "./control-tooltip";
 import { RecoveryButton } from "./recovery-command";
 import {
+	CompactOptionContent,
 	SelectionOptionContent,
 	type SelectionOptionContentProps,
 } from "./selection-option";
@@ -39,9 +40,14 @@ export function SingleSelectionOption({
 	label,
 	description,
 	metadata,
+	compact = false,
 }: {
 	readonly value: string;
 	readonly selected: boolean;
+	// A short choice drawn as a tile for a grid of options: icon and metadata on
+	// top, the label under them, no description (the list shows the chosen
+	// option's description once, below the grid).
+	readonly compact?: boolean;
 	readonly availability?: SelectionOptionContentProps["availability"];
 	// The correction for a choice a precondition refused. It is a sibling of
 	// the option, never part of it: the radio stays genuinely disabled and this
@@ -67,13 +73,22 @@ export function SingleSelectionOption({
 					"focus-within:outline-2 focus-within:outline-selection-edge focus-within:-outline-offset-2",
 				)}
 			>
-				<SelectionOptionContent
-					icon={icon}
-					label={label}
-					description={description}
-					metadata={metadata}
-					availability={availability}
-				/>
+				{compact ? (
+					<CompactOptionContent
+						icon={icon}
+						label={label}
+						metadata={metadata}
+						availability={availability}
+					/>
+				) : (
+					<SelectionOptionContent
+						icon={icon}
+						label={label}
+						description={description}
+						metadata={metadata}
+						availability={availability}
+					/>
+				)}
 				<RadioGroupItem
 					id={radioId}
 					value={value}
@@ -93,7 +108,7 @@ export function SingleSelectionOption({
 			{/* Indented under the option it repairs, matching the download
 			    options, so it reads as belonging to that row rather than as a
 			    choice of its own. */}
-			<div className="mt-1 pl-9">
+			<div className={compact ? "mt-1" : "mt-1 pl-9"}>
 				<RecoveryButton
 					recovery={recovery}
 					target={label}
