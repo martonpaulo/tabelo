@@ -139,6 +139,25 @@
 	html {
 		@apply font-sans;
 	}
+	/* Everything a click acts on shows the hand, once, here, rather than per
+	   component: Tailwind's preflight resets buttons to the arrow, and a missed
+	   trigger (a column menu, a row grip) is how the arrow kept coming back.
+	   A disabled control keeps its own not-allowed cursor from its utility. */
+	:is(
+		button,
+		summary,
+		[role="button"],
+		[role="menuitem"],
+		[role="menuitemradio"],
+		[role="menuitemcheckbox"],
+		[role="option"],
+		[role="tab"],
+		[role="switch"],
+		[role="radio"],
+		[role="checkbox"]
+	):not(:disabled, [aria-disabled="true"], [data-disabled]) {
+		cursor: pointer;
+	}
 }
 
 /* One stroke, drawn so a curve survives a low-density display.
