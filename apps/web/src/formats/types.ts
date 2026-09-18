@@ -74,6 +74,20 @@ export interface SourceFieldRange {
 	readonly to: number;
 }
 
+// One replacement in source text, as UTF-16 offsets into the text it applies
+// to: `from` to `to` becomes `insert`.
+export interface SourceEdit {
+	readonly from: number;
+	readonly to: number;
+	readonly insert: string;
+}
+
+export type StructuralAssistance = (
+	before: string,
+	after: string,
+	changed: readonly SourceRowRange[],
+) => SourceEdit | null;
+
 // A successful parse can still carry warnings: a ragged row is recoverable by
 // padding, and saying so is better than silently reshaping the user's table.
 export type ParseResult =
@@ -180,6 +194,15 @@ export interface TableCodec {
 	// keeps moving while the user repairs it. Absent for formats that nest
 	// rather than delimit, whose source views indent instead.
 	readonly sourceFields?: (text: string) => readonly SourceFieldRange[];
+	// This format's one structural-assistance feature, when it has one (#297).
+	// Given the draft before and after a user edit, and the ranges that edit
+	// changed in `after`, it returns at most one further edit to `after`, or
+	// null to leave the text exactly as typed. Pure and text-only by contract:
+	// it never reads the document, the store, or the editor, and it returns null
+	// whenever the draft does not settle what the change should be. The source
+	// editor lands the result in the same transaction as the triggering edit.
+	// See "Source text is free; structural assistance is narrow" in AGENTS.md.
+	readonly structuralAssistance?: StructuralAssistance;
 	// Text clipboard sniffing is format-owned. Lower priorities run first.
 	readonly sniffPriority?: number;
 	readonly canSniff?: (text: string) => boolean;

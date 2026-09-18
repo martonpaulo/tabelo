@@ -34,6 +34,7 @@ import {
 	type ViewUpdate,
 } from "@codemirror/view";
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { minimalChange } from "@/formats/minimal-change";
 import type { SourceFieldRange, SourceRowRange } from "@/formats/types";
 import {
 	notifyLocalHistoryChanged,
@@ -53,7 +54,6 @@ import { escapeSequenceGlyphs, escapeSyntax } from "./escape-sequences";
 import { sourceTabExtension } from "./field-navigation";
 import { htmlHeaderCells, htmlLanguage } from "./html-language";
 import { jiraLanguage } from "./jira-language";
-import { minimalChange } from "./minimal-change";
 import {
 	type OccurrenceSummary,
 	occurrenceSummary,

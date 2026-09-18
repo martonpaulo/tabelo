@@ -1,11 +1,10 @@
-export interface TextChange {
-	readonly from: number;
-	readonly to: number;
-	readonly insert: string;
-}
+import type { SourceEdit } from "./types";
 
 // Replaces only what actually changed, so an external update does not blow the
 // cursor to the end of the document. Shared prefix and suffix are preserved.
+// Format-neutral on purpose: synchronization uses it to push projected text into
+// an editor, and a codec's structural assistance uses it to keep its own edit
+// to the smallest differing range (#297).
 //
 // A view change now reuses the same editor, so this also has to describe the
 // step from one format's text to another's. Two unrelated formats share almost
@@ -14,7 +13,7 @@ export interface TextChange {
 export function minimalChange(
 	current: string,
 	next: string,
-): TextChange | null {
+): SourceEdit | null {
 	if (current === next) return null;
 
 	let start = 0;

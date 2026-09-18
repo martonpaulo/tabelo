@@ -1,5 +1,6 @@
 import { cellTextAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
+import { markdownDividerAssistance } from "./markdown-assistance";
 import {
 	alignmentMarker,
 	alignmentOf,
@@ -413,6 +414,7 @@ export const markdownCodec: TableCodec = {
 	mimeType: "text/markdown",
 	mapsSourceRows: true,
 	sourceFields: markdownFields,
+	structuralAssistance: markdownDividerAssistance,
 	parseMatrix: parseMarkdownMatrix,
 	parse: (text) => toDocumentParseResult(parseMarkdownMatrix(text)),
 	serialize: serializeMarkdown,
