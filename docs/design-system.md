@@ -53,7 +53,7 @@ importing card-heavy dashboard styling.
 The neutral palette and radius scale were first inspired by
 [petrroll/markdown-to-teams](https://github.com/petrroll/markdown-to-teams). On
 2026-09-18 the owner replaced them with the look of the approved start surface:
-warm neutral greys one step apart per layer, Inter, a deeper primary blue that
+warm neutral greys one step apart per layer, Figtree, a deeper primary blue that
 carries white text, and a 0.5rem/0.75rem radius scale.
 This is visual direction, not a template: Tabelo keeps its own blue accent,
 stronger element hierarchy, and explicit editable/read-only distinction. No
@@ -627,12 +627,12 @@ vertical.
 
 ### Typography
 
-Interface text uses Inter, self-hosted through `@fontsource-variable/inter` so
+Interface text uses Figtree, self-hosted through `@fontsource-variable/figtree` so
 no font request leaves the page, then `-apple-system, BlinkMacSystemFont,
 "Segoe UI", sans-serif` while it loads. The owner replaced the Microsoft stack
 on 2026-09-18, together with the warm neutral palette, because the interface
 read as dated; the spreadsheet reference that stack stood for no longer
-decides the type. The source editor keeps the existing
+decides the type. On 2026-09-19 the owner chose Figtree over Inter as the closest open face to the look he approved. The source editor keeps the existing
 `ui-monospace`, `SF Mono`, `Cascadia Mono`, `Menlo`, `monospace` stack.
 
 | Role | Classes |

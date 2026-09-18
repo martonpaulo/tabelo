@@ -67,10 +67,11 @@
 
 @theme inline {
 	--spacing-hairline: var(--hairline-w);
-	/* Inter, self-hosted by the app, with the platform face while it loads
+	/* Figtree, self-hosted by the app, with the platform face while it loads
 	   (docs/design-system.md, Typography; owner decision 2026-09-18). */
 	--font-sans:
-		"Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+		"Figtree Variable", -apple-system, BlinkMacSystemFont, "Segoe UI",
+		sans-serif;
 	/*
 	 * The fleet typography standard agrees with Tailwind here rather than
 	 * overriding it: the framework keeps its own `--text-*` ladder and its

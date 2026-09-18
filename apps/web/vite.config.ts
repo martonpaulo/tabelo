@@ -104,12 +104,12 @@ export default defineConfig({
 				scope: base,
 			},
 			workbox: {
-				// Workbox's default set plus the Latin Inter face, so the installed
+				// Workbox's default set plus the Latin Figtree face, so the installed
 				// app keeps its type offline. Other scripts fall back to the
 				// platform face, which the font stack already names.
 				globPatterns: [
 					"**/*.{js,wasm,css,html}",
-					"**/inter-latin-wght-*.woff2",
+					"**/figtree-latin-wght-*.woff2",
 				],
 			},
 			pwaAssets: {
