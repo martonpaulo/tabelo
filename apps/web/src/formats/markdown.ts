@@ -2,11 +2,17 @@ import stringWidth from "string-width";
 import { cellTextAt } from "@/core/cell-value";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import type { Alignment, TableDocument } from "@/core/types";
-import { lineSpans, toDocumentParseResult } from "./parse";
+import {
+	firstLineBlock,
+	lineSpans,
+	pipeCellSpans,
+	toDocumentParseResult,
+} from "./parse";
 import type {
 	EscapeMatcher,
 	MatrixParseResult,
 	ParseIssue,
+	SourceFieldRange,
 	SourceRowRange,
 	TableCodec,
 } from "./types";
@@ -201,34 +207,7 @@ export function unescapeCell(value: string): string {
 
 // Splits one table line into raw cells, honouring escaped pipes.
 function splitRow(line: string): string[] {
-	const source = line.trim();
-	const parts: string[] = [];
-	let current = "";
-	let endedOnPipe = false;
-
-	for (let index = 0; index < source.length; index += 1) {
-		const char = source[index];
-		if (char === "\\" && index + 1 < source.length) {
-			current += char + source[index + 1];
-			index += 1;
-			endedOnPipe = false;
-			continue;
-		}
-		if (char === "|") {
-			parts.push(current);
-			current = "";
-			endedOnPipe = true;
-			continue;
-		}
-		current += char;
-		endedOnPipe = false;
-	}
-	parts.push(current);
-
-	if (source.startsWith("|")) parts.shift();
-	if (endedOnPipe && parts.length > 0) parts.pop();
-
-	return parts.map((part) => part.trim());
+	return pipeCellSpans(line).map(({ from, to }) => line.slice(from, to).trim());
 }
 
 const DELIMITER_CELL = /^:?-+:?$/;
@@ -276,19 +255,12 @@ function markdownRows(
 
 function parseMarkdownMatrix(text: string): MatrixParseResult {
 	const lines = text.split(/\r?\n/);
-	const start = lines.findIndex((line) => line.trim() !== "");
-
-	if (start === -1) {
+	// A Markdown table is a contiguous block of non-blank lines.
+	const found = firstLineBlock(lines);
+	if (!found) {
 		return { ok: false, issues: [{ code: "empty-source" }] };
 	}
-
-	// A Markdown table is a contiguous block of non-blank lines.
-	let end = start;
-	while (end < lines.length) {
-		const line = lines[end];
-		if (line === undefined || line.trim() === "") break;
-		end += 1;
-	}
+	const { start, end } = found;
 	const block = lines.slice(start, end);
 	const headerLine = block[0];
 	const delimiterLine = block[1];
@@ -364,6 +336,51 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 	};
 }
 
+// A cell's padding is layout, not content, so a field starts at its first
+// visible character. An empty cell keeps one space of padding before the
+// caret when it has any, which is where the serializer would put its text.
+function markdownField(
+	lineFrom: number,
+	line: string,
+	span: SourceRowRange,
+): SourceFieldRange {
+	const cell = line.slice(span.from, span.to);
+	const leading = cell.length - cell.trimStart().length;
+	if (leading === cell.length) {
+		const caret = lineFrom + Math.min(span.from + 1, span.to);
+		return { from: caret, to: caret };
+	}
+	return {
+		from: lineFrom + span.from + leading,
+		to: lineFrom + span.from + cell.trimEnd().length,
+	};
+}
+
+// The cells of the table block in reading order, header first. The alignment
+// divider holds no content, so it is skipped when it is one; while the user is
+// still writing it, whatever the second line holds is treated as a row.
+function markdownFields(text: string): SourceFieldRange[] {
+	const lines = text.split(/\r?\n/);
+	const found = firstLineBlock(lines);
+	if (!found) return [];
+	const spans = lineSpans(text);
+	const fields: SourceFieldRange[] = [];
+	for (let index = found.start; index < found.end; index += 1) {
+		const line = lines[index];
+		const lineFrom = spans[index]?.from;
+		if (line === undefined || lineFrom === undefined) continue;
+		const cells = pipeCellSpans(line);
+		if (
+			index === found.start + 1 &&
+			isDelimiterRow(cells.map(({ from, to }) => line.slice(from, to).trim()))
+		) {
+			continue;
+		}
+		for (const cell of cells) fields.push(markdownField(lineFrom, line, cell));
+	}
+	return fields;
+}
+
 function serializeMarkdown(document: TableDocument): string {
 	// Pad columns to a common width so the source stays readable by hand. An
 	// empty cell is padded to hold the empty-value placeholder, because a source
@@ -433,6 +450,7 @@ export const markdownCodec: TableCodec = {
 	extension: "md",
 	mimeType: "text/markdown",
 	mapsSourceRows: true,
+	sourceFields: markdownFields,
 	parseMatrix: parseMarkdownMatrix,
 	parse: (text) => toDocumentParseResult(parseMarkdownMatrix(text)),
 	serialize: serializeMarkdown,

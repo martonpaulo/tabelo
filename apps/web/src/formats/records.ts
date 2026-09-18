@@ -1,10 +1,11 @@
 import { cellTextAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
-import { toDocumentParseResult } from "./parse";
+import { lineSpans, toDocumentParseResult } from "./parse";
 import type {
 	MatrixParseResult,
 	OutputOptions,
 	PreconditionFailure,
+	SourceFieldRange,
 	TableCodec,
 } from "./types";
 import { defaultOutputOptions } from "./types";
@@ -120,12 +121,16 @@ interface HeaderValue {
 	readonly value: string;
 }
 
-// Splits `<header>: <value>` on the first unescaped colon-space, honouring
-// the header's own escape sequences so an escaped `\: ` is never mistaken for
-// the boundary. A trailing bare colon means an empty value (rule 4: `- Status:`
-// parses to `""`, never a skipped bullet). Returns null when no boundary
-// exists at all, which is a malformed line.
-function splitHeaderValue(line: string): HeaderValue | null {
+// Where `<header>: <value>` divides, on the first unescaped colon-space,
+// honouring the header's own escape sequences so an escaped `\: ` is never
+// mistaken for the boundary. A trailing bare colon means an empty value (rule
+// 4: `- Status:` parses to `""`, never a skipped bullet). Returns null when no
+// boundary exists at all, which is a malformed line. One owner for the split:
+// the parse reads the two halves, and Tab navigation (#54) reads where the
+// value begins.
+function headerValueBoundary(
+	line: string,
+): { readonly headerEnd: number; readonly valueFrom: number } | null {
 	for (let index = 0; index < line.length; index += 1) {
 		const char = line[index];
 		if (char === "\\" && index + 1 < line.length) {
@@ -133,16 +138,40 @@ function splitHeaderValue(line: string): HeaderValue | null {
 			continue;
 		}
 		if (char === ":" && line[index + 1] === " ") {
-			return {
-				header: unescapeHeader(line.slice(0, index)),
-				value: unescapeValue(line.slice(index + 2)),
-			};
+			return { headerEnd: index, valueFrom: index + 2 };
 		}
 		if (char === ":" && index === line.length - 1) {
-			return { header: unescapeHeader(line.slice(0, index)), value: "" };
+			return { headerEnd: index, valueFrom: line.length };
 		}
 	}
 	return null;
+}
+
+function splitHeaderValue(line: string): HeaderValue | null {
+	const boundary = headerValueBoundary(line);
+	if (!boundary) return null;
+	return {
+		header: unescapeHeader(line.slice(0, boundary.headerEnd)),
+		value: unescapeValue(line.slice(boundary.valueFrom)),
+	};
+}
+
+// Every value in reading order: each record's title value, then its bullets'
+// values. Only values are stops. A label is structure the user moves past, and
+// nothing here writes one, so a draft line without a label simply offers no
+// stop. A bullet's `- ` holds no colon, so the boundary of the whole line is
+// the boundary of its bullet.
+function recordsFields(text: string): SourceFieldRange[] {
+	const spans = lineSpans(text);
+	const fields: SourceFieldRange[] = [];
+	for (const span of spans) {
+		const line = text.slice(span.from, span.to);
+		if (line.trim() === "") continue;
+		const boundary = headerValueBoundary(line);
+		if (!boundary) continue;
+		fields.push({ from: span.from + boundary.valueFrom, to: span.to });
+	}
+	return fields;
 }
 
 interface RecordBlock {
@@ -391,6 +420,7 @@ export const recordsCodec: TableCodec = {
 	},
 	extension: "records.txt",
 	mimeType: "text/plain",
+	sourceFields: recordsFields,
 	parseMatrix: parseRecordsMatrix,
 	parse: (text) => toDocumentParseResult(parseRecordsMatrix(text)),
 	serialize: serializeRecords,

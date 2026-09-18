@@ -6,6 +6,7 @@ import type {
 	CodecId,
 	MatrixParseResult,
 	ParseIssue,
+	SourceFieldRange,
 	SourceRowRange,
 	TableCodec,
 } from "./types";
@@ -157,6 +158,41 @@ export function parseDelimitedMatrix(
 	return { matrix, issues, rows };
 }
 
+// Where each field of each row sits, read off the same Papa Parse run that
+// produces the table rather than by searching for delimiters, so a delimiter
+// or a line break inside a quoted value is never a stop (#54). Papa Parse
+// reports each field's value and each row's extent; a field's width in the text
+// follows from its value, since an unquoted field is its value verbatim and a
+// quoted one adds its two quotes and doubles every quote inside. The separator
+// is the declared one, because that is the one a source view parses with
+// (#217). A malformed quote can make a width disagree with the text, so every
+// offset is clamped to its row: a stop can land imprecisely in a broken draft,
+// never outside it.
+function delimitedFields(text: string, delimiter: string): SourceFieldRange[] {
+	const { matrix, rows } = parseDelimitedMatrix(text, delimiter);
+	const fields: SourceFieldRange[] = [];
+	matrix.forEach((values, index) => {
+		const row = rows[index];
+		if (!row) return;
+		let at = row.from;
+		for (const value of values) {
+			const start = Math.min(at, row.to);
+			if (text[start] === '"') {
+				const quotes = value.split('"').length - 1;
+				const end = Math.min(row.to, start + value.length + quotes + 2);
+				const from = Math.min(start + 1, end);
+				fields.push({ from, to: Math.max(from, end - 1) });
+				at = end + delimiter.length;
+				continue;
+			}
+			const end = Math.min(row.to, start + value.length);
+			fields.push({ from: start, to: end });
+			at = end + delimiter.length;
+		}
+	});
+	return fields;
+}
+
 export function serializeDelimited(
 	document: TableDocument,
 	delimiter: string,
@@ -237,6 +273,7 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 		mimeType: config.mimeType,
 		mapsSourceRows: true,
 		fieldSeparator: config.delimiter,
+		sourceFields: (text) => delimitedFields(text, config.delimiter),
 		// Import and the clipboard carry text this product did not write, so a
 		// European semicolon file still has to open.
 		parseMatrix: (text) => readMatrix(text, config.sniffDelimiter),

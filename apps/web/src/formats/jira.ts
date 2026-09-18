@@ -1,10 +1,16 @@
 import { cellTextAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
-import { lineSpans, toDocumentParseResult } from "./parse";
+import {
+	firstLineBlock,
+	lineSpans,
+	pipeCellSpans,
+	toDocumentParseResult,
+} from "./parse";
 import type {
 	EscapeMatcher,
 	MatrixParseResult,
 	ParseIssue,
+	SourceFieldRange,
 	TableCodec,
 } from "./types";
 
@@ -100,36 +106,34 @@ export function unescapeJiraCell(value: string): string {
 }
 
 // Splits a Jira row on unescaped single pipes. Header rows arrive with their
-// doubled pipes already collapsed by the caller.
+// doubled pipes already collapsed by the caller. Unlike Markdown, Jira pads
+// nothing, so a cell's surrounding space is its own.
 function splitJiraRow(line: string): string[] {
-	const source = line.trim();
-	const parts: string[] = [];
-	let current = "";
-	let endedOnPipe = false;
+	return pipeCellSpans(line).map(({ from, to }) => line.slice(from, to));
+}
 
-	for (let index = 0; index < source.length; index += 1) {
-		const char = source[index];
-		if (char === "\\" && index + 1 < source.length) {
-			current += char + source[index + 1];
+// A header line with its doubled pipes collapsed to single ones, exactly as
+// `replace(/\|\|/g, "|")` collapses them, keeping the offset in the original
+// line of every collapsed character plus one past the end. A span found in the
+// collapsed text maps back through it, which is what lets the header's fields
+// come from the same splitter as every other row.
+function collapseHeaderPipes(line: string): {
+	readonly text: string;
+	readonly offsets: readonly number[];
+} {
+	let text = "";
+	const offsets: number[] = [];
+	for (let index = 0; index < line.length; index += 1) {
+		offsets.push(index);
+		if (line[index] === "|" && line[index + 1] === "|") {
+			text += "|";
 			index += 1;
-			endedOnPipe = false;
 			continue;
 		}
-		if (char === "|") {
-			parts.push(current);
-			current = "";
-			endedOnPipe = true;
-			continue;
-		}
-		current += char;
-		endedOnPipe = false;
+		text += line[index];
 	}
-	parts.push(current);
-
-	if (source.startsWith("|")) parts.shift();
-	if (endedOnPipe && parts.length > 0) parts.pop();
-
-	return parts;
+	offsets.push(line.length);
+	return { text, offsets };
 }
 
 const HEADER_LINE = /^\s*\|\|/;
@@ -143,18 +147,11 @@ export function isJiraHeaderLine(line: string): boolean {
 
 function parseJiraMatrix(text: string): MatrixParseResult {
 	const lines = text.split(/\r?\n/);
-	const start = lines.findIndex((line) => line.trim() !== "");
-
-	if (start === -1) {
+	const found = firstLineBlock(lines);
+	if (!found) {
 		return { ok: false, issues: [{ code: "empty-source" }] };
 	}
-
-	let end = start;
-	while (end < lines.length) {
-		const line = lines[end];
-		if (line === undefined || line.trim() === "") break;
-		end += 1;
-	}
+	const { start, end } = found;
 	const block = lines.slice(start, end);
 	const headerLine = block[0];
 
@@ -171,7 +168,7 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 	}
 
 	// Collapse the header's doubled pipes so one splitter handles both rows.
-	const headerCells = splitJiraRow(headerLine.replace(/\|\|/g, "|")).map(
+	const headerCells = splitJiraRow(collapseHeaderPipes(headerLine).text).map(
 		unescapeJiraCell,
 	);
 
@@ -197,6 +194,38 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 		// One line per row, header included.
 		rows: lineSpans(text).slice(start, end),
 	};
+}
+
+// The cells of the table block in reading order, header first. Every cell's
+// text is content, so a field spans all of it, and the header's doubled pipes
+// are mapped back to the line the user is editing.
+function jiraFields(text: string): SourceFieldRange[] {
+	const lines = text.split(/\r?\n/);
+	const found = firstLineBlock(lines);
+	if (!found) return [];
+	const spans = lineSpans(text);
+	const fields: SourceFieldRange[] = [];
+	for (let index = found.start; index < found.end; index += 1) {
+		const line = lines[index];
+		const lineFrom = spans[index]?.from;
+		if (line === undefined || lineFrom === undefined) continue;
+		// Only the block's first line is read as a header, as the parse reads it;
+		// a body line that happens to open with `||` is split like any other.
+		if (index === found.start && isJiraHeaderLine(line)) {
+			const { text: collapsed, offsets } = collapseHeaderPipes(line);
+			for (const cell of pipeCellSpans(collapsed)) {
+				fields.push({
+					from: lineFrom + (offsets[cell.from] ?? line.length),
+					to: lineFrom + (offsets[cell.to] ?? line.length),
+				});
+			}
+			continue;
+		}
+		for (const cell of pipeCellSpans(line)) {
+			fields.push({ from: lineFrom + cell.from, to: lineFrom + cell.to });
+		}
+	}
+	return fields;
 }
 
 function serializeJira(document: TableDocument): string {
@@ -225,6 +254,7 @@ export const jiraCodec: TableCodec = {
 	extension: "jira.txt",
 	mimeType: "text/plain",
 	mapsSourceRows: true,
+	sourceFields: jiraFields,
 	parseMatrix: parseJiraMatrix,
 	parse: (text) => toDocumentParseResult(parseJiraMatrix(text)),
 	serialize: serializeJira,

@@ -62,6 +62,18 @@ export interface SourceRowRange {
 	readonly to: number;
 }
 
+// Where one field's content sits in source text, as UTF-16 offsets, for the
+// source views that move between fields with Tab (#54). `from` is where typing
+// into the field begins: inside a quoted delimited field, after a Markdown
+// cell's padding, after a Records label. The ranges are ordered and come from
+// the format's own grammar, so a delimiter inside a quoted or escaped value is
+// never a stop. They describe the text as it stands, including a draft that
+// does not parse, and they never change it.
+export interface SourceFieldRange {
+	readonly from: number;
+	readonly to: number;
+}
+
 // A successful parse can still carry warnings: a ragged row is recoverable by
 // padding, and saying so is better than silently reshaping the user's table.
 export type ParseResult =
@@ -162,6 +174,12 @@ export interface TableCodec {
 	// separators only when that parse can answer; HTML, Records, and JSON have
 	// no reliable row boundary and do not declare it.
 	readonly mapsSourceRows?: boolean;
+	// The fields of `text` in reading order, header first, for the formats whose
+	// syntax is a grid of delimited fields (#54). Tolerant by design: a draft
+	// that fails to parse still yields whatever fields its lines spell, so Tab
+	// keeps moving while the user repairs it. Absent for formats that nest
+	// rather than delimit, whose source views indent instead.
+	readonly sourceFields?: (text: string) => readonly SourceFieldRange[];
 	// Text clipboard sniffing is format-owned. Lower priorities run first.
 	readonly sniffPriority?: number;
 	readonly canSniff?: (text: string) => boolean;
