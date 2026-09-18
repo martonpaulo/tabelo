@@ -16,6 +16,7 @@
 	--color-surface-gutter: var(--surface-gutter);
 	--color-surface-axis-selected: var(--surface-axis-selected);
 	--color-surface-readonly: var(--surface-readonly);
+	--color-surface-code: var(--surface-code);
 	--color-surface-floating: var(--surface-floating);
 
 	/* Separators. Subtle is the default; strong marks a panel boundary;
