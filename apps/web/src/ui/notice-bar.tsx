@@ -152,7 +152,9 @@ function NoticeRow({ notice }: { readonly notice: AppNotice }) {
 						<Button
 							variant="ghost"
 							size="icon-xs"
-							className="shrink-0"
+							// Taller than a line of text; the negative margin keeps the
+							// notice as tall as its message, not as its close button.
+							className="-my-1 -mr-1 shrink-0"
 							onClick={() => useTabeloStore.getState().dismissNotice(id)}
 						>
 							<IconX aria-hidden />

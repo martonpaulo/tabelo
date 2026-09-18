@@ -21,9 +21,13 @@ export function CellTypeMark({ type, context, className }: CellTypeMarkProps) {
 			data-cell-type-mark-context={context}
 			className={cn(
 				"pointer-events-none inline-flex shrink-0 items-center text-muted-foreground",
+				// A small symbol keeps a heavier stroke: at the product's 1.5 on a
+				// 24-unit icon, a 0.75rem mark draws lines under one device pixel
+				// wide, which blur on a 1x display (owner, 2026-09-19).
+				"[--icon-stroke-width:2]",
 				context === "cell"
 					? "h-content-line-box [&_svg]:size-(--text-cell-type-mark)"
-					: "[&_svg]:size-3",
+					: "[&_svg]:size-3.5",
 				className,
 			)}
 		>
