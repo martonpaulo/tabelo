@@ -18,7 +18,7 @@ import {
 } from "@codemirror/view";
 import type { SourceRowRange } from "@/formats/types";
 import { syntaxTheme } from "./editor-theme";
-import { setSourceRows } from "./row-separators";
+import { setSourceRows } from "./source-rows";
 
 // The pinned header of a source view (#252): while the table's header row is
 // scrolled out of sight, a copy of it stays at the top of the pane.

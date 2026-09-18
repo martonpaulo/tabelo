@@ -386,21 +386,11 @@ header portion of each Records field; every key inside every JSON object; and
 the contents of each `<th>` in HTML, which is the one format whose grammar
 marks no header and therefore gets a narrow project-owned decoration instead.
 
-**Rows are bounded by the table, not by the text** (#296). A source view draws
-one hairline, `--line-subtle`, under the last line of every semantic table row
-but the last, so a row reads as a unit without the pane turning into a grid. A
-row is the format's, never a text line's: the parse that reads the table
-returns where each row sits (`SourceRowRange`), and the view only draws it. So
-the Markdown alignment divider belongs to the header and the boundary falls
-after it, a CSV or TSV row with a quoted line break is one row bounded after its
-final line, and a wrapped line gains no boundary of its own. Markdown, Jira,
-CSV, and TSV declare the capability (`mapsSourceRows`); HTML and Records have no
-reliable source mapping yet and JSON has no row boundary at all, so they draw
-none. A draft that does not parse, including during its grace period, draws
-none either: Tabelo never guesses at partial structure. The stroke is a line
-decoration painted by the theme, so it adds no height, width, padding, caret
-offset, or text, and it takes `GrayText` in forced colours. It is never an
-alternating background and never a status colour.
+**Source views draw no row lines** (owner, 2026-09-19, reversing the row
+boundaries #296 drew). A source view is code, and a line between table rows
+turned it into a grid it is not. The parse still reports where each semantic row
+sits (`SourceRowRange`, declared by `mapsSourceRows`); the pinned header (#252)
+reads it to find the header row, and nothing draws it.
 
 **The header row stays in sight while the rows scroll** (decided on #252). Once
 the first line of a source view's header row has scrolled above the top of the

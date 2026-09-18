@@ -149,21 +149,6 @@ export const editorTheme = EditorView.theme({
 		textAlign: "right",
 	},
 	".cm-activeLine": { backgroundColor: "var(--active-line-fill)" },
-	// The boundary under a semantic table row (#296). Painted, never laid out:
-	// the stroke sits on the bottom edge of the row's last line, over every
-	// wrapped fragment of it, and takes no height, width, or caret offset. The
-	// line grid token, because it is table structure, not a status.
-	".cm-tabeloRowEnd": { position: "relative" },
-	".cm-tabeloRowEnd::after": {
-		content: '""',
-		position: "absolute",
-		left: "0",
-		right: "0",
-		bottom: "0",
-		height: "var(--hairline-w)",
-		backgroundColor: "var(--line-subtle)",
-		pointerEvents: "none",
-	},
 	// The pinned header (#252), a read-only copy of the header row floating over
 	// the top of the text while the real one is scrolled away. It paints the
 	// pane surface, opaque, because live rows pass underneath it, and its edge is

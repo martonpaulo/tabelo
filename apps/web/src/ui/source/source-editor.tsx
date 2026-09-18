@@ -65,8 +65,8 @@ import {
 } from "./occurrence-selection";
 import { pinnedHeader, pinnedHeaderSetup } from "./pinned-header";
 import { recordsLanguage } from "./records-language";
-import { setSourceRows, sourceRowSeparators } from "./row-separators";
 import { SourceContextMenu } from "./source-context-menu";
+import { setSourceRows } from "./source-rows";
 import { assistanceExtension } from "./structural-assistance";
 import { indicatorClasses, spaceScope } from "./whitespace-indicators";
 
@@ -423,7 +423,6 @@ export function SourceEditor({
 					EditorState.allowMultipleSelections.of(true),
 					drawSelection(),
 					drawnSelection,
-					sourceRowSeparators,
 					highlightActiveLine(),
 					highlightActiveLineGutter(),
 					wrapCompartment.of(wrapExtension(wrap)),

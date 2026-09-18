@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { csvCodec } from "@/formats/csv";
 import type { TableCodec } from "@/formats/types";
 import { pinnedHeader, pinnedHeaderRange } from "./pinned-header";
-import { setSourceRows } from "./row-separators";
+import { setSourceRows } from "./source-rows";
 
 // Which text a source pane pins (#252): the first row its codec maps, carried
 // through typing between one parse and the next, and nothing when the rows
