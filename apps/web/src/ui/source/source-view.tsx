@@ -110,6 +110,8 @@ export default function SourceView({
 				wrap={wrap}
 				value={draft?.text ?? projected.text}
 				language={view.highlight}
+				tabBehaviour={view.capabilities.sourceTab}
+				sourceFields={view.codec?.sourceFields}
 				spaceIndicators={spaceIndicators}
 				tabIndicators={tabIndicators}
 				emptyValueIndicators={emptyValueIndicators}

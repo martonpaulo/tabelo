@@ -172,6 +172,7 @@ reversible implementation choice does not belong here.
 | Sort, find, and fill | Sorting and find are in scope; fill repeats and offers a numeric series | design system §9 | #143, #144, #150 |
 | `Mod`+`D` | Belongs to a focused editable source editor and to the grid, unconditionally; the grid adds the next cell with exactly the same value | design system §9 | #232, #361 |
 | Empty source field | One caret stop, at the value start | design system §2 | #345 |
+| `Tab` in a source editor | Never leaves the editor; grid-shaped formats move between parsed fields, wrapping; JSON and HTML indent; `Escape` exits | design system §9 | #54 |
 
 ### Accessibility and presentation
 

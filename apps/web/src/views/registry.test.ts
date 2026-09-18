@@ -22,6 +22,29 @@ describe("view loading declarations", () => {
 	});
 });
 
+// Tab inside a source editor is registry data (#54): every editable source view
+// declares what it does, a view that moves between fields has a codec that can
+// find them, and a view without a source editor claims nothing.
+
+describe("source Tab declarations", () => {
+	it("declares a Tab behaviour for every editable source view", () => {
+		for (const view of listViews()) {
+			if (view.kind === "source" && canParse(view)) {
+				expect(view.capabilities.sourceTab).not.toBeNull();
+			} else {
+				expect(view.capabilities.sourceTab).toBeNull();
+			}
+		}
+	});
+
+	it("gives every field-navigating view a codec that reports fields", () => {
+		for (const view of listViews()) {
+			if (view.capabilities.sourceTab !== "next-field") continue;
+			expect(view.codec?.sourceFields).toBeTypeOf("function");
+		}
+	});
+});
+
 // An imported or pasted source names a format, and the workspace can only open
 // it through a view that reads and writes it. The mapping is a search over the
 // registry rather than a table, so a newly registered format is openable with

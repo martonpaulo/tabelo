@@ -19,6 +19,13 @@ export type HighlightLanguage =
 	| "records"
 	| "plain";
 
+// What Tab and Shift+Tab do inside a source editor (#54). Neither ever moves
+// focus out of the pane: Escape is the exit.
+//  - "next-field": move the caret to the next or previous field of the
+//    format's own grammar, wrapping at the ends. The codec supplies the fields.
+//  - "indent": indent or outdent by one unit, for formats that nest.
+export type SourceTabBehaviour = "next-field" | "indent";
+
 export interface ViewCapabilities {
 	// Can the user change the table from inside this view?
 	readonly editable: boolean;
@@ -32,6 +39,9 @@ export interface ViewCapabilities {
 	readonly textClipboard: boolean;
 	// Do row and column operations apply while this view has focus?
 	readonly tableOperations: boolean;
+	// Tab inside this view's source editor. Null for a view with no source
+	// editor, whose Tab belongs to its own keyboard model.
+	readonly sourceTab: SourceTabBehaviour | null;
 }
 
 export interface ViewDefinition {

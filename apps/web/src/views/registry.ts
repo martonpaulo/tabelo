@@ -32,6 +32,7 @@ const gridCapabilities = {
 	structuredClipboard: true,
 	textClipboard: false,
 	tableOperations: true,
+	sourceTab: null,
 } as const;
 
 const sourceCapabilities = {
@@ -43,9 +44,22 @@ const sourceCapabilities = {
 	tableOperations: false,
 } as const;
 
+// Formats that are a grid of delimited fields move between fields on Tab, and
+// formats that nest indent. See SourceTabBehaviour.
+const fieldSourceCapabilities = {
+	...sourceCapabilities,
+	sourceTab: "next-field",
+} as const;
+
+const nestedSourceCapabilities = {
+	...sourceCapabilities,
+	sourceTab: "indent",
+} as const;
+
 const readOnlySourceCapabilities = {
 	...sourceCapabilities,
 	editable: false,
+	sourceTab: null,
 } as const;
 
 const registry: Record<ViewId, ViewDefinition> = {
@@ -69,7 +83,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: markdownCodec,
 		highlight: "markdown",
-		capabilities: sourceCapabilities,
+		capabilities: fieldSourceCapabilities,
 		// Every source view shares one lazily loaded CodeMirror bundle.
 		loading: "lazy",
 	},
@@ -81,7 +95,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: csvCodec,
 		highlight: "delimited",
-		capabilities: sourceCapabilities,
+		capabilities: fieldSourceCapabilities,
 		loading: "lazy",
 	},
 
@@ -92,7 +106,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: tsvCodec,
 		highlight: "delimited",
-		capabilities: sourceCapabilities,
+		capabilities: fieldSourceCapabilities,
 		loading: "lazy",
 	},
 
@@ -103,7 +117,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: htmlCodec,
 		highlight: "html",
-		capabilities: sourceCapabilities,
+		capabilities: nestedSourceCapabilities,
 		loading: "lazy",
 	},
 
@@ -114,7 +128,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: jiraCodec,
 		highlight: "jira",
-		capabilities: sourceCapabilities,
+		capabilities: fieldSourceCapabilities,
 		loading: "lazy",
 	},
 
@@ -125,7 +139,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: jsonCodec,
 		highlight: "json",
-		capabilities: sourceCapabilities,
+		capabilities: nestedSourceCapabilities,
 		loading: "lazy",
 	},
 
@@ -136,7 +150,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: recordsCodec,
 		highlight: "records",
-		capabilities: sourceCapabilities,
+		capabilities: fieldSourceCapabilities,
 		loading: "lazy",
 	},
 

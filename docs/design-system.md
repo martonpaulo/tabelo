@@ -1919,6 +1919,51 @@ matching resize cursor; reorder grips use `grab`, and `grabbing` while held;
 the fill handle uses `crosshair`; disabled controls use `not-allowed`. Do not
 apply a pointer cursor to passive labels or read-only content.
 
+### The source-editor keyboard model
+
+A source editor is a text editor first, so it keeps CodeMirror's own editing
+keys, and the table above does not apply inside it. What it adds is decided per
+view by the registry, never per format in the editor: each editable source view
+declares what `Tab` does (`sourceTab` in its capabilities), and a view that
+moves between fields reads them from its codec's own grammar. Decided on #54.
+
+**`Tab` never leaves a source editor.** A `Tab` that moved focus to the next
+pane mid-typing is the one thing a table editor must not do, and in TSV it is
+the delimiter the user was about to type. So every source editor consumes it,
+whatever its view declares, and `Escape` is the exit, exactly as in the grid:
+it returns focus to the pane frame, from where `Tab` walks the workspace ring.
+The editor is therefore not a keyboard trap, and the exit is one key.
+
+**Grid-shaped formats move between fields.** Markdown, CSV, TSV, Jira, and
+Records declare `next-field`. `Tab` puts the caret at the start of the next
+field's content, `Shift`+`Tab` at the previous one, and both wrap at the ends of
+the text. A field is what the format's parser reads as one, so a delimiter or
+a line break inside a quoted CSV value, an escaped pipe in Markdown or Jira, and
+an escaped separator in a Records label are never stops. The separator is the
+one the view parses with, so a semicolon in the CSV view is data (#217). A
+field's content starts inside a quoted value's quotes, after a Markdown cell's
+padding, and after a Records label: only values are stops, and nothing is
+inserted to make one. The caret belongs to the field it is in, or to the one it
+follows when it sits on a delimiter or padding. A draft that does not parse
+still moves, over whatever fields its text spells; the stop only moves the
+caret and never changes the text. In these views `Enter` inserts a plain line
+break: their whitespace is data or padding, so nothing is copied from the line
+above and nothing after the caret is removed.
+
+**Nesting formats indent.** JSON and HTML declare `indent`. `Tab` indents the
+line by one unit and `Shift`+`Tab` outdents it; the unit is two spaces, the
+indentation the serializer writes. `Enter` continues the new line at the
+syntactic depth, and typing a closing bracket or tag re-indents its line. Each
+indentation is one ordinary edit: one step of local undo, then the document
+timeline beyond it (ADR 0003), and a draft like any other typing.
+
+| Key | Field views | Indent views |
+| :--- | :--- | :--- |
+| `Tab` | Next field, wrapping to the first | Indent the line one unit |
+| `Shift`+`Tab` | Previous field, wrapping to the last | Outdent the line one unit |
+| `Enter` | A plain line break | A line break at the current depth |
+| `Escape` | Return focus to the pane frame | Return focus to the pane frame |
+
 ### Naming inside the grid
 
 A cell is named by **its value**, never by its coordinates. Row and column

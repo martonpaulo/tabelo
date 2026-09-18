@@ -34,18 +34,23 @@ import {
 	type ViewUpdate,
 } from "@codemirror/view";
 import { useEffect, useLayoutEffect, useRef } from "react";
-import type { SourceRowRange } from "@/formats/types";
+import type { SourceFieldRange, SourceRowRange } from "@/formats/types";
 import {
 	notifyLocalHistoryChanged,
 	registerLocalHistory,
 } from "@/history/coordinator";
 import type { SpaceIndicators } from "@/preferences/contract";
-import type { HighlightLanguage, ViewId } from "@/views/types";
+import type {
+	HighlightLanguage,
+	SourceTabBehaviour,
+	ViewId,
+} from "@/views/types";
 import { csvLanguage } from "./csv-language";
 import { drawnSelection } from "./drawn-selection";
 import { syntaxTheme } from "./editor-theme";
 import { emptyValueMarkers, emptyValueSyntax } from "./empty-values";
 import { escapeSequenceGlyphs, escapeSyntax } from "./escape-sequences";
+import { sourceTabExtension } from "./field-navigation";
 import { htmlHeaderCells, htmlLanguage } from "./html-language";
 import { jiraLanguage } from "./jira-language";
 import { minimalChange } from "./minimal-change";
@@ -72,6 +77,7 @@ const historyCompartment = new Compartment();
 const metricsCompartment = new Compartment();
 const wrapCompartment = new Compartment();
 const indicatorCompartment = new Compartment();
+const tabCompartment = new Compartment();
 
 // Everything the editor draws at the pane's scale, the text, the gutter width,
 // and the caret, reads `--pane-zoom` from the cascade, and the pane body is the
@@ -249,6 +255,21 @@ function languageFor(language: HighlightLanguage) {
 	}
 }
 
+// The fields are read through the handler ref at the moment Tab is pressed, so
+// the extension only changes when the behaviour does.
+function tabExtension(
+	behaviour: SourceTabBehaviour | null,
+	handlers: {
+		readonly current: {
+			readonly sourceFields?: (text: string) => readonly SourceFieldRange[];
+		};
+	},
+): Extension {
+	return Prec.high(
+		sourceTabExtension(behaviour, () => handlers.current.sourceFields),
+	);
+}
+
 interface SourceEditorProps {
 	readonly paneId: string;
 	// Which view this editor is currently serving. The editor outlives a view
@@ -259,6 +280,10 @@ interface SourceEditorProps {
 	readonly wrap: boolean;
 	readonly value: string;
 	readonly language: HighlightLanguage;
+	// What Tab does here, from the view registry, and the fields the format's
+	// grammar finds in the text, for the views that move between fields (#54).
+	readonly tabBehaviour: SourceTabBehaviour | null;
+	readonly sourceFields?: (text: string) => readonly SourceFieldRange[];
 	// The three global display preferences from #93, and the separator this
 	// view's format writes, which is what tells the empty-value marker where a
 	// field ends. All of them are read here rather than stored: no pane owns
@@ -298,6 +323,8 @@ export function SourceEditor({
 	wrap,
 	value,
 	language,
+	tabBehaviour,
+	sourceFields,
 	spaceIndicators,
 	tabIndicators,
 	emptyValueIndicators,
@@ -321,6 +348,7 @@ export function SourceEditor({
 	// Handlers are read through refs so the editor is created exactly once.
 	// tearing it down on every render would destroy history and cursor state.
 	const handlers = useRef({
+		sourceFields,
 		onChange,
 		onUndoBeyondLocal,
 		onRedoBeyondLocal,
@@ -328,6 +356,7 @@ export function SourceEditor({
 		onOccurrenceAdded,
 	});
 	handlers.current = {
+		sourceFields,
 		onChange,
 		onUndoBeyondLocal,
 		onRedoBeyondLocal,
@@ -371,6 +400,8 @@ export function SourceEditor({
 						),
 					),
 					languageCompartment.of(languageFor(language)),
+					// Above the default keymap, which would otherwise take Enter.
+					tabCompartment.of(tabExtension(tabBehaviour, handlers)),
 					diagnosticsCompartment.of(diagnosticExtension(diagnostics)),
 					editableCompartment.of(EditorView.editable.of(editable)),
 					syntaxTheme,
@@ -443,7 +474,16 @@ export function SourceEditor({
 							},
 						]),
 					),
-					keymap.of([...defaultKeymap, ...historyKeymap]),
+					keymap.of([
+						...defaultKeymap,
+						...historyKeymap,
+						// CodeMirror leaves Tab unbound so focus can escape, but a
+						// source view's exit is Escape, and a Tab that left the pane
+						// mid-typing is the one thing a table editor must not do. A view
+						// whose behaviour did not take the key still keeps it here.
+						// See docs/design-system.md, "The source-editor keyboard model".
+						{ key: "Tab", run: () => true, shift: () => true },
+					]),
 
 					EditorView.updateListener.of((update) => {
 						notifyLocalHistoryChanged();
@@ -577,6 +617,14 @@ export function SourceEditor({
 			effects: languageCompartment.reconfigure(languageFor(language)),
 		});
 	}, [language]);
+
+	useEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: tabCompartment.reconfigure(tabExtension(tabBehaviour, handlers)),
+		});
+	}, [tabBehaviour]);
 
 	// Reconfigured rather than remounted, so switching the preference keeps the
 	// caret, the selection, the pane's own wrap choice, and the local undo
