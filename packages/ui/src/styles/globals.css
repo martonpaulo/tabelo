@@ -140,6 +140,11 @@
 	html {
 		@apply font-sans;
 	}
+	/* Every native text caret wears the source editor's caret colour, so a
+	   field and a source view show one caret. The browser owns its width. */
+	:is(input, textarea, [contenteditable="true"]) {
+		caret-color: var(--selection-edge);
+	}
 	/* Everything a click acts on shows the hand, once, here, rather than per
 	   component: Tailwind's preflight resets buttons to the arrow, and a missed
 	   trigger (a column menu, a row grip) is how the arrow kept coming back.
