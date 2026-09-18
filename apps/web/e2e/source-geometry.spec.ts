@@ -324,7 +324,7 @@ test("a selection band covers the whole line box, on one line or several", async
 	await expect.poll(bandsCoverTheirLines).toBe(true);
 });
 
-// #359: the caret is one hairline, placed on whole device pixels at every
+// #359: the caret is placed on whole device pixels and keeps one width at every
 // column, so it looks the same at the start of a line and in the middle of it.
 test("the source caret sits on whole device pixels at every column", async ({
 	tabelo,
@@ -333,24 +333,20 @@ test("the source caret sits on whole device pixels at every column", async ({
 	const source = tabelo.source("markdown");
 	await source.fill(peopleTable);
 	await source.focus();
-	const caretOnPixel = () =>
+	const caretStroke = () =>
 		tabelo.pane("markdown").evaluate((node) => {
 			const caret = node.querySelector<HTMLElement>(".cm-tabeloCaret-primary");
-			if (!caret) return false;
-			const box = caret.getBoundingClientRect();
-			const ratio = window.devicePixelRatio;
-			const edge = box.left * ratio;
-			// The hairline is 0.0625rem, one CSS pixel at the default size.
-			return (
-				Math.abs(edge - Math.round(edge)) < 0.01 &&
-				Number.parseFloat(getComputedStyle(caret).borderLeftWidth) === 1
-			);
+			if (!caret) return null;
+			const edge = caret.getBoundingClientRect().left * window.devicePixelRatio;
+			if (Math.abs(edge - Math.round(edge)) >= 0.01) return null;
+			return getComputedStyle(caret).borderLeftWidth;
 		});
 
 	await page.keyboard.press("ControlOrMeta+Home");
-	await expect.poll(caretOnPixel).toBe(true);
+	await expect.poll(caretStroke).not.toBeNull();
+	const firstColumn = await caretStroke();
 	for (let step = 0; step < 7; step += 1) {
 		await page.keyboard.press("ArrowRight");
-		await expect.poll(caretOnPixel).toBe(true);
+		await expect.poll(caretStroke).toBe(firstColumn);
 	}
 });

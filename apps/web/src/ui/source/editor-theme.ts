@@ -161,12 +161,12 @@ export const editorTheme = EditorView.theme({
 	// are simply not shown.
 	".cm-selectionLayer, .cm-cursorLayer": { display: "none" },
 	".cm-tabeloCaretLayer": { pointerEvents: "none" },
-	// One hairline, the width of the browser's own caret in every other text
-	// field. Its position is snapped to device pixels where it is measured, so
-	// it is equally sharp at every column (#359).
+	// Two hairlines wide: the owner found the one-hairline caret too thin to
+	// find at a glance (2026-09-18). Its position is snapped to device pixels
+	// where it is measured, so it is equally sharp at every column (#359).
 	".cm-tabeloCaret, .cm-dropCursor": {
 		display: "none",
-		borderLeft: "var(--hairline-w) solid var(--selection-edge)",
+		borderLeft: "calc(2 * var(--hairline-w)) solid var(--selection-edge)",
 		height: "calc(var(--pane-zoom, 1) * 1.25rem) !important",
 		marginTop: "calc(var(--pane-zoom, 1) * -0.125rem)",
 	},
