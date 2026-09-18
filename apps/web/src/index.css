@@ -1,3 +1,4 @@
+@import "@fontsource-variable/inter";
 @import "@tabelo/ui/globals.css";
 
 /* Tabelo's semantic token layer.
@@ -81,28 +82,31 @@
 :root {
 	color-scheme: dark;
 
-	--surface-app: #1f1f1f;
-	--surface-panel: #292929;
-	--surface-header: #333333;
+	/* Warm neutral greys, one step apart per layer (2026-09-18 restyle, from
+	   the approved start-surface design): the page, the panes on it, and the
+	   chrome inside a pane each read as their own plane. */
+	--surface-app: #1c1c1b;
+	--surface-panel: #262624;
+	--surface-header: #30302d;
 	--surface-table-header: rgb(77 166 255 / 10%);
-	--surface-gutter: #333333;
+	--surface-gutter: #30302d;
 	/* A column letter or row number that the selection reaches. A neutral step
 	   above the chrome it sits on, never the selection tint: that colour means
 	   selected data, and the letters and numbers are controls. It stays darker
 	   than `--line-subtle` so every divider still reads across it. */
-	--surface-axis-selected: #3d3d3d;
-	--surface-readonly: #242424;
-	--surface-floating: #3a3a3a;
+	--surface-axis-selected: #3a3a37;
+	--surface-readonly: #222221;
+	--surface-floating: #2c2c2a;
 
-	--line-subtle: #464646;
-	--line-strong: #545454;
+	--line-subtle: #3a3a37;
+	--line-strong: #4a4a46;
 	/* Structure lines separate content that is already there. This one has to
 	   prove a layer is floating above unrelated content, so it carries the
 	   3:1 that WCAG 1.4.11 asks of anything required to identify a component,
 	   against every surface a floating layer can cover.
 	   https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html */
-	--line-floating: #949494;
-	--control-outline: #8a8a8a;
+	--line-floating: #949490;
+	--control-outline: #8a8984;
 
 	--selection-fill: rgb(77 166 255 / 24%);
 	--text-selection-fill: rgb(77 166 255 / 32%);
@@ -152,17 +156,21 @@
 
 	/* Keep shadcn primitives on the same neutral product surfaces. */
 	--background: var(--surface-panel);
-	--foreground: #ffffff;
+	--foreground: #f0eee8;
 	--card: var(--surface-panel);
 	--card-foreground: var(--foreground);
 	--popover: var(--surface-floating);
 	--popover-foreground: var(--foreground);
-	--primary: #4da6ff;
-	--primary-foreground: #1f1f1f;
+	/* White text on it clears 4.5:1, and the fill itself clears 3:1 against
+	   the panel and floating surfaces, where it also marks a checked control. */
+	--primary: #2b76cb;
+	--primary-foreground: #ffffff;
 	--secondary: var(--surface-header);
 	--secondary-foreground: var(--foreground);
-	--muted: var(--surface-header);
-	--muted-foreground: #d6d6d6;
+	/* One step above the floating surface, so an option block reads as a
+	   control on a menu or dialog rather than as a hole in it. */
+	--muted: #353532;
+	--muted-foreground: #b4b2a9;
 	--accent: #17324a;
 	--accent-foreground: #75b6e7;
 	--destructive: #fca5a5;

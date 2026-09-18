@@ -594,14 +594,19 @@ vertical.
 
 ### Typography
 
-Interface text uses `"Segoe UI", Aptos, Calibri, -apple-system,
-BlinkMacSystemFont, sans-serif`. The source editor keeps the existing
+Interface text uses Inter, self-hosted through `@fontsource-variable/inter` so
+no font request leaves the page, then `-apple-system, BlinkMacSystemFont,
+"Segoe UI", sans-serif` while it loads. The owner replaced the Microsoft stack
+on 2026-09-18, together with the warm neutral palette, because the interface
+read as dated; the spreadsheet reference that stack stood for no longer
+decides the type. The source editor keeps the existing
 `ui-monospace`, `SF Mono`, `Cascadia Mono`, `Menlo`, `monospace` stack.
 
 | Role | Classes |
 | :--- | :--- |
 | Pane title | `text-sm font-medium` |
-| Dialog title | `text-base font-semibold`, owned by the shared `DialogTitle` and never overridden per dialog: the one interface text above `text-sm` |
+| Start surface title | `text-xl font-semibold`: the product name on the first-visit surface, the one text above the dialog title |
+| Dialog title | `text-base font-semibold`, owned by the shared `DialogTitle` and never overridden per dialog |
 | Dialog section | `text-sm font-medium` |
 | Control label | `text-sm font-medium` |
 | Nested setting | `text-sm font-normal`: a setting inside a dialog section, and the options it owns |
@@ -1459,7 +1464,7 @@ its rounded grid interior is an opaque dark surface, while the padding outside
 that silhouette stays transparent. It uses one fixed palette in every browser
 theme. The generator keeps that transparent exterior in the favicon and the
 ordinary PWA icons, and composites the maskable and Apple outputs, whose
-platforms fill transparency with a colour of their own, onto `#1f1f1f` with the
+platforms fill transparency with a colour of their own, onto `#1c1c1b` with the
 safe-area padding those contexts need. Decided on #307, replacing the separate
 blue-field source. The mark must remain legible at 1rem, use only product
 colours, and keep the grid silhouette intact.

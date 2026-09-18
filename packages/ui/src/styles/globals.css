@@ -67,11 +67,10 @@
 
 @theme inline {
 	--spacing-hairline: var(--hairline-w);
-	/* The Microsoft stack is a recorded product decision, not drift: the product
-	   imitates a spreadsheet and Segoe/Aptos/Calibri is the reference
-	   (skill-deck/docs/typography-standard.md, and docs/design-system.md). */
+	/* Inter, self-hosted by the app, with the platform face while it loads
+	   (docs/design-system.md, Typography; owner decision 2026-09-18). */
 	--font-sans:
-		"Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+		"Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	/*
 	 * The fleet typography standard agrees with Tailwind here rather than
 	 * overriding it: the framework keeps its own `--text-*` ladder and its

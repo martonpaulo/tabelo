@@ -173,11 +173,8 @@ function Option({
 			onClick={onClick}
 			className={cn(
 				"flex w-full cursor-pointer items-center gap-3 rounded-surface px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-selection-edge focus-visible:outline-offset-2",
-				// White text needs a deeper blue than the primary fill, which is
-				// tuned for dark text: on it, white falls to about 2.5:1. Mixing the
-				// same blue toward black keeps one hue and brings white above 4.5:1.
 				primary
-					? "bg-[color-mix(in_oklab,var(--primary)_55%,black)] text-white hover:bg-[color-mix(in_oklab,var(--primary)_62%,black)]"
+					? "bg-primary text-primary-foreground hover:bg-primary/90"
 					: "bg-muted text-foreground hover:bg-muted/70",
 			)}
 		>
@@ -187,7 +184,7 @@ function Option({
 				<span
 					className={cn(
 						"text-xs",
-						primary ? "text-white/80" : "text-muted-foreground",
+						primary ? "text-primary-foreground" : "text-muted-foreground",
 					)}
 				>
 					{detail}
@@ -198,7 +195,7 @@ function Option({
 					aria-hidden
 					className={cn(
 						"shrink-0 font-source text-xs",
-						primary ? "text-white/80" : "text-muted-foreground",
+						primary ? "text-primary-foreground" : "text-muted-foreground",
 					)}
 				>
 					{shortcut.shown}
