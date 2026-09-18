@@ -148,18 +148,20 @@ function NoticeRow({ notice }: { readonly notice: AppNotice }) {
 					) : null}
 				</div>
 				{notice.dismissible ? (
-					<ControlTooltip name={copy.actions.dismiss}>
-						<Button
-							variant="ghost"
-							size="icon-xs"
-							// Taller than a line of text; the negative margin keeps the
-							// notice as tall as its message, not as its close button.
-							className="-my-1 -mr-1 shrink-0"
-							onClick={() => useTabeloStore.getState().dismissNotice(id)}
-						>
-							<IconX aria-hidden />
-						</Button>
-					</ControlTooltip>
+					<span className="flex h-5 shrink-0 items-center">
+						<ControlTooltip name={copy.actions.dismiss}>
+							<Button
+								variant="ghost"
+								size="icon-xs"
+								// Centred on the first line of text, overflowing it evenly, so
+								// the notice is as tall as its message, not its close button.
+								className="-mr-1 shrink-0"
+								onClick={() => useTabeloStore.getState().dismissNotice(id)}
+							>
+								<IconX aria-hidden />
+							</Button>
+						</ControlTooltip>
+					</span>
 				) : null}
 			</div>
 		</Notice>

@@ -141,7 +141,7 @@ floating layer is set apart by its own surface and a deep shadow, with a soft
 recognizable as mutable table data instead of reading as disabled chrome. Use
 tones to group related content before adding a line. Every pane's content, editable
 or read-only, sits in one `--surface-code` box (owner, 2026-09-19); a read-only
-pane says so with the written "Read only" cue in its header, not with a tone.
+pane says so with a quiet lock in its header whose name and tooltip are "Read only", not with a tone.
 
 ### Lines
 

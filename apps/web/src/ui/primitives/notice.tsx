@@ -65,10 +65,14 @@ export function Notice({
 					!floating && "bg-muted",
 				)}
 			>
-				<Icon
-					aria-hidden
-					className={cn("mt-0.5 size-4.5 shrink-0", severityTone[severity])}
-				/>
+				{/* Centred on the first line of text, so icon, message, and close
+				    button share one line however many lines the message takes. */}
+				<span className="flex h-5 shrink-0 items-center">
+					<Icon
+						aria-hidden
+						className={cn("size-4.5", severityTone[severity])}
+					/>
+				</span>
 				<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
 					{children}
 				</div>

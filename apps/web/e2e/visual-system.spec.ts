@@ -524,23 +524,17 @@ test("source focus belongs to the pane and its selection matches the native one"
 	expect(colours.drawn).toBe(colours.native);
 });
 
-test("read-only panes use a written cue and a distinct surface", async ({
-	tabelo,
-}) => {
+test("a read-only pane says so in its header", async ({ tabelo }) => {
 	await tabelo.choosePaneView("markdown", "html-preview");
-	const editablePane = tabelo.pane("grid");
 	const readOnlyPane = tabelo.pane("html-preview");
+	const editablePane = tabelo.pane("grid");
 
 	await expect(
-		readOnlyPane.getByText(copy.workspace.readOnly, { exact: true }),
+		readOnlyPane.getByRole("img", { name: copy.workspace.readOnly }),
 	).toBeVisible();
-	const editableBackground = await editablePane
-		.locator('[data-slot="panel-body"]')
-		.evaluate((element) => getComputedStyle(element).backgroundColor);
-	const readOnlyBackground = await readOnlyPane
-		.locator('[data-slot="panel-body"]')
-		.evaluate((element) => getComputedStyle(element).backgroundColor);
-	expect(readOnlyBackground).not.toBe(editableBackground);
+	await expect(
+		editablePane.getByRole("img", { name: copy.workspace.readOnly }),
+	).toHaveCount(0);
 });
 
 test("a two-pane layout keeps the same compact hierarchy without extra framing", async ({

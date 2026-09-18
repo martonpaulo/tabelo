@@ -19,6 +19,7 @@ import {
 	IconArrowsMove,
 	IconChevronDown,
 	IconClipboardCopy,
+	IconLock,
 	IconReplace,
 	IconRotate,
 	IconRuler,
@@ -66,10 +67,18 @@ export function PaneIdentity({ view, compact }: PaneIdentityProps) {
 			<Icon aria-hidden className="shrink-0 text-muted-foreground" />
 			<span className="truncate">{compact ? view.shortLabel : view.label}</span>
 
+			{/* A quiet lock with the words in its tooltip and accessible name,
+			    rather than an outlined chip (owner, 2026-09-19). */}
 			{view.capabilities.editable ? null : (
-				<span className="shrink-0 rounded-interactive bg-surface-panel px-1.5 py-0.5 font-normal text-muted-foreground text-xs ring-1 ring-line-subtle">
-					{copy.workspace.readOnly}
-				</span>
+				<ControlTooltip name={copy.workspace.readOnly}>
+					<span
+						role="img"
+						aria-label={copy.workspace.readOnly}
+						className="inline-flex shrink-0 text-muted-foreground"
+					>
+						<IconLock aria-hidden className="size-3.5" />
+					</span>
+				</ControlTooltip>
 			)}
 		</h2>
 	);

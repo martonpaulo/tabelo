@@ -62,10 +62,13 @@ export function SelectionOptionContent({
 							data-slot="selection-option-status"
 							className={cn(
 								"inline-flex items-center gap-1 text-xs",
-								unavailable ? "text-destructive/70" : "text-muted-foreground",
+								"text-muted-foreground",
 							)}
 						>
-							<StatusIcon aria-hidden className="size-3.5" />
+							<StatusIcon
+								aria-hidden
+								className={cn("size-3.5", unavailable && "text-status-warning")}
+							/>
 							<span>{statusLabel}</span>
 						</span>
 					) : null}
@@ -116,10 +119,13 @@ export function CompactOptionContent({
 							data-slot="selection-option-status"
 							className={cn(
 								"inline-flex items-center gap-1 text-xs",
-								unavailable ? "text-destructive/70" : "text-muted-foreground",
+								"text-muted-foreground",
 							)}
 						>
-							<StatusIcon aria-hidden className="size-3.5" />
+							<StatusIcon
+								aria-hidden
+								className={cn("size-3.5", unavailable && "text-status-warning")}
+							/>
 							<span>
 								{unavailable
 									? copy.disabled.unavailableStatus
