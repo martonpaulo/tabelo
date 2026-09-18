@@ -1,3 +1,8 @@
+import {
+	optionBlockStateStyles,
+	optionBlockStyles,
+} from "@tabelo/ui/components/menu-styles";
+import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { modShortcut } from "@tabelo/ui/lib/platform";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
@@ -15,6 +20,7 @@ import { DEFAULT_COLUMN_COUNT } from "@/core/document";
 import { listCodecs } from "@/formats";
 import { pasteFromClipboard } from "@/ui/clipboard-actions";
 import { importTableFile } from "@/ui/import";
+import { SelectionOptionContent } from "@/ui/primitives/selection-option";
 
 // The file endings the import accepts, from the codec registry rather than a
 // list written here (docs/adr/0005). `jira.txt` and `records.txt` both end in
@@ -182,7 +188,7 @@ function Option({
 	readonly label: string;
 	readonly detail: string;
 	// `keys` is the ARIA spelling for assistive technology; `shown` is the
-	// platform's own spelling, drawn as one run of text the way a menu shows it.
+	// platform's own spelling, drawn as the option's trailing hint.
 	readonly shortcut?: { readonly keys: string; readonly shown: string };
 	readonly onClick: () => void;
 }) {
@@ -191,37 +197,20 @@ function Option({
 			type="button"
 			aria-keyshortcuts={shortcut?.keys}
 			data-variant={primary ? "default" : "ghost"}
+			data-emphasis={primary ? "primary" : undefined}
 			onClick={onClick}
 			className={cn(
-				"flex w-full cursor-pointer items-center gap-3 rounded-interactive px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-selection-edge focus-visible:outline-offset-2",
-				primary
-					? "bg-primary text-primary-foreground hover:bg-primary/90"
-					: "bg-muted text-foreground hover:bg-muted/70",
+				optionBlockStyles,
+				controlStateTransitionStyles,
+				optionBlockStateStyles,
 			)}
 		>
-			<Icon aria-hidden className="size-5 shrink-0" />
-			<span className="flex min-w-0 flex-1 flex-col">
-				<span className="font-medium text-sm">{label}</span>
-				<span
-					className={cn(
-						"text-xs",
-						primary ? "text-primary-foreground" : "text-muted-foreground",
-					)}
-				>
-					{detail}
-				</span>
-			</span>
-			{shortcut ? (
-				<span
-					aria-hidden
-					className={cn(
-						"shrink-0 font-source text-xs",
-						primary ? "text-primary-foreground" : "text-muted-foreground",
-					)}
-				>
-					{shortcut.shown}
-				</span>
-			) : null}
+			<SelectionOptionContent
+				icon={<Icon />}
+				label={label}
+				description={detail}
+				metadata={shortcut?.shown}
+			/>
 		</button>
 	);
 }

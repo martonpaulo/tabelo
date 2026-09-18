@@ -1,5 +1,8 @@
 import { Label } from "@tabelo/ui/components/label";
-import { dialogSingleSelectionItemStateStyles } from "@tabelo/ui/components/menu-styles";
+import {
+	optionBlockStateStyles,
+	optionBlockStyles,
+} from "@tabelo/ui/components/menu-styles";
 import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { RadioGroup, RadioGroupItem } from "@tabelo/ui/components/radio-group";
 import { cn } from "@tabelo/ui/lib/utils";
@@ -58,11 +61,10 @@ export function SingleSelectionOption({
 				data-disabled={disabled ? "true" : undefined}
 				data-availability={availability?.kind}
 				className={cn(
-					"relative flex min-h-control-md w-full items-center gap-3 rounded-interactive px-2 py-2 text-sm leading-snug",
+					optionBlockStyles,
 					controlStateTransitionStyles,
-					dialogSingleSelectionItemStateStyles,
+					optionBlockStateStyles,
 					"focus-within:outline-2 focus-within:outline-selection-edge focus-within:-outline-offset-2",
-					"data-[disabled=true]:cursor-not-allowed data-[disabled=true]:hover:bg-transparent",
 				)}
 			>
 				<SelectionOptionContent

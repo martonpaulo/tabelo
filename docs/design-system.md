@@ -625,10 +625,10 @@ decides the type. The source editor keeps the existing
 Critical control, pane, menu, notice, onboarding, and error labels never fall
 below `text-sm` (0.875rem). `text-xs` is reserved for optional descriptions,
 shortcuts, file extensions, and secondary status detail. There is no
-`text-base` and nothing larger in the product interface, with one exception:
-the dialog title. Weight alone inside one size was tried on #293 and the steps
+`text-base` and nothing larger in the product interface, with two exceptions:
+the dialog title and the start surface title. Weight alone inside one size was tried on #293 and the steps
 were too small to see, so on #352 the title took one size step up. A dialog's
-hierarchy is then the `text-base` semibold title, a medium section title, and
+hierarchy is then the `text-lg` semibold title, a medium section title, and
 normal-weight settings, with the options a setting owns indented under it, so
 no level reads as a peer of the next. A top-level choice in a dialog without
 sections keeps the control-label weight. There are no headings
@@ -746,8 +746,9 @@ supporting copy when it helps distinguish the choices, while alignment stays
 single-line instead of repeating what its icon and label already say.
 
 Radio semantics remain in the accessibility tree even though no radio glyph is
-drawn. A checked option uses the shared `--selection-fill` row background, which
-is already an unambiguous state cue. Pointer hover and keyboard highlight use
+drawn. In a menu, a checked option uses the shared `--selection-fill` row
+background, a quiet tint that suits a dense list; in a dialog, the option block
+below takes the solid primary instead (owner decision, 2026-09-18). Pointer hover and keyboard highlight use
 the shared neutral interaction background and update the icon, label, and
 description together. A checked row keeps its selection background while
 hovered or focused, so menus and dialogs never display two competing selected
@@ -1004,9 +1005,13 @@ the two ways out are both visible and both labelled.
 A dialog that asks for one value uses the shared `SingleSelectionList` and
 `SingleSelectionOption` treatment. Every option is one full-width labelled row
 with native Base UI radio semantics behind the shared visual anatomy: icon on
-the left, content in the middle, and optional metadata. Rows use 0.5rem padding
-and 0.375rem separation. Hover and keyboard highlight use the shared interaction
-surface, the checked row uses `--selection-fill`, keyboard focus outlines the
+the left, content in the middle, and optional metadata. Each option is an
+option block (`optionBlockStyles` and `optionBlockStateStyles` in
+`packages/ui`): the muted fill at rest, 0.75rem by 0.625rem padding, the
+control radius, and 0.375rem separation. The start surface's three actions are
+the same block, with its recommended action wearing the primary emphasis.
+Hover uses the shared accent, the checked row is the solid primary with white
+text, keyboard focus outlines the
 whole row, and disabled rows stay visible with their reason. No radio circle or
 other redundant selected glyph is visible. A title and optional description
 use the shared `MenuOption` rhythm. Do not recreate this structure inside a
