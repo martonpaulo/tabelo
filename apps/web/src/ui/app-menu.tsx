@@ -485,12 +485,13 @@ function CopyAsSubmenu({
 
 // Commands that reshape the whole table rather than a row or a column, so they
 // sit with the other document commands instead of in an axis menu (#235). Each
-// is one step on the document timeline, and each says what it did through the
-// shared polite channel, because the menu that ran it has already closed.
+// is one step on the document timeline, and each says what it did in a notice
+// offering Undo, because the menu that ran it has already closed. The notice is
+// the only announcement: its text reaches the polite region once (#235).
 //
 // Its own component so the work of deciding whether Delete empty rows and
 // columns has anything to do runs only while the menu is open.
-// Runs Transpose table and announces the result. Without `convertTypedValues`
+// Runs Transpose table and reports the result. Without `convertTypedValues`
 // it may instead return how many first-column values would become text, for
 // the caller to ask about first.
 function transposeTable(convertTypedValues = false): number | null {
@@ -498,10 +499,11 @@ function transposeTable(convertTypedValues = false): number | null {
 	const outcome = store.transposeTable(convertTypedValues);
 	if (outcome.status === "confirm") return outcome.typedValues;
 	if (outcome.status === "transposed") {
-		const { columns, rows } = useTabeloStore.getState().document;
-		store.announceStatus(
-			copy.status.tableTransposed(columns.length, rows.length),
-		);
+		store.pushNotice({
+			severity: "info",
+			message: copy.notices.tableTransposed,
+			undoFor: useTabeloStore.getState().document,
+		});
 	}
 	return null;
 }
@@ -532,9 +534,14 @@ function TableStructureGroup({
 		const store = useTabeloStore.getState();
 		const removed = store.deleteEmptyRowsAndColumns();
 		if (removed.rows === 0 && removed.columns === 0) return;
-		store.announceStatus(
-			copy.status.emptyRowsAndColumnsDeleted(removed.rows, removed.columns),
-		);
+		store.pushNotice({
+			severity: "info",
+			message: copy.notices.emptyRowsAndColumnsDeleted(
+				removed.rows,
+				removed.columns,
+			),
+			undoFor: useTabeloStore.getState().document,
+		});
 	};
 
 	return (

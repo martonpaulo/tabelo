@@ -7,6 +7,8 @@
 // that lasts until it is resolved, and are projected into the notice list
 // instead: see ui/notices.ts.
 
+import type { TableDocument } from "@/core/types";
+
 // What the message means. Tone, announcement, and whether the notice may
 // expire all follow from this rather than from which producer raised it.
 export type NoticeSeverity = "info" | "warning" | "error";
@@ -21,12 +23,18 @@ export interface TransientNotice {
 	readonly severity: NoticeSeverity;
 	readonly urgency: NoticeUrgency;
 	readonly message: string;
+	// The document a whole-table command produced, when the notice offers to
+	// undo it (#235). The offer holds only while this is still the document:
+	// once anything else changes it, Undo would revert that change instead of
+	// the one the message names. Compared by identity, never persisted.
+	readonly undoFor?: TableDocument;
 }
 
 export interface NoticeRequest {
 	readonly severity: NoticeSeverity;
 	readonly message: string;
 	readonly urgency?: NoticeUrgency;
+	readonly undoFor?: TableDocument;
 }
 
 // A projected condition is addressed by a fixed identifier so that dismissing
@@ -56,6 +64,7 @@ export function queueNotice(
 		severity: request.severity,
 		urgency: request.urgency ?? "polite",
 		message: request.message,
+		...(request.undoFor ? { undoFor: request.undoFor } : {}),
 	};
 
 	// Repeating an action that says the same thing refreshes what it already

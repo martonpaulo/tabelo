@@ -12,6 +12,7 @@ import {
 	autoDismissDelay,
 	type ProjectionLoss,
 	projectionLossOf,
+	undoableNoticeId,
 } from "@/ui/notices";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { LiveRegions } from "@/ui/primitives/live-region";
@@ -87,6 +88,8 @@ function useAppNotices(): readonly AppNotice[] {
 	const fillSeriesOffer = useTabeloStore((state) => state.fillSeriesOffer);
 	const notices = useTabeloStore((state) => state.notices);
 	const projectionLoss = useProjectionLoss();
+	// An identifier, not the document, so typing does not re-render the bar.
+	const undoable = useTabeloStore(undoableNoticeId);
 
 	return useMemo(
 		() =>
@@ -98,6 +101,7 @@ function useAppNotices(): readonly AppNotice[] {
 				fillSeriesOffer,
 				notices,
 				projectionLoss,
+				undoableNoticeId: undoable,
 			}),
 		[
 			storageIssue,
@@ -107,6 +111,7 @@ function useAppNotices(): readonly AppNotice[] {
 			fillSeriesOffer,
 			notices,
 			projectionLoss,
+			undoable,
 		],
 	);
 }

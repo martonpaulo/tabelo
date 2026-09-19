@@ -11,6 +11,8 @@ import {
 	autoDismissDelay,
 	NOTICE_AUTO_DISMISS_MS,
 	projectionLossOf,
+	UNDO_NOTICE_DISMISS_MS,
+	undoableNoticeId,
 } from "@/ui/notices";
 import type { ViewId } from "@/views/types";
 
@@ -32,7 +34,11 @@ beforeEach(() => {
 
 function current(): readonly AppNotice[] {
 	const state = useTabeloStore.getState();
-	return appNotices({ ...state, preferencesIssue });
+	return appNotices({
+		...state,
+		preferencesIssue,
+		undoableNoticeId: undoableNoticeId(state),
+	});
 }
 
 function ids(): readonly string[] {
@@ -300,4 +306,47 @@ describe("what may expire on its own", () => {
 			expect(autoDismissDelay(current()[0] as AppNotice)).toBeNull();
 		},
 	);
+});
+
+describe("offering undo after a whole-table command (#235)", () => {
+	function transpose(): void {
+		useTabeloStore.setState({
+			document: documentFromMatrix(
+				[
+					["name", "city"],
+					["Ingrid", "Rio"],
+				],
+				{ headerRow: true },
+			),
+		});
+		const store = useTabeloStore.getState();
+		store.transposeTable();
+		store.pushNotice({
+			severity: "info",
+			message: "Done.",
+			undoFor: useTabeloStore.getState().document,
+		});
+	}
+
+	it("undoes the command and removes the notice", () => {
+		transpose();
+		const before = useTabeloStore.getState().past[0]?.document;
+		const notice = current()[0] as AppNotice;
+		expect(notice.actions).toHaveLength(1);
+		expect(autoDismissDelay(notice)).toBe(UNDO_NOTICE_DISMISS_MS);
+
+		notice.actions[0]?.run();
+
+		expect(useTabeloStore.getState().document).toBe(before);
+		expect(current()).toEqual([]);
+	});
+
+	it("stops offering undo once the document moves on", () => {
+		transpose();
+		useTabeloStore.getState().editCell(0, 0, "Paulo");
+
+		const notice = current()[0] as AppNotice;
+		expect(notice.actions).toEqual([]);
+		expect(autoDismissDelay(notice)).toBe(NOTICE_AUTO_DISMISS_MS);
+	});
 });

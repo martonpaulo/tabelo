@@ -89,8 +89,9 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
   they act on the document rather than on a row, a column, or a pane: an axis
   menu is named for the axis it acts on, and a pane menu for its pane. They are
   one untitled group of plain items after Undo and Redo, each disabled with a
-  written reason when it cannot apply, and each announces its result through
-  the shared polite channel. Transpose turns the first column into the header
+  written reason when it cannot apply, and each reports its result in an
+  `info` notice offering `Undo` (see `4-interaction-states.md`, Notice
+  severity), with no confirmation before it. Transpose turns the first column into the header
   row, which holds text only, so when that column holds any number, boolean,
   or null it first asks in the same dialog shape as the column type change,
   naming how many values will become text, with `Cancel` (nothing changes) and

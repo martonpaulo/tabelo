@@ -1,5 +1,6 @@
 import { copy } from "@/copy/copy";
 import { samplePeopleCsv } from "@/core/sample-data";
+import { STORAGE_KEY } from "@/persistence/schema";
 import { expect, test } from "./fixtures";
 import type { TabeloPage } from "./helpers";
 
@@ -47,6 +48,39 @@ test("transposing turns the first column into the header row in every view, and 
 	await expect(tabelo.header(1)).toHaveText("name");
 	await expect(tabelo.header(2)).toHaveText("city");
 	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+});
+
+// The command reports in a notice whose Undo is the same document step as
+// Mod+Z. Transposing replaces every column, so a width set before it is gone
+// from the transposed table and must come back with the undo (#235).
+test("the notice's Undo reverts a transpose and brings back a column's width", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(samplePeopleCsv(2).replaceAll(",", "\t"));
+	await tabelo.dismissNotices();
+	await tabelo.header(1).focus();
+	await page.keyboard.press("Alt+Shift+ArrowRight");
+	const savedWidths = () =>
+		page.evaluate((key) => {
+			const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+			return saved?.workspace?.columnWidths ?? {};
+		}, STORAGE_KEY);
+	await expect.poll(savedWidths).not.toEqual({});
+	const widened = await savedWidths();
+
+	await runStructureCommand(tabelo, copy.actions.transposeTable);
+	await expect(tabelo.header(2)).toHaveText("Ingrid");
+	await expect.poll(savedWidths).toEqual({});
+
+	const notice = tabelo.notice("info");
+	await expect(notice).toHaveCount(1);
+	await notice.getByRole("button", { name: copy.actions.undo }).click();
+
+	await expect(tabelo.header(2)).toHaveText("city");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect.poll(savedWidths).toEqual(widened);
+	await expect(tabelo.notices).toHaveCount(0);
 });
 
 // A header holds text only, so typed values in the first column would become

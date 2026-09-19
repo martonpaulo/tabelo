@@ -40,6 +40,9 @@ export interface NoticeAction {
 	readonly id: string;
 	readonly label: string;
 	readonly run: () => void;
+	// An Undo offer repeats a command that stays on Mod+Z and in the menu, so
+	// the notice carrying it may still expire: expiry removes no way back.
+	readonly undo?: true;
 }
 
 export interface AppNotice {
@@ -64,6 +67,8 @@ export interface NoticeSources {
 	// The plain views a formatted document is open in, when the user has not
 	// dismissed the disclosure for exactly these views (#306).
 	readonly projectionLoss?: ProjectionLoss | null;
+	// The transient notice whose Undo still applies, from `undoableNoticeId`.
+	readonly undoableNoticeId?: string | null;
 }
 
 export interface ProjectionLoss {
@@ -91,13 +96,30 @@ export function projectionLossOf(state: {
 // How long a plain confirmation stays before clearing itself.
 export const NOTICE_AUTO_DISMISS_MS = 4000;
 
-// One rule for what may expire unattended: a plain confirmation, and nothing
-// else. A failure, or an instruction the user still has to act on, that
-// disappeared after four seconds would not be a recovery path.
+// A confirmation offering Undo stays longer, long enough to reach its button.
+export const UNDO_NOTICE_DISMISS_MS = 8000;
+
+// One rule for what may expire unattended: a plain confirmation, or one whose
+// only action is an Undo that Mod+Z also reaches. A failure, or an instruction
+// the user still has to act on, that disappeared would not be a recovery path.
 export function autoDismissDelay(notice: AppNotice): number | null {
-	return notice.severity === "info" && notice.actions.length === 0
-		? NOTICE_AUTO_DISMISS_MS
+	if (notice.severity !== "info") return null;
+	if (notice.actions.length === 0) return NOTICE_AUTO_DISMISS_MS;
+	return notice.actions.every((action) => action.undo)
+		? UNDO_NOTICE_DISMISS_MS
 		: null;
+}
+
+// Which queued notice may still offer Undo: the one naming the document on
+// screen. At most one can, because every command changes the document.
+export function undoableNoticeId(state: {
+	readonly document: TableDocument;
+	readonly notices: readonly TransientNotice[];
+}): string | null {
+	return (
+		state.notices.find((notice) => notice.undoFor === state.document)?.id ??
+		null
+	);
 }
 
 // What assistive technology should hear. The detail belongs to the message it
@@ -110,7 +132,12 @@ export function appNotices(sources: NoticeSources): readonly AppNotice[] {
 	return [
 		...projectedNotices(sources),
 		...sources.notices.map(
-			(notice): AppNotice => ({ ...notice, actions: [], dismissible: true }),
+			({ undoFor: _undoFor, ...notice }): AppNotice => ({
+				...notice,
+				actions:
+					notice.id === sources.undoableNoticeId ? [undoAction(notice.id)] : [],
+				dismissible: true,
+			}),
 		),
 	];
 }
@@ -199,6 +226,22 @@ function projectedNotices(sources: NoticeSources): readonly AppNotice[] {
 	}
 
 	return projected;
+}
+
+// The document-level undo Mod+Z runs from the grid. The offer exists only
+// while the command's result is still the document, so the step it undoes is
+// the command itself. The notice goes with it: its message is no longer true.
+function undoAction(noticeId: string): NoticeAction {
+	return {
+		id: "undo-command",
+		label: copy.actions.undo,
+		undo: true,
+		run: () => {
+			const store = useTabeloStore.getState();
+			store.dismissNotice(noticeId);
+			store.undo();
+		},
+	};
 }
 
 // Choosing the series is a second document operation, so it can find that the

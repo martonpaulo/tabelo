@@ -159,7 +159,7 @@ part of the app produced the message.
 
 | Severity | Surface | Announced | Expires |
 | :--- | :--- | :--- | :--- |
-| `info` | `bg-surface-header` | Polite | After 4s, and only when it carries no action |
+| `info` | `bg-surface-header` | Polite | After 4s with no action; after 8s when its only action is Undo |
 | `warning` | `bg-destructive/10` | Polite | Never |
 | `error` | `bg-destructive/10` | Polite, or assertive when the table is at risk | Never |
 
@@ -171,6 +171,16 @@ Only a plain confirmation may expire unattended. A failure, or anything
 carrying an action, stays until it is dismissed: a recovery instruction that
 disappears after four seconds is not a recovery path. The timer belongs to the
 notice on screen, never to the notice area, so nothing can expire unseen.
+
+The one exception is a confirmation whose only action is `Undo`, which a
+whole-table command raises (#235). Its action repeats the document undo that
+Mod+Z and the menu keep, so expiring removes no way back, and it stays 8s so
+the button can be reached. The offer holds only while the command's result is
+still the document: any later change removes the button, because it would then
+undo something the message does not name, and the plain confirmation that
+remains expires as usual. Choosing `Undo` runs that undo and removes the
+notice. The notice is the command's only announcement; its text reaches the
+polite region once.
 
 ### Announcing
 

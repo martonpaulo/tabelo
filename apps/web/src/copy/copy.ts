@@ -955,17 +955,6 @@ export const copy = {
 		// is the difference between a quiet success and a command that looks
 		// broken.
 		rowsAlreadySorted: "The rows are already in this order.",
-		tableTransposed: (columns: number, rows: number) =>
-			`Table transposed: ${columns} ${columns === 1 ? "column" : "columns"}, ${rows} ${rows === 1 ? "row" : "rows"}.`,
-		emptyRowsAndColumnsDeleted: (rows: number, columns: number) => {
-			const parts = [
-				rows > 0 ? `${rows} empty ${rows === 1 ? "row" : "rows"}` : "",
-				columns > 0
-					? `${columns} empty ${columns === 1 ? "column" : "columns"}`
-					: "",
-			].filter((part) => part !== "");
-			return `Deleted ${parts.join(" and ")}.`;
-		},
 		loading: "Loading…",
 		// Spoken after a Format command, since a mark changes nothing a screen
 		// reader would otherwise announce.
@@ -977,6 +966,18 @@ export const copy = {
 	},
 
 	notices: {
+		// Whole-table commands report in a notice rather than the status line,
+		// because the notice is also where their Undo is offered (#235).
+		tableTransposed: "Table transposed.",
+		emptyRowsAndColumnsDeleted: (rows: number, columns: number) => {
+			const parts = [
+				rows > 0 ? `${rows} empty ${rows === 1 ? "row" : "rows"}` : "",
+				columns > 0
+					? `${columns} empty ${columns === 1 ? "column" : "columns"}`
+					: "",
+			].filter((part) => part !== "");
+			return `${parts.join(" and ")} deleted.`;
+		},
 		pendingPaneAction: (kind: "view" | "close") =>
 			kind === "close"
 				? "These edits aren't valid yet. Fix them, or discard them to close the view."
