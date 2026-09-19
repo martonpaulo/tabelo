@@ -132,3 +132,7 @@ const caretLayer = layer({
 });
 
 export const drawnSelection = [selectionLayer, caretLayer];
+
+// The selection band alone, for the pinned header's copy (#252): it shows the
+// editor's selection over the header it pins, and never a caret of its own.
+export const drawnSelectionBand = selectionLayer;

@@ -159,6 +159,23 @@ test("views without a mapped header row never pin one", async ({ tabelo }) => {
 	}
 });
 
+test("a selection that covers the header shows on the pinned copy", async ({
+	page,
+	tabelo,
+}) => {
+	const markdown = cases[0];
+	if (!markdown) throw new Error("missing Markdown case");
+	const pane = await fillSource(tabelo, markdown);
+	await tabelo.source("markdown").click();
+	await page.keyboard.press("ControlOrMeta+a");
+	await scrollTo(pane, 800);
+	await expect(pinned(pane)).toBeVisible();
+	// Drawn like the grid's pinned header row, which shows a selection over it.
+	await expect(
+		pinned(pane).locator(".cm-selectionBackground").first(),
+	).toBeVisible();
+});
+
 test("the pinned header follows horizontal scrolling", async ({ tabelo }) => {
 	const markdown = cases[0];
 	if (!markdown) throw new Error("missing Markdown case");

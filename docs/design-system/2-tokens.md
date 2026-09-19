@@ -337,7 +337,9 @@ header row's last cell, so Markdown pins its header line and not the alignment
 divider the codec counts as part of that row: the divider names no column and
 only costs a line of pane height (owner, 2026-09-19, reversing the earlier
 choice to pin both). The answer comes from the row's own cell ranges, so it is
-still one rule for every format rather than a Markdown-only case. The copy is a second,
+still one rule for every format rather than a Markdown-only case. A selection
+that covers the header is drawn on the copy too, as the grid's pinned header
+row shows one. The copy is a second,
 read-only CodeMirror view over the same text with every line outside the
 header collapsed, fed the pane's own language, indicators, wrapping, and zoom,
 so it is the same rendering rather than a lookalike: the escape glyphs,

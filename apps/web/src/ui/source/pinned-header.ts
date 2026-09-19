@@ -17,6 +17,7 @@ import {
 	type ViewUpdate,
 } from "@codemirror/view";
 import type { SourceRowRange } from "@/formats/types";
+import { drawnSelectionBand } from "./drawn-selection";
 import { syntaxTheme } from "./editor-theme";
 import { setSourceRows } from "./source-rows";
 
@@ -129,6 +130,10 @@ function visibleRangeField(initial: SourceRowRange) {
 const copyExtensions: Extension = [
 	lineNumbers(),
 	syntaxTheme,
+	// The editor's selection, mirrored in, is drawn over the pinned header the
+	// way the grid's pinned header row shows a selection that covers it.
+	EditorState.allowMultipleSelections.of(true),
+	drawnSelectionBand,
 	EditorView.editable.of(false),
 	EditorState.readOnly.of(true),
 	EditorView.contentAttributes.of({ tabindex: "-1" }),
@@ -139,6 +144,9 @@ const copyExtensions: Extension = [
 			"&": { height: "auto" },
 			".cm-scroller": { overflow: "hidden" },
 			".cm-content": { paddingBottom: "0" },
+			".cm-selectionBackground": {
+				background: "var(--text-selection-fill)",
+			},
 		}),
 	),
 ];
@@ -190,6 +198,7 @@ class PinnedHeader {
 			} else {
 				copy.dispatch({
 					changes: update.changes,
+					selection: update.state.selection,
 					effects: [
 						setVisibleRange.of(range),
 						...(setupChanged
@@ -293,6 +302,7 @@ class PinnedHeader {
 			parent: this.overlay,
 			state: EditorState.create({
 				doc: this.view.state.doc,
+				selection: this.view.state.selection,
 				extensions: this.copyConfiguration(range, this.view.state),
 			}),
 		});
