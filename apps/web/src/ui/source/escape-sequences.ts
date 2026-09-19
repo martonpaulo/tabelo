@@ -22,7 +22,7 @@ import { LINE_BREAK_GLYPH, SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";
 // takes the room of the sequence rather than of the value. This draws one glyph
 // over each sequence, at exactly the width the serializer measured, so a
 // Markdown column stays aligned around it. A line break is the exception: its
-// `¶` takes one character, and the room the sequence gave back is added to the
+// `↵` takes one character, and the room the sequence gave back is added to the
 // cell's padding instead (owner, 2026-09-19). See docs/design-system/2-tokens.md, "Syntax
 // and table structure".
 //

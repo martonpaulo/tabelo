@@ -14,4 +14,4 @@ export const TAB_GLYPH = "→";
 // field (owner, 2026-09-19). The pilcrow is the mark editors have long used
 // for a paragraph end, and it is one character wide, so it never pretends to
 // be the notation it replaces.
-export const LINE_BREAK_GLYPH = "¶";
+export const LINE_BREAK_GLYPH = "↵";

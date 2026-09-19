@@ -473,23 +473,23 @@ actually holds rather than padding, so the sequence is kept in the accessible
 tree, clipped out of sight: what a screen reader reads is still the source,
 exactly and in order.
 
-**A line break inside a cell is one `¶`, one character wide** (owner,
+**A line break inside a cell is one `↵`, one character wide** (owner,
 2026-09-19). Every sequence that encodes a line break, Markdown's `<br>` and
 `&#10;`, Jira's `\\` and `&#10;`, and HTML's `<br>` (the one notation the HTML
-source view draws), is drawn as `¶` in a single character cell. This
+source view draws), is drawn as `↵` in a single character cell. This
 supersedes, for this glyph only, the rule above that a glyph keeps the room of
 its sequence: the room the sequence gave back is drawn instead as extra padding
 at the end of its cell, just before the next delimiter, so in Markdown the pipe
 after it stays in the column the serializer measured. Jira and HTML pad
 nothing, so there the glyph simply takes one character. JSON and Records spell
-a break inside a value as `\n`, and that sequence is drawn as the same `¶`,
+a break inside a value as `\n`, and that sequence is drawn as the same `↵`,
 one character wide (owner, 2026-09-19: what one view has, every view that can
 have it should have); a backslash that is itself escaped starts no sequence,
 and every other escape those formats write stays as written. The padding is a
 zero-length widget with no text; the file, copy, download, and draft are
 unchanged. The caret still treats the sequence as atomic and never lands inside
-it: a click on either half of the `¶` places it before or after the sequence.
-The same `¶` marks a real newline inside a quoted CSV or TSV field, drawn at
+it: a click on either half of the `↵` places it before or after the sequence.
+The same `↵` marks a real newline inside a quoted CSV or TSV field, drawn at
 the end of the visual line where the break occurs, because to the reader it is
 the same fact about the cell: a codec declares `literalLineBreaks` when its
 cells hold their breaks that way, and its own `sourceFields` decide which
@@ -524,7 +524,7 @@ unparsed draft maps none and shows exactly as typed rather than aligned to rows
 it no longer has. A column is as wide as its widest field as drawn, in
 characters of the monospaced font: a wide character takes two, an empty field
 the placeholder's word while that marker is on, a line-break sequence its one
-`¶`, and a tab nothing, since the tab after an aligned field reaches the same
+`↵`, and a tab nothing, since the tab after an aligned field reaches the same
 stop on every row. Jira's doubled header delimiter is absorbed by padding
 drawn at the start of each body line, so its cells and closing pipes line up
 too. A quoted CSV or TSV field holding a line break is aligned where it starts;

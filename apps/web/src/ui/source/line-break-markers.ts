@@ -12,7 +12,7 @@ import { glyphMarker } from "./escape-sequences";
 import { LINE_BREAK_GLYPH } from "./indicator-glyphs";
 
 // A line break a cell holds as a real newline, as a quoted CSV or TSV field
-// writes it, marked with the same `¶` an escaped break is drawn as (owner,
+// writes it, marked with the same `↵` an escaped break is drawn as (owner,
 // 2026-09-19). The file already breaks the line there, so nothing is replaced:
 // the mark is a zero-length widget at the end of the visual line where the
 // break falls, drawn for the eye only.
