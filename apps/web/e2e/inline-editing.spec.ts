@@ -599,3 +599,112 @@ test("find matches the text a formatted cell shows", async ({
 	// The mark sits inside the link, which keeps its address.
 	await expect(tabelo.cell(1, 2).locator("a")).toHaveCount(2);
 });
+
+// Paste into the rich editor keeps formatting, and copy out of it carries the
+// fragment's semantics and exact structure (owner, 2026-09-19).
+const clipboardFixture = [
+	"| Name | City |",
+	"| --- | --- |",
+	"| **Ingrid** from [_Rio_](https://example.com/rio) | Rio |",
+	"| Paulo | Madrid |",
+].join("\n");
+
+async function openEditor(tabelo: TabeloPage, row: number): Promise<Locator> {
+	await tabelo.cell(row, 1).dblclick();
+	const editor = tabelo.grid().getByRole("textbox", {
+		name: copy.a11y.cellEditor(row - 1, 0),
+	});
+	await expect(editor).toBeFocused();
+	return editor;
+}
+
+// Extends the selection back from the caret, which opens at the end. Arrows
+// rather than Home, which scrolls instead of moving the caret on macOS.
+async function selectBack(tabelo: TabeloPage, count: number): Promise<void> {
+	for (let step = 0; step < count; step += 1) {
+		await tabelo.page.keyboard.press("Shift+ArrowLeft");
+	}
+}
+
+test("a fragment copied from one cell's editor pastes with its formatting", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.importFile("roster.md", clipboardFixture, "text/markdown");
+	await expect(tabelo.cell(2, 1)).toHaveText("Paulo");
+
+	// "rid from Rio": the end of the bold name, plain text, and the link.
+	let editor = await openEditor(tabelo, 1);
+	await selectBack(tabelo, "rid from Rio".length);
+	const flavours = await tabelo.copyFlavours(editor);
+	expect(flavours.text).toBe("rid from Rio");
+	expect(flavours.html).toContain("<strong>rid</strong>");
+	expect(flavours.html).toContain('<a href="https://example.com/rio">');
+	await page.keyboard.press("Escape");
+
+	editor = await openEditor(tabelo, 2);
+	await tabelo.pasteInto(editor, flavours.text, flavours.html);
+	await expect(editor).toHaveText("Paulorid from Rio");
+	await expect(editor.locator("strong")).toHaveText("rid");
+	await expect(editor.locator("em")).toHaveText("Rio");
+
+	// The paste is one local undo step.
+	await page.keyboard.press("ControlOrMeta+Z");
+	await expect(editor).toHaveText("Paulo");
+	await page.keyboard.press("ControlOrMeta+Shift+Z");
+	await expect(editor.locator("strong")).toHaveText("rid");
+
+	await page.keyboard.press("Enter");
+	const cell = tabelo.cell(2, 1);
+	await expect(cell.locator("strong")).toHaveText("rid");
+	await expect(cell.getByRole("link", { name: "Rio" })).toHaveAttribute(
+		"href",
+		"https://example.com/rio",
+	);
+
+	// The same flavours pasted onto a grid cell hand the fragment over whole.
+	await tabelo.cell(2, 2).click();
+	await tabelo.paste(flavours.text, flavours.html);
+	await expect(tabelo.cell(2, 2).locator("strong")).toHaveText("rid");
+	await expect(
+		tabelo.cell(2, 2).getByRole("link", { name: "Rio" }),
+	).toHaveAttribute("href", "https://example.com/rio");
+});
+
+test("HTML pasted into the editor keeps supported marks and warns about the rest", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.importFile("roster.md", clipboardFixture, "text/markdown");
+	const editor = await openEditor(tabelo, 2);
+	await selectBack(tabelo, "Paulo".length);
+	await tabelo.pasteInto(
+		editor,
+		"Felix 2",
+		'<meta charset="utf-8"><b>Felix</b> <sup>2</sup>',
+	);
+	await expect(editor).toHaveText("Felix 2");
+	await expect(editor.locator("strong")).toHaveText("Felix");
+	await expect(editor.locator("sup")).toHaveCount(0);
+	await expect(tabelo.notice("warning")).toBeVisible();
+
+	await page.keyboard.press("Enter");
+	await expect(tabelo.cell(2, 1).locator("strong")).toHaveText("Felix");
+	await expect(tabelo.cell(2, 1)).toHaveText("Felix 2");
+});
+
+test("plain text pasted into the editor stays plain", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.importFile("roster.md", clipboardFixture, "text/markdown");
+	const editor = await openEditor(tabelo, 2);
+	await selectBack(tabelo, "Paulo".length);
+	await tabelo.pasteInto(editor, "**Felix**");
+	await expect(editor).toHaveText("**Felix**");
+	await expect(editor.locator("strong")).toHaveCount(0);
+
+	await page.keyboard.press("Enter");
+	await expect(tabelo.cell(2, 1)).toHaveText("**Felix**");
+	await expect(tabelo.cell(2, 1).locator("strong")).toHaveCount(0);
+});

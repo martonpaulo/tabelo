@@ -522,6 +522,9 @@ export interface TabeloState {
 	pasteClipboard: (payload: ClipboardPayload) => PasteRefusal | null;
 	importText: (text: string, format?: CodecId) => void;
 	reportInputError: (error: ImportError) => void;
+	// A paste into the rich cell editor, which inserts into one cell rather
+	// than writing the document, reports what it read the way a grid paste does.
+	reportPasteWarnings: (warnings: readonly ParseIssue[]) => void;
 	answerPendingImport: (headerRow: boolean) => void;
 	cancelPendingImport: () => void;
 	resetDocument: () => void;
@@ -2226,6 +2229,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	},
 
 	reportInputError: (error) => set({ inputError: error }),
+	reportPasteWarnings: (warnings) =>
+		set({ importWarnings: droppedFormatting(warnings) }),
 
 	answerPendingImport: (headerRow) => {
 		const state = get();

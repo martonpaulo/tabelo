@@ -799,18 +799,38 @@ export class TabeloPage {
 	// Tabelo round trip through both the writer and the reader, on whichever
 	// engine is running. That the system clipboard carries these flavours
 	// between two tabs is the browser's contract, not the product's.
-	async copyFlavours(): Promise<Required<CopiedFlavours>> {
-		return this.clipboardEvent("copy");
+	// The target defaults to the grid; the rich cell editor handles its own.
+	async copyFlavours(
+		target: Locator = this.grid(),
+	): Promise<Required<CopiedFlavours>> {
+		return this.clipboardEvent("copy", target);
+	}
+
+	// A paste into one element, such as an open cell editor, with no header
+	// decision to answer.
+	async pasteInto(target: Locator, text: string, html?: string): Promise<void> {
+		await target.evaluate(
+			(element, payload) => {
+				const data = new DataTransfer();
+				data.setData("text/plain", payload.text);
+				if (payload.html) data.setData("text/html", payload.html);
+				const event = new Event("paste", { bubbles: true, cancelable: true });
+				Object.defineProperty(event, "clipboardData", { value: data });
+				element.dispatchEvent(event);
+			},
+			{ text, html },
+		);
 	}
 
 	private async clipboardEvent(
 		type: "copy" | "cut",
+		target: Locator = this.grid(),
 	): Promise<Required<CopiedFlavours>> {
-		return this.grid().evaluate((grid, name) => {
+		return target.evaluate((element, name) => {
 			const data = new DataTransfer();
 			const event = new Event(name, { bubbles: true, cancelable: true });
 			Object.defineProperty(event, "clipboardData", { value: data });
-			grid.dispatchEvent(event);
+			element.dispatchEvent(event);
 			return {
 				text: data.getData("text/plain"),
 				html: data.getData("text/html"),

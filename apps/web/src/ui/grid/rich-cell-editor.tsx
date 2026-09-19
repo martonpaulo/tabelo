@@ -6,6 +6,8 @@ import {
 import { cn } from "@tabelo/ui/lib/utils";
 import { IconPhotoOff } from "@tabler/icons-react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { readClipboardInline } from "@/clipboard/parse";
+import { inlineClipboardPayload } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import {
 	applyLink,
@@ -276,6 +278,26 @@ export function RichCellEditor({
 		pendingMarks.current = null;
 		const caret = start + text.length;
 		commitEdit(next, { anchor: caret, focus: caret }, "typing");
+	};
+
+	// A paste that carries formatting (#306): the fragment goes in place of the
+	// selection exactly as it was copied, as one local undo step. Content with
+	// no structure is plain text and pastes as plain text does.
+	const insertFragment = (fragment: TextContent) => {
+		if (typeof fragment === "string") {
+			insertText(fragment);
+			return;
+		}
+		const { content } = model.current;
+		const [from, to] = ordered(readSelection());
+		const [start] = snapInlineRange(content, from, to);
+		pendingMarks.current = null;
+		const caret = start + inlineLength(fragment);
+		commitEdit(
+			replaceRange(content, from, to, fragment),
+			{ anchor: caret, focus: caret },
+			"other",
+		);
 	};
 
 	const deleteRange = (from: number, to: number) => {
@@ -576,11 +598,17 @@ export function RichCellEditor({
 		};
 	}, []);
 
-	const clipboardText = () => {
+	// The selected fragment as every flavour spells it: its text, its semantic
+	// markup, and Tabelo's own exact structure (#306).
+	const writeSelection = (data: DataTransfer): boolean => {
 		const [from, to] = ordered(readSelection());
-		return from === to
-			? null
-			: cellText(sliceInline(model.current.content, from, to));
+		if (from === to) return false;
+		const flavours = inlineClipboardPayload(
+			sliceInline(model.current.content, from, to),
+		);
+		data.setData("text/plain", flavours.text);
+		data.setData("text/html", flavours.html);
+		return true;
 	};
 
 	const editor = (
@@ -627,28 +655,31 @@ export function RichCellEditor({
 			onPaste={(event) => {
 				event.preventDefault();
 				event.stopPropagation();
-				const text = event.clipboardData
-					.getData("text/plain")
-					.replace(/\r\n?/g, "\n");
-				if (text !== "") {
-					lastEdit.current = null;
-					insertText(text);
-					lastEdit.current = null;
+				const plain = event.clipboardData.getData("text/plain");
+				// Formatting comes only from Tabelo's own payload or from HTML,
+				// never from how plain text looks.
+				const rich = readClipboardInline({
+					text: plain,
+					html: event.clipboardData.getData("text/html"),
+				});
+				const text = plain.replace(/\r\n?/g, "\n");
+				if (rich) {
+					useTabeloStore.getState().reportPasteWarnings(rich.warnings);
 				}
+				if (rich ? cellText(rich.content) === "" : text === "") return;
+				lastEdit.current = null;
+				if (rich) insertFragment(rich.content);
+				else insertText(text);
+				lastEdit.current = null;
 			}}
 			onCopy={(event) => {
 				event.stopPropagation();
-				const text = clipboardText();
-				if (text === null) return;
-				event.preventDefault();
-				event.clipboardData.setData("text/plain", text);
+				if (writeSelection(event.clipboardData)) event.preventDefault();
 			}}
 			onCut={(event) => {
 				event.stopPropagation();
-				const text = clipboardText();
-				if (text === null) return;
+				if (!writeSelection(event.clipboardData)) return;
 				event.preventDefault();
-				event.clipboardData.setData("text/plain", text);
 				const [from, to] = ordered(readSelection());
 				deleteRange(from, to);
 			}}
