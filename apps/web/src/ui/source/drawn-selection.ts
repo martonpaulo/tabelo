@@ -1,4 +1,4 @@
-import { EditorSelection, type SelectionRange } from "@codemirror/state";
+import { EditorSelection } from "@codemirror/state";
 import {
 	type EditorView,
 	layer,
@@ -42,6 +42,91 @@ function layerOrigin(view: EditorView): { left: number; top: number } {
 	};
 }
 
+// The bands for any set of ranges, snapped to the line pitch and drawn from
+// the line-height map outside the rendered lines. The selection layer draws
+// the selection with it, and the source axes a selected column (#395), so a
+// band means the same thing wherever it appears.
+export function pitchBands(
+	view: EditorView,
+	ranges: readonly { readonly from: number; readonly to: number }[],
+	className: string,
+): RectangleMarker[] {
+	const pitch = view.defaultLineHeight;
+	const firstLineTop = view.documentTop - layerOrigin(view).top;
+	const snap = (edge: number) =>
+		firstLineTop + Math.round((edge - firstLineTop) / pitch) * pitch;
+	// A range that runs past the rendered viewport is drawn to the content's
+	// edge, and the content is padded below its last line (room to click
+	// under it, and clear of the floating button). No band may reach into
+	// that padding: it ends where the last line does.
+	const lastLineBottom =
+		firstLineTop + view.lineBlockAt(view.state.doc.length).bottom;
+	// CodeMirror measures only the lines it has rendered (its viewport), so
+	// the part of a range outside them is drawn here from the line-height
+	// map, which holds every line, as full-width bands. A band that depended
+	// on the rendered lines alone showed a selection cut off at their edge
+	// until something redrew it (owner report, 2026-09-19).
+	const content = view.contentDOM.getBoundingClientRect();
+	const contentLeft = content.left - layerOrigin(view).left;
+	const outside = (from: number, to: number): RectangleMarker[] => {
+		const top = firstLineTop + view.lineBlockAt(from).top;
+		const bottom = Math.min(
+			firstLineTop + view.lineBlockAt(to).bottom,
+			lastLineBottom,
+		);
+		return bottom > top
+			? [
+					new RectangleMarker(
+						className,
+						contentLeft,
+						top,
+						content.width,
+						bottom - top,
+					),
+				]
+			: [];
+	};
+	const { viewport } = view;
+	const beyondViewport = (range: {
+		readonly from: number;
+		readonly to: number;
+	}): RectangleMarker[] => [
+		...(range.from < viewport.from
+			? outside(range.from, Math.max(range.from, viewport.from - 1))
+			: []),
+		...(range.to > viewport.to
+			? outside(Math.min(range.to, viewport.to + 1), range.to)
+			: []),
+	];
+
+	return ranges.flatMap((range) =>
+		range.to <= range.from
+			? []
+			: [
+					...beyondViewport(range),
+					...RectangleMarker.forRange(
+						view,
+						className,
+						EditorSelection.range(range.from, range.to),
+					),
+				].flatMap((band) => {
+					const top = snap(band.top);
+					const bottom = Math.min(
+						Math.max(snap(band.top + band.height), top + pitch),
+						lastLineBottom,
+					);
+					if (bottom <= top) return [];
+					return new RectangleMarker(
+						className,
+						band.left,
+						top,
+						band.width,
+						bottom - top,
+					);
+				}),
+	);
+}
+
 // Every source line box is the same height, wrapped visual lines included, so a
 // band edge belongs on the nearest multiple of that height from the first line's
 // top. A band CodeMirror measured from the text sits a quarter of a line in from
@@ -51,75 +136,8 @@ const selectionLayer = layer({
 	above: false,
 	class: "cm-tabeloSelectionLayer",
 	update: shouldRedraw,
-	markers(view) {
-		const pitch = view.defaultLineHeight;
-		const firstLineTop = view.documentTop - layerOrigin(view).top;
-		const snap = (edge: number) =>
-			firstLineTop + Math.round((edge - firstLineTop) / pitch) * pitch;
-		// A range that runs past the rendered viewport is drawn to the content's
-		// edge, and the content is padded below its last line (room to click
-		// under it, and clear of the floating button). No band may reach into
-		// that padding: it ends where the last line does.
-		const lastLineBottom =
-			firstLineTop + view.lineBlockAt(view.state.doc.length).bottom;
-		// CodeMirror measures only the lines it has rendered (its viewport), so
-		// the part of a range outside them is drawn here from the line-height
-		// map, which holds every line, as full-width bands. A band that depended
-		// on the rendered lines alone showed a selection cut off at their edge
-		// until something redrew it (owner report, 2026-09-19).
-		const content = view.contentDOM.getBoundingClientRect();
-		const contentLeft = content.left - layerOrigin(view).left;
-		const outside = (from: number, to: number): RectangleMarker[] => {
-			const top = firstLineTop + view.lineBlockAt(from).top;
-			const bottom = Math.min(
-				firstLineTop + view.lineBlockAt(to).bottom,
-				lastLineBottom,
-			);
-			return bottom > top
-				? [
-						new RectangleMarker(
-							"cm-selectionBackground",
-							contentLeft,
-							top,
-							content.width,
-							bottom - top,
-						),
-					]
-				: [];
-		};
-		const { viewport } = view;
-		const beyondViewport = (range: SelectionRange): RectangleMarker[] => [
-			...(range.from < viewport.from
-				? outside(range.from, Math.max(range.from, viewport.from - 1))
-				: []),
-			...(range.to > viewport.to
-				? outside(Math.min(range.to, viewport.to + 1), range.to)
-				: []),
-		];
-
-		return view.state.selection.ranges.flatMap((range) =>
-			range.empty
-				? []
-				: [
-						...beyondViewport(range),
-						...RectangleMarker.forRange(view, "cm-selectionBackground", range),
-					].flatMap((band) => {
-						const top = snap(band.top);
-						const bottom = Math.min(
-							Math.max(snap(band.top + band.height), top + pitch),
-							lastLineBottom,
-						);
-						if (bottom <= top) return [];
-						return new RectangleMarker(
-							"cm-selectionBackground",
-							band.left,
-							top,
-							band.width,
-							bottom - top,
-						);
-					}),
-		);
-	},
+	markers: (view) =>
+		pitchBands(view, view.state.selection.ranges, "cm-selectionBackground"),
 });
 
 // One device pixel is the smallest step a line can move without blurring.

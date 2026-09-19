@@ -10,6 +10,7 @@ import {
 	EditorView,
 	GutterMarker,
 	gutterLineClass,
+	layer,
 	ViewPlugin,
 	type ViewUpdate,
 } from "@codemirror/view";
@@ -19,6 +20,7 @@ import type {
 	SourceRowRange,
 	SourceTableRow,
 } from "@/formats/types";
+import { pitchBands } from "./drawn-selection";
 import { pinnedHeaderCovers } from "./pinned-header";
 import { sourceRowsField } from "./source-rows";
 
@@ -599,9 +601,37 @@ const axisTheme = EditorView.theme({
 	},
 });
 
+// A selected column drawn as the grid draws one: a band over each of its
+// cells from delimiter to delimiter, padding included, in the same pitch the
+// selection band keeps. The selection itself stays on the text typing
+// replaces, which in an empty cell is a single point and would otherwise show
+// only a row of carets (owner, 2026-09-19).
+const selectedColumnLayer = layer({
+	above: false,
+	class: "cm-tabeloSelectedColumnLayer",
+	update: (update) =>
+		update.selectionSet ||
+		update.docChanged ||
+		update.viewportChanged ||
+		update.geometryChanged ||
+		update.startState.field(sourceRowsField, false) !==
+			update.state.field(sourceRowsField, false),
+	markers(view) {
+		const axis = selectedSourceAxis(view.state);
+		const rows = view.state.field(sourceRowsField, false);
+		if (axis?.axis !== "column" || !rows) return [];
+		return pitchBands(
+			view,
+			columnRanges(rows, axis.index),
+			"cm-selectionBackground",
+		);
+	},
+});
+
 // Installed in every source editor; a pane without the configuration, which is
 // a pane whose codec maps no rows, offers nothing from its labels.
 export const sourceAxes: Extension = [
+	selectedColumnLayer,
 	rowLabelClasses,
 	axisTheme,
 	ViewPlugin.fromClass(AxisPointer),
