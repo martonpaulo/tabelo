@@ -1602,3 +1602,35 @@ describe("whole-table structure (#235)", () => {
 		expect(useTabeloStore.getState().past).toHaveLength(0);
 	});
 });
+
+describe("formatting the selection", () => {
+	it("formats every selected area as one history step", () => {
+		const document = documentFromMatrix(samplePeopleMatrix(2), {
+			headerRow: true,
+		});
+		useTabeloStore.setState({
+			document,
+			// Two columns of cells, name and city, as separate areas.
+			selection: selectionOf(
+				{
+					anchor: { row: 0, column: 0 },
+					focus: { row: 1, column: 0 },
+					mode: "cell",
+				},
+				{
+					anchor: { row: 0, column: 1 },
+					focus: { row: 1, column: 1 },
+					mode: "cell",
+				},
+			),
+		});
+
+		const before = useTabeloStore.getState().toggleSelectionMark("bold");
+		expect(before).toBe("off");
+		expect(useTabeloStore.getState().document).not.toBe(document);
+		expect(useTabeloStore.getState().past).toHaveLength(1);
+
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().document).toBe(document);
+	});
+});

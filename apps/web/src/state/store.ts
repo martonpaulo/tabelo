@@ -2,6 +2,11 @@ import { create } from "zustand";
 import type { ClipboardPayload, ClipboardSource } from "@/clipboard/parse";
 import type { ClipboardSelection } from "@/clipboard/payload";
 import { DEFAULT_TABLE_NAME } from "@/copy/product";
+import {
+	type SelectionMarkState,
+	selectionMarkState,
+	toggleMarkInCells,
+} from "@/core/cell-formatting";
 import { readCell } from "@/core/cell-value";
 import {
 	createEmptyDocument,
@@ -85,7 +90,9 @@ import type {
 	CellValueType,
 	ColumnId,
 	ExpectedColumnType,
+	InlineMark,
 	TableDocument,
+	TextContent,
 } from "@/core/types";
 import { canSerialize } from "@/formats";
 import type {
@@ -459,7 +466,11 @@ export interface TabeloState {
 		column: number,
 		targetType: CellValueType,
 	) => boolean;
-	editHeader: (column: number, value: string) => void;
+	editHeader: (column: number, value: TextContent) => void;
+	// Toggles one inline mark over the whole text of every selected textual
+	// header and data cell, as one history step (#306). Returns what the
+	// selection held before, so a refusal can say why nothing changed.
+	toggleSelectionMark: (mark: InlineMark) => SelectionMarkState;
 	setColumnAlignment: (column: number, align: Alignment) => void;
 	// Changes the expected type and converts every cell that can reach it
 	// without loss (#392), as one history step. Returns how many cells cannot.
@@ -1670,6 +1681,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	editHeader: (column, value) =>
 		get().applyDocument(setHeader(get().document, column, value)),
+
+	toggleSelectionMark: (mark) => {
+		const state = get();
+		const rects = currentRects(state);
+		const before = selectionMarkState(state.document, rects, mark);
+		state.applyDocument(toggleMarkInCells(state.document, rects, mark));
+		return before;
+	},
 
 	// Alignment and width belong to a column rather than to a rectangle of
 	// cells, so acting on one the selection already covers acts on every
