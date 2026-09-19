@@ -34,7 +34,10 @@ export interface LinkRequest {
 }
 
 export interface ImageRequest {
-	readonly onInsert: (url: string, alt: string) => void;
+	// The image being edited, or null when the command adds one (#399).
+	readonly image: { readonly url: string; readonly alt: string } | null;
+	readonly onSave: (url: string, alt: string) => void;
+	readonly onRemove: () => void;
 	readonly finalFocus: () => HTMLElement | null;
 }
 
@@ -206,12 +209,17 @@ export function ImageDialog({
 	const firstField = useRef<HTMLInputElement>(null);
 	const lastRequest = useRef<ImageRequest | null>(null);
 	if (request) lastRequest.current = request;
+	// An image already there makes this Edit image, prefilled, with Remove
+	// image and Save; otherwise it is Add image with Insert, mirroring the link
+	// dialog (#399). Read from the last request so a closing dialog keeps its
+	// face while it fades.
+	const image = lastRequest.current?.image ?? null;
 
-	// Each opening starts empty.
+	// Each opening starts from the image it edits, or empty.
 	useEffect(() => {
 		if (!request) return;
-		setUrl("");
-		setAlt("");
+		setUrl(request.image?.url ?? "");
+		setAlt(request.image?.alt ?? "");
 		setSubmitted(false);
 	}, [request]);
 
@@ -219,12 +227,16 @@ export function ImageDialog({
 		submitted && url.trim() === "" ? copy.image.addressRequired : null;
 	const altError =
 		submitted && alt.trim() === "" ? copy.image.altRequired : null;
+	const unchanged =
+		image !== null && url.trim() === image.url && alt === image.alt;
 
 	const submit = (event: FormEvent) => {
 		event.preventDefault();
 		setSubmitted(true);
-		if (!request || url.trim() === "" || alt.trim() === "") return;
-		request.onInsert(url.trim(), alt);
+		if (!request || url.trim() === "" || alt.trim() === "" || unchanged) {
+			return;
+		}
+		request.onSave(url.trim(), alt);
 		onClose();
 	};
 
@@ -242,7 +254,9 @@ export function ImageDialog({
 			>
 				<form className="grid gap-4" onSubmit={submit}>
 					<DialogHeader>
-						<DialogTitle id={titleId}>{copy.image.title}</DialogTitle>
+						<DialogTitle id={titleId}>
+							{image ? copy.image.editTitle : copy.image.addTitle}
+						</DialogTitle>
 					</DialogHeader>
 					<Field
 						label={copy.image.address}
@@ -260,8 +274,24 @@ export function ImageDialog({
 						onChange={setAlt}
 					/>
 					<DialogActions>
+						{image ? (
+							<DialogAlternative
+								type="button"
+								onClick={() => {
+									request?.onRemove();
+									onClose();
+								}}
+							>
+								{copy.image.remove}
+							</DialogAlternative>
+						) : null}
 						<DialogCancel>{copy.actions.cancel}</DialogCancel>
-						<DialogConfirm type="submit">{copy.image.confirm}</DialogConfirm>
+						<DialogConfirm
+							type="submit"
+							disabledReason={unchanged ? copy.image.unchanged : undefined}
+						>
+							{image ? copy.image.save : copy.image.insert}
+						</DialogConfirm>
 					</DialogActions>
 				</form>
 			</DialogContent>

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
 	applyLink,
+	imageAt,
 	insertImage,
 	linkDraft,
+	removeImage,
 	selectionMarkState,
+	soleImage,
 	toggleMarkInCells,
 	typedCells,
 } from "./cell-formatting";
@@ -185,5 +188,66 @@ describe("inserting an image", () => {
 		expect(
 			insertImage(ingrid.name, 0, 0, "https://example.com/a.png", " "),
 		).toBeNull();
+	});
+});
+
+describe("finding the image a command edits", () => {
+	const rio = "https://example.com/rio.png";
+	const madrid = "https://example.com/madrid.png";
+	// "Ingrid", then the Rio image, then the Madrid image.
+	const pictured = (): TextContent => {
+		const one = insertImage(ingrid.name, 6, 6, rio, ingrid.city);
+		if (!one) throw new Error("expected an image");
+		const end = whole(one);
+		const two = insertImage(one, end, end, madrid, paulo.city);
+		if (!two) throw new Error("expected an image");
+		return two;
+	};
+	const rioEnd = 6 + ingrid.city.length;
+	const madridEnd = rioEnd + paulo.city.length;
+
+	it("edits the image a selection covers exactly, and no other", () => {
+		const value = pictured();
+		expect(imageAt(value, 6, rioEnd)).toMatchObject({
+			start: 6,
+			end: rioEnd,
+			url: rio,
+			alt: ingrid.city,
+		});
+		expect(imageAt(value, madridEnd, rioEnd)?.url).toBe(madrid);
+		// Text beside the image, or both images, is a range to replace.
+		expect(imageAt(value, 5, rioEnd)).toBeNull();
+		expect(imageAt(value, 6, madridEnd)).toBeNull();
+	});
+
+	it("at a caret, edits the image before it, else the one after it", () => {
+		const value = pictured();
+		expect(imageAt(value, 6, 6)?.url).toBe(rio);
+		expect(imageAt(value, rioEnd, rioEnd)?.url).toBe(rio);
+		expect(imageAt(value, madridEnd, madridEnd)?.url).toBe(madrid);
+		expect(imageAt(value, 3, 3)).toBeNull();
+		expect(imageAt(ingrid.name, 6, 6)).toBeNull();
+	});
+
+	it("names a cell's image only when it is the only one", () => {
+		const one = insertImage(ingrid.name, 6, 6, rio, ingrid.city);
+		if (!one) throw new Error("expected an image");
+		expect(soleImage(one)?.alt).toBe(ingrid.city);
+		expect(soleImage(pictured())).toBeNull();
+		expect(soleImage(ingrid.name)).toBeNull();
+	});
+
+	it("replaces or removes the image and keeps what surrounds it", () => {
+		const value = pictured();
+		const image = imageAt(value, 6, rioEnd);
+		if (!image) throw new Error("expected an image");
+		const edited = insertImage(value, image.start, image.end, rio, ingrid.role);
+		expect(edited && cellText(edited)).toBe(
+			`${ingrid.name}${ingrid.role}${paulo.city}`,
+		);
+		const removed = removeImage(value, image);
+		expect(cellText(removed)).toBe(`${ingrid.name}${paulo.city}`);
+		expect(inlineImages(removed)).toHaveLength(1);
+		expect(imageAt(removed, 6, 6)?.url).toBe(madrid);
 	});
 });

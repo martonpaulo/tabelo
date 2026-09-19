@@ -314,12 +314,12 @@ test("the image dialog requires alternative text and inserts an image", async ({
 	const address = dialog.getByRole("textbox", { name: copy.image.address });
 	await expect(address).toBeFocused();
 	await address.fill("http://example.com/madrid.png");
-	await dialog.getByRole("button", { name: copy.image.confirm }).click();
+	await dialog.getByRole("button", { name: copy.image.insert }).click();
 	const alt = dialog.getByRole("textbox", { name: copy.image.alt });
 	await expect(alt).toHaveAttribute("aria-invalid", "true");
 
 	await alt.fill("Retiro");
-	await dialog.getByRole("button", { name: copy.image.confirm }).click();
+	await dialog.getByRole("button", { name: copy.image.insert }).click();
 	await expect(dialog).toBeHidden();
 	await expect(cell).toBeFocused();
 
@@ -336,6 +336,66 @@ test("the image dialog requires alternative text and inserts an image", async ({
 	await page.keyboard.press("Enter");
 	await expect(cell.getByRole("img")).toHaveCount(0);
 	await expect(cell).toHaveText("Madrid");
+});
+
+// #399: an image is edited or removed through the same dialog that adds one.
+test("the cell menu edits and removes a cell's only image", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.importFile(
+		"photo.md",
+		"| Photo |\n| --- |\n| ![Retiro](https://example.com/madrid.png) |",
+		"text/markdown",
+	);
+	await tabelo.showInSourcePane("markdown");
+	const cell = tabelo.cell(1, 1);
+	await expect(cell.getByRole("img", { name: "Retiro" })).toHaveCount(1);
+
+	let menu = await openCellMenu(tabelo, cell);
+	await menu.getByRole("menuitem", { name: copy.actions.image }).click();
+	let dialog = page.getByRole("dialog");
+	const address = dialog.getByRole("textbox", { name: copy.image.address });
+	const alt = dialog.getByRole("textbox", { name: copy.image.alt });
+	await expect(address).toBeFocused();
+	await expect(address).toHaveValue("https://example.com/madrid.png");
+	await expect(alt).toHaveValue("Retiro");
+
+	// Cancel writes nothing, whatever was typed.
+	await alt.fill("Retiro park");
+	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
+	await expect(dialog).toBeHidden();
+	await expect(cell).toBeFocused();
+	await expect(cell.getByRole("img", { name: "Retiro" })).toHaveCount(1);
+
+	// Save replaces the image in place, and the alternative text is required.
+	menu = await openCellMenu(tabelo, cell);
+	await menu.getByRole("menuitem", { name: copy.actions.image }).click();
+	dialog = page.getByRole("dialog");
+	await dialog.getByRole("textbox", { name: copy.image.alt }).fill(" ");
+	await dialog.getByRole("button", { name: copy.image.save }).click();
+	await expect(
+		dialog.getByRole("textbox", { name: copy.image.alt }),
+	).toHaveAttribute("aria-invalid", "true");
+	await dialog
+		.getByRole("textbox", { name: copy.image.alt })
+		.fill("Retiro park");
+	await dialog.getByRole("button", { name: copy.image.save }).click();
+	await expect(dialog).toBeHidden();
+	await expect(cell).toBeFocused();
+	await expect
+		.poll(() => markdown(tabelo))
+		.toContain("![Retiro park](https://example.com/madrid.png)");
+
+	// Remove image takes it out as one undoable step.
+	menu = await openCellMenu(tabelo, cell);
+	await menu.getByRole("menuitem", { name: copy.actions.image }).click();
+	dialog = page.getByRole("dialog");
+	await dialog.getByRole("button", { name: copy.image.remove }).click();
+	await expect(dialog).toBeHidden();
+	await expect(cell.getByRole("img")).toHaveCount(0);
+	await tabelo.runAppCommand("undo");
+	await expect(cell.getByRole("img", { name: "Retiro park" })).toHaveCount(1);
 });
 
 test("find matches the text a formatted cell shows", async ({

@@ -10,8 +10,10 @@ import {
 	applyLink,
 	insertImage,
 	linkDraft,
+	removeImage,
 	type SelectionMarkState,
 	selectionMarkState,
+	soleImage,
 	type TypedCells,
 	typedCells,
 } from "@/core/cell-formatting";
@@ -277,19 +279,35 @@ export function wholeCellLinkRequest(
 	};
 }
 
-// The image dialog's request for a whole cell: the image goes after the text.
+// The image dialog's request for a whole cell: the cell's only image is
+// edited or removed, and otherwise a new image goes after the text (#399). The
+// image is found again when the dialog answers, so the answer lands on the
+// cell as it stands then.
 export function wholeCellImageRequest(
 	position: CellPosition,
 	finalFocus: () => HTMLElement | null,
 ): ImageRequest | null {
-	if (currentText(position) === null) return null;
+	const value = currentText(position);
+	if (value === null) return null;
+	const image = soleImage(value);
 	return {
-		onInsert: (url, alt) => {
+		image: image && { url: image.url, alt: image.alt },
+		onSave: (url, alt) => {
 			const current = currentText(position);
 			if (current === null) return;
+			const edited = image ? soleImage(current) : null;
 			const end = inlineLength(current);
-			const next = insertImage(current, end, end, url, alt);
+			const next = edited
+				? insertImage(current, edited.start, edited.end, url, alt)
+				: insertImage(current, end, end, url, alt);
 			if (next !== null) writeTarget(position, next);
+		},
+		onRemove: () => {
+			const current = currentText(position);
+			const edited = current === null ? null : soleImage(current);
+			if (current !== null && edited) {
+				writeTarget(position, removeImage(current, edited));
+			}
 		},
 		finalFocus,
 	};

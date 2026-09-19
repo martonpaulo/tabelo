@@ -16,6 +16,7 @@ import { type CellRect, rectContains, rectCoversHeader } from "./selection";
 import type {
 	CellValue,
 	CellValueType,
+	InlineImage,
 	InlineMark,
 	TableDocument,
 	TextContent,
@@ -268,4 +269,67 @@ export function insertImage(
 		end,
 		normalizeInline([{ kind: "image", url, alt }]),
 	);
+}
+
+// An image already in a range of one cell's text: where it sits, and what an
+// Edit image dialog starts from (#399).
+export interface ImageDraft {
+	readonly start: number;
+	readonly end: number;
+	readonly url: string;
+	readonly alt: string;
+}
+
+// Every image with its offsets, in document order. An image never sits inside
+// a link, so the image nodes and their places come in the same order.
+function imagesOf(value: TextContent): readonly ImageDraft[] {
+	if (typeof value === "string") return [];
+	const nodes = value.nodes.filter(
+		(node): node is InlineImage => node.kind === "image",
+	);
+	return inlineImages(value).flatMap((place, index) => {
+		const node = nodes[index];
+		return node ? [{ ...place, url: node.url, alt: node.alt }] : [];
+	});
+}
+
+// The image an image command at this range edits: the one image a selection
+// covers exactly, or at a collapsed caret the image just before it, else the
+// one just after it, which is the image Backspace or Delete would remove. Null
+// when the range edits no image, and the command adds one there instead.
+export function imageAt(
+	value: TextContent,
+	start: number,
+	end: number,
+): ImageDraft | null {
+	const from = Math.min(start, end);
+	const to = Math.max(start, end);
+	const images = imagesOf(value);
+	if (from !== to) {
+		return (
+			images.find((each) => each.start === from && each.end === to) ?? null
+		);
+	}
+	return (
+		images.find((each) => each.end === from) ??
+		images.find((each) => each.start === from) ??
+		null
+	);
+}
+
+// The image a whole-cell image command edits: the cell's only image. A cell
+// holding several names none of them, so from outside the editor the command
+// adds one after the text, and the editor, which has a caret, edits any of
+// them (#399).
+export function soleImage(value: TextContent): ImageDraft | null {
+	const images = imagesOf(value);
+	return images.length === 1 ? (images[0] ?? null) : null;
+}
+
+// Takes an image out of a cell's text, leaving everything around it.
+export function removeImage(
+	value: TextContent,
+	image: ImageDraft,
+): TextContent {
+	return replaceRange(value, image.start, image.end, "");
 }

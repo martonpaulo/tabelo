@@ -408,11 +408,14 @@ needs its text and its address together, and an image its address and its
 alternative text. Both open at the narrow width with focus in the first field
 and return focus to the cell, or to the cell editor they were opened from,
 whatever closed them. Link has Text and Address, the address hint naming the
-schemes that open, and `Remove link`, `Cancel`, `Save`, with Remove link
-disabled with its reason when there is no link. Image has Address, hinting
-that only https images load, and a required Alternative text, with `Cancel`
-and `Insert`. A missing field is reported under it when the confirm is
-pressed; Cancel writes nothing.
+schemes that open. It is Add link, with `Cancel` and `Save`, when there is no
+link yet, and Edit link, with `Remove link`, `Cancel`, and `Save`, when there
+is one (owner, 2026-09-19). Image has Address, hinting that only https images
+load, and a required Alternative text, and mirrors Link (#399): Add image,
+with `Cancel` and `Insert`, and for an image already there Edit image,
+prefilled, with `Remove image`, `Cancel`, and `Save`. An edit's `Save` is
+disabled with its reason until something changes. A missing field is reported
+under it when the confirm is pressed; Cancel writes nothing.
 
 Moving a pane also qualifies because the choice is spatial (#73). The Move pane
 dialog shows every other occupied position in the current preset through a

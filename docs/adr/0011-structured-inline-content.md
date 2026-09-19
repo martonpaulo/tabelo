@@ -164,7 +164,11 @@ wraps. Formatting is a document command built from the range operations:
   non-empty alternative text. Both are answered through dialogs that write
   nothing until confirmed. The link dialog is Add link, with no Remove, when
   the range holds no link, and Edit link with Remove link when it does (owner,
-  2026-09-19).
+  2026-09-19). The image dialog mirrors it (#399): Add image inserts, and
+  Edit image, prefilled, saves over the image or removes it. From the cell
+  menu, which has no caret, the image it edits is the cell's only image: a
+  cell holding several names none of them, so the command adds one after the
+  text.
 - *The rich cell editor* replaces the textarea for text, and only for text: a
   typed value, and typing over a cell in a column that expects one, keep the
   textarea. It is native `contenteditable` with the Selection API and
@@ -245,14 +249,13 @@ coverage takes one table holding every feature through the structured and
 plain views, their drafts, the clipboard both ways, Copy as, download, import,
 a reload, forced colours, and the keyboard; `docs/performance.md` records the
 target scale measured with formatted content. The rich cell editor stays
-narrower than the rest in four ways, each current behaviour rather than an
+narrower than the rest in three ways, each current behaviour rather than an
 accident: paste into it and copy out of it carry plain text only, since the
 same-app clipboard flavour belongs to the grid selection; the cell menu
 commits the edit before its Format group runs, so from the menu a mark
-applies to the whole cell and an image goes after the text (#398); an image
-is edited by deleting and reinserting it (#399); and once the editor's own
-undo is exhausted, `Mod`+`Z` does nothing until the edit is committed or
-cancelled, as with the textarea it replaced.
+applies to the whole cell and an image goes after the text (#398); and once
+the editor's own undo is exhausted, `Mod`+`Z` does nothing until the edit is
+committed or cancelled, as with the textarea it replaced.
 
 ADR 0008 is amended by this one: a textual cell may now carry structure, and
 that structure is carried exactly as a type is, never derived from how text

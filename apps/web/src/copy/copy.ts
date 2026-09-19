@@ -898,14 +898,18 @@ export const copy = {
 	},
 
 	image: {
-		title: "Insert image",
+		addTitle: "Add image",
+		editTitle: "Edit image",
 		address: "Address",
 		addressHint: "Only https images load.",
 		alt: "Alternative text",
 		altHint: "Describes the image for anyone who can't see it.",
-		confirm: "Insert",
+		insert: "Insert",
+		save: "Save",
+		remove: "Remove image",
 		addressRequired: "Enter an address.",
 		altRequired: "Describe the image.",
+		unchanged: "Change the address or the alternative text first.",
 	},
 
 	addView: {
