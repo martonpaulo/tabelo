@@ -1,4 +1,5 @@
 import {
+	EditorSelection,
 	EditorState,
 	type Extension,
 	Facet,
@@ -84,6 +85,23 @@ const headerRange = StateField.define<SourceRowRange | null>({
 // The header the pane would pin now, or null when there is none to claim.
 export function pinnedHeaderRange(state: EditorState): SourceRowRange | null {
 	return state.field(headerRange, false) ?? null;
+}
+
+// The part of the editor's selection that lies inside the header. The copy
+// draws only that: a range reaching into the collapsed text would be drawn
+// over lines the copy does not show, as a band running past the header.
+function selectionInside(
+	selection: EditorSelection,
+	range: SourceRowRange,
+): EditorSelection {
+	const inside = selection.ranges.flatMap((selected) => {
+		const from = Math.max(selected.from, range.from);
+		const to = Math.min(selected.to, range.to);
+		return from < to ? [EditorSelection.range(from, to)] : [];
+	});
+	return inside.length > 0
+		? EditorSelection.create(inside)
+		: EditorSelection.single(range.from);
 }
 
 // Inside the copy: every line outside the header collapses to nothing, so the
@@ -198,7 +216,7 @@ class PinnedHeader {
 			} else {
 				copy.dispatch({
 					changes: update.changes,
-					selection: update.state.selection,
+					selection: selectionInside(update.state.selection, range),
 					effects: [
 						setVisibleRange.of(range),
 						...(setupChanged
@@ -302,7 +320,7 @@ class PinnedHeader {
 			parent: this.overlay,
 			state: EditorState.create({
 				doc: this.view.state.doc,
-				selection: this.view.state.selection,
+				selection: selectionInside(this.view.state.selection, range),
 				extensions: this.copyConfiguration(range, this.view.state),
 			}),
 		});

@@ -174,6 +174,15 @@ test("a selection that covers the header shows on the pinned copy", async ({
 	await expect(
 		pinned(pane).locator(".cm-selectionBackground").first(),
 	).toBeVisible();
+	// Only the header's part of the selection: no band may reach past the
+	// copy's own box over the lines it hides.
+	const overflow = await pinned(pane).evaluate((element) => {
+		const box = element.getBoundingClientRect();
+		return Array.from(element.querySelectorAll(".cm-selectionBackground")).some(
+			(band) => band.getBoundingClientRect().bottom > box.bottom + 1,
+		);
+	});
+	expect(overflow).toBe(false);
 });
 
 test("the pinned header follows horizontal scrolling", async ({ tabelo }) => {
