@@ -1076,9 +1076,13 @@ follow, and exactly one decisive action comes last at the far right. That last
 action is primary blue for the normal path or destructive red for an
 irreversible path. One group never presents both emphasized colours.
 
-Single-selection dialogs grow to show their complete option list. The option
-list, dialog surface, and action row never own horizontal or vertical scrolling
-and never show incidental scrollbars. A dialog body that does scroll, such as
+Single-selection dialogs grow to show their complete option list. A dialog
+never grows past the window: every dialog caps its height at the viewport and
+scrolls vertically, as one contained scroll area, only when its content does
+not fit, so its actions stay reachable at any window height (owner,
+2026-09-19; the option blocks made Change view overflow a 600px window). The
+option list and the action row never own scrolling of their own, and nothing
+scrolls sideways. A dialog body that does scroll, such as
 Settings, scrolls vertically only: it states `overflow-x-hidden`, prose inside a
 flex or grid item carries `min-w-0` so it wraps, and nothing invisible, such as
 a control's enlarged hit area, may widen it. Decided on #273. The footer remains after the complete

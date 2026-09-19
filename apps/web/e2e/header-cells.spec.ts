@@ -228,14 +228,19 @@ test("the letters and row numbers of a selection are marked, and only those", as
 	expect(await number(1)).toBe(false);
 	expect(await number(HEADER_ROW)).toBe(false);
 
-	// The mark is chrome, so it never wears the selected cells' own fill.
+	// The mark is chrome, so it never wears the selected cells' own fill; it is
+	// carried by weight alone in the modern table (owner, 2026-09-19).
 	const fill = (locator: Locator) =>
 		locator.evaluate((element) => getComputedStyle(element).backgroundColor);
+	const weight = (locator: Locator) =>
+		locator.evaluate((element) =>
+			Number.parseInt(getComputedStyle(element).fontWeight, 10),
+		);
 	expect(await fill(tabelo.columnIndex(1))).not.toBe(
 		await fill(tabelo.cell(1, 1)),
 	);
-	expect(await fill(tabelo.columnIndex(1))).not.toBe(
-		await fill(tabelo.columnIndex(2)),
+	expect(await weight(tabelo.columnIndex(1))).toBeGreaterThan(
+		await weight(tabelo.columnIndex(2)),
 	);
 
 	// A range: every letter and number it touches, and nothing beyond it.

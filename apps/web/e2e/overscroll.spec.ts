@@ -43,9 +43,10 @@ test("every scroll boundary prevents scroll chaining on both axes", async ({
 	);
 
 	const dialog = await tabelo.openChangeViewDialog("markdown");
-	// Choice dialogs expand to their complete content. They are deliberately not
-	// scroll boundaries, so no incidental scrollbar can appear beside actions.
-	await expect(dialog).toHaveCSS("overflow-y", "visible");
+	// A dialog scrolls only when it does not fit the window, and then keeps its
+	// scroll to itself like every other scroll area.
+	await expect(dialog).toHaveCSS("overflow-y", "auto");
+	await expect(dialog).toHaveCSS("overscroll-behavior", "contain");
 	await dialog
 		.getByRole("radio", { name: copy.views["html-preview"].label })
 		.click();
