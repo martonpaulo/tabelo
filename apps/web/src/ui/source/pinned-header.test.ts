@@ -43,7 +43,7 @@ describe("the pinned header range", () => {
 		// Rows parsed from a text of another length are refused, not guessed at.
 		const stale = state.update({
 			effects: setSourceRows.of({
-				rows: [{ from: 0, to: 4 }],
+				rows: [{ from: 0, to: 4, cells: [{ from: 0, to: 4 }] }],
 				length: 99,
 			}),
 		}).state;

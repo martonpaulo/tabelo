@@ -443,7 +443,8 @@ the pane; a taller header is clipped there. The copy is presentation only: it
 is inert and hidden from assistive technology, takes no pointer or focus, and
 reaches no text, clipboard, download, draft, or history. A press on it goes to
 the real header, where the caret lands on the same character, and the real
-header is the only one a reader can select, copy, or hear.
+header is the only one a reader can select, copy, or hear. Where the pane shows
+column markers (#368), the copy is pinned directly under their strip.
 
 **Structure recedes, while semantic values and notation stay related across
 views** (#269). Syntax highlighting always keeps tokens upright. Italics are reserved
@@ -2392,6 +2393,39 @@ stick on both axes (`z-30`). The strip carries `z-30` as a whole, so it is the
 one layer nothing in the table paints over. A sticky cell must not also be
 `relative`: the later rule wins and turns the sticky offset into a static shift,
 which is why only an unpinned strip cell adds `relative` for its resize handle.
+
+### Column markers in a source view
+
+A source view whose codec declares `alignsSourceColumns` shows the same letters
+above its text, one over each column (decided on #368). Markdown is the only
+such format today: its serializer pads every cell to its column's width, so a
+column has one horizontal position. CSV, TSV, and Jira separate fields without
+padding them, and HTML, JSON, and Records are not laid out in columns, so their
+panes show no strip; the registry declaration decides, never the view's name.
+
+- **The header line places the letters.** Each letter stands at the measured
+  position where its header cell's text begins, from the cells the codec's
+  parse mapped (#255), never at a character count, so a wide character, the
+  pane's zoom, or a longer header name moves it with the text. When a body row
+  has drifted out of line with the header after typing, the letters still
+  follow the header (owner, 2026-09-18): the header names the columns, and
+  following the caret's line would make every letter jump on a line change.
+- **It wears the grid strip's look**: the fixed `--grid-strip-h` at every zoom,
+  the code surface with no band or line under it, the index face at `text-xs`
+  in the muted tone, and a dead corner above the line numbers.
+- **It is a CodeMirror panel above the scroller, not a line of the text.** It
+  takes room of its own rather than floating over the first line, it follows
+  horizontal scrolling by remeasuring, and the pinned header (#252) stacks
+  directly under it. A draft that does not parse, or has no mapped header,
+  keeps the strip and draws no letters, so a draft that stops parsing mid-word
+  does not move every line by the strip's height. Turning wrapping on removes
+  the strip, because a wrapped header line has no single position per column.
+- **It is presentation only.** Each letter is drawn from an attribute, so it is
+  not text in the page, and the strip is inert and hidden from assistive
+  technology like the line numbers: it reaches no text, selection, clipboard,
+  download, search, draft, or history. It has no click target and no menu;
+  structural commands on a column live in the pane's context menu (#255), so
+  the strip never becomes a second, partial copy of the grid's.
 
 ### Pinning the first data row and column
 

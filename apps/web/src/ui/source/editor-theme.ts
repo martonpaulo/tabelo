@@ -171,6 +171,44 @@ export const editorTheme = EditorView.theme({
 		pointerEvents: "none",
 		userSelect: "none",
 	},
+	// The column markers (#368), in a CodeMirror panel above the scroller. They
+	// wear the grid's column index strip exactly: its fixed height, which keeps
+	// its size at every zoom like the grid's, the code surface with no band and
+	// no line under it, and the index face in the muted tone. The container's
+	// own light-theme fill and border from CodeMirror are cleared, with a
+	// selector specific enough to beat its `&light` rule.
+	"&.cm-editor .cm-panels.cm-panels-top": {
+		backgroundColor: "var(--surface-code)",
+		color: "inherit",
+		borderBottom: "none",
+	},
+	".cm-tabeloColumnStrip": {
+		position: "relative",
+		height: "var(--grid-strip-h)",
+		overflow: "hidden",
+		backgroundColor: "var(--surface-code)",
+		pointerEvents: "none",
+		userSelect: "none",
+	},
+	// Everything right of the line numbers; the corner above them is dead, as
+	// the grid's is where its letters meet its row numbers.
+	".cm-tabeloColumnTrack": {
+		position: "absolute",
+		top: "0",
+		right: "0",
+		bottom: "0",
+		overflow: "hidden",
+	},
+	".cm-tabeloColumnMarker": {
+		position: "absolute",
+		top: "0",
+		lineHeight: "var(--grid-strip-h)",
+		fontFamily: "var(--font-family-index)",
+		fontSize: "var(--text-xs)",
+		color: "var(--muted-foreground)",
+		whiteSpace: "nowrap",
+	},
+	".cm-tabeloColumnMarker::before": { content: "attr(data-letter)" },
 	".cm-activeLineGutter": { backgroundColor: "transparent" },
 	"&.cm-focused .cm-activeLineGutter": {
 		backgroundColor: "var(--active-line-fill)",

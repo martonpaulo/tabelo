@@ -137,6 +137,10 @@ const copyExtensions: Extension = [
 
 interface Placement {
 	readonly range: SourceRowRange;
+	// Where the scroller begins inside the editor. The copy stands at the top
+	// of the text, so it sits below anything drawn above the scroller, such as
+	// the column markers (#368), rather than over it.
+	readonly top: number;
 	readonly width: number;
 	readonly contentWidth: number;
 	readonly scrollLeft: number;
@@ -145,7 +149,9 @@ interface Placement {
 
 class PinnedHeader {
 	private readonly overlay: HTMLElement;
-	private copy: EditorView | null = null;
+	// Read by the column markers (#368), which measure the header here while
+	// the editor has scrolled too far to have drawn the real one.
+	copy: EditorView | null = null;
 	// The copy's height while it is shown, which is how far a caret revealed
 	// by scrolling has to stay below the top of the pane to be seen.
 	margin = 0;
@@ -233,6 +239,7 @@ class PinnedHeader {
 		if (scroller.scrollTop <= top) return null;
 		return {
 			range,
+			top: scroller.offsetTop,
 			width: scroller.clientWidth,
 			contentWidth: view.contentDOM.getBoundingClientRect().width,
 			scrollLeft: scroller.scrollLeft,
@@ -251,6 +258,7 @@ class PinnedHeader {
 		// copy and never stored: the copy is exactly as wide as the editor's
 		// visible text area, so it wraps where the editor wraps, and its text is
 		// as wide as the editor's, so it can scroll as far sideways.
+		this.overlay.style.top = `${placement.top}px`;
 		this.overlay.style.width = `${placement.width}px`;
 		copy.contentDOM.style.minWidth = `${placement.contentWidth}px`;
 		copy.scrollDOM.scrollLeft = placement.scrollLeft;
@@ -300,7 +308,12 @@ class PinnedHeader {
 		const copy = this.copy;
 		if (!copy || event.button !== 0) return;
 		const box = this.overlay.getBoundingClientRect();
-		if (event.clientY >= box.bottom || event.clientX >= box.right) return;
+		if (
+			event.clientY < box.top ||
+			event.clientY >= box.bottom ||
+			event.clientX >= box.right
+		)
+			return;
 		event.preventDefault();
 		event.stopPropagation();
 		const range = pinnedHeaderRange(this.view.state);
@@ -324,5 +337,12 @@ const pinnedHeaderPlugin = ViewPlugin.fromClass(PinnedHeader, {
 			return margin ? { top: margin } : null;
 		}),
 });
+
+// The copy while it is shown, or null. It draws the header line exactly as the
+// editor would, so a reader that has to measure the header can do it here once
+// the editor itself no longer renders that line.
+export function pinnedHeaderCopy(view: EditorView): EditorView | null {
+	return view.plugin(pinnedHeaderPlugin)?.copy ?? null;
+}
 
 export const pinnedHeader: Extension = [headerRange, pinnedHeaderPlugin];

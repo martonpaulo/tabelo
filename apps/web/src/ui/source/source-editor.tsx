@@ -52,6 +52,7 @@ import type {
 	SourceTabBehaviour,
 	ViewId,
 } from "@/views/types";
+import { columnMarkers, columnMarkersEnabled } from "./column-markers";
 import { csvLanguage } from "./csv-language";
 import { drawnSelection } from "./drawn-selection";
 import { syntaxTheme } from "./editor-theme";
@@ -95,6 +96,7 @@ const indicatorCompartment = new Compartment();
 const tabCompartment = new Compartment();
 const assistanceCompartment = new Compartment();
 const pinnedHeaderCompartment = new Compartment();
+const columnMarkersCompartment = new Compartment();
 
 // Everything the editor draws at the pane's scale, the text, the gutter width,
 // and the caret, reads `--pane-zoom` from the cascade, and the pane body is the
@@ -141,6 +143,13 @@ function metricsSignal(zoom: number): Extension {
 
 function wrapExtension(wrap: boolean) {
 	return wrap ? EditorView.lineWrapping : [];
+}
+
+// The column markers (#368) show where the codec declares aligned columns and
+// the text is not wrapped: a wrapped header line has no single position per
+// column to stand a letter over.
+function columnMarkersExtension(alignsColumns: boolean, wrap: boolean) {
+	return columnMarkersEnabled.of(alignsColumns && !wrap);
 }
 
 // The indicators, from the three global preferences that own them. Spaces,
@@ -358,6 +367,9 @@ interface SourceEditorProps {
 	// Where the table's rows sit in `value`, for the boundaries between them
 	// (#296). Empty when the text does not parse or the format cannot map rows.
 	readonly rows: readonly SourceTableRow[];
+	// Whether the codec lays its columns out at one horizontal position each,
+	// which is what lets the pane label them with letters (#368).
+	readonly alignsColumns: boolean;
 	// The codec whose position mapping names the table row under the caret,
 	// when this pane runs row commands (#255). Absent for a format that cannot
 	// map rows and for a read-only view, where Alt+ArrowUp and Alt+ArrowDown
@@ -403,6 +415,7 @@ export function SourceEditor({
 	fieldSeparator,
 	diagnostics,
 	rows,
+	alignsColumns,
 	rowTarget,
 	invalid,
 	entered,
@@ -517,6 +530,10 @@ export function SourceEditor({
 					editableCompartment.of(EditorView.editable.of(editable)),
 					syntaxTheme,
 					pinnedHeader,
+					columnMarkers,
+					columnMarkersCompartment.of(
+						columnMarkersExtension(alignsColumns, wrap),
+					),
 					pinnedHeaderCompartment.of(
 						pinnedHeaderExtension(
 							language,
@@ -752,6 +769,16 @@ export function SourceEditor({
 		});
 		view.requestMeasure();
 	}, [wrap]);
+
+	useLayoutEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: columnMarkersCompartment.reconfigure(
+				columnMarkersExtension(alignsColumns, wrap),
+			),
+		});
+	}, [alignsColumns, wrap]);
 
 	useEffect(() => {
 		const view = viewRef.current;

@@ -138,6 +138,7 @@ export default function SourceView({
 				fieldSeparator={view.codec?.fieldSeparator}
 				diagnostics={diagnostics}
 				rows={rows}
+				alignsColumns={view.codec?.alignsSourceColumns === true}
 				rowTarget={rowTarget}
 				invalid={invalid}
 				entered={entered}

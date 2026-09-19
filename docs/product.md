@@ -156,6 +156,7 @@ reversible implementation choice does not belong here.
 | Column type change | Changing a column's expected type converts its cells; cells that cannot follow without loss ask first, with Convert the rest or Cancel; one Undo | ADR 0008 | #392 |
 | JSON shape | An array of row objects with explicit serializer preconditions | `CONTEXT.md` | #42, #145 |
 | Source position mapping | A codec declares whether its parse maps each row and cell to source offsets; Markdown, CSV, TSV, and Jira do, HTML, JSON, and Records do not, and an unparsed draft maps nothing | ADR 0005 | #255 |
+| Source column markers | A source view whose codec declares aligned columns (Markdown) shows the grid's column letters above its text, placed over the header line's cells; presentation only, hidden while wrapping | design system §9 | #368 |
 | CSV export header | Always included | `AGENTS.md` domain rules | #148 |
 | Persistence migrations | An explicit forward-only chain; unreadable data is kept and explained by reason | `AGENTS.md` architecture | #184, #32 |
 | Codec escaping | Every escaping codec round-trips content losslessly | ADR 0002 | #183, #188 |
