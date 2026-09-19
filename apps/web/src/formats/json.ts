@@ -2,11 +2,13 @@ import { cellText, readCell } from "@/core/cell-value";
 import { columnLetter } from "@/core/column-letter";
 import { isInlineContent } from "@/core/inline-content";
 import type { CellValue, Column, TableDocument } from "@/core/types";
-import { toDocumentParseResult } from "./parse";
+import { textlessHeaderRow, toDocumentParseResult } from "./parse";
 import type {
 	MatrixParseResult,
 	ParseIssue,
 	PreconditionFailure,
+	SourceRowRange,
+	SourceTableRow,
 	TableCodec,
 } from "./types";
 
@@ -28,6 +30,91 @@ function isJsonScalar(value: unknown): value is CellValue {
 		typeof value === "number" ||
 		typeof value === "boolean"
 	);
+}
+
+// JSON's insignificant whitespace between tokens.
+// https://www.rfc-editor.org/rfc/rfc8259#section-2
+const JSON_SPACE = new Set([" ", "\t", "\n", "\r"]);
+
+function skipJsonSpace(text: string, index: number): number {
+	let at = index;
+	while (at < text.length && JSON_SPACE.has(text.charAt(at))) at += 1;
+	return at;
+}
+
+// Just past the string whose opening quote is at `index`.
+function jsonStringEnd(text: string, index: number): number {
+	for (let at = index + 1; at < text.length; at += 1) {
+		const char = text.charAt(at);
+		if (char === "\\") {
+			at += 1;
+			continue;
+		}
+		if (char === '"') return at + 1;
+	}
+	return text.length;
+}
+
+// Just past the scalar starting at `index`: a string, or a number, `true`,
+// `false`, or `null`, none of which holds a delimiter or a space.
+function jsonScalarEnd(text: string, index: number): number {
+	if (text.charAt(index) === '"') return jsonStringEnd(text, index);
+	let at = index;
+	while (at < text.length) {
+		const char = text.charAt(at);
+		if (char === "," || char === "}" || JSON_SPACE.has(char)) break;
+		at += 1;
+	}
+	return at;
+}
+
+// Where each record and each of its values sits (#402), read from text that
+// JSON.parse has already accepted as an array of flat objects of scalars, so
+// this is a position scan over that one shape and not a second grammar: it
+// never judges the text, it only finds the tokens the parse read. A record is
+// its object from `{` to `}`, wherever the user's formatting put it, and each
+// of its lines names it. A value's range is its whole spelling, quotes and
+// escapes included. Cells follow the columns, not the text: each is the value
+// of the key its column names, the last one when a key repeats, as JSON.parse
+// keeps it, up to the first column the record does not spell. The header has
+// no text of its own, because its names are the keys inside every record.
+function jsonSourceRows(
+	text: string,
+	headers: readonly string[],
+): SourceTableRow[] {
+	const rows: SourceTableRow[] = [textlessHeaderRow];
+	// Past the array's `[`.
+	let at = skipJsonSpace(text, 0) + 1;
+	for (;;) {
+		at = skipJsonSpace(text, at);
+		if (text.charAt(at) === ",") at = skipJsonSpace(text, at + 1);
+		if (text.charAt(at) !== "{") break;
+		const from = at;
+		at += 1;
+		const values = new Map<string, SourceRowRange>();
+		for (;;) {
+			at = skipJsonSpace(text, at);
+			if (text.charAt(at) === ",") at = skipJsonSpace(text, at + 1);
+			if (at >= text.length || text.charAt(at) === "}") break;
+			const keyEnd = jsonStringEnd(text, at);
+			const key: unknown = JSON.parse(text.slice(at, keyEnd));
+			// Past the `:` and the space on either side of it.
+			at = skipJsonSpace(text, skipJsonSpace(text, keyEnd) + 1);
+			const valueEnd = jsonScalarEnd(text, at);
+			if (typeof key === "string") values.set(key, { from: at, to: valueEnd });
+			at = valueEnd;
+		}
+		const cells: SourceRowRange[] = [];
+		for (const header of headers) {
+			const cell = values.get(header);
+			if (!cell) break;
+			cells.push(cell);
+		}
+		// Past the `}`.
+		at += 1;
+		rows.push({ from, to: at, cells, lines: "all" });
+	}
+	return rows;
 }
 
 function parseJsonMatrix(text: string): MatrixParseResult {
@@ -103,6 +190,7 @@ function parseJsonMatrix(text: string): MatrixParseResult {
 		ok: true,
 		table: { matrix, headerRow: true },
 		warnings: warnings.length > 0 ? warnings : undefined,
+		rows: jsonSourceRows(text, headers),
 	};
 }
 
@@ -219,6 +307,8 @@ export const jsonCodec: TableCodec = {
 	},
 	extension: "json",
 	mimeType: "application/json",
+	// Each record from its own parse, as a block under no header line (#402).
+	mapsSourceRows: true,
 	parseMatrix: parseJsonMatrix,
 	parse: (text) => toDocumentParseResult(parseJsonMatrix(text)),
 	serialize: serializeJson,

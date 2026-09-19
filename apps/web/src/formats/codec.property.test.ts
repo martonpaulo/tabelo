@@ -330,6 +330,19 @@ describe("registered codec properties", () => {
 // other, which proves the range covers exactly the cell's spelling.
 const SENTINEL = "mapped";
 
+// The sentinel as the codec itself spells it in a cell, read back through its
+// own mapping, so a format whose cell spelling carries quotes, as JSON's
+// does, is rewritten with valid text.
+function sentinelSpelling(codec: TableCodec): string {
+	const text = codec.serialize(
+		documentFromMatrix([["column"], [SENTINEL]], { headerRow: true }),
+	);
+	const parsed = codec.parse(text);
+	const cell = parsed.ok ? parsed.rows?.[1]?.cells[0] : undefined;
+	if (!cell) throw new Error(`${codec.id} maps no cell of its own output`);
+	return text.slice(cell.from, cell.to);
+}
+
 function mappedCellCase(codec: TableCodec) {
 	return codecDocumentArbitrary(codec).chain((document) =>
 		fc
@@ -352,20 +365,28 @@ describe("source position mapping properties", () => {
 				const rows = parsed.rows ?? [];
 				expect(rows).toHaveLength(document.rows.length + 1);
 				for (const row of rows) {
-					expect(row.cells).toHaveLength(document.columns.length);
+					// A header spelled as keys inside every row has no text of its
+					// own, so it maps no cell (#402).
+					expect(row.cells).toHaveLength(
+						row.lines === "none" ? 0 : document.columns.length,
+					);
 				}
+				if (rows[cell.row]?.lines === "none") return;
 
 				const range = rows[cell.row]?.cells[cell.column];
 				if (!range) throw new Error("the mapped cell is missing");
 				expect(cellAtPosition(rows, range.from)).toEqual(cell);
 				expect(cellAtPosition(rows, range.to)).toEqual(cell);
 
-				const rewritten = expectSuccessfulParse(
-					codec.id,
-					codec.parse(
-						`${text.slice(0, range.from)}${SENTINEL}${text.slice(range.to)}`,
-					),
+				const reparsed = codec.parse(
+					`${text.slice(0, range.from)}${sentinelSpelling(codec)}${text.slice(range.to)}`,
 				);
+				// An empty value can sit where only a longer delimiter lets text
+				// follow: Records writes `- Label:` with no space, and a value needs
+				// `: ` before it. Its place is still exact, which the positions
+				// above prove; there is just no spelling to overwrite.
+				if (range.from === range.to && !reparsed.ok) return;
+				const rewritten = expectSuccessfulParse(codec.id, reparsed);
 				const expected = documentToMatrix(parsed.document);
 				const expectedRow = expected[cell.row];
 				if (!expectedRow) throw new Error("the parsed row is missing");

@@ -85,8 +85,23 @@ export interface SourceRowRange {
 // which in a ragged draft can differ from the table's column count. A Markdown
 // header's cells are on its first line; its alignment divider names the row
 // and no column.
+//
+// A keyed format, whose rows are blocks rather than lines of cells (#402),
+// maps each cell by the column its key names, in column order up to the first
+// column the row does not spell, so a record that omits or reorders a key
+// never names the wrong column; a cell past that point names the row alone.
 export interface SourceTableRow extends SourceRowRange {
 	readonly cells: readonly SourceRowRange[];
+	// Which lines name the row, when not only the lines its cells reach
+	// (#402). `all`: every line from `from` to `to`, for a row that is a block
+	// whose brackets or tags can stand on lines of their own, such as a JSON
+	// object or an HTML `<tr>`. `none`: the row has no text of its own, for the
+	// header row of a format that spells its column names as keys inside every
+	// other row (JSON, Records), or an HTML table whose first row is data: it
+	// keeps index 0, so rows count as the document does, sits empty at offset 0
+	// with no cells, and names no position, line, or selection. Absent, a line names the row when one of
+	// its cells reaches it, which is what leaves a Markdown divider unnamed.
+	readonly lines?: "all" | "none";
 }
 
 // Where one field's content sits in source text, as UTF-16 offsets, for the
@@ -244,13 +259,20 @@ export interface TableCodec {
 	// Whether a successful parse returns where each row, and each cell of it,
 	// sits in the source (#296, #255). This is the codec's position mapping: a
 	// source view reads it to name the table row and column under the caret,
-	// which is what lets a structural command act from the text. Declared only
-	// where the mapping is exact, because a command on the wrong row is silent
-	// corruption that looks like success. HTML, Records, and JSON have no
-	// reliable row boundary and do not declare it, and their panes offer no
-	// structural commands. The header row's cells it maps are also where a
-	// source view stands its column letters (#368). See docs/adr/0005.
+	// which is what lets a structural command act from the text, and its line
+	// numbers act on rows (#395). Declared only where the mapping is exact,
+	// because a command on the wrong row is silent corruption that looks like
+	// success: a keyed or nested format maps from its own parse and maps
+	// nothing it cannot bound (#402). See docs/adr/0005.
 	readonly mapsSourceRows?: boolean;
+	// Whether the rows it maps also lay the table's columns out across lines:
+	// the header row is one line of cells of its own, and every row spells
+	// its cells left to right in column order (Markdown, CSV, TSV, Jira). Only
+	// then do the header's cells place the column letters (#368), the header
+	// pin at the top of the pane (#252), and the columns align on screen
+	// (#396). JSON, Records, and HTML map rows as blocks and do not declare it
+	// (#402).
+	readonly mapsSourceColumns?: boolean;
 	// Whether the format's own text pads every cell to its column's width, as
 	// Markdown's serializer does. A source view aligns the columns of a format
 	// that maps its rows and does not pad them, drawing the padding on screen

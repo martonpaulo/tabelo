@@ -1,9 +1,14 @@
 import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
 import { csvCodec } from "@/formats/csv";
+import { jsonCodec } from "@/formats/json";
 import { markdownCodec } from "@/formats/markdown";
 import type { TableCodec } from "@/formats/types";
-import { pinnedHeader, pinnedHeaderRange } from "./pinned-header";
+import {
+	pinnedHeader,
+	pinnedHeaderEnabled,
+	pinnedHeaderRange,
+} from "./pinned-header";
 import { setSourceRows } from "./source-rows";
 
 // Which text a source pane pins (#252): the first row its codec maps, carried
@@ -11,10 +16,19 @@ import { setSourceRows } from "./source-rows";
 // describe some other text. Read back as the text the range covers, so each
 // expectation says what a reader would see pinned.
 
+// The pane pins only a header that is a line of columns, which the codec
+// declares (#402).
+function pinning(codec: TableCodec) {
+	return [
+		pinnedHeader,
+		pinnedHeaderEnabled.of(codec.mapsSourceColumns === true),
+	];
+}
+
 function pinnedAfterParse(codec: TableCodec, text: string) {
 	const parsed = codec.parse(text);
 	const rows = parsed.ok ? (parsed.rows ?? []) : [];
-	const state = EditorState.create({ doc: text, extensions: pinnedHeader });
+	const state = EditorState.create({ doc: text, extensions: pinning(codec) });
 	return state.update({
 		effects: setSourceRows.of({ rows, length: text.length }),
 	}).state;
@@ -40,13 +54,18 @@ describe("the pinned header range", () => {
 		);
 	});
 
+	it("pins nothing where the rows are blocks with no header line", () => {
+		const text = '[\n  {"name": "Ingrid"}\n]';
+		expect(pinnedText(pinnedAfterParse(jsonCodec, text))).toBe(null);
+	});
+
 	it("is empty while the rows describe no text", () => {
 		expect(pinnedText(pinnedAfterParse(csvCodec, 'name\n"unclosed'))).toBe(
 			null,
 		);
 		const state = EditorState.create({
 			doc: "name\nIngrid",
-			extensions: pinnedHeader,
+			extensions: pinning(csvCodec),
 		});
 		// Rows parsed from a text of another length are refused, not guessed at.
 		const stale = state.update({

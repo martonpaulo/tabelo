@@ -71,11 +71,13 @@ export function canParse(view: ViewDefinition): boolean {
 }
 
 // Whether a text view aligns its columns on screen (#396): its codec maps
-// where each row's cells sit and its own text does not already pad them.
+// where each row's cells sit, lays them out as columns across lines, and its
+// own text does not already pad them.
 export function alignsColumns(view: ViewDefinition): boolean {
 	return (
 		view.kind === "source" &&
 		view.codec?.mapsSourceRows === true &&
+		view.codec.mapsSourceColumns === true &&
 		view.codec.padsColumns !== true
 	);
 }

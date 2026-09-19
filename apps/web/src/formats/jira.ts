@@ -260,6 +260,7 @@ export const jiraCodec: TableCodec = {
 	extension: "jira.txt",
 	mimeType: "text/plain",
 	mapsSourceRows: true,
+	mapsSourceColumns: true,
 	sourceFields: jiraFields,
 	// Enter at the end of a row or of the header starts the next row with a
 	// bare `|` (#391). Typing into an empty cell replaces the space that spells

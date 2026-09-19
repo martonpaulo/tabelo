@@ -8,6 +8,7 @@ import type {
 	TableDocument,
 	TextContent,
 } from "@/core/types";
+import { htmlSourceRows } from "./html-source";
 import {
 	type DelimitedMark,
 	type InlineElement,
@@ -15,11 +16,12 @@ import {
 	linkChildren,
 	markEvents,
 } from "./inline-syntax";
-import { toDocumentParseResult } from "./parse";
+import { textlessHeaderRow, toDocumentParseResult } from "./parse";
 import type {
 	EscapeMatcher,
 	MatrixParseResult,
 	ParseIssue,
+	SourceTableRow,
 	TableCodec,
 } from "./types";
 
@@ -294,6 +296,9 @@ export interface HtmlTable {
 	readonly headerRow: boolean;
 	readonly alignments: readonly Alignment[];
 	readonly warnings: readonly ParseIssue[];
+	// How many cells the parser found in each `<tr>`, before the matrix is
+	// padded to a rectangle: what the source position mapping must agree with.
+	readonly cellCounts: readonly number[];
 }
 
 export type HtmlTableReading =
@@ -352,6 +357,7 @@ export function readHtmlTable(html: string): HtmlTableReading | null {
 			headerRow,
 			alignments,
 			warnings,
+			cellCounts: matrix.map((row) => row.length),
 		},
 	};
 }
@@ -413,7 +419,43 @@ function parseHtmlMatrix(text: string): MatrixParseResult {
 			alignments: table.alignments,
 		},
 		warnings: table.warnings.length > 0 ? table.warnings : undefined,
+		rows: htmlRows(text, table),
 	};
+}
+
+// Where each row and cell the parser read sits in the text (#402): a row is a
+// `<tr>` from its opening tag to its closing one, every line of which names
+// it, and a cell is a `<th>` or `<td>`'s content between its tags. The parser
+// reports no offsets, so the rows come from the one scan of the text's tags
+// (html-source.ts) and are trusted only where they agree with the parser row
+// for row and cell for cell; markup the parser has to repair, such as a cell
+// it closes or a row it opens on its own, maps nothing rather than something
+// nearly right. A first row that is not all `<th>` is data, so the header
+// then has no text of its own.
+function htmlRows(
+	text: string,
+	table: HtmlTable,
+): readonly SourceTableRow[] | undefined {
+	const scanned = htmlSourceRows(text);
+	if (
+		!scanned ||
+		scanned.length !== table.cellCounts.length ||
+		scanned.some((row, index) => row.cells.length !== table.cellCounts[index])
+	) {
+		return undefined;
+	}
+	const rows = scanned.map(
+		(row): SourceTableRow => ({
+			from: row.from,
+			to: row.to,
+			cells: row.cells.map((cell) => ({
+				from: cell.contentFrom,
+				to: cell.contentTo,
+			})),
+			lines: "all",
+		}),
+	);
+	return table.headerRow ? rows : [textlessHeaderRow, ...rows];
 }
 
 // Writing one cell
@@ -545,6 +587,8 @@ export const htmlCodec: TableCodec = {
 	},
 	extension: "html",
 	mimeType: "text/html",
+	// Each `<tr>` from its own parse, as a block of lines (#402).
+	mapsSourceRows: true,
 	parseMatrix: parseHtmlMatrix,
 	parse: (text) => toDocumentParseResult(parseHtmlMatrix(text)),
 	serialize: serializeHtml,

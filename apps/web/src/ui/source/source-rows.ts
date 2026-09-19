@@ -36,6 +36,7 @@ export const sourceRowsField = StateField.define<
 		if (!rows || !transaction.docChanged) return rows;
 		const { changes } = transaction;
 		return rows.map((row) => ({
+			...row,
 			from: changes.mapPos(row.from, -1),
 			to: changes.mapPos(row.to, 1),
 			cells: row.cells.map((cell) => ({

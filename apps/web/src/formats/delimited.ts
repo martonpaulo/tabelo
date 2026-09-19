@@ -287,6 +287,7 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 		extension: config.extension,
 		mimeType: config.mimeType,
 		mapsSourceRows: true,
+		mapsSourceColumns: true,
 		fieldSeparator: config.delimiter,
 		sourceFields: (text) => delimitedFields(text, config.delimiter),
 		// A quoted field carries its line breaks as they are.

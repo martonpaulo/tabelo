@@ -157,7 +157,10 @@ export default function SourceView({
 				}
 				diagnostics={diagnostics}
 				rows={rows}
-				mapsHeaderCells={view.codec?.mapsSourceRows === true}
+				mapsHeaderCells={
+					view.codec?.mapsSourceRows === true &&
+					view.codec.mapsSourceColumns === true
+				}
 				rowTarget={rowTarget}
 				invalid={invalid}
 				entered={entered}

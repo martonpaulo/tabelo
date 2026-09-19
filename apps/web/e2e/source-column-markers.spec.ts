@@ -153,7 +153,7 @@ test("every source view that maps its header cells labels them, and no other", a
 		await tabelo.showInSourcePane(view.id);
 		await expect(tabelo.source(view.id)).toBeVisible();
 		const strip = tabelo.pane(view.id).locator(STRIP);
-		if (view.codec?.mapsSourceRows) {
+		if (view.codec?.mapsSourceColumns) {
 			await expect(shownMarkers(tabelo.pane(view.id))).toHaveCount(
 				samplePeopleHeaders.length + 1,
 			);

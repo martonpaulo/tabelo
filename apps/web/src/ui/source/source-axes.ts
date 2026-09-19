@@ -76,16 +76,18 @@ export const sourceAxisConfig = Facet.define<
 // The table row a text line belongs to, or null when the line holds no cell
 // of any row: a Markdown divider, a blank line, text outside the table. A row
 // owns every line one of its cells reaches, so each line of a quoted CSV
-// record names that record.
+// record names that record, and a row that is a block owns every line of its
+// span, brackets and tags included (#402).
 export function rowAtLine(
 	rows: readonly SourceTableRow[],
 	line: SourceRowRange,
 ): number | null {
 	const index = rows.findIndex(
-		(row) => line.from <= row.to && line.to >= row.from,
+		(row) => row.lines !== "none" && line.from <= row.to && line.to >= row.from,
 	);
 	const row = rows[index];
 	if (!row) return null;
+	if (row.lines === "all") return index;
 	return row.cells.some((cell) => cell.from <= line.to && cell.to >= line.from)
 		? index
 		: null;
@@ -93,10 +95,12 @@ export function rowAtLine(
 
 // A row's own text: from its start to the end of the line holding its last
 // cell, so a Markdown header stops before the divider the codec counts as
-// part of it, as the pinned header does.
+// part of it, as the pinned header does. A block is its whole span.
 export function rowSpan(doc: Text, row: SourceTableRow): SourceRowRange {
 	const last = row.cells.at(-1);
-	if (!last || last.to > doc.length) return { from: row.from, to: row.to };
+	if (!last || last.to > doc.length || row.lines === "all") {
+		return { from: row.from, to: row.to };
+	}
 	return { from: row.from, to: Math.min(row.to, doc.lineAt(last.to).to) };
 }
 
@@ -170,6 +174,7 @@ function selectedSourceRow(state: EditorState): number | null {
 	const main = selection.main;
 	if (!rows || selection.ranges.length !== 1 || main.empty) return null;
 	const index = rows.findIndex((row) => {
+		if (row.lines === "none") return false;
 		const span = rowSpan(state.doc, row);
 		return (
 			main.from === span.from &&
@@ -195,14 +200,22 @@ export function selectedSourceAxis(
 	const rows = state.field(sourceRowsField, false);
 	if (!rows) return null;
 	const { selection } = state;
-	// A column's first range in reading order is its header cell's.
+	// A column's first range in reading order is its first mapped cell's: the
+	// header's, unless the header has no text of its own (#402).
 	const first = selection.ranges[0];
 	const column =
 		first === undefined
 			? -1
-			: (rows[0]?.cells.findIndex(
-					(cell) => first.from >= cell.from && first.to <= cell.to,
-				) ?? -1);
+			: (rows
+					.find(
+						(row) =>
+							row.lines !== "none" &&
+							first.from >= row.from &&
+							first.to <= row.to,
+					)
+					?.cells.findIndex(
+						(cell) => first.from >= cell.from && first.to <= cell.to,
+					) ?? -1);
 	if (column === -1) return null;
 	const expected = axisSelection(state, { axis: "column", index: column });
 	return expected && sameRanges(expected, selection)
@@ -222,7 +235,10 @@ export function axisAnchor(
 		const row = rows[target.index];
 		return row ? (row.cells[0]?.from ?? row.from) : null;
 	}
-	return rows[0]?.cells[target.index]?.from ?? null;
+	return (
+		rows.find((row) => row.cells[target.index])?.cells[target.index]?.from ??
+		null
+	);
 }
 
 // What a pointer on a label names. A letter carries its column; a line number

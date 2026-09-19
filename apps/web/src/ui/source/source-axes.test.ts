@@ -4,7 +4,9 @@ import { documentFromMatrix } from "@/core/document";
 import { samplePerson } from "@/core/sample-data";
 import { csvCodec } from "@/formats/csv";
 import { jiraCodec } from "@/formats/jira";
+import { jsonCodec } from "@/formats/json";
 import { markdownCodec } from "@/formats/markdown";
+import { recordsCodec } from "@/formats/records";
 import type { TableCodec } from "@/formats/types";
 import { occurrenceSummary } from "./occurrence-selection";
 import {
@@ -136,6 +138,61 @@ describe("source axis labels", () => {
 		});
 		expect(pick(EditorSelection.single(line.from + 3))).toBeNull();
 		expect(pick(EditorSelection.single(line.from, line.to - 1))).toBeNull();
+	});
+
+	// A JSON object or a Records entry is a block (#402): every line of it
+	// names its row, brackets included, and a header with no text of its own
+	// is named by no line.
+	it("names a block row from every line of it, and nothing from the lines around it", () => {
+		const text = [
+			"[",
+			"  {",
+			`    "Name": "${ingrid.name}",`,
+			`    "City": "${ingrid.city}"`,
+			"  },",
+			`  {"Name": "${paulo.name}", "City": "${paulo.city}"}`,
+			"]",
+		].join("\n");
+		const state = mapped(jsonCodec, text);
+		expect([1, 2, 3, 4, 5, 6, 7].map((line) => rowOfLine(state, line))).toEqual(
+			[null, 1, 1, 1, 1, 2, null],
+		);
+		expect(
+			selectedText(state, axisSelection(state, { axis: "row", index: 1 })),
+		).toEqual([text.slice(text.indexOf("{"), text.indexOf("}") + 1)]);
+	});
+
+	it("names each line of a record from its title through its last bullet", () => {
+		const text = `Name: ${ingrid.name}\n- City: ${ingrid.city}\n\nName: ${paulo.name}\n- City: ${paulo.city}`;
+		const state = mapped(recordsCodec, text);
+		expect([1, 2, 3, 4, 5].map((line) => rowOfLine(state, line))).toEqual([
+			1,
+			1,
+			null,
+			2,
+			2,
+		]);
+	});
+
+	it("reads a block format's column from its first row, having no header line", () => {
+		const text = `[\n  {"Name": "${ingrid.name}", "City": "${ingrid.city}"},\n  {"Name": "${paulo.name}", "City": "${paulo.city}"}\n]`;
+		const state = mapped(jsonCodec, text);
+		const selection = axisSelection(state, { axis: "column", index: 1 });
+		expect(selectedText(state, selection)).toEqual([
+			`"${ingrid.city}"`,
+			`"${paulo.city}"`,
+		]);
+		if (!selection) throw new Error("the column selects something");
+		expect(selectedSourceAxis(state.update({ selection }).state)).toEqual({
+			axis: "column",
+			index: 1,
+		});
+		const row = axisSelection(state, { axis: "row", index: 2 });
+		if (!row) throw new Error("the row selects something");
+		expect(selectedSourceAxis(state.update({ selection: row }).state)).toEqual({
+			axis: "row",
+			index: 2,
+		});
 	});
 
 	it("names nothing while the text has no mapping", () => {

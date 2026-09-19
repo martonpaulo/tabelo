@@ -32,8 +32,9 @@ import { setSourceRows, sourceRowsField } from "./source-rows";
 // last cell. So Markdown pins its header line and not the alignment divider the
 // codec counts as part of that row (owner, 2026-09-19: the divider names no
 // column, so pinning it only costs a line), CSV and TSV pin a whole quoted
-// multi-line record, and a format that maps no rows, or a draft that does not
-// parse, pins nothing at all.
+// multi-line record, and a format that maps no rows, one whose rows are blocks
+// with no header line of cells (#402), or a draft that does not parse, pins
+// nothing at all.
 //
 // The copy is a second, read-only CodeMirror view over the same text, with
 // everything outside the header collapsed. That is what makes it the same
@@ -50,6 +51,13 @@ import { setSourceRows, sourceRowsField } from "./source-rows";
 // it and reconfigures it with its own compartments.
 export const pinnedHeaderSetup = Facet.define<Extension, Extension>({
 	combine: (values) => values.at(-1) ?? [],
+});
+
+// Whether the pane's header row is a line of cells it can pin: the codec
+// declares `mapsSourceColumns` (ADR 0005). A row that is a block, such as a
+// JSON object or an HTML `<tr>`, is never pinned (#402).
+export const pinnedHeaderEnabled = Facet.define<boolean, boolean>({
+	combine: (values) => values.at(-1) ?? false,
 });
 
 // Where the header sits in the editor's text, from the latest row mapping.
@@ -85,6 +93,7 @@ const headerRange = StateField.define<SourceRowRange | null>({
 
 // The header the pane would pin now, or null when there is none to claim.
 export function pinnedHeaderRange(state: EditorState): SourceRowRange | null {
+	if (!state.facet(pinnedHeaderEnabled)) return null;
 	return state.field(headerRange, false) ?? null;
 }
 

@@ -78,7 +78,11 @@ import {
 	occurrenceSummary,
 	selectNextOccurrenceAsPrimary,
 } from "./occurrence-selection";
-import { pinnedHeader, pinnedHeaderSetup } from "./pinned-header";
+import {
+	pinnedHeader,
+	pinnedHeaderEnabled,
+	pinnedHeaderSetup,
+} from "./pinned-header";
 import { recordsLanguage } from "./records-language";
 import {
 	caretOffset,
@@ -185,9 +189,14 @@ function wrapExtension(wrap: boolean) {
 }
 
 // The column markers (#368) show wherever the codec maps the header row's
-// cells, wrapped or not (owner, 2026-09-19).
+// cells as a line of columns, wrapped or not (owner, 2026-09-19), and only
+// there is the header a line the pane can pin (#252): a JSON, Records, or
+// HTML row is a block with no header line of cells (#402).
 function columnMarkersExtension(mapsHeaderCells: boolean) {
-	return columnMarkersEnabled.of(mapsHeaderCells);
+	return [
+		columnMarkersEnabled.of(mapsHeaderCells),
+		pinnedHeaderEnabled.of(mapsHeaderCells),
+	];
 }
 
 // The indicators, from the three global preferences that own them. Spaces,
@@ -445,8 +454,9 @@ interface SourceEditorProps {
 	// Where the table's rows sit in `value`, for the boundaries between them
 	// (#296). Empty when the text does not parse or the format cannot map rows.
 	readonly rows: readonly SourceTableRow[];
-	// Whether the codec maps where the header row's cells sit, which is what
-	// lets the pane label its columns with letters (#368).
+	// Whether the codec maps the header row's cells as a line of columns
+	// (`mapsSourceColumns`), which is what lets the pane label its columns with
+	// letters (#368) and pin its header (#252).
 	readonly mapsHeaderCells: boolean;
 	// The codec whose position mapping names the table row under the caret,
 	// when this pane runs row commands (#255). Absent for a format that cannot

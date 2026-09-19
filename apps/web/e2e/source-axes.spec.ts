@@ -30,6 +30,9 @@ const sourceViews = listViews().filter(
 );
 const mappedViews = sourceViews.filter((view) => view.codec?.mapsSourceRows);
 const unmappedViews = sourceViews.filter((view) => !view.codec?.mapsSourceRows);
+// The views whose header is a line of cells, which is where column letters
+// stand (#368). A view whose rows are blocks maps rows but no letters (#402).
+const columnViews = mappedViews.filter((view) => view.codec?.mapsSourceColumns);
 
 async function seed(tabelo: TabeloPage, view: ViewId): Promise<Locator> {
 	await tabelo.source("markdown").fill(TABLE);
@@ -88,7 +91,7 @@ async function drag(page: Page, from: Locator, to: Locator): Promise<void> {
 	await page.mouse.up();
 }
 
-for (const view of mappedViews) {
+for (const view of columnViews) {
 	test(`${view.id}: a column letter opens its column's menu, and a move is one undo step`, async ({
 		page,
 		tabelo,
@@ -111,25 +114,6 @@ for (const view of mappedViews) {
 
 		await page.keyboard.press("ControlOrMeta+Z");
 		await expect(tabelo.header(1)).toHaveText("Name");
-	});
-
-	test(`${view.id}: a row's line number opens its row's menu`, async ({
-		page,
-		tabelo,
-	}) => {
-		const pane = await seed(tabelo, view.id);
-		await (await lineNumber(pane, "Paulo")).click({ button: "right" });
-		const menu = page.getByRole("menu");
-		await expect(menu).toHaveAccessibleName(
-			copy.actions.rowActionsFor(copy.a11y.rowNumber(1)),
-		);
-		await menu
-			.getByRole("menuitem", { name: copy.actions.duplicateRows(1) })
-			.click();
-		await closed(page);
-		await expect(tabelo.cell(3, 1)).toHaveText("Paulo");
-		await page.keyboard.press("ControlOrMeta+Z");
-		await expect(tabelo.cell(3, 1)).toHaveCount(0);
 	});
 
 	test(`${view.id}: a letter's click selects its column, so typing edits every cell`, async ({
@@ -184,6 +168,40 @@ for (const view of mappedViews) {
 		expect(await order(tabelo)).toEqual(["Paulo", "Ingrid"]);
 	});
 
+	test(`${view.id}: dragging a selected letter moves the column`, async ({
+		page,
+		tabelo,
+	}) => {
+		const pane = await seed(tabelo, view.id);
+		await letter(pane, 2).click();
+		await drag(page, letter(pane, 2), letter(pane, 1));
+		await expect(tabelo.header(1)).toHaveText("City");
+		expect(await headers(tabelo)).toEqual(["City", "Name"]);
+		await expect(tabelo.cell(1, 1)).toHaveText("Rio");
+	});
+}
+
+// Every view that maps rows, the ones whose rows are blocks included (#402).
+for (const view of mappedViews) {
+	test(`${view.id}: a row's line number opens its row's menu`, async ({
+		page,
+		tabelo,
+	}) => {
+		const pane = await seed(tabelo, view.id);
+		await (await lineNumber(pane, "Paulo")).click({ button: "right" });
+		const menu = page.getByRole("menu");
+		await expect(menu).toHaveAccessibleName(
+			copy.actions.rowActionsFor(copy.a11y.rowNumber(1)),
+		);
+		await menu
+			.getByRole("menuitem", { name: copy.actions.duplicateRows(1) })
+			.click();
+		await closed(page);
+		await expect(tabelo.cell(3, 1)).toHaveText("Paulo");
+		await page.keyboard.press("ControlOrMeta+Z");
+		await expect(tabelo.cell(3, 1)).toHaveCount(0);
+	});
+
 	test(`${view.id}: dragging a selected row's line number moves the row`, async ({
 		page,
 		tabelo,
@@ -197,18 +215,6 @@ for (const view of mappedViews) {
 		expect(await order(tabelo)).toEqual(["Paulo", "Ingrid"]);
 		await page.keyboard.press("ControlOrMeta+Z");
 		await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
-	});
-
-	test(`${view.id}: dragging a selected letter moves the column`, async ({
-		page,
-		tabelo,
-	}) => {
-		const pane = await seed(tabelo, view.id);
-		await letter(pane, 2).click();
-		await drag(page, letter(pane, 2), letter(pane, 1));
-		await expect(tabelo.header(1)).toHaveText("City");
-		expect(await headers(tabelo)).toEqual(["City", "Name"]);
-		await expect(tabelo.cell(1, 1)).toHaveText("Rio");
 	});
 }
 

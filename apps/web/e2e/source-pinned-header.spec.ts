@@ -1,6 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { samplePeople, samplePerson } from "@/core/sample-data";
+import { listViews } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import { expect, test } from "./fixtures";
 import {
@@ -161,13 +162,19 @@ for (const testCase of cases) {
 	});
 }
 
-test("views without a mapped header row never pin one", async ({ tabelo }) => {
+// Views whose rows are blocks map rows but no header line of cells (#402),
+// read from the registry by what their codec declares.
+test("views without a header line of cells never pin one", async ({
+	tabelo,
+}) => {
 	const csv = cases[1];
 	if (!csv) throw new Error("missing CSV case");
 	await fillSource(tabelo, csv);
-	for (const view of ["json", "records", "html"] as const) {
-		await tabelo.showInSourcePane(view);
-		const pane = tabelo.pane(view);
+	for (const { id } of listViews().filter(
+		(view) => view.kind === "source" && !view.codec?.mapsSourceColumns,
+	)) {
+		await tabelo.showInSourcePane(id);
+		const pane = tabelo.pane(id);
 		await scrollTo(pane, 800);
 		await expect(pane.locator(".cm-scroller").first()).not.toHaveJSProperty(
 			"scrollTop",

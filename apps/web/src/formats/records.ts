@@ -1,11 +1,13 @@
 import { cellText, cellTextAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
-import { lineSpans, toDocumentParseResult } from "./parse";
+import { lineSpans, textlessHeaderRow, toDocumentParseResult } from "./parse";
 import type {
 	MatrixParseResult,
 	OutputOptions,
 	PreconditionFailure,
 	SourceFieldRange,
+	SourceRowRange,
+	SourceTableRow,
 	TableCodec,
 } from "./types";
 import { defaultOutputOptions } from "./types";
@@ -300,7 +302,65 @@ function parseRecordsMatrix(text: string): MatrixParseResult {
 		matrix.push(row);
 	}
 
-	return { ok: true, table: { matrix, headerRow: true } };
+	return {
+		ok: true,
+		table: { matrix, headerRow: true },
+		rows: recordsSourceRows(text, blocks, headers),
+	};
+}
+
+// Where each record and each of its values sits (#402), from the blocks and
+// the header/value boundary the parse above read, once it has accepted them.
+// A record is its title line through its last bullet line, and every one of
+// its lines names it. A value runs from where the label's `: ` ends to the end
+// of its line, escapes included. Cells follow the columns, not the lines: the
+// title's value is the first column's, and each bullet's value is the column
+// its label names, the last one when a label repeats, as the parse keeps it,
+// up to the first column the record does not spell. The header has no text of
+// its own, because its names are the labels inside every record.
+function recordsSourceRows(
+	text: string,
+	blocks: readonly RecordBlock[],
+	headers: readonly string[],
+): SourceTableRow[] {
+	const spans = lineSpans(text);
+	const rows: SourceTableRow[] = [textlessHeaderRow];
+	for (const [position, block] of blocks.entries()) {
+		const values = new Map<number, SourceRowRange>();
+		let to = 0;
+		block.lines.forEach((line, index) => {
+			const span = spans[block.start + index];
+			if (!span) return;
+			to = span.to;
+			// The title line's label is the first column's name; a bullet's
+			// starts after its `- `.
+			const labelFrom = index === 0 ? 0 : 2;
+			const boundary = headerValueBoundary(line.slice(labelFrom));
+			if (!boundary) return;
+			// The first record defines the columns line by line; every later
+			// one is matched by label, as the parse matches it.
+			const column =
+				index === 0 || position === 0
+					? index
+					: headers.indexOf(
+							unescapeHeader(line.slice(2, 2 + boundary.headerEnd)),
+						);
+			if (column === -1) return;
+			values.set(column, {
+				from: span.from + labelFrom + boundary.valueFrom,
+				to: span.to,
+			});
+		});
+		const cells: SourceRowRange[] = [];
+		for (let column = 0; column < headers.length; column += 1) {
+			const cell = values.get(column);
+			if (!cell) break;
+			cells.push(cell);
+		}
+		const from = spans[block.start]?.from ?? 0;
+		rows.push({ from, to, cells, lines: "all" });
+	}
+	return rows;
 }
 
 function serializeRecords(
@@ -423,6 +483,8 @@ export const recordsCodec: TableCodec = {
 	extension: "records.txt",
 	mimeType: "text/plain",
 	sourceFields: recordsFields,
+	// Each record from its own parse, as a block under no header line (#402).
+	mapsSourceRows: true,
 	parseMatrix: parseRecordsMatrix,
 	parse: (text) => toDocumentParseResult(parseRecordsMatrix(text)),
 	serialize: serializeRecords,

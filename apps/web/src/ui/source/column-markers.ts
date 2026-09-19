@@ -15,8 +15,8 @@ import { setSourceRows } from "./source-rows";
 // The column markers of a source view (#368): a strip of column letters above
 // the text, one over each column, like the grid's column index strip.
 //
-// Every format whose codec maps where the header row's cells sit
-// (`mapsSourceRows`) draws them, and the editor never decides by the view's
+// Every format whose codec maps the header row's cells as a line of columns
+// (`mapsSourceColumns`, #402) draws them, and the editor never decides by the view's
 // name. Where a letter stands is the header line's answer, never a character
 // count: each one sits at the measured position of the header cell the codec's
 // parse mapped (`SourceTableRow.cells`), so a wide character, a changed zoom,

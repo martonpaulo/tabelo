@@ -37,6 +37,17 @@ export function toDocumentParseResult(result: MatrixParseResult): ParseResult {
 	};
 }
 
+// A header row with no text of its own (#402): the column names of a format
+// that spells them as keys inside every other row, or the empty header of a
+// table whose first row the parse read as data. It keeps the header's place
+// at index 0 and names nothing. See SourceTableRow.
+export const textlessHeaderRow: SourceTableRow = {
+	from: 0,
+	to: 0,
+	cells: [],
+	lines: "none",
+};
+
 // The span of every text line, split the way the line-based formats split
 // them, so a line index from their parse becomes source offsets directly.
 export function lineSpans(text: string): SourceRowRange[] {
@@ -124,8 +135,8 @@ export function pipeCellSpans(
 // so a caret just before a delimiter names the cell it closes and one just
 // after it names the cell it opens. A position outside a row's outer pipes or in
 // a Markdown alignment divider names the row and no column; a blank line, or
-// anything before the first row or after the last, names nothing. `row` counts
-// the header as 0.
+// anything before the first row or after the last, names nothing, and so does
+// a row with no text of its own. `row` counts the header as 0.
 export interface SourcePosition {
 	readonly row: number;
 	readonly column: number | null;
@@ -135,7 +146,9 @@ export function cellAtPosition(
 	rows: readonly SourceTableRow[],
 	offset: number,
 ): SourcePosition | null {
-	const row = rows.findIndex(({ from, to }) => offset >= from && offset <= to);
+	const row = rows.findIndex(
+		({ from, to, lines }) => lines !== "none" && offset >= from && offset <= to,
+	);
 	const found = rows[row];
 	if (!found) return null;
 	const column = found.cells.findIndex(
