@@ -144,7 +144,14 @@ export const editorTheme = EditorView.theme({
 		padding: "0 calc(var(--spacing) * 4) 0 calc(var(--spacing) * 5)",
 		textAlign: "right",
 	},
-	".cm-activeLine": { backgroundColor: "var(--active-line-fill)" },
+	// The current line is marked only in the editor that has focus (owner,
+	// 2026-09-19). Every pane keeps its own caret line while another pane is
+	// being worked in, and four tinted lines at once said nothing about where
+	// the typing would go.
+	".cm-activeLine": { backgroundColor: "transparent" },
+	"&.cm-focused .cm-activeLine": {
+		backgroundColor: "var(--active-line-fill)",
+	},
 	// The pinned header (#252), a read-only copy of the header row floating over
 	// the top of the text while the real one is scrolled away. It paints the
 	// pane surface, opaque, because live rows pass underneath it, and its edge is
@@ -164,7 +171,8 @@ export const editorTheme = EditorView.theme({
 		pointerEvents: "none",
 		userSelect: "none",
 	},
-	".cm-activeLineGutter": {
+	".cm-activeLineGutter": { backgroundColor: "transparent" },
+	"&.cm-focused .cm-activeLineGutter": {
 		backgroundColor: "var(--active-line-fill)",
 		color: "var(--foreground)",
 	},

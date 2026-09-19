@@ -234,7 +234,7 @@ content the user is already looking at and carry no floor either.
 | `--selection-edge` | `border-selection-edge` | The focused cell's mark, focus rings, resize affordance |
 | `--text-selection-fill` | CSS selection | Native and source-editor text selection |
 | `--primary` / `--primary-foreground` | `bg-primary text-primary-foreground` | The solid accent with a contrast-paired label: the primary decision button, a checked control, and the grid's current find match |
-| `--active-line-fill` | Source editor theme | Current source line without competing with selected text |
+| `--active-line-fill` | Source editor theme | Current source line without competing with selected text, drawn with its gutter number only in the editor that has focus (owner, 2026-09-19) |
 
 The find match is the one place the solid accent fills a run of text rather than
 outlining a control. It earns it: the cell underneath already wears
