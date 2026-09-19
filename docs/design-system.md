@@ -257,8 +257,8 @@ number `1`, in accordance with ADR 0008.
 | Token | Utility | Role | Second channel |
 | :--- | :--- | :--- | :--- |
 | `--value-string` | `text-value-string` | Quoted source strings | Literal shape and normal weight |
-| `--value-number` | `text-value-number` | JSON numbers and carried number cells | 600 weight and tabular numerals |
-| `--value-boolean` | `text-value-boolean` | JSON booleans and carried boolean cells | 600 weight in sources and the grid, upright (owner, 2026-09-19) |
+| `--value-number` | `text-value-number` | JSON numbers and carried number cells | Tabular numerals; 600 weight in sources only. A grid cell stays at the string weight and is told apart by the value typeface and its accessible type name, because weight in the grid belongs to the header row and a selected axis label (owner, 2026-09-19) |
+| `--value-boolean` | `text-value-boolean` | JSON booleans and carried boolean cells | Upright; 600 weight in sources only, the grid cell at the string weight like a number (owner, 2026-09-19) |
 | `--value-null` | `text-value-null` | JSON null and carried null cells | Literal shape in sources; grid type presentation also uses italics |
 | `--syntax-notation` | `text-syntax-notation` | Element names, escapes, entities, and other notation | Token shape and grammar position |
 | `--syntax-link` | `text-syntax-link` | Links, URLs, and autolinks | Underline on the link text and the address shape |
@@ -1150,7 +1150,7 @@ not a polish item.
 | Focus | One treatment everywhere (owner, 2026-09-19): a 0.125rem `--focus-ring` outline drawn outside the control with a 0.125rem gap, from the base-layer `:focus-visible` rule; components add no ring, border, or shadow of their own for focus. A pane frame that fills its container draws it inset. Menu rows show the highlight instead. A grid cell draws the same line as a cell mark instead of an outline (see below). Never remove it |
 | Selected | `bg-selection-fill`, plus the focus mark when it is the focused cell |
 | Copied | 0.125rem dashed `--selection-edge` border on the range's own outer edges. A focused cell inside the range draws focus and copy as one static two-tone border: the solid focus line on all four sides with `--foreground` dashes over it on the outer sides |
-| Carried cell type | Strings use the editable header row's plain foreground; numbers, booleans, and null use the cross-view semantic value token selected by `cellValueType`, reinforced by weight, italics, numeric spacing, literal shape, and the accessible type name |
+| Carried cell type | Strings use the editable header row's plain foreground; numbers, booleans, and null use the cross-view semantic value token selected by `cellValueType`, reinforced by the value typeface, italics for null, numeric spacing, literal shape, and the accessible type name. No typed value is bold in the grid (owner, 2026-09-19) |
 | Divergent cell type | Compact textual `CellTypeMark` inside the cell, never alignment or colour alone |
 | Disabled | `opacity-50`, no hover or highlight state, `not-allowed` on the actual hit layer, and a tooltip explaining why. Never hide a disabled action |
 | Invalid | Red wavy underline; written diagnostic on hover and in the editor description |

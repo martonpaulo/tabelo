@@ -10,8 +10,8 @@ export type { CellValueType } from "@/core/types";
 
 const CELL_TYPE_PRESENTATION_CLASSES = {
 	string: "text-foreground",
-	number: "text-value-number font-semibold tabular-nums",
-	boolean: "text-value-boolean font-semibold",
+	number: "text-value-number tabular-nums",
+	boolean: "text-value-boolean",
 	null: "text-value-null italic",
 } as const satisfies Record<CellValueType, string>;
 

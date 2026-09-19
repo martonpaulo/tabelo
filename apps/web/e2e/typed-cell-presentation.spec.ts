@@ -97,8 +97,11 @@ test("the grid exposes real and expected types without replacing cell names", as
 	] = presentations;
 	expect(stringPresentation.color).toBe(headerColor);
 	expect(new Set(presentations.map(({ color }) => color)).size).toBe(4);
-	expect(numberPresentation.fontWeight).toBeGreaterThanOrEqual(600);
-	expect(booleanPresentation.fontWeight).toBeGreaterThanOrEqual(600);
+	// Weight is kept for the header and a selected axis label: a typed value
+	// is told apart by its colour and typeface, at the string weight
+	// (owner, 2026-09-19).
+	expect(numberPresentation.fontWeight).toBe(stringPresentation.fontWeight);
+	expect(booleanPresentation.fontWeight).toBe(stringPresentation.fontWeight);
 	expect(booleanPresentation.fontStyle).toBe("normal");
 	expect(nullPresentation.fontStyle).toBe("italic");
 
