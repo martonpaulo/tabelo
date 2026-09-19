@@ -132,7 +132,6 @@ test("right-clicking a column letter offers the column's own options", async ({
 });
 
 test("right-clicking a row number offers row actions and no column options", async ({
-	page,
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
@@ -147,10 +146,6 @@ test("right-clicking a row number offers row actions and no column options", asy
 	await expect(
 		menu.getByRole("menuitem", { name: copy.actions.fitColumnToContent }),
 	).toHaveCount(0);
-	// An open menu is modal and hides the grid from the accessibility tree, so
-	// the selection is read once it has closed.
-	await page.keyboard.press("Escape");
-	await expect(menu).toBeHidden();
 	// The menu acted on what was clicked: that row, as a row.
 	await expect(tabelo.cell(2, 1)).toHaveAttribute("aria-selected", "true");
 	await expect(tabelo.cell(2, 3)).toHaveAttribute("aria-selected", "true");

@@ -269,9 +269,14 @@ export class TabeloPage {
 		await welcome.getByRole("button", { name: copy.empty.emptyAction }).click();
 	}
 
+	// An open menu is modal: it hides the rest of the page from the
+	// accessibility tree until it closes. The panes and the grid stay
+	// addressable through that, because several contracts are about what the
+	// table already holds at the moment a menu opens.
 	pane(view: ViewId): Locator {
 		return this.page.getByRole("region", {
 			name: copy.workspace.pane(getView(view).label),
+			includeHidden: true,
 		});
 	}
 
@@ -282,6 +287,7 @@ export class TabeloPage {
 	grid(): Locator {
 		return this.pane("grid").getByRole("grid", {
 			name: copy.a11y.grid,
+			includeHidden: true,
 		});
 	}
 
@@ -667,7 +673,9 @@ export class TabeloPage {
 			name: `${copy.workspace.paneActions}: ${getView(view).label}`,
 		});
 		if ((await trigger.getAttribute("aria-expanded")) !== "true") {
-			await menu.waitFor({ state: "hidden" });
+			// Any menu, not only this one: a context menu still leaving would
+			// swallow the click as an outside press that dismisses it.
+			await expect(this.page.getByRole("menu")).toHaveCount(0);
 			if (await coveredByNotice(trigger)) await trigger.press("Enter");
 			else await trigger.click();
 		}
