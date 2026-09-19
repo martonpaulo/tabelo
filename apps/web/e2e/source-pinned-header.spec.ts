@@ -185,6 +185,32 @@ test("a selection that covers the header shows on the pinned copy", async ({
 	expect(overflow).toBe(false);
 });
 
+test("a selection to the end never reaches below the last line", async ({
+	page,
+	tabelo,
+}) => {
+	const markdown = cases[0];
+	if (!markdown) throw new Error("missing Markdown case");
+	const pane = await fillSource(tabelo, markdown);
+	await tabelo.source("markdown").click();
+	await page.keyboard.press("ControlOrMeta+a");
+	for (const top of [0, 400, 100000]) {
+		await scrollTo(pane, top);
+		const past = await pane.evaluate((element) => {
+			const scroller = element.querySelector(".cm-editor > .cm-scroller");
+			const lines = scroller?.querySelectorAll(":scope .cm-content > .cm-line");
+			const last = lines?.[lines.length - 1]?.getBoundingClientRect();
+			if (!scroller || !last) return false;
+			return Array.from(
+				scroller.querySelectorAll(
+					":scope > .cm-tabeloSelectionLayer .cm-selectionBackground",
+				),
+			).some((band) => band.getBoundingClientRect().bottom > last.bottom + 1);
+		});
+		expect(past).toBe(false);
+	}
+});
+
 test("the pinned header follows horizontal scrolling", async ({ tabelo }) => {
 	const markdown = cases[0];
 	if (!markdown) throw new Error("missing Markdown case");

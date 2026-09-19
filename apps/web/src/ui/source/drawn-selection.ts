@@ -56,26 +56,35 @@ const selectionLayer = layer({
 		const firstLineTop = view.documentTop - layerOrigin(view).top;
 		const snap = (edge: number) =>
 			firstLineTop + Math.round((edge - firstLineTop) / pitch) * pitch;
+		// A range that runs past the rendered viewport is drawn to the content's
+		// edge, and the content is padded below its last line (room to click
+		// under it, and clear of the floating button). No band may reach into
+		// that padding: it ends where the last line does.
+		const lastLineBottom =
+			firstLineTop + view.lineBlockAt(view.state.doc.length).bottom;
 
 		return view.state.selection.ranges.flatMap((range) =>
 			range.empty
 				? []
-				: RectangleMarker.forRange(view, "cm-selectionBackground", range).map(
-						(band) => {
-							const top = snap(band.top);
-							const bottom = Math.max(
-								snap(band.top + band.height),
-								top + pitch,
-							);
-							return new RectangleMarker(
-								"cm-selectionBackground",
-								band.left,
-								top,
-								band.width,
-								bottom - top,
-							);
-						},
-					),
+				: RectangleMarker.forRange(
+						view,
+						"cm-selectionBackground",
+						range,
+					).flatMap((band) => {
+						const top = snap(band.top);
+						const bottom = Math.min(
+							Math.max(snap(band.top + band.height), top + pitch),
+							lastLineBottom,
+						);
+						if (bottom <= top) return [];
+						return new RectangleMarker(
+							"cm-selectionBackground",
+							band.left,
+							top,
+							band.width,
+							bottom - top,
+						);
+					}),
 		);
 	},
 });
