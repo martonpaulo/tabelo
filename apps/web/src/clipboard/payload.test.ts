@@ -5,10 +5,11 @@
 import { fc, test as propertyTest } from "@fast-check/vitest";
 import { describe, expect, it } from "vitest";
 import { EXPECTED_COLUMN_TYPES } from "@/core/cell-value";
+import type { InlineContent } from "@/core/types";
 import { readHtmlTable } from "@/formats/html";
 import {
-	cellValueArbitrary,
 	PROPERTY_RUNS,
+	richCellValueArbitrary,
 } from "@/testing/property-arbitraries";
 import { readClipboardTable } from "./parse";
 import {
@@ -25,6 +26,21 @@ const typedSelection: ClipboardSelection = {
 		["Paulo", 35, false, ""],
 	],
 	expectedTypes: ["text", "number", "boolean", "text"],
+};
+
+// Ingrid in bold, linked by email, then a picture of Rio and a line break.
+const formattedName: InlineContent = {
+	kind: "inline",
+	nodes: [
+		{
+			kind: "link",
+			url: "mailto:ingrid@example.com",
+			children: [{ kind: "text", text: "Ingrid", marks: ["bold"] }],
+		},
+		{ kind: "text", text: " ", marks: [] },
+		{ kind: "image", url: "https://example.com/rio.png", alt: "Rio" },
+		{ kind: "text", text: "\nhome", marks: ["italic"] },
+	],
 };
 
 const PAYLOAD_PATTERN = /<!--tabelo:([\s\S]*?)-->/;
@@ -75,6 +91,84 @@ describe("the private clipboard payload", () => {
 		]);
 		expect(stripTabeloPayload(html)).toBe(matrixToHtml(typedSelection.matrix));
 		expect(stripTabeloPayload(html)).not.toContain("tabelo:");
+	});
+
+	// #306. Same-app paste restores formatted text exactly, beside the native
+	// scalars and expectations version 1 already carried.
+	it("round-trips inline content with its marks, links, and images", () => {
+		const selection: ClipboardSelection = {
+			matrix: [
+				[formattedName, 35],
+				["Paulo", null],
+			],
+			expectedTypes: ["text", "number"],
+		};
+		const { html } = selectionClipboardPayload(selection);
+
+		expect(readTabeloPayload(html).selection).toEqual(selection);
+		expect(readHtmlTable(html)?.matrix).toEqual([
+			["Ingrid Rio\nhome", "35"],
+			["Paulo", ""],
+		]);
+	});
+
+	// A tab loaded before version 2 still writes version 1. Its values are all
+	// valid version-2 values, so it is read rather than dropped.
+	it("still reads a version-1 payload", () => {
+		const legacy = forgedHtml({ ...genuinePayload(), version: 1 });
+
+		expect(readTabeloPayload(legacy).selection).toEqual(typedSelection);
+	});
+
+	it("refuses inline content in a version-1 payload", () => {
+		const selection: ClipboardSelection = {
+			matrix: [[formattedName]],
+			expectedTypes: ["text"],
+		};
+		const forged = forgedHtml(
+			{ ...genuinePayload(selection), version: 1 },
+			selection.matrix,
+		);
+
+		expect(readTabeloPayload(forged).selection).toBeNull();
+	});
+
+	it("refuses formatted text swapped for the plain text it reads as", () => {
+		const selection: ClipboardSelection = {
+			matrix: [[formattedName]],
+			expectedTypes: ["text"],
+		};
+		const forged = forgedHtml(
+			{ ...genuinePayload(selection), matrix: [["Ingrid Rio\nhome"]] },
+			selection.matrix,
+		);
+
+		expect(readTabeloPayload(forged).selection).toBeNull();
+	});
+
+	it("refuses inline content Tabelo would never write", () => {
+		const selection: ClipboardSelection = {
+			matrix: [[formattedName]],
+			expectedTypes: ["text"],
+		};
+		const forged = forgedHtml(
+			{
+				...genuinePayload(selection),
+				matrix: [
+					[
+						{
+							kind: "inline",
+							nodes: [
+								{ kind: "text", text: "Ingrid", marks: ["bold", "code"] },
+							],
+						},
+					],
+				],
+			},
+			selection.matrix,
+		);
+
+		expect(readTabeloPayload(forged).selection).toBeNull();
 	});
 
 	it("leaves HTML that carries no payload untouched", () => {
@@ -242,7 +336,7 @@ describe("preferring the private payload", () => {
 // it as `0`, so it is already indistinguishable from zero everywhere the
 // product serializes a document, persistence and the JSON codec included.
 // Generating it here would test a distinction Tabelo does not carry anywhere.
-const clipboardCellValueArbitrary = cellValueArbitrary.filter(
+const clipboardCellValueArbitrary = richCellValueArbitrary.filter(
 	(value) => !Object.is(value, -0),
 );
 

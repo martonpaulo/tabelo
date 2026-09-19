@@ -154,12 +154,6 @@ export const inlineContentArbitrary: fc.Arbitrary<InlineContent> =
 		.map(normalizeInline)
 		.filter((value): value is InlineContent => typeof value !== "string");
 
-// Plain text and every native scalar, without inline content.
-export const cellValueArbitrary: fc.Arbitrary<CellValue> = fc.oneof(
-	cellStringArbitrary,
-	nativeCellValueArbitrary,
-);
-
 // Every value a cell may hold: text, formatted text, and each native scalar.
 export const richCellValueArbitrary: fc.Arbitrary<CellValue> = fc.oneof(
 	cellStringArbitrary,

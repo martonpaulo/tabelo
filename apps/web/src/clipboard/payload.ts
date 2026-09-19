@@ -4,7 +4,12 @@ import {
 	cellValueType,
 	EXPECTED_COLUMN_TYPES,
 } from "@/core/cell-value";
-import type { CellValue, ExpectedColumnType } from "@/core/types";
+import { isInlineContent, isValidInlineContent } from "@/core/inline-content";
+import type {
+	CellValue,
+	ExpectedColumnType,
+	InlineContent,
+} from "@/core/types";
 
 // Tabelo's own clipboard flavour: the types that TSV and HTML cannot spell.
 //
@@ -35,7 +40,13 @@ import type { CellValue, ExpectedColumnType } from "@/core/types";
 // two Tabelo tabs, which is a different compatibility window from a stored
 // document, so it must never follow the persistence version.
 
-export const CLIPBOARD_PAYLOAD_VERSION = 1;
+// Version 2 adds inline content to the matrix (#306). A version-1 payload is
+// still read, because a tab loaded before that change keeps writing it: every
+// value it can hold is a valid version-2 value, so reading it migrates nothing
+// but the version. A version-2 payload read by such a tab fails its strict
+// schema and falls back to the public flavours, which is the behaviour this
+// schema already promises for anything it does not recognise.
+export const CLIPBOARD_PAYLOAD_VERSION = 2;
 
 // The payload is untrusted input that arrives with no length declared, so it
 // is bounded before anything decodes it. This is the clipboard's own budget:
@@ -67,28 +78,70 @@ export interface ClipboardSelection {
 // A non-finite number is not a cell value: JSON writes `NaN` and `Infinity` as
 // `null`, so accepting one would turn a number into a different type between
 // the two ends of the clipboard. Persistence refuses it for the same reason.
-const cellValueSchema = z.union([
+const scalarSchema = z.union([
 	z.string(),
 	z.number().finite(),
 	z.boolean(),
 	z.null(),
 ]);
 
+// Inline content is accepted only in the exact normalized form the core
+// defines, so a payload that differs from what Tabelo writes is not read.
+const inlineContentSchema = z.custom<InlineContent>(isValidInlineContent);
+
 // Strict on purpose. An unknown key means the payload was written by something
-// that is not this version of Tabelo, and the answer to that is to fall back
-// to the public flavours rather than to guess which half is still readable.
-const payloadSchema = z.strictObject({
-	version: z.literal(CLIPBOARD_PAYLOAD_VERSION),
+// that is not a version of Tabelo this schema knows, and the answer to that is
+// to fall back to the public flavours rather than to guess which half is still
+// readable.
+const payloadShape = {
 	fingerprint: z.string().min(1),
 	expectedTypes: z.array(z.enum(EXPECTED_COLUMN_TYPES)),
-	matrix: z.array(z.array(cellValueSchema)),
+};
+
+const payloadV1Schema = z.strictObject({
+	version: z.literal(1),
+	...payloadShape,
+	matrix: z.array(z.array(scalarSchema)),
 });
 
+const payloadSchema = z.strictObject({
+	version: z.literal(CLIPBOARD_PAYLOAD_VERSION),
+	...payloadShape,
+	matrix: z.array(z.array(z.union([scalarSchema, inlineContentSchema]))),
+});
+
+type Payload = z.infer<typeof payloadSchema>;
+
+// The current payload, or an older one migrated forward to it. Null for
+// anything else.
+function parsePayload(value: unknown): Payload | null {
+	const current = payloadSchema.safeParse(value);
+	if (current.success) return current.data;
+	const legacy = payloadV1Schema.safeParse(value);
+	if (legacy.success) {
+		return { ...legacy.data, version: CLIPBOARD_PAYLOAD_VERSION };
+	}
+	return null;
+}
+
+// The type-tagged rendering of one value. A scalar renders exactly as version
+// 1 rendered it, so a version-1 fingerprint still verifies. Inline content is
+// tagged apart from a string, because formatted text and plain text that read
+// the same are different values. Each token opens with the unit separator,
+// which is how version 1 kept one cell's rendering from running into the next.
+function fingerprintToken(value: CellValue): string {
+	if (isInlineContent(value)) {
+		return `inline:${JSON.stringify(value.nodes)}`;
+	}
+	return `${cellValueType(value)}:${cellText(value)}`;
+}
+
 // FNV-1a over a type-tagged rendering of the selection. Deterministic, and it
-// separates `35` from `"35"` and `null` from `""`, which is exactly the
-// distinction the payload exists to carry. It answers one question: are these
-// the bytes Tabelo wrote? Consistency with the public flavours is a separate
-// check, because a hash of the payload cannot speak for content beside it.
+// separates `35` from `"35"`, `null` from `""`, and formatted from plain text,
+// which is exactly the distinction the payload exists to carry. It answers one
+// question: are these the bytes Tabelo wrote? Consistency with the public
+// flavours is a separate check, because a hash of the payload cannot speak for
+// content beside it.
 // https://en.wikipedia.org/wiki/Fowler-Noll-Vo_hash_function
 function fingerprintOf(selection: ClipboardSelection): string {
 	let hash = 0x811c9dc5;
@@ -103,7 +156,7 @@ function fingerprintOf(selection: ClipboardSelection): string {
 	for (const row of selection.matrix) {
 		absorb("");
 		for (const value of row) {
-			absorb(`${cellValueType(value)}:${cellText(value)}`);
+			absorb(fingerprintToken(value));
 		}
 	}
 	return (hash >>> 0).toString(16);
@@ -184,16 +237,16 @@ export function readTabeloPayload(html: string): SplitClipboardHtml {
 		return { html: stripped, selection: null };
 	}
 
-	const parsed = payloadSchema.safeParse(value);
-	if (!parsed.success) return { html: stripped, selection: null };
+	const parsed = parsePayload(value);
+	if (!parsed) return { html: stripped, selection: null };
 
 	const selection: ClipboardSelection = {
-		matrix: parsed.data.matrix,
-		expectedTypes: parsed.data.expectedTypes,
+		matrix: parsed.matrix,
+		expectedTypes: parsed.expectedTypes,
 	};
 	// Recomputed rather than trusted. A payload that was truncated or edited in
 	// transit stops matching the hash written beside it.
-	if (parsed.data.fingerprint !== fingerprintOf(selection)) {
+	if (parsed.fingerprint !== fingerprintOf(selection)) {
 		return { html: stripped, selection: null };
 	}
 
