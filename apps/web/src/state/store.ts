@@ -8,11 +8,7 @@ import {
 	toggleMarkInCells,
 } from "@/core/cell-formatting";
 import { readCell } from "@/core/cell-value";
-import {
-	createEmptyDocument,
-	isDocumentBlank,
-	reconcileDocument,
-} from "@/core/document";
+import { createEmptyDocument, isDocumentBlank } from "@/core/document";
 import {
 	type CellMatch,
 	findMatches,
@@ -100,19 +96,17 @@ import type {
 	OutputOptions,
 	ParseIssue,
 	PreconditionFailure,
-	SourceTableRow,
 	Spelling,
 } from "@/formats/types";
 import { defaultOutputOptions } from "@/formats/types";
 import type { HistoryDirection } from "@/history/coordinator";
 import {
-	findTimelineStep,
 	type HistoryEntry,
 	reconcileColumnPreferences,
 	recordStep,
 	type SelectionRestore,
 	stepTimeline,
-	walkTimeline,
+	timelineForParse,
 	workspaceForEntry,
 } from "@/history/timeline";
 import {
@@ -138,6 +132,15 @@ import {
 	removeNotice,
 	type TransientNotice,
 } from "@/state/notice-queue";
+import {
+	cancelInvalidGrace,
+	type Draft,
+	deriveDraft,
+	readDraft,
+	restoreDraft,
+	revealInvalid,
+	startInvalidGrace,
+} from "@/sync/draft";
 import {
 	plainEditableViews,
 	plainViewsSignature,
@@ -170,11 +173,6 @@ import { clampPaneZoom } from "@/workspace/zoom";
 // identical and nothing downstream sees a change that did not happen.
 const NO_COPIED_RANGES: readonly CellRect[] = [];
 
-// Syntax errors get a short grace period so a transient broken delimiter never
-// flashes feedback while the user is still completing the transaction.
-const INVALID_GRACE_MS = 300;
-
-export type DraftStatus = "clean" | "invalid-grace" | "invalid";
 export type StructureDeletionRefusal = "last-row" | "last-column";
 // Why a paste was refused. Like the refusal above, the store names the reason
 // and the interface owns the words for it.
@@ -209,22 +207,6 @@ export interface FindState {
 	readonly replacing: boolean;
 	readonly matches: readonly CellMatch[];
 	readonly index: number;
-}
-
-// The exact pane and format holding an editor buffer. A clean buffer has
-// already committed its meaning to the document but stays here so
-// synchronization never rewrites the user's formatting, cursor, or history.
-export interface Draft {
-	readonly paneId: string;
-	readonly viewId: ViewId;
-	readonly text: string;
-	readonly status: DraftStatus;
-	readonly issues: readonly ParseIssue[];
-	readonly warnings: readonly ParseIssue[];
-	// Where the parsed table's rows sit in `text`, for the source view's row
-	// separators (#296). Empty unless the text parses, so an invalid draft never
-	// shows structure it does not have. Derived from the parse, never persisted.
-	readonly rows: readonly SourceTableRow[];
 }
 
 // A pane change the user asked for that would destroy text the document has
@@ -540,7 +522,6 @@ export interface TabeloState {
 	announceStatus: (message: string) => void;
 }
 
-let invalidTimer: ReturnType<typeof setTimeout> | null = null;
 let statusSequence = 0;
 
 // The match list after the document moved underneath it. Recomputing is the
@@ -667,12 +648,6 @@ function matchPosition(match: CellMatch): CellPosition {
 	return { row: match.row, column: match.column };
 }
 
-function clearInvalidTimer(): void {
-	if (!invalidTimer) return;
-	clearTimeout(invalidTimer);
-	invalidTimer = null;
-}
-
 function widthsAfterDuplication(
 	previous: TableDocument,
 	next: TableDocument,
@@ -691,39 +666,6 @@ function widthsAfterDuplication(
 		changed = true;
 	}
 	return changed ? widths : columnWidths;
-}
-
-function deriveDraft(
-	draft: Pick<Draft, "paneId" | "viewId" | "text">,
-	workspace: Workspace,
-): Draft | null {
-	const ownsDraft = workspace.panes.some(
-		(pane) => pane.id === draft.paneId && pane.view === draft.viewId,
-	);
-	if (!ownsDraft) return null;
-
-	const parse = getView(draft.viewId).codec?.parse;
-	if (!parse) return null;
-	const result = parse(draft.text);
-	return result.ok
-		? {
-				...draft,
-				status: "clean",
-				issues: [],
-				warnings: result.warnings ?? [],
-				rows: result.rows ?? [],
-			}
-		: {
-				...draft,
-				status: "invalid",
-				issues: result.issues,
-				warnings: [],
-				rows: [],
-			};
-}
-
-function restoreDraft(draft: Draft | null, workspace: Workspace): Draft | null {
-	return draft ? deriveDraft(draft, workspace) : null;
 }
 
 // Removing one pane, expressed as the smaller preset that keeps every other
@@ -961,7 +903,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// history rather than dropped. See docs/adr/0001 and 0003.
 	applyDocument: (next, selectionRestore) => {
 		if (next === get().document) return;
-		clearInvalidTimer();
+		cancelInvalidGrace();
 		set((state) => ({
 			...recordStep(state, selectionRestore),
 			document: next,
@@ -991,104 +933,50 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	setDraft: (paneId, viewId, text, history) => {
 		const state = get();
-		const pane = state.workspace.panes.find(
-			(candidate) => candidate.id === paneId && candidate.view === viewId,
+		const owner = { paneId, viewId };
+		const read = readDraft(
+			state.draft,
+			state.document,
+			state.workspace,
+			owner,
+			text,
 		);
-		if (!pane) return;
+		if (!read) return;
 
-		const codec = getView(viewId).codec;
-		if (!codec) return;
-
-		const previousDraft = state.draft;
-		const sameOwner =
-			previousDraft?.paneId === paneId && previousDraft.viewId === viewId;
-		const ownerChanged = previousDraft !== null && !sameOwner;
-		const result = codec.parse(text);
-
-		if (!result.ok) {
-			const continuingVisibleError =
-				sameOwner && previousDraft.status === "invalid";
-			const continuingGrace =
-				sameOwner && previousDraft.status === "invalid-grace";
-			const draft: Draft = {
-				paneId,
-				viewId,
-				text,
-				status: continuingVisibleError ? "invalid" : "invalid-grace",
-				issues: result.issues,
-				warnings: [],
-				rows: [],
-			};
-
-			if (!continuingGrace) clearInvalidTimer();
+		if (!read.ok) {
+			if (read.grace !== "keep") cancelInvalidGrace();
 			set((current) => ({
-				draft,
+				draft: read.draft,
 				pendingPaneAction: null,
-				...(ownerChanged && previousDraft.status !== "clean"
-					? recordStep(current)
-					: {}),
+				...(read.displacesInvalid ? recordStep(current) : {}),
 			}));
-
-			if (!continuingVisibleError && !continuingGrace) {
-				invalidTimer = setTimeout(() => {
-					invalidTimer = null;
-					set((current) =>
-						current.draft?.paneId === paneId &&
-						current.draft.viewId === viewId &&
-						current.draft.status === "invalid-grace"
-							? {
-									draft: { ...current.draft, status: "invalid" },
-								}
-							: {},
-					);
-				}, INVALID_GRACE_MS);
+			if (read.grace === "start") {
+				startInvalidGrace(() =>
+					set((current) => {
+						const draft = revealInvalid(current.draft, owner);
+						return draft ? { draft } : {};
+					}),
+				);
 			}
 			return;
 		}
 
-		clearInvalidTimer();
-		const document = reconcileDocument(
-			state.document,
-			result.document,
-			codec.reconciliation,
-		);
-		const documentChanged = document !== state.document;
-		const displacedInvalid = ownerChanged && previousDraft.status !== "clean";
-		// A displaced invalid draft from another pane always gets its own step, so
-		// a local undo never walks past it and leaves it unrecoverable.
-		const step =
-			history && documentChanged && !displacedInvalid
-				? findTimelineStep(
-						history === "undo" ? state.past.toReversed() : state.future,
-						document,
-						codec.reconciliation,
-						{ paneId, viewId },
-					)
-				: null;
-		const walk =
-			history && step !== null ? walkTimeline(state, history, step) : null;
-		const timeline =
-			walk?.timeline ??
-			(documentChanged || displacedInvalid
-				? { ...recordStep(state), document }
-				: { document });
+		cancelInvalidGrace();
+		const { timeline, target } = timelineForParse(state, read.document, {
+			history,
+			reconciliation: read.reconciliation,
+			owner,
+			displacesInvalid: read.displacesInvalid,
+		});
 		const next = timeline.document;
 
 		set((current) => ({
 			...timeline,
 			hasHeldContent: current.hasHeldContent || !isDocumentBlank(next),
-			workspace: walk
-				? workspaceForEntry(current.workspace, current.document, walk.target)
+			workspace: target
+				? workspaceForEntry(current.workspace, current.document, target)
 				: reconcileColumnPreferences(current.workspace, next),
-			draft: {
-				paneId,
-				viewId,
-				text,
-				status: "clean",
-				issues: [],
-				warnings: result.warnings ?? [],
-				rows: result.rows ?? [],
-			},
+			draft: read.draft,
 			pendingImport: null,
 			inputError: null,
 			pendingPaneAction: null,
@@ -1103,7 +991,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	},
 
 	discardDraft: () => {
-		clearInvalidTimer();
+		cancelInvalidGrace();
 		set({ draft: null, pendingPaneAction: null });
 	},
 
@@ -1226,7 +1114,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 		const next = closedPaneState(state, paneId);
 		if (!next) return;
-		clearInvalidTimer();
+		cancelInvalidGrace();
 		set(next);
 	},
 
@@ -1406,7 +1294,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		})),
 
 	undo: () => {
-		clearInvalidTimer();
+		cancelInvalidGrace();
 		set((state) => {
 			const step = stepTimeline(state, "undo");
 			if (!step) return state;
@@ -1434,7 +1322,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	},
 
 	redo: () => {
-		clearInvalidTimer();
+		cancelInvalidGrace();
 		set((state) => {
 			const step = stepTimeline(state, "redo");
 			if (!step) return state;

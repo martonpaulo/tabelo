@@ -2,7 +2,7 @@ import { type ReconciliationSource, reconcileDocument } from "@/core/document";
 import type { GridSelection } from "@/core/selection";
 import type { TableDocument } from "@/core/types";
 import type { HistoryDirection } from "@/history/coordinator";
-import type { Draft } from "@/state/store";
+import type { Draft } from "@/sync/draft";
 import type { Workspace } from "@/workspace/layout";
 
 // The document timeline: every committed parse and every grid operation is one
@@ -216,6 +216,50 @@ export function walkTimeline(
 			document: target.document,
 		},
 		target,
+	};
+}
+
+// Where a committed parse lands. A change the editor's own undo or redo made
+// walks to the matching timeline state when one exists (see
+// `findTimelineStep`); any other change of the document, or a displaced
+// invalid draft from another pane, is one new step. A parse that changed
+// nothing and displaced nothing leaves the timeline as it is. A displaced
+// invalid draft always gets its own step, so a local undo never walks past it
+// and leaves it unrecoverable.
+export function timelineForParse(
+	state: TimelineState,
+	document: TableDocument,
+	parse: {
+		readonly history: HistoryDirection | undefined;
+		readonly reconciliation: ReconciliationSource;
+		readonly owner: Pick<Draft, "paneId" | "viewId">;
+		readonly displacesInvalid: boolean;
+	},
+): {
+	readonly timeline: Pick<Timeline, "document"> &
+		Partial<Pick<Timeline, "past" | "future">>;
+	readonly target: HistoryEntry | null;
+} {
+	const { history, displacesInvalid } = parse;
+	const documentChanged = document !== state.document;
+	const step =
+		history && documentChanged && !displacesInvalid
+			? findTimelineStep(
+					history === "undo" ? state.past.toReversed() : state.future,
+					document,
+					parse.reconciliation,
+					parse.owner,
+				)
+			: null;
+	const walk =
+		history && step !== null ? walkTimeline(state, history, step) : null;
+	if (walk) return walk;
+	return {
+		timeline:
+			documentChanged || displacesInvalid
+				? { ...recordStep(state), document }
+				: { document },
+		target: null,
 	};
 }
 

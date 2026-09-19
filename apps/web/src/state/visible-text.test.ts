@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { documentFromMatrix } from "@/core/document";
+import type { Draft } from "@/sync/draft";
 import { listViews } from "@/views/registry";
 import type { ViewId } from "@/views/types";
-import { type Draft, textForView, visibleTextForPane } from "./store";
+import { textForView, visibleTextForPane } from "./store";
 
 // Copy source hands over what the pane is showing. The only case where that is
 // not the document's projection is a pane holding its own uncommitted draft.

@@ -4,7 +4,7 @@ import { deleteColumns, setCell } from "@/core/operations";
 import { samplePeopleMatrix } from "@/core/sample-data";
 import { createSelection } from "@/core/selection";
 import type { TableDocument } from "@/core/types";
-import type { Draft } from "@/state/store";
+import type { Draft } from "@/sync/draft";
 import { createDefaultWorkspace } from "@/workspace/layout";
 import {
 	findTimelineStep,
