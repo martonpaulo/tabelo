@@ -213,8 +213,12 @@ test("inserted rows and columns take the caret, and one undo removes each", asyn
 	const editor = tabelo.source("markdown");
 	await caretInFirstRow(page, editor);
 
+	const lines = (await renderedSource(editor)).split("\n").length;
 	await runMenuCommand(page, copy.actions.insertRowsBelow(1));
 	await expect(tabelo.cell(3, 1)).toHaveText("Paulo");
+	await expect
+		.poll(async () => (await renderedSource(editor)).split("\n").length)
+		.toBe(lines + 1);
 	await page.keyboard.type("Mabel");
 	await expectOrder(tabelo, ["Ingrid", "Mabel", "Paulo"]);
 
