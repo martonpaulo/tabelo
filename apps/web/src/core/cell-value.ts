@@ -1,9 +1,16 @@
+import {
+	inlineContentEquals,
+	inlineText,
+	isInlineContent,
+	isTextContent,
+} from "./inline-content";
 import type {
 	CellValue,
 	CellValueType,
 	ColumnId,
 	ExpectedColumnType,
 	Row,
+	TextContent,
 } from "./types";
 
 // The scalar cell model and its one text projection. Framework-free, and the
@@ -26,7 +33,9 @@ export const DEFAULT_EXPECTED_TYPE: ExpectedColumnType = "text";
 // to what a value looks like and no caller can drift from it.
 //
 // `null` and the empty string project to the same text and stay distinct as
-// canonical values: text is a projection, never the value itself.
+// canonical values: text is a projection, never the value itself. Inline
+// content projects to what it reads as: its text and link labels, and each
+// image's alternative text, in document order (docs/adr/0011).
 export function cellText(value: CellValue): string {
 	switch (typeof value) {
 		case "string":
@@ -36,10 +45,12 @@ export function cellText(value: CellValue): string {
 		case "boolean":
 			return value ? "true" : "false";
 		default:
-			return "";
+			return value === null ? "" : inlineText(value);
 	}
 }
 
+// Inline content is text with structure, so its carried type is `string`: a
+// text column expects it, and the Cell type command sees text.
 export function cellValueType(value: CellValue): CellValueType {
 	switch (typeof value) {
 		case "string":
@@ -49,8 +60,26 @@ export function cellValueType(value: CellValue): CellValueType {
 		case "boolean":
 			return "boolean";
 		default:
-			return "null";
+			return value === null ? "null" : "string";
 	}
+}
+
+// The same carried value. Scalars compare by identity, so `35` and `"35"`
+// differ and so do `null` and `""`; inline content compares by structure,
+// because two equal values parsed or pasted separately are two objects.
+export function cellValuesEqual(left: CellValue, right: CellValue): boolean {
+	if (left === right) return true;
+	return (
+		isInlineContent(left) &&
+		isInlineContent(right) &&
+		inlineContentEquals(left, right)
+	);
+}
+
+// What a value becomes when it moves into the header, which holds text: text
+// content keeps its structure, and a native value arrives as its projection.
+export function headerContent(value: CellValue): TextContent {
+	return isTextContent(value) ? value : cellText(value);
 }
 
 export function expectedCellValueType(

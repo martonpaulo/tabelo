@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { cellTextAt, readCell } from "./cell-value";
+import { assert, describe, expect, it } from "vitest";
+import { cellText, cellTextAt, readCell } from "./cell-value";
 import { documentFromMatrix } from "./document";
 import {
 	type CellMatch,
@@ -10,7 +10,7 @@ import {
 } from "./find";
 import { samplePeopleMatrix } from "./sample-data";
 import { HEADER_ROW } from "./selection";
-import type { CellValue, TableDocument } from "./types";
+import type { CellValue, InlineContent, TableDocument } from "./types";
 
 function tableOf(matrix: readonly (readonly CellValue[])[]): TableDocument {
 	return documentFromMatrix(matrix, { headerRow: true });
@@ -29,7 +29,7 @@ function coordinates(matches: readonly CellMatch[]): string[] {
 function textAt(document: TableDocument, row: number, column: number): string {
 	const target = document.columns[column];
 	if (!target) throw new Error(`No column at index ${column}`);
-	if (row === HEADER_ROW) return target.header;
+	if (row === HEADER_ROW) return cellText(target.header);
 	const dataRow = document.rows[row];
 	if (!dataRow) throw new Error(`No row at index ${row}`);
 	return cellTextAt(dataRow, target.id);
@@ -192,5 +192,62 @@ describe("replacing occurrences", () => {
 
 		expect(matchIndexFrom(matches, { row: 9, column: 9, offset: 0 })).toBe(0);
 		expect(matchIndexFrom([], { row: 0, column: 0, offset: 0 })).toBe(-1);
+	});
+});
+
+// #306. Find reads what formatted text reads as: link labels and image
+// alternative text match, a URL does not, and a replacement keeps the
+// formatting around it.
+describe("find in formatted text", () => {
+	const formatted: InlineContent = {
+		kind: "inline",
+		nodes: [
+			{
+				kind: "link",
+				url: "https://example.com/rio",
+				children: [{ kind: "text", text: "Ingrid", marks: ["bold"] }],
+			},
+			{ kind: "text", text: " in ", marks: [] },
+			{ kind: "image", url: "https://example.com/rio.png", alt: "Rio" },
+		],
+	};
+
+	it("matches the projection and never the URL", () => {
+		const document = tableOf([["name"], [formatted]]);
+
+		expect(findMatches(document, "rio", false)).toEqual([
+			{ row: 0, column: 0, start: 10, end: 13 },
+		]);
+		expect(findMatches(document, "example", false)).toEqual([]);
+	});
+
+	it("replaces inside a link label and keeps the link and its marks", () => {
+		const document = tableOf([["name"], [formatted]]);
+		const matches = findMatches(document, "grid", false);
+
+		const next = replaceMatches(document, matches, "a");
+		const row = next.rows[0];
+		const column = next.columns[0];
+		assert(row && column);
+
+		expect(readCell(row, column.id)).toEqual({
+			kind: "inline",
+			nodes: [
+				{
+					kind: "link",
+					url: "https://example.com/rio",
+					children: [{ kind: "text", text: "Ina", marks: ["bold"] }],
+				},
+				...formatted.nodes.slice(1),
+			],
+		});
+	});
+
+	it("leaves a match inside an image's alternative text alone", () => {
+		const document = tableOf([["name"], [formatted]]);
+
+		expect(
+			replaceMatches(document, findMatches(document, "Rio", true), "Madrid"),
+		).toBe(document);
 	});
 });

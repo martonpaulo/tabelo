@@ -1,4 +1,4 @@
-import { readCell } from "@/core/cell-value";
+import { cellValuesEqual, readCell } from "@/core/cell-value";
 import {
 	activeRange,
 	type CellPosition,
@@ -57,8 +57,8 @@ export function nextMatchingCell(
 	if (!first) return { selection: null, selected: 0, total: 0 };
 	const seed = valueAt(document, first.focus);
 	const order = readingOrder(document);
-	const matching = order.filter(
-		(position) => valueAt(document, position) === seed,
+	const matching = order.filter((position) =>
+		cellValuesEqual(valueAt(document, position), seed),
 	);
 
 	const selectedCells = new Set(
@@ -80,7 +80,7 @@ export function nextMatchingCell(
 	for (let step = 1; step <= order.length; step += 1) {
 		const candidate = order[(start + step) % order.length];
 		if (!candidate || selectedCells.has(key(candidate))) continue;
-		if (valueAt(document, candidate) !== seed) continue;
+		if (!cellValuesEqual(valueAt(document, candidate), seed)) continue;
 		return {
 			selection: {
 				ranges: [...selection.ranges, createRange(candidate, "cell")],

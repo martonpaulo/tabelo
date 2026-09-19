@@ -18,6 +18,7 @@ import {
 	cellStringArbitrary,
 	codecDocumentArbitrary,
 	documentPositionArbitrary,
+	formattedCodecDocumentArbitrary,
 	PROPERTY_RUNS,
 	typedTextCodecDocumentArbitrary,
 	universallySerializableDocumentArbitrary,
@@ -111,6 +112,31 @@ describe("registered codec properties", () => {
 				expectedDocumentForCodec(codec, document).matrix,
 			);
 		});
+	}
+
+	// #306. No codec spells inline structure yet, so every one of them sees only
+	// the projection of a formatted header or cell. Passing through any of them
+	// unchanged must keep the document exactly as it was, formatting included.
+	for (const codec of listCodecs().filter(
+		(codec) => codec.reconciliation.inlineContent === "unexpressed",
+	)) {
+		test.prop(
+			{ document: formattedCodecDocumentArbitrary(codec) },
+			{ numRuns: PROPERTY_RUNS },
+		)(
+			`${codec.id} keeps inline structure it cannot spell through reconciliation`,
+			({ document }) => {
+				expect(canSerialize(codec, document)).toBeNull();
+				const parsed = expectSuccessfulParse(
+					codec.id,
+					codec.parse(codec.serialize(document)),
+				);
+
+				expect(reconcileDocument(document, parsed, codec.reconciliation)).toBe(
+					document,
+				);
+			},
+		);
 	}
 
 	for (const codec of listCodecs().filter(

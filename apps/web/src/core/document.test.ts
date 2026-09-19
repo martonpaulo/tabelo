@@ -8,7 +8,7 @@ import {
 	isDocumentBlank,
 	reconcileDocument,
 } from "./document";
-import type { CellValue, TableDocument } from "./types";
+import type { CellValue, InlineContent, TableDocument } from "./types";
 
 function docOf(matrix: string[][]): TableDocument {
 	return documentFromMatrix(matrix, { headerRow: true });
@@ -166,6 +166,7 @@ describe("the typed document foundation", () => {
 		const next = reconcileDocument(current, parsed, {
 			cellValues: "text",
 			columnAlignment: "unexpressed",
+			inlineContent: "unexpressed",
 		});
 
 		expect(next.columns[0]?.header).toBe("Years");
@@ -276,5 +277,132 @@ describe("reconcileDocument identity preservation", () => {
 			["Mabel", "Lisbon", "41"],
 			["Felix", "Oslo", "52"],
 		]);
+	});
+});
+
+// #306. A source without inline syntax reports only what formatted content
+// reads as. Unchanged text keeps the structure; only a cell whose text really
+// changed becomes plain, and a source that can spell structure is believed.
+describe("reconciling inline content", () => {
+	const boldIngrid: InlineContent = {
+		kind: "inline",
+		nodes: [{ kind: "text", text: "Ingrid", marks: ["bold"] }],
+	};
+	const linkedName: InlineContent = {
+		kind: "inline",
+		nodes: [
+			{
+				kind: "link",
+				url: "mailto:paulo@example.com",
+				children: [{ kind: "text", text: "Name", marks: [] }],
+			},
+		],
+	};
+
+	function formatted(): TableDocument {
+		const document = docOf([
+			["Name", "City"],
+			["Ingrid", "Rio"],
+			["Paulo", "Madrid"],
+		]);
+		const [name, city] = document.columns;
+		const [first, second] = document.rows;
+		assert(name && city && first && second);
+		return {
+			columns: [{ ...name, header: linkedName }, city],
+			rows: [
+				{ ...first, cells: { ...first.cells, [name.id]: boldIngrid } },
+				second,
+			],
+		};
+	}
+
+	const plainSource = {
+		cellValues: "text",
+		columnAlignment: "unexpressed",
+		inlineContent: "unexpressed",
+	} as const;
+
+	it("keeps formatted headers and cells whose text is unchanged", () => {
+		const current = formatted();
+		const parsed = docOf(documentToMatrix(current));
+
+		expect(reconcileDocument(current, parsed, plainSource)).toBe(current);
+		expect(
+			reconcileDocument(current, parsed, {
+				...plainSource,
+				cellValues: "typed",
+			}),
+		).toBe(current);
+	});
+
+	it("turns only the edited cell into plain text", () => {
+		const current = formatted();
+		const edited = documentToMatrix(current);
+		const secondRow = edited[2];
+		assert(secondRow);
+		secondRow[1] = "Madrid!";
+
+		const next = reconcileDocument(current, docOf(edited), plainSource);
+
+		expect(next.columns).toBe(current.columns);
+		expect(next.rows[0]).toBe(current.rows[0]);
+		expect(documentToMatrix(next)[2]).toEqual(["Paulo", "Madrid!"]);
+	});
+
+	it("turns an edited formatted cell into the plain text it now reads as", () => {
+		const current = formatted();
+		const edited = documentToMatrix(current);
+		const firstRow = edited[1];
+		assert(firstRow);
+		firstRow[0] = "Ingrid!";
+		const nameId = current.columns[0]?.id ?? "";
+
+		const next = reconcileDocument(current, docOf(edited), plainSource);
+
+		expect(next.rows[0]?.cells[nameId]).toBe("Ingrid!");
+		expect(next.columns[0]?.header).toBe(linkedName);
+	});
+
+	it("believes a source that can spell structure when it spells none", () => {
+		const current = formatted();
+		const parsed = docOf(documentToMatrix(current));
+
+		const next = reconcileDocument(current, parsed, {
+			...plainSource,
+			inlineContent: "carried",
+		});
+
+		expect(documentToMatrix(next)).toEqual(documentToMatrix(current));
+		expect(next.columns[0]?.header).toBe("Name");
+		expect(next.rows[0]?.cells[next.columns[0]?.id ?? ""]).toBe("Ingrid");
+	});
+
+	it("keeps the existing object when a source spells the same structure", () => {
+		const current = formatted();
+		const parsed = documentFromMatrix(
+			[
+				[structuredClone(linkedName), "City"],
+				[structuredClone(boldIngrid), "Rio"],
+				["Paulo", "Madrid"],
+			],
+			{ headerRow: true },
+		);
+
+		expect(
+			reconcileDocument(current, parsed, {
+				...plainSource,
+				inlineContent: "carried",
+			}),
+		).toBe(current);
+	});
+
+	it("keeps a formatted header when a table is built from a matrix", () => {
+		const document = documentFromMatrix([[linkedName], [boldIngrid]], {
+			headerRow: true,
+		});
+
+		expect(document.columns[0]?.header).toBe(linkedName);
+		expect(documentToMatrix(document)).toEqual([["Name"], ["Ingrid"]]);
 	});
 });

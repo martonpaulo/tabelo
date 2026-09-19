@@ -5,8 +5,10 @@ import {
 } from "@tabelo/ui/lib/shortcut";
 import type { CopyScope } from "@/clipboard/serialize";
 import { product } from "@/copy/product";
+import { cellText } from "@/core/cell-value";
 import { columnLetter } from "@/core/column-letter";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
+import { isTextContent } from "@/core/inline-content";
 import type { FillSeriesRefusal } from "@/core/series";
 import type {
 	CellValue,
@@ -93,7 +95,7 @@ function plural(count: number, one: string, many: string): string {
 // quotes, so an empty cell reads as "" and the number 35 is not taken for the
 // text "35"; null, numbers, and booleans as they are.
 function shownValue(value: CellValue): string {
-	return typeof value === "string" ? JSON.stringify(value) : String(value);
+	return isTextContent(value) ? JSON.stringify(cellText(value)) : String(value);
 }
 
 // What an escape sequence resolves to, named rather than shown: the character

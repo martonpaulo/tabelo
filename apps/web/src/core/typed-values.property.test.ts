@@ -23,9 +23,9 @@ import {
 import type { CellValue, TableDocument } from "@/core/types";
 import {
 	cellRectArbitrary,
-	cellValueArbitrary,
 	documentPositionArbitrary,
 	PROPERTY_RUNS,
+	richCellValueArbitrary,
 	typedTableDocumentArbitrary,
 } from "@/testing/property-arbitraries";
 
@@ -46,7 +46,7 @@ function typedCaseArbitrary() {
 			.record({
 				position: documentPositionArbitrary(document),
 				rect: cellRectArbitrary(document),
-				value: cellValueArbitrary,
+				value: richCellValueArbitrary,
 			})
 			.map((parameters) => ({ document, ...parameters })),
 	);
@@ -235,7 +235,7 @@ describe("typed cell value properties", () => {
 		{
 			document: typedTableDocumentArbitrary,
 			payload: fc.array(
-				fc.array(cellValueArbitrary, { minLength: 1, maxLength: 3 }),
+				fc.array(richCellValueArbitrary, { minLength: 1, maxLength: 3 }),
 				{ minLength: 1, maxLength: 3 },
 			),
 		},

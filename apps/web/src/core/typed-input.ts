@@ -1,4 +1,5 @@
-import { cellText, cellValueType } from "./cell-value";
+import { cellText, cellValuesEqual, cellValueType } from "./cell-value";
+import { isTextContent } from "./inline-content";
 import type { CellValue, CellValueType, ExpectedColumnType } from "./types";
 
 type NativeExpectedType = Exclude<ExpectedColumnType, "text">;
@@ -112,15 +113,15 @@ function convertRaw(
 			return null;
 		case "number":
 			if (typeof value === "boolean") return value ? 1 : 0;
-			if (typeof value === "string") {
-				return parseNativeValue(value, "number") ?? undefined;
+			if (isTextContent(value)) {
+				return parseNativeValue(cellText(value), "number") ?? undefined;
 			}
 			return undefined;
 		case "boolean":
 			if (value === null || value === "") return false;
 			if (typeof value === "number") return value !== 0;
-			if (typeof value === "string") {
-				return parseNativeValue(value, "boolean") ?? undefined;
+			if (isTextContent(value)) {
+				return parseNativeValue(cellText(value), "boolean") ?? undefined;
 			}
 			return undefined;
 	}
@@ -128,9 +129,9 @@ function convertRaw(
 
 const isEmptyValue = (value: CellValue) => value === null || value === "";
 
-// The same carried type and the same value: `35` and `"35"` differ.
-const sameValue = (left: CellValue, right: CellValue) =>
-	cellValueType(left) === cellValueType(right) && left === right;
+// The same carried type and the same value: `35` and `"35"` differ, and so do
+// formatted and plain text that read the same.
+const sameValue = cellValuesEqual;
 
 // Selecting a cell type is an explicit conversion command, so it may replace a
 // value. What it may not do is replace one silently: a conversion that loses

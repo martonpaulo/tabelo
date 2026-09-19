@@ -1,7 +1,7 @@
 import { cn } from "@tabelo/ui/lib/utils";
 import { memo, useMemo, useRef } from "react";
 import { copy } from "@/copy/copy";
-import { cellTextAt } from "@/core/cell-value";
+import { cellText, cellTextAt } from "@/core/cell-value";
 import { isDocumentBlank } from "@/core/document";
 import type { Alignment, Column, Row } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
@@ -102,7 +102,7 @@ export default function HtmlPreview() {
 										alignClass[column.align],
 									)}
 								>
-									{column.header}
+									{cellText(column.header)}
 								</th>
 							))}
 						</tr>

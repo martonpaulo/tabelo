@@ -1,5 +1,6 @@
-import { readCell } from "@/core/cell-value";
+import { cellText, readCell } from "@/core/cell-value";
 import { columnLetter } from "@/core/column-letter";
+import { isInlineContent } from "@/core/inline-content";
 import type { CellValue, Column, TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
 import type {
@@ -129,10 +130,10 @@ function resolvedJsonKeys(
 	// nothing is no more usable as a key than "" is. Nothing else about the
 	// header is trimmed: the fallback is chosen by blankness, and a named
 	// header is written out untouched.
-	return document.columns.map((column, index) => ({
-		column,
-		key: column.header.trim() ? column.header : columnLetter(index),
-	}));
+	return document.columns.map((column, index) => {
+		const header = cellText(column.header);
+		return { column, key: header.trim() ? header : columnLetter(index) };
+	});
 }
 
 // JSON is the one format whose output is keyed rather than positional, so the
@@ -145,7 +146,11 @@ function serializeJson(document: TableDocument): string {
 	const records = document.rows.map((row) => {
 		const record: Record<string, CellValue> = {};
 		for (const { column, key } of resolved) {
-			record[key] = readCell(row, column.id);
+			// JSON stays a table of JSON scalars: it has no syntax of its own for
+			// inline structure, so formatted text leaves as its projection and
+			// reconciliation keeps the structure while that text is unchanged.
+			const value = readCell(row, column.id);
+			record[key] = isInlineContent(value) ? cellText(value) : value;
 		}
 		return `  ${JSON.stringify(record)}`;
 	});
@@ -207,6 +212,7 @@ export const jsonCodec: TableCodec = {
 	reconciliation: {
 		cellValues: "typed",
 		columnAlignment: "unexpressed",
+		inlineContent: "unexpressed",
 	},
 	extension: "json",
 	mimeType: "application/json",

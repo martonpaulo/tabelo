@@ -37,7 +37,7 @@ import {
 	useState,
 } from "react";
 import { copy } from "@/copy/copy";
-import { cellValueType, readCell } from "@/core/cell-value";
+import { cellText, cellValueType, readCell } from "@/core/cell-value";
 import type { SortDirection } from "@/core/operations";
 import {
 	activeRange,
@@ -673,7 +673,7 @@ export function GridContextMenu({
 					finalFocus={finalFocus}
 					aria-label={menuLabel(
 						target,
-						column?.header ?? "",
+						column ? cellText(column.header) : "",
 						column?.expectedType,
 					)}
 				>

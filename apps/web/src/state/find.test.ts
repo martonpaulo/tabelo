@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { cellTextAt, readCell } from "@/core/cell-value";
+import { cellText, cellTextAt, readCell } from "@/core/cell-value";
 import { documentFromMatrix } from "@/core/document";
 import { samplePeopleMatrix } from "@/core/sample-data";
 import { activeRange, HEADER_ROW } from "@/core/selection";
@@ -57,7 +57,7 @@ function valueAt(row: number, column: number): string {
 	const document = useTabeloStore.getState().document;
 	const target = document.columns[column];
 	if (!target) throw new Error(`No column at index ${column}`);
-	if (row === HEADER_ROW) return target.header;
+	if (row === HEADER_ROW) return cellText(target.header);
 	const dataRow = document.rows[row];
 	if (!dataRow) throw new Error(`No row at index ${row}`);
 	return cellTextAt(dataRow, target.id);

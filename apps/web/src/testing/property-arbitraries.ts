@@ -1,12 +1,23 @@
 import { fc } from "@fast-check/vitest";
-import { EXPECTED_COLUMN_TYPES, readCell } from "@/core/cell-value";
+import { cellText, EXPECTED_COLUMN_TYPES, readCell } from "@/core/cell-value";
 import { documentToMatrix } from "@/core/document";
+import {
+	isInlineContent,
+	normalizeInline,
+	setLink,
+	setMark,
+} from "@/core/inline-content";
 import type { CellRect } from "@/core/selection";
 import type {
 	Alignment,
 	CellValue,
 	ExpectedColumnType,
+	InlineContent,
+	InlineMark,
+	InlineNode,
+	InlineText,
 	TableDocument,
+	TextContent,
 } from "@/core/types";
 import type { CodecId, TableCodec } from "@/formats";
 
@@ -73,8 +84,86 @@ export const nativeCellValueArbitrary: fc.Arbitrary<
 	fc.constant(null),
 );
 
+// Inline content before normalization: marks in any order, empty runs,
+// adjacent runs that should merge, and links that normalize away. Inline code
+// never spans a line break here, because the model cannot hold that and
+// normalization does not repair it.
+const inlineRunArbitrary: fc.Arbitrary<InlineText> = fc
+	.record({
+		text: cellStringArbitrary,
+		marks: fc.oneof(
+			{
+				weight: 4,
+				arbitrary: fc.shuffledSubarray<InlineMark>([
+					"bold",
+					"italic",
+					"underline",
+					"strikethrough",
+				]),
+			},
+			{ weight: 1, arbitrary: fc.constant<InlineMark[]>(["code"]) },
+		),
+	})
+	.map(({ text, marks }) => ({
+		kind: "text",
+		text: marks.includes("code") ? text.replace(/[\r\n]/g, "") : text,
+		marks,
+	}));
+
+// Authored URLs are kept, never judged, so the model has to carry schemes it
+// will later refuse to activate as faithfully as the ones it will.
+const inlineUrlArbitrary = fc.constantFrom(
+	"https://example.com/ingrid",
+	"http://example.com/paulo?city=Madrid&lang=es",
+	"mailto:ingrid@example.com",
+	"javascript:alert(1)",
+	"relative/rio.png",
+	"https://example.com/<pipe|and>",
+);
+
+export const inlineNodesArbitrary: fc.Arbitrary<InlineNode[]> = fc.array(
+	fc.oneof(
+		{ weight: 4, arbitrary: inlineRunArbitrary },
+		{
+			weight: 1,
+			arbitrary: fc
+				.record({
+					url: inlineUrlArbitrary,
+					children: fc.array(inlineRunArbitrary, {
+						minLength: 1,
+						maxLength: 3,
+					}),
+				})
+				.map(
+					({ url, children }): InlineNode => ({ kind: "link", url, children }),
+				),
+		},
+		{
+			weight: 1,
+			arbitrary: fc
+				.record({ url: inlineUrlArbitrary, alt: headerStringArbitrary })
+				.map(({ url, alt }): InlineNode => ({ kind: "image", url, alt })),
+		},
+	),
+	{ minLength: 1, maxLength: 6 },
+);
+
+// Normalized inline content: what a cell or header may hold beside a string.
+export const inlineContentArbitrary: fc.Arbitrary<InlineContent> =
+	inlineNodesArbitrary
+		.map(normalizeInline)
+		.filter((value): value is InlineContent => typeof value !== "string");
+
+// Plain text and every native scalar, without inline content.
 export const cellValueArbitrary: fc.Arbitrary<CellValue> = fc.oneof(
 	cellStringArbitrary,
+	nativeCellValueArbitrary,
+);
+
+// Every value a cell may hold: text, formatted text, and each native scalar.
+export const richCellValueArbitrary: fc.Arbitrary<CellValue> = fc.oneof(
+	cellStringArbitrary,
+	inlineContentArbitrary,
 	nativeCellValueArbitrary,
 );
 
@@ -176,13 +265,13 @@ export const tableDocumentArbitrary = createDocumentArbitrary({
 	titledRows: false,
 });
 
-// Documents whose cells hold every scalar variant. The core model and pure
-// operations carry these values directly. Text codecs preserve them only when
+// Documents whose cells hold every value variant, inline content included.
+// The core model and pure operations carry these values directly. Text codecs preserve them only when
 // reconciliation has the previous document and sees the same projection.
 export const typedTableDocumentArbitrary = createDocumentArbitrary({
 	keyedHeaders: false,
 	minColumnCount: 1,
-	scalarArbitrary: cellValueArbitrary,
+	scalarArbitrary: richCellValueArbitrary,
 	titledRows: false,
 });
 
@@ -272,6 +361,98 @@ export function typedTextCodecDocumentArbitrary(
 				});
 		})
 		.filter((document) => codec.precondition?.(document) == null);
+}
+
+interface FormattingChoice {
+	readonly mark: InlineMark;
+	readonly markRange: readonly [number, number];
+	readonly url: string | undefined;
+	readonly linkRange: readonly [number, number];
+}
+
+// Start from each codec's grammar-safe document and format some headers and
+// cells without changing what they read as: a mark over a range, then a link
+// over another. The projection every codec serializes is therefore exactly the
+// plain document's, which isolates the property on structure preservation.
+export function formattedCodecDocumentArbitrary(
+	codec: TableCodec,
+): fc.Arbitrary<TableDocument> {
+	const formatting: fc.Arbitrary<FormattingChoice | undefined> = fc.option(
+		fc.record({
+			mark: fc.constantFrom<InlineMark>(
+				"bold",
+				"italic",
+				"underline",
+				"strikethrough",
+				"code",
+			),
+			markRange: fc.tuple(fc.nat(24), fc.nat(24)),
+			url: fc.option(inlineUrlArbitrary, { nil: undefined }),
+			linkRange: fc.tuple(fc.nat(24), fc.nat(24)),
+		}),
+		{ nil: undefined },
+	);
+	const format = (
+		text: string,
+		choice: FormattingChoice | undefined,
+	): TextContent => {
+		if (choice === undefined) return text;
+		const [markFrom, markTo] = choice.markRange;
+		const marked = setMark(text, markFrom, markTo, choice.mark, true);
+		if (choice.url === undefined) return marked;
+		const [linkFrom, linkTo] = choice.linkRange;
+		return setLink(marked, linkFrom, linkTo, choice.url) ?? marked;
+	};
+
+	return codecDocumentArbitrary(codec)
+		.filter((document) =>
+			documentToMatrix(document).every((row) =>
+				row.every((value) => !value.includes("\r")),
+			),
+		)
+		.chain((document) => {
+			const cellCount = document.rows.length * document.columns.length;
+			return fc
+				.record({
+					headers: fc.array(formatting, {
+						minLength: document.columns.length,
+						maxLength: document.columns.length,
+					}),
+					cells: fc.array(formatting, {
+						minLength: cellCount,
+						maxLength: cellCount,
+					}),
+				})
+				.map(({ headers, cells }) => {
+					let cellIndex = 0;
+					const columns = document.columns.map((column, index) => ({
+						...column,
+						header: format(cellText(column.header), headers[index]),
+					}));
+					const rows = document.rows.map((row) => ({
+						...row,
+						cells: Object.fromEntries(
+							document.columns.map((column) => {
+								const value = readCell(row, column.id);
+								const choice = cells[cellIndex];
+								cellIndex += 1;
+								return [
+									column.id,
+									typeof value === "string" ? format(value, choice) : value,
+								];
+							}),
+						),
+					}));
+					return { columns, rows };
+				});
+		})
+		.filter(
+			(document) =>
+				document.columns.some((column) => isInlineContent(column.header)) ||
+				document.rows.some((row) =>
+					Object.values(row.cells).some(isInlineContent),
+				),
+		);
 }
 
 export interface DocumentPosition {

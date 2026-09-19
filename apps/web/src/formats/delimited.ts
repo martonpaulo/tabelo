@@ -282,6 +282,7 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 		reconciliation: {
 			cellValues: "text",
 			columnAlignment: "unexpressed",
+			inlineContent: "unexpressed",
 		},
 		extension: config.extension,
 		mimeType: config.mimeType,

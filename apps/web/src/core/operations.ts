@@ -1,6 +1,14 @@
-import { cellTextAt, expectedCellValueType, readCell } from "./cell-value";
+import {
+	cellText,
+	cellTextAt,
+	cellValuesEqual,
+	expectedCellValueType,
+	headerContent,
+	readCell,
+} from "./cell-value";
 import { createColumn, createRow } from "./document";
 import { createRowId } from "./ids";
+import { isInlineContent } from "./inline-content";
 import {
 	type CellRect,
 	isDataRect,
@@ -17,6 +25,7 @@ import type {
 	ExpectedColumnType,
 	Row,
 	TableDocument,
+	TextContent,
 } from "./types";
 
 // Pure operations over a table document. Every grid interaction goes through
@@ -105,9 +114,10 @@ export function setCell(
 	const row = document.rows[rowIndex];
 	const column = document.columns[columnIndex];
 	if (!row || !column) return document;
-	// Identity, not text: writing the string "1" over the number 1 is a real
-	// change even though both project to the same text.
-	if (readCell(row, column.id) === value) return document;
+	// The carried value, not text: writing the string "1" over the number 1 is
+	// a real change even though both project to the same text, and so is plain
+	// text over formatted text that reads the same.
+	if (cellValuesEqual(readCell(row, column.id), value)) return document;
 
 	const rows = document.rows.map((candidate, index) =>
 		index === rowIndex
@@ -135,10 +145,10 @@ export function setCellType(
 export function setHeader(
 	document: TableDocument,
 	columnIndex: number,
-	header: string,
+	header: TextContent,
 ): TableDocument {
 	const column = document.columns[columnIndex];
-	if (!column || column.header === header) return document;
+	if (!column || cellValuesEqual(column.header, header)) return document;
 	const columns = document.columns.map((candidate, index) =>
 		index === columnIndex ? { ...candidate, header } : candidate,
 	);
@@ -246,9 +256,9 @@ export function deleteRows(
 // Only values move. A column's identity, alignment, expected type, and the
 // workspace preferences keyed by its id belong to the column rather than to the
 // row that happens to be showing in the header, so they stay where they are. A
-// header holds text, so a promoted value arrives through the one projection
-// every view reads a cell through, and the value it came from is gone with its
-// row.
+// header holds text, so a promoted native value arrives through the one
+// projection every view reads a cell through, formatted text keeps its
+// structure, and the value it came from is gone with its row.
 export function promoteFirstRowToHeader(
 	document: TableDocument,
 ): TableDocument {
@@ -257,7 +267,7 @@ export function promoteFirstRowToHeader(
 
 	const columns = document.columns.map((column) => ({
 		...column,
-		header: cellTextAt(promoted, column.id),
+		header: headerContent(readCell(promoted, column.id)),
 	}));
 	const rows = document.rows.slice(1);
 	return withRows({ columns, rows }, rows);
@@ -431,7 +441,7 @@ export function fillRange(
 			if (!sourceRow || !sourceColumn || !targetColumn) continue;
 
 			const value = readCell(sourceRow, sourceColumn.id);
-			if (readCell(row, targetColumn.id) === value) continue;
+			if (cellValuesEqual(readCell(row, targetColumn.id), value)) continue;
 			cells ??= { ...row.cells };
 			cells[targetColumn.id] = value;
 		}
@@ -595,6 +605,10 @@ function isEmptyCell(value: CellValue): boolean {
 // forbids. The collator's `numeric: true` already handles the readable ordering
 // of digits inside strings without any of that.
 function compareCells(left: CellValue, right: CellValue): number {
+	// Formatted text is text: it sorts by what it reads as, among the strings.
+	// That is its own projection, not a reading of text for a type.
+	if (isInlineContent(left)) return compareCells(cellText(left), right);
+	if (isInlineContent(right)) return compareCells(left, cellText(right));
 	const leftType = typeof left;
 	const rightType = typeof right;
 	if (leftType !== rightType) {
@@ -677,8 +691,9 @@ export function sortRows(
 //
 // Values are moved, never touched: a number stays a number and a `null` stays a
 // `null`. The one exception is the model's, not this function's: a header holds
-// text, so the values that arrive in the new header row pass through the one
-// projection every view reads a cell through, exactly as promoting a row into
+// text, so the native values that arrive in the new header row pass through the
+// one projection every view reads a cell through (formatted text keeps its
+// structure), exactly as promoting a row into
 // the header does. A double transpose therefore restores every value and type
 // except those that spent the round trip in the header, which come back as
 // their text.
@@ -692,7 +707,7 @@ export function transposeDocument(document: TableDocument): TableDocument {
 
 	const headers = [
 		first.header,
-		...document.rows.map((row) => cellTextAt(row, first.id)),
+		...document.rows.map((row) => headerContent(readCell(row, first.id))),
 	];
 	const columns = headers.map((header) => createColumn(header));
 	const rows = document.columns.slice(1).map((source) => {

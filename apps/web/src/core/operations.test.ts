@@ -31,7 +31,7 @@ import {
 } from "./operations";
 import { samplePeopleMatrix } from "./sample-data";
 import { HEADER_ROW } from "./selection";
-import type { CellValue, TableDocument } from "./types";
+import type { CellValue, InlineContent, TableDocument } from "./types";
 
 function docOf(matrix: CellValue[][]) {
 	return documentFromMatrix(matrix, { headerRow: true });
@@ -1192,5 +1192,67 @@ describe("deleteEmptyRowsAndColumns", () => {
 	it("returns the same document when nothing is empty", () => {
 		const document = sample();
 		expect(deleteEmptyRowsAndColumns(document).document).toBe(document);
+	});
+});
+
+// #306. Operations carry formatted text as the value it is: equal structure is
+// no change, the header keeps structure it is given, and nothing converts it
+// without the user choosing a conversion that says so.
+describe("operations over inline content", () => {
+	const boldIngrid: InlineContent = {
+		kind: "inline",
+		nodes: [{ kind: "text", text: "Ingrid", marks: ["bold"] }],
+	};
+
+	it("treats a structurally equal value as no change", () => {
+		const document = docOf([["name"], [boldIngrid]]);
+
+		expect(setCell(document, 0, 0, structuredClone(boldIngrid))).toBe(document);
+		expect(setCell(document, 0, 0, "Ingrid")).not.toBe(document);
+	});
+
+	it("moves formatted text into the header with its structure", () => {
+		const document = docOf([
+			["name", "age"],
+			[boldIngrid, 35],
+		]);
+
+		expect(
+			promoteFirstRowToHeader(document).columns.map((c) => c.header),
+		).toEqual([boldIngrid, "35"]);
+		expect(transposeDocument(document).columns.map((c) => c.header)).toEqual([
+			"name",
+			boldIngrid,
+		]);
+	});
+
+	it("sorts formatted text by what it reads as", () => {
+		const document = docOf([["name"], [boldIngrid], ["Amora"], ["Paulo"]]);
+		const column = document.columns[0];
+		assert(column);
+
+		const { document: sorted } = sortRows(document, column.id, "ascending");
+
+		expect(documentToMatrix(sorted).slice(1)).toEqual([
+			["Amora"],
+			["Ingrid"],
+			["Paulo"],
+		]);
+	});
+
+	it("keeps formatted text as text and asks before a number replaces it", () => {
+		const formattedAge: InlineContent = {
+			kind: "inline",
+			nodes: [{ kind: "text", text: "35", marks: ["italic"] }],
+		};
+		const document = docOf([["age"], [formattedAge]]);
+
+		expect(setCellType(document, 0, 0, "string")).toBe(document);
+		expect(changeColumnType(document, 0, "number")).toMatchObject({
+			unconverted: 1,
+		});
+		const row = changeColumnType(document, 0, "number").document.rows[0];
+		assert(row);
+		expect(readCell(row, document.columns[0]?.id ?? "")).toBe(formattedAge);
 	});
 });

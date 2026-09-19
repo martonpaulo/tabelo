@@ -1,11 +1,14 @@
 import {
 	cellText,
 	cellTextAt,
+	cellValuesEqual,
 	DEFAULT_EXPECTED_TYPE,
+	headerContent,
 	isBlankCell,
 	readCell,
 } from "./cell-value";
 import { createColumnId, createRowId } from "./ids";
+import { isInlineContent } from "./inline-content";
 import type {
 	Alignment,
 	CellValue,
@@ -14,12 +17,13 @@ import type {
 	ExpectedColumnType,
 	Row,
 	TableDocument,
+	TextContent,
 } from "./types";
 
 export const DEFAULT_COLUMN_COUNT = 3;
 export const DEFAULT_ROW_COUNT = 3;
 
-export function createColumn(header: string): Column {
+export function createColumn(header: TextContent): Column {
 	return {
 		id: createColumnId(),
 		header,
@@ -106,9 +110,10 @@ export function documentFromMatrix(
 	if (!firstRow) return createEmptyDocument();
 
 	// Headers are names, not typed cells. Named formats that declare a header
-	// still carry body values without projecting them through text here.
+	// still carry body values without projecting them through text here, and
+	// a header keeps any inline structure it arrived with.
 	const headerValues = options.headerRow
-		? firstRow.map(cellText)
+		? firstRow.map(headerContent)
 		: firstRow.map(() => "");
 	const bodyRows = options.headerRow ? matrix.slice(1) : matrix;
 
@@ -141,12 +146,43 @@ export function documentFromMatrix(
 export interface ReconciliationSource {
 	readonly cellValues: "text" | "typed";
 	readonly columnAlignment: "carried" | "unexpressed";
+	// Whether the source can spell inline structure. One that cannot reports
+	// only the plain projection of a formatted cell or header, so an unchanged
+	// projection keeps the structure it came from, and only a cell whose text
+	// actually changed becomes plain (docs/adr/0011).
+	readonly inlineContent: "carried" | "unexpressed";
 }
 
 const DEFAULT_RECONCILIATION_SOURCE: ReconciliationSource = {
 	cellValues: "text",
 	columnAlignment: "carried",
+	inlineContent: "unexpressed",
 };
+
+// The value reconciliation keeps at one position. An equal value is the
+// existing one, so identity survives a parse that changed nothing there. A
+// parsed string that exactly equals the existing projection is all a source
+// could report about a value it cannot spell: a text source cannot spell a
+// native type, and a source without inline syntax cannot spell structure. In
+// either case the existing canonical value stays. This is also how `null`
+// stays distinct from an empty string despite both projecting to empty text.
+// A changed or newly inserted text cell remains the parsed string, and a
+// typed source always supplies the canonical scalar itself.
+function reconciledValue<Value extends CellValue>(
+	existing: Value | undefined,
+	parsed: Value,
+	source: ReconciliationSource,
+): Value {
+	if (existing === undefined) return parsed;
+	if (cellValuesEqual(existing, parsed)) return existing;
+	if (typeof parsed !== "string" || cellText(existing) !== parsed) {
+		return parsed;
+	}
+	if (isInlineContent(existing)) {
+		return source.inlineContent === "unexpressed" ? existing : parsed;
+	}
+	return source.cellValues === "text" ? existing : parsed;
+}
 
 export function reconcileDocument(
 	current: TableDocument,
@@ -168,13 +204,15 @@ export function reconcileDocument(
 		// cannot express it, so a parse must not reset it to the default.
 		const alignment =
 			source.columnAlignment === "unexpressed" ? existing.align : column.align;
-		if (existing.header === column.header && existing.align === alignment) {
+		const header = reconciledValue(existing.header, column.header, source);
+		if (header === existing.header && existing.align === alignment) {
 			return existing;
 		}
 
 		columnsUnchanged = false;
 		return {
 			...column,
+			header,
 			id: existing.id,
 			align: alignment,
 			expectedType: existing.expectedType,
@@ -195,18 +233,7 @@ export function reconcileDocument(
 					? readCell(existing, existingColumn.id)
 					: undefined;
 
-			// A text format can only report a projection. When that projection is
-			// unchanged, keep the canonical value that supplied it. This is also how
-			// `null` stays distinct from an empty string despite both projecting to
-			// empty text. A changed or newly inserted text cell remains the parsed
-			// string, and a typed source always supplies the canonical value itself.
-			cells[column.id] =
-				source.cellValues === "text" &&
-				typeof parsedValue === "string" &&
-				existingValue !== undefined &&
-				cellText(existingValue) === parsedValue
-					? existingValue
-					: parsedValue;
+			cells[column.id] = reconciledValue(existingValue, parsedValue, source);
 		});
 
 		// The key count has to match as well as the values: a row still carrying a
@@ -237,5 +264,5 @@ export function documentToMatrix(document: TableDocument): string[][] {
 	const body = document.rows.map((row) =>
 		document.columns.map((column) => cellTextAt(row, column.id)),
 	);
-	return [document.columns.map((column) => column.header), ...body];
+	return [document.columns.map((column) => cellText(column.header)), ...body];
 }

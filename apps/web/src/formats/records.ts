@@ -1,4 +1,4 @@
-import { cellTextAt } from "@/core/cell-value";
+import { cellText, cellTextAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
 import { lineSpans, toDocumentParseResult } from "./parse";
 import type {
@@ -319,7 +319,7 @@ function serializeRecords(
 	const records = document.rows.map((row) => {
 		const titleValue = escapeValue(cellTextAt(row, firstColumn.id));
 		const title = includeFirstColumnName
-			? `${escapeHeader(firstColumn.header)}: ${titleValue}`
+			? `${escapeHeader(cellText(firstColumn.header))}: ${titleValue}`
 			: titleValue;
 
 		// Rule 8: the first column is never repeated as a bullet.
@@ -327,7 +327,7 @@ function serializeRecords(
 			const value = cellTextAt(row, column.id);
 			if (!includeEmptyValues && value === "") return [];
 			const suffix = value === "" ? "" : ` ${escapeValue(value)}`;
-			return [`- ${escapeHeader(column.header)}:${suffix}`];
+			return [`- ${escapeHeader(cellText(column.header))}:${suffix}`];
 		});
 
 		return [title, ...bullets].join("\n");
@@ -346,7 +346,7 @@ function recordsPrecondition(
 	const firstColumn = document.columns[0];
 	if (!firstColumn) return null;
 
-	if (firstColumn.header.trim() === "") {
+	if (cellText(firstColumn.header).trim() === "") {
 		return { code: "records-empty-first-header", columns: [0] };
 	}
 
@@ -358,8 +358,9 @@ function recordsPrecondition(
 	// has to be unique, not only the first.
 	const headerPositions = new Map<string, number[]>();
 	document.columns.forEach((column, index) => {
-		headerPositions.set(column.header, [
-			...(headerPositions.get(column.header) ?? []),
+		const header = cellText(column.header);
+		headerPositions.set(header, [
+			...(headerPositions.get(header) ?? []),
 			index,
 		]);
 	});
@@ -417,6 +418,7 @@ export const recordsCodec: TableCodec = {
 	reconciliation: {
 		cellValues: "text",
 		columnAlignment: "unexpressed",
+		inlineContent: "unexpressed",
 	},
 	extension: "records.txt",
 	mimeType: "text/plain",

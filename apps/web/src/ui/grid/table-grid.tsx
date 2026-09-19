@@ -1298,7 +1298,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 						<ColumnIndexCell
 							key={column.id}
 							columnIndex={columnIndex}
-							header={column.header}
+							header={cellText(column.header)}
 							expectedType={column.expectedType}
 							selected={rects.some(
 								(rect) => columnIndex >= rect.left && columnIndex <= rect.right,
@@ -1402,7 +1402,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								<HeaderCell
 									key={column.id}
 									columnIndex={columnIndex}
-									header={column.header}
+									header={cellText(column.header)}
 									align={column.align}
 									wrapped={wrappedColumns.includes(column.id)}
 									pinned={pinnedColumn && columnIndex === 0}
@@ -2170,7 +2170,11 @@ function HeaderCell({
 					wrapped={wrapped}
 					onFinish={(next, exit) => {
 						const store = useTabeloStore.getState();
-						if (exit !== "cancel") store.editHeader(columnIndex, next);
+						// An unchanged commit is not an edit. The header text is a
+						// projection, so writing it back would flatten a formatted header.
+						if (exit !== "cancel" && next !== header) {
+							store.editHeader(columnIndex, next);
+						}
 						store.setEditingHeader(null);
 					}}
 				/>

@@ -1,7 +1,8 @@
-import { cellTextAt } from "./cell-value";
+import { cellText, cellTextAt, readCell } from "./cell-value";
+import { inlineImages, isInlineContent, replaceRange } from "./inline-content";
 import { setCell, setHeader } from "./operations";
 import { HEADER_ROW } from "./selection";
-import type { TableDocument } from "./types";
+import type { CellValue, TableDocument, TextContent } from "./types";
 
 // Literal text matching over the canonical table, and the replacement that
 // acts on what it found. Framework-free and free of every view: the grid, the
@@ -55,7 +56,7 @@ export function findMatches(
 	document.columns.forEach((column, index) => {
 		collectMatches(
 			matches,
-			column.header,
+			cellText(column.header),
 			HEADER_ROW,
 			index,
 			query,
@@ -104,28 +105,46 @@ export function replaceMatches(
 	for (const cellMatches of byCell.values()) {
 		const first = cellMatches[0];
 		if (!first) continue;
-		const current = textAt(document, first.row, first.column);
-		if (current === null) return document;
+		const current = valueAt(document, first.row, first.column);
+		if (current === undefined) return document;
+		const currentText = cellText(current);
 
 		// From the end backwards, so an earlier range keeps addressing the same
 		// characters however much the replacement changes the length after it.
 		const ordered = [...cellMatches].sort((a, b) => b.start - a.start);
-		let value = current;
-		for (const match of ordered) {
-			if (
-				match.start < 0 ||
-				match.end > value.length ||
-				match.start > match.end
+		if (
+			ordered.some(
+				(match) =>
+					match.start < 0 ||
+					match.end > currentText.length ||
+					match.start > match.end,
 			)
-				return document;
+		) {
+			return document;
+		}
+
+		// Formatted text is rewritten in place, so the marks and links around a
+		// match survive it. An image is atomic, and replacing part of its
+		// alternative text would have to discard the image, so a match that
+		// touches one is left as it is rather than losing the image's URL
+		// (docs/adr/0011).
+		let value: TextContent = isInlineContent(current) ? current : currentText;
+		const images = isInlineContent(current) ? inlineImages(current) : [];
+		for (const match of ordered) {
+			const touchesImage = images.some(
+				(image) => match.start < image.end && image.start < match.end,
+			);
+			if (touchesImage) continue;
 			value =
-				value.slice(0, match.start) + replacement + value.slice(match.end);
+				typeof value === "string"
+					? value.slice(0, match.start) + replacement + value.slice(match.end)
+					: replaceRange(value, match.start, match.end, replacement);
 		}
 
 		// An unchanged projection leaves the cell exactly as it was, native type
 		// included: replacing a value with itself is not an instruction to turn a
 		// number into the string that looks like it. See docs/adr/0008.
-		if (value === current) continue;
+		if (cellText(value) === currentText) continue;
 		next =
 			first.row === HEADER_ROW
 				? setHeader(next, first.column, value)
@@ -167,16 +186,16 @@ export function matchIndexFrom(
 	return found === -1 ? 0 : found;
 }
 
-function textAt(
+function valueAt(
 	document: TableDocument,
 	row: number,
 	column: number,
-): string | null {
+): CellValue | undefined {
 	const target = document.columns[column];
-	if (!target) return null;
+	if (!target) return undefined;
 	if (row === HEADER_ROW) return target.header;
 	const dataRow = document.rows[row];
-	return dataRow ? cellTextAt(dataRow, target.id) : null;
+	return dataRow ? readCell(dataRow, target.id) : undefined;
 }
 
 function collectMatches(

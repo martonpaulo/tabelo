@@ -1,4 +1,4 @@
-import { cellTextAt } from "@/core/cell-value";
+import { cellText, cellTextAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
 import { markdownAssistance } from "./markdown-assistance";
 import {
@@ -386,7 +386,7 @@ function serializeMarkdown(document: TableDocument): string {
 	// One pass: each cell is escaped, measured, and folded into its column's
 	// maximum as it is produced. The widths are complete once this is done.
 	const headers = document.columns.map((column, index) =>
-		reserve(index, escapeAndMeasure(column.header)),
+		reserve(index, escapeAndMeasure(cellText(column.header))),
 	);
 	const body = document.rows.map((row) =>
 		document.columns.map((column, index) =>
@@ -422,6 +422,7 @@ export const markdownCodec: TableCodec = {
 	reconciliation: {
 		cellValues: "text",
 		columnAlignment: "carried",
+		inlineContent: "unexpressed",
 	},
 	extension: "md",
 	mimeType: "text/markdown",

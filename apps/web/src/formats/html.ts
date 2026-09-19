@@ -1,4 +1,4 @@
-import { cellTextAt } from "@/core/cell-value";
+import { cellText, cellTextAt } from "@/core/cell-value";
 import { normalizeMatrix } from "@/core/document";
 import type { Alignment, TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
@@ -34,7 +34,7 @@ export function normalizeLineEndings(value: string): string {
 }
 
 // Reads one cell's text, treating <br> as the line break it represents.
-function cellText(cell: Element): string {
+function elementText(cell: Element): string {
 	const clone = cell.cloneNode(true) as HTMLElement;
 	for (const br of clone.querySelectorAll("br")) {
 		br.replaceWith(clone.ownerDocument.createTextNode("\n"));
@@ -72,7 +72,7 @@ export function readHtmlTable(html: string): HtmlTable | null {
 	if (rows.length === 0) return null;
 
 	const matrix = rows.map((row) =>
-		[...row.querySelectorAll("th, td")].map((cell) => cellText(cell)),
+		[...row.querySelectorAll("th, td")].map((cell) => elementText(cell)),
 	);
 	if (!matrix.some((row) => row.length > 0)) return null;
 
@@ -132,7 +132,7 @@ function cellMarkup(tag: "th" | "td", value: string, align: Alignment): string {
 // pasted by a person, not minified.
 function serializeHtml(document: TableDocument): string {
 	const header = document.columns
-		.map((column) => cellMarkup("th", column.header, column.align))
+		.map((column) => cellMarkup("th", cellText(column.header), column.align))
 		.join("\n");
 
 	const body = document.rows
@@ -165,6 +165,7 @@ export const htmlCodec: TableCodec = {
 	reconciliation: {
 		cellValues: "text",
 		columnAlignment: "carried",
+		inlineContent: "unexpressed",
 	},
 	extension: "html",
 	mimeType: "text/html",

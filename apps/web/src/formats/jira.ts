@@ -1,4 +1,4 @@
-import { cellTextAt } from "@/core/cell-value";
+import { cellText, cellTextAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
 import {
 	firstLineBlock,
@@ -242,7 +242,7 @@ function jiraFields(text: string): SourceFieldRange[] {
 
 function serializeJira(document: TableDocument): string {
 	const header = `||${document.columns
-		.map((column) => escapeJiraCell(column.header))
+		.map((column) => escapeJiraCell(cellText(column.header)))
 		.join("||")}||`;
 
 	const body = document.rows.map(
@@ -262,6 +262,7 @@ export const jiraCodec: TableCodec = {
 	reconciliation: {
 		cellValues: "text",
 		columnAlignment: "unexpressed",
+		inlineContent: "unexpressed",
 	},
 	extension: "jira.txt",
 	mimeType: "text/plain",

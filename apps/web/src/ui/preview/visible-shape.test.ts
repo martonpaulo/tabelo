@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { cellText } from "@/core/cell-value";
 import { documentFromMatrix } from "@/core/document";
-import type { TableDocument } from "@/core/types";
+import type { TableDocument, TextContent } from "@/core/types";
 import { visibleShape } from "./visible-shape";
 
 function docOf(matrix: string[][]): TableDocument {
 	return documentFromMatrix(matrix, { headerRow: true });
 }
 
-function headersOf(document: { columns: readonly { header: string }[] }) {
-	return document.columns.map((column) => column.header);
+function headersOf(document: { columns: readonly { header: TextContent }[] }) {
+	return document.columns.map((column) => cellText(column.header));
 }
 
 describe("visibleShape", () => {
