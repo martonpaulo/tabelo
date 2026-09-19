@@ -11,7 +11,8 @@ import {
 } from "./helpers";
 
 // The Markdown alignment divider kept in step with its table (#297), a new
-// Markdown or Jira row opened with its delimiter on Enter (#391), and the
+// Markdown or Jira row opened with its delimiter on Enter (#391), a Markdown
+// column kept padded to its widest cell while typing (#401), and the
 // pane's switch that turns that assistance off for the current buffer. See
 // "Source text is free; structural assistance is narrow" in AGENTS.md and
 // docs/design-system/2-tokens.md, "Structural assistance can always be switched off".
@@ -238,6 +239,72 @@ async function caretAtEnd(page: Page, editor: Locator): Promise<void> {
 	await editor.click();
 	await page.keyboard.press("ControlOrMeta+End");
 }
+
+// The caret just after "Rio" in the last row, before its padding.
+async function caretAfterRio(page: Page, editor: Locator): Promise<void> {
+	await caretAtEnd(page, editor);
+	await page.keyboard.press("End");
+	await page.keyboard.press("ArrowLeft");
+	await page.keyboard.press("ArrowLeft");
+	await page.keyboard.press("ArrowLeft");
+}
+
+const GROWN = [
+	"| name   | city       |",
+	"| ------ | ---------- |",
+	"| Ingrid | Rio Grande |",
+].join("\n");
+
+// The column being typed in keeps every row padded to its widest cell, in the
+// text itself (#401).
+test.describe("markdown column padding assistance", () => {
+	test("a growing cell re-pads its column in every row, undone as one step", async ({
+		page,
+		tabelo,
+	}) => {
+		const editor = await seed(tabelo);
+		await caretAfterRio(page, editor);
+		await page.keyboard.type(" Grande");
+		await expect
+			.poll(() => renderedSource(tabelo.pane("markdown")))
+			.toBe(GROWN);
+		await expect(tabelo.cell(1, 2)).toHaveText("Rio Grande");
+
+		// Typed in one burst, so one undo takes the text and every row's padding.
+		await page.keyboard.press("ControlOrMeta+z");
+		await expect
+			.poll(() => renderedSource(tabelo.pane("markdown")))
+			.toBe(TABLE);
+		await expect(tabelo.cell(1, 2)).toHaveText("Rio");
+	});
+
+	test("deleting from the widest cell shrinks the column; switched off, rows keep their padding", async ({
+		page,
+		tabelo,
+	}) => {
+		const editor = await seed(tabelo);
+		await caretAfterRio(page, editor);
+		await page.keyboard.type(" Grande");
+		await expect
+			.poll(() => renderedSource(tabelo.pane("markdown")))
+			.toBe(GROWN);
+		// The caret stayed after what was typed, so Backspace takes it back.
+		for (let index = 0; index < " Grande".length; index += 1) {
+			await page.keyboard.press("Backspace");
+		}
+		await expect
+			.poll(() => renderedSource(tabelo.pane("markdown")))
+			.toBe(TABLE);
+
+		await setAssistance(tabelo, false);
+		await caretAfterRio(page, editor);
+		await page.keyboard.type(" Grande");
+		await expect(tabelo.cell(1, 2)).toHaveText("Rio Grande");
+		await expect
+			.poll(() => renderedSource(tabelo.pane("markdown")))
+			.toBe(TABLE.replace("Rio  |", "Rio Grande  |"));
+	});
+});
 
 // Line text is read after typing into the new line, because an empty cell's
 // placeholder draws over the bare delimiter (#274).
