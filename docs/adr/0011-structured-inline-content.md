@@ -176,8 +176,10 @@ chosen format before the file is written.
 The model landed dormant in delivery slice 1. Slice 2 gives it codec syntax
 and rendering: Markdown, HTML, and Jira read and write it, the rendered
 preview shows it, and the plain formats disclose what they cannot spell. The
-grid still shows the projection until the Visual Table editor arrives, and
-the Copy as menu does not disclose yet (an open question on #306).
+grid still shows the projection until the Visual Table editor arrives. The
+Copy as menu discloses too (option A on #306, owner, 2026-09-19): while the
+table holds formatting, a muted note at the top of the submenu names the
+formats whose codec declares inline content unexpressed.
 Reconciliation keeps structure through every plain view, and a grid commit
 that leaves the projection unchanged writes nothing.
 

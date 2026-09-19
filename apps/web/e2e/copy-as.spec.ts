@@ -64,6 +64,32 @@ test("offers every registered format and nothing enumerated by hand", async ({
 	}
 });
 
+// While the table holds formatting, the submenu says up front which formats
+// copy text only, and says nothing when there is nothing to lose (#306). The
+// note describes the submenu rather than joining its items, so the rows stay
+// the registry's and nothing else.
+test("names the text-only formats only while the table holds formatting", async ({
+	tabelo,
+	page,
+}) => {
+	// The blank table the welcome surface starts holds no formatting.
+	let submenu = await tabelo.openCopyAsSubmenu();
+	await expect(submenu).not.toHaveAttribute("aria-describedby");
+	await page.keyboard.press("Escape");
+	await page.keyboard.press("Escape");
+	await expect(page.getByRole("menu")).toHaveCount(0);
+
+	await tabelo.importFile(
+		"formatted.md",
+		fixture.replace("| Ingrid |", "| **Ingrid** |"),
+		"text/markdown",
+	);
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	submenu = await tabelo.openCopyAsSubmenu();
+	await expect(submenu).toHaveAccessibleDescription(/\S/);
+	await expect(submenu.getByRole("menuitem")).toHaveCount(listCodecs().length);
+});
+
 for (const codec of listCodecs()) {
 	test(`copying as ${codec.id} writes text that reads back as the same table`, async ({
 		page,

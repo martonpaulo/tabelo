@@ -159,6 +159,14 @@ than a laptop screen. Clipboard, Insert, Edit, and Remove stay on the first
 level, one click away. Nothing else nests, and a submenu never contains a
 second submenu.
 
+A submenu may open with one muted note when a row's outcome depends on the
+document, and only then. `Copy as` is the one case: while the table holds
+formatting, a note at its top names the formats that copy text only, read from
+each codec's declared inline-content capability rather than a list of ids, and
+nothing is shown otherwise (#306). The note is static text that describes the
+submenu (`aria-describedby`), never a row, and it wraps inside the width the
+rows set.
+
 Every other choice still opens one dialog, and the two standing examples say
 why. **Add view** carries a consequence the list cannot show, because the same
 seven views mean a different workspace depending on which edge was clicked, and

@@ -34,12 +34,14 @@ import {
 import {
 	Fragment,
 	type RefObject,
+	useId,
 	useMemo,
 	useState,
 	useSyncExternalStore,
 } from "react";
 import { copy } from "@/copy/copy";
 import { product } from "@/copy/product";
+import { hasInlineContent } from "@/core/document";
 import { deleteEmptyRowsAndColumns } from "@/core/operations";
 import { canSerialize, listCodecs } from "@/formats";
 import {
@@ -58,6 +60,7 @@ import { MenuOption } from "@/ui/primitives/menu-option";
 import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import { useStackedWorkspace } from "@/ui/workspace/stacking";
+import { flattensInlineContent } from "@/views/projection-loss";
 import { getView } from "@/views/registry";
 import {
 	layoutsForPaneCount,
@@ -399,6 +402,20 @@ function CopyAsSubmenu({
 	readonly runAfterClose: (command: () => void) => void;
 }) {
 	const document = useTabeloStore((state) => state.document);
+	const noteId = useId();
+
+	// While the table holds formatting, the formats that cannot spell it are
+	// named before any is chosen (#306). Which formats those are is codec
+	// data, read from the registry, never a list of ids kept here.
+	const textOnly = useMemo(
+		() =>
+			hasInlineContent(document)
+				? listCodecs()
+						.filter(flattensInlineContent)
+						.map((codec) => getView(codec.id).label)
+				: [],
+		[document],
+	);
 
 	return (
 		<DropdownMenuSub>
@@ -409,7 +426,24 @@ function CopyAsSubmenu({
 			{/* No width of its own: the primitive already sizes a submenu to its
 			    content above a shared floor, and the shared spacing rhythm comes
 			    with it. */}
-			<DropdownMenuSubContent aria-label={copy.actions.copyAs}>
+			<DropdownMenuSubContent
+				aria-label={copy.actions.copyAs}
+				aria-describedby={textOnly.length > 0 ? noteId : undefined}
+			>
+				{/* Static text, not a menu item, so it describes the submenu
+				    rather than joining its items. `w-0 min-w-full` lets the rows
+				    set the width and the note wrap inside it. */}
+				{textOnly.length > 0 ? (
+					<p
+						id={noteId}
+						className={cn(
+							"w-0 min-w-full text-muted-foreground text-xs",
+							menuItemInsetStyles,
+						)}
+					>
+						{copy.actions.copyAsTextOnly(textOnly)}
+					</p>
+				) : null}
 				{listCodecs().map((codec) => {
 					const view = getView(codec.id);
 					const failure = canSerialize(codec, document);

@@ -722,6 +722,10 @@ export const copy = {
 		// showing. Distinct from Copy source, which copies the pane in front of
 		// the user, draft and all.
 		copyAs: "Copy as",
+		// Said at the top of Copy as while the table holds formatting (#306),
+		// naming the formats that cannot spell it.
+		copyAsTextOnly: (formats: readonly string[]) =>
+			`${joinedPositions(formats)} copy text only, without formatting.`,
 		downloadTable: "Download table",
 		download: "Download",
 		cancel: "Cancel",
