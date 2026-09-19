@@ -183,6 +183,20 @@
    translucent; `--hairline-color` is the boundary. Radius and border width
    stay the consumer's, so this composes with any rounded surface.
    See docs/design-system/2-tokens.md. */
+/* Registered as non-inheriting because only the surface that sets them reads
+   them. An inherited custom property that changes on a pane (the active edge)
+   makes Chromium recompute the style of every element inside it: 30 ms per
+   focus change on a 200-row grid, measured in #364. */
+@property --hairline-color {
+	syntax: "*";
+	inherits: false;
+}
+
+@property --hairline-fill {
+	syntax: "*";
+	inherits: false;
+}
+
 @utility tabelo-hairline {
 	border-color: transparent;
 	background-image:

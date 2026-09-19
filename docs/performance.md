@@ -97,6 +97,33 @@ Anything within roughly an order of magnitude of that is not a measurement.
 `moveColumns` at 0.0007 ms is seven times the floor and should not be used to
 judge a small change; `setCell` at 0.0017 ms is seventeen times it.
 
+### In the browser
+
+A cost that is rendering rather than computation is invisible to `pnpm bench`,
+so it is measured in the product itself. The method for #364, reproducible
+without keeping its disposable driver:
+
+- **Build and browser.** The production build served by `vite preview`, driven
+  by the Playwright library (not the test runner) in a headed Chromium at a
+  1440 x 860 viewport. One browser, one scenario at a time, nothing else
+  running Playwright on the machine.
+- **Scenario.** A fresh context whose stored workspace puts the grid beside the
+  view under test (the grid alone for `grid`). A cell is typed into and cleared
+  first so the paste keeps that arrangement instead of opening the import one.
+  Then, in order: paste a synthetic roster table of 200 or 480 rows by 8
+  columns into the grid and answer the header question with a real click;
+  type five characters into a grid cell and press Enter; click line 5 of the
+  source view and type five characters; wheel the view's scroller to the end
+  and back; click the view and then a grid cell, twice.
+- **Instruments.** `PerformanceObserver` for `longtask` entries and for Event
+  Timing `event` entries at a 16 ms threshold, reduced to the slowest
+  interaction (INP-style, rounded to 8 ms by the browser), plus a
+  `requestAnimationFrame` loop for the worst frame while scrolling. For
+  attribution, one extra run of the cell with CDP `Tracing`
+  (`devtools.timeline`, its stack and invalidation-tracking variants) and the
+  CDP sampling profiler at 0.1 ms.
+- **Runs.** Three per cell, median reported.
+
 ### Known gaps and instabilities
 
 - **HTML `parse` is not measured.** It goes through the platform's `DOMParser`,
@@ -303,6 +330,44 @@ CPU at 0.1 ms across the answer with the CDP profiler.
 | suspicion | measured | verdict |
 | --- | --- | --- |
 | Tabelo's data path (parse, identifiers, reconciliation) is the paste freeze | one long task of 153 to 168 ms. React render and commit about 50 ms; a forced synchronous style and layout of about 45 ms inside the new source editor's first selection read, and about 58 ms under a later `focus()`; garbage collection about 20 ms. No Tabelo function above 3 ms self time | **Disproved.** The freeze is the first layout of the freshly rendered grid and editor, forced synchronously by the editor's constructor and by focus, not computation. Editing, typing, and scrolling afterwards produced no long task in the earlier measurement on the issue. Still open: the owner's exact view and action, which was not reproduced. |
+
+The owner then reported the slowness in every view, so every registered view
+was measured on 2026-09-19 at commit `3fbcea6`, with the browser method under
+`## Method` on reference machine A (arm64, Chromium 1243 headed). Milliseconds,
+median of three runs. "Long task" is the longest task for paste and typing and
+the sum of all long tasks for the four focus clicks; INP is the slowest
+interaction in the step. `records` pastes a roster whose first column is
+unique, because Records refuses duplicate titles; every other view pastes the
+same table.
+
+| view | rows | paste: long task | paste: INP | grid edit: INP | typing: INP | typing: long task | scroll: worst frame | focus: long tasks | focus: INP |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `grid` | 200 | 89 | 136 | 56 | n/a | n/a | 19 | n/a | n/a |
+| `markdown` | 200 | 104 | 168 | 72 | 104 | 52 | 33 | 132 | 96 |
+| `csv` | 200 | 99 | 152 | 64 | 56 | 0 | 33 | 185 | 96 |
+| `tsv` | 200 | 98 | 152 | 72 | 64 | 0 | 33 | 184 | 96 |
+| `html` | 200 | 105 | 168 | 56 | 64 | 0 | 33 | 180 | 96 |
+| `jira` | 200 | 100 | 152 | 72 | 96 | 0 | 33 | 193 | 96 |
+| `json` | 200 | 101 | 168 | 80 | 64 | 0 | 33 | 202 | 104 |
+| `records` | 200 | 103 | 168 | 64 | 64 | 0 | 33 | 116 | 96 |
+| `html-preview` | 200 | 120 | 184 | 56 | n/a | n/a | 19 | 295 | 120 |
+| `grid` | 480 | 162 | 232 | 72 | n/a | n/a | 19 | n/a | n/a |
+| `markdown` | 480 | 183 | 272 | 96 | 144 | 79 | 50 | 297 | 144 |
+| `csv` | 480 | 176 | 256 | 88 | 64 | 0 | 33 | 273 | 128 |
+| `tsv` | 480 | 175 | 256 | 72 | 64 | 0 | 33 | 277 | 128 |
+| `html` | 480 | 184 | 256 | 72 | 72 | 0 | 32 | 286 | 144 |
+| `jira` | 480 | 177 | 256 | 80 | 128 | 60 | 33 | 306 | 144 |
+| `json` | 480 | 190 | 272 | 88 | 64 | 0 | 33 | 310 | 144 |
+| `records` | 480 | 191 | 272 | 72 | 72 | 0 | 33 | 286 | 128 |
+| `html-preview` | 480 | 246 | 320 | 80 | n/a | n/a | 19 | 495 | 168 |
+
+Scrolling is free in every view. What the owner feels "in every view" is the
+one cost that is the same in every view: moving between the grid and the pane
+beside it.
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| Moving focus between two panes is slow when one holds a long grid | 60 to 100 ms long tasks on each pane change, growing with rows, in every view. The trace: about 30 ms of `UpdateLayoutTree` per change at 200 rows, forced by the fill handle's `getBoundingClientRect`. Invalidation tracking names one change, the active pane's class, which sets `--hairline-color` for its edge. A custom property inherits, so every element in the pane, all 1,600 cells, had its style recomputed | **Confirmed, and fixed in #364.** Registering `--hairline-color` and `--hairline-fill` with `inherits: false` confines the change to the pane's own box; nothing inside reads either. Focus long tasks, `csv`: 185 to 0 at 200 rows, 273 to 0 at 480; focus INP 96 to 64 and 128 to 64. `html-preview`: 295 to 0 and 495 to 0; INP 120 to 48 and 168 to 64. Paste, typing, and scrolling unchanged. |
 
 ### Adding an entry
 

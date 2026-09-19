@@ -109,7 +109,10 @@ box. The ring between them is filled rather than stroked, and the arc keeps 89%
 of its colour at one device pixel and all of it above. It takes two custom
 properties, `--hairline-fill` for the surface, which may be translucent, and
 `--hairline-color` for the boundary; radius and border width stay the
-consumer's.
+consumer's. Both are registered with `inherits: false`, so the surface that
+uses the utility sets them on itself and nothing inside it can read them: an
+inherited value changing on a pane restyled every cell of the grid inside it
+(#364, `docs/performance.md`).
 
 `surface-styles.ts` in `packages/ui/src/components/` holds the three
 compositions and nothing else does: `floatingSurfaceStyles` for menus,
