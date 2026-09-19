@@ -403,7 +403,8 @@ the document carries rather than an empty field, and is never marked
 empty is a blank line, which is also the record separator, so that ambiguous
 line is left unmarked rather than guessed at. Decided on #274. The escape glyph
 appears in Markdown and Jira, the two formats whose codecs escape reversibly
-inside a cell.
+inside a cell, and for HTML's `<br>`, the one notation the HTML source view
+draws.
 
 **An annotation sits below the content, never beside it.** The tab arrow
 and the placeholder share one tone, `--muted-foreground` mixed to 40%
@@ -464,14 +465,28 @@ editor's own character, so it follows the pane's zoom with nothing measuring
 anything. What a sequence is comes from the codec that owns the grammar, never
 from a pattern the editor matches itself, and a run that only looks like one,
 the literal text `&#32;`, stays exactly as written. Whitespace reuses the space
-and tab glyphs, a line break is `↵`, and a hover names both the spelling and the
-character it stands for, which is the one thing that cannot be drawn there. It
-is always on: a reader who cannot tell notation from content has no question a
-preference would answer. The glyph itself is generated content and hidden from
-assistive technology like every other annotation, but this is the one
-replacement that covers characters the file actually holds rather than padding,
-so the sequence is kept in the accessible tree, clipped out of sight: what a
-screen reader reads is still the source, exactly and in order.
+and tab glyphs, and a hover names both the spelling and the character it stands
+for, which is the one thing that cannot be drawn there. The glyph itself is
+generated content and hidden from assistive technology like every other
+annotation, but this is the one replacement that covers characters the file
+actually holds rather than padding, so the sequence is kept in the accessible
+tree, clipped out of sight: what a screen reader reads is still the source,
+exactly and in order.
+
+**A line break inside a cell is one `¶`, one character wide** (owner,
+2026-09-19). Every sequence that encodes a line break, Markdown's `<br>` and
+`&#10;`, Jira's `\\` and `&#10;`, and HTML's `<br>` (the one notation the HTML
+source view draws), is drawn as `¶` in a single character cell. This
+supersedes, for this glyph only, the rule above that a glyph keeps the room of
+its sequence: the room the sequence gave back is drawn instead as extra padding
+at the end of its cell, just before the next delimiter, so in Markdown the pipe
+after it stays in the column the serializer measured. Jira and HTML pad
+nothing, so there the glyph simply takes one character. The padding is a
+zero-length widget with no text; the file, copy, download, and draft are
+unchanged. The caret still treats the sequence as atomic and never lands inside
+it: a click on either half of the `¶` places it before or after the sequence.
+One constant owns the character. Every escape glyph is always on: a reader who cannot tell
+notation from content has no question a preference would answer.
 
 **The file carries the room, so the file decides the layout.** Markdown pads its
 columns for readability, and an empty cell is padded to hold the placeholder,

@@ -402,11 +402,10 @@ export const editorTheme = EditorView.theme({
 	},
 	".cm-tabeloEscape": {
 		color: "var(--syntax-notation)",
-		// Exactly the width of the sequence it is drawn instead of, which the
-		// widget carries: Markdown padded its column counting those characters,
-		// so anything narrower shifts every delimiter after it. Inline-block is
-		// what makes that width apply at all, and centring puts the one glyph in
-		// the middle of the room the notation took.
+		// The width the widget carries: the sequence's own for every glyph but
+		// the line break's, which takes one character and hands the rest to the
+		// cell's padding below. Inline-block is what makes that width apply at
+		// all, and centring puts the one glyph in the middle of its room.
 		...inlineWidgetBox,
 		textAlign: "center",
 		// No `overflow` here: anything but `visible` moves an inline-block's
@@ -414,6 +413,13 @@ export const editorTheme = EditorView.theme({
 		// the rest of the row sits on. There is nothing to clip either, since one
 		// character is always narrower than the sequence it replaces.
 		position: "relative",
+		userSelect: "none",
+	},
+	// The room a line break's one-character glyph gave back, drawn at the end
+	// of its Markdown cell so the next delimiter keeps its column. Empty and
+	// sized by the width the widget carries.
+	".cm-tabeloEscapePadding": {
+		...inlineWidgetBox,
 		userSelect: "none",
 	},
 	// The sequence itself, kept in the accessible tree and out of sight. Clipped

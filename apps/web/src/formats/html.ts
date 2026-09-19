@@ -16,7 +16,12 @@ import {
 	markEvents,
 } from "./inline-syntax";
 import { toDocumentParseResult } from "./parse";
-import type { MatrixParseResult, ParseIssue, TableCodec } from "./types";
+import type {
+	EscapeMatcher,
+	MatrixParseResult,
+	ParseIssue,
+	TableCodec,
+} from "./types";
 
 // HTML parsing uses the platform's own parser rather than a hand-rolled one.
 // Real pasted markup is messy, with nested elements, entities, and attributes.
@@ -52,6 +57,23 @@ export function escapeHtmlText(value: string): string {
 export function normalizeLineEndings(value: string): string {
 	return value.replace(/\r\n?/g, "\n");
 }
+
+// The line break as it is spelled in HTML source, at one offset: `<br>`, the
+// one spelling the serializer writes, and the `<br/>` and `<br />` spellings
+// the browser's parser reads as the same element. A source view draws its
+// line-break marker over exactly these characters, so what counts as a break
+// has one owner, the codec, rather than a second guess in the editor.
+// Sticky, so the match is anchored at `lastIndex`.
+const LINE_BREAK_ELEMENT = /<br\s*\/?>/iy;
+
+export const matchHtmlLineBreak: EscapeMatcher = (value, index) => {
+	if (value[index] !== "<") return null;
+	LINE_BREAK_ELEMENT.lastIndex = index;
+	const element = LINE_BREAK_ELEMENT.exec(value);
+	return element
+		? { source: element[0], decoded: "\n", kind: "line-break" }
+		: null;
+};
 
 // Reading one cell
 

@@ -1,6 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { samplePerson } from "@/core/sample-data";
 import { escapeCell } from "@/formats/markdown-inline";
+import { LINE_BREAK_GLYPH } from "@/ui/source/indicator-glyphs";
 import { expect, test } from "./fixtures";
 import {
 	lastCopied,
@@ -18,6 +19,7 @@ import {
 
 const escapeMarker = ".cm-tabeloEscape";
 const glyph = ".cm-tabeloEscapeGlyph";
+const padding = ".cm-tabeloEscapePadding";
 
 const first = samplePerson(0);
 
@@ -54,17 +56,33 @@ async function drawnGlyphs(pane: Locator): Promise<string[]> {
 	);
 }
 
-// The width each glyph declares, which is the one owner of how much room the
-// notation keeps. It is stated in characters of the editor's own font, so it
-// follows the pane's zoom without anything measuring anything.
-async function declaredWidths(pane: Locator): Promise<string[]> {
-	return pane.evaluate((element) =>
-		Array.from(
-			element.querySelectorAll(".cm-tabeloEscape"),
-			(span) => (span as HTMLElement).style.width,
-		),
+// The width each glyph declares, and the padding each line break hands back to
+// its cell, which together are the one owner of how much room the notation
+// keeps. Both are stated in characters of the editor's own font, so they
+// follow the pane's zoom without anything measuring anything.
+async function declaredWidths(
+	pane: Locator,
+	selector = ".cm-tabeloEscape",
+): Promise<string[]> {
+	return pane.evaluate(
+		(element, query) =>
+			Array.from(
+				element.querySelectorAll(query),
+				(span) => (span as HTMLElement).style.width,
+			),
+		selector,
 	);
 }
+
+// The line break is the one sequence whose glyph takes a single character
+// (owner, 2026-09-19); every other glyph keeps its sequence's width.
+const lineBreak = sequences[4];
+const glyphWidths = sequences.map((sequence) =>
+	sequence === lineBreak ? "1ch" : `${sequence.length}ch`,
+);
+// What the break gave back, as padding at the end of its cell, so the pipe
+// after it stays where Markdown's alignment put it.
+const cellPadding = [`${lineBreak.length - 1}ch`];
 
 test("every sequence a codec writes is drawn as one glyph", async ({
 	tabelo,
@@ -74,7 +92,13 @@ test("every sequence a codec writes is drawn as one glyph", async ({
 	const markdown = tabelo.pane("markdown");
 	// The space entity, the escaped pipe, the escaped backslash, the escaped
 	// ampersand, and the line break, in the order the row lists them.
-	expect(await drawnGlyphs(markdown)).toEqual(["·", "|", "\\", "&", "↵"]);
+	expect(await drawnGlyphs(markdown)).toEqual([
+		"·",
+		"|",
+		"\\",
+		"&",
+		LINE_BREAK_GLYPH,
+	]);
 	await expect(markdown.locator(escapeMarker).first()).toHaveCSS(
 		"font-style",
 		"normal",
@@ -84,23 +108,23 @@ test("every sequence a codec writes is drawn as one glyph", async ({
 	const jira = tabelo.pane("jira");
 	// Jira escapes no whitespace, so its trailing space stays a space; the other
 	// four sequences are its own spellings of the same four characters.
-	expect(await drawnGlyphs(jira)).toEqual(["|", "\\", "&", "↵"]);
+	expect(await drawnGlyphs(jira)).toEqual(["|", "\\", "&", LINE_BREAK_GLYPH]);
 });
 
-test("a glyph keeps the room of the sequence it replaces", async ({
+test("the notation keeps the room of the sequence it replaces", async ({
 	tabelo,
 }) => {
 	await seedEscapes(tabelo);
 	const pane = tabelo.pane("markdown");
 
 	// Markdown padded each column counting the sequence's own characters, so the
-	// glyph declares exactly that many. The spelling comes from the codec rather
+	// glyph declares that many, or one for a line break whose remaining room is
+	// drawn as padding before the cell's closing pipe. The spelling comes from the codec rather
 	// than only from the list above, so a change to the grammar reaches this
 	// expectation instead of quietly passing it.
 	expect(escapeCell(`${first.city} `)).toContain(sequences[0]);
-	expect(await declaredWidths(pane)).toEqual(
-		sequences.map((sequence) => `${sequence.length}ch`),
-	);
+	expect(await declaredWidths(pane)).toEqual(glyphWidths);
+	expect(await declaredWidths(pane, padding)).toEqual(cellPadding);
 
 	// The width is stated in the editor's own character, so a zoom step changes
 	// what a character measures and never what the glyph claims. The alignment
@@ -108,15 +132,13 @@ test("a glyph keeps the room of the sequence it replaces", async ({
 	// recomputing a layout of its own.
 	await tabelo.runPaneCommand("markdown", "zoomIn");
 	await tabelo.runPaneCommand("markdown", "zoomIn");
-	expect(await declaredWidths(pane)).toEqual(
-		sequences.map((sequence) => `${sequence.length}ch`),
-	);
+	expect(await declaredWidths(pane)).toEqual(glyphWidths);
+	expect(await declaredWidths(pane, padding)).toEqual(cellPadding);
 	await tabelo.runPaneCommand("markdown", "zoomOut");
 	await tabelo.runPaneCommand("markdown", "zoomOut");
 	await tabelo.runPaneCommand("markdown", "zoomOut");
-	expect(await declaredWidths(pane)).toEqual(
-		sequences.map((sequence) => `${sequence.length}ch`),
-	);
+	expect(await declaredWidths(pane)).toEqual(glyphWidths);
+	expect(await declaredWidths(pane, padding)).toEqual(cellPadding);
 });
 
 test("the glyph is drawn over the source without joining it", async ({
@@ -151,7 +173,9 @@ test("the glyph is drawn over the source without joining it", async ({
 	// itself: the sequences exactly as the codec wrote them, and none of the
 	// characters the glyphs paint.
 	const source = await renderedSource(pane);
-	for (const drawn of ["·", "↵"]) expect(source).not.toContain(drawn);
+	for (const drawn of ["·", LINE_BREAK_GLYPH]) {
+		expect(source).not.toContain(drawn);
+	}
 	for (const sequence of sequences) expect(source).toContain(sequence);
 
 	// The clipboard and storage carry the source, not the drawing.

@@ -9,17 +9,20 @@ import {
 	WidgetType,
 } from "@codemirror/view";
 import { copy } from "@/copy/copy";
+import { matchHtmlLineBreak } from "@/formats/html";
 import { matchJiraEscape } from "@/formats/jira-inline";
 import { matchMarkdownEscape } from "@/formats/markdown-inline";
 import type { EscapeMatch, EscapeMatcher } from "@/formats/types";
 import type { HighlightLanguage } from "@/views/types";
-import { SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";
+import { LINE_BREAK_GLYPH, SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";
 
 // An escape sequence is notation: five characters of `&#32;` standing for one
 // space the format cannot write directly. Read as text it is unreadable, and it
 // takes the room of the sequence rather than of the value. This draws one glyph
 // over each sequence, at exactly the width the serializer measured, so a
-// Markdown column stays aligned around it. See docs/design-system/2-tokens.md, "Syntax
+// Markdown column stays aligned around it. A line break is the exception: its
+// `¶` takes one character, and the room the sequence gave back is added to the
+// cell's padding instead (owner, 2026-09-19). See docs/design-system/2-tokens.md, "Syntax
 // and table structure".
 //
 // It is a decoration and nothing else. The text, the caret offsets, the
@@ -29,11 +32,12 @@ import { SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";
 // owns the grammar, in formats/markdown.ts and formats/jira.ts, so a sequence
 // the editor draws over and a sequence the codec decodes are the same sequence.
 
-// Which grammar a source view's escapes follow. Only the two pipe formats
-// escape reversibly inside a cell: CSV and TSV quote instead, HTML has the
-// entity rules the browser itself reads, and JSON and Records spell their
-// values out.
-export type EscapeSyntax = "markdown" | "jira";
+// Which grammar a source view's escapes follow. The two pipe formats escape
+// reversibly inside a cell. HTML has the entity rules the browser itself
+// reads, so the only notation drawn there is its line break, `<br>`, which the
+// owner asked to see as the same mark as every other format's (2026-09-19).
+// CSV and TSV quote instead, and JSON and Records spell their values out.
+export type EscapeSyntax = "markdown" | "jira" | "html";
 
 export function escapeSyntax(language: HighlightLanguage): EscapeSyntax | null {
 	switch (language) {
@@ -41,13 +45,45 @@ export function escapeSyntax(language: HighlightLanguage): EscapeSyntax | null {
 			return "markdown";
 		case "jira":
 			return "jira";
+		case "html":
+			return "html";
 		default:
 			return null;
 	}
 }
 
 function matcherFor(syntax: EscapeSyntax): EscapeMatcher {
-	return syntax === "markdown" ? matchMarkdownEscape : matchJiraEscape;
+	switch (syntax) {
+		case "markdown":
+			return matchMarkdownEscape;
+		case "jira":
+			return matchJiraEscape;
+		case "html":
+			return matchHtmlLineBreak;
+	}
+}
+
+// Whether a format pads its cells to a common width, which is what decides
+// whether a line break's narrower glyph owes the room it gave back. Only
+// Markdown aligns its columns; Jira and HTML write each cell at its own length.
+function padsCells(syntax: EscapeSyntax): boolean {
+	return syntax === "markdown";
+}
+
+// The cell delimiter of the two pipe formats. HTML has none on a line.
+const CELL_DELIMITER = "|";
+
+// Whether a sequence stands for a line break, whatever its spelling: `<br>`,
+// Jira's double backslash, and an entity such as `&#10;` all decode to one.
+export function encodesLineBreak(match: EscapeMatch): boolean {
+	return match.decoded === "\n";
+}
+
+// How many characters of the editor's monospaced font a sequence's glyph
+// takes. Every glyph keeps the room of the sequence it replaces, except the
+// line break's, which takes one character.
+export function glyphColumns(match: EscapeMatch): number {
+	return encodesLineBreak(match) ? 1 : match.source.length;
 }
 
 export interface FoundEscape {
@@ -76,8 +112,6 @@ export function scanEscapes(
 	return found;
 }
 
-// A line break, wherever a source view has to show one inside a line.
-const LINE_BREAK_GLYPH = "↵";
 // Whitespace that is neither a plain space nor a tab: a non-breaking space, an
 // em space, a line separator. A relative of the space dot rather than the dot
 // itself, because claiming it is an ordinary space is the mistake this glyph
@@ -90,9 +124,8 @@ const OTHER_SPACE_GLYPH = "◦";
 // already established, and everything else shows the character the notation
 // stands for, which is the one case where the answer is simply visible.
 export function escapeGlyph(match: EscapeMatch): string {
+	if (encodesLineBreak(match)) return LINE_BREAK_GLYPH;
 	switch (match.kind) {
-		case "line-break":
-			return LINE_BREAK_GLYPH;
 		case "whitespace":
 			if (match.decoded === " ") return SPACE_GLYPH;
 			if (match.decoded === "\t") return TAB_GLYPH;
@@ -115,14 +148,79 @@ function cssString(value: string): string {
 	return `"${value.replace(/[\\"]/g, (char) => `\\${char}`)}"`;
 }
 
+// The room a line break's glyph gave back, drawn at the end of its cell as
+// extra padding, so the delimiter after it stays in the column the serializer
+// measured. Nothing in the file corresponds to it: it is a zero-length widget
+// with no text and nothing to read out, placed just before the delimiter.
+class CellPaddingWidget extends WidgetType {
+	constructor(readonly columns: number) {
+		super();
+	}
+
+	toDOM() {
+		const padding = document.createElement("span");
+		padding.className = "cm-tabeloEscapePadding";
+		padding.setAttribute("aria-hidden", "true");
+		padding.style.width = `${this.columns}ch`;
+		return padding;
+	}
+
+	eq(other: CellPaddingWidget) {
+		return other.columns === this.columns;
+	}
+}
+
+// Where each cell of a pipe-format line ends: every delimiter that no escape
+// sequence consumed. An escaped pipe is inside a sequence, so it never ends a
+// cell, which is the same rule the codecs' own row splitters follow.
+function delimiterOffsets(
+	line: string,
+	escapes: readonly FoundEscape[],
+): number[] {
+	const offsets: number[] = [];
+	let next = 0;
+	for (let index = 0; index < line.length; index += 1) {
+		const sequence = escapes[next];
+		if (sequence && index === sequence.offset) {
+			index += sequence.match.source.length - 1;
+			next += 1;
+			continue;
+		}
+		if (line[index] === CELL_DELIMITER) offsets.push(index);
+	}
+	return offsets;
+}
+
+// The padding a padded format owes each cell, keyed by the line offset it is
+// drawn at: the delimiter that ends the cell, or the end of the line when a
+// draft leaves the cell open. Exported for the unit tests, which pin the
+// arithmetic without a browser.
+export function owedPadding(
+	line: string,
+	escapes: readonly FoundEscape[],
+): Map<number, number> {
+	const owed = new Map<number, number>();
+	const breaks = escapes.filter(({ match }) => encodesLineBreak(match));
+	if (breaks.length === 0) return owed;
+	const delimiters = delimiterOffsets(line, escapes);
+	for (const { offset, match } of breaks) {
+		const end =
+			delimiters.find((delimiter) => delimiter > offset) ?? line.length;
+		const room = match.source.length - glyphColumns(match);
+		owed.set(end, (owed.get(end) ?? 0) + room);
+	}
+	return owed;
+}
+
 class EscapeWidget extends WidgetType {
 	constructor(
 		// Exactly the characters of the file this widget is drawn instead of.
 		readonly source: string,
 		readonly glyph: string,
-		// How wide the sequence it replaces is, in characters of the editor's
-		// monospaced font. Markdown padded its column counting those characters,
-		// so drawing narrower would shift every delimiter after it on the line.
+		// How wide the glyph is drawn, in characters of the editor's monospaced
+		// font: the width of the sequence it replaces, so a padded column holds,
+		// or one character for a line break, whose room goes to the cell's
+		// padding instead.
 		readonly columns: number,
 	) {
 		super();
@@ -188,16 +286,29 @@ function buildDecorations(
 		const lastLine = view.state.doc.lineAt(to).number;
 		for (let number = firstLine; number <= lastLine; number += 1) {
 			const line = view.state.doc.line(number);
-			for (const { offset, match } of scanEscapes(line.text, syntax)) {
+			const escapes = scanEscapes(line.text, syntax);
+			for (const { offset, match } of escapes) {
 				const at = line.from + offset;
 				ranges.push(
 					Decoration.replace({
 						widget: new EscapeWidget(
 							match.source,
 							escapeGlyph(match),
-							match.source.length,
+							glyphColumns(match),
 						),
 					}).range(at, at + match.source.length),
+				);
+			}
+			if (!padsCells(syntax)) continue;
+			for (const [offset, columns] of owedPadding(line.text, escapes)) {
+				// On the delimiter's near side, so a caret placed just before the
+				// delimiter is drawn against it rather than where the padding
+				// starts.
+				ranges.push(
+					Decoration.widget({
+						widget: new CellPaddingWidget(columns),
+						side: -1,
+					}).range(line.from + offset),
 				);
 			}
 		}
