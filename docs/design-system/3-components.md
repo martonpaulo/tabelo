@@ -131,10 +131,24 @@ is right for a stepper and wrong for a choice that is finished once made.
 A group whose items are *actions* rather than states, such as zoom, add, and
 close, stays a plain `DropdownMenuGroup` of `DropdownMenuItem`s.
 
+A row of marks that each turn **on and off by themselves** is neither: the
+Visual Table's Format group (#306, owner-approved option A) draws its five
+marks, bold, italic, underline, strikethrough, and inline code, as icon
+segments on the segmented group's track, each a `menuitemcheckbox` whose
+`aria-checked` is read from the selection: `true`, `false`, or `mixed` when
+the selected cells disagree. `menuToggleSegmentStyles` draws the three states
+from that attribute, the checked fill of a segmented choice for on and the
+selection tint for mixed, and forced colours keep the system highlight for on
+and a dashed edge for mixed. Each segment is named in full, states its chord
+in `aria-keyshortcuts`, and shows its name and its legend in its tooltip,
+because an icon has no room for the legend a menu row prints. A mark the
+selection cannot take is disabled with its written reason. A command closes
+the menu.
+
 Every action collection uses the menu primitive's semantic Group, in dropdown
 and context menus alike (#75). A visible group title is reserved for the three
 inline segmented choices, Expected type, Alignment, and Cell type, and for
-Edit (owner, 2026-09-19). It is canonical copy rendered through GroupLabel, and
+Edit (owner, 2026-09-19), and for Format (#306). It is canonical copy rendered through GroupLabel, and
 the Group is named with `aria-labelledby`. Clipboard, Insert, Remove, and the
 self-explanatory width actions (Fit column to content, Set column width) remain
 untitled semantic groups, without an empty label. Move, Fill, and Move focus
@@ -247,10 +261,32 @@ copy path produces. Decided on #77.
   itself through its title and accessible description. An image is capped by
   `--spacing-inline-image`; one that may not load or fails shows the photo-off
   icon beside its alternative text, in the muted tone, as one `img` named by
-  that text. The shared primitive lives in `apps/web/src/ui/inline/` so the
-  grid can render the same elements. The link and image styling here is the
-  minimal document default and awaits the owner's review with the Visual
-  Table mockup.
+  that text. The shared primitive lives in `apps/web/src/ui/inline/`, and
+  the Visual Table renders the same elements through it (below).
+
+### Formatting in the Visual Table
+
+The Visual Table is where formatting is made (#306). It draws a formatted
+header or cell with the rendered preview's elements, on a grid surface that
+keeps the grid a grid:
+
+- **A link is a link without a tab stop.** It keeps its link semantics, and
+  the grid keeps its one tab stop; a plain click selects the cell, and
+  Mod+click opens the link by the same rules as the preview. It is never
+  dragged out of the cell.
+- **An image is as tall as the row.** One line in a column that does not wrap,
+  the shared `--spacing-inline-image` in one that does, so an image never sets
+  a row's height by itself. The unavailable state is the preview's.
+- **Find marks the text a cell shows**, cut through the formatting, so the
+  mark sits inside a bold word or a link label.
+- **The Format group opens the cell menu**: the five mark segments described
+  under menus above, then `Link…` with its `Mod`+`K` legend and `Image…`, then
+  the Cell type group. There is no toolbar and no formatting panel.
+- **The cell editor shows formatting, never markers.** It is the same box the
+  textarea drew, on `--surface-code` with the selection edge, growing over the
+  rows below while it is taller than the cell, and it draws marks, links, and
+  images with the elements the cell shows after the commit. A typed value
+  keeps the plain editor, which has nothing to format.
 
 ### Empty workspace
 
@@ -354,6 +390,17 @@ elsewhere or its format cannot represent the current table; a dialog can
 disable it and explain, where a menu that did the same would be a menu whose
 items mostly do nothing. The choice is also unwound by Cancel with nothing
 changed, which is the shape of a decision rather than of a command.
+
+Link and Image qualify under "a choice with its own options" (#306): a link
+needs its text and its address together, and an image its address and its
+alternative text. Both open at the narrow width with focus in the first field
+and return focus to the cell, or to the cell editor they were opened from,
+whatever closed them. Link has Text and Address, the address hint naming the
+schemes that open, and `Remove link`, `Cancel`, `Save`, with Remove link
+disabled with its reason when there is no link. Image has Address, hinting
+that only https images load, and a required Alternative text, with `Cancel`
+and `Insert`. A missing field is reported under it when the confirm is
+pressed; Cancel writes nothing.
 
 Moving a pane also qualifies because the choice is spatial (#73). The Move pane
 dialog shows every other occupied position in the current preset through a

@@ -104,7 +104,23 @@ leaves the pane.
 | `Alt`+`Enter` | Add a column after |
 | `Alt`+`Shift`+`Enter` | Add a column before |
 | `Mod`+`F` | Open this pane's find bar and put the caret in it. Taken from the browser deliberately: its own find searches the rendered chrome rather than what the pane shows |
+| `Mod`+`B` / `Mod`+`I` / `Mod`+`U` | Toggle bold, italic, or underline over the whole text of every selected textual cell, as one history step (#306) |
+| `Mod`+`Shift`+`S` / `Mod`+`Shift`+`M` | Toggle strikethrough or inline code the same way |
+| `Mod`+`K` | Open the link dialog for the one selected cell |
+| `Mod`+click on a link | Open the link. A plain click selects the cell |
 | Any printable character | Replace the cell and start editing |
+
+**Formatting keeps the grid's keyboard model** (#306). A mark chord that
+the selection cannot take, because it holds only numbers, booleans, null, or
+empty cells, does nothing but say why in a notice; the same reason is the
+disabled Format segment's description. A formatting change is spoken through
+the polite channel, since nothing else announces it. Inside the cell editor
+the same chords act on the selected text, or set the marks the caret types
+with; `Mod`+`K` opens the link dialog for the selection and returns to the
+editor; `Mod`+`Enter` opens the link at the caret; `Mod`+`Z` and
+`Mod`+`Shift`+`Z` walk the editor's own history while it is open. Enter,
+`Shift`+`Enter`, Tab, Escape, F2, and the arrows keep their editing meanings.
+The editor is a `textbox` named by position, like the one it replaced.
 
 **A jump reads what the grid shows, and follows one rule on both axes** (#142).
 When

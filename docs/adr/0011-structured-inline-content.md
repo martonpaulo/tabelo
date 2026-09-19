@@ -144,6 +144,40 @@ explained. Only `https:` images load, lazily, with no referrer, capped by one
 shared token; any other, or one that fails, shows its alternative text in a
 stable unavailable state.
 
+**Editing** (#306, delivery slice 3). The Visual Table renders headers and
+cells through the preview's renderer, on a grid surface: a link keeps its link
+semantics but takes no tab stop, a plain click selects the cell, and Mod+click
+opens it under the rules above; an image is one line tall unless its column
+wraps. Formatting is a document command built from the range operations:
+
+- *A mark on the grid selection* formats the complete text of each selected
+  textual header and data cell once, however many selected areas cover it,
+  and removes the mark only when every cell it reaches already has it. It is
+  one history step. Numbers, booleans, and null are left untouched, and a
+  selection holding only those, or only empty cells, refuses with a reason.
+- *A link or an image* acts on one cell. The link command edits the link a
+  caret sits in, keeps the label's formatting when the label is unchanged,
+  and refuses a range holding an image. An image needs an address and
+  non-empty alternative text. Both are answered through dialogs that write
+  nothing until confirmed.
+- *The rich cell editor* replaces the textarea for text, and only for text: a
+  typed value, and typing over a cell in a column that expects one, keep the
+  textarea. It is native `contenteditable` with the Selection API and
+  `beforeinput`, and never `execCommand`: every input is cancelled and
+  replayed as a core operation, so the editor holds the content being edited,
+  a selection in projection offsets, the marks a collapsed caret types with,
+  and a keystroke-level local undo, and the document stays the only model.
+  Typing at a caret continues the marks of the text before it; a mark toggled
+  at a caret applies to what is typed next. The content is drawn with DOM
+  calls from the validated nodes, not by React, because IME composition
+  writes into the element itself; the composition is read back when it ends
+  and the element is redrawn from the model. An image is an uneditable unit
+  whose length is its alternative text, so one deletion removes it whole.
+  Local undo is the editor's while it is open and does not reach the
+  document timeline; the commit is one document step, as a textarea's was.
+- A commit compares text with its formatting, so removing every mark is a
+  change, and formatted text is written as text whatever the column expects.
+
 **Disclosure.** CSV, TSV, JSON, and Records keep declaring `"unexpressed"`.
 While the document holds structure and one of their views is open for
 editing, an app-level notice says it shows formatting as plain text and that
@@ -177,8 +211,10 @@ chosen format before the file is written.
 
 The model landed dormant in delivery slice 1. Slice 2 gives it codec syntax
 and rendering: Markdown, HTML, and Jira read and write it, the rendered
-preview shows it, and the plain formats disclose what they cannot spell. The
-grid still shows the projection until the Visual Table editor arrives. The
+preview shows it, and the plain formats disclose what they cannot spell. Slice
+3 makes the Visual Table the editor: it renders the structure, formats the
+selection from its Format group and shortcuts, edits text in the rich cell
+editor, and adds links and images through their dialogs. The
 Copy as menu discloses too (option A on #306, owner, 2026-09-19): while the
 table holds formatting, a muted note at the top of the submenu names the
 formats whose codec declares inline content unexpressed.
