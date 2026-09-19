@@ -33,10 +33,10 @@ test("serializes as an array of row objects keyed by the headers", async ({
 	await tabelo.choosePaneView("markdown", "json");
 
 	const source = tabelo.source("json");
-	await expect(source).toContainText('"Name":"Ingrid"');
-	await expect(source).toContainText('"Role":"Designer"');
+	await expect(source).toContainText('"Name": "Ingrid"');
+	await expect(source).toContainText('"Role": "Designer"');
 	// The header is carried by the keys, never emitted as a record of its own.
-	await expect(source).not.toContainText('"Name":"Name"');
+	await expect(source).not.toContainText('"Name": "Name"');
 });
 
 test("an unnamed table opens the view, keyed by column letters", async ({
@@ -53,7 +53,7 @@ test("an unnamed table opens the view, keyed by column letters", async ({
 	await dialog.waitFor({ state: "hidden" });
 
 	await tabelo.editCell(1, 1, "Ingrid");
-	await expect(tabelo.source("json")).toContainText('"A":"Ingrid"');
+	await expect(tabelo.source("json")).toContainText('"A": "Ingrid"');
 });
 
 test("a partly named table mixes header keys and letter keys", async ({
@@ -68,8 +68,8 @@ test("a partly named table mixes header keys and letter keys", async ({
 	await tabelo.choosePaneView("markdown", "json");
 
 	const source = tabelo.source("json");
-	await expect(source).toContainText('"A":"Ingrid"');
-	await expect(source).toContainText('"Role":"Designer"');
+	await expect(source).toContainText('"A": "Ingrid"');
+	await expect(source).toContainText('"Role": "Designer"');
 });
 
 test("a duplicate header blocks the open view and names both columns", async ({

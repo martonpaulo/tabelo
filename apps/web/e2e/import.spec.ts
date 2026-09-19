@@ -43,11 +43,11 @@ test("a typed JSON import preserves native scalars through an edit and projectio
 	await expect(tabelo.pane("json")).toBeVisible();
 
 	const source = tabelo.source("json");
-	await expect(source).toContainText('"qty":1');
-	await expect(source).toContainText('"ok":true');
-	await expect(source).toContainText('"note":null');
-	await expect(source).toContainText('"name":"edited"');
-	await expect(source).toContainText('"code":"007"');
+	await expect(source).toContainText('"qty": 1');
+	await expect(source).toContainText('"ok": true');
+	await expect(source).toContainText('"note": null');
+	await expect(source).toContainText('"name": "edited"');
+	await expect(source).toContainText('"code": "007"');
 });
 
 test("a JSON file with nested cells preserves the current table", async ({

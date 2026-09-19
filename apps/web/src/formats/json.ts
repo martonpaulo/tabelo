@@ -144,15 +144,18 @@ function serializeJson(document: TableDocument): string {
 
 	const resolved = resolvedJsonKeys(document);
 	const records = document.rows.map((row) => {
-		const record: Record<string, CellValue> = {};
-		for (const { column, key } of resolved) {
+		const members = resolved.map(({ column, key }) => {
 			// JSON stays a table of JSON scalars: it has no syntax of its own for
 			// inline structure, so formatted text leaves as its projection and
 			// reconciliation keeps the structure while that text is unchanged.
-			const value = readCell(row, column.id);
-			record[key] = isInlineContent(value) ? cellText(value) : value;
-		}
-		return `  ${JSON.stringify(record)}`;
+			const value: CellValue = readCell(row, column.id);
+			const scalar = isInlineContent(value) ? cellText(value) : value;
+			return `${JSON.stringify(key)}: ${JSON.stringify(scalar)}`;
+		});
+		// A space after every `:` and `,` that has something to its right, the
+		// way JSON is usually written by hand (owner, 2026-09-19). Whitespace
+		// between tokens is insignificant to JSON, so the parse is unchanged.
+		return `  {${members.join(", ")}}`;
 	});
 	return `[\n${records.join(",\n")}\n]`;
 }

@@ -115,7 +115,7 @@ describe("json serialization", () => {
 			{ headerRow: true },
 		);
 		expect(jsonCodec.serialize(document)).toBe(
-			'[\n  {"Name":"Ingrid","Role":"Designer"}\n]',
+			'[\n  {"Name": "Ingrid", "Role": "Designer"}\n]',
 		);
 	});
 
@@ -128,7 +128,7 @@ describe("json serialization", () => {
 			{ headerRow: true },
 		);
 		expect(jsonCodec.serialize(document)).toBe(
-			'[\n  {"A":"Ingrid","Role":"Designer","C":"Rio"}\n]',
+			'[\n  {"A": "Ingrid", "Role": "Designer", "C": "Rio"}\n]',
 		);
 	});
 
@@ -183,7 +183,7 @@ describe("json serialization", () => {
 			{ headerRow: true },
 		);
 		expect(jsonCodec.serialize(document)).toBe(
-			'[\n  {"qty":1,"ok":true,"note":null,"name":"x"}\n]',
+			'[\n  {"qty": 1, "ok": true, "note": null, "name": "x"}\n]',
 		);
 	});
 

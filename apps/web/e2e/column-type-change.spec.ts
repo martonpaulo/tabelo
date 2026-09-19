@@ -34,7 +34,7 @@ test("a column whose cells all convert changes at once and undoes in one step", 
 	);
 	await expect(tabelo.cell(1, 1)).toHaveAttribute("data-cell-type", "string");
 	const json = tabelo.source("json");
-	await expect(json).toContainText('"n":"1"');
+	await expect(json).toContainText('"n": "1"');
 
 	await chooseExpectedType(tabelo, 1, "number");
 	await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -48,8 +48,8 @@ test("a column whose cells all convert changes at once and undoes in one step", 
 	await expect(tabelo.cell(3, 1)).not.toHaveAttribute(
 		"data-cell-type-divergent",
 	);
-	await expect(json).toContainText('"n":1');
-	await expect(json).toContainText('"n":""');
+	await expect(json).toContainText('"n": 1');
+	await expect(json).toContainText('"n": ""');
 
 	await tabelo.runAppCommand("undo");
 	await expect(tabelo.columnIndex(1)).toHaveAttribute(
@@ -57,7 +57,7 @@ test("a column whose cells all convert changes at once and undoes in one step", 
 		"text",
 	);
 	await expect(tabelo.cell(1, 1)).toHaveAttribute("data-cell-type", "string");
-	await expect(json).toContainText('"n":"1"');
+	await expect(json).toContainText('"n": "1"');
 });
 
 test("a column with cells that cannot convert asks first, and both answers hold", async ({
