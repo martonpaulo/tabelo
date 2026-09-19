@@ -12,6 +12,7 @@ import { createRowId } from "./ids";
 import { isInlineContent } from "./inline-content";
 import {
 	type CellRect,
+	HEADER_ROW,
 	isDataRect,
 	rectContains,
 	rectCoversHeader,
@@ -496,6 +497,66 @@ export function clearCells(
 		return { ...row, cells };
 	});
 	return changed ? { columns, rows } : document;
+}
+
+// What typing over several selected cells writes (owner, 2026-09-19): the
+// header text for a covered header, and for a data cell whatever its column
+// makes of the one committed draft. The value is asked per column because a
+// column's expected type is what decides how a draft is entered, and the caller
+// owns that decision; this operation only writes.
+export interface CellsWrite {
+	readonly header: TextContent;
+	readonly cell: (columnIndex: number) => CellValue;
+}
+
+// Writes one entry into every cell the rects cover, header included, in one
+// operation and therefore one undo step. Shaped like `clearCells`: several
+// regions are written together, a cell two of them cover is written once, and
+// a write that changes nothing returns the original document.
+export function setCells(
+	document: TableDocument,
+	rects: readonly CellRect[],
+	write: CellsWrite,
+): TableDocument {
+	const covers = (rowIndex: number, columnIndex: number) =>
+		rects.some((rect) => rectContains(rect, rowIndex, columnIndex));
+
+	let changed = false;
+	const columns = document.columns.map((column, index) => {
+		if (
+			!covers(HEADER_ROW, index) ||
+			cellValuesEqual(column.header, write.header)
+		) {
+			return column;
+		}
+		changed = true;
+		return { ...column, header: write.header };
+	});
+
+	// Asked once per column rather than once per cell: the answer depends only
+	// on the column.
+	const values = new Map<number, CellValue>();
+	const valueFor = (columnIndex: number) => {
+		if (!values.has(columnIndex)) {
+			values.set(columnIndex, write.cell(columnIndex));
+		}
+		return values.get(columnIndex) as CellValue;
+	};
+
+	const rows = document.rows.map((row, rowIndex) => {
+		let cells: Record<ColumnId, CellValue> | null = null;
+		document.columns.forEach((column, columnIndex) => {
+			if (!covers(rowIndex, columnIndex)) return;
+			const value = valueFor(columnIndex);
+			if (cellValuesEqual(readCell(row, column.id), value)) return;
+			cells ??= { ...row.cells };
+			cells[column.id] = value;
+		});
+		if (!cells) return row;
+		changed = true;
+		return { ...row, cells };
+	});
+	return changed ? { ...document, columns, rows } : document;
 }
 
 // Writes a matrix starting at non-negative data-row and column indexes,

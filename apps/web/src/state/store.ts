@@ -18,6 +18,7 @@ import {
 } from "@/core/find";
 import { nextMatchingCell } from "@/core/matching-cells";
 import {
+	type CellsWrite,
 	changeColumnType,
 	clearCells,
 	deleteColumns,
@@ -35,6 +36,7 @@ import {
 	type SortDirection,
 	setAlignment,
 	setCell,
+	setCells,
 	setCellType,
 	setHeader,
 	sortRows,
@@ -46,6 +48,7 @@ import {
 	type CellPosition,
 	type CellRect,
 	clampSelection,
+	coveredCellCount,
 	createRange,
 	createSelection,
 	extendActiveRange,
@@ -517,6 +520,10 @@ export interface TabeloState {
 	replaceAllMatches: () => number;
 
 	clearSelection: () => void;
+	// Typing over several selected cells (owner, 2026-09-19): one entry written
+	// into every selected cell as one history step. Returns how many cells the
+	// selection covers, which is what the interface announces.
+	writeSelectedCells: (write: CellsWrite) => number;
 	deleteSelectedStructure: () => StructureDeletionRefusal | null;
 	clipboardSelection: () => ClipboardSelection;
 	pasteClipboard: (payload: ClipboardPayload) => PasteRefusal | null;
@@ -2059,6 +2066,13 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	clearSelection: () => {
 		const state = get();
 		state.applyDocument(clearCells(state.document, currentRects(state)));
+	},
+
+	writeSelectedCells: (write) => {
+		const state = get();
+		const rects = currentRects(state);
+		state.applyDocument(setCells(state.document, rects, write));
+		return coveredCellCount(rects);
 	},
 
 	// Backspace clears contents; adding the modifier removes the structure. The

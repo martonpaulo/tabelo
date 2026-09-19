@@ -978,6 +978,10 @@ export const copy = {
 			`Column ${column} is already at its maximum width.`,
 		cellsFilled: (count: number) =>
 			`${count} ${count === 1 ? "cell" : "cells"} filled.`,
+		// Spoken after typing over several selected cells, which writes the value
+		// into every one of them while only the edited cell shows it happen.
+		cellsSet: (count: number) =>
+			`${count} ${count === 1 ? "cell" : "cells"} set.`,
 		seriesFilled: (count: number) =>
 			`${count} ${count === 1 ? "cell" : "cells"} continued as a series.`,
 		rowsSorted: (count: number) =>

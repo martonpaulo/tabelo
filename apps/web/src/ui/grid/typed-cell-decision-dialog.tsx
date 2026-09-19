@@ -28,6 +28,10 @@ export interface TypedCellDecision {
 	readonly draft: string;
 	readonly expectedType: Exclude<ExpectedColumnType, "text">;
 	readonly result: TypedDecisionResult;
+	// Whether the answer is for every selected cell rather than the one at
+	// `position`: the draft was typed over several cells at once (owner,
+	// 2026-09-19). `position` is then where the editor stood.
+	readonly spread: boolean;
 }
 
 export function TypedCellDecisionDialog({

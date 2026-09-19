@@ -1692,3 +1692,29 @@ describe("formatting the selection", () => {
 		expect(useTabeloStore.getState().document).toBe(document);
 	});
 });
+
+describe("typing over several selected cells", () => {
+	it("writes every selected cell, header included, as one undo step", () => {
+		useTabeloStore.setState({
+			document: documentFromMatrix(samplePeopleMatrix(2), {
+				headerRow: true,
+			}),
+			selection: createSelection({ row: HEADER_ROW, column: 1 }, "column"),
+		});
+		const before = useTabeloStore.getState().document;
+
+		const count = useTabeloStore
+			.getState()
+			.writeSelectedCells({ header: "Lisbon", cell: () => "Lisbon" });
+
+		expect(count).toBe(3);
+		const after = documentToMatrix(useTabeloStore.getState().document);
+		expect(after.map((row) => row[1])).toEqual(["Lisbon", "Lisbon", "Lisbon"]);
+		expect(after.map((row) => row[0])).toEqual(
+			documentToMatrix(before).map((row) => row[0]),
+		);
+
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().document).toEqual(before);
+	});
+});

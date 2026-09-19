@@ -13,6 +13,7 @@ import {
 	activeRange,
 	type CellPosition,
 	type CellRect,
+	coveredCellCount,
 	HEADER_ROW,
 	neighbourCell,
 	rectContains,
@@ -21,12 +22,17 @@ import {
 	selectionRect,
 	selectionRects,
 } from "@/core/selection";
-import { parseExpectedValue } from "@/core/typed-input";
+import {
+	type ExpectedTypeParseResult,
+	parseExpectedValue,
+} from "@/core/typed-input";
 import type {
 	Alignment,
+	CellValue,
 	Column,
 	ColumnId,
 	ExpectedColumnType,
+	InlineContent,
 	Row,
 	TextContent,
 } from "@/core/types";
@@ -463,6 +469,59 @@ function moveAfterCellEdit(position: CellPosition, exit: EditorExit) {
 	}
 }
 
+// How one column enters a draft typed over several selected cells, by the
+// single-cell rule: formatted text is text by the user's own choice
+// (docs/adr/0011), and anything else goes through the column's expected type.
+type SpreadEntry =
+	| ExpectedTypeParseResult
+	| { readonly kind: "formatted"; readonly value: InlineContent };
+
+function spreadEntry(
+	draft: TextContent,
+	expectedType: ExpectedColumnType,
+): SpreadEntry {
+	return isInlineContent(draft)
+		? { kind: "formatted", value: draft }
+		: parseExpectedValue(draft, expectedType);
+}
+
+// The value a column receives. A draft the column cannot take unambiguously
+// follows the user's answer to the one question asked for the whole selection,
+// and is kept as text when there is no typed reading to convert to, exactly the
+// outcome the single-cell dialog offers for that draft.
+function spreadValue(
+	entry: SpreadEntry,
+	choice: "text" | "typed" | null,
+): CellValue {
+	switch (entry.kind) {
+		case "formatted":
+		case "typed":
+		case "escaped-string":
+			return entry.value;
+		case "lossy-choice":
+			return choice === "typed" ? entry.typedValue : entry.stringValue;
+		case "invalid":
+			return entry.stringValue;
+	}
+}
+
+// Writes one committed draft into every selected cell as one history step and
+// says how many it reached, since only the edited cell shows it happen.
+function writeSpread(draft: TextContent, choice: "text" | "typed" | null) {
+	const store = useTabeloStore.getState();
+	const { columns } = store.document;
+	const count = store.writeSelectedCells({
+		header: draft,
+		cell: (columnIndex) => {
+			const column = columns[columnIndex];
+			return column
+				? spreadValue(spreadEntry(draft, column.expectedType), choice)
+				: draft;
+		},
+	});
+	store.announceStatus(copy.status.cellsSet(count));
+}
+
 export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const document = useTabeloStore((state) => state.document);
 	const selection = useTabeloStore((state) => state.selection);
@@ -871,6 +930,88 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		else store.setEditing(at, seed);
 	}, []);
 
+	// Typing over several selected cells writes into every one of them, the way
+	// the source views put one caret in each (owner, 2026-09-19). The editor
+	// still opens on the focused cell alone; this is what its commit does when
+	// the selection is larger. Returns false when the selection is that one
+	// cell, which the single-cell paths below own.
+	const commitToSelection = useCallback(
+		(origin: CellPosition, next: TextContent, wasSeeded: boolean): boolean => {
+			const store = useTabeloStore.getState();
+			const { document } = store;
+			const rects = selectionRects(
+				store.selection,
+				document.rows.length,
+				document.columns.length,
+			);
+			if (coveredCellCount(rects) < 2) return false;
+
+			const close = () => {
+				if (origin.row === HEADER_ROW) store.setEditingHeader(null);
+				else store.setEditing(null);
+			};
+			// The single-cell rule: opening and committing without typing anything
+			// is not an edit, so it writes nothing anywhere.
+			const originRow = document.rows[origin.row];
+			const originColumn = document.columns[origin.column];
+			if (!originColumn) {
+				close();
+				return true;
+			}
+			const current =
+				origin.row === HEADER_ROW
+					? originColumn.header
+					: originRow
+						? readCell(originRow, originColumn.id)
+						: "";
+			const unchanged = isTextContent(current)
+				? cellValuesEqual(next, current)
+				: next === cellText(current);
+			if (!wasSeeded && unchanged) {
+				close();
+				return true;
+			}
+
+			// A column that cannot take the draft unambiguously is asked about once
+			// for the whole selection, preferring the column the user is typing in.
+			const decisionColumns = new Set<number>();
+			for (const rect of rects) {
+				if (rect.bottom === HEADER_ROW) continue;
+				for (let column = rect.left; column <= rect.right; column++) {
+					decisionColumns.add(column);
+				}
+			}
+			const ordered = [
+				origin.column,
+				...[...decisionColumns].filter((column) => column !== origin.column),
+			].filter((column) => decisionColumns.has(column));
+			for (const columnIndex of ordered) {
+				const column = document.columns[columnIndex];
+				if (!column) continue;
+				const entry = spreadEntry(next, column.expectedType);
+				if (entry.kind !== "lossy-choice" && entry.kind !== "invalid") continue;
+				const decision: TypedCellDecision = {
+					position: origin,
+					draft: entry.stringValue,
+					expectedType: entry.expectedType,
+					result: entry,
+					spread: true,
+				};
+				close();
+				typedDecisionOutcomeRef.current = null;
+				typedDecisionRef.current = decision;
+				setTypedDecision(decision);
+				setTypedDialogOpen(true);
+				return true;
+			}
+
+			writeSpread(next, null);
+			close();
+			return true;
+		},
+		[],
+	);
+
 	const finishCellEdit = useCallback(
 		(
 			position: CellPosition,
@@ -890,6 +1031,8 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				store.setEditing(null);
 				return;
 			}
+
+			if (commitToSelection(position, next, wasSeeded)) return;
 
 			const current = readCell(row, column.id);
 			// Merely opening and committing an unchanged native value is not an
@@ -922,6 +1065,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					draft: next,
 					expectedType: parsed.expectedType,
 					result: parsed,
+					spread: false,
 				};
 				store.setEditing(null);
 				typedDecisionOutcomeRef.current = null;
@@ -935,7 +1079,38 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			store.setEditing(null);
 			moveAfterCellEdit(position, exit);
 		},
-		[],
+		[commitToSelection],
+	);
+
+	const finishHeaderEdit = useCallback(
+		(
+			columnIndex: number,
+			next: TextContent,
+			exit: EditorExit,
+			wasSeeded: boolean,
+		) => {
+			const store = useTabeloStore.getState();
+			if (exit === "cancel") {
+				store.setEditingHeader(null);
+				return;
+			}
+			if (
+				commitToSelection(
+					{ row: HEADER_ROW, column: columnIndex },
+					next,
+					wasSeeded,
+				)
+			) {
+				return;
+			}
+			// An unchanged commit is not an edit, formatting included.
+			const content = store.document.columns[columnIndex]?.header;
+			if (content !== undefined && !cellValuesEqual(next, content)) {
+				store.editHeader(columnIndex, next);
+			}
+			store.setEditingHeader(null);
+		},
+		[commitToSelection],
 	);
 
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLTableElement>) => {
@@ -1280,6 +1455,23 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		}
 	};
 
+	// Selecting a column by its letter or a row by its number leaves focus on
+	// that handle, so typing there would otherwise reach nobody. A printable key
+	// types over the selection exactly as it does from a cell: the editor opens
+	// on the focused cell and the commit writes every selected cell. Space and
+	// Enter stay the handle's own, since they are what activates a button.
+	const typeOverAxisSelection = useCallback(
+		(event: React.KeyboardEvent) => {
+			const store = useTabeloStore.getState();
+			if (store.editing || store.editingHeader !== null) return;
+			if (event.metaKey || event.ctrlKey || event.altKey) return;
+			if (event.key.length !== 1 || event.key === " ") return;
+			event.preventDefault();
+			beginEditing(activeRange(store.selection).focus, event.key);
+		},
+		[beginEditing],
+	);
+
 	const writeClipboard = (event: React.ClipboardEvent) => {
 		const payload = selectionClipboardPayload(
 			useTabeloStore.getState().clipboardSelection(),
@@ -1306,6 +1498,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const resolveTypedDecision = (kind: "text" | "typed") => {
 		const decision = typedDecisionRef.current;
 		if (!decision) return;
+		typedDecisionOutcomeRef.current = "resolved";
+		if (decision.spread) {
+			writeSpread(decision.draft, kind);
+			setTypedDialogOpen(false);
+			return;
+		}
 		const value =
 			kind === "typed" && decision.result.kind === "lossy-choice"
 				? decision.result.typedValue
@@ -1313,7 +1511,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		useTabeloStore
 			.getState()
 			.editCell(decision.position.row, decision.position.column, value);
-		typedDecisionOutcomeRef.current = "resolved";
 		setTypedDialogOpen(false);
 	};
 	const typedDecisionCell = () => {
@@ -1333,7 +1530,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		typedDecisionOutcomeRef.current = null;
 		setTypedDecision(null);
 		if (decision && outcome === "keep-editing") {
-			useTabeloStore.getState().setEditing(decision.position, decision.draft);
+			beginEditing(decision.position, decision.draft);
 		}
 	};
 
@@ -1453,6 +1650,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							zoom={zoom}
 							pinned={pinnedColumn && columnIndex === 0}
 							onSelect={(intent) => selectColumn(columnIndex, intent)}
+							onTypeOverAxis={typeOverAxisSelection}
 							onDragStart={() => {
 								draggingRef.current = "column";
 							}}
@@ -1528,6 +1726,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									type="button"
 									tabIndex={entered ? 0 : -1}
 									aria-label={copy.a11y.selectHeaderRow}
+									onKeyDown={typeOverAxisSelection}
 									className={axisNumberClass(false)}
 									onPointerDown={(event) => {
 										if (event.button !== 0) return;
@@ -1566,6 +1765,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									}
 									editing={editingHeader === columnIndex}
 									seed={editingSeed}
+									onFinishEdit={finishHeaderEdit}
 									markStart={
 										match?.row === HEADER_ROW && match.column === columnIndex
 											? match.start
@@ -1635,6 +1835,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								pinnedColumn={pinnedColumn}
 								belowPinnedRow={pinnedRow && rowIndex === 1}
 								selectRow={selectRow}
+								onTypeOverAxis={typeOverAxisSelection}
 								onFinishCellEdit={finishCellEdit}
 								onRequestLink={setLinkRequest}
 								onRequestImage={setImageRequest}
@@ -1737,6 +1938,8 @@ interface DataRowProps {
 	// Whether the row above is the pinned one, whose edge is chrome.
 	readonly belowPinnedRow: boolean;
 	readonly selectRow: (row: number, intent: SelectIntent) => void;
+	// A printable key on the row number types over the selection it made.
+	readonly onTypeOverAxis: (event: React.KeyboardEvent) => void;
 	readonly onFinishCellEdit: (
 		position: CellPosition,
 		value: TextContent,
@@ -1770,6 +1973,7 @@ const DataRow = memo(function DataRow({
 	pinnedColumn,
 	belowPinnedRow,
 	selectRow,
+	onTypeOverAxis,
 	onFinishCellEdit,
 	onRequestLink,
 	onRequestImage,
@@ -1840,6 +2044,7 @@ const DataRow = memo(function DataRow({
 					type="button"
 					tabIndex={entered ? 0 : -1}
 					aria-label={copy.a11y.selectRowNamed(copy.a11y.rowNumber(rowIndex))}
+					onKeyDown={onTypeOverAxis}
 					className={axisNumberClass(movable)}
 					onPointerDown={(event) => {
 						if (event.button !== 0) return;
@@ -2115,6 +2320,8 @@ interface ColumnIndexCellProps {
 	// it travels with the layer rather than scrolling off it.
 	readonly pinned: boolean;
 	readonly onSelect: (intent: SelectIntent) => void;
+	// A printable key on the letter types over the selection it made.
+	readonly onTypeOverAxis: (event: React.KeyboardEvent) => void;
 	readonly onDragStart: () => void;
 	readonly onDragEnter: () => void;
 	readonly onAxisPointerDown: AxisReorderController["onAxisPointerDown"];
@@ -2130,6 +2337,7 @@ function ColumnIndexCell({
 	zoom,
 	pinned,
 	onSelect,
+	onTypeOverAxis,
 	onDragStart,
 	onDragEnter,
 	onAxisPointerDown,
@@ -2181,6 +2389,7 @@ function ColumnIndexCell({
 				aria-label={copy.a11y.selectColumnNamed(
 					copy.a11y.columnWithExpectedType(header, columnIndex, expectedType),
 				)}
+				onKeyDown={onTypeOverAxis}
 				className={cn(
 					"flex h-full w-full min-w-0 items-center rounded-interactive px-2 text-left hover:text-foreground",
 					axisLabelCursor(movable),
@@ -2269,6 +2478,12 @@ interface HeaderCellProps {
 	readonly editing: boolean;
 	// The character that opened the editor, when typing is what opened it.
 	readonly seed: string | null;
+	readonly onFinishEdit: (
+		columnIndex: number,
+		value: TextContent,
+		exit: EditorExit,
+		wasSeeded: boolean,
+	) => void;
 	// The half-open range of this header's text the current find match covers.
 	// Equal bounds mean it holds no match.
 	readonly markStart: number;
@@ -2294,6 +2509,7 @@ function HeaderCell({
 	focus,
 	editing,
 	seed,
+	onFinishEdit,
 	markStart,
 	markEnd,
 	onRequestLink,
@@ -2382,14 +2598,9 @@ function HeaderCell({
 					wrapped={wrapped}
 					onRequestLink={onRequestLink}
 					onRequestImage={onRequestImage}
-					onFinish={(next, exit) => {
-						const store = useTabeloStore.getState();
-						// An unchanged commit is not an edit, formatting included.
-						if (exit !== "cancel" && !cellValuesEqual(next, content)) {
-							store.editHeader(columnIndex, next);
-						}
-						store.setEditingHeader(null);
-					}}
+					onFinish={(next, exit) =>
+						onFinishEdit(columnIndex, next, exit, seed !== null)
+					}
 				/>
 			) : (
 				<span

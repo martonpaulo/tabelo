@@ -24,6 +24,7 @@ import {
 	promoteFirstRowToHeader,
 	setAlignment,
 	setCell,
+	setCells,
 	setCellType,
 	setColumnExpectedType,
 	sortRows,
@@ -400,6 +401,69 @@ describe("cell operations", () => {
 			["1", "2"],
 			["3", "4"],
 		]);
+	});
+
+	describe("setCells", () => {
+		const text = (value: CellValue) => ({
+			header: typeof value === "string" ? value : "",
+			cell: () => value,
+		});
+
+		it("writes one value into every covered cell, header included", () => {
+			const next = setCells(
+				sample(),
+				[{ top: HEADER_ROW, bottom: 1, left: 1, right: 1 }],
+				text("x"),
+			);
+			expect(documentToMatrix(next)).toEqual([
+				["A", "x"],
+				["1", "x"],
+				["3", "x"],
+			]);
+		});
+
+		it("writes several regions together, a shared cell once", () => {
+			const next = setCells(
+				sample(),
+				[
+					{ top: 0, bottom: 0, left: 0, right: 1 },
+					{ top: 0, bottom: 1, left: 0, right: 0 },
+				],
+				text("x"),
+			);
+			expect(documentToMatrix(next)).toEqual([
+				["A", "B"],
+				["x", "x"],
+				["x", "4"],
+			]);
+		});
+
+		// The caller decides what each column makes of the draft, so a typed
+		// column can receive a number while its neighbour keeps the text.
+		it("asks each column for its own value", () => {
+			const next = setCells(
+				sample(),
+				[{ top: 0, bottom: 1, left: 0, right: 1 }],
+				{ header: "", cell: (column) => (column === 0 ? 7 : "7") },
+			);
+			const [first, second] = next.columns;
+			assert(first && second);
+			expect(next.rows.map((row) => readCell(row, first.id))).toEqual([7, 7]);
+			expect(next.rows.map((row) => readCell(row, second.id))).toEqual([
+				"7",
+				"7",
+			]);
+		});
+
+		it("returns the same document when nothing changes", () => {
+			const before = sample();
+			const next = setCells(
+				before,
+				[{ top: 0, bottom: 0, left: 0, right: 0 }],
+				text("1"),
+			);
+			expect(next).toBe(before);
+		});
 	});
 
 	it("leaves the header alone when the rect starts below it", () => {

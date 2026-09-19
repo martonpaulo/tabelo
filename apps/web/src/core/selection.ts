@@ -652,6 +652,19 @@ export function rectContains(
 	);
 }
 
+// The cells several rects cover, each counted once however many cover it.
+export function coveredCellCount(rects: readonly CellRect[]): number {
+	const covered = new Set<string>();
+	for (const rect of rects) {
+		for (let row = rect.top; row <= rect.bottom; row++) {
+			for (let column = rect.left; column <= rect.right; column++) {
+				covered.add(`${row}:${column}`);
+			}
+		}
+	}
+	return covered.size;
+}
+
 export function rectRows(rect: CellRect): number[] {
 	return Array.from(
 		{ length: rect.bottom - rect.top + 1 },
