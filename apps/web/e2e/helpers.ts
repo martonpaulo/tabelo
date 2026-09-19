@@ -216,6 +216,14 @@ export async function openSubmenu(
 	menu: Locator,
 	label: string,
 ): Promise<Locator> {
+	// An opening menu moves the focus into itself a frame later. A row focused
+	// before that lands loses the focus to the popup, and the key goes nowhere,
+	// so the row is reached only once the menu holds the focus.
+	await expect
+		.poll(() =>
+			menu.evaluate((element) => element.contains(document.activeElement)),
+		)
+		.toBe(true);
 	await menu
 		.getByRole("menuitem", { name: label, exact: true })
 		.press("ArrowRight");
@@ -757,6 +765,10 @@ export class TabeloPage {
 					: copy.headerImport.asData,
 			})
 			.click();
+		// The dialog's backdrop stays over the page while it closes, so a pointer
+		// action taken straight after the answer lands on it instead of the pane
+		// it was aimed at.
+		await dialog.waitFor({ state: "hidden" });
 	}
 
 	// The grid implements no Mod+C or Mod+X of its own: those are the browser's
