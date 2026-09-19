@@ -152,7 +152,7 @@ reversible implementation choice does not belong here.
 | Source axis selection | A selected row or column in a source view is drawn as the grid's: an unbroken band over the column's cells (divider and continuation lines included) or across the row's cells, nothing drawn over it, no match count in the pane header, and one current line for the main selection only | design system §9 | owner, 2026-09-19 |
 | Jira empty cell | Written as one space, which Jira renders as an empty cell, because `\|\|` is its header delimiter; a one-space value is written `&#32;`; typing into an empty cell replaces the space, as a named structural-assistance feature | ADR 0005, `CONTEXT.md` Escaping | owner, 2026-09-19 |
 | Source row move | `Alt`+`ArrowUp`/`ArrowDown` in a pane whose codec maps rows moves the table row under the caret as one document step, also offered in the pane's context menu; a draft that does not parse is refused with its reason; every editable source view maps rows since #402 | design system §9 | #255, #402 |
-| Source structural commands | A source pane that maps rows also offers move column, insert row or column, sort by the caret's column, and delete row or column in its context menu only, with no keyboard binding; each is one document step with the grid's refusals, and deleting the header row promotes the first data row | design system §3, §9 | #255 |
+| Source structural commands | A source pane that maps rows also offers move column, insert row or column, duplicate row, sort by the caret's column, and delete row or column in its context menu; the inserts also answer the grid's four insert chords (`Mod`+`Enter`, `Mod`+`Shift`+`Enter`, `Alt`+`Enter`, `Alt`+`Shift`+`Enter`), the rest have no key; each is one document step with the grid's refusals, and deleting the header row promotes the first data row | design system §3, §9 | #255, owner, 2026-09-19 |
 
 ### Documents, formats, and persistence
 
@@ -190,6 +190,7 @@ reversible implementation choice does not belong here.
 | Column resize shortcut | `Alt`+`Shift`+Left/Right on the focused column | design system §9 | #81 |
 | Fit with wrapping | Fit is disabled with a reason while the column wraps | design system §9 | #81 |
 | Menu grouping | Content, display, then pane actions | design system §3 | #70 |
+| Table menu order | Every table context menu, the Visual Table's and each source view's, lists its commands in one order: its own subject, Cut/Copy/Paste, Undo/Redo, Select, Insert, Duplicate/Clear, the Move, Sort, Fill, and Move focus submenus, then Delete; same label, icon, and legend for the same command | design system §3 | owner, 2026-09-19 |
 | Group titles | Alignment, Edit, Move; no single-item title | design system §3 | #75, #81 |
 | Cascading menus | Only for flat, immediate, self-explanatory command lists, one level deep; includes the grid's directional groups | design system §3 | #149, #155, #369 |
 | New table | Confirm when work exists; success returns to the welcome surface | `AGENTS.md` domain rules | #39, #46 |

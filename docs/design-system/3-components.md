@@ -157,14 +157,14 @@ Every action collection uses the menu primitive's semantic Group, in dropdown
 and context menus alike (#75). A visible group title is reserved for the three
 inline segmented choices, Expected type, Alignment, and Cell type, and for
 Edit (owner, 2026-09-19), and for Format (#306). It is canonical copy rendered through GroupLabel, and
-the Group is named with `aria-labelledby`. Clipboard, Insert, Remove, and the
-self-explanatory width actions (Fit column to content, Set column width) remain
-untitled semantic groups, without an empty label. Move, Fill, and Move focus
-are named by their submenu trigger and by that menu's own accessible name
-instead, so their items travel into the child menu without a GroupLabel of
-their own, and the three triggers share one untitled group with no separator
-between them: three one-item groups only lengthened the menu (owner,
-2026-09-19). Group labels
+the Group is named with `aria-labelledby`. Clipboard, History, Select, Insert,
+Remove, and the self-explanatory width actions (Fit column to content, Set
+column width) remain untitled semantic groups, without an empty label. Move,
+Sort, Fill, and Move focus are named by their submenu trigger and by that
+menu's own accessible name instead, so their items travel into the child menu
+without a GroupLabel of their own, and adjacent triggers share one untitled
+group with no separator between them: one-item groups only lengthened the
+menu (owner, 2026-09-19). Group labels
 are non-interactive and arrow-key navigation skips them. App and pane menus
 follow the same grouping contract.
 
@@ -174,12 +174,32 @@ its command the moment it is chosen, there is nothing to state beforehand, and
 nothing to unwind afterwards. The approved members are the global `Copy as` (#149),
 whose rows are the codec registry and which is the standing example; column
 `Alignment` (#155) and cell `Cell type`, which keep their radio-group semantics
-wherever they are placed; and the three named groups of four directional
-commands in the grid's menus, `Move`, `Fill`, and `Move focus, keep
-selection`, folded in on #369 because a flat grid context menu had grown taller
-than a laptop screen. Clipboard, Insert, Edit, and Remove stay on the first
-level, one click away. Nothing else nests, and a submenu never contains a
-second submenu.
+wherever they are placed; and the named groups of directional commands in the
+table menus, `Move`, `Fill`, and `Move focus, keep selection`, folded in on
+#369 because a flat grid context menu had grown taller than a laptop screen,
+with `Sort` and its two directions beside them (owner, 2026-09-19). Clipboard,
+History, Select, Insert, Edit, and Remove stay on the first level, one click
+away. Nothing else nests, and a submenu never contains a second submenu.
+
+**Every table menu lists its commands in one order** (owner, 2026-09-19): the
+Visual Table's cell, row, and column menus and every source view's text, line
+number, and letter menus alike. A menu omits what its view or its target
+cannot support, and what it keeps sits here, a separator between groups:
+
+1. The menu's own subject: a cell's Format and Cell type, a column's Expected
+   type, Alignment, width, wrapping, and pinning, a row's pinning.
+2. Cut, Copy, Paste.
+3. Undo, Redo.
+4. Select all, Select row, Select column, Select next match.
+5. Insert row above and below, Insert column left and right.
+6. Duplicate, Clear contents.
+7. The submenus Move, Sort, Fill, and Move focus, in one section.
+8. Delete row, Delete column, always last.
+
+The same command carries the same label, icon, and shortcut legend in every
+menu, and a legend only where that view binds the key. One list in
+`ui/grid/menu-order.ts` owns the order, and every renderer sorts its groups
+through it rather than keeping a list of its own.
 
 A submenu may open with one muted note when a row's outcome depends on the
 document, and only then. `Copy as` is the one case: while the table holds
@@ -602,9 +622,10 @@ menu are renderers over it. A source view's context menu is the text counterpart
 lists only commands the editor's keymap binds, so it never gains an action the
 keyboard lacks, with one carved-out group: in a pane whose codec maps rows, the
 grid's structural operations on the caret's row or column (move a column,
-insert a row or column, sort, delete a row or column) are menu-only items with
-no binding of their own, because they are table commands reached from the
-text rather than text commands (Decided on #255). Never write an action inline in a
+insert a row or column, duplicate a row, sort, delete a row or column), because
+they are table commands reached from the text rather than text commands
+(Decided on #255). The inserts answer the grid's four insert chords (owner,
+2026-09-19); the others have no binding of their own. Never write an action inline in a
 menu. That is how a menu and a toolbar drift apart.
 
 A component in `primitives/` must not import from the store. If it needs

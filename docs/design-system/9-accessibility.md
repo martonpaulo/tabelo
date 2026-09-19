@@ -70,7 +70,9 @@ every source view answer all three with their own menu, and a keyboard user
 reaches it exactly as a pointer user does. The source view's text commands are
 only ones its keymap already binds, each with that shortcut: Cut, Copy, Paste,
 Undo, Redo, Select all, and Select next match. Its table commands, where the
-format maps rows, are the one exception: see the row move below (#255).
+format maps rows, are the one exception: see the row move below (#255). Both
+views list their commands in the one order every table menu shares
+([§3](3-components.md)), so a command sits in the same place in either.
 `Shift`+right-click in a
 source view is left to the browser, because inside a text surface the browser's
 menu holds things worth keeping: spelling suggestions, look up, its text
@@ -161,7 +163,9 @@ preceding side, above or left. Each one ends in the same store action as the
 matching insert menu item, each menu item shows its key, and none of the four
 reaches the three-key limit's edge with a modifier to spare. `Mod`+`Alt`
 together no longer name an insert: that chord is unassigned, and it neither
-inserts nor falls through into editing.
+inserts nor falls through into editing. A source view whose codec maps rows
+answers the same four chords on the caret's row and cell (owner, 2026-09-19):
+see the source-editor keyboard model below.
 
 Moving the focus while keeping several selected areas has **no chord at all**.
 Every arrow combination inside the limit is spent: `Alt` reorders,
@@ -500,21 +504,28 @@ row, the first row upward, the last row downward) is refused here with the
 same written reason, and so is a caret outside the table and any draft that
 does not parse: its text names no row the document has read, and acting on the
 last valid parse would move a row the user is not looking at. The source pane's
-context menu offers the same two commands as Move row up and Move row down,
+context menu offers the same two commands as Move up and Move down, under Move,
 disabled with that reason. Decided on #255. HTML, JSON, and Records map their
 rows as blocks too (#402, amending #255, which had left them the text line
 move), so every editable source view now moves the table row; a view whose
 codec mapped no rows would keep CodeMirror's text line move and a menu with
 no row commands.
 
-**The rest of the grid's structure is in the same menu, with no key of its
-own** (owner, 2026-09-19, option A on #255). Beside the two row moves, a pane
-that maps rows offers Move column left and right, Insert row above and below,
-Insert column left and right, Sort by this column ascending and descending,
-and Delete row and column, each acting on the row or column under the caret
-as one document step with the pane's keystroke history cleared, like the row
-move. They are menu-only: a new chord would compete with the editor's own
-text bindings for commands used far less often. The refusals are the grid's
+**The rest of the grid's structure is in the same menu** (owner, 2026-09-19,
+option A on #255). Beside the two row moves, a pane that maps rows offers
+Insert row above and below, Insert column left and right, Duplicate row, Move
+left and right under Move, Sort ascending and descending under Sort, and
+Delete row and column, each acting on the row or column under the caret as
+one document step with the pane's keystroke history cleared, like the row
+move. **The inserts take the grid's four insert chords** (owner, 2026-09-19):
+`Mod`+`Enter` and `Mod`+`Shift`+`Enter` insert a row below and above the
+caret's, `Alt`+`Enter` and `Alt`+`Shift`+`Enter` a column right and left of
+its cell, with the same refusals as the menu items, which show those legends.
+`Mod`+`Enter` replaces CodeMirror's blank line below there; a view whose codec
+maps no rows keeps it. The other commands are menu-only: a new chord would
+compete with the editor's own text bindings for commands used far less often.
+A column move in particular has none, because `Alt`+`ArrowLeft` and
+`Alt`+`ArrowRight` are the editor's word motion on macOS. The refusals are the grid's
 and the row move's, each written out on the disabled item: a draft that does
 not parse, a caret outside the table, or, for a column command, outside any
 cell; nothing inserted above the header row; the last row or column kept;
@@ -539,8 +550,8 @@ every pane that maps rows:
 
 - **Right-click** on a letter opens that column's menu: its expected type,
   its alignment where the format spells it (Markdown; the codec's
-  `columnAlignment` reconciliation is `carried`), sort ascending and
-  descending, insert left and right, Move left and right, and delete. The
+  `columnAlignment` reconciliation is `carried`), insert left and right, Move
+  left and right, Sort ascending and descending, and delete. The
   grid-only preferences (width, fit, wrapping, pinning) stay in the grid. On
   a row's line number it opens that row's menu: insert above and below,
   duplicate, Move up and down, and delete. Both are named as the grid's are,
@@ -598,7 +609,9 @@ every pane that maps rows:
 | `Tab` | Next field, wrapping to the first | Indent the line one unit |
 | `Shift`+`Tab` | Previous field, wrapping to the last | Outdent the line one unit |
 | `Enter` | A plain line break | A line break at the current depth |
-| `Alt`+`ArrowUp` / `Alt`+`ArrowDown` | Move the table row, where the codec maps rows; otherwise move the text line | Move the text line |
+| `Alt`+`ArrowUp` / `Alt`+`ArrowDown` | Move the table row, where the codec maps rows; otherwise move the text line | Move the table row, where the codec maps rows (#402); otherwise move the text line |
+| `Mod`+`Enter` / `Mod`+`Shift`+`Enter` | Insert a table row below or above the caret's, where the codec maps rows; otherwise `Mod`+`Enter` keeps CodeMirror's blank line below | The same |
+| `Alt`+`Enter` / `Alt`+`Shift`+`Enter` | Insert a column right or left of the caret's cell, where the codec maps rows | The same |
 | `Shift`+`F10` / `ContextMenu` | The selected row's or column's menu when the selection is exactly one, where the codec maps rows; otherwise the text menu | The text menu |
 | `Escape` | Return focus to the pane frame | Return focus to the pane frame |
 
