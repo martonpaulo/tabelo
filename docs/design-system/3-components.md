@@ -374,6 +374,25 @@ this on 2026-09-18. There is no theme choice, because there is one palette
 (#289). A pane's own overrides of those defaults, and pane zoom, belong to the
 pane menu.
 
+A source pane's `Display…` is Settings' counterpart for one pane (#276, option
+C, owner, 2026-09-19), and it qualifies for the same reason: four settings with
+up to five states each are a form, not a command, and a submenu per setting
+would put a choice among states outside the submenu class above. It reuses
+Settings' layout, width, glyph slots, order, and footer, and applies each change
+as it is made; the pane behind it is the preview. Every setting is one option
+block holding a `SegmentedControl` whose first segment is `Default (<value>)`,
+following the default in Settings and naming the value it follows, then the
+setting's own values: `On` and `Off` for a switch, the four modes for spaces.
+Following and overriding are therefore told apart by the checked segment's
+name alone, for sight and assistive technology alike. When the segments cannot
+share one row (spaces always, a switch below `sm`), the follow segment takes a
+row of its own above the values. The footer's `Use defaults` clears all four
+overrides and is disabled, with its reason, while the pane already follows
+every default; `Done` closes, returning focus to the pane actions trigger. The
+menu keeps its checked `Wrap lines` beside `Display…` as the one-step toggle for
+the setting read most, and choosing it records the same override as `On` or
+`Off` in the dialog.
+
 `Switch` and `SegmentedControl` live in `packages/ui` and are the only way to
 draw their two kinds of choice. A `Switch` is an on/off setting that takes
 effect at once; an on/off choice that waits for a confirm, such as a download

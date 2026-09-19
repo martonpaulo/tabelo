@@ -12,10 +12,8 @@ import {
 } from "@tabelo/ui/components/segmented-control";
 import { Switch } from "@tabelo/ui/components/switch";
 import { cn } from "@tabelo/ui/lib/utils";
-import { IconTextWrap } from "@tabler/icons-react";
-import { lazy, type ReactNode, Suspense, useId, useState } from "react";
+import { lazy, Suspense, useId, useState } from "react";
 import { copy } from "@/copy/copy";
-import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import {
 	DEFAULT_PREFERENCES,
 	type Preferences,
@@ -33,35 +31,21 @@ import {
 	DialogConfirm,
 } from "@/ui/primitives/dialog-buttons";
 import { MenuOption } from "@/ui/primitives/menu-option";
-import { SPACE_GLYPH, TAB_GLYPH } from "@/ui/source/indicator-glyphs";
+import { DisplayGlyph } from "@/ui/source/display-glyph";
+import type { SourceDisplayKey } from "@/workspace/source-display";
 
 // The preview is a real read-only source editor, so it waits for the editor
 // chunk the same way a text view does.
 const IndicatorPreview = lazy(() => import("@/ui/source/indicator-preview"));
 
-// The mark a setting draws, shown as its icon, so the row and what the preview
-// draws can be matched by eye. One fixed slot, as wide as the widest mark,
-// so every row's label starts on the same line (owner, 2026-09-19). Wrapping
-// draws no mark, so its slot holds the icon the pane menu gives it.
-function Glyph({ children }: { readonly children: ReactNode }) {
-	return (
-		<span
-			aria-hidden
-			className="flex h-7 w-12 shrink-0 items-center justify-center rounded-indicator bg-surface-app font-source text-muted-foreground text-xs"
-		>
-			{children}
-		</span>
-	);
-}
-
 function SwitchOption({
-	glyph,
+	setting,
 	label,
 	description,
 	checked,
 	onCheckedChange,
 }: {
-	readonly glyph: ReactNode;
+	readonly setting: SourceDisplayKey;
 	readonly label: string;
 	readonly description: string;
 	readonly checked: boolean;
@@ -70,7 +54,7 @@ function SwitchOption({
 	const id = useId();
 	return (
 		<label htmlFor={id} className={cn(optionBlockStyles, "cursor-pointer")}>
-			<Glyph>{glyph}</Glyph>
+			<DisplayGlyph setting={setting} />
 			<MenuOption label={label} description={description} />
 			<Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
 		</label>
@@ -156,13 +140,13 @@ export function SettingsDialog({
 							{copy.settings.display.label}
 						</h3>
 						<SwitchOption
-							glyph={<IconTextWrap aria-hidden className="size-4" />}
+							setting="wrap"
 							{...copy.settings.wrap}
 							checked={preferences.wrap}
 							onCheckedChange={(checked) => update({ wrap: checked })}
 						/>
 						<SwitchOption
-							glyph={EMPTY_VALUE_PLACEHOLDER}
+							setting="emptyValueIndicators"
 							{...copy.settings.emptyValueIndicators}
 							checked={preferences.emptyValueIndicators}
 							onCheckedChange={(checked) =>
@@ -170,14 +154,14 @@ export function SettingsDialog({
 							}
 						/>
 						<SwitchOption
-							glyph={TAB_GLYPH}
+							setting="tabIndicators"
 							{...copy.settings.tabIndicators}
 							checked={preferences.tabIndicators}
 							onCheckedChange={(checked) => update({ tabIndicators: checked })}
 						/>
 						<div className={cn(optionBlockStyles, "grid gap-3")}>
 							<div className="flex items-center gap-3">
-								<Glyph>{SPACE_GLYPH}</Glyph>
+								<DisplayGlyph setting="spaceIndicators" />
 								<MenuOption
 									labelId={spaceLabelId}
 									descriptionId={spaceDescriptionId}

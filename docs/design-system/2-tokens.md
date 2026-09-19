@@ -523,11 +523,11 @@ instance through its wrapping compartment so the caret, selection, draft, and
 local undo history survive the change. A newly created pane follows every
 default; changing or rearranging a view keeps the pane's own choices.
 
-How the pane menu says that a pane is following a default, offers the three
-indicator overrides, and returns a pane to the default is **not yet decided**.
-The treatment proposed on #276, a submenu per setting whose first radio option
-names the inherited value, is outside the submenu class in [§3](3-components.md), so it waits for
-a decision under [§0](../design-system.md#0-pattern-break-protocol-read-this-first) rather than being built.
+Every one of the four overrides, the way back to following, and which value a
+following pane follows are set in the pane's `Display…` dialog (decided on
+#276, option C, owner, 2026-09-19); [§3](3-components.md) owns its anatomy. A
+submenu per setting was declined because a choice among states is outside the
+submenu class there.
 
 **Structural assistance can always be switched off** (#294). A source view
 whose format has a structural-assistance feature (Markdown has two: the

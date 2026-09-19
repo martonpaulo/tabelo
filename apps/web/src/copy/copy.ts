@@ -350,6 +350,21 @@ export const copy = {
 			"Your saved settings couldn't be read, so changes last until you close Tabelo. Replace saved settings to keep them.",
 	},
 
+	// One source pane's own answer to the four display settings (#276). Each
+	// setting's first segment follows the default in Settings and names the
+	// value it follows, so following and overriding read apart by name alone.
+	paneDisplay: {
+		command: "Display…",
+		title: "Display",
+		description: (label: string) =>
+			`Choose how the ${label} pane shows its source. Default follows Settings; any other choice applies to this pane only.`,
+		followDefault: (value: string) => `Default (${value})`,
+		on: "On",
+		off: "Off",
+		useDefaults: "Use defaults",
+		done: "Done",
+	},
+
 	workspace: {
 		// The dialog is titled for what it holds; the command that opens it is a
 		// verb like every other command.
@@ -446,6 +461,7 @@ export const copy = {
 		viewAlreadyShown: "This view is already shown in this pane.",
 		zoomMinimum: "Zoom is already at 50%.",
 		zoomDefault: "Zoom is already at 100%.",
+		paneDisplayFollowsDefaults: "This pane already follows every default.",
 		zoomMaximum: "Zoom is already at 200%.",
 		closeOnlyView: "At least one view must stay open.",
 		moveOnlyView: "Add another view before moving this pane.",
