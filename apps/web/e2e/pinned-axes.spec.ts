@@ -303,7 +303,10 @@ test("a one-column table keeps the preference until it has a column to pin again
 });
 
 function fillHandle(tabelo: TabeloPage): Locator {
-	return tabelo.grid().getByRole("button", { name: copy.a11y.fillHandle });
+	// The handle is drawn beside the table, not inside it.
+	return tabelo.pane("grid").getByRole("button", {
+		name: copy.a11y.fillHandle,
+	});
 }
 
 // Scrolls the grid by the distance that brings the fill handle's centre over
