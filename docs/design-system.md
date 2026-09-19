@@ -1105,7 +1105,10 @@ generous top spacing separates the footer from the dialog content in every
 dialog. A neutral dismissal comes first, ordinary reversible alternatives
 follow, and exactly one decisive action comes last at the far right. That last
 action is primary blue for the normal path or destructive red for an
-irreversible path. One group never presents both emphasized colours.
+irreversible path. One group never presents both emphasized colours. The destructive
+button is a soft tinted fill, never bare red text: `--destructive` at low alpha
+behind `--destructive` text, a step stronger on hover, so it carries the same
+weight as the filled primary it stands in for (owner, 2026-09-19).
 
 Single-selection dialogs grow to show their complete option list. A dialog
 never grows past the window: every dialog caps its height at the viewport and
