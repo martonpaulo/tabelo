@@ -490,8 +490,8 @@ export function SourceEditor({
 	};
 
 	// The menu-only structural commands (#255), on the same terms as a row move:
-	// one document step, the pane's keystroke history cleared with it, and the
-	// caret carried into the cell the command leaves it in. The caret target is
+	// one document step, which clears the pane's keystroke history like any
+	// change from outside its typing (local-history.ts), and the caret carried into the cell the command leaves it in. The caret target is
 	// known only once the command has run (a sort decides where the row goes),
 	// which is still before React renders the regenerated text that spends it.
 	const runStructure = (view: EditorView, command: SourceStructureCommand) => {
@@ -509,7 +509,6 @@ export function SourceEditor({
 		const caret = plan.run();
 		if (!caret) return;
 		pendingCaret.current = caret;
-		clearLocalHistory(view);
 	};
 
 	// The editor is created once and lives for the panel's lifetime. Re-running
