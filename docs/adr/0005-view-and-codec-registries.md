@@ -65,16 +65,21 @@ structural-assistance features, combined so that no two act on the same edit,
 under the contract in `AGENTS.md`, "Source text is free; structural assistance
 is narrow". It is pure and text-only. Given the
 draft before and after one user edit, and the ranges that edit changed, it
-returns at most one further edit to the draft, or nothing when the draft does
-not settle what the change should be. The edit may ask for a caret left where
+returns the further edits to the draft, or nothing when the draft does not
+settle what the change should be. The edits are written against the draft
+after the user's edit, never overlap, and come in document order, so a feature
+can adjust several lines while leaving the text between them, and any caret
+there, alone (#401). An edit may ask for a caret left where
 it inserts text to land after that text, for a feature whose insertion is where
 typing continues. The source editor lands the result in the
 same transaction as the user's edit without knowing which format declared it,
 and the pane menu offers the switch that turns it off for the current buffer
-only when a view's codec declares one. Markdown declares the first two:
-keeping its alignment divider in step with the table (Decided on #297), and
+only when a view's codec declares one. Markdown declares three:
+keeping its alignment divider in step with the table (Decided on #297),
 opening a new row with `| ` on Enter at the end of a row below the divider
-(Decided on #391). Jira declares the same row-start feature on its own terms:
+(Decided on #391), and keeping the column being typed in padded to its widest
+cell in every row, measured the way the serializer pads it, so the text stays
+what the serializer would write for that column (Decided on #401). Jira declares the same row-start feature on its own terms:
 a bare `|`, because a space after the pipe is part of the cell value in Jira,
 and after the header line as well, because Jira has no divider (Decided on
 #391). No other codec declares one, and adding one is a codec change, not an
