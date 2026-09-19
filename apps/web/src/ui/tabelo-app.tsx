@@ -210,8 +210,10 @@ export function TabeloApp() {
 			// chooser here: Tabelo has nowhere to save to, and the browser's Save
 			// Page would write the app shell rather than the table. Taken from
 			// every focus, including inside a source editor, because the browser
-			// would otherwise still act on it there.
-			if (key === "s") {
+			// would otherwise still act on it there. A chord the focused surface
+			// already claimed is left to it: the grid's Mod+Shift+S strikes text
+			// through (#306).
+			if (key === "s" && !event.defaultPrevented) {
 				event.preventDefault();
 				// A shortcut must not stack Download over an existing modal flow.
 				if (rootDialog !== null || document.querySelector('[role="dialog"]')) {
