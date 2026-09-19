@@ -11,6 +11,7 @@ import {
 	changeColumnType,
 	clearCells,
 	deleteColumns,
+	deleteEmptyRowsAndColumns,
 	deleteRows,
 	duplicateColumns,
 	duplicateRows,
@@ -26,10 +27,11 @@ import {
 	setCellType,
 	setColumnExpectedType,
 	sortRows,
+	transposeDocument,
 } from "./operations";
 import { samplePeopleMatrix } from "./sample-data";
 import { HEADER_ROW } from "./selection";
-import type { CellValue } from "./types";
+import type { CellValue, TableDocument } from "./types";
 
 function docOf(matrix: CellValue[][]) {
 	return documentFromMatrix(matrix, { headerRow: true });
@@ -962,5 +964,233 @@ describe("sorting rows by a column", () => {
 		const result = sortRows(document, columnId(document, 0), "ascending");
 		expect(result.document.rows).toHaveLength(200);
 		expect(new Set(result.document.rows.map((row) => row.id)).size).toBe(200);
+	});
+});
+
+// The header row and every cell as carried values, so an assertion sees a
+// number as a number and `null` as `null` rather than their shared text.
+function valuesOf(document: TableDocument): CellValue[][] {
+	return [
+		document.columns.map((column) => column.header),
+		...document.rows.map((row) =>
+			document.columns.map((column) => readCell(row, column.id)),
+		),
+	];
+}
+
+describe("transposeDocument", () => {
+	it("turns the first column into the header row and the header row into the first column", () => {
+		const document = docOf([
+			["name", "city", "age"],
+			["Ingrid", "Rio", 35],
+			["Paulo", "Madrid", null],
+		]);
+		expect(valuesOf(transposeDocument(document))).toEqual([
+			["name", "Ingrid", "Paulo"],
+			["city", "Rio", "Madrid"],
+			["age", 35, null],
+		]);
+	});
+
+	it("moves values without touching their type, and keeps null apart from the empty string", () => {
+		const document = docOf([
+			["key", "a", "b"],
+			["row", null, ""],
+			["other", true, 0],
+		]);
+		const next = transposeDocument(document);
+		expect(valuesOf(next)).toEqual([
+			["key", "row", "other"],
+			["a", null, true],
+			["b", "", 0],
+		]);
+	});
+
+	it("carries delimiters and line breaks through unchanged", () => {
+		const document = docOf([
+			["h", "x"],
+			["a", 'one | two\nthree, "four"'],
+		]);
+		expect(valuesOf(transposeDocument(transposeDocument(document)))).toEqual(
+			valuesOf(document),
+		);
+	});
+
+	it("mints new identifiers and resets alignment and expected type", () => {
+		const document = setColumnExpectedType(
+			setAlignment(sample(), 1, "right"),
+			1,
+			"number",
+		);
+		const next = transposeDocument(document);
+		const oldColumnIds = new Set(document.columns.map((column) => column.id));
+		const oldRowIds = new Set(document.rows.map((row) => row.id));
+		for (const column of next.columns) {
+			expect(oldColumnIds.has(column.id)).toBe(false);
+			expect(column.align).toBe("default");
+			expect(column.expectedType).toBe("text");
+		}
+		for (const row of next.rows) expect(oldRowIds.has(row.id)).toBe(false);
+	});
+
+	// Identifiers, alignment, and expected types are deliberately not restored:
+	// they described columns that no longer exist. Values and types are, apart
+	// from the values that spent the round trip in the header, which a header
+	// can only hold as text.
+	it("restores every value and type after two transposes, except the first column's, which pass through the header as text", () => {
+		const document = docOf([
+			["name", "age", "active"],
+			["Ingrid", 35, true],
+			[7, null, ""],
+		]);
+		const twice = transposeDocument(transposeDocument(document));
+		expect(valuesOf(twice)).toEqual([
+			["name", "age", "active"],
+			["Ingrid", 35, true],
+			["7", null, ""],
+		]);
+		expect(documentToMatrix(twice)).toEqual(documentToMatrix(document));
+	});
+
+	it("turns a one-column table into a header row over one empty row", () => {
+		const document = docOf([["name"], ["Ingrid"], ["Paulo"]]);
+		const next = transposeDocument(document);
+		expect(valuesOf(next)).toEqual([
+			["name", "Ingrid", "Paulo"],
+			["", "", ""],
+		]);
+	});
+
+	it("turns a table with one data row into two columns", () => {
+		const document = docOf([
+			["name", "city"],
+			["Ingrid", "Rio"],
+		]);
+		expect(valuesOf(transposeDocument(document))).toEqual([
+			["name", "Ingrid"],
+			["city", "Rio"],
+		]);
+	});
+
+	it("transposes a single cell table", () => {
+		const document = docOf([["name"], [""]]);
+		expect(valuesOf(transposeDocument(document))).toEqual([
+			["name", ""],
+			["", ""],
+		]);
+	});
+
+	it("does not change the document it was given", () => {
+		const document = sample();
+		const before = structuredClone(document);
+		transposeDocument(document);
+		expect(document).toEqual(before);
+	});
+
+	it("rotates a table at the documented scale", () => {
+		const rows = Array.from({ length: 200 }, (_, index) => [
+			`row ${index}`,
+			index,
+			index % 2 === 0,
+		]);
+		const document = docOf([["key", "seq", "even"], ...rows]);
+		const next = transposeDocument(document);
+		expect(next.columns).toHaveLength(201);
+		expect(next.rows).toHaveLength(2);
+	});
+});
+
+describe("deleteEmptyRowsAndColumns", () => {
+	it("removes rows and columns whose every cell projects to empty text", () => {
+		const document = docOf([
+			["name", "", "city"],
+			["Ingrid", null, "Rio"],
+			["", "", null],
+			["Paulo", "", "Madrid"],
+		]);
+		const result = deleteEmptyRowsAndColumns(document);
+		expect(valuesOf(result.document)).toEqual([
+			["name", "city"],
+			["Ingrid", "Rio"],
+			["Paulo", "Madrid"],
+		]);
+		expect(result.keptRows).toEqual([0, 2]);
+		expect(result.keptColumns).toEqual([0, 2]);
+	});
+
+	it("keeps a named column that holds no values", () => {
+		const document = docOf([
+			["name", "notes"],
+			["Ingrid", ""],
+		]);
+		expect(deleteEmptyRowsAndColumns(document).document).toBe(document);
+	});
+
+	it("removes a column with an empty header only when its cells are empty too", () => {
+		const document = docOf([
+			["name", ""],
+			["Ingrid", "Rio"],
+		]);
+		expect(deleteEmptyRowsAndColumns(document).document).toBe(document);
+	});
+
+	it("keeps a row whose only content is zero, false, or whitespace", () => {
+		const document = docOf([
+			["n", "b", "s"],
+			[0, "", ""],
+			["", false, ""],
+			["", "", " "],
+		]);
+		expect(deleteEmptyRowsAndColumns(document).document).toBe(document);
+	});
+
+	it("keeps identifiers and the null or empty string each survivor held", () => {
+		const document = docOf([
+			["a", "b"],
+			[null, "x"],
+			["", ""],
+			["", "y"],
+		]);
+		const result = deleteEmptyRowsAndColumns(document);
+		expect(result.document.rows.map((row) => row.id)).toEqual([
+			document.rows[0]?.id,
+			document.rows[2]?.id,
+		]);
+		expect(result.document.columns).toEqual(document.columns);
+		expect(valuesOf(result.document)).toEqual([
+			["a", "b"],
+			[null, "x"],
+			["", "y"],
+		]);
+	});
+
+	it("keeps one row when every data row is empty but a header is named", () => {
+		const document = docOf([
+			["name", ""],
+			["", ""],
+			[null, ""],
+		]);
+		const result = deleteEmptyRowsAndColumns(document);
+		expect(valuesOf(result.document)).toEqual([["name"], [""]]);
+		expect(result.document.rows[0]?.id).toBe(document.rows[0]?.id);
+	});
+
+	it("leaves an entirely empty table untouched and says why", () => {
+		const document = docOf([
+			["", ""],
+			[null, ""],
+		]);
+		const result = deleteEmptyRowsAndColumns(document);
+		expect(result.document).toBe(document);
+		expect(result.tableIsEmpty).toBe(true);
+		expect(deleteEmptyRowsAndColumns(createEmptyDocument()).tableIsEmpty).toBe(
+			true,
+		);
+		expect(deleteEmptyRowsAndColumns(sample()).tableIsEmpty).toBe(false);
+	});
+
+	it("returns the same document when nothing is empty", () => {
+		const document = sample();
+		expect(deleteEmptyRowsAndColumns(document).document).toBe(document);
 	});
 });

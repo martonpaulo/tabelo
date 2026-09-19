@@ -21,6 +21,7 @@ import {
 	changeColumnType,
 	clearCells,
 	deleteColumns,
+	deleteEmptyRowsAndColumns,
 	deleteRows,
 	duplicateColumns,
 	duplicateRows,
@@ -37,6 +38,7 @@ import {
 	setCellType,
 	setHeader,
 	sortRows,
+	transposeDocument,
 } from "@/core/operations";
 import {
 	activeRange,
@@ -49,6 +51,7 @@ import {
 	type GridSelection,
 	isContiguous,
 	moveFocusKeepingRegions,
+	positionAfterRemoval,
 	rectDataRows,
 	remapSelectionRows,
 	type SelectionMode,
@@ -64,6 +67,7 @@ import {
 	structureDeletionGuard,
 	toggleSelectionRegion,
 	translateSelection,
+	transposedPosition,
 } from "@/core/selection";
 import {
 	applyFillSeries as applySeriesPlan,
@@ -234,6 +238,25 @@ export interface PendingImport {
 	// because applying the document is itself work: the answer can no longer
 	// ask the session whether anything had happened before it.
 	readonly initialSession: boolean;
+}
+
+// What Delete empty rows and columns removed, for the interface to announce.
+// Both zero means the table had nothing to remove, or nothing in it at all.
+export interface EmptyRemovalCounts {
+	readonly rows: number;
+	readonly columns: number;
+}
+
+// Transposing swaps the two limits' roles: a table at the row ceiling would
+// come out with more columns than any import may create. The shape is the one
+// `transposeDocument` produces, header row included on both sides.
+export function transposeLimitError(
+	document: TableDocument,
+): ImportError | null {
+	return tableShapeLimitError({
+		rows: Math.max(1, document.columns.length - 1),
+		columns: document.rows.length + 1,
+	});
 }
 
 // What choosing the series did. The count is what the announcement reports, and
@@ -418,6 +441,10 @@ export interface TabeloState {
 	removeSelectedColumns: () => void;
 	duplicateSelectedColumns: () => void;
 	moveSelectedColumn: (offset: number) => SelectionMoveRefusal | null;
+	// Whole-table structure (#235). Each is one history step, and each moves the
+	// selection to the cell the user was on, wherever that cell now is.
+	transposeTable: () => ImportError | null;
+	deleteEmptyRowsAndColumns: () => EmptyRemovalCounts;
 	fillSelection: (target: CellRect) => number;
 	applyFillSeries: () => FillSeriesOutcome;
 	dismissFillSeriesOffer: () => void;
@@ -1782,6 +1809,40 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		state.applyDocument(next);
 		set({ selection: translateSelection(state.selection, "column", offset) });
 		return null;
+	},
+
+	transposeTable: () => {
+		const state = get();
+		const error = transposeLimitError(state.document);
+		if (error) {
+			set({ inputError: error });
+			return error;
+		}
+		const focus = activeRange(state.selection).focus;
+		state.applyDocument(transposeDocument(state.document), {
+			before: state.selection,
+			after: createSelection(transposedPosition(focus)),
+		});
+		return null;
+	},
+
+	deleteEmptyRowsAndColumns: () => {
+		const state = get();
+		const { document, keptRows, keptColumns } = deleteEmptyRowsAndColumns(
+			state.document,
+		);
+		if (document === state.document) return { rows: 0, columns: 0 };
+		const focus = activeRange(state.selection).focus;
+		state.applyDocument(document, {
+			before: state.selection,
+			after: createSelection(
+				positionAfterRemoval(focus, keptRows, keptColumns),
+			),
+		});
+		return {
+			rows: state.document.rows.length - keptRows.length,
+			columns: state.document.columns.length - keptColumns.length,
+		};
 	},
 
 	// Pointer, keyboard, and menu fill all end here. The selection is the source

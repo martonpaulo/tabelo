@@ -10,6 +10,7 @@ import {
 	isContiguous,
 	moveFocusKeepingRegions,
 	neighbourCell,
+	positionAfterRemoval,
 	rectCoversHeader,
 	rectDataRows,
 	remapSelectionRows,
@@ -22,6 +23,7 @@ import {
 	selectionRects,
 	structureDeletionGuard,
 	toggleSelectionRegion,
+	transposedPosition,
 } from "./selection";
 
 function columnSelection(...columns: readonly number[]): GridSelection {
@@ -763,5 +765,41 @@ describe("remapping a selection through a row permutation", () => {
 		const next = remap(selection, scatter);
 		expect(next.ranges).toHaveLength(4);
 		expect(activeRange(next).focus).toEqual({ row: 0, column: 1 });
+	});
+});
+
+describe("positions across whole-table operations", () => {
+	it("follows a cell through a transpose, the header row included", () => {
+		expect(transposedPosition({ row: 1, column: 2 })).toEqual({
+			row: 1,
+			column: 2,
+		});
+		expect(transposedPosition({ row: 0, column: 3 })).toEqual({
+			row: 2,
+			column: 1,
+		});
+		expect(transposedPosition({ row: HEADER_ROW, column: 2 })).toEqual({
+			row: 1,
+			column: 0,
+		});
+		expect(transposedPosition({ row: 4, column: 0 })).toEqual({
+			row: HEADER_ROW,
+			column: 5,
+		});
+	});
+
+	it("follows a surviving row and column, and moves a removed one to its successor", () => {
+		expect(positionAfterRemoval({ row: 3, column: 2 }, [0, 3], [0, 2])).toEqual(
+			{ row: 1, column: 1 },
+		);
+		expect(positionAfterRemoval({ row: 1, column: 1 }, [0, 3], [0, 2])).toEqual(
+			{ row: 1, column: 1 },
+		);
+		expect(positionAfterRemoval({ row: 5, column: 4 }, [0, 3], [0, 2])).toEqual(
+			{ row: 1, column: 1 },
+		);
+		expect(
+			positionAfterRemoval({ row: HEADER_ROW, column: 0 }, [2], [1]),
+		).toEqual({ row: HEADER_ROW, column: 0 });
 	});
 });

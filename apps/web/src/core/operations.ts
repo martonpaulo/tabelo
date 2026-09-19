@@ -662,6 +662,129 @@ export function sortRows(
 	return { document: { ...document, rows }, nextRowOf };
 }
 
+// Rotates the whole table, header row included: the cell at row r and column c
+// moves to row c and column r. So the old first column, its header and every
+// value under it, becomes the new header row, and the old header row becomes
+// the new first column. There is never a headerless state to fall into (#235).
+//
+// Nothing that described a column or a row survives, because no new column is
+// the same thing as any old one. Every identifier is minted fresh, and every
+// column takes the default alignment and the default expected type: carrying an
+// old column's expectation onto values that were never in it would be the
+// product concluding a type from position, which AGENTS.md forbids as firmly as
+// concluding one from text. Workspace preferences keyed by the old column ids
+// are dropped by the store's reconciliation for the same reason.
+//
+// Values are moved, never touched: a number stays a number and a `null` stays a
+// `null`. The one exception is the model's, not this function's: a header holds
+// text, so the values that arrive in the new header row pass through the one
+// projection every view reads a cell through, exactly as promoting a row into
+// the header does. A double transpose therefore restores every value and type
+// except those that spent the round trip in the header, which come back as
+// their text.
+//
+// A table with one column has no second column to become a data row. The
+// result keeps the one empty row every table holds, so transposing it back
+// adds an empty trailing column that Delete empty rows and columns removes.
+export function transposeDocument(document: TableDocument): TableDocument {
+	const first = document.columns[0];
+	if (!first) return document;
+
+	const headers = [
+		first.header,
+		...document.rows.map((row) => cellTextAt(row, first.id)),
+	];
+	const columns = headers.map((header) => createColumn(header));
+	const rows = document.columns.slice(1).map((source) => {
+		const values: CellValue[] = [
+			source.header,
+			...document.rows.map((row) => readCell(row, source.id)),
+		];
+		const cells: Record<ColumnId, CellValue> = {};
+		columns.forEach((column, index) => {
+			const value = values[index];
+			cells[column.id] = value === undefined ? "" : value;
+		});
+		return { id: createRowId(), cells };
+	});
+	return withRows({ columns, rows }, rows);
+}
+
+export interface EmptyRemovalResult {
+	readonly document: TableDocument;
+	// The original indices that survive, in order, so a caller can carry a
+	// position across the removal.
+	readonly keptRows: readonly number[];
+	readonly keptColumns: readonly number[];
+	// True when the table holds nothing at all, which is why it was left alone.
+	readonly tableIsEmpty: boolean;
+}
+
+// Removes every row whose cells are all empty and every column whose header and
+// cells are all empty. Empty is judged by the text projection, because `null`
+// and the empty string look the same on screen and the user cannot tell them
+// apart; the cells that survive keep whichever of the two they held (#235).
+//
+// A column with a header is not empty: the header is a cell for every purpose
+// the user can observe, so a named column that holds no values stays.
+//
+// A table with nothing in it at all is left untouched rather than reduced to
+// nothing, and a table whose every data row is empty keeps its first one, since
+// a table always keeps at least one row. Survivors keep their identifiers, so
+// widths, wrap preferences, and history all still refer to them.
+export function deleteEmptyRowsAndColumns(
+	document: TableDocument,
+): EmptyRemovalResult {
+	const rowIsEmpty = (row: Row) =>
+		document.columns.every((column) => cellTextAt(row, column.id) === "");
+	const keptColumns = document.columns.flatMap((column, index) =>
+		column.header !== "" ||
+		document.rows.some((row) => cellTextAt(row, column.id) !== "")
+			? [index]
+			: [],
+	);
+	const nonEmptyRows = document.rows.flatMap((row, index) =>
+		rowIsEmpty(row) ? [] : [index],
+	);
+	const keptRows = nonEmptyRows.length > 0 ? nonEmptyRows : [0];
+	const unchanged = {
+		document,
+		keptRows: document.rows.map((_, index) => index),
+		keptColumns: document.columns.map((_, index) => index),
+		tableIsEmpty: keptColumns.length === 0,
+	};
+
+	if (keptColumns.length === 0) return unchanged;
+	if (
+		keptColumns.length === document.columns.length &&
+		keptRows.length === document.rows.length
+	) {
+		return unchanged;
+	}
+
+	const columns = keptColumns
+		.map((index) => document.columns[index])
+		.filter((column): column is Column => column !== undefined);
+	const removedIds = document.columns
+		.filter((_, index) => !keptColumns.includes(index))
+		.map((column) => column.id);
+	const rows = keptRows
+		.map((index) => document.rows[index])
+		.filter(isRow)
+		.map((row) => {
+			if (removedIds.length === 0) return row;
+			const cells: Record<ColumnId, CellValue> = { ...row.cells };
+			for (const id of removedIds) delete cells[id];
+			return { ...row, cells };
+		});
+	return {
+		document: { columns, rows },
+		keptRows,
+		keptColumns,
+		tableIsEmpty: false,
+	};
+}
+
 function isRow(row: Row | undefined): row is Row {
 	return row !== undefined;
 }

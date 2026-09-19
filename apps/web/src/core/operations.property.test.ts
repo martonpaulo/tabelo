@@ -1,9 +1,11 @@
 import { fc, test } from "@fast-check/vitest";
 import { describe, expect } from "vitest";
+import { readCell } from "@/core/cell-value";
 import { documentToMatrix } from "@/core/document";
 import {
 	clearCells,
 	deleteColumns,
+	deleteEmptyRowsAndColumns,
 	deleteRows,
 	duplicateColumns,
 	duplicateRows,
@@ -15,6 +17,7 @@ import {
 	setAlignment,
 	setCell,
 	setHeader,
+	transposeDocument,
 } from "@/core/operations";
 import type { TableDocument } from "@/core/types";
 import {
@@ -24,6 +27,7 @@ import {
 	documentPositionArbitrary,
 	PROPERTY_RUNS,
 	tableDocumentArbitrary,
+	typedTableDocumentArbitrary,
 } from "@/testing/property-arbitraries";
 
 function cloneDocument(document: TableDocument): TableDocument {
@@ -313,6 +317,62 @@ describe("document operation properties", () => {
 				duplicateColumns(document, [0]),
 			].map((candidate) => documentToMatrix(candidate));
 			expect(secondCreating).toEqual(firstCreating);
+		},
+	);
+
+	// Two transposes restore the table's text exactly and every carried value
+	// and type outside the first column. The first column's values spend the
+	// round trip in the header, which holds text, so they return as their text.
+	// Identifiers, alignment, and expected types are not restored: they
+	// described columns that no longer exist (#235).
+	test.prop(
+		{ document: typedTableDocumentArbitrary },
+		{ numRuns: PROPERTY_RUNS },
+	)("a double transpose preserves every value and its type", ({ document }) => {
+		fc.pre(document.columns.length > 1);
+		const before = cloneDocument(document);
+		const once = transposeDocument(document);
+		const twice = transposeDocument(once);
+
+		expectValidDocument(once);
+		expectValidDocument(twice);
+		expect(documentToMatrix(twice)).toEqual(documentToMatrix(document));
+		expect(twice.columns.map((column) => column.header)).toEqual(
+			document.columns.map((column) => column.header),
+		);
+		for (const [rowIndex, row] of document.rows.entries()) {
+			const restored = twice.rows[rowIndex];
+			if (!restored) throw new Error("row missing after a double transpose");
+			for (const [columnIndex, column] of document.columns.entries()) {
+				if (columnIndex === 0) continue;
+				const restoredColumn = twice.columns[columnIndex];
+				if (!restoredColumn) throw new Error("column missing");
+				expect(readCell(restored, restoredColumn.id)).toBe(
+					readCell(row, column.id),
+				);
+			}
+		}
+		expect(document).toEqual(before);
+	});
+
+	test.prop(
+		{ document: typedTableDocumentArbitrary },
+		{ numRuns: PROPERTY_RUNS },
+	)(
+		"deleting empty rows and columns keeps every non-empty cell and is idempotent",
+		({ document }) => {
+			const before = cloneDocument(document);
+			const { document: next } = deleteEmptyRowsAndColumns(document);
+			const content = (candidate: typeof document) =>
+				documentToMatrix(candidate)
+					.flat()
+					.filter((text) => text !== "")
+					.toSorted();
+
+			expectValidDocument(next);
+			expect(content(next)).toEqual(content(document));
+			expect(deleteEmptyRowsAndColumns(next).document).toBe(next);
+			expect(document).toEqual(before);
 		},
 	);
 });

@@ -484,6 +484,38 @@ export function clampSelection(
 			};
 }
 
+// Where a cell lands when the whole table is transposed, header row included.
+// The header row sits one above the data rows, so the arithmetic runs in matrix
+// coordinates where it is row 0: the cell at matrix (r, c) moves to (c, r).
+export function transposedPosition(position: CellPosition): CellPosition {
+	return { row: position.column - 1, column: position.row + 1 };
+}
+
+// Where a position lands after some rows and columns were removed. `keptRows`
+// and `keptColumns` are the surviving original indices in order. A position
+// whose own row or column survives follows it; one that was removed moves to
+// the survivor that took its place, or to the last one when nothing follows.
+// The header row is never removed, so it stays where it is.
+export function positionAfterRemoval(
+	position: CellPosition,
+	keptRows: readonly number[],
+	keptColumns: readonly number[],
+): CellPosition {
+	const follow = (index: number, kept: readonly number[]) =>
+		Math.max(
+			0,
+			Math.min(
+				kept.filter((candidate) => candidate < index).length,
+				kept.length - 1,
+			),
+		);
+	return {
+		row:
+			position.row === HEADER_ROW ? HEADER_ROW : follow(position.row, keptRows),
+		column: follow(position.column, keptColumns),
+	};
+}
+
 // The selection after the rows underneath it were permuted, as a sort does.
 // `nextRowOf[oldIndex]` is where that row landed.
 //

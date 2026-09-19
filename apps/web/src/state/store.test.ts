@@ -1471,3 +1471,100 @@ describe("sorting rows by a column", () => {
 		expect(useTabeloStore.getState().draft?.text).toBe("| broken");
 	});
 });
+
+describe("whole-table structure (#235)", () => {
+	const people = () =>
+		documentFromMatrix(
+			[
+				["name", "city", ""],
+				["Ingrid", "Rio", ""],
+				["", "", ""],
+				["Paulo", "Madrid", ""],
+			],
+			{ headerRow: true },
+		);
+
+	it("transposes as one history step that undo reverses exactly", () => {
+		const document = people();
+		const firstId = document.columns[0]?.id ?? "";
+		useTabeloStore.setState({
+			document,
+			selection: createSelection({ row: 0, column: 1 }),
+			workspace: {
+				...initialState.workspace,
+				columnWidths: { [firstId]: 12 },
+				wrappedColumns: [firstId],
+			},
+		});
+
+		expect(useTabeloStore.getState().transposeTable()).toBeNull();
+		const state = useTabeloStore.getState();
+		expect(documentToMatrix(state.document)).toEqual([
+			["name", "Ingrid", "", "Paulo"],
+			["city", "Rio", "", "Madrid"],
+			["", "", "", ""],
+		]);
+		expect(state.past).toHaveLength(1);
+		// The cell the user was on, "Rio", is still the one selected.
+		expect(state.selection).toEqual(createSelection({ row: 0, column: 1 }));
+		// Preferences keyed by a column that no longer exists are not kept.
+		expect(state.workspace.columnWidths).toEqual({});
+		expect(state.workspace.wrappedColumns).toEqual([]);
+
+		state.undo();
+		const undone = useTabeloStore.getState();
+		expect(undone.document).toBe(document);
+		expect(undone.selection).toEqual(createSelection({ row: 0, column: 1 }));
+	});
+
+	it("refuses a transpose whose result would exceed the column limit", () => {
+		const rows = Array.from({ length: 200 }, (_, index) => [`r${index}`, "x"]);
+		const document = documentFromMatrix([["key", "value"], ...rows], {
+			headerRow: true,
+		});
+		useTabeloStore.setState({ document });
+
+		expect(useTabeloStore.getState().transposeTable()).toMatchObject({
+			code: "too-many-columns",
+		});
+		const state = useTabeloStore.getState();
+		expect(state.document).toBe(document);
+		expect(state.past).toHaveLength(0);
+	});
+
+	it("deletes empty rows and columns as one history step and keeps the selected cell", () => {
+		const document = people();
+		useTabeloStore.setState({
+			document,
+			selection: createSelection({ row: 2, column: 1 }),
+		});
+
+		expect(useTabeloStore.getState().deleteEmptyRowsAndColumns()).toEqual({
+			rows: 1,
+			columns: 1,
+		});
+		const state = useTabeloStore.getState();
+		expect(documentToMatrix(state.document)).toEqual([
+			["name", "city"],
+			["Ingrid", "Rio"],
+			["Paulo", "Madrid"],
+		]);
+		expect(state.past).toHaveLength(1);
+		expect(state.selection).toEqual(createSelection({ row: 1, column: 1 }));
+
+		state.undo();
+		expect(useTabeloStore.getState().document).toBe(document);
+	});
+
+	it("records nothing when there is nothing empty to delete", () => {
+		const document = documentFromMatrix([["name"], ["Ingrid"]], {
+			headerRow: true,
+		});
+		useTabeloStore.setState({ document });
+		expect(useTabeloStore.getState().deleteEmptyRowsAndColumns()).toEqual({
+			rows: 0,
+			columns: 0,
+		});
+		expect(useTabeloStore.getState().past).toHaveLength(0);
+	});
+});
