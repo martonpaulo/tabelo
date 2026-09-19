@@ -424,6 +424,35 @@ cell:
 Nothing but the paste commit is above 100 ms at the target scale. The one
 figure above it past the target, typing in HTML at 480 rows, was not traced.
 
+### `content-visibility` for the paste commit (#393)
+
+#393 asked whether CSS `content-visibility: auto` with `contain-intrinsic-size`
+on grid rows and preview rows would let the browser skip style and layout of
+the rows outside the viewport, and bring the paste commit under 100 ms at the
+target scale. Measured on 2026-09-19 at commit `097be50`, reference machine A,
+with the browser method under `## Method` for the paste step only (headed
+Chromium, beside Markdown and beside Rendered Preview, median of three runs).
+Each arm injected its rule into the production build; one pass interleaved all
+arms, on a machine at a load average of about 3, so a single run moves by up to
+30 ms. Milliseconds, long task / INP.
+
+| beside | rows | none | rows (`tr`) | cell contents (`td > *`) |
+| --- | ---: | ---: | ---: | ---: |
+| Markdown | 200 | 112 / 168 | 115 / 168 | 78 / 168 |
+| Markdown | 480 | 175 / 272 | 195 / 288 | 164 / 272 |
+| Rendered Preview | 200 | 124 / 184 | 99 / 168 | 121 / 184 |
+| Rendered Preview | 480 | 253 / 336 | 259 / 336 | 227 / 336 |
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| `content-visibility: auto` on grid and preview rows skips the rows off screen | The rule computes to `auto` on every `tr`, yet no cell below one was skipped (`checkVisibility({ contentVisibilityAuto: true })`), every `contentvisibilityautostatechange` reported the row as shown, row heights stayed as they were, and the long task stayed within noise of the unchanged build. Both the grid and the preview are HTML tables: a table row, row group, or cell is an internal table box, and CSS containment, which `content-visibility` relies on, has no effect on one | **Disproved: it cannot apply.** Getting containment onto a row means leaving table layout for both tables, a rewrite of the grid's structure and its sticky and ARIA contracts, not a CSS candidate. |
+| Putting it on each cell's contents instead holds the contracts | Skips about 1,500 of 1,600 cell contents at 200 rows. Long task beside Markdown 112 to 78 at 200 rows and 175 to 164 at 480; beside the preview no gain outside noise; INP unchanged in every cell of the table. A skipped box takes its `contain-intrinsic-size` until it has been rendered once, so a wrapped row off screen is one line tall until it scrolls in: the grid's row heights, and the offsets jump-to-cell, find, and the pinned rows read from them, would be wrong until then | **Rejected.** It trades the wrapped-row-height contract for a saving that never brings INP under 100 ms and does nothing beside the preview. |
+| Something new since #364 is the cost | A trace of the commit at 200 rows: beside Markdown a 93 ms task of 25 ms style over 9,174 elements, 24 ms script (React render and commit), 14 ms layout, 5 ms pre-paint; beside the preview 40 ms style over 16,262 elements and 25 ms layout. Style and layout are forced early by a layout effect in the grid, which moves them and does not add to them. Each grid cell is three elements, the cell, a two-column CSS grid that keeps room for its type mark, and the value; setting that wrapper to `display: block` saved 10 to 15 ms at 200 rows beside Markdown | **Confirmed as the #364 cause, nothing cheaper found.** The cost is still the first style and layout of every cell the paste creates. The per-cell grid wrapper is the one measurable part, and removing it changes how the type mark is laid out, a markup decision on its own and not enough to reach 100 ms. |
+
+#393 is closed as not planned on this evidence. Reaching the target now needs
+rendering fewer cells at once, which the target-scale rule in `AGENTS.md`
+reserves for the owner.
+
 ### Flicker and redraw
 
 The owner reports the screen "blinking" and redrawing visibly. A flash is a
