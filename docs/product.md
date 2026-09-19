@@ -161,7 +161,8 @@ reversible implementation choice does not belong here.
 | Decision | Current outcome | Recorded in | Decided on |
 | :--- | :--- | :--- | :--- |
 | Keyboard navigation | Two levels: Enter enters a pane, Escape leaves it; focus lost to a replaced pane lands inside the active pane; cell edits follow Google Sheets' enter and edit modes | design system §9 | #24, #54, #350, #366 |
-| Row and column reorder | Keyboard and menu path plus pointer drag; no pane drag | design system §9 | #136, #139 |
+| Row and column reorder | Keyboard and menu path plus pointer drag of a selected row number or column letter; no grip, no pane drag | design system §9 | #136, #139, #288 |
+| Grid axis affordances | No icons beside row numbers or column letters; the context menu (right-click, `Shift`+`F10`, `ContextMenu`) is the grid's only menu; the gutter is sized for the number alone | design system §6 | #288 |
 | Column resize shortcut | `Alt`+`Shift`+Left/Right on the focused column | design system §9 | #81 |
 | Fit with wrapping | Fit is disabled with a reason while the column wraps | design system §9 | #81 |
 | Menu grouping | Content, display, then pane actions | design system §3 | #70 |

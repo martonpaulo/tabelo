@@ -87,11 +87,9 @@ test("sorting is reachable and announced from the keyboard", async ({
 	await tabelo.columnIndex(4).getByRole("button").first().click();
 	await expect(tabelo.announcements).not.toBeEmpty();
 
-	const trigger = tabelo.columnIndex(4).getByRole("button", {
-		name: new RegExp(`^${copy.actions.columnActions}:`),
-	});
-	await trigger.focus();
-	await page.keyboard.press("Enter");
+	// The menu from the keyboard, on the letter the click left focused.
+	await expect(tabelo.columnIndex(4).getByRole("button")).toBeFocused();
+	await page.keyboard.press("Shift+F10");
 
 	const menu = page.getByRole("menu", {
 		name: new RegExp(`^${copy.actions.columnActions}:`),
@@ -108,7 +106,7 @@ test("sorting is reachable and announced from the keyboard", async ({
 	await expect(tabelo.cell(1, 4)).toHaveText("60");
 	await expect(tabelo.announcements).toContainText(copy.status.rowsSorted(4));
 	// Focus returns to the control the menu was opened from.
-	await expect(trigger).toBeFocused();
+	await expect(tabelo.columnIndex(4).getByRole("button")).toBeFocused();
 });
 
 test("sorting an ordered table says so instead of claiming rows moved", async ({

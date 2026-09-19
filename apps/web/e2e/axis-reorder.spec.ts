@@ -1,23 +1,34 @@
 import type { Locator, Page } from "@playwright/test";
-import { copy } from "@/copy/copy";
 import { samplePeopleCsv } from "@/core/sample-data";
 import { expect, test } from "./fixtures";
 import type { TabeloPage } from "./helpers";
 
 // Reordering by pointer, beside the keyboard path rather than instead of it.
-// The grip is its own target: the number and the letter next to it still own
-// selection, including drag-select along the axis, so these cover both the new
-// gesture and the gestures it sits between.
+// There is no grip (#288): the row number and the column letter carry both
+// gestures, and the selection decides which. A press on a label outside the
+// selection selects and drag-selects along the axis; a press on one inside it
+// picks the selected block up to move it. These cover both, and the gestures
+// that must never turn into a move.
+
+const roster = ["Ingrid", "Paulo", "Mabel", "Felix", "Amora"];
 
 async function seedRoster(tabelo: TabeloPage): Promise<void> {
 	await tabelo.paste(samplePeopleCsv(5).replaceAll(",", "\t"));
 	await tabelo.dismissNotices();
+	// One ordinary cell, so no row or column starts out selected.
+	await tabelo.cell(1, 2).click();
 }
 
-function grip(tabelo: TabeloPage, axis: "row" | "column", index: number) {
-	// The surface rather than the table: a column grip lives in the index strip,
-	// which is chrome beside the table.
-	return tabelo.gridSurface().locator(`[data-reorder-grip="${axis}:${index}"]`);
+// The one control on a row's gutter cell or a column's strip cell. Numbered as
+// the gutter and the strip show them: row 1 is the header row.
+function label(
+	tabelo: TabeloPage,
+	axis: "row" | "column",
+	index: number,
+): Locator {
+	const cell =
+		axis === "row" ? tabelo.rowIndex(index) : tabelo.columnIndex(index);
+	return cell.getByRole("button");
 }
 
 function indicator(tabelo: TabeloPage): Locator {
@@ -95,21 +106,20 @@ async function headers(tabelo: TabeloPage, columns: number): Promise<string[]> {
 	return values;
 }
 
-test("dragging a row grip moves that row to the gap it was dropped in", async ({
+async function cursorOf(target: Locator): Promise<string> {
+	return target.evaluate((element) => getComputedStyle(element).cursor);
+}
+
+test("dragging a selected row's number moves it to the gap it was dropped in", async ({
 	page,
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
-	expect(await firstColumn(tabelo, 5)).toEqual([
-		"Ingrid",
-		"Paulo",
-		"Mabel",
-		"Felix",
-		"Amora",
-	]);
+	expect(await firstColumn(tabelo, 5)).toEqual(roster);
 
 	// Row 2 is the first data row; dropping past row 4 puts it third.
-	await dragFrom(page, grip(tabelo, "row", 0), () =>
+	await label(tabelo, "row", 2).click();
+	await dragFrom(page, label(tabelo, "row", 2), () =>
 		gapPoint(tabelo, "row", 4, "after"),
 	);
 
@@ -118,20 +128,16 @@ test("dragging a row grip moves that row to the gap it was dropped in", async ({
 		.toEqual(["Paulo", "Mabel", "Ingrid", "Felix", "Amora"]);
 });
 
-test("dragging one grip of a selected block moves the whole block", async ({
+test("dragging one row of a selected block moves the whole block", async ({
 	page,
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
 
-	const selectRow = (row: number) =>
-		tabelo
-			.rowIndex(row)
-			.getByRole("button", { name: new RegExp(`^${copy.actions.selectRow}:`) });
-	await selectRow(2).click();
-	await selectRow(3).click({ modifiers: ["Shift"] });
+	await label(tabelo, "row", 2).click();
+	await label(tabelo, "row", 3).click({ modifiers: ["Shift"] });
 
-	await dragFrom(page, grip(tabelo, "row", 1), () =>
+	await dragFrom(page, label(tabelo, "row", 3), () =>
 		gapPoint(tabelo, "row", 6, "after"),
 	);
 
@@ -144,13 +150,9 @@ test("dragging one grip of a selected block moves the whole block", async ({
 test("a block move is one history step", async ({ page, tabelo }) => {
 	await seedRoster(tabelo);
 
-	const selectRow = (row: number) =>
-		tabelo
-			.rowIndex(row)
-			.getByRole("button", { name: new RegExp(`^${copy.actions.selectRow}:`) });
-	await selectRow(2).click();
-	await selectRow(3).click({ modifiers: ["Shift"] });
-	await dragFrom(page, grip(tabelo, "row", 1), () =>
+	await label(tabelo, "row", 2).click();
+	await label(tabelo, "row", 3).click({ modifiers: ["Shift"] });
+	await dragFrom(page, label(tabelo, "row", 3), () =>
 		gapPoint(tabelo, "row", 6, "after"),
 	);
 	await expect
@@ -159,9 +161,7 @@ test("a block move is one history step", async ({ page, tabelo }) => {
 
 	await tabelo.runAppCommand("undo");
 
-	await expect
-		.poll(() => firstColumn(tabelo, 5))
-		.toEqual(["Ingrid", "Paulo", "Mabel", "Felix", "Amora"]);
+	await expect.poll(() => firstColumn(tabelo, 5)).toEqual(roster);
 });
 
 test("the drop indicator marks the pending gap and leaves on drop", async ({
@@ -171,9 +171,10 @@ test("the drop indicator marks the pending gap and leaves on drop", async ({
 	await seedRoster(tabelo);
 	await expect(indicator(tabelo)).toHaveCount(0);
 
+	await label(tabelo, "row", 2).click();
 	await dragFrom(
 		page,
-		grip(tabelo, "row", 0),
+		label(tabelo, "row", 2),
 		() => gapPoint(tabelo, "row", 4, "after"),
 		{ drop: false },
 	);
@@ -190,9 +191,10 @@ test("Escape during a drag leaves the document and the indicator alone", async (
 }) => {
 	await seedRoster(tabelo);
 
+	await label(tabelo, "row", 2).click();
 	await dragFrom(
 		page,
-		grip(tabelo, "row", 0),
+		label(tabelo, "row", 2),
 		() => gapPoint(tabelo, "row", 5, "after"),
 		{ drop: false },
 	);
@@ -204,22 +206,18 @@ test("Escape during a drag leaves the document and the indicator alone", async (
 	// The pointer is still down. Releasing it must not commit the cancelled
 	// gesture either.
 	await page.mouse.up();
-	expect(await firstColumn(tabelo, 5)).toEqual([
-		"Ingrid",
-		"Paulo",
-		"Mabel",
-		"Felix",
-		"Amora",
-	]);
+	expect(await firstColumn(tabelo, 5)).toEqual(roster);
 });
 
-test("a press that never crosses the threshold reorders nothing", async ({
+test("a press on a selected row that never crosses the threshold selects that row alone", async ({
 	page,
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
+	await label(tabelo, "row", 2).click();
+	await label(tabelo, "row", 3).click({ modifiers: ["Shift"] });
 
-	const start = await centre(grip(tabelo, "row", 0));
+	const start = await centre(label(tabelo, "row", 2));
 	await page.mouse.move(start.x, start.y);
 	await page.mouse.down();
 	// Below the promotion threshold, so this stays a press.
@@ -227,23 +225,21 @@ test("a press that never crosses the threshold reorders nothing", async ({
 	await expect(indicator(tabelo)).toHaveCount(0);
 	await page.mouse.up();
 
-	expect(await firstColumn(tabelo, 5)).toEqual([
-		"Ingrid",
-		"Paulo",
-		"Mabel",
-		"Felix",
-		"Amora",
-	]);
-	// The press still selected the row it landed on, which is what makes a
-	// mis-aimed grab harmless rather than surprising.
+	expect(await firstColumn(tabelo, 5)).toEqual(roster);
+	// A click, like a click on any other label: the row it landed on, alone.
 	await expect(tabelo.cell(1, 1)).toHaveAttribute("aria-selected", "true");
+	await expect(tabelo.cell(2, 1)).toHaveAttribute("aria-selected", "false");
 });
 
-test("dragging a column grip moves that column", async ({ page, tabelo }) => {
+test("dragging a selected column's letter moves that column", async ({
+	page,
+	tabelo,
+}) => {
 	await seedRoster(tabelo);
 	expect(await headers(tabelo, 4)).toEqual(["name", "city", "role", "age"]);
 
-	await dragFrom(page, grip(tabelo, "column", 0), () =>
+	await label(tabelo, "column", 1).click();
+	await dragFrom(page, label(tabelo, "column", 1), () =>
 		gapPoint(tabelo, "column", 3, "after"),
 	);
 
@@ -258,15 +254,14 @@ test("a drag and the keyboard path reach the same order", async ({
 }) => {
 	await seedRoster(tabelo);
 
-	await dragFrom(page, grip(tabelo, "row", 0), () =>
+	await label(tabelo, "row", 2).click();
+	await dragFrom(page, label(tabelo, "row", 2), () =>
 		gapPoint(tabelo, "row", 4, "after"),
 	);
 	const dragged = await firstColumn(tabelo, 5);
 
 	await tabelo.runAppCommand("undo");
-	await expect
-		.poll(() => firstColumn(tabelo, 5))
-		.toEqual(["Ingrid", "Paulo", "Mabel", "Felix", "Amora"]);
+	await expect.poll(() => firstColumn(tabelo, 5)).toEqual(roster);
 
 	// The same block, the same destination, through the accessible path.
 	await tabelo.cell(1, 1).click();
@@ -276,30 +271,80 @@ test("a drag and the keyboard path reach the same order", async ({
 	await expect.poll(() => firstColumn(tabelo, 5)).toEqual(dragged);
 });
 
-test("the row number still drag-selects instead of reordering", async ({
+test("dragging an unselected row number drag-selects and moves nothing", async ({
 	page,
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
 
-	const number = (row: number) =>
-		tabelo
-			.rowIndex(row)
-			.getByRole("button", { name: new RegExp(`^${copy.actions.selectRow}:`) });
-	await dragFrom(page, number(2), () => centre(number(4)));
+	await dragFrom(page, label(tabelo, "row", 2), () =>
+		centre(label(tabelo, "row", 4)),
+	);
 
-	// The gesture on the neighbouring target extends the selection and leaves
-	// the document exactly as it was.
-	expect(await firstColumn(tabelo, 5)).toEqual([
-		"Ingrid",
-		"Paulo",
-		"Mabel",
-		"Felix",
-		"Amora",
-	]);
+	// The gesture extends the selection and leaves the document exactly as it
+	// was.
+	expect(await firstColumn(tabelo, 5)).toEqual(roster);
 	for (const row of [1, 2, 3]) {
 		await expect(tabelo.cell(row, 1)).toHaveAttribute("aria-selected", "true");
 	}
+});
+
+test("dragging an unselected column letter drag-selects and moves nothing", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+
+	await dragFrom(page, label(tabelo, "column", 1), () =>
+		centre(label(tabelo, "column", 3)),
+	);
+
+	expect(await headers(tabelo, 4)).toEqual(["name", "city", "role", "age"]);
+	for (const column of [1, 2, 3]) {
+		await expect(tabelo.header(column)).toHaveAttribute(
+			"aria-selected",
+			"true",
+		);
+	}
+});
+
+test("Shift+drag on a selected row extends the selection and never reorders", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	await label(tabelo, "row", 2).click();
+	await label(tabelo, "row", 3).click({ modifiers: ["Shift"] });
+
+	await page.keyboard.down("Shift");
+	await dragFrom(page, label(tabelo, "row", 3), () =>
+		gapPoint(tabelo, "row", 6, "after"),
+	);
+	await page.keyboard.up("Shift");
+
+	await expect(indicator(tabelo)).toHaveCount(0);
+	expect(await firstColumn(tabelo, 5)).toEqual(roster);
+	await expect(tabelo.cell(1, 1)).toHaveAttribute("aria-selected", "true");
+	await expect(tabelo.cell(2, 1)).toHaveAttribute("aria-selected", "true");
+});
+
+test("the label cursor says which gesture a press will make", async ({
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+
+	// At rest a label selects.
+	expect(await cursorOf(label(tabelo, "row", 2))).toBe("pointer");
+	expect(await cursorOf(label(tabelo, "column", 1))).toBe("pointer");
+
+	// Once its row or column is in the selection, a press picks it up.
+	await label(tabelo, "row", 2).click();
+	expect(await cursorOf(label(tabelo, "row", 2))).toBe("grab");
+	expect(await cursorOf(label(tabelo, "row", 3))).toBe("pointer");
+
+	await label(tabelo, "column", 1).click();
+	expect(await cursorOf(label(tabelo, "column", 1))).toBe("grab");
+	expect(await cursorOf(label(tabelo, "row", 2))).toBe("pointer");
 });
 
 test("the column resize handle still resizes instead of reordering", async ({
@@ -307,6 +352,8 @@ test("the column resize handle still resizes instead of reordering", async ({
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
+	// Selected, so the letter beside the handle would move if it took the press.
+	await label(tabelo, "column", 1).click();
 
 	const handle = tabelo
 		.columnIndex(1)
@@ -324,14 +371,16 @@ test("the column resize handle still resizes instead of reordering", async ({
 		.toBeGreaterThan(before);
 });
 
-test("a touch pointer on a grip does not start a reorder", async ({
+test("a touch pointer on a selected row does not start a reorder", async ({
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
+	await label(tabelo, "row", 2).click();
 
-	// Touch keeps native pane scrolling, so the grip ignores it and the keyboard
-	// and menu paths remain the way to reorder there.
-	await grip(tabelo, "row", 0).dispatchEvent("pointerdown", {
+	// Touch keeps native pane scrolling, so the label ignores it as a reorder
+	// and the keyboard and menu paths remain the way to reorder there.
+	const target = label(tabelo, "row", 2);
+	await target.dispatchEvent("pointerdown", {
 		pointerId: 1,
 		pointerType: "touch",
 		button: 0,
@@ -339,23 +388,17 @@ test("a touch pointer on a grip does not start a reorder", async ({
 		clientX: 0,
 		clientY: 0,
 	});
-	await grip(tabelo, "row", 0).dispatchEvent("pointermove", {
+	await target.dispatchEvent("pointermove", {
 		pointerId: 1,
 		pointerType: "touch",
 		clientX: 0,
 		clientY: 200,
 	});
-	await grip(tabelo, "row", 0).dispatchEvent("pointerup", {
+	await target.dispatchEvent("pointerup", {
 		pointerId: 1,
 		pointerType: "touch",
 	});
 
 	await expect(indicator(tabelo)).toHaveCount(0);
-	expect(await firstColumn(tabelo, 5)).toEqual([
-		"Ingrid",
-		"Paulo",
-		"Mabel",
-		"Felix",
-		"Amora",
-	]);
+	expect(await firstColumn(tabelo, 5)).toEqual(roster);
 });

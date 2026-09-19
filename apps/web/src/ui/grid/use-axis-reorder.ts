@@ -1,9 +1,11 @@
 import { type RefObject, useCallback, useEffect, useMemo, useRef } from "react";
 import { blockMoveOffset, type ContiguousBlock } from "@/core/operations";
 import {
+	type GridSelection,
 	HEADER_ROW,
 	isContiguous,
 	rectCoversHeader,
+	selectedAxis,
 	selectionRect,
 } from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
@@ -35,17 +37,20 @@ export type DropIndicatorSetter = (
 	geometry: DropIndicatorGeometry | null,
 ) => void;
 
-// How far the pointer travels along the axis before a press on a grip becomes a
-// reorder. Below it the press is only a press: the selection it made stands and
-// the document is untouched, which is what keeps a mis-aimed click harmless.
+// How far the pointer travels along the axis before a press on a selected label
+// becomes a reorder. Below it the press is only a click: it selects that one
+// row or column and the document is untouched, which is what keeps a
+// mis-aimed click harmless.
 const THRESHOLD_REM = 0.25;
 
 interface ReorderDrag {
 	readonly pointerId: number;
 	readonly axis: ReorderAxis;
+	// The label that was pressed, which a press that never travels selects.
+	readonly index: number;
 	readonly block: ContiguousBlock;
 	// Where the pointer went down, along the reordered axis only. Jitter across
-	// the axis never promotes a candidate, so a shaky press on a grip does not
+	// the axis never promotes a candidate, so a shaky press on a label does not
 	// turn into a move.
 	readonly origin: number;
 	readonly capture: HTMLElement;
@@ -70,14 +75,16 @@ interface AxisReorderOptions {
 }
 
 export interface AxisReorderController {
-	// Attached to a grip. Mouse and pen only: a touch press falls through so the
-	// pane keeps scrolling natively, and the keyboard and menu paths remain the
-	// way to reorder there.
-	readonly onGripPointerDown: (
+	// Offered every press on a row number or a column letter first (#288).
+	// Returns whether it took the press as a reorder candidate; when it did not,
+	// the press is the label's ordinary selection gesture. Mouse and pen only: a
+	// touch press falls through so the pane keeps scrolling natively, and the
+	// keyboard and menu paths remain the way to reorder there.
+	readonly onAxisPointerDown: (
 		axis: ReorderAxis,
 		index: number,
 		event: React.PointerEvent<HTMLElement>,
-	) => void;
+	) => boolean;
 	// Called by the autoscroll controller while a reorder drag is scrolling, so
 	// the boundary keeps up with content the pointer is not moving over.
 	readonly trackReorder: (
@@ -86,38 +93,50 @@ export interface AxisReorderController {
 	) => void;
 }
 
-// The block a grip press acts on. A grip inside the current contiguous
-// selection moves the whole of it; a grip outside moves its own row or column,
-// and the selection follows the gesture first so what will move is visible
-// before it does.
+// The block a press on a label would move, or null when the press is not a
+// reorder. Only a label whose whole row or column is already in one contiguous
+// selection moves anything, and then it moves the whole block: selection state,
+// not a separate grip, is what tells a reorder from a drag-select (#288). The
+// header row never moves, since every table keeps it first.
 //
 // The rectangle is read the same way `moveSelectedRow` reads it, so the two
 // paths can never disagree about which rows a drag and an `Alt`+arrow would
 // take.
-function blockFor(axis: ReorderAxis, index: number): ContiguousBlock {
-	const store = useTabeloStore.getState();
-	const rows = store.document.rows.length;
-	const columns = store.document.columns.length;
-	const rect = selectionRect(store.selection, rows, columns);
-	const covers =
-		isContiguous(store.selection) &&
-		(axis === "row"
-			? !rectCoversHeader(rect) && index >= rect.top && index <= rect.bottom
-			: index >= rect.left && index <= rect.right);
-
-	if (!covers) {
-		store.selectCell(
-			axis === "row"
-				? { row: index, column: 0 }
-				: { row: HEADER_ROW, column: index },
-			axis,
-		);
-		return { from: index, count: 1 };
+//
+// The grid reads the same answer to draw the `grab` cursor, so the cursor can
+// never promise a move the press would not make.
+export function movableAxis(
+	selection: GridSelection,
+	axis: ReorderAxis,
+	rows: number,
+	columns: number,
+): readonly number[] {
+	if (!isContiguous(selection)) return [];
+	const selected = selectedAxis(selection, axis, rows, columns);
+	if (selected.length === 0) return [];
+	if (
+		axis === "row" &&
+		rectCoversHeader(selectionRect(selection, rows, columns))
+	) {
+		return [];
 	}
+	return selected;
+}
 
-	return axis === "row"
-		? { from: rect.top, count: rect.bottom - rect.top + 1 }
-		: { from: rect.left, count: rect.right - rect.left + 1 };
+function reorderBlockFor(
+	axis: ReorderAxis,
+	index: number,
+): ContiguousBlock | null {
+	const store = useTabeloStore.getState();
+	const movable = movableAxis(
+		store.selection,
+		axis,
+		store.document.rows.length,
+		store.document.columns.length,
+	);
+	const from = movable[0];
+	if (from === undefined || !movable.includes(index)) return null;
+	return { from, count: movable.length };
 }
 
 // The gap the pointer is nearest, counted in items that stay before the block.
@@ -206,7 +225,7 @@ function indicatorFor(
 			};
 }
 
-// The pointer half of grid reordering. `Alt`+arrows and the axis menu keep
+// The pointer half of grid reordering. `Alt`+arrows and the grid menu keep
 // their own path and remain the accessible one; this ends in the same store
 // action, so a drag can never produce a document shape the keyboard could not.
 export function useAxisReorder({
@@ -258,7 +277,7 @@ export function useAxisReorder({
 		[paint],
 	);
 
-	const onGripPointerDown = useCallback(
+	const onAxisPointerDown = useCallback(
 		(
 			axis: ReorderAxis,
 			index: number,
@@ -267,12 +286,17 @@ export function useAxisReorder({
 			// Touch is deliberately not a reorder gesture: a press-and-drag there
 			// competes with scrolling the pane, and the keyboard and menu paths
 			// already expose the operation.
-			if (event.pointerType === "touch") return;
-			if (event.button !== 0) return;
-			if (dragRef.current) return;
+			if (event.pointerType === "touch") return false;
+			if (event.button !== 0) return false;
+			// A modified press always extends or toggles the selection, whether or
+			// not its label is selected, so Shift+drag never moves anything.
+			if (event.shiftKey || event.metaKey || event.ctrlKey) return false;
+			if (dragRef.current) return false;
+			const block = reorderBlockFor(axis, index);
+			if (!block) return false;
 
-			// A <span> is not focusable, so without this the browser moves focus to
-			// <body> after the handler runs and the grid stops answering keys.
+			// Focus stays where it was, as it does for a drag-select: the press
+			// has not chosen anything yet, and the grid keeps answering keys.
 			event.preventDefault();
 
 			const capture = event.currentTarget;
@@ -280,17 +304,19 @@ export function useAxisReorder({
 			dragRef.current = {
 				pointerId: event.pointerId,
 				axis,
-				block: blockFor(axis, index),
+				index,
+				block,
 				origin: axis === "row" ? event.clientY : event.clientX,
 				capture,
 				dragging: false,
 				boundary: null,
 			};
+			return true;
 		},
 		[],
 	);
 
-	// Capture is held by the grip, so its own element sees the rest of the
+	// Capture is held by the label, so its own element sees the rest of the
 	// gesture wherever the pointer goes, including outside the grid and outside
 	// the window. Listening here rather than on the element keeps every ending in
 	// one place and survives the row being re-rendered underneath the drag.
@@ -323,8 +349,21 @@ export function useAxisReorder({
 			const drag = dragRef.current;
 			if (!drag || event.pointerId !== drag.pointerId) return;
 			const dropped = drag.dragging ? drag.boundary : null;
-			const { axis, block } = drag;
+			const { axis, block, index } = drag;
 			teardown();
+			if (!drag.dragging) {
+				// A click on a selected label selects that row or column alone,
+				// exactly as a click on an unselected one does.
+				useTabeloStore
+					.getState()
+					.selectCell(
+						axis === "row"
+							? { row: index, column: 0 }
+							: { row: HEADER_ROW, column: index },
+						axis,
+					);
+				return;
+			}
 			if (dropped === null) return;
 
 			const offset = blockMoveOffset(dropped, block);
@@ -380,7 +419,7 @@ export function useAxisReorder({
 	// Stable, so the autoscroll controller can depend on it without tearing down
 	// and re-registering its window listeners on every render of the grid.
 	return useMemo(
-		() => ({ onGripPointerDown, trackReorder }),
-		[onGripPointerDown, trackReorder],
+		() => ({ onAxisPointerDown, trackReorder }),
+		[onAxisPointerDown, trackReorder],
 	);
 }

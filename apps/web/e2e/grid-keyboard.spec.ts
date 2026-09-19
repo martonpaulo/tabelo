@@ -270,12 +270,7 @@ test("pointer exits commit the active cell editor before focus moves", async ({
 		grid.getByRole("textbox", { name: copy.a11y.cellEditor(1, 0) }),
 		"Rio",
 	);
-	const rowMenuTrigger = grid.getByRole("button", {
-		name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(1)}`,
-	});
-	await tabelo.rowIndex(3).hover();
-	await expect(rowMenuTrigger).toBeVisible();
-	await rowMenuTrigger.click();
+	await tabelo.rowIndex(3).click({ button: "right" });
 	await expect(tabelo.cell(2, 1)).toHaveText("Rio");
 	const axisMenu = page.getByRole("menu", {
 		name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(1)}`,
@@ -347,21 +342,7 @@ test("Fit reveals clipped column content and explains disabled states", async ({
 	const width = async () => (await header.boundingBox())?.width ?? 0;
 	const original = await width();
 
-	const openMenu = async () => {
-		await tabelo
-			.gridSurface()
-			.getByRole("button", {
-				name: new RegExp(`^${copy.actions.columnActions}:`),
-			})
-			.first()
-			.click();
-		const menu = page.getByRole("menu", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		});
-		await menu.waitFor({ state: "visible" });
-		return menu;
-	};
-	const open = await openMenu();
+	const open = await tabelo.openColumnMenu(1);
 	const fit = open.getByRole("menuitem", {
 		name: copy.actions.fitColumnToContent,
 	});
@@ -378,7 +359,7 @@ test("Fit reveals clipped column content and explains disabled states", async ({
 	await fit.click();
 
 	await expect.poll(width).toBeGreaterThan(original);
-	const reopened = await openMenu();
+	const reopened = await tabelo.openColumnMenu(1);
 	await expect(
 		reopened.getByRole("menuitem", {
 			name: copy.actions.fitColumnToContent,
@@ -497,13 +478,7 @@ test("workspace width survives document history, reload, and duplication", async
 			name: new RegExp(`^${copy.actions.selectColumn}:`),
 		})
 		.click();
-	await tabelo
-		.gridSurface()
-		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		})
-		.first()
-		.click();
+	await tabelo.columnIndex(1).click({ button: "right" });
 	await page
 		.getByRole("menuitem", { name: copy.actions.duplicateColumns(1) })
 		.click();
@@ -527,13 +502,7 @@ test("Fit stores the same normalized width at different pane zoom levels", async
 		"A long single-line value whose natural width is measured at both pane zoom levels",
 	);
 	const fitColumn = async () => {
-		await tabelo
-			.gridSurface()
-			.getByRole("button", {
-				name: new RegExp(`^${copy.actions.columnActions}:`),
-			})
-			.first()
-			.click();
+		await tabelo.columnIndex(1).click({ button: "right" });
 		await page
 			.getByRole("menu")
 			.getByRole("menuitem", { name: copy.actions.fitColumnToContent })
@@ -585,18 +554,7 @@ test("column wrapping grows rows, persists, and keeps cell navigation", async ({
 	const cellHeight = async () =>
 		(await tabelo.cell(1, 1).boundingBox())?.height ?? 0;
 	const compactHeight = await cellHeight();
-	const openColumnMenu = async () => {
-		await tabelo
-			.gridSurface()
-			.getByRole("button", {
-				name: new RegExp(`^${copy.actions.columnActions}:`),
-			})
-			.first()
-			.click();
-		return page.getByRole("menu", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		});
-	};
+	const openColumnMenu = () => tabelo.openColumnMenu(1);
 
 	let menu = await openColumnMenu();
 	let wrap = menu.getByRole("menuitemcheckbox", {
@@ -1141,18 +1099,10 @@ test("the grid pane can wrap every column at once", async ({
 	};
 	const columnWrapped = async (column: number) => {
 		await page.keyboard.press("Escape");
-		await tabelo.columnIndex(column).hover();
-		await tabelo
-			.columnIndex(column)
-			.getByRole("button", {
-				name: new RegExp(`^${copy.actions.columnActions}:`),
-			})
-			.click();
-		const item = page
-			.getByRole("menu", {
-				name: new RegExp(`^${copy.actions.columnActions}:`),
-			})
-			.getByRole("menuitemcheckbox", { name: copy.actions.wrapColumnText });
+		const item = (await tabelo.openColumnMenu(column)).getByRole(
+			"menuitemcheckbox",
+			{ name: copy.actions.wrapColumnText },
+		);
 		const checked = (await item.getAttribute("aria-checked")) === "true";
 		await page.keyboard.press("Escape");
 		return checked;
@@ -1166,13 +1116,7 @@ test("the grid pane can wrap every column at once", async ({
 	expect(await columnWrapped(3)).toBe(true);
 
 	// Unwrap one column from its own menu: the pane command now reads mixed.
-	await tabelo.columnIndex(1).hover();
-	await tabelo
-		.columnIndex(1)
-		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		})
-		.click();
+	await tabelo.openColumnMenu(1);
 	await page
 		.getByRole("menuitemcheckbox", { name: copy.actions.wrapColumnText })
 		.click();
@@ -1385,3 +1329,59 @@ test("a typed column width applies, refuses out-of-range values, and resets", as
 	await expect(dialog).toBeHidden();
 	await expect.poll(width).toBeLessThan(original + 1);
 });
+
+// #288: the grid's one menu is the keyboard's too. With no click target, the
+// selection decides what it offers: whole rows, whole columns, or cells.
+for (const chord of ["Shift+F10", "ContextMenu"]) {
+	test(`${chord} opens the grid menu for what is selected`, async ({
+		page,
+		tabelo,
+	}) => {
+		await tabelo.paste("Name\tCity\nIngrid\tRio\nPaulo\tMadrid");
+		await tabelo.dismissNotices();
+		const anyMenu = page.locator('[data-slot="context-menu-content"]');
+
+		// One cell: the cell menu, which carries that cell's own type.
+		await tabelo.cell(1, 1).click();
+		await page.keyboard.press(chord);
+		await expect(anyMenu).toBeVisible();
+		await expect(
+			anyMenu.getByRole("group", { name: copy.actions.cellType }),
+		).toHaveCount(1);
+		await page.keyboard.press("Escape");
+		await expect(anyMenu).toBeHidden();
+		expect(await focusedCell(page)).toBe("0:0");
+
+		// The focused cell's whole row: the row menu, for that row.
+		await tabelo.cell(2, 1).click();
+		await page.keyboard.press("Control+Shift+Space");
+		await page.keyboard.press(chord);
+		const rowMenu = page.getByRole("menu", {
+			name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(1)}`,
+		});
+		await expect(rowMenu).toBeVisible();
+		await expect(
+			rowMenu.getByRole("menuitem", { name: copy.actions.insertRowsAbove(1) }),
+		).toBeVisible();
+		await expect(
+			rowMenu.getByRole("group", { name: copy.actions.cellType }),
+		).toHaveCount(0);
+		await page.keyboard.press("Escape");
+		await expect(rowMenu).toBeHidden();
+
+		// The focused cell's whole column: the column menu, with the column's
+		// own options.
+		await tabelo.cell(1, 2).click();
+		await page.keyboard.press("Control+Space");
+		await page.keyboard.press(chord);
+		const columnMenu = page.getByRole("menu", {
+			name: new RegExp(`^${copy.actions.columnActions}:`),
+		});
+		await expect(columnMenu).toBeVisible();
+		await expect(
+			columnMenu.getByRole("group", { name: copy.actions.alignment }),
+		).toHaveCount(1);
+		await page.keyboard.press("Escape");
+		await expect(columnMenu).toBeHidden();
+	});
+}

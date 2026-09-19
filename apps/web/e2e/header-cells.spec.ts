@@ -137,19 +137,14 @@ test("the strip selects the column and the header cell selects itself", async ({
 	expect(selectedFill).not.toBe(unselectedFill);
 });
 
-test("row 1 uses the same selectable number and actions anatomy", async ({
-	tabelo,
-}) => {
+test("row 1 uses the same selectable number anatomy", async ({ tabelo }) => {
 	const gutter = tabelo.grid().locator('[data-row-header="-1"]');
 	const select = gutter.getByRole("button", {
 		name: `${copy.actions.selectRow}: ${copy.a11y.headerRow}`,
 	});
-	await expect(gutter.getByRole("button")).toHaveCount(2);
-	await expect(
-		gutter.getByRole("button", {
-			name: new RegExp(`^${copy.actions.rowActions}:`),
-		}),
-	).toBeVisible();
+	// The number is the gutter cell's only control, as on every data row.
+	await expect(gutter.getByRole("button")).toHaveCount(1);
+	await expect(select).toBeVisible();
 	await expect(select).toHaveCSS("text-align", "right");
 	await expect(select).toHaveCSS("font-weight", "400");
 
@@ -168,22 +163,13 @@ test("the header cell no longer claims to rename on activation", async ({
 	await expect(tabelo.header(1).getByRole("button")).toHaveCount(0);
 });
 
-test("the column menu lives on the strip and names an unnamed column", async ({
+test("the column menu opens on the strip and names an unnamed column", async ({
 	tabelo,
 }) => {
-	await expect(
-		tabelo.header(1).getByRole("button", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		}),
-	).toHaveCount(0);
-
-	const trigger = tabelo.columnIndex(1).getByRole("button", {
-		name: `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("", 0, "text")}`,
-	});
-	await trigger.click();
+	await tabelo.columnIndex(1).click({ button: "right" });
 	await expect(
 		tabelo.page.getByRole("menu", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
+			name: `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("", 0, "text")}`,
 		}),
 	).toBeVisible();
 });

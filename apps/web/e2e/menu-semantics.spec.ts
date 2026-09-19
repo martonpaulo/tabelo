@@ -251,7 +251,7 @@ test("column choices are segmented radio groups that keep radio semantics", asyn
 		).toHaveCount(1);
 	}
 	await expect(
-		menu.locator('[data-slot="dropdown-menu-radio-item-indicator"]'),
+		menu.locator('[data-slot="context-menu-radio-item-indicator"]'),
 	).toHaveCount(0);
 
 	// A choice is read back from the column, not from the last click.
@@ -270,10 +270,13 @@ test("a segmented choice is reachable and chosen from the keyboard", async ({
 	page,
 	tabelo,
 }) => {
-	const trigger = tabelo.columnIndex(1).getByRole("button", {
-		name: new RegExp(`^${copy.actions.columnActions}:`),
-	});
-	const group = await tabelo.openAlignmentGroup(1);
+	// Opened from the keyboard on the letter, which is where focus returns.
+	const letter = tabelo.columnIndex(1).getByRole("button");
+	await letter.focus();
+	await page.keyboard.press("Shift+F10");
+	const group = page
+		.getByRole("menu", { name: new RegExp(`^${copy.actions.columnActions}:`) })
+		.getByRole("group", { name: copy.actions.alignment });
 	const right = group.getByRole("menuitemradio", {
 		name: copy.actions.alignRight,
 	});
@@ -281,7 +284,7 @@ test("a segmented choice is reachable and chosen from the keyboard", async ({
 	await expect(right).toBeFocused();
 	await page.keyboard.press("Enter");
 	await expect(group).toBeHidden();
-	await expect(trigger).toBeFocused();
+	await expect(letter).toBeFocused();
 	await expect(
 		(await tabelo.openAlignmentGroup(1)).getByRole("menuitemradio", {
 			name: copy.actions.alignRight,
@@ -293,13 +296,9 @@ test("table menus preserve named groups and fold directional ones into submenus"
 	page,
 	tabelo,
 }) => {
-	const trigger = tabelo
-		.gridSurface()
-		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		})
-		.first();
-	await trigger.click();
+	const letter = tabelo.columnIndex(1).getByRole("button");
+	await letter.focus();
+	await page.keyboard.press("Shift+F10");
 	const menu = page.getByRole("menu", {
 		name: new RegExp(`^${copy.actions.columnActions}:`),
 	});
@@ -330,7 +329,7 @@ test("table menus preserve named groups and fold directional ones into submenus"
 
 	await page.keyboard.press("Escape");
 	await page.keyboard.press("Escape");
-	await expect(trigger).toBeFocused();
+	await expect(letter).toBeFocused();
 	await tabelo.cell(1, 1).click({ button: "right" });
 	const context = page.locator('[data-slot="context-menu-content"]');
 	await expect(context).toBeVisible();
@@ -358,13 +357,9 @@ test("column menu labels stay out of traversal and the menu scrolls when narrow"
 	tabelo,
 }) => {
 	await page.setViewportSize({ width: 320, height: 568 });
-	const trigger = tabelo
-		.gridSurface()
-		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		})
-		.first();
-	await trigger.click();
+	const letter = tabelo.columnIndex(1).getByRole("button");
+	await letter.focus();
+	await page.keyboard.press("Shift+F10");
 	const menu = page.getByRole("menu", {
 		name: new RegExp(`^${copy.actions.columnActions}:`),
 	});
@@ -391,20 +386,14 @@ test("column menu labels stay out of traversal and the menu scrolls when narrow"
 	expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(568);
 
 	await page.keyboard.press("Escape");
-	await expect(trigger).toBeFocused();
+	await expect(letter).toBeFocused();
 });
 
 test("destructive menu actions keep one color across label and icon", async ({
 	page,
 	tabelo,
 }) => {
-	await tabelo
-		.gridSurface()
-		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.columnActions}:`),
-		})
-		.first()
-		.click();
+	await tabelo.openColumnMenu(1);
 	const action = page.getByRole("menuitem", {
 		name: copy.actions.deleteColumns(1),
 	});

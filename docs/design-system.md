@@ -316,7 +316,7 @@ what used to be two passes over every visual change is now one.
 | `--control-h-sm` | `h-control-sm` | 1.75rem: dense toolbars, menu triggers |
 | `--control-h-md` | `h-control-md` | 2rem: default control height |
 | `--panel-header-h` | `h-panel-header` | 2.75rem: every pane header |
-| `--grid-gutter-w` | `w-grid-gutter` | 5.5rem: row number between its reorder grip and its options control |
+| `--grid-gutter-w` | `w-grid-gutter` | 2.25rem: the row number and one small gap each side, nothing else (#288) |
 | `--grid-row-h` | `min-h-grid-row` | calc(var(--pane-zoom, 1) * 2rem): minimum table row height |
 | `--grid-col-w` | `w-grid-col` | 10.5rem: default column width |
 | `--grid-col-w-min` | `w-grid-col-min` | 4.5rem: resize floor |
@@ -1101,8 +1101,8 @@ the modal overlay.
 | Features | `apps/web/src/ui/{grid,source,preview,workspace}/` | Components that know about the table document |
 
 Actions are described once and rendered many times. `ui/grid/table-actions.ts`
-is the single list of table operations; the axis menus and context menu are
-renderers over it. A source view's context menu is the text counterpart and
+is the single list of table operations; the grid context menu and the pane
+menu are renderers over it. A source view's context menu is the text counterpart and
 lists only commands the editor's keymap binds, so it never gains an action the
 keyboard lacks. Never write an action inline in a
 menu. That is how a menu and a toolbar drift apart.
@@ -1492,32 +1492,26 @@ siblings), move is the long-stemmed `IconArrowNarrowUp` family, and fill keeps
 the plain `IconArrowUp` family it drags along. The four directions of a family
 are chosen as a set, not one at a time.
 
-Icon-only buttons are limited to the globally stable floating action trigger,
-the grid's per-row and per-column affordances, and the pane header's actions
-chevron, where a label would not fit. The pane chevron earns the exemption
+Icon-only buttons are limited to the globally stable floating action trigger
+and the pane header's actions chevron, where a label would not fit. The pane chevron earns the exemption
 because the view name beside it already carries the pane's identity: a second
 labelled button there repeated the word "Pane" once per open pane. Its
 accessible name is then the only signal it has, so that name states both the
 action and the view.
-The grid's axis affordances stay visually quiet with a small icon at rest, but their
-target is grown to the 1.75rem control minimum with an `::after`
-box rather than by taking layout the row gutter does not have. They appear on
-hover, on `focus-within` of the row or column, while the menu is open, and for
-whichever row and column the selection is currently in: the last of those is
-what teaches the relationship without putting an icon on every row at once.
-Every numbered gutter cell, including row 1, uses the same right-aligned,
-normal-weight number and row-actions icon. The gutter token reserves separate
-space for the number and for each affordance beside it, so revealing one never
-covers a number.
-The reorder grip is the third of those and follows the same reveal rule, sitting
-on the leading side of the row number and in the column strip's leading track.
-It is a drag target rather than a button: it is `aria-hidden` and never takes a
-tab stop, exactly like the column resize handle, because `Alt`+arrows and the
-menu's Move actions are its keyboard equal and a stop per row would be a trap
-(§9). The header row has no grip, since every table keeps exactly one header row
-and it is always the first; its track stays empty so the numbers stay aligned.
+**The grid draws no affordance icon beside a row number or a column letter**
+(decided on #288). Each label is one control: the row number or the column
+letter, which selects its row or column, carries the reorder gesture once that
+row or column is selected (§9), and is where the grid's context menu opens for
+its axis. Right-click, `Shift`+`F10`, and the `ContextMenu` key reach that
+menu; nothing hover-revealed stands in for it. Every numbered gutter cell,
+including row 1, uses the same right-aligned, normal-weight number, and the
+number fills its cell so the whole cell is the target. The gutter is sized for
+the number alone: three digits of the index face plus one small gap on each
+side (`--grid-gutter-w`, §2 Geometry). A column letter carries the
+cells' own inline padding, so it starts exactly where the text of its column
+starts.
 The pane-edge Add view control uses the full default control target and a larger
-plus than row or column affordances. It remains centred on the edge band and is
+plus than the grid's labels. It remains centred on the edge band and is
 revealed by edge hover or keyboard focus, never by hovering the pane body.
 The floating trigger has a stable accessible name, and every command inside its
 menu keeps a visible label. It displays the project mark rather than a generic
@@ -1673,7 +1667,7 @@ One rule shapes the rest: **the workspace is a two-level ring. `Tab` walks betwe
 column.** The ring holds the pane frame and the one trigger in its header, the
 pane actions chevron (§5), and that is all: the header is chrome that belongs beside the pane, not content
 inside it. Everything the view itself contains, including every select handle
-and axis menu the grid grows, is reachable only after entering. So the number
+the grid grows and its context menu, is reachable only after entering. So the number
 of stops the ring holds is a property of the layout and never of the table.
 
 A pane counts as entered when focus is in its **body**. Two consequences that
@@ -1716,6 +1710,7 @@ leaves the pane.
 | `Space` | On a column header, select the column: activating a button does what buttons do |
 | `Ctrl`+`Space` | Add the focused cell's column to the selection, or take it away |
 | `Ctrl`+`Shift`+`Space` | The same for its row |
+| `Shift`+`F10` / `ContextMenu` | Open the grid menu where focus is. On a row number or column letter it is that axis's menu; on a cell the selection decides: whole rows get the row menu, whole columns the column menu, anything else the cell menu (#288) |
 | `Escape` | Close the innermost thing first: cancel an edit, close a menu, clear the copied mark, collapse a selection to one cell. If nothing else is open, exit the pane |
 | `Backspace` | Clear the contents of the selection |
 | `Mod`+`Backspace` | Remove the selected rows or columns |
@@ -1757,8 +1752,8 @@ keep selection** submenu (#369), whose four directions carry no shortcut legend 
 disabled at the table's edges with the reason written out. That is what keeps
 multi-area selection off the pointer: `Ctrl`+`Space` adds the column the focus
 is in, and the menu is what carries the areas already selected past the move to
-the next column. The menu opens from the focused cell with the `ContextMenu`
-key as well as with a right-click, and closing it returns focus to the cell the
+the next column. The menu opens from the focused cell with `Shift`+`F10` or the
+`ContextMenu` key as well as with a right-click, and closing it returns focus to the cell the
 action moved to, revealed clear of the sticky chrome like every other focus
 move. `Alt`+`Shift` with the left or right arrow sets column width only while
 `Mod` is not held (#137; the guard in `table-grid.tsx` requires `!mod`).
@@ -1799,7 +1794,8 @@ the grid commits the open editor before the destination takes focus, just like
 **Every pointer affordance needs a keyboard equal.** Column width is the case
 that proves it: the drag handle stays pointer-only and `aria-hidden`, while
 `Alt`+`Shift`+Left/Right resizes the focused column and announces the resulting
-width or limit through the grid status channel. The column menu adds Fit column
+width or limit through the grid status channel. The column's menu (the grid
+context menu opened on its letter) adds Fit column
 to content for the common automatic case and Set column width for an exact
 one (#370), not stepping commands or a live numeric readout. Set column width
 opens a dialog, because a typed number is a choice a menu cannot hold: it takes
@@ -1812,7 +1808,8 @@ areas is the same obligation, and the two `Space` chords above are its answer.
 
 **An equal is an addition, never a replacement** (#139). Reordering ships both ways:
 `Alt`+arrows and the menu's four Move actions stay exactly as they are and
-remain the accessible path, and dragging a reorder grip is offered beside them.
+remain the accessible path, and dragging a selected row number or column
+letter is offered beside them (#288).
 Both routes end in the same store action, so a drag can never produce a document
 shape the keyboard could not, and both are one history step.
 
@@ -1864,16 +1861,26 @@ directions at once are not offered at all: this is a table editor, not a
 spreadsheet, and each of those is a guess about intent dressed as a
 convenience.
 
-**A gesture means one thing on one target.** The three drag targets in the grid
-chrome are distinct elements, not three readings of the same press: the row
-number and the column letter select, and drag-select along their axis; the
-column letter's trailing edge resizes; the grip on the leading side reorders.
-This is what the rule rests on, not cursor shape, though the grip does carry
-`grab` and `grabbing` to confirm it. A reorder begins only once the pointer
-crosses a small threshold along its own axis, so a press that does not travel
-stays a press and keeps the selection it made. The gesture is mouse and pen
-only: on touch a press-and-drag belongs to scrolling the pane, and the keyboard
-and menu equals cover the operation there.
+**A press means one thing in one state** (decided on #288, replacing "one
+gesture on one target" and its separate reorder grip). The row number and the
+column letter carry two drag gestures, and the current selection, not a second
+target, decides which a press makes, as it does in Google Sheets:
+
+| Press on a label | Result |
+| :--- | :--- |
+| Touch | Selects, as a tap; a drag scrolls the pane and never reorders |
+| Any button but the primary | Nothing; the context menu owns it |
+| With `Shift` or the modifier | Extends or toggles the selection, never a reorder |
+| On a row or column outside the selection | Selects it, and drag-selects along the axis |
+| On a row or column inside one contiguous selection | Picks up the whole selected block to move it |
+
+The header row never moves, since every table keeps it first, so a press on
+its number only selects. A reorder begins only once the pointer crosses a small
+threshold along its own axis, so a press on a selected label that does not
+travel is a click, and selects that row or column alone. The column letter's
+trailing edge is a separate element and only resizes. The cursor carries the
+state: `pointer` on a label at rest, `grab` once its row or column would move,
+`grabbing` while held.
 
 While a block is being dragged, one line marks the gap it will land in. The
 document changes once, on drop. `Escape`, a cancelled or lost pointer, and a
@@ -1984,7 +1991,8 @@ one: two selected columns announce as two.
 Cursor shape confirms the interaction before a click: buttons, menu actions,
 checkboxes, radio controls, and clickable row or column labels use `pointer`;
 editable text uses `text`; cells use `cell`; split and column handles use the
-matching resize cursor; reorder grips use `grab`, and `grabbing` while held;
+matching resize cursor; a row number or column letter whose row or column is
+selected, and so would move, uses `grab`, and `grabbing` while held;
 the fill handle uses `crosshair`; disabled controls use `not-allowed`. Do not
 apply a pointer cursor to passive labels or read-only content.
 
@@ -2125,10 +2133,9 @@ redrawn in another colour.
 The mark is derived from the selection on every render and is never stored as a
 second record of it. It is presentation only: `aria-selected` and the selection
 announcement stay on the cells, and an axis that merely contains selected cells
-is not exposed as if the whole row or column were selected. Reorder grips and
-axis-menu triggers still follow focus alone. At rest every number is
-right-aligned and normal weight, including row 1, matching source and read-only
-view line gutters. Row 1 keeps the same row-actions control as every data row;
+is not exposed as if the whole row or column were selected. At rest every
+number is right-aligned and normal weight, including row 1, matching source and
+read-only view line gutters. Row 1 opens the same row menu as every data row;
 actions that cannot apply to the required header remain disabled and explain
 why.
 
@@ -2185,11 +2192,11 @@ mirrors the row-number gutter on the other axis. Both are chrome:
   and body begin on one vertical rhythm.
 - **It owns the column.** Clicking a letter selects the whole column, header
   included. The letter is paired with the compact mark for the column's
-  expected type. The select control and column-actions control both include
-  the full expected type in their accessible names, so the same metadata is
-  available by keyboard without another tab stop. The column menu and the
-  resize handle live here, revealed by the same rule as the row affordances
-  (§6).
+  expected type. The select control and the column menu both include the full
+  expected type in their accessible names, so the same metadata is available
+  by keyboard without another tab stop. The letter is the cell's only control
+  (§6): the column menu is the grid context menu opened on it, and the resize
+  handle is its trailing edge.
 - **A per-column property follows the selection.** Alignment, expected type,
   and width applied to a column that is selected as a column apply to every
   selected column, adjacent or not. Applied to any other column they stay there,
@@ -2227,7 +2234,7 @@ which is why only an unpinned strip cell adds `relative` for its resize handle.
 ### Pinning the first data row and column
 
 The chrome above is always sticky. Two data layers are sticky **only when the
-user asks for them** (#160), from a checkbox in the axis menu of the first data row and
+user asks for them** (#160), from a checkbox in the menu of the first data row and
 of the first data column, which are the only row and column either preference can
 reach. There is no freeze boundary of N rows or N columns: that is the
 spreadsheet shape the product declines, and two booleans answer the same need
@@ -2290,7 +2297,7 @@ arrangement, not an extreme one.
 
 Dragging a cell, row number, or column letter past the pane edge autoscrolls the
 grid (#141) on the axes that gesture owns and continues extending the selection. A
-reorder grip autoscrolls the same way and keeps moving the drop line instead,
+reorder drag autoscrolls the same way and keeps moving the drop line instead,
 while a fill handle extends its preview. One controller owns every grid drag,
 clamps velocity, and stops at the document edge; reorder and fill gestures
 consume it rather than creating parallel frame loops. Reduced motion keeps the

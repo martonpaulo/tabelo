@@ -366,13 +366,7 @@ test("the fill handle stays on a pinned cell while the table scrolls", async ({
 		].join("\n"),
 	);
 	await tabelo.dismissNotices();
-	await tabelo
-		.grid()
-		.getByRole("button", {
-			name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(0)}`,
-			exact: true,
-		})
-		.click();
+	await tabelo.openRowMenu(2);
 	await page
 		.getByRole("menuitemcheckbox", { name: copy.actions.pinFirstRow })
 		.click();

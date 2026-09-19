@@ -64,8 +64,8 @@ test("the workspace ring does not grow with the table", async ({
 		.poll(() => tabelo.grid().getByRole("row").count())
 		.toBeGreaterThan(100);
 
-	// Same walk, 200 rows and twice the columns later. Every select handle and
-	// axis menu the grid grew belongs to the pane's content, not to this ring.
+	// Same walk, 200 rows and twice the columns later. Every select handle the
+	// grid grew belongs to the pane's content, not to this ring.
 	await gridPane.focus();
 	await expect(rowSelect).toHaveAttribute("tabindex", "-1");
 	expect(await tabsToReach(page, markdownPane)).toBe(before);

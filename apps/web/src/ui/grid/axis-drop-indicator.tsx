@@ -10,8 +10,8 @@ import type {
 // through, rather than the grid holding the geometry and passing it down. A
 // drag then repaints this one element per pointer move instead of reconciling
 // two hundred rows against the memo boundary sixty times a second. The grid
-// already uses this shape for the axis menu, which is one root behind many
-// triggers for the same reason.
+// already uses this shape for its context menu, which is one root for every
+// cell for the same reason.
 //
 // Transient by construction: it is drag state, never document state, so it
 // reaches neither history nor persistence and is gone the moment the drag ends.

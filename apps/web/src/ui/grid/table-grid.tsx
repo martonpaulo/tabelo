@@ -35,18 +35,10 @@ import {
 	atMaximumColumnWidth,
 	atMinimumColumnWidth,
 	clampColumnWidth,
-	fitColumnWidth,
 	resolveColumnWidth,
 	stepColumnWidth,
 } from "@/workspace/column-width";
 import { AxisDropIndicator } from "./axis-drop-indicator";
-import {
-	type AxisMenuHandle,
-	AxisMenuPopupHost,
-	AxisMenuTrigger,
-	createAxisMenuHandle,
-} from "./axis-menu";
-import { AxisReorderGrip } from "./axis-reorder-grip";
 import { CellEditor, type EditorExit, wrappedLinesClass } from "./cell-editor";
 import {
 	cellTypeDiverges,
@@ -73,6 +65,7 @@ import {
 import {
 	type AxisReorderController,
 	type DropIndicatorSetter,
+	movableAxis,
 	useAxisReorder,
 } from "./use-axis-reorder";
 import { useFillDrag } from "./use-fill-drag";
@@ -89,6 +82,23 @@ import { usePinnedAxes } from "./use-pinned-axes";
 // their own in the modern table (owner, 2026-09-19), and never touch a line.
 // See docs/design-system.md.
 const selectedAxisClass = "font-semibold text-foreground";
+
+// A row number or column letter is the only control on its label (#288), and
+// the cursor is what tells its two gestures apart: `pointer` selects, and once
+// the row or column is in the selection a press picks it up to move instead,
+// with `grabbing` held for as long as the button is.
+function axisLabelCursor(movable: boolean): string {
+	return movable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer";
+}
+
+// A row number fills its gutter cell, so the whole cell is the target and the
+// gutter needs no width beyond the digits and one gap on each side (#288).
+function axisNumberClass(movable: boolean): string {
+	return cn(
+		"flex h-content-line-box w-full items-center justify-end rounded-interactive px-1 text-right hover:text-foreground",
+		axisLabelCursor(movable),
+	);
+}
 
 const alignClass: Record<Alignment, string> = {
 	default: "text-left",
@@ -421,9 +431,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// one element rather than the whole table on every pointer move.
 	const setIndicatorRef = useRef<DropIndicatorSetter | null>(null);
 	const setFillPreviewRef = useRef<FillPreviewSetter | null>(null);
-	// One handle for the whole grid: every gutter trigger opens the single root
-	// mounted below, because only one axis menu can be open at a time.
-	const [axisMenuHandle] = useState(createAxisMenuHandle);
 	const [typedDecision, setTypedDecision] = useState<TypedCellDecision | null>(
 		null,
 	);
@@ -454,6 +461,20 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		document.columns.length,
 	);
 	const focus = activeRange(selection).focus;
+	// The rows and columns a press on their label would pick up and move, which
+	// is what their `grab` cursor says (#288).
+	const movableRows = movableAxis(
+		selection,
+		"row",
+		document.rows.length,
+		document.columns.length,
+	);
+	const movableColumns = movableAxis(
+		selection,
+		"column",
+		document.rows.length,
+		document.columns.length,
+	);
 	const headerRowSelected = rects.some(
 		(rect) => HEADER_ROW >= rect.top && HEADER_ROW <= rect.bottom,
 	);
@@ -1182,7 +1203,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	};
 
 	return (
-		<GridContextMenu wrapperRef={wrapperRef}>
+		<GridContextMenu
+			wrapperRef={wrapperRef}
+			tableRef={gridRef}
+			zoom={zoom}
+			onSetColumnWidth={openWidthDialog}
+		>
 			{/* The strip and the table are siblings, and these three events belong to
 			    both of them: an editor is committed by a pointer press anywhere on
 			    the grid surface, and the clipboard follows focus, which a strip
@@ -1264,15 +1290,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					{document.columns.map((column, columnIndex) => (
 						<ColumnIndexCell
 							key={column.id}
-							axisMenuHandle={axisMenuHandle}
-							tableRef={gridRef}
 							columnIndex={columnIndex}
 							header={column.header}
 							expectedType={column.expectedType}
-							focused={focus.column === columnIndex}
 							selected={rects.some(
 								(rect) => columnIndex >= rect.left && columnIndex <= rect.right,
 							)}
+							movable={movableColumns.includes(columnIndex)}
 							width={resolveColumnWidth(columnWidths[column.id])}
 							zoom={zoom}
 							pinned={pinnedColumn && columnIndex === 0}
@@ -1284,7 +1308,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								if (draggingRef.current !== "column") return;
 								selectColumn(columnIndex, "extend");
 							}}
-							onGripPointerDown={reorder.onGripPointerDown}
+							onAxisPointerDown={reorder.onAxisPointerDown}
 						/>
 					))}
 				</div>
@@ -1322,7 +1346,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 							// biome-ignore lint/a11y/noRedundantRoles: see the tbody rows
 							role="row"
 							aria-rowindex={1}
-							className="group/row h-content-line-box"
+							className="h-content-line-box"
 						>
 							<th
 								scope="row"
@@ -1334,7 +1358,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								// menu fell through to cell actions on a non-cell.
 								data-row-header={HEADER_ROW}
 								className={cn(
-									"sticky top-grid-strip left-0 z-30 border-b border-b-line-strong bg-surface-code px-1 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums",
+									"sticky top-grid-strip left-0 z-30 border-b border-b-line-strong bg-surface-code p-0 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums",
 									headerRowSelected && selectedAxisClass,
 								)}
 								data-axis-selected={headerRowSelected || undefined}
@@ -1343,37 +1367,26 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									selectRow(HEADER_ROW, "extend");
 								}}
 							>
-								<div className="grid h-content-line-box grid-cols-(--grid-axis-cols) items-center gap-1">
-									{/* No reorder grip: every table keeps exactly one header row
-								    and it is always the first, so there is nowhere for it to
-								    go. The track stays so its number lines up with every
-								    other one. */}
-									<span aria-hidden="true" />
-									<button
-										type="button"
-										tabIndex={entered ? 0 : -1}
-										aria-label={`${copy.actions.selectRow}: ${copy.a11y.headerRow}`}
-										className="min-w-0 cursor-pointer justify-self-end rounded-interactive px-1 text-right hover:text-foreground"
-										onPointerDown={(event) => {
-											if (event.button !== 0) return;
-											draggingRef.current = "row";
+								{/* Select only: every table keeps exactly one header row and
+								    it is always the first, so there is nowhere for it to move. */}
+								<button
+									type="button"
+									tabIndex={entered ? 0 : -1}
+									aria-label={`${copy.actions.selectRow}: ${copy.a11y.headerRow}`}
+									className={axisNumberClass(false)}
+									onPointerDown={(event) => {
+										if (event.button !== 0) return;
+										draggingRef.current = "row";
+										selectRow(HEADER_ROW, selectIntentOf(event));
+									}}
+									onClick={(event) => {
+										// A keyboard-generated click has no pointer detail.
+										if (event.detail === 0)
 											selectRow(HEADER_ROW, selectIntentOf(event));
-										}}
-										onClick={(event) => {
-											// A keyboard-generated click has no pointer detail.
-											if (event.detail === 0)
-												selectRow(HEADER_ROW, selectIntentOf(event));
-										}}
-									>
-										1
-									</button>
-									<AxisMenuTrigger
-										handle={axisMenuHandle}
-										axis="row"
-										index={HEADER_ROW}
-										revealed={focus.row === HEADER_ROW}
-									/>
-								</div>
+									}}
+								>
+									1
+								</button>
 							</th>
 							{document.columns.map((column, columnIndex) => (
 								<HeaderCell
@@ -1435,8 +1448,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								row={row}
 								rowIndex={rowIndex}
 								columns={document.columns}
-								axisMenuHandle={axisMenuHandle}
-								focused={focus.row === rowIndex}
+								movable={movableRows.includes(rowIndex)}
 								focusColumn={focus.row === rowIndex ? focus.column : NO_COLUMN}
 								selectedSpans={spansOf(rects, rowIndex)}
 								// Narrowed for the same reason, and to primitives for the
@@ -1467,7 +1479,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								selectRow={selectRow}
 								onFinishCellEdit={finishCellEdit}
 								draggingRef={draggingRef}
-								onGripPointerDown={reorder.onGripPointerDown}
+								onAxisPointerDown={reorder.onAxisPointerDown}
 							/>
 						))}
 					</tbody>
@@ -1490,13 +1502,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			    the geometry needs no scroll arithmetic of its own. */}
 			<AxisDropIndicator setterRef={setIndicatorRef} />
 
-			{/* The one root behind every gutter trigger above. It sits outside the
-			    table so it is never a child of a <tr>, and it portals its popup
-			    anyway, so its position in the tree carries no layout. */}
-			<AxisMenuPopupHost
-				handle={axisMenuHandle}
-				onSetColumnWidth={openWidthDialog}
-			/>
 			<ColumnWidthDialog
 				column={widthDialogColumn}
 				onClose={() => setWidthDialogColumn(null)}
@@ -1534,8 +1539,8 @@ interface DataRowProps {
 	readonly row: Row;
 	readonly rowIndex: number;
 	readonly columns: readonly Column[];
-	readonly axisMenuHandle: AxisMenuHandle;
-	readonly focused: boolean;
+	// Whether a press on this row's number would pick up the selected block.
+	readonly movable: boolean;
 	// This row's focused and editing columns, or NO_COLUMN.
 	readonly focusColumn: number;
 	// This row's selected column spans, as "left:right" pairs. A string rather
@@ -1574,15 +1579,14 @@ interface DataRowProps {
 		wasSeeded: boolean,
 	) => void;
 	readonly draggingRef: React.RefObject<GridDragKind | null>;
-	readonly onGripPointerDown: AxisReorderController["onGripPointerDown"];
+	readonly onAxisPointerDown: AxisReorderController["onAxisPointerDown"];
 }
 
 const DataRow = memo(function DataRow({
 	row,
 	rowIndex,
 	columns,
-	axisMenuHandle,
-	focused,
+	movable,
 	focusColumn,
 	selectedSpans,
 	copiedSpans,
@@ -1600,7 +1604,7 @@ const DataRow = memo(function DataRow({
 	selectRow,
 	onFinishCellEdit,
 	draggingRef,
-	onGripPointerDown,
+	onAxisPointerDown,
 }: DataRowProps) {
 	// Read here rather than threaded down, matching ColumnIndexCell and
 	// HeaderCell, and preserving today's behaviour of every row reacting
@@ -1626,7 +1630,6 @@ const DataRow = memo(function DataRow({
 			// The header row is row 1, so the body starts at 2. This is
 			// what makes the declared aria-rowcount add up.
 			aria-rowindex={rowIndex + 2}
-			className="group/row"
 		>
 			<th
 				scope="row"
@@ -1634,7 +1637,7 @@ const DataRow = memo(function DataRow({
 				role="rowheader"
 				// The heading a screen reader reads as the row context for
 				// every cell beside it, so it names the row rather than
-				// concatenating the two controls it contains.
+				// repeating the control it contains.
 				aria-label={copy.a11y.rowNumber(rowIndex)}
 				data-row-header={rowIndex}
 				className={cn(
@@ -1642,8 +1645,8 @@ const DataRow = memo(function DataRow({
 					// strong line the header row's gutter cell already draws; the
 					// edge between two numbers is a row boundary like any other.
 					"sticky left-0 border-b border-b-line-subtle bg-surface-code align-top",
-					"px-1 text-right font-index font-normal text-muted-foreground text-xs tabular-nums",
-					// The row's number and its menu are how the row identifies itself,
+					"p-0 text-right font-index font-normal text-muted-foreground text-xs tabular-nums",
+					// The row's number is how the row identifies itself,
 					// so they hold position with it. Pinned it sticks on both axes and
 					// joins the corner layer, like the header row's own gutter cell.
 					// A row holding any selected cell marks its number, from the
@@ -1659,40 +1662,26 @@ const DataRow = memo(function DataRow({
 					selectRow(rowIndex, "extend");
 				}}
 			>
-				<div className="grid h-content-line-box grid-cols-(--grid-axis-cols) items-center gap-1">
-					<AxisReorderGrip
-						axis="row"
-						index={rowIndex}
-						revealed={focused}
-						onPointerDown={onGripPointerDown}
-					/>
-					<button
-						type="button"
-						tabIndex={entered ? 0 : -1}
-						aria-label={`${copy.actions.selectRow}: ${copy.a11y.rowNumber(rowIndex)}`}
-						className="min-w-0 cursor-pointer justify-self-end rounded-interactive px-1 text-right hover:text-foreground"
-						onPointerDown={(event) => {
-							if (event.button !== 0) return;
-							draggingRef.current = "row";
-							selectRow(rowIndex, selectIntentOf(event));
-						}}
-						onClick={(event) => {
-							// A keyboard-generated click has no pointer detail.
-							if (event.detail === 0)
-								selectRow(rowIndex, selectIntentOf(event));
-						}}
-					>
-						{rowIndex + 2}
-					</button>
-					<span className="inline-flex">
-						<AxisMenuTrigger
-							handle={axisMenuHandle}
-							axis="row"
-							index={rowIndex}
-							revealed={focused}
-						/>
-					</span>
-				</div>
+				<button
+					type="button"
+					tabIndex={entered ? 0 : -1}
+					aria-label={`${copy.actions.selectRow}: ${copy.a11y.rowNumber(rowIndex)}`}
+					className={axisNumberClass(movable)}
+					onPointerDown={(event) => {
+						if (event.button !== 0) return;
+						// A selected row picks the selected block up to move it;
+						// anything else selects, and drag-selects along the gutter.
+						if (onAxisPointerDown("row", rowIndex, event)) return;
+						draggingRef.current = "row";
+						selectRow(rowIndex, selectIntentOf(event));
+					}}
+					onClick={(event) => {
+						// A keyboard-generated click has no pointer detail.
+						if (event.detail === 0) selectRow(rowIndex, selectIntentOf(event));
+					}}
+				>
+					{rowIndex + 2}
+				</button>
 			</th>
 
 			{columns.map((column, columnIndex) => {
@@ -1885,97 +1874,46 @@ const DataRow = memo(function DataRow({
 
 // One cell of the column index strip. It carries the column's positional
 // letter, which for an unnamed column is the only identity it has, and it owns
-// every affordance that used to crowd the header text: selection, the column
-// menu, and the resize handle.
+// the column's pointer gestures: select, reorder, and resize. Its menu is the
+// grid's context menu, opened on the letter (#288).
 interface ColumnIndexCellProps {
-	readonly axisMenuHandle: AxisMenuHandle;
-	// The semantic table, passed explicitly rather than found by walking up from
-	// this cell: the strip is chrome beside the table, so there is no longer an
-	// ancestor table to walk to. Fit measures the column's rendered content,
-	// which only the table holds.
-	readonly tableRef: React.RefObject<HTMLTableElement | null>;
 	readonly columnIndex: number;
 	readonly header: string;
 	readonly expectedType: ExpectedColumnType;
-	// The column the user is working in, which is where its actions appear.
-	readonly focused: boolean;
 	// Whether any selected area reaches this column. Presentation only: it
 	// marks the letter so the user can find their place from the edge of the
-	// grid, while focus alone still decides where the column's actions appear.
+	// grid.
 	readonly selected: boolean;
+	// Whether a press on the letter would pick up the selected block.
+	readonly movable: boolean;
 	// The stored width is in rem. Zoom scales what is rendered, so the drag
 	// gesture converts viewport pixels back before writing a width down.
 	readonly width: number;
 	readonly zoom: number;
 	// Whether this cell belongs to the pinned first data column. A column is its
-	// header plus its cells, and the letter and the menu are how the column
-	// names itself, so both travel with the layer rather than scrolling off it.
+	// header plus its cells, and the letter is how the column names itself, so
+	// it travels with the layer rather than scrolling off it.
 	readonly pinned: boolean;
 	readonly onSelect: (intent: SelectIntent) => void;
 	readonly onDragStart: () => void;
 	readonly onDragEnter: () => void;
-	readonly onGripPointerDown: AxisReorderController["onGripPointerDown"];
-}
-
-function zoomNormalizedNaturalWidth(
-	element: HTMLElement,
-	zoom: number,
-): number {
-	const style = getComputedStyle(element);
-	const clone = element.cloneNode(true) as HTMLElement;
-	clone.removeAttribute("data-column-content");
-	Object.assign(clone.style, {
-		position: "fixed",
-		top: "0",
-		left: "-10000px",
-		visibility: "hidden",
-		pointerEvents: "none",
-		width: "max-content",
-		maxWidth: "none",
-		height: "auto",
-		overflow: "visible",
-		whiteSpace: "pre",
-		fontFamily: style.fontFamily,
-		fontSize: `${Number.parseFloat(style.fontSize) / zoom}px`,
-		fontStyle: style.fontStyle,
-		fontWeight: style.fontWeight,
-		fontStretch: style.fontStretch,
-		fontKerning: style.fontKerning,
-		fontFeatureSettings: style.fontFeatureSettings,
-		fontVariationSettings: style.fontVariationSettings,
-		letterSpacing: style.letterSpacing,
-		wordSpacing: style.wordSpacing,
-		textTransform: style.textTransform,
-	});
-	document.body.append(clone);
-	try {
-		// Measure at the product's base content size, then express that value in
-		// the current zoomed coordinate space for fitColumnWidth to normalize.
-		// This avoids variable-font optical sizing changing stored widths when the
-		// same text is fitted in panes with different content scales.
-		return clone.scrollWidth * zoom;
-	} finally {
-		clone.remove();
-	}
+	readonly onAxisPointerDown: AxisReorderController["onAxisPointerDown"];
 }
 
 function ColumnIndexCell({
-	axisMenuHandle,
-	tableRef,
 	columnIndex,
 	header,
 	expectedType,
-	focused,
 	selected,
+	movable,
 	width,
 	zoom,
 	pinned,
 	onSelect,
 	onDragStart,
 	onDragEnter,
-	onGripPointerDown,
+	onAxisPointerDown,
 }: ColumnIndexCellProps) {
-	const cellRef = useRef<HTMLDivElement>(null);
 	const resizeState = useRef<{
 		startX: number;
 		startWidth: number;
@@ -1983,41 +1921,9 @@ function ColumnIndexCell({
 	} | null>(null);
 	const letter = copy.a11y.columnLetter(columnIndex);
 	const entered = usePaneEntered();
-	const measureFitWidth = () => {
-		const cell = cellRef.current;
-		const table = tableRef.current;
-		if (!cell || !table) return undefined;
-		const content = Array.from(
-			table.querySelectorAll<HTMLElement>(
-				`[data-column-content="${columnIndex}"]`,
-			),
-		);
-		if (content.length === 0) return undefined;
-		const box = content[0]?.parentElement;
-		if (!box) return undefined;
-		const boxStyle = getComputedStyle(box);
-		const decorationWidth = [
-			boxStyle.paddingLeft,
-			boxStyle.paddingRight,
-			boxStyle.borderLeftWidth,
-			boxStyle.borderRightWidth,
-		].reduce((total, value) => total + (Number.parseFloat(value) || 0), 0);
-		const rootFontSize = Number.parseFloat(
-			getComputedStyle(document.documentElement).fontSize,
-		);
-		return fitColumnWidth(
-			Math.max(
-				...content.map((element) => zoomNormalizedNaturalWidth(element, zoom)),
-			),
-			rootFontSize,
-			zoom,
-			decorationWidth,
-		);
-	};
 
 	return (
 		<div
-			ref={cellRef}
 			data-column-header={columnIndex}
 			data-column-letter={letter}
 			data-expected-type={expectedType}
@@ -2026,8 +1932,8 @@ function ColumnIndexCell({
 				// The modern table (owner, 2026-09-19): the letters sit on the
 				// content surface with no band, no dividers, and no line under
 				// them; only the header row's bottom edge and the row lines draw.
-				"group/col min-w-0",
-				"bg-surface-code px-2 text-left font-index font-normal text-muted-foreground text-xs",
+				"min-w-0",
+				"bg-surface-code text-left font-index font-normal text-muted-foreground text-xs",
 				selected && selectedAxisClass,
 				// Pinned it sticks sideways and joins the corner layer, beside the
 				// dead corner where the letters meet the row numbers. The strip
@@ -2043,54 +1949,41 @@ function ColumnIndexCell({
 			)}
 			onPointerEnter={onDragEnter}
 		>
-			{/* A fixed track on each side keeps the letter centred on the cell
-			    itself rather than on the space left over after the menu trigger,
-			    the same anchoring technique the row-number gutter uses below to
-			    keep its digits put regardless of the control beside them. The
-			    leading track balanced the trigger's width on the other side and
-			    was empty; the reorder grip now occupies it, so the letter stays
-			    exactly where it was. */}
-			<div className="grid h-full grid-cols-(--grid-axis-cols) items-center gap-1">
-				<AxisReorderGrip
-					axis="column"
-					index={columnIndex}
-					revealed={focused}
-					onPointerDown={onGripPointerDown}
-				/>
-				{/* The handle for the whole column. It names itself after the column it
-				    selects, falling back to the letter when the header is empty, which
-				    is the same rule the header cell announces by. */}
-				<button
-					type="button"
-					tabIndex={entered ? 0 : -1}
-					aria-label={`${copy.actions.selectColumn}: ${copy.a11y.columnWithExpectedType(header, columnIndex, expectedType)}`}
-					className="min-w-0 cursor-pointer truncate rounded-interactive px-1 text-left hover:text-foreground"
-					onPointerDown={(event) => {
-						if (event.button !== 0) return;
-						onDragStart();
-						onSelect(selectIntentOf(event));
-					}}
-					onClick={(event) => {
-						// A keyboard-generated click has no pointer detail.
-						if (event.detail === 0) onSelect(selectIntentOf(event));
-					}}
-				>
-					<span className="inline-flex min-w-0 items-center gap-1">
-						<span className="truncate">{letter}</span>
-						<CellTypeMark
-							type={expectedCellValueType(expectedType)}
-							context="column"
-						/>
-					</span>
-				</button>
-				<AxisMenuTrigger
-					handle={axisMenuHandle}
-					axis="column"
-					index={columnIndex}
-					revealed={focused}
-					measureFitWidth={measureFitWidth}
-				/>
-			</div>
+			{/* The handle for the whole column, and the cell's only control (#288).
+			    It fills the cell and carries the cells' own inline padding, so the
+			    letter starts exactly where the text of the column below it does.
+			    It names itself after the column it selects, falling back to the
+			    letter when the header is empty, which is the same rule the header
+			    cell announces by. */}
+			<button
+				type="button"
+				tabIndex={entered ? 0 : -1}
+				aria-label={`${copy.actions.selectColumn}: ${copy.a11y.columnWithExpectedType(header, columnIndex, expectedType)}`}
+				className={cn(
+					"flex h-full w-full min-w-0 items-center rounded-interactive px-2 text-left hover:text-foreground",
+					axisLabelCursor(movable),
+				)}
+				onPointerDown={(event) => {
+					if (event.button !== 0) return;
+					// A selected column picks the selected block up to move it;
+					// anything else selects, and drag-selects along the strip.
+					if (onAxisPointerDown("column", columnIndex, event)) return;
+					onDragStart();
+					onSelect(selectIntentOf(event));
+				}}
+				onClick={(event) => {
+					// A keyboard-generated click has no pointer detail.
+					if (event.detail === 0) onSelect(selectIntentOf(event));
+				}}
+			>
+				<span className="inline-flex min-w-0 items-center gap-1">
+					<span className="truncate">{letter}</span>
+					<CellTypeMark
+						type={expectedCellValueType(expectedType)}
+						context="column"
+					/>
+				</span>
+			</button>
 
 			{/* Pointer-only by design, and hidden from assistive technology. The
 			    focused grid column has Alt+Shift+Left/Right as its keyboard equal. */}

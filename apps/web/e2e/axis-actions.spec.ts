@@ -4,108 +4,149 @@ import { samplePeopleCsv } from "@/core/sample-data";
 import { expect, test } from "./fixtures";
 import { openSubmenu, type TabeloPage } from "./helpers";
 
-// Row and column actions were a small icon that only existed while the pointer
-// was inside its header. They are still quiet, but they are now findable: the
-// target is the product's control minimum, and the row or column you are
-// working in shows its own without being hovered at all.
-
-function opacity(trigger: Locator): Promise<string> {
-	return trigger.evaluate((element) => getComputedStyle(element).opacity);
-}
-
-// The icon stays small and the ::after box carries the target, so the hit area
-// has to be measured rather than read off the element's own size.
-function hitArea(trigger: Locator): Promise<{ width: number; height: number }> {
-	return trigger.evaluate((element) => {
-		const box = element.getBoundingClientRect();
-		const after = getComputedStyle(element, "::after");
-		const inset = (value: string) => Math.abs(Number.parseFloat(value) || 0);
-		return {
-			width: box.width + inset(after.left) + inset(after.right),
-			height: box.height + inset(after.top) + inset(after.bottom),
-		};
-	});
-}
+// Row and column actions live in the grid's one context menu (#288). There is
+// no affordance icon beside a row number or a column letter any more: each
+// label is one control, and right-click, `Shift`+`F10`, or the `ContextMenu`
+// key opens the menu on it.
 
 async function seedRoster(tabelo: TabeloPage): Promise<void> {
 	await tabelo.paste(samplePeopleCsv(4).replaceAll(",", "\t"));
 	await tabelo.dismissNotices();
 }
 
-test("row and column actions meet the control minimum target", async ({
+test("a row number and a column letter are the only control on their cell", async ({
 	tabelo,
 }) => {
-	const row = tabelo.grid().getByRole("button", {
-		name: new RegExp(`^${copy.actions.rowActions}:`),
-	});
-	const column = tabelo.gridSurface().getByRole("button", {
-		name: new RegExp(`^${copy.actions.columnActions}:`),
-	});
-
-	for (const trigger of [row.first(), column.first()]) {
-		const area = await hitArea(trigger);
-		const controlMinimum = await trigger.evaluate(() => {
-			const root = getComputedStyle(document.documentElement);
-			return (
-				Number.parseFloat(root.getPropertyValue("--control-h-sm")) *
-				Number.parseFloat(root.fontSize)
-			);
-		});
-		expect(area.width).toBeGreaterThanOrEqual(controlMinimum);
-		expect(area.height).toBeGreaterThanOrEqual(controlMinimum);
-	}
-});
-
-test("the row and column being worked in reveal their own actions", async ({
-	page,
-	tabelo,
-}) => {
-	const rowTrigger = (index: number) =>
-		tabelo.grid().getByRole("button", {
-			name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(index - 1)}`,
-		});
-	const columnTrigger = (name: string) =>
-		tabelo.gridSurface().getByRole("button", {
-			name: `${copy.actions.columnActions}: ${name}, ${copy.a11y.expectedColumnType("text")}`,
-		});
-
-	// The rows the user is not in stay quiet. (Row 1 starts selected, so it is
-	// legitimately showing its own from the first paint.)
-	expect(await opacity(rowTrigger(2))).toBe("0");
-	expect(await opacity(rowTrigger(3))).toBe("0");
-
-	await tabelo.cell(2, 2).click();
-	// The pointer would otherwise keep hovering whatever it just clicked.
-	await page.mouse.move(0, 0);
-
-	// Exactly the row and column the selection is in, and no others.
-	await expect.poll(() => opacity(rowTrigger(2))).toBe("1");
-	await expect
-		.poll(() => opacity(columnTrigger(copy.a11y.columnLetter(1))))
-		.toBe("1");
-	await expect.poll(() => opacity(rowTrigger(1))).toBe("0");
-	await expect
-		.poll(() => opacity(columnTrigger(copy.a11y.columnLetter(0))))
-		.toBe("0");
-});
-
-test("moving by keyboard moves the revealed affordance with it", async ({
-	page,
-	tabelo,
-}) => {
-	const rowTrigger = (index: number) =>
-		tabelo.grid().getByRole("button", {
-			name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(index - 1)}`,
-		});
-
+	await seedRoster(tabelo);
 	await tabelo.cell(1, 1).click();
-	await page.mouse.move(0, 0);
-	await expect.poll(() => opacity(rowTrigger(1))).toBe("1");
 
-	await page.keyboard.press("ArrowDown");
+	// Selected or not, and whatever is hovered, a label shows no icon beside it.
+	for (const row of [1, 2, 3]) {
+		await expect(tabelo.rowIndex(row).getByRole("button")).toHaveCount(1);
+		await expect(
+			tabelo.rowIndex(row).getByRole("button", {
+				name: new RegExp(`^${copy.actions.selectRow}:`),
+			}),
+		).toHaveCount(1);
+	}
+	for (const column of [1, 2]) {
+		await expect(tabelo.columnIndex(column).getByRole("button")).toHaveCount(1);
+		await expect(
+			tabelo.columnIndex(column).getByRole("button", {
+				name: new RegExp(`^${copy.actions.selectColumn}:`),
+			}),
+		).toHaveCount(1);
+	}
+	await expect(
+		tabelo.gridSurface().getByRole("button", {
+			name: new RegExp(
+				`^(${copy.actions.rowActions}|${copy.actions.columnActions}):`,
+			),
+		}),
+	).toHaveCount(0);
+	await expect(tabelo.gridSurface().locator("[data-reorder-grip]")).toHaveCount(
+		0,
+	);
+});
 
-	await expect.poll(() => opacity(rowTrigger(2))).toBe("1");
-	await expect.poll(() => opacity(rowTrigger(1))).toBe("0");
+test("a three-digit row number fits the narrow gutter without clipping", async ({
+	tabelo,
+}) => {
+	await tabelo.paste(
+		[
+			"name",
+			...Array.from({ length: 120 }, (_, index) => `Ingrid ${index}`),
+		].join("\n"),
+	);
+	await tabelo.dismissNotices();
+
+	// Row 121 is the widest number the table shows. Its digits stay inside the
+	// label, and the label inside the gutter cell. Measured from the text
+	// itself: the digits are end-aligned, so an overflow would run off the
+	// leading edge, where no scroll width reports it.
+	const gutter = tabelo.rowIndex(121);
+	await gutter.scrollIntoViewIfNeeded();
+	const fits = await gutter.getByRole("button").evaluate((label) => {
+		const range = label.ownerDocument.createRange();
+		range.selectNodeContents(label);
+		const digits = range.getBoundingClientRect();
+		const box = label.getBoundingClientRect();
+		const cell = label.parentElement?.getBoundingClientRect();
+		return (
+			cell !== undefined &&
+			digits.left >= box.left &&
+			digits.right <= box.right &&
+			box.left >= cell.left &&
+			box.right <= cell.right
+		);
+	});
+	expect(fits).toBe(true);
+});
+
+test("right-clicking a column letter offers the column's own options", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+
+	const menu = await tabelo.openColumnMenu(2);
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.fitColumnToContent }),
+	).toBeVisible();
+	await expect(
+		menu.getByRole("menuitemcheckbox", { name: copy.actions.wrapColumnText }),
+	).toBeVisible();
+	await menu
+		.getByRole("group", { name: copy.actions.alignment })
+		.getByRole("menuitemradio", { name: copy.actions.alignRight })
+		.click();
+	await expect(menu).toBeHidden();
+
+	const reopened = await tabelo.openColumnMenu(2);
+	await reopened
+		.getByRole("group", { name: copy.actions.expectedType })
+		.getByRole("menuitemradio")
+		.last()
+		.click();
+	await expect(reopened).toBeHidden();
+
+	// The column took both, and nothing else did.
+	await expect(tabelo.header(2)).toHaveCSS("text-align", "right");
+	await expect(tabelo.header(1)).not.toHaveCSS("text-align", "right");
+	await expect(tabelo.columnIndex(2)).not.toHaveAttribute(
+		"data-expected-type",
+		"text",
+	);
+	await expect(tabelo.columnIndex(1)).toHaveAttribute(
+		"data-expected-type",
+		"text",
+	);
+	// Still the shared table actions below the column's own.
+	await tabelo.openColumnMenu(2);
+	await expect(
+		page.getByRole("menuitem", { name: copy.actions.insertColumnsRight(1) }),
+	).toBeVisible();
+});
+
+test("right-clicking a row number offers row actions and no column options", async ({
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+
+	const menu = await tabelo.openRowMenu(3);
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.insertRowsAbove(1) }),
+	).toBeVisible();
+	await expect(
+		menu.getByRole("group", { name: copy.actions.alignment }),
+	).toHaveCount(0);
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.fitColumnToContent }),
+	).toHaveCount(0);
+	// The menu acted on what was clicked: that row, as a row.
+	await expect(tabelo.cell(2, 1)).toHaveAttribute("aria-selected", "true");
+	await expect(tabelo.cell(2, 3)).toHaveAttribute("aria-selected", "true");
+	await expect(tabelo.cell(1, 1)).toHaveAttribute("aria-selected", "false");
 });
 
 test("Alt+Down moves a two-row selection as one block", async ({
@@ -152,7 +193,7 @@ test("the column menu moves a two-column selection as one block", async ({
 		.click({ modifiers: ["Shift"] });
 
 	const menuName = `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("name", 0, "text")}`;
-	await tabelo.gridSurface().getByRole("button", { name: menuName }).click();
+	await tabelo.columnIndex(1).click({ button: "right" });
 	const menu = page.getByRole("menu", { name: menuName });
 	await expect(menu).toBeVisible();
 	await (await openSubmenu(page, menu, copy.actions.move))
@@ -178,7 +219,7 @@ test("the move actions advertise the binding the grid already answers", async ({
 	await tabelo.rowIndex(3).getByRole("button").first().click();
 
 	const menuName = `${copy.actions.rowActions}: ${copy.a11y.rowNumber(2)}`;
-	await tabelo.grid().getByRole("button", { name: menuName }).click();
+	await tabelo.rowIndex(4).click({ button: "right" });
 	const moveDown = (
 		await openSubmenu(
 			page,
@@ -236,7 +277,7 @@ test("Move down is disabled for a block ending at the last row", async ({
 		.click({ modifiers: ["Shift"] });
 
 	const menuName = `${copy.actions.rowActions}: ${copy.a11y.rowNumber(3)}`;
-	await tabelo.grid().getByRole("button", { name: menuName }).click();
+	await tabelo.rowIndex(5).click({ button: "right" });
 	const menu = page.getByRole("menu", { name: menuName });
 	const moveDown = (await openSubmenu(page, menu, copy.actions.move)).getByRole(
 		"menuitem",
@@ -247,44 +288,14 @@ test("Move down is disabled for a block ending at the last row", async ({
 	await expect(page.getByRole("tooltip")).toBeVisible();
 });
 
-test("tabbing into a header reveals its actions without a pointer", async ({
-	tabelo,
-}) => {
-	const trigger = tabelo.gridSurface().getByRole("button", {
-		name: `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("", 2, "text")}`,
-	});
-	expect(await opacity(trigger)).toBe("0");
-
-	// focus-within on the strip cell, not focus on the icon itself.
-	await tabelo.columnIndex(3).getByRole("button").first().focus();
-
-	await expect.poll(() => opacity(trigger)).toBe("1");
-});
-
-test("hovering a row still reveals its actions", async ({ tabelo }) => {
-	const trigger = tabelo.grid().getByRole("button", {
-		name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(2)}`,
-	});
-	expect(await opacity(trigger)).toBe("0");
-
-	await tabelo.cell(3, 1).hover();
-
-	await expect.poll(() => opacity(trigger)).toBe("1");
-});
-
-test("the axis and context menus describe the same actions", async ({
+test("the row and cell menus describe the same actions", async ({
 	page,
 	tabelo,
 }) => {
-	// One action list serves both renderers, so row and context menus cannot
-	// drift into different vocabularies.
+	// One action list serves every menu, so the row and cell menus cannot drift
+	// into different vocabularies.
 	await tabelo.cell(1, 1).click();
-	await tabelo
-		.grid()
-		.getByRole("button", {
-			name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(0)}`,
-		})
-		.click();
+	await tabelo.rowIndex(2).click({ button: "right" });
 	const rowMenu = page.getByRole("menu", {
 		name: `${copy.actions.rowActions}: ${copy.a11y.rowNumber(0)}`,
 	});
@@ -603,28 +614,4 @@ test("Shift+click on row numbers extends the selection and Mod+Backspace removes
 
 	await expect(tabelo.cell(1, 1)).toHaveText("Inez");
 	await expect(tabelo.cell(1, 2)).toHaveText("Owner");
-});
-
-test("four panes stay quiet: no action icons in the cells", async ({
-	tabelo,
-}) => {
-	await tabelo.chooseLayout("quad");
-	await tabelo.cell(1, 1).click();
-
-	// Only the row and column in play show a trigger; the cells carry none.
-	const visible = await tabelo
-		.gridSurface()
-		.getByRole("button", {
-			name: new RegExp(
-				`^(${copy.actions.rowActions}|${copy.actions.columnActions}):`,
-			),
-		})
-		.evaluateAll(
-			(items) =>
-				items.filter((item) => getComputedStyle(item).opacity === "1").length,
-		);
-	expect(visible).toBe(2);
-	await expect(tabelo.grid().getByRole("gridcell").first()).not.toContainText(
-		"actions",
-	);
 });

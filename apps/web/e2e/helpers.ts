@@ -293,16 +293,16 @@ export class TabeloPage {
 		return this.grid().locator(`[data-cell="${HEADER_ROW}:${column - 1}"]`);
 	}
 
-	// One cell of the column index strip, which owns the column's letter, its
-	// select handle, and its menu.
+	// One cell of the column index strip, which owns the column's letter: its
+	// select handle, and the target its menu opens on.
 	columnIndex(column: number): Locator {
 		requirePositiveIndex(column, "column");
 		return this.gridSurface().locator(`[data-column-header="${column - 1}"]`);
 	}
 
-	// The row's own gutter cell, which owns the row number, its select handle,
-	// and its menu. Numbered as the gutter itself shows it: row 1 is the header
-	// row, row 2 is the first data row.
+	// The row's own gutter cell, which owns the row number: its select handle,
+	// and the target its menu opens on. Numbered as the gutter shows it: row 1
+	// is the header row, row 2 is the first data row.
 	rowIndex(row: number): Locator {
 		requirePositiveIndex(row, "row");
 		const dataRowHeader = row === 1 ? HEADER_ROW : row - 2;
@@ -396,15 +396,21 @@ export class TabeloPage {
 		await dialog.waitFor({ state: "hidden" });
 	}
 
-	// The column's own menu, opened from its index-strip trigger.
+	// The column's own menu: the grid's context menu, opened on its letter.
 	async openColumnMenu(column: number): Promise<Locator> {
-		await this.columnIndex(column)
-			.getByRole("button", {
-				name: new RegExp(`^${copy.actions.columnActions}:`),
-			})
-			.click();
+		await this.columnIndex(column).click({ button: "right" });
 		const menu = this.page.getByRole("menu", {
 			name: new RegExp(`^${copy.actions.columnActions}:`),
+		});
+		await menu.waitFor({ state: "visible" });
+		return menu;
+	}
+
+	// The row's own menu, opened on its number. Row 1 is the header row.
+	async openRowMenu(row: number): Promise<Locator> {
+		await this.rowIndex(row).click({ button: "right" });
+		const menu = this.page.getByRole("menu", {
+			name: new RegExp(`^${copy.actions.rowActions}:`),
 		});
 		await menu.waitFor({ state: "visible" });
 		return menu;

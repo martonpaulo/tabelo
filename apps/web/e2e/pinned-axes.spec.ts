@@ -68,7 +68,7 @@ async function openColumnMenu(
 	const name = `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType(header, column - 1, "text")}`;
 	const menu = tabelo.page.getByRole("menu", { name });
 	await menu.waitFor({ state: "hidden" });
-	await tabelo.gridSurface().getByRole("button", { name }).click();
+	await tabelo.columnIndex(column).click({ button: "right" });
 	await menu.waitFor();
 	return menu;
 }
@@ -80,13 +80,13 @@ async function openRowMenu(
 	const name = `${copy.actions.rowActions}: ${copy.a11y.rowNumber(dataRow - 1)}`;
 	const menu = tabelo.page.getByRole("menu", { name });
 	await menu.waitFor({ state: "hidden" });
-	// Exact, because "Row 2" is also a prefix of "Row 20" through "Row 29".
-	await tabelo.grid().getByRole("button", { name, exact: true }).click();
+	// The gutter counts the header row as row 1.
+	await tabelo.rowIndex(dataRow + 1).click({ button: "right" });
 	await menu.waitFor();
 	return menu;
 }
 
-// Only one axis menu root exists, so the next menu cannot open until this one
+// The grid has one menu root, so the next menu cannot open until this one
 // has finished closing. Waiting for that is what keeps a second open from
 // racing the first one's exit.
 async function closeMenu(tabelo: TabeloPage, menu: Locator): Promise<void> {
@@ -264,8 +264,9 @@ test("the pin toggles from the keyboard and reads back its own state", async ({
 	await seed(tabelo);
 
 	const name = `${copy.actions.rowActions}: ${copy.a11y.rowNumber(0)}`;
-	await tabelo.grid().getByRole("button", { name, exact: true }).focus();
-	await page.keyboard.press("Enter");
+	// The row's menu from the keyboard, on the number that holds focus.
+	await tabelo.rowIndex(2).getByRole("button").focus();
+	await page.keyboard.press("Shift+F10");
 	const menu = page.getByRole("menu", { name });
 	await menu.waitFor();
 
