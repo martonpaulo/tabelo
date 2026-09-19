@@ -80,13 +80,16 @@ import { pinnedHeader, pinnedHeaderSetup } from "./pinned-header";
 import { recordsLanguage } from "./records-language";
 import {
 	caretOffset,
+	resolveSourceCell,
 	resolveSourceCommand,
 	resolveSourceRowMove,
 	type SourceCaretTarget,
+	type SourceRowRefusal,
 	type SourceRowTarget,
 	type SourceStructureCommand,
 	sourceRowRefusalMessage,
 } from "./row-commands";
+import { sourceAxes, sourceAxisConfig } from "./source-axes";
 import { SourceContextMenu } from "./source-context-menu";
 import { sourceFind } from "./source-find";
 import { setSourceRows, sourceRowsField } from "./source-rows";
@@ -531,6 +534,12 @@ export function SourceEditor({
 	// before the document changes, and spent by the first rows mapped after it.
 	const pendingCaret = useRef<SourceCaretTarget | null>(null);
 
+	const refuse = (refusal: SourceRowRefusal) =>
+		useTabeloStore.getState().pushNotice({
+			severity: "warning",
+			message: sourceRowRefusalMessage[refusal],
+		});
+
 	// Moves the table row under the caret (#255). Reads only refs, so the keymap
 	// built once at mount and the context menu share it. False means this pane
 	// has no row commands, which hands the key to CodeMirror's line move.
@@ -538,19 +547,16 @@ export function SourceEditor({
 	// The move is a document step, not a keystroke, so like any change from
 	// outside this editor's typing it clears the local history (local-history.ts),
 	// and the next undo in this pane reverses the move rather than older typing.
-	const moveRow = (view: EditorView, offset: number): boolean => {
+	const moveRow = (view: EditorView, offset: number, at?: number): boolean => {
 		const target = handlers.current.rowTarget;
 		if (!target) return false;
 		const store = useTabeloStore.getState();
-		const move = resolveSourceRowMove(view.state, target, offset);
+		const move = resolveSourceRowMove(view.state, target, offset, at);
 		if (move.ok) pendingCaret.current = move.caret;
 		const refusal = move.ok ? store.moveRowAt(move.row, offset) : move.refusal;
 		if (refusal) {
 			pendingCaret.current = null;
-			store.pushNotice({
-				severity: "warning",
-				message: sourceRowRefusalMessage[refusal],
-			});
+			refuse(refusal);
 		}
 		return true;
 	};
@@ -560,21 +566,34 @@ export function SourceEditor({
 	// change from outside its typing (local-history.ts), and the caret carried into the cell the command leaves it in. The caret target is
 	// known only once the command has run (a sort decides where the row goes),
 	// which is still before React renders the regenerated text that spends it.
-	const runStructure = (view: EditorView, command: SourceStructureCommand) => {
+	const runStructure = (
+		view: EditorView,
+		command: SourceStructureCommand,
+		at?: number,
+	) => {
 		const target = handlers.current.rowTarget;
 		if (!target) return;
-		const store = useTabeloStore.getState();
-		const plan = resolveSourceCommand(view.state, target, command);
+		const plan = resolveSourceCommand(view.state, target, command, at);
 		if (!plan.ok) {
-			store.pushNotice({
-				severity: "warning",
-				message: sourceRowRefusalMessage[plan.refusal],
-			});
+			refuse(plan.refusal);
 			return;
 		}
 		const caret = plan.run();
 		if (!caret) return;
 		pendingCaret.current = caret;
+	};
+
+	// A column letter's settings, which change the document and never the
+	// table's shape, so the caret stays where the text keeps it.
+	const columnAt = (view: EditorView, at: number): number | null => {
+		const target = handlers.current.rowTarget;
+		if (!target) return null;
+		const cell = resolveSourceCell(view.state, target, at);
+		if (!cell.ok) {
+			refuse(cell.refusal);
+			return null;
+		}
+		return cell.column;
 	};
 
 	// The editor is created once and lives for the panel's lifetime. Re-running
@@ -634,6 +653,12 @@ export function SourceEditor({
 					pinnedHeader,
 					columnMarkers,
 					columnMarkersCompartment.of(columnMarkersExtension(mapsHeaderCells)),
+					sourceAxes,
+					// Read through the handlers, like the keymap, so the editor built
+					// once still acts for the pane it serves now.
+					sourceAxisConfig.of({
+						fields: (text) => handlers.current.sourceFields?.(text) ?? [],
+					}),
 					pinnedHeaderCompartment.of(
 						pinnedHeaderExtension(
 							language,
@@ -1036,34 +1061,59 @@ export function SourceEditor({
 			table={
 				rowTarget
 					? {
-							moveRefusal: (offset) => {
+							moveRefusal: (offset, at) => {
 								const view = viewRef.current;
 								if (!view) return "unparsed";
 								const move = resolveSourceRowMove(
 									view.state,
 									rowTarget,
 									offset,
+									at,
 								);
 								return move.ok ? null : move.refusal;
 							},
-							moveRow: (offset) => {
+							moveRow: (offset, at) => {
 								const view = viewRef.current;
-								if (view) moveRow(view, offset);
+								if (view) moveRow(view, offset, at);
 							},
-							refusal: (command) => {
+							refusal: (command, at) => {
 								const view = viewRef.current;
 								if (!view) return "unparsed";
 								const plan = resolveSourceCommand(
 									view.state,
 									rowTarget,
 									command,
+									at,
 								);
 								return plan.ok ? null : plan.refusal;
 							},
-							run: (command) => {
+							run: (command, at) => {
 								const view = viewRef.current;
-								if (view) runStructure(view, command);
+								if (view) runStructure(view, command, at);
 							},
+							cell: (at) => {
+								const view = viewRef.current;
+								if (!view) return { ok: false, refusal: "unparsed" };
+								return resolveSourceCell(view.state, rowTarget, at);
+							},
+							setExpectedType: (at, next) => {
+								const view = viewRef.current;
+								const column = view ? columnAt(view, at) : null;
+								if (column === null) return 0;
+								return useTabeloStore
+									.getState()
+									.setColumnExpectedType(column, next, false, "column");
+							},
+							setAlignment: (at, next) => {
+								const view = viewRef.current;
+								const column = view ? columnAt(view, at) : null;
+								if (column === null) return;
+								useTabeloStore
+									.getState()
+									.setColumnAlignment(column, next, "column");
+							},
+							spellsAlignment:
+								rowTarget.codec.reconciliation.columnAlignment === "carried",
 						}
 					: null
 			}

@@ -9,6 +9,7 @@ import { columnLetter } from "@/core/column-letter";
 import type { SourceRowRange } from "@/formats/types";
 import { followScrollX, followScrollXStyle } from "./follow-scroll";
 import { pinnedHeaderCopy } from "./pinned-header";
+import { selectedSourceAxis } from "./source-axes";
 import { setSourceRows } from "./source-rows";
 
 // The column markers of a source view (#368): a strip of column letters above
@@ -30,8 +31,11 @@ import { setSourceRows } from "./source-rows";
 // The strip is an overlay across the top of the editor rather than a line of
 // the document, so it is never text: it cannot be selected, copied, downloaded,
 // searched, or read out. It is hidden from assistive technology like the line
-// numbers, because the accessible source is the text itself, and it takes no
-// pointer: the structural commands live in the pane's context menu (#255). It
+// numbers, because the accessible source is the text itself. Each letter is
+// the grid's column label to a pointer (#395): a click selects the column's
+// cells (source-axes.ts), and a right-click opens the column's menu
+// (source-context-menu.tsx). The keyboard
+// reaches the same menu from the selection, as the grid's does. It
 // floats over the scroller, whose text starts below it, so the scroller and its
 // scrollbar run the pane's full height (owner, 2026-09-19); it covers the
 // line-number gutter as a dead corner, and the pinned header (#252) stacks
@@ -89,7 +93,16 @@ function columnStart(view: EditorView, cell: SourceRowRange): number {
 		: from;
 }
 
-// Each column's horizontal offset from the start of the text, measured in the
+// Where a letter stands and how far its label reaches: from where its column's
+// text begins to where its header cell ends, so the letter takes a press over
+// its whole column the way the grid's does, and the delimiter between two
+// cells belongs to neither.
+interface LetterSpan {
+	readonly start: number;
+	readonly end: number;
+}
+
+// Each column's horizontal span from the start of the text, measured in the
 // given view, or null when that view has not drawn the header line. Relative to
 // the content box, so the numbers hold at any horizontal scroll. A column whose
 // header cell begins below the header's first visual line, which only wrapping
@@ -97,23 +110,34 @@ function columnStart(view: EditorView, cell: SourceRowRange): number {
 function offsetsIn(
 	view: EditorView,
 	cells: readonly SourceRowRange[],
-): (number | null)[] | null {
+): (LetterSpan | null)[] | null {
 	const origin = view.contentDOM.getBoundingClientRect().left;
 	const first = cells[0]
 		? view.coordsAtPos(columnStart(view, cells[0]), 1)
 		: null;
 	if (!first) return null;
-	const offsets: (number | null)[] = [];
+	const offsets: (LetterSpan | null)[] = [];
 	for (const cell of cells) {
 		const coords = view.coordsAtPos(columnStart(view, cell), 1);
 		if (!coords) return null;
-		offsets.push(coords.top < first.bottom ? coords.left - origin : null);
+		const end = view.coordsAtPos(Math.min(cell.to, view.state.doc.length), -1);
+		offsets.push(
+			coords.top < first.bottom
+				? {
+						start: coords.left - origin,
+						end:
+							end && end.top < first.bottom
+								? Math.max(end.right - origin, coords.left - origin)
+								: coords.left - origin,
+					}
+				: null,
+		);
 	}
 	return offsets;
 }
 
 interface Placement {
-	readonly offsets: readonly (number | null)[];
+	readonly offsets: readonly (LetterSpan | null)[];
 	// Where the text begins when the pane is scrolled fully left, and where the
 	// gutter ends, from the strip's own left edge.
 	readonly origin: number;
@@ -154,13 +178,12 @@ class ColumnStrip {
 	// enough away neither the editor nor the pinned copy may have it; the
 	// header's text cannot change while it is out of reach of the caret except
 	// through a new parse, which remeasures as soon as the line is drawn again.
-	private known: readonly (number | null)[] | null = null;
+	private known: readonly (LetterSpan | null)[] | null = null;
 
 	constructor(private readonly view: EditorView) {
 		this.dom = document.createElement("div");
 		this.dom.className = "cm-tabeloColumnStrip";
 		this.dom.setAttribute("aria-hidden", "true");
-		this.dom.inert = true;
 		this.dom.hidden = true;
 		this.track = document.createElement("div");
 		this.track.className = "cm-tabeloColumnTrack";
@@ -170,6 +193,9 @@ class ColumnStrip {
 		this.track.appendChild(this.rail);
 		view.dom.appendChild(this.dom);
 		view.scrollDOM.addEventListener("mousedown", this.onPointerDown, true);
+		// The letters take the pointer, so a wheel over one would otherwise stop
+		// at the strip instead of scrolling the text under it.
+		this.dom.addEventListener("wheel", this.onWheel, { passive: false });
 		this.schedule();
 	}
 
@@ -184,7 +210,23 @@ class ColumnStrip {
 		) {
 			this.schedule();
 		}
+		if (update.selectionSet || update.docChanged) this.markSelected();
 	}
+
+	// The letter of the column the selection is, drawn as the grid draws its
+	// selected label.
+	private markSelected() {
+		const selected = selectedSourceAxis(this.view.state);
+		const column = selected?.axis === "column" ? selected.index : -1;
+		this.letters.forEach((letter, index) => {
+			letter.toggleAttribute("data-selected", index === column);
+		});
+	}
+
+	private readonly onWheel = (event: WheelEvent) => {
+		event.preventDefault();
+		this.view.scrollDOM.scrollBy({ left: event.deltaX, top: event.deltaY });
+	};
 
 	destroy() {
 		this.view.scrollDOM.removeEventListener(
@@ -192,6 +234,7 @@ class ColumnStrip {
 			this.onPointerDown,
 			true,
 		);
+		this.dom.removeEventListener("wheel", this.onWheel);
 		this.dom.remove();
 	}
 
@@ -249,6 +292,7 @@ class ColumnStrip {
 			// the page: find in page, text extraction, and a stray selection all
 			// pass it by.
 			letter.dataset.letter = columnLetter(this.letters.length);
+			letter.dataset.column = String(this.letters.length);
 			this.rail.appendChild(letter);
 			this.letters.push(letter);
 		}
@@ -258,13 +302,15 @@ class ColumnStrip {
 			if (!letter) return;
 			letter.hidden = offset === null;
 			if (offset !== null) {
-				letter.style.left = `${placement.origin + offset - placement.clip}px`;
+				letter.style.left = `${placement.origin + offset.start - placement.clip}px`;
+				letter.style.width = `${offset.end - offset.start}px`;
 			}
 		});
+		this.markSelected();
 	}
 
-	// The strip is not text and holds no control, so a press on it does
-	// nothing, rather than reaching the line scrolled underneath it.
+	// The strip is not text, so a press on it outside a letter does nothing,
+	// rather than reaching the line scrolled underneath it.
 	private readonly onPointerDown = (event: MouseEvent) => {
 		if (this.dom.hidden || event.button !== 0) return;
 		const box = this.dom.getBoundingClientRect();

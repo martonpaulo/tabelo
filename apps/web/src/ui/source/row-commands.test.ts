@@ -9,6 +9,7 @@ import { markdownCodec } from "@/formats/markdown";
 import { textForView, useTabeloStore } from "@/state/store";
 import {
 	caretOffset,
+	resolveSourceCell,
 	resolveSourceCommand,
 	resolveSourceRowMove,
 	type SourceRowTarget,
@@ -277,5 +278,92 @@ describe("source structural commands", () => {
 			);
 		expect(refusal(ingrid.name, "sort-ascending")).toBe("sort-single-row");
 		expect(refusal(ingrid.name, "delete-column")).toBe("last-remaining-column");
+	});
+});
+
+// A line number's or a column letter's own menu names its row or column by an
+// offset in the text rather than by the caret (#395).
+describe("commands named by a row's or a column's label", () => {
+	const ingrid = samplePerson(0);
+	const paulo = samplePerson(1);
+	const mabel = samplePerson(2);
+
+	// The caret stands elsewhere, in the header, so only `at` can name the row.
+	function atCell(marker: string) {
+		const text = projection();
+		const at = text.indexOf(marker) + 1;
+		return { state: editorAt(text, "name"), at };
+	}
+
+	it("acts on the row the label names, not the caret's", () => {
+		const { state, at } = atCell(paulo.name);
+		const plan = resolveSourceCommand(
+			state,
+			markdownTarget(),
+			"delete-row",
+			at,
+		);
+		expect(plan.ok).toBe(true);
+		if (plan.ok) plan.run();
+		expect(names()).toEqual(["name", ingrid.name, mabel.name]);
+	});
+
+	it("duplicates a data row as one history step, and never the header row", () => {
+		const before = useTabeloStore.getState().past.length;
+		const { state, at } = atCell(paulo.name);
+		const plan = resolveSourceCommand(
+			state,
+			markdownTarget(),
+			"duplicate-row",
+			at,
+		);
+		if (!plan.ok) throw new Error(`refused: ${plan.refusal}`);
+		expect(plan.run()).toEqual({
+			row: 3,
+			column: 0,
+			distance: expect.any(Number),
+		});
+		expect(names()).toEqual([
+			"name",
+			ingrid.name,
+			paulo.name,
+			paulo.name,
+			mabel.name,
+		]);
+		expect(useTabeloStore.getState().past).toHaveLength(before + 1);
+		expect(refusal("name", "duplicate-row")).toBe("header-row");
+	});
+
+	it("names the cell a letter stands on, and refuses while the text is unparsed", () => {
+		const { state, at } = atCell("city");
+		expect(resolveSourceCell(state, markdownTarget(), at)).toEqual({
+			ok: true,
+			row: -1,
+			column: 1,
+		});
+		const draft = EditorState.create({
+			doc: `${projection()}\n| stray`,
+			selection: EditorSelection.cursor(1),
+		});
+		expect(resolveSourceCell(draft, markdownTarget(), at)).toEqual({
+			ok: false,
+			refusal: "unparsed",
+		});
+	});
+
+	it("sets one column's alignment and expected type whatever the grid selects", () => {
+		const store = useTabeloStore.getState();
+		// The grid's selection covers the header row, and with it every column;
+		// the letter names one.
+		store.selectCell({ row: -1, column: 0 }, "row");
+		useTabeloStore.getState().setColumnAlignment(1, "right", "column");
+		expect(
+			useTabeloStore.getState().document.columns.map((column) => column.align),
+		).toEqual(["default", "right", "default", "default"]);
+		expect(
+			useTabeloStore
+				.getState()
+				.setColumnExpectedType(0, "number", false, "column"),
+		).toBeGreaterThan(0);
 	});
 });

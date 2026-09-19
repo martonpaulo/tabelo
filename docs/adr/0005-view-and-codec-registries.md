@@ -114,6 +114,15 @@ view has, every view that can have it should have"). The editor reads the
 declaration from the codec and never decides by the view's name. Decided on
 #368.
 
+The letters and the line numbers are also where the mapping is acted on from
+a pointer (#395): a letter names the column of the header cell it stands on,
+and a line number names the row whose cells its line holds, so the divider
+and every line outside the table name nothing. Their menus and clicks
+resolve that row or column through the same mapping and the same refusals as
+a command at the caret, and a draft that does not parse offers nothing. The
+letters were presentation only until then; they are now the grid's column
+labels, still never text. Decided on #395.
+
 **A view registry** holds what the workspace can display. A `ViewDefinition`
 adds presentation to a codec: a label, a description, an icon, a `kind`
 (`grid`, `source`, or `preview`), a highlight language named as a string, a

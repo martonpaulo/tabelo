@@ -226,6 +226,7 @@ export type SortOutcome = "sorted" | "unchanged" | "unavailable";
 export type StructureEdit =
 	| { readonly kind: "insert-row"; readonly at: number }
 	| { readonly kind: "remove-row"; readonly row: number }
+	| { readonly kind: "duplicate-row"; readonly row: number }
 	| { readonly kind: "insert-column"; readonly at: number }
 	| { readonly kind: "remove-column"; readonly column: number }
 	| {
@@ -438,7 +439,13 @@ export interface TabeloState {
 	// header and data cell, as one history step (#306). Returns what the
 	// selection held before, so a refusal can say why nothing changed.
 	toggleSelectionMark: (mark: InlineMark) => SelectionMarkState;
-	setColumnAlignment: (column: number, align: Alignment) => void;
+	// `scope` "column" acts on that one column whatever the grid selection
+	// holds, for a source pane's column letter (#395), which names one column.
+	setColumnAlignment: (
+		column: number,
+		align: Alignment,
+		scope?: "selection" | "column",
+	) => void;
 	// Changes the expected type and converts every cell that can reach it
 	// without loss (#392), as one history step. Returns how many cells cannot.
 	// When some cannot and `convertRest` is not set, nothing changes, so the
@@ -447,6 +454,7 @@ export interface TabeloState {
 		column: number,
 		expectedType: ExpectedColumnType,
 		convertRest?: boolean,
+		scope?: "selection" | "column",
 	) => number;
 	// Sorts the whole table by one column, in the document itself. The column is
 	// the one whose menu was opened, never the selected columns: an action
@@ -1448,20 +1456,29 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// selected column, adjacent or not. Acting on a column outside the selection
 	// touches only that one: a drag on an unrelated column edge must not resize
 	// something elsewhere in the table.
-	setColumnAlignment: (column, align) => {
+	setColumnAlignment: (column, align, scope = "selection") => {
 		const state = get();
 		let next = state.document;
-		for (const target of columnTargets(state, column)) {
+		const targets =
+			scope === "column" ? [column] : columnTargets(state, column);
+		for (const target of targets) {
 			next = setAlignment(next, target, align);
 		}
 		state.applyDocument(next);
 	},
 
-	setColumnExpectedType: (column, expectedType, convertRest = false) => {
+	setColumnExpectedType: (
+		column,
+		expectedType,
+		convertRest = false,
+		scope = "selection",
+	) => {
 		const state = get();
 		let next = state.document;
 		let unconverted = 0;
-		for (const target of columnTargets(state, column)) {
+		const targets =
+			scope === "column" ? [column] : columnTargets(state, column);
+		for (const target of targets) {
 			const change = changeColumnType(next, target, expectedType);
 			next = change.document;
 			unconverted += change.unconverted;
@@ -1654,6 +1671,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 						: deleteRows(document, [edit.row]),
 				);
 				return;
+			case "duplicate-row": {
+				const error = tableShapeLimitError({
+					rows: document.rows.length + 1,
+					columns: document.columns.length,
+				});
+				if (error) {
+					set({ inputError: error });
+					return;
+				}
+				state.applyDocument(duplicateRows(document, [edit.row]));
+				return;
+			}
 			case "insert-column":
 				state.applyDocument(insertColumns(document, edit.at));
 				return;

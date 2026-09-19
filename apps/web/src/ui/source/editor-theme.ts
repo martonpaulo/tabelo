@@ -243,8 +243,16 @@ export const editorTheme = EditorView.theme({
 		fontSize: "var(--text-xs)",
 		color: "var(--muted-foreground)",
 		whiteSpace: "nowrap",
+		pointerEvents: "auto",
+		cursor: "pointer",
 	},
 	".cm-tabeloColumnMarker::before": { content: "attr(data-letter)" },
+	// A letter is its column's label to a pointer (#395), over the whole span
+	// of its header cell, and reads like the grid's: the pointer cursor, and
+	// the foreground tone under the pointer and while its column is selected.
+	".cm-tabeloColumnMarker:hover, .cm-tabeloColumnMarker[data-selected]": {
+		color: "var(--foreground)",
+	},
 	".cm-activeLineGutter": { backgroundColor: "transparent" },
 	"&.cm-focused .cm-activeLineGutter": {
 		backgroundColor: "var(--active-line-fill)",

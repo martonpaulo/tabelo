@@ -75,10 +75,13 @@ interface SourceCaretCell {
 }
 
 // The text is parsed afresh from the editor, never taken from a render that
-// may be one keystroke behind.
+// may be one keystroke behind. `at` is the offset that names the cell: the
+// caret's by default, or where a column letter or a line number stands when
+// its menu was opened (#395).
 function resolveSourceCaret(
 	state: EditorState,
 	target: SourceRowTarget,
+	at: number = state.selection.main.head,
 ): Refused | { readonly ok: true; readonly cell: SourceCaretCell } {
 	const store = useTabeloStore.getState();
 	const text = state.doc.toString();
@@ -106,7 +109,7 @@ function resolveSourceCaret(
 		return { ok: false, refusal: "unparsed" };
 	}
 
-	const head = state.selection.main.head;
+	const head = at;
 	const position = cellAtPosition(rows, head);
 	const mapped = position ? rows[position.row] : undefined;
 	if (!position || !mapped) return { ok: false, refusal: "outside-table" };
@@ -141,8 +144,9 @@ export function resolveSourceRowMove(
 	state: EditorState,
 	target: SourceRowTarget,
 	offset: number,
+	at?: number,
 ): SourceRowMove {
-	const found = resolveSourceCaret(state, target);
+	const found = resolveSourceCaret(state, target, at);
 	if (!found.ok) return found;
 	const { row, column, distance } = found.cell;
 	const { document } = useTabeloStore.getState();
@@ -168,6 +172,7 @@ export type SourceStructureCommand =
 	| "move-column-right"
 	| "insert-row-above"
 	| "insert-row-below"
+	| "duplicate-row"
 	| "insert-column-left"
 	| "insert-column-right"
 	| "delete-row"
@@ -242,8 +247,9 @@ export function resolveSourceCommand(
 	state: EditorState,
 	target: SourceRowTarget,
 	command: SourceStructureCommand,
+	at?: number,
 ): SourceStructurePlan {
-	const found = resolveSourceCaret(state, target);
+	const found = resolveSourceCaret(state, target, at);
 	if (!found.ok) return found;
 	const { cell } = found;
 	const { row, column } = cell;
@@ -260,6 +266,13 @@ export function resolveSourceCommand(
 			return editing(
 				{ kind: "insert-row", at: row + 1 },
 				caretAt(row + 1, column),
+			);
+		case "duplicate-row":
+			// A second header row is not a thing a table can have.
+			if (row < 0) return { ok: false, refusal: "header-row" };
+			return editing(
+				{ kind: "duplicate-row", row },
+				caretAt(row + 1, column, cell.distance),
 			);
 		case "delete-row": {
 			// Removing the header promotes the first data row, so it needs one.
@@ -316,6 +329,28 @@ export function resolveSourceCommand(
 				command === "sort-ascending" ? "ascending" : "descending",
 			);
 	}
+}
+
+// A column letter's own commands that are not structure (#395): the
+// column's expected type and alignment. Each is resolved against the cell the menu or the drag names, so an
+// unparsed draft refuses it exactly as it refuses a structural command.
+export type SourceCellResolution =
+	| Refused
+	| {
+			readonly ok: true;
+			// The document's data row, -1 for the header row.
+			readonly row: number;
+			readonly column: number | null;
+	  };
+
+export function resolveSourceCell(
+	state: EditorState,
+	target: SourceRowTarget,
+	at?: number,
+): SourceCellResolution {
+	const found = resolveSourceCaret(state, target, at);
+	if (!found.ok) return found;
+	return { ok: true, row: found.cell.row, column: found.cell.column };
 }
 
 // The offset a caret target names in freshly mapped rows, clamped to the cell

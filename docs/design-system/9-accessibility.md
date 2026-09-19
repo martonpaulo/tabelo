@@ -504,12 +504,43 @@ the new row or column after an insert, in the row or column that took the
 removed one's place after a delete, and in the same cell, wherever it went,
 after a column move or a sort.
 
+**The line numbers and the column letters are the grid's axes** (#395). In a
+pane that maps rows, the column letters (see Column markers below) and the
+line number of every line holding a table row's cells behave as the grid's
+column letters and row numbers do, and reach the same commands through the
+same position mapping, never by counting text lines:
+
+- **Right-click** on a letter opens that column's menu: its expected type,
+  its alignment where the format spells it (Markdown; the codec's
+  `columnAlignment` reconciliation is `carried`), sort ascending and
+  descending, insert left and right, Move left and right, and delete. The
+  grid-only preferences (width, fit, wrapping, pinning) stay in the grid. On
+  a row's line number it opens that row's menu: insert above and below,
+  duplicate, Move up and down, and delete. Both are named as the grid's are,
+  `Column actions: <column>` and `Row actions: Row N`, and each command is one
+  document step that leaves the caret in the row or column it acted on. An
+  expected type some cells cannot follow asks first, in the grid's dialog. The
+  alignment divider, a blank line, and text outside the table name no row, so
+  their line numbers offer nothing, and while a draft does not parse no line
+  names a row: a right-click there says why and opens nothing.
+- **A click** selects what the label names: the row's text, or every cell of
+  the column as one range each (inside a quoted field's quotes, past a
+  Markdown cell's padding), with the header's first, so typing edits them all.
+  Opening a label's menu selects it the same way.
+- **From the keyboard**, the selection decides, as it does in the grid: with a
+  selection that is exactly one row's text or one column's cells, `Shift`+`F10`
+  or `ContextMenu` opens that row's or column's menu, and otherwise the text
+  menu. The text menu's Select row and Select column make that selection from
+  the caret, so every label command is reachable without a pointer, and no
+  label is a focus stop: `Tab` never leaves a source editor.
+
 | Key | Field views | Indent views |
 | :--- | :--- | :--- |
 | `Tab` | Next field, wrapping to the first | Indent the line one unit |
 | `Shift`+`Tab` | Previous field, wrapping to the last | Outdent the line one unit |
 | `Enter` | A plain line break | A line break at the current depth |
 | `Alt`+`ArrowUp` / `Alt`+`ArrowDown` | Move the table row, where the codec maps rows; otherwise move the text line | Move the text line |
+| `Shift`+`F10` / `ContextMenu` | The selected row's or column's menu when the selection is exactly one, where the codec maps rows; otherwise the text menu | The text menu |
 | `Escape` | Return focus to the pane frame | Return focus to the pane frame |
 
 ### Naming inside the grid
@@ -735,12 +766,16 @@ strip; the registry declaration decides, never the view's name.
   strip (owner, 2026-09-19): with wrapping on, the letters stand over the
   header cells that begin on the header's first visual line, and a cell that
   wraps onto a later visual line has no letter.
-- **It is presentation only.** Each letter is drawn from an attribute, so it is
-  not text in the page, and the strip is inert and hidden from assistive
-  technology like the line numbers: it reaches no text, selection, clipboard,
-  download, search, draft, or history. It has no click target and no menu;
-  structural commands on a column live in the pane's context menu (#255), so
-  the strip never becomes a second, partial copy of the grid's.
+- **It is never text, and each letter is its column's label** (#395, replacing
+  "presentation only" from #368). Each letter is drawn from an attribute, so
+  it is not text in the page, and the strip is hidden from assistive
+  technology like the line numbers: it reaches no text, clipboard, download,
+  search, or draft. A letter takes the pointer over its header cell's span,
+  as the grid's does over its column, with the grid's cursors and the
+  foreground tone while hovered or selected; what a press, a click, and a
+  right-click on it do is the source-editor keyboard model's axes paragraph
+  above. A wheel over a letter scrolls the text, and a press between two
+  letters still does nothing.
 
 ### Pinning the first data row and column
 

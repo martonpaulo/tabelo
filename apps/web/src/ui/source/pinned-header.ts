@@ -387,16 +387,19 @@ class PinnedHeader {
 	// The copy cannot be clicked into, because it is not the header. A press on
 	// it goes to the real header instead: the caret lands at the same character
 	// in the editor, which scrolls the header back into place to show it.
+	// Whether a viewport point falls on the copy while it is showing. The copy
+	// is inert, so a press there reaches whatever the editor has scrolled under
+	// it, and each reader asks this first to know the press meant the header.
+	covers(x: number, y: number): boolean {
+		if (!this.copy || !this.pinned) return false;
+		const box = this.overlay.getBoundingClientRect();
+		return y >= box.top && y < box.bottom && x < box.right;
+	}
+
 	private readonly onPointerDown = (event: MouseEvent) => {
 		const copy = this.copy;
-		if (!copy || !this.pinned || event.button !== 0) return;
-		const box = this.overlay.getBoundingClientRect();
-		if (
-			event.clientY < box.top ||
-			event.clientY >= box.bottom ||
-			event.clientX >= box.right
-		)
-			return;
+		if (!copy || event.button !== 0) return;
+		if (!this.covers(event.clientX, event.clientY)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		const range = pinnedHeaderRange(this.view.state);
@@ -426,6 +429,17 @@ const pinnedHeaderPlugin = ViewPlugin.fromClass(PinnedHeader, {
 // the editor itself no longer renders that line.
 export function pinnedHeaderCopy(view: EditorView): EditorView | null {
 	return view.plugin(pinnedHeaderPlugin)?.copy ?? null;
+}
+
+// Whether a viewport point is on the pinned header while it shows, so a press
+// on its line number names the header row rather than the line scrolled under
+// it (#395).
+export function pinnedHeaderCovers(
+	view: EditorView,
+	x: number,
+	y: number,
+): boolean {
+	return view.plugin(pinnedHeaderPlugin)?.covers(x, y) ?? false;
 }
 
 export const pinnedHeader: Extension = [

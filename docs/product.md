@@ -167,7 +167,8 @@ reversible implementation choice does not belong here.
 | Column type change | Changing a column's expected type converts its cells; cells that cannot follow without loss ask first, with Convert the rest or Cancel; one Undo | ADR 0008 | #392 |
 | JSON shape | An array of row objects with explicit serializer preconditions | `CONTEXT.md` | #42, #145 |
 | Source position mapping | A codec declares whether its parse maps each row and cell to source offsets; Markdown, CSV, TSV, and Jira do, HTML, JSON, and Records do not, and an unparsed draft maps nothing | ADR 0005 | #255 |
-| Source column markers | Every source view whose codec maps its header cells shows the grid's column letters above its text, placed over the header line's cells, wrapped or not (on the header's first visual line); presentation only | design system §9 | #368 |
+| Source column markers | Every source view whose codec maps its header cells shows the grid's column letters above its text, placed over the header line's cells, wrapped or not (on the header's first visual line) | design system §9 | #368 |
+| Source axes | In a pane that maps rows, a column letter and a table row's line number open the grid's column and row menus (less grid-only preferences), a click selects the column's cells or the row's text, and the keyboard reaches the menus from that selection; the divider and non-table lines offer nothing | design system §9, ADR 0005 | #395 |
 | CSV export header | Always included | `AGENTS.md` domain rules | #148 |
 | Persistence migrations | An explicit forward-only chain; unreadable data is kept and explained by reason | `AGENTS.md` architecture | #184, #32 |
 | Codec escaping | Every escaping codec round-trips content losslessly | ADR 0002 | #183, #188 |

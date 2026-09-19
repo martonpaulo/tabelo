@@ -192,13 +192,11 @@ test("the letters never reach the text, the clipboard, or assistive technology",
 	const pane = await fillMarkdown(tabelo);
 	await expect(markers(pane)).toHaveCount(5);
 
-	// The strip is hidden and inert, and a letter is drawn from an attribute,
-	// so it is not text in the page at all.
+	// The strip is hidden from assistive technology, and a letter is drawn
+	// from an attribute, so it is not text in the page at all. A letter takes
+	// the pointer as its column's label (#395) and still holds no text.
 	const strip = pane.locator(STRIP);
 	await expect(strip).toHaveAttribute("aria-hidden", "true");
-	expect(
-		await strip.evaluate((element) => (element as HTMLElement).inert),
-	).toBe(true);
 	expect(await strip.evaluate((element) => element.textContent)).toBe("");
 	expect(
 		await pane.locator(`.cm-editor${outsidePinnedHeader}`).ariaSnapshot(),

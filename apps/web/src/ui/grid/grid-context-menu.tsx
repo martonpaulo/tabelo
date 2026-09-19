@@ -223,11 +223,9 @@ function ColumnMenuGroups({
 
 	return (
 		<>
-			<ContextMenuRadioGroup
-				aria-labelledby="column-expected-type-label"
+			<ColumnExpectedTypeGroup
 				value={column?.expectedType ?? "text"}
-				onValueChange={(next) => {
-					const target = next as ExpectedColumnType;
+				onChange={(target) => {
 					// Applied at once when every cell can follow; otherwise nothing
 					// has changed yet and the count goes to the confirmation.
 					const unconverted = useTabeloStore
@@ -237,20 +235,13 @@ function ColumnMenuGroups({
 						onConfirmTypeChange({ column: index, target, unconverted });
 					}
 				}}
-			>
-				<ContextMenuLabel id="column-expected-type-label">
-					{copy.actions.expectedType}
-				</ContextMenuLabel>
-				<div className={cn(segmentedGroupStyles, "mx-1 mb-1")}>
-					{expectedTypeOptions.map((option) => (
-						<ContextMenuSegmentedItem key={option.value} value={option.value}>
-							<option.icon aria-hidden />
-							{option.label}
-						</ContextMenuSegmentedItem>
-					))}
-				</div>
-			</ContextMenuRadioGroup>
-			<ColumnAlignmentGroup index={index} align={column?.align} />
+			/>
+			<ColumnAlignmentGroup
+				align={column?.align}
+				onChange={(align) =>
+					useTabeloStore.getState().setColumnAlignment(index, align)
+				}
+			/>
 			<ContextMenuSeparator />
 
 			<ContextMenuGroup>
@@ -340,34 +331,79 @@ function ColumnSortGroup({ index }: { readonly index: number }) {
 	);
 }
 
+// The column's expected type as segments, read from the column. Shared with a
+// source pane's column letter (#395), which says why it is off when the text
+// has no table to act on.
+export function ColumnExpectedTypeGroup({
+	value,
+	onChange,
+	reason,
+}: {
+	readonly value: ExpectedColumnType;
+	readonly onChange: (next: ExpectedColumnType) => void;
+	readonly reason?: string;
+}) {
+	const labelId = useId();
+	return (
+		<ContextMenuRadioGroup
+			aria-labelledby={labelId}
+			value={value}
+			onValueChange={(next) => onChange(next as ExpectedColumnType)}
+		>
+			<ContextMenuLabel id={labelId}>
+				{copy.actions.expectedType}
+			</ContextMenuLabel>
+			<div className={cn(segmentedGroupStyles, "mx-1 mb-1")}>
+				{expectedTypeOptions.map((option) => (
+					<ControlTooltip key={option.value} reason={reason}>
+						<ContextMenuSegmentedItem
+							value={option.value}
+							disabled={reason !== undefined}
+							aria-description={reason}
+						>
+							<option.icon aria-hidden />
+							{option.label}
+						</ContextMenuSegmentedItem>
+					</ControlTooltip>
+				))}
+			</div>
+		</ContextMenuRadioGroup>
+	);
+}
+
 // Four immediate choices laid side by side, the same segmented drawing as the
 // expected type above them. Each segment is an icon with its full name as its
 // accessible name, and the radio semantics read the checked value from the
 // column rather than the last click (2026-09-19, replacing the submenu).
-function ColumnAlignmentGroup({
-	index,
+export function ColumnAlignmentGroup({
 	align,
+	onChange,
+	reason,
 }: {
-	readonly index: number;
 	readonly align?: Alignment;
+	readonly onChange: (next: Alignment) => void;
+	readonly reason?: string;
 }) {
+	const labelId = useId();
 	return (
 		<ContextMenuRadioGroup
-			aria-labelledby="column-alignment-label"
+			aria-labelledby={labelId}
 			value={align ?? "default"}
-			onValueChange={(next) =>
-				useTabeloStore.getState().setColumnAlignment(index, next as Alignment)
-			}
+			onValueChange={(next) => onChange(next as Alignment)}
 		>
-			<ContextMenuLabel id="column-alignment-label">
-				{copy.actions.alignment}
-			</ContextMenuLabel>
+			<ContextMenuLabel id={labelId}>{copy.actions.alignment}</ContextMenuLabel>
 			<div className={cn(segmentedGroupStyles, "mx-1 mb-1")}>
 				{alignments.map((option) => (
-					<ControlTooltip key={option.value} name={option.label}>
+					<ControlTooltip
+						key={option.value}
+						name={option.label}
+						reason={reason}
+					>
 						<ContextMenuSegmentedItem
 							value={option.value}
 							aria-label={option.label}
+							disabled={reason !== undefined}
+							aria-description={reason}
 						>
 							<option.icon aria-hidden />
 						</ContextMenuSegmentedItem>
