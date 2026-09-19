@@ -60,16 +60,21 @@ the empty values out" would surprise someone weeks later; every session starts
 from the codec's declared default instead.
 
 A codec may declare one `structuralAssistance` function: its format's named
-structural-assistance feature, under the contract in `AGENTS.md`, "Source text
-is free; structural assistance is narrow". It is pure and text-only. Given the
+structural-assistance features, combined so that no two act on the same edit,
+under the contract in `AGENTS.md`, "Source text is free; structural assistance
+is narrow". It is pure and text-only. Given the
 draft before and after one user edit, and the ranges that edit changed, it
 returns at most one further edit to the draft, or nothing when the draft does
-not settle what the change should be. The source editor lands the result in the
+not settle what the change should be. The edit may ask for a caret left where
+it inserts text to land after that text, for a feature whose insertion is where
+typing continues. The source editor lands the result in the
 same transaction as the user's edit without knowing which format declared it,
 and the pane menu offers the switch that turns it off for the current buffer
-only when a view's codec declares one. Markdown declares the first, keeping its
-alignment divider in step with the table (Decided on #297); no other codec
-declares one, and adding one is a codec change, not an editor change.
+only when a view's codec declares one. Markdown declares the first two:
+keeping its alignment divider in step with the table (Decided on #297), and
+opening a new row with `| ` on Enter at the end of a row below the divider
+(Decided on #391). No other codec declares one, and adding one is a codec
+change, not an editor change.
 
 **A view registry** holds what the workspace can display. A `ViewDefinition`
 adds presentation to a codec: a label, a description, an icon, a `kind`

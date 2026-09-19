@@ -101,4 +101,23 @@ describe("structural assistance in the source editor", () => {
 			"| name | cityname |\n| ---- | ---- |",
 		);
 	});
+
+	it("starts a new row after Enter with the caret after its delimiter, undone as one step", () => {
+		const rows = `${table}\n| Ingrid | Rio  |`;
+		const tr = editorState(true, rows).update({
+			changes: { from: rows.length, insert: "\n" },
+			selection: EditorSelection.cursor(rows.length + 1),
+			userEvent: "input",
+		});
+		expect(tr.newDoc.toString()).toBe(`${rows}\n| `);
+		expect(tr.newSelection.main.head).toBe(rows.length + 3);
+		expect(undoDepth(tr.state)).toBe(1);
+		expect(run(tr.state, undo).state.doc.toString()).toBe(rows);
+
+		const plain = editorState(false, rows).update({
+			changes: { from: rows.length, insert: "\n" },
+			userEvent: "input",
+		});
+		expect(plain.newDoc.toString()).toBe(`${rows}\n`);
+	});
 });

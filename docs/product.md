@@ -140,6 +140,7 @@ reversible implementation choice does not belong here.
 | Source wrapping | Per pane, opt-in, off by default | design system §3 | #95 |
 | Automatic source rewriting | Only named structural-assistance features: smallest deterministic range, one undo step with the triggering edit, invalid drafts untouched, switchable off per buffer | `AGENTS.md` domain rules | #294 |
 | Markdown divider assistance | The alignment divider follows the header, rows, columns, and valid markers of the current draft, and is left alone whenever the draft is ambiguous; the first codec-declared structural-assistance feature | ADR 0005 | #297 |
+| Markdown row-start assistance | Enter at the end of a table row below the divider opens the new line with `\| ` and the caret after it, in the same undo step; a break anywhere else, after the header, or with Smart editing off stays plain | ADR 0005 | #391 |
 
 ### Documents, formats, and persistence
 

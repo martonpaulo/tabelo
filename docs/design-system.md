@@ -594,9 +594,11 @@ draft, and local undo history survive the change. A newly created pane starts
 unwrapped; changing or rearranging a view retains the preference of the pane.
 
 **Structural assistance can always be switched off** (#294). A source view
-whose format has a structural-assistance feature (the first is the Markdown
-alignment divider, #297) shows one checked `Smart editing` item in its
-pane actions menu, beside `Wrap lines`. Turning it off reconfigures the live
+whose format has a structural-assistance feature (Markdown has two: the
+alignment divider, #297, and a new row's opening `| ` on Enter at the end of a
+row below the divider, with the caret after it, #391) shows one checked
+`Smart editing` item in its pane actions menu, beside `Wrap lines`. The one
+item covers every feature its format declares. Turning it off reconfigures the live
 editor through its own compartment: the text, caret, selection, and history
 stay exactly as they are, and from then on the buffer is plain text. Turning it
 back on rewrites nothing by itself; only the next eligible edit is adjusted

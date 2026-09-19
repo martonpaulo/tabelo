@@ -1,4 +1,5 @@
 import {
+	ChangeSet,
 	EditorState,
 	type Extension,
 	Transaction,
@@ -57,7 +58,15 @@ function assistedTransaction(
 	// Sequential, so the adjustment is written against the text after the
 	// user's edit. CodeMirror merges the two into one transaction: one update,
 	// one change notification with the final text, one local history event, and
-	// every selection range mapped through both changes.
+	// every selection range mapped through both changes. A caret sitting where
+	// the adjustment inserts text stays in front of it, unless the feature asks
+	// for it to land after, where the user's typing continues (#391).
 	// https://codemirror.net/docs/ref/#state.EditorState^transactionFilter
-	return [tr, { changes: edit, sequential: true }];
+	const changes = { from: edit.from, to: edit.to, insert: edit.insert };
+	if (!edit.caretAfter) return [tr, { changes, sequential: true }];
+	const selection = tr.newSelection.map(
+		ChangeSet.of(changes, tr.newDoc.length),
+		1,
+	);
+	return [tr, { changes, selection, sequential: true }];
 }

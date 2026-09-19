@@ -82,11 +82,19 @@ export interface SourceEdit {
 	readonly insert: string;
 }
 
+// A structural-assistance edit. `caretAfter` asks that a caret the user's edit
+// left exactly at `from` land after the inserted text rather than before it,
+// for a feature whose insertion is where typing continues, such as a new row's
+// opening delimiter (#391). Without it a caret stays where the user put it.
+export interface AssistanceEdit extends SourceEdit {
+	readonly caretAfter?: boolean;
+}
+
 export type StructuralAssistance = (
 	before: string,
 	after: string,
 	changed: readonly SourceRowRange[],
-) => SourceEdit | null;
+) => AssistanceEdit | null;
 
 // A successful parse can still carry warnings: a ragged row is recoverable by
 // padding, and saying so is better than silently reshaping the user's table.
@@ -194,8 +202,9 @@ export interface TableCodec {
 	// keeps moving while the user repairs it. Absent for formats that nest
 	// rather than delimit, whose source views indent instead.
 	readonly sourceFields?: (text: string) => readonly SourceFieldRange[];
-	// This format's one structural-assistance feature, when it has one (#297).
-	// Given the draft before and after a user edit, and the ranges that edit
+	// This format's structural assistance, when it has any (#297). One function
+	// per codec: a format with several named features combines them here, and
+	// no two of them act on the same edit. Given the draft before and after a user edit, and the ranges that edit
 	// changed in `after`, it returns at most one further edit to `after`, or
 	// null to leave the text exactly as typed. Pure and text-only by contract:
 	// it never reads the document, the store, or the editor, and it returns null

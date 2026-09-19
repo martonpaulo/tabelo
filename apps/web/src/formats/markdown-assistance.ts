@@ -11,9 +11,10 @@ import {
 } from "./markdown-grammar";
 import { minimalChange } from "./minimal-change";
 import { firstLineBlock, lineSpans, pipeCellSpans } from "./parse";
+import { markdownRowStartAssistance } from "./row-start-assistance";
 import type { SourceRowRange, StructuralAssistance } from "./types";
 
-// Markdown's one structural-assistance feature (#297): keeping the alignment
+// Markdown's divider assistance (#297): keeping the alignment
 // divider in step with the table above and below it while the user edits the
 // source. The contract is in AGENTS.md, "Source text is free; structural
 // assistance is narrow": everything here is read from the draft before and
@@ -269,3 +270,15 @@ export const markdownDividerAssistance: StructuralAssistance = (
 		insert: change.insert,
 	};
 };
+
+// Markdown's structural assistance: a new row's opening delimiter on Enter
+// (#391), otherwise the divider (#297). The row-start feature acts only on a
+// line break at the end of a row below the divider, an edit that never calls
+// for a divider change, so the two never compete for one edit.
+export const markdownAssistance: StructuralAssistance = (
+	before,
+	after,
+	changed,
+) =>
+	markdownRowStartAssistance(before, after, changed) ??
+	markdownDividerAssistance(before, after, changed);
