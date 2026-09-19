@@ -413,8 +413,9 @@ textarea,
 	}
 
 	/* A Format mark that is on keeps the system's highlight pair, and one that
-	   is only partly on across the selection keeps a dashed edge, since the
-	   fills that tell the two apart are dropped here (#306). */
+	   is only partly on across the selection keeps a dashed edge and its dot in
+	   the system text colour, since the fills that tell the states apart are
+	   dropped here (#306). */
 	[data-format-toggle][aria-checked="true"] {
 		forced-color-adjust: none;
 		background-color: Highlight;
@@ -424,6 +425,11 @@ textarea,
 	[data-format-toggle][aria-checked="mixed"] {
 		outline: var(--selection-edge-w) dashed CanvasText;
 		outline-offset: calc(var(--selection-edge-w) * -1);
+	}
+
+	[data-format-toggle][aria-checked="mixed"]::after {
+		forced-color-adjust: none;
+		background-color: CanvasText;
 	}
 
 	/* Forced colours paints no background image, so the source views' space dot

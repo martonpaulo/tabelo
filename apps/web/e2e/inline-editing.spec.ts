@@ -97,10 +97,14 @@ test("a partly formatted selection reads as mixed", async ({ tabelo }) => {
 
 	await tabelo.cell(2, 1).click({ modifiers: ["Shift"] });
 	const menu = await openCellMenu(tabelo, tabelo.cell(1, 1));
-	await expect(formatToggle(menu, copy.actions.italic)).toHaveAttribute(
-		"aria-checked",
-		"mixed",
-	);
+	const italic = formatToggle(menu, copy.actions.italic);
+	await expect(italic).toHaveAttribute("aria-checked", "mixed");
+
+	// A mixed mark runs the unpressed command: the whole selection gains it.
+	await italic.click();
+	await expect(menu).toBeHidden();
+	await expect(tabelo.cell(1, 1).locator("em")).toHaveText("Ingrid");
+	await expect(tabelo.cell(2, 1).locator("em")).toHaveText("Paulo");
 });
 
 test("formatting is unavailable for a number and says why", async ({

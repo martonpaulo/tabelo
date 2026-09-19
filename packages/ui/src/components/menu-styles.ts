@@ -89,9 +89,17 @@ export const segmentedItemStyles =
 export const menuInlineItemStyles =
 	"min-h-control-sm justify-center gap-1.5 rounded-indicator px-2 py-1 text-xs";
 
+// The partly-on mark: a dot centred under the icon, in the accent. Forced
+// colours are the app stylesheet's, beside the Format marks' other rules.
+const menuToggleSegmentMixedStyles =
+	"aria-[checked=mixed]:after:absolute aria-[checked=mixed]:after:bottom-0.5 aria-[checked=mixed]:after:left-1/2 aria-[checked=mixed]:after:size-1 aria-[checked=mixed]:after:-translate-x-1/2 aria-[checked=mixed]:after:rounded-full aria-[checked=mixed]:after:bg-primary";
+
 // A segment that turns on and off by itself rather than choosing among its
 // neighbours, such as a Format mark in the Visual Table's cell menu (#306).
-// On, it wears a segmented choice's checked fill; partly on, across a
-// selection that disagrees, the selection tint. The state is read from the
-// item's own `aria-checked`, so what is drawn and what is announced agree.
-export const menuToggleSegmentStyles = `${menuInlineItemStyles} aria-checked:bg-primary aria-checked:text-primary-foreground aria-checked:**:text-primary-foreground aria-[checked=mixed]:bg-selection-fill aria-[checked=mixed]:text-foreground`;
+// On, it wears a segmented choice's checked fill. Partly on, across a
+// selection that disagrees, it stays unpressed and carries a small accent dot
+// under its icon (owner, 2026-09-19): a fill would read as pressed, and the
+// command it runs is the unpressed one, adding the mark everywhere. The state
+// is read from the item's own `aria-checked`, so what is drawn and what is
+// announced agree.
+export const menuToggleSegmentStyles = `relative ${menuInlineItemStyles} aria-checked:bg-primary aria-checked:text-primary-foreground aria-checked:**:text-primary-foreground ${menuToggleSegmentMixedStyles}`;

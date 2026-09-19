@@ -137,9 +137,12 @@ marks, bold, italic, underline, strikethrough, and inline code, as icon
 segments on the segmented group's track, each a `menuitemcheckbox` whose
 `aria-checked` is read from the selection: `true`, `false`, or `mixed` when
 the selected cells disagree. `menuToggleSegmentStyles` draws the three states
-from that attribute, the checked fill of a segmented choice for on and the
-selection tint for mixed, and forced colours keep the system highlight for on
-and a dashed edge for mixed. Each segment is named in full, states its chord
+from that attribute: the checked fill of a segmented choice for on, and for
+mixed the unpressed segment with a small accent dot under its icon (owner,
+2026-09-19), because a fill would read as pressed while the command a mixed
+segment runs is the unpressed one, adding the mark to the whole selection.
+Forced colours keep the system highlight for on, and a dashed edge plus the
+dot in the system text colour for mixed. Each segment is named in full, states its chord
 in `aria-keyshortcuts`, and shows its name and its legend in its tooltip,
 because an icon has no room for the legend a menu row prints. A mark the
 selection cannot take is disabled with its written reason. A command closes
