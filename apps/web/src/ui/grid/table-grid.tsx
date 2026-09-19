@@ -2330,6 +2330,10 @@ function HeaderCell({
 				// modern table, and the one strong line under it is what separates
 				// the names from the data (owner, 2026-09-19).
 				"sticky border-b border-b-line-strong align-top",
+				// A subtle line above the header too, under the letters, starting
+				// at the first cell like every row line (owner, 2026-09-19). Drawn
+				// as an inset shadow so the header keeps the shared row pitch.
+				"shadow-[inset_0_var(--hairline-w)_0_0_var(--line-subtle)]",
 				"cursor-cell select-none px-2 font-semibold",
 				// Sticks below the index strip rather than at the very top, so the
 				// two chrome layers stack instead of covering one another.
