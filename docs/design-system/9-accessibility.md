@@ -599,12 +599,13 @@ resize handle) belongs to the column index strip, not to the header cell.
 nothing else, with no vertical dividers and no chrome bands, and a line's kind
 never changes with state.
 
-- Between two rows runs `--line-subtle`, across the gutter and the cells alike.
-  Nothing divides two columns, two letters on the column index strip, or two
-  header cells.
+- Between two rows runs `--line-subtle`, from the row's first cell on: the
+  row-number gutter draws no line under its numbers (owner, 2026-09-19), though
+  it keeps the line's room so every row stays one pitch. Nothing divides two
+  columns, two letters on the column index strip, or two header cells.
 - The header row is told apart by its semibold weight and the `--line-strong`
-  line under it, which runs under the header row's gutter cell too. The strip
-  has no line under it.
+  line under its cells, which likewise stops at the gutter. The strip has no
+  line under it.
 - A pinned row or column takes the strong line on its pinned edge, always, for
   its whole length, strip and header included: that edge is the non-colour cue
   that it is pinned.

@@ -1510,7 +1510,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								// menu fell through to cell actions on a non-cell.
 								data-row-header={HEADER_ROW}
 								className={cn(
-									"sticky top-grid-strip left-0 z-30 border-r border-r-transparent border-b border-b-line-strong bg-surface-code p-0 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums",
+									"sticky top-grid-strip left-0 z-30 border-r border-r-transparent border-b border-b-transparent bg-surface-code p-0 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums",
 									// The gutter's edge appears only while content scrolls
 									// under it; a pinned column carries its own edge instead.
 									!pinnedColumn && "edge-while-scrolled-x",
@@ -1815,8 +1815,10 @@ const DataRow = memo(function DataRow({
 					// modern table draws no vertical line, so it stays transparent
 					// and takes the strong line only while content scrolls under the
 					// gutter, unless a pinned column stands there with its own edge.
-					// The edge between two numbers is a row boundary like any other.
-					"sticky left-0 border-r border-r-transparent border-b border-b-line-subtle bg-surface-code align-top",
+					// Row lines start at a row's first cell: the gutter keeps the
+					// border's room, so rows stay one pitch, and draws no line under
+					// its numbers (owner, 2026-09-19).
+					"sticky left-0 border-r border-r-transparent border-b border-b-transparent bg-surface-code align-top",
 					!pinnedColumn && "edge-while-scrolled-x",
 					"p-0 text-right font-index font-normal text-muted-foreground text-xs tabular-nums",
 					// The row's number is how the row identifies itself,
@@ -1827,7 +1829,6 @@ const DataRow = memo(function DataRow({
 					// of which rows are selected.
 					selectedSpans !== "" && selectedAxisClass,
 					pinnedRow ? "top-(--grid-pin-top) z-30" : "z-10",
-					pinnedRow && "border-b-line-strong",
 				)}
 				data-axis-selected={selectedSpans !== "" || undefined}
 				onPointerEnter={() => {
