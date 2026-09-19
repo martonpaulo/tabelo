@@ -302,6 +302,87 @@ test("a one-column table keeps the preference until it has a column to pin again
 	await expect(pinItem(menu, "column")).toBeChecked();
 });
 
+function fillHandle(tabelo: TabeloPage): Locator {
+	return tabelo.grid().getByRole("button", { name: copy.a11y.fillHandle });
+}
+
+// Scrolls the grid by the distance that brings the fill handle's centre over
+// the middle of `layer` on one axis, so the handle stands where that pinned
+// layer is drawn. Measured from the rendered boxes rather than assumed, so
+// zoom and row height need no arithmetic here.
+async function scrollHandleUnder(
+	tabelo: TabeloPage,
+	layer: Locator,
+	axis: "x" | "y",
+): Promise<void> {
+	const handle = await fillHandle(tabelo).boundingBox();
+	const covering = await layer.boundingBox();
+	if (!handle || !covering) throw new Error("Expected both boxes.");
+	const delta =
+		axis === "y"
+			? handle.y + handle.height / 2 - (covering.y + covering.height / 2)
+			: handle.x + handle.width / 2 - (covering.x + covering.width / 2);
+	await scroller(tabelo).evaluate(
+		(element, to) => {
+			element.scrollBy({
+				left: to.axis === "x" ? to.delta : 0,
+				top: to.axis === "y" ? to.delta : 0,
+				behavior: "auto",
+			});
+		},
+		{ axis, delta },
+	);
+}
+
+// Whether the fill handle is what the pointer would hit at its own centre:
+// drawn on top rather than covered by a layer over it.
+function handleOnTop(tabelo: TabeloPage): Promise<boolean> {
+	return fillHandle(tabelo).evaluate((element) => {
+		const box = element.getBoundingClientRect();
+		const found = element.ownerDocument.elementFromPoint(
+			box.left + box.width / 2,
+			box.top + box.height / 2,
+		);
+		return Boolean(found && element.contains(found));
+	});
+}
+
+test("a fill handle passes under a pinned row and column like its cell", async ({
+	tabelo,
+}) => {
+	// The roster side by side with itself, so the grid can scroll sideways far
+	// enough to take a whole column under the pinned one.
+	const wide = tallRoster()
+		.split("\n")
+		.map((line) => `${line}\t${line}`)
+		.join("\n");
+	await tabelo.paste(wide);
+	await tabelo.dismissNotices();
+	await pinBoth(tabelo);
+
+	// An ordinary cell well inside the table: its handle is on top at rest.
+	await tabelo.cell(6, 2).click();
+	await expect(fillHandle(tabelo)).toBeVisible();
+	await expect.poll(() => handleOnTop(tabelo)).toBe(true);
+
+	// Scrolled until the handle stands inside the pinned row, the row covers
+	// it exactly as it covers the cell.
+	await scrollHandleUnder(tabelo, tabelo.cell(1, 2), "y");
+	await expect.poll(() => handleOnTop(tabelo)).toBe(false);
+
+	// Back at rest, then sideways until it stands inside the pinned column.
+	await scrollGrid(tabelo, 0, 0);
+	await expect.poll(() => handleOnTop(tabelo)).toBe(true);
+	await scrollHandleUnder(tabelo, tabelo.cell(6, 1), "x");
+	await expect.poll(() => handleOnTop(tabelo)).toBe(false);
+
+	// A pinned cell's own handle still rides on top of its layer.
+	await scrollGrid(tabelo, 0, 0);
+	await tabelo.cell(1, 3).click();
+	await scrollGrid(tabelo, 0, 400);
+	await expect.poll(() => handleOnTop(tabelo)).toBe(true);
+});
+
 async function pinBoth(tabelo: TabeloPage): Promise<void> {
 	const columnMenu = await openColumnMenu(tabelo, 1, samplePeopleHeaders[0]);
 	const columnPin = pinItem(columnMenu, "column");

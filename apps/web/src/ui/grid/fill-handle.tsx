@@ -11,9 +11,12 @@ import type { FillDragController } from "./use-fill-drag";
 // which axes it follows the scroll on: those of a pinned corner cell, which
 // stays put on that axis while the table scrolls under it (#356). The scroll
 // ranges are what the follow animation turns progress back into distance.
+// The layer is the corner cell's own stacking level, so the handle paints
+// just above its cell and under every layer that covers that cell.
 interface HandlePosition {
 	readonly top: number;
 	readonly left: number;
+	readonly layer: number;
 	readonly followX: boolean;
 	readonly followY: boolean;
 	readonly rangeX: number;
@@ -25,6 +28,7 @@ function samePosition(a: HandlePosition | null, b: HandlePosition): boolean {
 		a !== null &&
 		a.top === b.top &&
 		a.left === b.left &&
+		a.layer === b.layer &&
 		a.followX === b.followX &&
 		a.followY === b.followY &&
 		a.rangeX === b.rangeX &&
@@ -76,6 +80,14 @@ export function FillHandle({
 		const followY = sticky && style.top !== "auto";
 		const followX = sticky && style.left !== "auto";
 
+		// The handle belongs to its cell's layer, not above the whole table. An
+		// ordinary cell scrolls under the header row, a pinned row or column,
+		// and the gutter, so its handle must too, or it floats over the layer
+		// that hides the cell. It comes after the table, so at the cell's own
+		// level it still paints over the cell and every neighbour sharing it.
+		const level = Number.parseInt(style.zIndex, 10);
+		const layer = Number.isNaN(level) ? 0 : level;
+
 		const measure = () => {
 			const box = cell.getBoundingClientRect();
 			const wrapperBox = wrapper.getBoundingClientRect();
@@ -99,6 +111,7 @@ export function FillHandle({
 						wrapperBox.left -
 						scrollLeft) /
 					rootFontSize,
+				layer,
 				followX,
 				followY,
 				// Pixel values straight from the scroller, applied to the handle's
@@ -150,14 +163,12 @@ export function FillHandle({
 	// horizontal one.
 	return (
 		<div
-			className={cn(
-				"absolute z-40",
-				position.followY && "follow-scroll-hold-y",
-			)}
+			className={cn("absolute", position.followY && "follow-scroll-hold-y")}
 			style={
 				{
 					top: `${position.top}rem`,
 					left: `${position.left}rem`,
+					zIndex: position.layer,
 					"--tabelo-scroll-range-x": `${position.rangeX}px`,
 					"--tabelo-scroll-range-y": `${position.rangeY}px`,
 				} as React.CSSProperties
