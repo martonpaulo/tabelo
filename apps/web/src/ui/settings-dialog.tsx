@@ -120,7 +120,7 @@ export function SettingsDialog({
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
 				width="wide"
-				className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto]"
+				className="grid-rows-[auto_minmax(0,1fr)_auto]"
 			>
 				<DialogHeader>
 					<DialogTitle id={titleId}>{copy.settings.title}</DialogTitle>
