@@ -457,10 +457,11 @@ never the view's name: Markdown, CSV, TSV, and Jira map a caret to a row and
 column, so there the chord runs the grid's row move on the row under the caret,
 as one document step. A text line move would break a Markdown divider or split
 a quoted CSV row, which is why one key means one thing in every tabular view.
-The caret follows the moved row into the same cell. The move clears the pane's
-own keystroke history, so the next undo there reverses the move rather than
-older typing; nothing is lost, because every committed parse is already a step
-of the document timeline (ADR 0003). A move the grid would refuse (the header
+The caret follows the moved row into the same cell. Like any document change
+the pane's own typing did not make, the move clears the pane's keystroke
+history, so the next undo there reverses the move rather than older typing;
+nothing is lost, because every committed parse is already a step of the
+document timeline (ADR 0003). A move the grid would refuse (the header
 row, the first row upward, the last row downward) is refused here with the
 same written reason, and so is a caret outside the table and any draft that
 does not parse: its text names no row the document has read, and acting on the

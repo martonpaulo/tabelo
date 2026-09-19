@@ -1,6 +1,5 @@
 import {
 	defaultKeymap,
-	history,
 	historyKeymap,
 	redo,
 	redoDepth,
@@ -63,6 +62,12 @@ import { sourceTabExtension } from "./field-navigation";
 import { htmlHeaderCells, htmlLanguage } from "./html-language";
 import { jiraLanguage } from "./jira-language";
 import {
+	clearLocalHistory,
+	type ExternalChangeWatch,
+	localHistory,
+	resetOnExternalChanges,
+} from "./local-history";
+import {
 	type OccurrenceSummary,
 	occurrenceSummary,
 	selectNextOccurrenceAsPrimary,
@@ -93,7 +98,6 @@ const languageCompartment = new Compartment();
 const editableCompartment = new Compartment();
 const diagnosticsCompartment = new Compartment();
 const attributesCompartment = new Compartment();
-const historyCompartment = new Compartment();
 const metricsCompartment = new Compartment();
 const wrapCompartment = new Compartment();
 const indicatorCompartment = new Compartment();
@@ -115,14 +119,6 @@ const columnMarkersCompartment = new Compartment();
 // scale itself keeps its single owner. Levels are reused rather than rebuilt,
 // so stepping up and down does not register a new theme every time.
 const metricsSignals = new Map<number, Extension>();
-
-// Drops the editor's local undo history and starts an empty one. Dropping the
-// field and adding it back is what clears it: reconfiguring a compartment that
-// keeps the field keeps its contents too, so this has to be two transactions.
-function clearLocalHistory(view: EditorView): void {
-	view.dispatch({ effects: historyCompartment.reconfigure([]) });
-	view.dispatch({ effects: historyCompartment.reconfigure(history()) });
-}
 
 // Whether a text change is the editor's own undo or redo. CodeMirror's history
 // marks every transaction it dispatches with one of these user events:
@@ -473,11 +469,9 @@ export function SourceEditor({
 	// built once at mount and the context menu share it. False means this pane
 	// has no row commands, which hands the key to CodeMirror's line move.
 	//
-	// The move is a document step, not a keystroke, so the editor's own history
-	// is cleared with it: otherwise the next undo in this pane would revert older
-	// typing through the moved text instead of the move. Nothing is lost, because
-	// every committed parse is already its own step in the document timeline, and
-	// the step this move adds carries the draft it replaced (docs/adr/0003).
+	// The move is a document step, not a keystroke, so like any change from
+	// outside this editor's typing it clears the local history (local-history.ts),
+	// and the next undo in this pane reverses the move rather than older typing.
 	const moveRow = (view: EditorView, offset: number): boolean => {
 		const target = handlers.current.rowTarget;
 		if (!target) return false;
@@ -491,8 +485,6 @@ export function SourceEditor({
 				severity: "warning",
 				message: sourceRowRefusalMessage[refusal],
 			});
-		} else {
-			clearLocalHistory(view);
 		}
 		return true;
 	};
@@ -529,13 +521,16 @@ export function SourceEditor({
 		const host = hostRef.current;
 		if (!host) return;
 
+		// Set once the editor exists: it is what tells this editor's own reports
+		// apart from every other change to the document.
+		let externalChanges: ExternalChangeWatch | null = null;
 		const view = new EditorView({
 			parent: host,
 			state: EditorState.create({
 				doc: value,
 				extensions: [
 					lineNumbers(),
-					historyCompartment.of(history()),
+					localHistory(),
 					// Without this, every range CodeMirror adds collapses back to one.
 					// It is what makes Mod+D, and editing all of its ranges through a
 					// single transaction, possible at all.
@@ -688,9 +683,10 @@ export function SourceEditor({
 						) {
 							return;
 						}
-						handlers.current.onChange(
-							update.state.doc.toString(),
-							historyDirectionOf(update.transactions),
+						const text = update.state.doc.toString();
+						const direction = historyDirectionOf(update.transactions);
+						externalChanges?.own(() =>
+							handlers.current.onChange(text, direction),
 						);
 					}),
 				],
@@ -698,6 +694,7 @@ export function SourceEditor({
 		});
 
 		viewRef.current = view;
+		externalChanges = resetOnExternalChanges(view);
 		// Mount before paint and measure once the editor is attached. Source panes
 		// can appear as a dialog closes or a layout changes, and waiting for focus
 		// would leave wrapped line numbers positioned from stale geometry.
@@ -717,6 +714,8 @@ export function SourceEditor({
 			canRedo: () => redoDepth(view.state) > 0,
 		});
 		return () => {
+			externalChanges?.dispose();
+			externalChanges = null;
 			geometryObserver.disconnect();
 			unregisterHistory();
 			view.destroy();
@@ -726,7 +725,9 @@ export function SourceEditor({
 		// are applied through the effects below.
 	}, []);
 
-	// Push external text in without disturbing the caret or the local history.
+	// Push external text in without disturbing the caret. The text never enters
+	// the local history, and a document change behind it has already cleared
+	// that history (local-history.ts).
 	useEffect(() => {
 		const view = viewRef.current;
 		if (!view) return;
@@ -771,9 +772,7 @@ export function SourceEditor({
 	// A view change reuses this editor, so its local history would otherwise
 	// still describe text in the format the pane has left. Undo has to stop at
 	// the switch and fall through to the document timeline from there, per
-	// docs/adr/0003. Dropping the history field and adding it back is what clears
-	// it: reconfiguring a compartment that keeps the field keeps its contents
-	// too, so this has to be two transactions rather than one.
+	// docs/adr/0003.
 	const servedViewId = useRef(viewId);
 	useEffect(() => {
 		if (servedViewId.current === viewId) return;

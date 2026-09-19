@@ -243,7 +243,8 @@ Related to: Draft, Document timeline
 
 The single ordered history of table document states. Each committed parse and
 each table operation is one step. A source view's own keystroke history is a
-separate, shallower layer that falls through to this timeline when exhausted.
+separate, shallower layer that falls through to this timeline when exhausted,
+and any document change that view did not make clears it (ADR 0003).
 
 Related to: Commit, Table operation
 

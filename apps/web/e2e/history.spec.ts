@@ -106,6 +106,35 @@ test("repeated undo in a source view stops at the start and keeps redo", async (
 	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid X");
 });
 
+// Owner decision, 2026-09-19: a change the pane did not make clears the pane's
+// keystroke history, so undo there walks the document timeline back through
+// that change instead of rewriting it away as older typing.
+test("undo in a source view reverses a grid edit made after its typing", async ({
+	tabelo,
+}) => {
+	const source = tabelo.source("markdown");
+	await source.fill("| Name | City |\n| --- | --- |\n| Ingrid | Rio |");
+	await expect(tabelo.cell(1, 2)).toHaveText("Rio");
+	await source.press("ControlOrMeta+End");
+	await source.press("ArrowLeft");
+	await source.press("X");
+	await expect(tabelo.cell(1, 2)).toHaveText("Rio X");
+
+	await tabelo.editCell(1, 1, "Paulo");
+	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
+
+	await source.press("ControlOrMeta+z");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect(tabelo.cell(1, 2)).toHaveText("Rio X");
+	await source.press("ControlOrMeta+z");
+	await expect(tabelo.cell(1, 2)).toHaveText("Rio");
+
+	await source.press("ControlOrMeta+Shift+Z");
+	await expect(tabelo.cell(1, 2)).toHaveText("Rio X");
+	await source.press("ControlOrMeta+Shift+Z");
+	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
+});
+
 test("document undo restores an invalid draft with explicit feedback", async ({
 	tabelo,
 }) => {

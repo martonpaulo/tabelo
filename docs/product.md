@@ -170,6 +170,7 @@ reversible implementation choice does not belong here.
 
 | Decision | Current outcome | Recorded in | Decided on |
 | :--- | :--- | :--- | :--- |
+| Source undo after an outside change | A document change a source pane did not make (grid edit, another pane, menu command, row move, timeline step) clears that pane's keystroke history, so undo there walks the change back through the document timeline; the pane that made it keeps its history | ADR 0003 | owner, 2026-09-19 |
 | Keyboard navigation | Two levels: Enter enters a pane, Escape leaves it; focus lost to a replaced pane lands inside the active pane; cell edits follow Google Sheets' enter and edit modes | design system §9 | #24, #54, #350, #366 |
 | Row and column reorder | Keyboard and menu path plus pointer drag of a selected row number or column letter; no grip, no pane drag | design system §9 | #136, #139, #288 |
 | Grid axis affordances | No icons beside row numbers or column letters; the context menu (right-click, `Shift`+`F10`, `ContextMenu`) is the grid's only menu; the gutter is sized for the number alone | design system §6 | #288 |

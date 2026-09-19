@@ -80,3 +80,27 @@ several steps, but only steps produced by the same pane's draft. A grid
 operation, another pane's text, or a displaced invalid draft is a boundary the
 editor's history does not know about; a local undo that meets one, or whose
 parse matches no neighbouring state, stays an ordinary edit.
+
+## Amendment: a change the pane did not make ends its local history
+
+Owner decision, 2026-09-19. A source editor's keystroke history describes the
+text as this pane typed it. Once the document changes by anything else, a grid
+edit, another pane's text, a menu command, a row move, or a step of the
+document timeline, that history reaches back into text from before the change,
+and undoing through it rewrote the change away as if it were typing (since the
+amendment above, as a new timeline step rather than a loop, but still not the
+step the user expected). So every such change clears the local history of
+every source pane that did not make it, redo included. Undo in that pane then
+falls straight through to the document timeline, which walks the external
+change back as the step it is, and the typing before it after that.
+
+The pane that made the change keeps its history: its own typing, its own
+assisted edits, and its own local undo and redo, whose parses navigate the
+timeline as the amendment above describes. Nothing is lost, because every
+committed parse is already a timeline step and a displaced draft travels with
+the step that displaced it. A change that touches only a draft, not the
+document, clears nothing. The timeline itself is unchanged. The source row
+move (#255) is a case of this rule rather than a separate one. The view change
+reset in the decision above stays its own trigger, because a view change alters
+what the text means without changing the document; the source editor clears
+its history for both through one mechanism.
