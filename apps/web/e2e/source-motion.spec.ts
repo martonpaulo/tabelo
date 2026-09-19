@@ -1,6 +1,7 @@
 import { copy } from "@/copy/copy";
 import { samplePeopleCsv } from "@/core/sample-data";
 import { expect, test } from "./fixtures";
+import { outsidePinnedHeader } from "./helpers";
 
 const markdownTable = [
 	"| name | city |",
@@ -24,7 +25,7 @@ test("changing a pane's view keeps the same editor rather than rebuilding it", a
 	// afterwards is the assertion that nothing was torn down in between.
 	await tabelo
 		.pane("markdown")
-		.locator(".cm-editor")
+		.locator(`.cm-editor${outsidePinnedHeader}`)
 		.evaluate((element: HTMLElement) => {
 			element.dataset.editorInstance = "before-view-change";
 		});
@@ -32,14 +33,15 @@ test("changing a pane's view keeps the same editor rather than rebuilding it", a
 	await tabelo.choosePaneView("markdown", "csv");
 
 	const csvPane = tabelo.pane("csv");
-	await expect(csvPane.locator(".cm-editor")).toHaveAttribute(
-		"data-editor-instance",
-		"before-view-change",
-	);
+	await expect(
+		csvPane.locator(`.cm-editor${outsidePinnedHeader}`),
+	).toHaveAttribute("data-editor-instance", "before-view-change");
 	// The surviving editor still follows the view: it serves the new format's
 	// text and answers to the new format's accessible name.
 	await expect(tabelo.source("csv")).toBeVisible();
-	await expect(csvPane.locator(".cm-line").first()).toHaveText("name,city");
+	await expect(
+		csvPane.locator(`.cm-line${outsidePinnedHeader}`).first(),
+	).toHaveText("name,city");
 });
 
 // The one thing the rebuild was accidentally providing. The text now means
@@ -80,7 +82,7 @@ test("a view change in one pane leaves the other pane's editor alone", async ({
 	const stamp = (view: "markdown" | "csv", value: string) =>
 		tabelo
 			.pane(view)
-			.locator(".cm-editor")
+			.locator(`.cm-editor${outsidePinnedHeader}`)
 			.evaluate((element: HTMLElement, mark) => {
 				element.dataset.editorInstance = mark;
 			}, value);
@@ -89,14 +91,12 @@ test("a view change in one pane leaves the other pane's editor alone", async ({
 
 	await tabelo.choosePaneView("csv", "tsv");
 
-	await expect(tabelo.pane("markdown").locator(".cm-editor")).toHaveAttribute(
-		"data-editor-instance",
-		"markdown-editor",
-	);
-	await expect(tabelo.pane("tsv").locator(".cm-editor")).toHaveAttribute(
-		"data-editor-instance",
-		"csv-editor",
-	);
+	await expect(
+		tabelo.pane("markdown").locator(`.cm-editor${outsidePinnedHeader}`),
+	).toHaveAttribute("data-editor-instance", "markdown-editor");
+	await expect(
+		tabelo.pane("tsv").locator(`.cm-editor${outsidePinnedHeader}`),
+	).toHaveAttribute("data-editor-instance", "csv-editor");
 });
 
 test("source focus stays visible and reduced motion keeps the cursor solid", async ({
@@ -127,7 +127,10 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 	});
 	expect(focusBorder.style).toBe("solid");
 	expect(focusBorder.width).toBeGreaterThan(0);
-	await expect(pane.locator(".cm-content")).toHaveCSS("outline-style", "none");
+	await expect(pane.locator(`.cm-content${outsidePinnedHeader}`)).toHaveCSS(
+		"outline-style",
+		"none",
+	);
 
 	await page.emulateMedia({ reducedMotion: "reduce" });
 	await expect

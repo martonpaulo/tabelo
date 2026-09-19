@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { layoutPresets } from "@/workspace/layout";
 import { expect, test } from "./fixtures";
+import { outsidePinnedHeader } from "./helpers";
 
 async function contrastBetween(
 	page: Page,
@@ -306,14 +307,12 @@ test("only view content participates in native text selection", async ({
 		"user-select",
 		"none",
 	);
-	await expect(markdownPane.locator(".cm-gutters")).toHaveCSS(
-		"user-select",
-		"none",
-	);
-	await expect(markdownPane.locator(".cm-content")).toHaveCSS(
-		"user-select",
-		"text",
-	);
+	await expect(
+		markdownPane.locator(`.cm-gutters${outsidePinnedHeader}`),
+	).toHaveCSS("user-select", "none");
+	await expect(
+		markdownPane.locator(`.cm-content${outsidePinnedHeader}`),
+	).toHaveCSS("user-select", "text");
 
 	const appMenu = await tabelo.openAppMenu();
 	await expect(appMenu.getByText(copy.app.name, { exact: true })).toHaveCSS(
@@ -486,7 +485,10 @@ test("source focus belongs to the pane and its selection matches the native one"
 	const pane = tabelo.pane("markdown");
 	await tabelo.source("markdown").click();
 
-	await expect(pane.locator(".cm-content")).toHaveCSS("outline-style", "none");
+	await expect(pane.locator(`.cm-content${outsidePinnedHeader}`)).toHaveCSS(
+		"outline-style",
+		"none",
+	);
 	await expect(pane.locator(".cm-tabeloCaret-primary")).toHaveCSS(
 		"border-left-style",
 		"solid",
@@ -495,7 +497,7 @@ test("source focus belongs to the pane and its selection matches the native one"
 
 	await tabelo.page.keyboard.press("ControlOrMeta+A");
 	const selectionColours = () =>
-		pane.locator(".cm-editor").evaluate((editor) => {
+		pane.locator(`.cm-editor${outsidePinnedHeader}`).evaluate((editor) => {
 			const drawn = editor.querySelector<HTMLElement>(
 				".cm-tabeloSelectionLayer .cm-selectionBackground",
 			);

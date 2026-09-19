@@ -1,5 +1,6 @@
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
+import { outsidePinnedHeader } from "./helpers";
 
 test("Move pane cancellation changes nothing and restores focus", async ({
 	tabelo,
@@ -66,7 +67,7 @@ test("Move pane carries an invalid draft and pane preferences through an asymmet
 	const paneId = await tabelo.pane("markdown").getAttribute("data-pane-id");
 	const editorWidthBefore = await tabelo
 		.pane("markdown")
-		.locator(".cm-editor")
+		.locator(`.cm-editor${outsidePinnedHeader}`)
 		.evaluate((element) => element.clientWidth);
 	const dialog = await tabelo.openMovePaneDialog("markdown");
 	await expect(dialog.getByRole("radio")).toHaveCount(2);
@@ -91,7 +92,7 @@ test("Move pane carries an invalid draft and pane preferences through an asymmet
 		.poll(() =>
 			tabelo
 				.pane("markdown")
-				.locator(".cm-editor")
+				.locator(`.cm-editor${outsidePinnedHeader}`)
 				.evaluate((element) => element.clientWidth),
 		)
 		.toBeGreaterThan(editorWidthBefore);

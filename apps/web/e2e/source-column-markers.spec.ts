@@ -5,6 +5,7 @@ import { listViews } from "@/views/registry";
 import { expect, test } from "./fixtures";
 import {
 	lastCopied,
+	outsidePinnedHeader,
 	recordingClipboard,
 	renderedSource,
 	type TabeloPage,
@@ -107,7 +108,7 @@ test("the letters follow the header line through typing, zoom, and scrolling", a
 	// Scrolling sideways carries the letters with the text.
 	const resting = await letterEdge(pane, 4);
 	await pane
-		.locator(".cm-scroller")
+		.locator(`.cm-scroller${outsidePinnedHeader}`)
 		.first()
 		.evaluate((scroller) => {
 			scroller.scrollLeft = 120;
@@ -167,14 +168,16 @@ test("the scroller runs the pane's full height behind the strip", async ({
 }) => {
 	const pane = await fillMarkdown(tabelo);
 	await expect(pane.locator(STRIP)).toBeVisible();
-	const tops = await pane.locator(".cm-editor").evaluate((editor) => ({
-		scroller:
-			editor.querySelector(".cm-scroller")?.getBoundingClientRect().top ??
-			Number.NaN,
-		strip:
-			editor.querySelector(".cm-tabeloColumnStrip")?.getBoundingClientRect()
-				.top ?? Number.NaN,
-	}));
+	const tops = await pane
+		.locator(`.cm-editor${outsidePinnedHeader}`)
+		.evaluate((editor) => ({
+			scroller:
+				editor.querySelector(".cm-scroller")?.getBoundingClientRect().top ??
+				Number.NaN,
+			strip:
+				editor.querySelector(".cm-tabeloColumnStrip")?.getBoundingClientRect()
+					.top ?? Number.NaN,
+		}));
 	expect(tops.scroller).toBeLessThanOrEqual(tops.strip);
 });
 
@@ -197,9 +200,9 @@ test("the letters never reach the text, the clipboard, or assistive technology",
 		await strip.evaluate((element) => (element as HTMLElement).inert),
 	).toBe(true);
 	expect(await strip.evaluate((element) => element.textContent)).toBe("");
-	expect(await pane.locator(".cm-editor").ariaSnapshot()).not.toMatch(
-		/\b[A-E]\b/,
-	);
+	expect(
+		await pane.locator(`.cm-editor${outsidePinnedHeader}`).ariaSnapshot(),
+	).not.toMatch(/\b[A-E]\b/);
 
 	// What is copied is the source text and nothing else.
 	const shown = await renderedSource(pane);

@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
+import { outsidePinnedHeader } from "./helpers";
 
 interface ZoomProbe {
 	zoomCancelled: string[];
@@ -179,7 +180,7 @@ test("closing a pane that owns an invalid draft asks before discarding it", asyn
 
 const contentSize = (pane: Locator) =>
 	pane
-		.locator(".cm-content")
+		.locator(`.cm-content${outsidePinnedHeader}`)
 		.evaluate((element) =>
 			Number.parseFloat(getComputedStyle(element).fontSize),
 		);
@@ -288,7 +289,7 @@ test("zoom resets in one action and survives a reload", async ({ tabelo }) => {
 	const contentSize = () =>
 		tabelo
 			.pane("markdown")
-			.locator(".cm-content")
+			.locator(`.cm-content${outsidePinnedHeader}`)
 			.evaluate((element) =>
 				Number.parseFloat(getComputedStyle(element).fontSize),
 			);

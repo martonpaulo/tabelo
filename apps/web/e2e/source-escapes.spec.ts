@@ -4,6 +4,7 @@ import { escapeCell } from "@/formats/markdown-inline";
 import { LINE_BREAK_GLYPH } from "@/ui/source/indicator-glyphs";
 import { expect, test } from "./fixtures";
 import {
+	editorScroller,
 	lastCopied,
 	recordingClipboard,
 	renderedSource,
@@ -46,7 +47,7 @@ async function seedEscapes(tabelo: TabeloPage): Promise<void> {
 // What each glyph draws, as the theme generates it. Quotation marks are how a
 // computed `content` comes back.
 async function drawnGlyphs(pane: Locator): Promise<string[]> {
-	return pane.evaluate((element) =>
+	return editorScroller(pane).evaluate((element) =>
 		Array.from(element.querySelectorAll(".cm-tabeloEscapeGlyph"), (span) => {
 			// A computed `content` comes back as a CSS string, quoted and with
 			// its own backslashes escaped.
@@ -64,7 +65,7 @@ async function declaredWidths(
 	pane: Locator,
 	selector = ".cm-tabeloEscape",
 ): Promise<string[]> {
-	return pane.evaluate(
+	return editorScroller(pane).evaluate(
 		(element, query) =>
 			Array.from(
 				element.querySelectorAll(query),

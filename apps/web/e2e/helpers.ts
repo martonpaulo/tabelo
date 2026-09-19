@@ -163,9 +163,6 @@ export function lastCopied(page: Page): Promise<CopiedFlavours | undefined> {
 	);
 }
 
-// The rendered text of a source pane, decorations excluded. Every marker a
-// source view draws is generated content or a widget rather than a text node,
-// so what the DOM reports here is the source and nothing else.
 // The download chooser's confirm button. Its name carries the chosen
 // extension, so it is found by the part that stays the same across formats.
 export function downloadConfirm(page: Page): Locator {
@@ -177,12 +174,34 @@ export function downloadConfirm(page: Page): Locator {
 		.getByRole("button", { name: new RegExp(`^${prefix}`) });
 }
 
-export function renderedSource(pane: Locator): Promise<string> {
-	return pane.evaluate((element) =>
-		Array.from(
-			element.querySelectorAll(".cm-line"),
-			(line) => line.textContent ?? "",
-		).join("\n"),
+// A source editor holds a second, read-only CodeMirror view inside its own
+// element: the pinned header copy (#252), which exists whenever there is a
+// header to pin, shown or not. Its lines, markers, and scroller carry the same
+// classes as the editor's, so a spec appends this to a `.cm-*` selector, or
+// reads through `editorScroller`, to reach the editor alone.
+export const outsidePinnedHeader = ":not(.cm-tabeloPinnedHeader *)";
+
+// The editor's own scroller, which holds its text, gutters, and every marker
+// drawn on the text, and none of the copy's. Evaluate against this rather than
+// the pane when counting or reading what the editor draws.
+export function editorScroller(pane: Locator): Locator {
+	return pane.locator(`.cm-scroller${outsidePinnedHeader}`);
+}
+
+// The editor's text lines, for a query run inside the page.
+const editorLine = `.cm-line${outsidePinnedHeader}`;
+
+// The rendered text of a source pane, decorations excluded. Every marker a
+// source view draws is generated content or a widget rather than a text node,
+// so what the DOM reports here is the source and nothing else.
+export function renderedSource(scope: Locator): Promise<string> {
+	return scope.evaluate(
+		(element, selector) =>
+			Array.from(
+				element.querySelectorAll(selector),
+				(line) => line.textContent ?? "",
+			).join("\n"),
+		editorLine,
 	);
 }
 

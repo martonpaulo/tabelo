@@ -1,5 +1,6 @@
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
+import { outsidePinnedHeader } from "./helpers";
 
 function largeTable(rows = 80, columns = 12): string {
 	const header = Array.from(
@@ -37,10 +38,9 @@ test("every scroll boundary prevents scroll chaining on both axes", async ({
 		await expect(paneBody).toHaveCSS("overscroll-behavior", "contain");
 	}
 
-	await expect(tabelo.workspace.locator(".cm-scroller")).toHaveCSS(
-		"overscroll-behavior",
-		"contain",
-	);
+	await expect(
+		tabelo.workspace.locator(`.cm-scroller${outsidePinnedHeader}`),
+	).toHaveCSS("overscroll-behavior", "contain");
 
 	const dialog = await tabelo.openChangeViewDialog("markdown");
 	// A dialog scrolls only when it does not fit the window, and then keeps its

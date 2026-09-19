@@ -1,5 +1,6 @@
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
+import { editorScroller } from "./helpers";
 
 const longValue = Array.from(
 	{ length: 7 },
@@ -25,7 +26,9 @@ test("wrapped source line numbers belong to the first visual line before focus",
 
 	const numbersStartOnTheirLogicalLine = () =>
 		tabelo.pane("tsv").evaluate((pane) => {
-			const editor = pane.querySelector(".cm-editor");
+			// The first scroller is the editor's own; the pinned header copy's
+			// comes after it, so everything read below is the editor's.
+			const editor = pane.querySelector(".cm-scroller");
 			const numbers = editor
 				? [
 						...editor.querySelectorAll<HTMLElement>(
@@ -38,7 +41,7 @@ test("wrapped source line numbers belong to the first visual line before focus",
 			const lines = editor
 				? [...editor.querySelectorAll<HTMLElement>(".cm-content .cm-line")]
 				: [];
-			const scroller = editor?.querySelector(".cm-scroller");
+			const scroller = editor;
 			const firstVisualLineHeight = scroller
 				? Number.parseFloat(getComputedStyle(scroller).lineHeight)
 				: 0;
@@ -119,7 +122,7 @@ test("a zoom step carries the line numbers and the caret onto the resized lines"
 	const probe = (): Promise<ZoomSample> =>
 		pane.evaluate((node) => {
 			const read = () => {
-				const editor = node.querySelector(".cm-editor");
+				const editor = node.querySelector(".cm-scroller");
 				const lines = editor
 					? [...editor.querySelectorAll<HTMLElement>(".cm-content .cm-line")]
 					: [];
@@ -202,7 +205,7 @@ test("line numbers sit no further from their text than from the pane edge", asyn
 }) => {
 	const source = tabelo.source("markdown");
 	const gaps = () =>
-		tabelo.pane("markdown").evaluate((pane) => {
+		editorScroller(tabelo.pane("markdown")).evaluate((pane) => {
 			const gutter = pane.querySelector(".cm-lineNumbers");
 			const numbers = [
 				...pane.querySelectorAll<HTMLElement>(
@@ -251,7 +254,7 @@ test("a selected line is highlighted from the same edge the line starts at", asy
 
 	const highlightReachesTheLineStart = () =>
 		tabelo.pane("markdown").evaluate((node) => {
-			const editor = node.querySelector(".cm-editor");
+			const editor = node.querySelector(".cm-scroller");
 			const line = editor?.querySelector(".cm-content .cm-line");
 			const highlights = editor
 				? [
@@ -284,7 +287,7 @@ test("a selection band covers the whole line box, on one line or several", async
 	const pane = tabelo.pane("markdown");
 
 	const bandsCoverTheirLines = () =>
-		pane.evaluate((node) => {
+		editorScroller(pane).evaluate((node) => {
 			const bands = [
 				...node.querySelectorAll(
 					".cm-tabeloSelectionLayer .cm-selectionBackground",

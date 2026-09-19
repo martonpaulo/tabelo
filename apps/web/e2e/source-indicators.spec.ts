@@ -4,7 +4,9 @@ import { samplePerson } from "@/core/sample-data";
 import type { SpaceIndicators } from "@/preferences/contract";
 import { expect, test } from "./fixtures";
 import {
+	editorScroller,
 	lastCopied,
+	outsidePinnedHeader,
 	recordingClipboard,
 	renderedSource,
 	storedDocument,
@@ -34,7 +36,7 @@ const tab = ".cm-highlightTab";
 // The dot is a background rather than generated content, because a laid-out
 // glyph per space is what made scrolling a padded Markdown table stutter (#275).
 async function paintedSpaces(pane: Locator): Promise<number> {
-	return pane.evaluate(
+	return editorScroller(pane).evaluate(
 		(element) =>
 			Array.from(element.querySelectorAll(".cm-highlightSpace")).filter(
 				(span) => getComputedStyle(span).backgroundImage !== "none",
@@ -98,9 +100,9 @@ test("nothing is marked until the reader asks", async ({ tabelo }) => {
 	const pane = tabelo.pane("tsv");
 	await expect(tabelo.source("tsv")).toBeVisible();
 
-	await expect(pane.locator(marker)).toHaveCount(0);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(0);
 	expect(await paintedSpaces(pane)).toBe(0);
-	const arrows = await pane.evaluate(
+	const arrows = await editorScroller(pane).evaluate(
 		(element) =>
 			Array.from(element.querySelectorAll(".cm-highlightTab")).filter(
 				(span) => getComputedStyle(span, "::before").content !== "none",
@@ -165,7 +167,7 @@ test("JSON marks an empty string and never a typed literal", async ({
 	);
 	await tabelo.showInSourcePane("json");
 	const pane = tabelo.pane("json");
-	await expect(pane.locator(marker)).toHaveCount(1);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(1);
 	const source = await renderedSource(pane);
 	expect(source).toContain("null");
 	expect(source).toContain("false");
@@ -194,11 +196,15 @@ for (const [view, typed] of [
 		);
 		await tabelo.choosePaneView("markdown", view);
 		const pane = tabelo.pane(view);
-		await expect(pane.locator(marker)).toHaveCount(1);
+		await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(
+			1,
+		);
 
-		await pane.locator(marker).click();
+		await pane.locator(`${marker}${outsidePinnedHeader}`).click();
 		await page.keyboard.type(typed);
-		await expect(pane.locator(marker)).toHaveCount(0);
+		await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(
+			0,
+		);
 		await expect(tabelo.cell(1, 2)).toHaveText(first.city);
 	});
 }
@@ -254,24 +260,26 @@ test("a switch turns off exactly the marker it names", async ({
 	);
 	await tabelo.choosePaneView("markdown", "tsv");
 	const pane = tabelo.pane("tsv");
-	await expect(pane.locator(tab).first()).toBeVisible();
-	await expect(pane.locator(marker)).toHaveCount(1);
+	await expect(
+		pane.locator(`${tab}${outsidePinnedHeader}`).first(),
+	).toBeVisible();
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(1);
 
 	await setIndicators(page, { tabs: false });
 	await expect
 		.poll(() =>
 			// No tab span at all is as unmarked as a span painting nothing.
-			pane.evaluate((element) => {
+			editorScroller(pane).evaluate((element) => {
 				const span = element.querySelector(".cm-highlightTab");
 				return span ? getComputedStyle(span, "::before").content : "none";
 			}),
 		)
 		.toBe("none");
 	// The empty placeholder is a separate choice and is untouched by that one.
-	await expect(pane.locator(marker)).toHaveCount(1);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(1);
 
 	await setIndicators(page, { emptyValues: false });
-	await expect(pane.locator(marker)).toHaveCount(0);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(0);
 });
 
 // The placeholder reads as text and takes width like text, but it is not text:
@@ -288,7 +296,7 @@ test("the placeholder is drawn beside the source without joining it", async ({
 	);
 	const pane = tabelo.pane("markdown");
 	const editor = tabelo.source("markdown");
-	await expect(pane.locator(marker)).toHaveCount(1);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(1);
 
 	const stored = await storedDocument(page);
 	const source = await renderedSource(pane);
@@ -309,7 +317,7 @@ test("the placeholder is drawn beside the source without joining it", async ({
 	await page.keyboard.press("ArrowDown");
 	await page.keyboard.press("End");
 	await page.keyboard.type("x");
-	await expect(pane.locator(marker)).toHaveCount(1);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(1);
 	expect(await renderedSource(pane)).toBe(`${source}x`);
 });
 
@@ -332,7 +340,7 @@ test("the space, tab, and empty glyphs are drawn together", async ({
 	await setIndicators(page, { spaces: "all", tabs: true, emptyValues: true });
 
 	const drawn = async (selector: string) =>
-		pane.evaluate(
+		editorScroller(pane).evaluate(
 			(element, css) =>
 				Array.from(element.querySelectorAll(css))
 					.map((span) => getComputedStyle(span, "::before").content)
@@ -375,7 +383,7 @@ test("a space keeps a visible marker in forced colours", async ({
 	expect(marked).toBeGreaterThan(0);
 
 	const glyphs = async () =>
-		pane.evaluate(
+		editorScroller(pane).evaluate(
 			(element) =>
 				Array.from(
 					element.querySelectorAll<HTMLElement>(".cm-highlightSpace"),
@@ -418,14 +426,14 @@ test("typing into an empty field replaces the placeholder with the value", async
 		].join("\n"),
 	);
 	const pane = tabelo.pane("markdown");
-	await expect(pane.locator(marker)).toHaveCount(1);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(1);
 
 	// Clicking the placeholder puts the caret in the field it speaks for, and
 	// what is typed there is an ordinary edit that reaches the table.
-	await pane.locator(marker).click();
+	await pane.locator(`${marker}${outsidePinnedHeader}`).click();
 	await page.keyboard.type(first.city);
 
-	await expect(pane.locator(marker)).toHaveCount(0);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(0);
 	expect(await renderedSource(pane)).toContain(first.city);
 	// The grid is the table itself, so this is the value arriving rather than
 	// the pane merely redrawing.
@@ -435,7 +443,7 @@ test("typing into an empty field replaces the placeholder with the value", async
 	for (let index = 0; index < first.city.length; index += 1) {
 		await page.keyboard.press("Backspace");
 	}
-	await expect(pane.locator(marker)).toHaveCount(1);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(1);
 });
 
 // The placeholder is not text, so it cannot be selected on its own: a double
@@ -455,10 +463,10 @@ test("a double click on a placeholder places the caret", async ({
 		].join("\n"),
 	);
 	const pane = tabelo.pane("markdown");
-	const placeholder = pane.locator(marker);
+	const placeholder = pane.locator(`${marker}${outsidePinnedHeader}`);
 	await expect(placeholder).toHaveCount(1);
 	const bandsOverPlaceholder = () =>
-		pane.evaluate((node, selector) => {
+		editorScroller(pane).evaluate((node, selector) => {
 			const word = node.querySelector(selector)?.getBoundingClientRect();
 			if (!word) return -1;
 			return [...node.querySelectorAll(".cm-selectionBackground")]
@@ -498,7 +506,7 @@ test("an empty field gives the caret one stop, on the text line", async ({
 		),
 	);
 	const pane = tabelo.pane("markdown");
-	const markers = pane.locator(marker);
+	const markers = pane.locator(`${marker}${outsidePinnedHeader}`);
 	await expect(markers).toHaveCount(2);
 	const caret = pane.locator(".cm-tabeloCaret-primary");
 	const centre = async (locator: Locator) => {
@@ -559,7 +567,7 @@ test("turning indicators off changes what is drawn and nothing else", async ({
 	);
 	await tabelo.choosePaneView("markdown", "csv");
 	const pane = tabelo.pane("csv");
-	await expect(pane.locator(marker)).toHaveCount(1);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(1);
 
 	// Persistence is debounced, so the baseline is only meaningful once the
 	// pasted table has actually reached storage.
@@ -577,7 +585,7 @@ test("turning indicators off changes what is drawn and nothing else", async ({
 		tabs: false,
 		emptyValues: false,
 	});
-	await expect(pane.locator(marker)).toHaveCount(0);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(0);
 	expect(await paintedSpaces(pane)).toBe(0);
 
 	expect(await storedDocument(page)).toBe(withMarkers.document);
@@ -593,7 +601,7 @@ test("turning indicators off changes what is drawn and nothing else", async ({
 		tabs: true,
 		emptyValues: true,
 	});
-	await expect(pane.locator(marker)).toHaveCount(1);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(1);
 	expect(await storedDocument(page)).toBe(withMarkers.document);
 	await tabelo.runPaneCommand("csv", "copySource");
 	expect(await lastCopied(page)).toEqual(copiedWithMarkers);
@@ -626,13 +634,17 @@ test("the placeholder changes nothing but what is drawn in JSON, HTML, and Recor
 		current = view;
 		const pane = tabelo.pane(view);
 		await setIndicators(page, { emptyValues: true });
-		await expect(pane.locator(marker)).toHaveCount(1);
+		await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(
+			1,
+		);
 		const source = await renderedSource(pane);
 		await tabelo.runPaneCommand(view, "copySource");
 		const copied = await lastCopied(page);
 
 		await setIndicators(page, { emptyValues: false });
-		await expect(pane.locator(marker)).toHaveCount(0);
+		await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(
+			0,
+		);
 		expect(await renderedSource(pane)).toBe(source);
 		await tabelo.runPaneCommand(view, "copySource");
 		expect(await lastCopied(page)).toEqual(copied);
@@ -658,10 +670,10 @@ test("indicators leave the caret, the pane's wrapping, and editing alone", async
 		.getByRole("menuitemcheckbox", { name: copy.workspace.wrapSource })
 		.click();
 	await tabelo.paneMenuTrigger("csv").click();
-	await expect(pane.locator(marker)).toHaveCount(1);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(1);
 
 	await setIndicators(page, { emptyValues: false });
-	await expect(pane.locator(marker)).toHaveCount(0);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(0);
 
 	// The pane keeps the wrapping it was given: one global preference may not
 	// reach a pane's own display state.
@@ -690,7 +702,7 @@ test("indicators leave the caret, the pane's wrapping, and editing alone", async
 
 	const withoutMarkers = await typeAtOffset();
 	await setIndicators(page, { emptyValues: true });
-	await expect(pane.locator(marker)).toHaveCount(1);
+	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(1);
 	expect(await typeAtOffset()).toBe(withoutMarkers);
 });
 
