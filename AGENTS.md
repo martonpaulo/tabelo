@@ -155,8 +155,9 @@ vocabulary and `docs/adr/` for the reasoning.
   and each grid operation is one step.
 - **A cell's type is carried, never derived.** A cell holds a string, a number,
   a boolean, or null, and a column declares the type it expects for editing. The
-  expectation guides entry and never constrains the data, so one column may hold
-  values that disagree with it. A value becomes typed only because a typed source
+  expectation guides entry, and changing it converts the column's cells by the
+  user's choice (#392); one column may still hold values that disagree with
+  it. A value becomes typed only because a typed source
   stated the type or the user chose it: no codec, view, paste, or migration may
   read text and conclude a type from it. A format that cannot express a type
   serializes the projected text and parses strings back. During source

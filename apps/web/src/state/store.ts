@@ -17,6 +17,7 @@ import {
 } from "@/core/find";
 import { nextMatchingCell } from "@/core/matching-cells";
 import {
+	changeColumnType,
 	clearCells,
 	deleteColumns,
 	deleteRows,
@@ -33,7 +34,6 @@ import {
 	setAlignment,
 	setCell,
 	setCellType,
-	setColumnExpectedType,
 	setHeader,
 	sortRows,
 } from "@/core/operations";
@@ -376,10 +376,15 @@ export interface TabeloState {
 	) => boolean;
 	editHeader: (column: number, value: string) => void;
 	setColumnAlignment: (column: number, align: Alignment) => void;
+	// Changes the expected type and converts every cell that can reach it
+	// without loss (#392), as one history step. Returns how many cells cannot.
+	// When some cannot and `convertRest` is not set, nothing changes, so the
+	// caller can ask first.
 	setColumnExpectedType: (
 		column: number,
 		expectedType: ExpectedColumnType,
-	) => void;
+		convertRest?: boolean,
+	) => number;
 	// Sorts the whole table by one column, in the document itself. The column is
 	// the one whose menu was opened, never the selected columns: an action
 	// reached from column C's menu sorts by C.
@@ -1429,13 +1434,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		state.applyDocument(next);
 	},
 
-	setColumnExpectedType: (column, expectedType) => {
+	setColumnExpectedType: (column, expectedType, convertRest = false) => {
 		const state = get();
 		let next = state.document;
+		let unconverted = 0;
 		for (const target of columnTargets(state, column)) {
-			next = setColumnExpectedType(next, target, expectedType);
+			const change = changeColumnType(next, target, expectedType);
+			next = change.document;
+			unconverted += change.unconverted;
 		}
+		if (unconverted > 0 && !convertRest) return unconverted;
 		state.applyDocument(next);
+		return unconverted;
 	},
 
 	sortRowsByColumn: (column, direction) => {

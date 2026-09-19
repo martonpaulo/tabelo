@@ -57,7 +57,9 @@ import { isSameColumnWidth } from "@/workspace/column-width";
 import type { PinnedGridAxis } from "@/workspace/layout";
 import {
 	CellTypeChangeDialog,
+	ColumnTypeChangeDialog,
 	type PendingCellTypeChange,
+	type PendingColumnTypeChange,
 } from "./cell-type-change-dialog";
 import { cellTypeOptions, expectedTypeOptions } from "./cell-type-options";
 import { measureColumnFitWidth } from "./column-fit";
@@ -183,11 +185,14 @@ function ColumnMenuGroups({
 	tableRef,
 	zoom,
 	onSetColumnWidth,
+	onConfirmTypeChange,
 }: {
 	readonly index: number;
 	readonly tableRef: RefObject<HTMLTableElement | null>;
 	readonly zoom: number;
 	readonly onSetColumnWidth: (index: number) => void;
+	// An expected type change some cells cannot follow asks here first (#392).
+	readonly onConfirmTypeChange: (change: PendingColumnTypeChange) => void;
 }) {
 	const column = useTabeloStore((state) => state.document.columns[index]);
 	const wrapped = useTabeloStore((state) =>
@@ -214,11 +219,17 @@ function ColumnMenuGroups({
 			<ContextMenuRadioGroup
 				aria-labelledby="column-expected-type-label"
 				value={column?.expectedType ?? "text"}
-				onValueChange={(next) =>
-					useTabeloStore
+				onValueChange={(next) => {
+					const target = next as ExpectedColumnType;
+					// Applied at once when every cell can follow; otherwise nothing
+					// has changed yet and the count goes to the confirmation.
+					const unconverted = useTabeloStore
 						.getState()
-						.setColumnExpectedType(index, next as ExpectedColumnType)
-				}
+						.setColumnExpectedType(index, target);
+					if (unconverted > 0) {
+						onConfirmTypeChange({ column: index, target, unconverted });
+					}
+				}}
 			>
 				<ContextMenuLabel id="column-expected-type-label">
 					{copy.actions.expectedType}
@@ -483,6 +494,12 @@ export function GridContextMenu({
 			setPendingChange(change);
 		});
 	};
+	// An expected type change waiting for the user's confirmation (#392).
+	const [pendingColumnChange, setPendingColumnChange] =
+		useState<PendingColumnTypeChange | null>(null);
+	const requestColumnChange = (change: PendingColumnTypeChange) => {
+		menuDialog.runAfterClose(() => setPendingColumnChange(change));
+	};
 	const requestColumnWidth = (index: number) => {
 		menuDialog.runAfterClose(() => onSetColumnWidth(index));
 	};
@@ -673,6 +690,7 @@ export function GridContextMenu({
 							tableRef={tableRef}
 							zoom={zoom}
 							onSetColumnWidth={requestColumnWidth}
+							onConfirmTypeChange={requestColumnChange}
 						/>
 					) : null}
 					{axis === "row" && target.index === FIRST_DATA_INDEX ? (
@@ -750,6 +768,26 @@ export function GridContextMenu({
 								`[data-cell="${position.row}:${position.column}"]`,
 							) ?? null)
 						: null;
+				}}
+			/>
+			<ColumnTypeChangeDialog
+				change={pendingColumnChange}
+				onCancel={() => setPendingColumnChange(null)}
+				onConfirm={(change) => {
+					useTabeloStore
+						.getState()
+						.setColumnExpectedType(change.column, change.target, true);
+					setPendingColumnChange(null);
+				}}
+				// Back to the grid's focused cell, which is where the column's
+				// selection left it, whichever answer closed the dialog.
+				finalFocus={() => {
+					const { focus } = activeRange(useTabeloStore.getState().selection);
+					return (
+						wrapperRef.current?.querySelector<HTMLElement>(
+							`[data-cell="${focus.row}:${focus.column}"]`,
+						) ?? null
+					);
 				}}
 			/>
 		</>

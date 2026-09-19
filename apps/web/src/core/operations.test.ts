@@ -8,6 +8,7 @@ import {
 } from "./document";
 import {
 	blockMoveOffset,
+	changeColumnType,
 	clearCells,
 	deleteColumns,
 	deleteRows,
@@ -307,6 +308,60 @@ describe("cell operations", () => {
 		]);
 		expect(next.rows).toBe(before.rows);
 		expect(setColumnExpectedType(next, 1, "number")).toBe(next);
+	});
+
+	describe("changing a column's expected type (#392)", () => {
+		const column = (
+			matrix: CellValue[][],
+			type: "text" | "number" | "boolean",
+		) => {
+			const before = docOf(matrix);
+			const change = changeColumnType(before, 0, type);
+			const id = change.document.columns[0]?.id ?? "";
+			return {
+				before,
+				change,
+				values: change.document.rows.map((row) => row.cells[id]),
+			};
+		};
+
+		it("converts every cell that loses nothing and leaves empty cells empty", () => {
+			const { change, values } = column([["n"], ["1"], ["2"], [""]], "number");
+			expect(values).toEqual([1, 2, ""]);
+			expect(change.unconverted).toBe(0);
+			expect(change.document.columns[0]?.expectedType).toBe("number");
+		});
+
+		it("counts the cells that cannot follow and keeps their value and type", () => {
+			const { change, values } = column(
+				[["n"], ["abc"], ["007"], ["3"]],
+				"number",
+			);
+			// "abc" has no number; "007" would come back as "7".
+			expect(change.unconverted).toBe(2);
+			expect(values).toEqual(["abc", "007", 3]);
+		});
+
+		it("keeps null distinct from the empty string", () => {
+			const { change, values } = column([["n"], [null], [""], [35]], "text");
+			expect(values).toEqual([null, "", "35"]);
+			expect(change.unconverted).toBe(0);
+		});
+
+		it("never invents a boolean and never drops a number's magnitude", () => {
+			const { change, values } = column(
+				[["n"], [0], [1], [2], ["TRUE"], [""]],
+				"boolean",
+			);
+			expect(values).toEqual([false, true, 2, "TRUE", ""]);
+			expect(change.unconverted).toBe(2);
+		});
+
+		it("keeps the rows untouched when no cell changes", () => {
+			const { before, change } = column([["n"], ["abc"], [""]], "number");
+			expect(change.document.rows).toBe(before.rows);
+			expect(change.unconverted).toBe(1);
+		});
 	});
 
 	it("clears a rectangle without touching its neighbours", () => {

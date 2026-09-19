@@ -80,7 +80,14 @@ test("column expectation guides canonical and escaped cell entry", async ({
 	await expect(cell).toHaveAttribute("title", "007");
 	await expect(cell).toHaveAttribute("data-cell-type", "string");
 
+	// "007" would come back as "7", so the column change asks, and the cell
+	// keeps its text when the rest convert (#392).
 	await setExpectedType(page, tabelo, "number");
+	const confirm = page.getByRole("dialog");
+	await confirm
+		.getByRole("button", { name: copy.columnTypeChange.confirm })
+		.click();
+	await expect(confirm).toBeHidden();
 	await expect(cell).toHaveAttribute("title", "007");
 	await expect(cell).toHaveAttribute("data-cell-type", "string");
 	await expect(cell).toHaveAttribute("data-cell-type-divergent", "true");

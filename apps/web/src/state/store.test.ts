@@ -273,10 +273,40 @@ describe("document history", () => {
 		});
 		const store = useTabeloStore.getState();
 
-		store.setColumnExpectedType(0, "number");
+		// "Ingrid" has no number, so nothing changes until the user agrees.
+		expect(store.setColumnExpectedType(0, "number")).toBe(1);
+		expect(useTabeloStore.getState().document).toBe(document);
+
+		expect(store.setColumnExpectedType(0, "number", true)).toBe(1);
 		let state = useTabeloStore.getState();
 		expect(state.document.columns[0]?.expectedType).toBe("number");
 		expect(state.document.columns[1]?.expectedType).toBe("text");
+		expect(state.past).toHaveLength(1);
+
+		state.undo();
+		state = useTabeloStore.getState();
+		expect(state.document).toBe(document);
+	});
+
+	it("converts a column's cells with its expected type in one history step", () => {
+		const document = documentFromMatrix([["Age"], ["35"], ["45"], [""]], {
+			headerRow: true,
+		});
+		useTabeloStore.setState({
+			document,
+			selection: createSelection({ row: HEADER_ROW, column: 0 }, "column"),
+		});
+
+		expect(useTabeloStore.getState().setColumnExpectedType(0, "number")).toBe(
+			0,
+		);
+		let state = useTabeloStore.getState();
+		const id = state.document.columns[0]?.id ?? "";
+		expect(state.document.rows.map((row) => row.cells[id])).toEqual([
+			35,
+			45,
+			"",
+		]);
 		expect(state.past).toHaveLength(1);
 
 		state.undo();

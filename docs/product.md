@@ -151,6 +151,7 @@ reversible implementation choice does not belong here.
 | Column and row size | A column width can be typed exactly or reset to the default; rows have no height setting and follow their text | design system §9 | #370 |
 | Column width commands | Pointer resize, Fit column to content, and a keyboard resize | design system §9 | #81 |
 | Cell types | Carried, never inferred from appearance | ADR 0008 | #147 |
+| Column type change | Changing a column's expected type converts its cells; cells that cannot follow without loss ask first, with Convert the rest or Cancel; one Undo | ADR 0008 | #392 |
 | JSON shape | An array of row objects with explicit serializer preconditions | `CONTEXT.md` | #42, #145 |
 | CSV export header | Always included | `AGENTS.md` domain rules | #148 |
 | Persistence migrations | An explicit forward-only chain; unreadable data is kept and explained by reason | `AGENTS.md` architecture | #184, #32 |

@@ -660,6 +660,19 @@ export const copy = {
 		confirm: "Change type",
 	},
 
+	// Changing a column's expected type converts its cells (#392). When some
+	// cells can't reach the new type without losing their value, it asks first
+	// and says how many; the rest convert.
+	columnTypeChange: {
+		title: (label: string) =>
+			`Change the expected type to ${label.toLowerCase()}?`,
+		description: (count: number, label: string) =>
+			count === 1
+				? `1 cell can't become ${label.toLowerCase()} without losing its value. It keeps its value and type, and every other cell converts.`
+				: `${count} cells can't become ${label.toLowerCase()} without losing their value. They keep their value and type, and every other cell converts.`,
+		confirm: "Convert the rest",
+	},
+
 	// Typing a column's exact width (#370). Widths are rem, the unit the width
 	// announcements already speak, so the number here and the one read out
 	// after a keyboard resize are the same number.

@@ -112,6 +112,12 @@ test("right-clicking a column letter offers the column's own options", async ({
 		.last()
 		.click();
 	await expect(reopened).toBeHidden();
+	// No city is a boolean, so the change asks before the rest convert (#392).
+	const confirm = page.getByRole("dialog");
+	await confirm
+		.getByRole("button", { name: copy.columnTypeChange.confirm })
+		.click();
+	await expect(confirm).toBeHidden();
 
 	// The column took both, and nothing else did.
 	await expect(tabelo.header(2)).toHaveCSS("text-align", "right");

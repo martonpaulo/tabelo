@@ -37,9 +37,11 @@ persistence, and not a migration.
 Three consequences of that rule are load-bearing:
 
 - **The real type belongs to the cell, not the column.** The column expectation
-  guides editing and validation; it does not constrain the data. A typed source
-  may legitimately put a string in a column that expects numbers, and Tabelo
-  stores what it was given rather than what it expected.
+  guides editing and validation; it does not constrain the data, except that
+  changing the expectation converts the column's cells by the user's choice
+  (#392, amended below). A typed source may legitimately put a string in a
+  column that expects numbers, and Tabelo stores what it was given rather than
+  what it expected.
 - **`null` is a cell value, not a column mode.** It is chosen explicitly or
   carried from a typed source. There is no nullability flag anywhere.
 - **`cellText` in the core owns every projection to text.** `null` and `""`
@@ -79,8 +81,8 @@ the empty string.
 JSON is the first source of a native value: its scalar syntax carries strings,
 numbers, booleans, and null directly into the document and receives those same
 types on serialization. The visual table is the other source: its column menu
-sets an expected text, number, or boolean type without converting cells, and a
-cell menu explicitly converts one existing value. Grid entry into a number or
+sets an expected text, number, or boolean type and converts the column's cells
+with it (#392), and a cell menu explicitly converts one existing value. Grid entry into a number or
 boolean column carries canonical input as that native type. A leading
 apostrophe explicitly carries the remainder as a string. Valid input whose
 native projection would change the entered representation, and invalid input,
@@ -172,3 +174,30 @@ This replaces the earlier rule that a valid non-canonical spelling converts
 immediately because choosing a type is already explicit: the choice is still
 explicit, but a spelling it discards is a loss, and a loss is confirmed. Either
 path is one history step, and undo restores the exact previous value and type.
+
+## Amendment: changing a column's expected type converts its cells (#392)
+
+The column menu used to change the expectation alone, leaving every existing
+cell with the type it had. The owner expects a column's type change to change
+its cells, so it now does, as one user choice. That is not inference: the user
+chose the target, exactly as with the Cell type command, and the cells reach it
+through the same conversion table above (`changeColumnType` in the core, over
+`convertCellValue`).
+
+- A cell whose conversion runs at once, meaning it loses nothing and invents
+  nothing, converts: `"7"` becomes 7, `"true"` becomes `true`, 35 becomes
+  `"35"`.
+- A cell the table refuses, or whose conversion would ask first, cannot follow:
+  `"abc"` and `"007"` for number, 2 and `"TRUE"` for boolean. When any cell
+  cannot, the change asks first and names how many. **Convert the rest**
+  converts every other cell and leaves those with their value and type, marked
+  as divergent; **Cancel** changes nothing, the expectation included.
+- An empty cell, `null` or the empty string, stays exactly as it is and is
+  never counted: a column change neither invents a value nor erases the
+  distinction between `null` and `""`.
+- The expectation and every converted cell are one document-timeline step, so
+  one Undo restores the previous expectation and every previous value and type.
+
+A column may therefore still hold values that disagree with its expectation:
+those a typed source put there, those the user kept with Convert the rest, and
+those entered later as explicit text.

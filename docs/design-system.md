@@ -632,8 +632,14 @@ the full type remains available through the accessible name. Forced-colour mode
 keeps the same text treatment.
 
 The column index menu owns one `Expected type` radio group for text, number,
-and boolean. Changing it updates the column expectation only and never converts
-existing cells. A data cell's context menu owns the corresponding `Cell type`
+and boolean. Changing it converts the column's cells with it, as one
+document-history step: every cell that loses nothing converts at once, and
+empty cells stay empty. When any cell cannot follow, the change first asks in
+the same dialog shape as Cell type, naming how many cells cannot convert, with
+`Cancel` (nothing changes, the expectation included) and `Convert the rest`
+(those cells keep their value and show the divergence mark). The dialog opens
+after the menu has closed and returns focus to the grid's focused cell; the
+rule lives in ADR 0008 (Decided on #392). A data cell's context menu owns the corresponding `Cell type`
 radio group for string, number, boolean, and null. A valid different choice is
 one explicit conversion and one document-history step. A conversion that the
 current value cannot represent stays visible but disabled with its reason. One

@@ -1,4 +1,4 @@
-import { cellTextAt, readCell } from "./cell-value";
+import { cellTextAt, expectedCellValueType, readCell } from "./cell-value";
 import { createColumn, createRow } from "./document";
 import { createRowId } from "./ids";
 import {
@@ -169,6 +169,47 @@ export function setColumnExpectedType(
 		index === columnIndex ? { ...candidate, expectedType } : candidate,
 	);
 	return { ...document, columns };
+}
+
+export interface ColumnTypeChange {
+	readonly document: TableDocument;
+	// The cells that cannot reach the new type without losing their value or
+	// inventing one. They keep their value and type.
+	readonly unconverted: number;
+}
+
+// Changing a column's expected type converts its cells by the user's choice
+// (#392, docs/adr/0008). Every cell goes through the Cell type conversion table
+// and converts only when that conversion runs at once, meaning it loses
+// nothing and invents nothing; the others are counted so the caller can ask
+// before applying. Empty cells stay exactly as they are, `null` included.
+export function changeColumnType(
+	document: TableDocument,
+	columnIndex: number,
+	expectedType: ExpectedColumnType,
+): ColumnTypeChange {
+	const column = document.columns[columnIndex];
+	if (!column) return { document, unconverted: 0 };
+	const target = expectedCellValueType(expectedType);
+	let unconverted = 0;
+	let converted = false;
+	const rows = document.rows.map((row) => {
+		const value = readCell(row, column.id);
+		if (value === null || value === "") return row;
+		const result = convertCellValue(value, target);
+		if (!result.ok || result.confirm) {
+			unconverted += 1;
+			return row;
+		}
+		if (result.value === value) return row;
+		converted = true;
+		return { ...row, cells: { ...row.cells, [column.id]: result.value } };
+	});
+	const typed = setColumnExpectedType(document, columnIndex, expectedType);
+	return {
+		document: converted ? { ...typed, rows } : typed,
+		unconverted,
+	};
 }
 
 export function insertRows(

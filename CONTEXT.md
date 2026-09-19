@@ -139,8 +139,10 @@ Related to: Cell value, Serializer
 ### Expected column type
 
 The type a column expects to be typed into it: text, number, or boolean. It
-guides editing and validation and never constrains the cells, because a typed
-source may legitimately carry mixed types in one column. The real type always
+guides editing and validation. Changing it converts the column's cells by the
+user's choice, and a cell that cannot follow without loss keeps its value only
+when the user says so (#392). A column may still hold mixed types, because a
+typed source may legitimately carry them. The real type always
 belongs to the cell. A text expectation stores grid input exactly as a string.
 A number or boolean expectation stores canonical valid input as that native
 type. One leading apostrophe explicitly chooses a string and is removed; a
@@ -366,7 +368,8 @@ Related to: Table document, Import
   returns its exact cell-text projection. Changed and newly inserted text stays
   text. This previous value is what keeps `null` distinct from an empty string.
 - The expected type belongs to the column and the real type belongs to the cell,
-  so a column may hold values that disagree with what it expects.
+  so a column may hold values that disagree with what it expects. Changing the
+  expected type converts the cells that can follow without loss (#392).
 - Typed grid entry may carry a native type only from canonical input or an
   explicit conversion choice. Ambiguous and invalid drafts never write the
   document before that choice.
