@@ -2,8 +2,12 @@ import { cn } from "@tabelo/ui/lib/utils";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
-import { cellText, readCell } from "@/core/cell-value";
-import { isTextContent, sliceInline } from "@/core/inline-content";
+import { cellText, cellValuesEqual, readCell } from "@/core/cell-value";
+import {
+	isInlineContent,
+	isTextContent,
+	sliceInline,
+} from "@/core/inline-content";
 import { dataEdgeTarget, type JumpDirection } from "@/core/navigation";
 import {
 	activeRange,
@@ -76,6 +80,7 @@ import {
 	type LinkRequest,
 } from "./inline-dialogs";
 import { revealGridCell } from "./reveal-cell";
+import { RichCellEditor } from "./rich-cell-editor";
 import {
 	fillRefusalMessage,
 	moveRefusalMessage,
@@ -854,7 +859,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const finishCellEdit = useCallback(
 		(
 			position: CellPosition,
-			next: string,
+			next: TextContent,
 			exit: EditorExit,
 			wasSeeded: boolean,
 		) => {
@@ -875,7 +880,21 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			// Merely opening and committing an unchanged native value is not an
 			// instruction to change its type. A printable-key seed is different: it
 			// replaced the cell, even when its projection happens to look the same.
-			if (!wasSeeded && next === cellText(current)) {
+			// Text is compared with its formatting, since removing every mark from
+			// a cell is a change even though it reads the same (#306).
+			const unchanged = isTextContent(current)
+				? cellValuesEqual(next, current)
+				: next === cellText(current);
+			if (!wasSeeded && unchanged) {
+				store.setEditing(null);
+				moveAfterCellEdit(position, exit);
+				return;
+			}
+
+			// Formatted text is text by the user's own choice, so the column's
+			// expected type has nothing to convert (docs/adr/0011).
+			if (isInlineContent(next)) {
+				store.editCell(position.row, position.column, next);
 				store.setEditing(null);
 				moveAfterCellEdit(position, exit);
 				return;
@@ -1322,9 +1341,19 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				className="contents"
 				onPointerDownCapture={(event) => {
 					const activeEditor = event.currentTarget.ownerDocument.activeElement;
-					if (!(activeEditor instanceof HTMLTextAreaElement)) return;
+					if (
+						!(activeEditor instanceof HTMLElement) ||
+						!activeEditor.hasAttribute("data-cell-editor")
+					) {
+						return;
+					}
 					if (!event.currentTarget.contains(activeEditor)) return;
-					if (event.target === activeEditor) return;
+					if (
+						event.target instanceof Node &&
+						activeEditor.contains(event.target)
+					) {
+						return;
+					}
 
 					// Cell, header, and axis handlers may cancel pointerdown before the
 					// browser can move focus. Drain the editor's one commit owner first,
@@ -1532,6 +1561,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 											? match.end
 											: NO_MARK
 									}
+									onRequestLink={setLinkRequest}
 									onDragStart={() => {
 										draggingRef.current = "cell";
 									}}
@@ -1590,6 +1620,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								belowPinnedRow={pinnedRow && rowIndex === 1}
 								selectRow={selectRow}
 								onFinishCellEdit={finishCellEdit}
+								onRequestLink={setLinkRequest}
 								draggingRef={draggingRef}
 								onAxisPointerDown={reorder.onAxisPointerDown}
 							/>
@@ -1691,10 +1722,12 @@ interface DataRowProps {
 	readonly selectRow: (row: number, intent: SelectIntent) => void;
 	readonly onFinishCellEdit: (
 		position: CellPosition,
-		value: string,
+		value: TextContent,
 		exit: EditorExit,
 		wasSeeded: boolean,
 	) => void;
+	// The rich editor's Mod+K, answered by the grid's link dialog (#306).
+	readonly onRequestLink: (request: LinkRequest) => void;
 	readonly draggingRef: React.RefObject<GridDragKind | null>;
 	readonly onAxisPointerDown: AxisReorderController["onAxisPointerDown"];
 }
@@ -1720,6 +1753,7 @@ const DataRow = memo(function DataRow({
 	belowPinnedRow,
 	selectRow,
 	onFinishCellEdit,
+	onRequestLink,
 	draggingRef,
 	onAxisPointerDown,
 }: DataRowProps) {
@@ -1925,7 +1959,37 @@ const DataRow = memo(function DataRow({
 								.setEditing({ row: rowIndex, column: columnIndex })
 						}
 					>
-						{isEditing ? (
+						{isEditing &&
+						// Text is edited as text with its formatting; a number, a
+						// boolean, or null keeps the plain editor, since formatting
+						// never reaches it. Typing over a cell starts from what the
+						// column expects.
+						(editingSeed !== null
+							? column.expectedType === "text"
+							: isTextContent(cellValue)) ? (
+							<RichCellEditor
+								initialValue={
+									editingSeed ?? (isTextContent(cellValue) ? cellValue : value)
+								}
+								initialMode={editingSeed === null ? "edit" : "enter"}
+								align={alignClass[column.align]}
+								ariaLabel={
+									describesType
+										? copy.a11y.cellEditorWithType(rowIndex, columnIndex, type)
+										: copy.a11y.cellEditor(rowIndex, columnIndex)
+								}
+								wrapped={wrapped}
+								onRequestLink={onRequestLink}
+								onFinish={(next, exit) =>
+									onFinishCellEdit(
+										{ row: rowIndex, column: columnIndex },
+										next,
+										exit,
+										editingSeed !== null,
+									)
+								}
+							/>
+						) : isEditing ? (
 							<CellEditor
 								initialValue={editingSeed ?? value}
 								initialMode={editingSeed === null ? "edit" : "enter"}
@@ -2187,6 +2251,7 @@ interface HeaderCellProps {
 	// Equal bounds mean it holds no match.
 	readonly markStart: number;
 	readonly markEnd: number;
+	readonly onRequestLink: (request: LinkRequest) => void;
 	// The grid owns the drag lifecycle, so the header only reports the two
 	// edges of the gesture. See ColumnIndexCell: same split, different kind.
 	readonly onDragStart: () => void;
@@ -2208,6 +2273,7 @@ function HeaderCell({
 	seed,
 	markStart,
 	markEnd,
+	onRequestLink,
 	onDragStart,
 	onDragEnter,
 }: HeaderCellProps) {
@@ -2285,16 +2351,16 @@ function HeaderCell({
 			}
 		>
 			{editing ? (
-				<CellEditor
-					initialValue={seed ?? header}
+				<RichCellEditor
+					initialValue={seed ?? content}
 					align={alignClass[align]}
 					ariaLabel={copy.a11y.headerEditor(header, columnIndex)}
 					wrapped={wrapped}
+					onRequestLink={onRequestLink}
 					onFinish={(next, exit) => {
 						const store = useTabeloStore.getState();
-						// An unchanged commit is not an edit. The header text is a
-						// projection, so writing it back would flatten a formatted header.
-						if (exit !== "cancel" && next !== header) {
+						// An unchanged commit is not an edit, formatting included.
+						if (exit !== "cancel" && !cellValuesEqual(next, content)) {
 							store.editHeader(columnIndex, next);
 						}
 						store.setEditingHeader(null);

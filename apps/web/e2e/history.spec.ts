@@ -11,7 +11,7 @@ test("first-character editing creates exactly one undoable grid step", async ({
 	const editor = tabelo.grid().getByRole("textbox", {
 		name: copy.a11y.cellEditor(0, 0),
 	});
-	await expect(editor).toHaveValue("A");
+	await expect(editor).toHaveText("A");
 	await editor.press("Enter");
 	await expect(cell).toHaveText("A");
 

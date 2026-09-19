@@ -33,7 +33,7 @@ const markTagOrder: readonly (readonly [InlineMark, MarkTag])[] = [
 	["strikethrough", "s"],
 ];
 
-function markTags(marks: readonly InlineMark[]): readonly MarkTag[] {
+export function markTags(marks: readonly InlineMark[]): readonly MarkTag[] {
 	if (marks.includes("code")) return ["code"];
 	return markTagOrder
 		.filter(([mark]) => marks.includes(mark))
@@ -41,9 +41,9 @@ function markTags(marks: readonly InlineMark[]): readonly MarkTag[] {
 }
 
 // Code is drawn on the value face, like every value that must read exactly.
-const codeClass = "font-value";
-const linkClass = "underline underline-offset-2";
-const inertLinkClass = "underline decoration-dotted underline-offset-2";
+export const codeClass = "font-value";
+export const linkClass = "underline underline-offset-2";
+export const inertLinkClass = "underline decoration-dotted underline-offset-2";
 
 function markedRun(run: InlineText): ReactNode {
 	return markTags(run.marks).reduceRight<ReactNode>(

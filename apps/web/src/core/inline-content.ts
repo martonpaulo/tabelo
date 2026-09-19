@@ -411,6 +411,17 @@ function enclosingLink(
 	return left.link !== null && left.link === right.link ? left.link : null;
 }
 
+// The range an operation over these offsets actually acts on: ordered,
+// clamped, and widened so it never cuts an image or a surrogate pair. An
+// editor places its caret from this after an edit.
+export function snapInlineRange(
+	value: TextContent,
+	start: number,
+	end: number,
+): readonly [number, number] {
+	return snapRange(segmentsOf(value), start, end);
+}
+
 export function inlineLength(value: TextContent): number {
 	return typeof value === "string" ? value.length : inlineText(value).length;
 }

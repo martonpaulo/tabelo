@@ -96,6 +96,7 @@ export function CellEditor({
 		<textarea
 			ref={ref}
 			aria-label={ariaLabel}
+			data-cell-editor
 			value={value}
 			rows={1}
 			spellCheck={false}

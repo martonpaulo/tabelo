@@ -229,7 +229,7 @@ test("a header cell is renamed with Enter or F2 like any cell", async ({
 	// Typing over it replaces it, which is what a data cell does too.
 	await tabelo.header(1).click();
 	await page.keyboard.press("R");
-	await expect(tabelo.grid().getByRole("textbox")).toHaveValue("R");
+	await expect(tabelo.grid().getByRole("textbox")).toHaveText("R");
 	await page.keyboard.press("Enter");
 	await expect(tabelo.header(1)).toHaveText("R");
 });
@@ -1268,7 +1268,7 @@ test("editing a wrapped cell keeps its row tall enough for the editor", async ({
 	const displayed = await rowHeight();
 
 	await tabelo.cell(1, 1).dblclick();
-	const editor = tabelo.cell(1, 1).locator("textarea");
+	const editor = tabelo.cell(1, 1).locator("[data-cell-editor]");
 	await expect(editor).toBeFocused();
 	expect(await rowHeight()).toBeGreaterThanOrEqual(displayed);
 	const editorBottom = await editor.evaluate(

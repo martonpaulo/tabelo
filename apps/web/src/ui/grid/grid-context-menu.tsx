@@ -706,7 +706,8 @@ export function GridContextMenu({
 						if (
 							!(origin instanceof HTMLElement) ||
 							origin instanceof HTMLTextAreaElement ||
-							origin instanceof HTMLInputElement
+							origin instanceof HTMLInputElement ||
+							origin.isContentEditable
 						) {
 							return;
 						}
