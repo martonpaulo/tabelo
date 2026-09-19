@@ -21,10 +21,11 @@ import {
 } from "@/ui/primitives/dialog-buttons";
 import { cellTypeOptions, expectedTypeOptions } from "./cell-type-options";
 
-// A type change the core says to confirm first. Two commands reach it with the
-// same shape: a Cell type change that loses the value it replaces or invents a
-// boolean for an empty cell (#371), and a column's expected type change that
-// some of its cells cannot follow (#392). Cancel changes nothing.
+// A type change the core says to confirm first. Three commands reach it with
+// the same shape: a Cell type change that loses the value it replaces or
+// invents a boolean for an empty cell (#371), a column's expected type change
+// that some of its cells cannot follow (#392), and a transpose that turns the
+// first column's typed values into header text (#235). Cancel changes nothing.
 
 export interface PendingCellTypeChange {
 	readonly position: CellPosition;
@@ -170,6 +171,37 @@ export function ColumnTypeChangeDialog({
 			onConfirm={() => {
 				if (change) onConfirm(change);
 			}}
+			finalFocus={finalFocus}
+		/>
+	);
+}
+
+// The number of first-column values a transpose would turn into header text,
+// or null while nothing is waiting.
+export function TransposeTypeChangeDialog({
+	typedValues,
+	onCancel,
+	onConfirm,
+	finalFocus,
+}: {
+	readonly typedValues: number | null;
+	readonly onCancel: () => void;
+	readonly onConfirm: () => void;
+	readonly finalFocus: () => HTMLElement | null;
+}) {
+	return (
+		<TypeChangeDialog
+			text={
+				typedValues === null
+					? null
+					: {
+							title: copy.transposeTypedValues.title,
+							description: copy.transposeTypedValues.description(typedValues),
+							confirm: copy.transposeTypedValues.confirm,
+						}
+			}
+			onCancel={onCancel}
+			onConfirm={onConfirm}
 			finalFocus={finalFocus}
 		/>
 	);

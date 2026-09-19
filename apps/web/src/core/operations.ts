@@ -2,6 +2,7 @@ import {
 	cellText,
 	cellTextAt,
 	cellValuesEqual,
+	cellValueType,
 	expectedCellValueType,
 	headerContent,
 	readCell,
@@ -723,6 +724,18 @@ export function transposeDocument(document: TableDocument): TableDocument {
 		return { id: createRowId(), cells };
 	});
 	return withRows({ columns, rows }, rows);
+}
+
+// How many values `transposeDocument` turns into header text: the numbers,
+// booleans, and nulls in the first column, whose type the header cannot hold.
+// Text, formatted or not, is already what a header holds and is not counted.
+// Transposing asks first when this is not zero (owner, 2026-09-19, #235).
+export function transposeTypedValueCount(document: TableDocument): number {
+	const first = document.columns[0];
+	if (!first) return 0;
+	return document.rows.filter(
+		(row) => cellValueType(readCell(row, first.id)) !== "string",
+	).length;
 }
 
 export interface EmptyRemovalResult {

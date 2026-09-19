@@ -90,7 +90,13 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
   menu is named for the axis it acts on, and a pane menu for its pane. They are
   one untitled group of plain items after Undo and Redo, each disabled with a
   written reason when it cannot apply, and each announces its result through
-  the shared polite channel. The trigger has a stable accessible name
+  the shared polite channel. Transpose turns the first column into the header
+  row, which holds text only, so when that column holds any number, boolean,
+  or null it first asks in the same dialog shape as the column type change,
+  naming how many values will become text, with `Cancel` (nothing changes) and
+  `Transpose anyway`; with none it runs at once. The dialog opens after the
+  menu has closed and returns focus to the menu trigger, and the transpose is
+  one undo step either way (owner, 2026-09-19, #235). The trigger has a stable accessible name
   and never replaces visible menu labels with unexplained icons. Global Add
   view chooses the first valid split in workspace reading order and opens the
   same view chooser as the pane-edge command. It does not ask for placement or

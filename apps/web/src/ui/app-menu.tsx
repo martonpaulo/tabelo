@@ -31,7 +31,13 @@ import {
 	IconTableMinus,
 	IconUpload,
 } from "@tabler/icons-react";
-import { Fragment, type RefObject, useMemo, useSyncExternalStore } from "react";
+import {
+	Fragment,
+	type RefObject,
+	useMemo,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import { copy } from "@/copy/copy";
 import { product } from "@/copy/product";
 import { deleteEmptyRowsAndColumns } from "@/core/operations";
@@ -45,6 +51,7 @@ import {
 import type { PwaUpdate } from "@/pwa/use-pwa-update";
 import { transposeLimitError, useTabeloStore } from "@/state/store";
 import { copyCodecToClipboard } from "@/ui/clipboard-actions";
+import { TransposeTypeChangeDialog } from "@/ui/grid/cell-type-change-dialog";
 import { preconditionRecovery } from "@/ui/precondition-recovery";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
@@ -82,6 +89,9 @@ export function AppMenu({
 	triggerRef,
 }: AppMenuProps) {
 	const menuDialog = useMenuDialogCommand();
+	// A transpose waiting for the user to agree that the first column's typed
+	// values become header text (#235): how many there are, or null.
+	const [pendingTranspose, setPendingTranspose] = useState<number | null>(null);
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
 	const tableName = useTabeloStore((state) => state.name);
 	const columnCount = useTabeloStore((state) => state.document.columns.length);
@@ -121,238 +131,257 @@ export function AppMenu({
 			else state.redo();
 		});
 	return (
-		<DropdownMenu
-			open={menuDialog.open}
-			onOpenChange={menuDialog.onOpenChange}
-			onOpenChangeComplete={menuDialog.onOpenChangeComplete}
-		>
-			<ControlTooltip
-				name={
-					pwaUpdate.ready
-						? copy.actions.openAppMenuWithUpdate
-						: copy.actions.openAppMenu
-				}
+		<>
+			<DropdownMenu
+				open={menuDialog.open}
+				onOpenChange={menuDialog.onOpenChange}
+				onOpenChangeComplete={menuDialog.onOpenChangeComplete}
 			>
-				<DropdownMenuTrigger
-					render={
-						<Button
-							ref={triggerRef}
-							variant="ghost"
-							size="icon-lg"
-							// Resting flush with the workspace behind it, so it reads as part
-							// of the canvas rather than a panel sitting on top; the surface
-							// and shadow that make it read as a floating control only appear
-							// once a pointer actually reaches it. Ghost rather than outline
-							// because outline carries a resting border and fill of its own in
-							// dark mode, which no transparent override on this element can
-							// win against.
-							className="fixed right-fab-inset bottom-fab-inset z-40 size-fab hover:shadow-(--shadow-floating)"
-						/>
+				<ControlTooltip
+					name={
+						pwaUpdate.ready
+							? copy.actions.openAppMenuWithUpdate
+							: copy.actions.openAppMenu
 					}
 				>
-					<img
-						aria-hidden
-						alt=""
-						src={`${import.meta.env.BASE_URL}logo.svg`}
-						className="size-7"
-					/>
-					{pwaUpdate.ready ? (
-						<span
+					<DropdownMenuTrigger
+						render={
+							<Button
+								ref={triggerRef}
+								variant="ghost"
+								size="icon-lg"
+								// Resting flush with the workspace behind it, so it reads as part
+								// of the canvas rather than a panel sitting on top; the surface
+								// and shadow that make it read as a floating control only appear
+								// once a pointer actually reaches it. Ghost rather than outline
+								// because outline carries a resting border and fill of its own in
+								// dark mode, which no transparent override on this element can
+								// win against.
+								className="fixed right-fab-inset bottom-fab-inset z-40 size-fab hover:shadow-(--shadow-floating)"
+							/>
+						}
+					>
+						<img
 							aria-hidden
-							className="absolute top-1 right-1 size-2 rounded-full border-2 border-surface-app bg-selection-edge"
+							alt=""
+							src={`${import.meta.env.BASE_URL}logo.svg`}
+							className="size-7"
 						/>
-					) : null}
-				</DropdownMenuTrigger>
-			</ControlTooltip>
+						{pwaUpdate.ready ? (
+							<span
+								aria-hidden
+								className="absolute top-1 right-1 size-2 rounded-full border-2 border-surface-app bg-selection-edge"
+							/>
+						) : null}
+					</DropdownMenuTrigger>
+				</ControlTooltip>
 
-			<DropdownMenuContent
-				aria-label={copy.actions.openAppMenu}
-				align="end"
-				side="top"
-				className="w-auto min-w-64 max-w-[calc(100vw-1.5rem)]"
-			>
-				{/* The product mark and name, then the open table as one block that
+				<DropdownMenuContent
+					aria-label={copy.actions.openAppMenu}
+					align="end"
+					side="top"
+					className="w-auto min-w-64 max-w-[calc(100vw-1.5rem)]"
+				>
+					{/* The product mark and name, then the open table as one block that
 				    renames it: what the product is sits on the start surface, and
 				    this menu starts from the document at hand (owner, 2026-09-19;
 				    #358 kept identity and document as separate contexts). */}
-				<div
-					className={cn(
-						"flex items-center gap-2 font-medium text-sm",
-						menuItemInsetStyles,
-					)}
-				>
-					<img
-						aria-hidden
-						alt=""
-						src={`${import.meta.env.BASE_URL}logo.svg`}
-						className="size-4"
-					/>
-					{copy.app.name}
-				</div>
-				<DropdownMenuGroup>
-					<DropdownMenuItem
-						aria-label={copy.actions.renameTable}
-						aria-description={tableName}
-						onClick={() => menuDialog.runAfterClose(onRename)}
-						className="mx-1 mb-1 bg-muted"
+					<div
+						className={cn(
+							"flex items-center gap-2 font-medium text-sm",
+							menuItemInsetStyles,
+						)}
 					>
-						<IconFileText aria-hidden />
-						<MenuOption
-							truncateLabel
-							label={tableName}
-							description={copy.workspace.tableSize(columnCount, rowCount)}
+						<img
+							aria-hidden
+							alt=""
+							src={`${import.meta.env.BASE_URL}logo.svg`}
+							className="size-4"
 						/>
-						<IconPencil aria-hidden className="text-muted-foreground" />
-					</DropdownMenuItem>
-				</DropdownMenuGroup>
-				{pwaUpdate.ready ? (
-					<>
-						<DropdownMenuSeparator />
-						<DropdownMenuGroup>
-							<ControlTooltip
-								reason={
-									pwaUpdate.updating
-										? copy.disabled.updateInProgress
-										: undefined
-								}
-							>
-								<DropdownMenuItem
-									disabled={pwaUpdate.updating}
-									onClick={pwaUpdate.apply}
+						{copy.app.name}
+					</div>
+					<DropdownMenuGroup>
+						<DropdownMenuItem
+							aria-label={copy.actions.renameTable}
+							aria-description={tableName}
+							onClick={() => menuDialog.runAfterClose(onRename)}
+							className="mx-1 mb-1 bg-muted"
+						>
+							<IconFileText aria-hidden />
+							<MenuOption
+								truncateLabel
+								label={tableName}
+								description={copy.workspace.tableSize(columnCount, rowCount)}
+							/>
+							<IconPencil aria-hidden className="text-muted-foreground" />
+						</DropdownMenuItem>
+					</DropdownMenuGroup>
+					{pwaUpdate.ready ? (
+						<>
+							<DropdownMenuSeparator />
+							<DropdownMenuGroup>
+								<ControlTooltip
+									reason={
+										pwaUpdate.updating
+											? copy.disabled.updateInProgress
+											: undefined
+									}
 								>
-									<IconRefresh aria-hidden />
-									<MenuOption {...copy.appUpdate} />
-								</DropdownMenuItem>
-							</ControlTooltip>
-						</DropdownMenuGroup>
-					</>
-				) : null}
+									<DropdownMenuItem
+										disabled={pwaUpdate.updating}
+										onClick={pwaUpdate.apply}
+									>
+										<IconRefresh aria-hidden />
+										<MenuOption {...copy.appUpdate} />
+									</DropdownMenuItem>
+								</ControlTooltip>
+							</DropdownMenuGroup>
+						</>
+					) : null}
 
-				<DropdownMenuSeparator />
-				{/* Undo and redo side by side: two halves of one control. */}
-				<DropdownMenuGroup className="mx-1 grid grid-cols-2 gap-1">
-					<ControlTooltip reason={canUndo ? undefined : copy.disabled.undo}>
+					<DropdownMenuSeparator />
+					{/* Undo and redo side by side: two halves of one control. */}
+					<DropdownMenuGroup className="mx-1 grid grid-cols-2 gap-1">
+						<ControlTooltip reason={canUndo ? undefined : copy.disabled.undo}>
+							<DropdownMenuItem
+								disabled={!canUndo}
+								onClick={() => run("undo")}
+								className="justify-center bg-muted"
+							>
+								<IconArrowBackUp aria-hidden />
+								{copy.actions.undo}
+								<DropdownMenuShortcut className="ml-0">
+									{copy.shortcuts.undo}
+								</DropdownMenuShortcut>
+							</DropdownMenuItem>
+						</ControlTooltip>
+						<ControlTooltip reason={canRedo ? undefined : copy.disabled.redo}>
+							<DropdownMenuItem
+								disabled={!canRedo}
+								onClick={() => run("redo")}
+								className="justify-center bg-muted"
+							>
+								<IconArrowForwardUp aria-hidden />
+								{copy.actions.redo}
+								<DropdownMenuShortcut className="ml-0">
+									{copy.shortcuts.redo}
+								</DropdownMenuShortcut>
+							</DropdownMenuItem>
+						</ControlTooltip>
+					</DropdownMenuGroup>
+
+					<DropdownMenuSeparator />
+					<TableStructureGroup
+						onConfirmTranspose={(typedValues) =>
+							menuDialog.runAfterClose(() => setPendingTranspose(typedValues))
+						}
+					/>
+
+					<DropdownMenuSeparator />
+					<DropdownMenuGroup>
 						<DropdownMenuItem
-							disabled={!canUndo}
-							onClick={() => run("undo")}
-							className="justify-center bg-muted"
+							variant="destructive"
+							onClick={() => menuDialog.runAfterClose(onNewTable)}
 						>
-							<IconArrowBackUp aria-hidden />
-							{copy.actions.undo}
-							<DropdownMenuShortcut className="ml-0">
-								{copy.shortcuts.undo}
-							</DropdownMenuShortcut>
+							<IconFilePlus aria-hidden />
+							{copy.actions.newTable}
 						</DropdownMenuItem>
-					</ControlTooltip>
-					<ControlTooltip reason={canRedo ? undefined : copy.disabled.redo}>
-						<DropdownMenuItem
-							disabled={!canRedo}
-							onClick={() => run("redo")}
-							className="justify-center bg-muted"
-						>
-							<IconArrowForwardUp aria-hidden />
-							{copy.actions.redo}
-							<DropdownMenuShortcut className="ml-0">
-								{copy.shortcuts.redo}
-							</DropdownMenuShortcut>
-						</DropdownMenuItem>
-					</ControlTooltip>
-				</DropdownMenuGroup>
-
-				<DropdownMenuSeparator />
-				<TableStructureGroup />
-
-				<DropdownMenuSeparator />
-				<DropdownMenuGroup>
-					<DropdownMenuItem
-						variant="destructive"
-						onClick={() => menuDialog.runAfterClose(onNewTable)}
-					>
-						<IconFilePlus aria-hidden />
-						{copy.actions.newTable}
-					</DropdownMenuItem>
-					{/* Import runs on the click itself, not after the menu's close
+						{/* Import runs on the click itself, not after the menu's close
 					    animation. The file picker is the browser's own layer, so it
 					    never stacks over the menu, and asking for it needs the user
 					    activation that this click carries: deferred behind a
 					    transition, a slow frame can let that activation lapse and the
 					    browser then drops the request without a word. Every other
 					    command here opens an in-app dialog and still waits. */}
-					<DropdownMenuItem onClick={onImport}>
-						<IconUpload aria-hidden />
-						{copy.actions.importFile}
-					</DropdownMenuItem>
-					<CopyAsSubmenu runAfterClose={menuDialog.runAfterClose} />
-					<DropdownMenuItem
-						onClick={() => menuDialog.runAfterClose(onDownload)}
-					>
-						<IconDownload aria-hidden />
-						{copy.actions.downloadTable}
-					</DropdownMenuItem>
-				</DropdownMenuGroup>
-
-				<DropdownMenuSeparator />
-				<DropdownMenuGroup>
-					<ControlTooltip reason={addViewRefusal}>
-						<DropdownMenuItem
-							disabled={addViewRefusal !== undefined}
-							onClick={() => menuDialog.runAfterClose(onAddView)}
-						>
-							<IconLayoutSidebarRightExpand aria-hidden />
-							{copy.workspace.addView}
+						<DropdownMenuItem onClick={onImport}>
+							<IconUpload aria-hidden />
+							{copy.actions.importFile}
 						</DropdownMenuItem>
-					</ControlTooltip>
-					<ControlTooltip
-						reason={
-							canChangeLayout ? undefined : copy.disabled.layoutOnlyArrangement
-						}
-					>
+						<CopyAsSubmenu runAfterClose={menuDialog.runAfterClose} />
 						<DropdownMenuItem
-							disabled={!canChangeLayout}
-							onClick={() => menuDialog.runAfterClose(onLayout)}
+							onClick={() => menuDialog.runAfterClose(onDownload)}
 						>
-							<IconLayoutGrid aria-hidden />
-							{copy.workspace.changeLayout}
+							<IconDownload aria-hidden />
+							{copy.actions.downloadTable}
 						</DropdownMenuItem>
-					</ControlTooltip>
-					<DropdownMenuItem
-						onClick={() => menuDialog.runAfterClose(onSettings)}
-					>
-						<IconAdjustmentsHorizontal aria-hidden />
-						{copy.settings.title}
-					</DropdownMenuItem>
-				</DropdownMenuGroup>
+					</DropdownMenuGroup>
 
-				<DropdownMenuSeparator />
-				<DropdownMenuGroup>
-					<DropdownMenuItem
-						render={
-							<a
-								href={product.repositoryUrl}
-								target="_blank"
-								rel="noreferrer"
+					<DropdownMenuSeparator />
+					<DropdownMenuGroup>
+						<ControlTooltip reason={addViewRefusal}>
+							<DropdownMenuItem
+								disabled={addViewRefusal !== undefined}
+								onClick={() => menuDialog.runAfterClose(onAddView)}
+							>
+								<IconLayoutSidebarRightExpand aria-hidden />
+								{copy.workspace.addView}
+							</DropdownMenuItem>
+						</ControlTooltip>
+						<ControlTooltip
+							reason={
+								canChangeLayout
+									? undefined
+									: copy.disabled.layoutOnlyArrangement
+							}
+						>
+							<DropdownMenuItem
+								disabled={!canChangeLayout}
+								onClick={() => menuDialog.runAfterClose(onLayout)}
+							>
+								<IconLayoutGrid aria-hidden />
+								{copy.workspace.changeLayout}
+							</DropdownMenuItem>
+						</ControlTooltip>
+						<DropdownMenuItem
+							onClick={() => menuDialog.runAfterClose(onSettings)}
+						>
+							<IconAdjustmentsHorizontal aria-hidden />
+							{copy.settings.title}
+						</DropdownMenuItem>
+					</DropdownMenuGroup>
+
+					<DropdownMenuSeparator />
+					<DropdownMenuGroup>
+						<DropdownMenuItem
+							render={
+								<a
+									href={product.repositoryUrl}
+									target="_blank"
+									rel="noreferrer"
+								/>
+							}
+						>
+							<IconBrandGithub aria-hidden />
+							{copy.actions.github}
+							<IconExternalLink
+								aria-hidden
+								className="ml-auto text-muted-foreground"
 							/>
-						}
+						</DropdownMenuItem>
+					</DropdownMenuGroup>
+					<p
+						className={cn(
+							"text-muted-foreground text-xs",
+							menuItemInsetStyles,
+							"pt-0",
+						)}
 					>
-						<IconBrandGithub aria-hidden />
-						{copy.actions.github}
-						<IconExternalLink
-							aria-hidden
-							className="ml-auto text-muted-foreground"
-						/>
-					</DropdownMenuItem>
-				</DropdownMenuGroup>
-				<p
-					className={cn(
-						"text-muted-foreground text-xs",
-						menuItemInsetStyles,
-						"pt-0",
-					)}
-				>
-					{copy.app.copyright}
-				</p>
-			</DropdownMenuContent>
-		</DropdownMenu>
+						{copy.app.copyright}
+					</p>
+				</DropdownMenuContent>
+			</DropdownMenu>
+			<TransposeTypeChangeDialog
+				typedValues={pendingTranspose}
+				onCancel={() => setPendingTranspose(null)}
+				onConfirm={() => {
+					setPendingTranspose(null);
+					transposeTable(true);
+				}}
+				// Back to the menu trigger, where focus lands after a transpose that
+				// needed no question, whichever answer closed the dialog.
+				finalFocus={() => triggerRef.current}
+			/>
+		</>
 	);
 }
 
@@ -427,7 +456,27 @@ function CopyAsSubmenu({
 //
 // Its own component so the work of deciding whether Delete empty rows and
 // columns has anything to do runs only while the menu is open.
-function TableStructureGroup() {
+// Runs Transpose table and announces the result. Without `convertTypedValues`
+// it may instead return how many first-column values would become text, for
+// the caller to ask about first.
+function transposeTable(convertTypedValues = false): number | null {
+	const store = useTabeloStore.getState();
+	const outcome = store.transposeTable(convertTypedValues);
+	if (outcome.status === "confirm") return outcome.typedValues;
+	if (outcome.status === "transposed") {
+		const { columns, rows } = useTabeloStore.getState().document;
+		store.announceStatus(
+			copy.status.tableTransposed(columns.length, rows.length),
+		);
+	}
+	return null;
+}
+
+function TableStructureGroup({
+	onConfirmTranspose,
+}: {
+	readonly onConfirmTranspose: (typedValues: number) => void;
+}) {
 	const document = useTabeloStore((state) => state.document);
 	const transposeRefusal = useMemo(() => {
 		const error = transposeLimitError(document);
@@ -442,12 +491,8 @@ function TableStructureGroup() {
 	}, [document]);
 
 	const transpose = () => {
-		const store = useTabeloStore.getState();
-		if (store.transposeTable()) return;
-		const { columns, rows } = useTabeloStore.getState().document;
-		store.announceStatus(
-			copy.status.tableTransposed(columns.length, rows.length),
-		);
+		const typedValues = transposeTable();
+		if (typedValues !== null) onConfirmTranspose(typedValues);
 	};
 	const deleteEmpty = () => {
 		const store = useTabeloStore.getState();

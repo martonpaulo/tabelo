@@ -1497,7 +1497,9 @@ describe("whole-table structure (#235)", () => {
 			},
 		});
 
-		expect(useTabeloStore.getState().transposeTable()).toBeNull();
+		expect(useTabeloStore.getState().transposeTable()).toEqual({
+			status: "transposed",
+		});
 		const state = useTabeloStore.getState();
 		expect(documentToMatrix(state.document)).toEqual([
 			["name", "Ingrid", "", "Paulo"],
@@ -1525,11 +1527,43 @@ describe("whole-table structure (#235)", () => {
 		useTabeloStore.setState({ document });
 
 		expect(useTabeloStore.getState().transposeTable()).toMatchObject({
-			code: "too-many-columns",
+			status: "refused",
+			error: { code: "too-many-columns" },
 		});
 		const state = useTabeloStore.getState();
 		expect(state.document).toBe(document);
 		expect(state.past).toHaveLength(0);
+	});
+
+	it("asks before turning the first column's typed values into header text", () => {
+		const document = documentFromMatrix(
+			[
+				["age", "name"],
+				[35, "Ingrid"],
+				[null, "Paulo"],
+			],
+			{ headerRow: true },
+		);
+		useTabeloStore.setState({ document });
+
+		expect(useTabeloStore.getState().transposeTable()).toEqual({
+			status: "confirm",
+			typedValues: 2,
+		});
+		expect(useTabeloStore.getState().document).toBe(document);
+		expect(useTabeloStore.getState().past).toHaveLength(0);
+
+		expect(useTabeloStore.getState().transposeTable(true)).toEqual({
+			status: "transposed",
+		});
+		const state = useTabeloStore.getState();
+		expect(documentToMatrix(state.document)).toEqual([
+			["age", "35", ""],
+			["name", "Ingrid", "Paulo"],
+		]);
+		expect(state.past).toHaveLength(1);
+		state.undo();
+		expect(useTabeloStore.getState().document).toBe(document);
 	});
 
 	it("deletes empty rows and columns as one history step and keeps the selected cell", () => {

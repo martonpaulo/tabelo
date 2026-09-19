@@ -785,6 +785,18 @@ export const copy = {
 		confirm: "Convert the rest",
 	},
 
+	// Transposing moves the first column into the header row, which holds text
+	// only. When that column holds numbers, true/false values, or nulls, it
+	// asks first and says how many (#235).
+	transposeTypedValues: {
+		title: "Transpose the table?",
+		description: (count: number) =>
+			count === 1
+				? "1 value in the first column will become text, because the header row holds text only."
+				: `${count} values in the first column will become text, because the header row holds text only.`,
+		confirm: "Transpose anyway",
+	},
+
 	// Typing a column's exact width (#370). Widths are rem, the unit the width
 	// announcements already speak, so the number here and the one read out
 	// after a keyboard resize are the same number.

@@ -49,6 +49,47 @@ test("transposing turns the first column into the header row in every view, and 
 	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 });
 
+// A header holds text only, so typed values in the first column would become
+// text in the transposed header. The command asks first and names how many;
+// Cancel changes nothing, and agreeing is still one undo step (#235).
+test("transposing asks first when the first column holds typed values", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.importFile(
+		"ages.json",
+		'[{"age":35,"name":"Ingrid"},{"age":null,"name":"Paulo"}]',
+		"application/json",
+	);
+	await expect(tabelo.cell(1, 1)).toHaveAttribute("data-cell-type", "number");
+	const dialog = page.getByRole("dialog");
+
+	await runStructureCommand(tabelo, copy.actions.transposeTable);
+	await expect(dialog).toBeVisible();
+	await expect(dialog).toContainText("2");
+	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
+	await expect(dialog).toBeHidden();
+	await expect(
+		page.getByRole("button", { name: copy.actions.openAppMenu }),
+	).toBeFocused();
+	await expect(tabelo.header(1)).toHaveText("age");
+	await expect(tabelo.cell(1, 1)).toHaveAttribute("data-cell-type", "number");
+
+	await runStructureCommand(tabelo, copy.actions.transposeTable);
+	await dialog
+		.getByRole("button", { name: copy.transposeTypedValues.confirm })
+		.click();
+	await expect(dialog).toBeHidden();
+	await expect(tabelo.header(1)).toHaveText("age");
+	await expect(tabelo.header(2)).toHaveText("35");
+	await expect(tabelo.cell(1, 1)).toHaveText("name");
+	await expect(tabelo.cell(1, 2)).toHaveText("Ingrid");
+
+	await tabelo.runAppCommand("undo");
+	await expect(tabelo.header(2)).toHaveText("name");
+	await expect(tabelo.cell(1, 1)).toHaveAttribute("data-cell-type", "number");
+});
+
 test("deleting empty rows and columns keeps the content, is one undo step, and then has nothing to do", async ({
 	tabelo,
 }) => {

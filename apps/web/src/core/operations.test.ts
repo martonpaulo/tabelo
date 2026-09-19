@@ -28,6 +28,7 @@ import {
 	setColumnExpectedType,
 	sortRows,
 	transposeDocument,
+	transposeTypedValueCount,
 } from "./operations";
 import { samplePeopleMatrix } from "./sample-data";
 import { HEADER_ROW } from "./selection";
@@ -1097,6 +1098,29 @@ describe("transposeDocument", () => {
 		const next = transposeDocument(document);
 		expect(next.columns).toHaveLength(201);
 		expect(next.rows).toHaveLength(2);
+	});
+});
+
+describe("transposeTypedValueCount", () => {
+	it("counts the numbers, booleans, and nulls the header would turn into text", () => {
+		const document = docOf([
+			["key", "name"],
+			[35, "Ingrid"],
+			[true, "Paulo"],
+			[null, "Mabel"],
+			["", "Felix"],
+			["Rio", "Amora"],
+		]);
+		expect(transposeTypedValueCount(document)).toBe(3);
+	});
+
+	it("counts nothing when the first column holds text only", () => {
+		const document = docOf([
+			["name", "age"],
+			["Ingrid", 35],
+			["", null],
+		]);
+		expect(transposeTypedValueCount(document)).toBe(0);
 	});
 });
 

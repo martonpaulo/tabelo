@@ -39,6 +39,7 @@ import {
 	setHeader,
 	sortRows,
 	transposeDocument,
+	transposeTypedValueCount,
 } from "@/core/operations";
 import {
 	activeRange,
@@ -291,6 +292,13 @@ export function transposeLimitError(
 	});
 }
 
+// What Transpose table did: transposed, refused by the size limit, or waiting
+// for the user to agree that `typedValues` first-column values become text.
+export type TransposeOutcome =
+	| { readonly status: "transposed" }
+	| { readonly status: "refused"; readonly error: ImportError }
+	| { readonly status: "confirm"; readonly typedValues: number };
+
 // What choosing the series did. The count is what the announcement reports, and
 // a refusal is why nothing was written.
 export type FillSeriesOutcome =
@@ -492,7 +500,10 @@ export interface TabeloState {
 	moveSelectedColumn: (offset: number) => SelectionMoveRefusal | null;
 	// Whole-table structure (#235). Each is one history step, and each moves the
 	// selection to the cell the user was on, wherever that cell now is.
-	transposeTable: () => ImportError | null;
+	// Nothing changes until the user has agreed to what the header will turn
+	// into text: without `convertTypedValues`, typed values in the first column
+	// come back as a count to confirm (#235).
+	transposeTable: (convertTypedValues?: boolean) => TransposeOutcome;
 	deleteEmptyRowsAndColumns: () => EmptyRemovalCounts;
 	fillSelection: (target: CellRect) => number;
 	applyFillSeries: () => FillSeriesOutcome;
@@ -1959,19 +1970,23 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		return null;
 	},
 
-	transposeTable: () => {
+	transposeTable: (convertTypedValues = false) => {
 		const state = get();
 		const error = transposeLimitError(state.document);
 		if (error) {
 			set({ inputError: error });
-			return error;
+			return { status: "refused", error };
+		}
+		const typedValues = transposeTypedValueCount(state.document);
+		if (typedValues > 0 && !convertTypedValues) {
+			return { status: "confirm", typedValues };
 		}
 		const focus = activeRange(state.selection).focus;
 		state.applyDocument(transposeDocument(state.document), {
 			before: state.selection,
 			after: createSelection(transposedPosition(focus)),
 		});
-		return null;
+		return { status: "transposed" };
 	},
 
 	deleteEmptyRowsAndColumns: () => {
