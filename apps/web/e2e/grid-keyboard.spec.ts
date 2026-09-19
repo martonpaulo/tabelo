@@ -567,6 +567,7 @@ test("column wrapping grows rows, persists, and keeps cell navigation", async ({
 	const wrappedHeight = await cellHeight();
 
 	await page.keyboard.press("Escape");
+	await expect(menu).toBeHidden();
 	await tabelo.cell(1, 1).click();
 	await page.keyboard.press("ArrowDown");
 	expect(await focusedCell(page)).toBe("1:0");

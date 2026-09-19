@@ -359,7 +359,7 @@ test("the active pane boundary replaces the resting one", async ({
 					style.borderLeftWidth,
 				],
 				stroke: style.getPropertyValue("--hairline-color").trim(),
-				accent: style.getPropertyValue("--selection-edge").trim(),
+				accent: style.getPropertyValue("--active-pane-edge").trim(),
 				subtle: style.getPropertyValue("--line-subtle").trim(),
 			};
 		});
@@ -412,7 +412,7 @@ test("multi-pane layouts keep the active boundary on all four edges", async ({
 					style.borderLeftWidth,
 				],
 				stroke: style.getPropertyValue("--hairline-color").trim(),
-				accent: style.getPropertyValue("--selection-edge").trim(),
+				accent: style.getPropertyValue("--active-pane-edge").trim(),
 			};
 		});
 		expect(new Set(edge.widths).size).toBe(1);

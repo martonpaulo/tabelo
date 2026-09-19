@@ -33,7 +33,6 @@ test("a column whose cells all convert changes at once and undoes in one step", 
 		"application/json",
 	);
 	await expect(tabelo.cell(1, 1)).toHaveAttribute("data-cell-type", "string");
-	await tabelo.choosePaneView("markdown", "json");
 	const json = tabelo.source("json");
 	await expect(json).toContainText('"n":"1"');
 
