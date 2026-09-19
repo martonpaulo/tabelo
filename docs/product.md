@@ -131,14 +131,17 @@ reversible implementation choice does not belong here.
 | Pane count | One through four panes; a fresh visit opens two; a stacked window grows to two | ADR 0006 | #91, #219 |
 | Layout set | Eight presets, filtered to the current pane count | ADR 0006 | #91, #72 |
 | Layout entry point | Global App-menu command opening the shared visual dialog | ADR 0006 | #72 |
-| Add view | Pane-edge controls plus the flat global command | ADR 0006 | #69 |
+| Add view | Pane-edge controls plus the flat global command; the edge control is a full-length band straddling the outer edge, never over the scrollbar or a resize separator | ADR 0006, design system §6 | #69, owner, 2026-09-19 |
+| View names | One Title Case name per view everywhere, the exception to sentence case; no short second name, a narrow pane truncates | design system §8 | owner, 2026-09-19 |
 | Move pane | One command opening a destination dialog; no pane dragging | design system §3 | #73 |
 | Download | The global format chooser is canonical | design system §3 | #70 |
 | Palette | One unconditional dark palette; no theme preference | ADR 0010 | #289 |
 | Page titles | `Tabelo · Table editor for Markdown, CSV, JSON and more` on the shell, `{table name} · Tabelo` once a table is open; no not-found title, because every deeper path is the app, normalized to `/` | `AGENTS.md` identity, `copy/product.ts` | #373 |
 | Grid wrapping | Per column, opt-in, off by default; one pane command wraps all columns | design system §9 | #41, #360 |
 | Source wrapping | Off by default; a global default in Settings that each pane may override | design system §2 | #95, #276 |
-| Source display defaults | Wrapping, spaces, tabs, and empty values each have a global default in Settings, all off; a pane's override, set in its Display dialog, wins where set and is stored as a choice, never as the resolved value | design system §2, §3 | #55, #276 |
+| Source display defaults | Wrapping, spaces, tabs, empty values, and line breaks each have a global default in Settings, all off except line breaks; a pane's override, set in its Display dialog, wins where set and is stored as a choice, never as the resolved value | design system §2, §3 | #55, #276, owner, 2026-09-19 |
+| Line break in a cell | Drawn as one-character `¶`, escaped or literal; in Markdown the room the sequence gave back becomes cell padding so delimiters stay aligned; display only | design system §2 | owner, 2026-09-19 |
+| Syntax palette | "A · Quente": warm value hues, coral notation, blue links, quiet punctuation; value tones at least 4.5:1 on the code surface | design system §2 | owner, 2026-09-19 |
 | Automatic source rewriting | Only named structural-assistance features: smallest deterministic range, one undo step with the triggering edit, invalid drafts untouched, switchable off per buffer | `AGENTS.md` domain rules | #294 |
 | Markdown divider assistance | The alignment divider follows the header, rows, columns, and valid markers of the current draft, and is left alone whenever the draft is ambiguous; the first codec-declared structural-assistance feature | ADR 0005 | #297 |
 | Markdown row-start assistance | Enter at the end of a table row below the divider opens the new line with `\| ` and the caret after it, in the same undo step; a break anywhere else, after the header, or with Smart editing off stays plain | ADR 0005 | #391 |
