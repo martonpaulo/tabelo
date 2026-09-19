@@ -111,8 +111,10 @@ describe("the private clipboard payload", () => {
 		const { html } = selectionClipboardPayload(selection);
 
 		expect(readTabeloPayload(html).selection).toEqual(selection);
+		// The public flavour carries the same semantics, for any application
+		// that reads rich HTML.
 		expect(publicMatrix(html)).toEqual([
-			["Ingrid Rio\nhome", "35"],
+			[formattedName, "35"],
 			["Paulo", ""],
 		]);
 	});

@@ -1,16 +1,18 @@
 import Papa from "papaparse";
-import { cellText } from "@/core/cell-value";
+import { cellText, headerContent } from "@/core/cell-value";
 import type { CellValue } from "@/core/types";
-import { normalizeLineEndings } from "@/formats/html";
+import { htmlCellContent } from "@/formats/html";
 import { type ClipboardSelection, embedTabeloPayload } from "./payload";
 
 // Copy writes two flavours: tab-separated text, which every spreadsheet
 // understands, and an HTML table for targets that accept rich content. Papa
 // handles quoting so a cell containing a tab or a newline survives.
 //
-// Both are text, and a cell may not be. Every value leaves through `cellText`,
-// because there is one answer to what a value looks like and this is not the
-// place to invent a second one.
+// The text flavour leaves every value through `cellText`, because there is one
+// answer to what a value looks like and this is not the place to invent a
+// second one. The HTML flavour writes each cell as the HTML codec does, so
+// bold text, links, and images arrive with their meaning (#306), and a native
+// value arrives as its projection.
 
 // What is being copied. It selects both the confirmation and the recovery
 // advice, because "select it and press the key" means something different in a
@@ -26,24 +28,13 @@ export function matrixToTsv(matrix: readonly (readonly CellValue[])[]): string {
 	);
 }
 
-function escapeHtml(value: string): string {
-	return value
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;");
-}
-
 export function matrixToHtml(
 	matrix: readonly (readonly CellValue[])[],
 ): string {
 	const rows = matrix
 		.map((row) => {
 			const cells = row
-				.map(
-					(cell) =>
-						`<td>${escapeHtml(normalizeLineEndings(cellText(cell))).replace(/\n/g, "<br>")}</td>`,
-				)
+				.map((cell) => `<td>${htmlCellContent(headerContent(cell))}</td>`)
 				.join("");
 			return `<tr>${cells}</tr>`;
 		})
