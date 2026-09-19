@@ -1,5 +1,5 @@
-import { cellText, cellTextAt } from "@/core/cell-value";
-import type { TableDocument } from "@/core/types";
+import { cellTextContentAt } from "@/core/cell-value";
+import type { TableDocument, TextContent } from "@/core/types";
 import { markdownAssistance } from "./markdown-assistance";
 import {
 	alignmentMarker,
@@ -10,6 +10,7 @@ import {
 	reservedWidth,
 	splitRow,
 } from "./markdown-grammar";
+import { parseMarkdownCell, writeMarkdownCell } from "./markdown-inline";
 import {
 	firstLineBlock,
 	lineSpans,
@@ -17,7 +18,6 @@ import {
 	toDocumentParseResult,
 } from "./parse";
 import type {
-	EscapeMatcher,
 	MatrixParseResult,
 	ParseIssue,
 	SourceFieldRange,
@@ -26,76 +26,14 @@ import type {
 	TableCodec,
 } from "./types";
 
-// The three ways a line break can be spelled in a Markdown cell, longest first
-// so a match is never a prefix of a longer one. Both directions of the grammar
-// read this list, so a spelling can never be escaped without being decodable.
-const BREAK_SPELLINGS = ["<br />", "<br/>", "<br>"] as const;
-
-function breakSpellingAt(value: string, index: number): string | null {
-	for (const spelling of BREAK_SPELLINGS) {
-		if (value.startsWith(spelling, index)) return spelling;
-	}
-	return null;
-}
-
-// Markdown cannot hold a literal pipe or line break inside a table cell, so
-// both are escaped rather than dropped. The transformation must be exactly
-// reversible. See docs/adr/0002. This is why the escape sequences
-// themselves (`\`, `\|`, and a literal `<br>`) are escaped too.
-export function escapeCell(value: string): string {
-	const source = value.replace(/\r\n?/g, "\n");
-	const leadingWhitespace = source.match(/^\s*/u)?.[0].length ?? 0;
-	const trailingWhitespace = source.match(/\s*$/u)?.[0].length ?? 0;
-	const trailingWhitespaceStart = source.length - trailingWhitespace;
-	let out = "";
-	for (let index = 0; index < source.length; index += 1) {
-		const char = source[index];
-		if (char === undefined) break;
-		if (
-			/^\s$/u.test(char) &&
-			(index < leadingWhitespace || index >= trailingWhitespaceStart)
-		) {
-			out += `&#${char.codePointAt(0)};`;
-			continue;
-		}
-		if (char === "&") {
-			out += "&amp;";
-			continue;
-		}
-		if (char === "\\") {
-			out += "\\\\";
-			continue;
-		}
-		if (char === "|") {
-			out += "\\|";
-			continue;
-		}
-		if (char === "\n") {
-			out += "<br>";
-			continue;
-		}
-		// Every spelling the decoder recognises has to be escaped here, or a
-		// literal `<br/>` typed by the user would come back as a line break.
-		if (char === "<") {
-			const spelling = breakSpellingAt(source, index);
-			if (spelling) {
-				out += `\\${spelling}`;
-				index += spelling.length - 1;
-				continue;
-			}
-		}
-		out += char;
-	}
-	return out;
-}
-
 // Every character the escaper rewrites, plus whitespace at either boundary. A
-// cell matching none of them is returned by `escapeCell` unchanged, so the fast
-// path below can skip the loop. The class is deliberately wider than the
-// grammar: `<` sends every tag-like cell down the general path rather than only
-// the three `<br>` spellings, and `\s` carries the `u` flag the boundary
-// encoding uses, so a non-breaking space is not mistaken for an ordinary one.
-const NEEDS_ESCAPING = /^\s|\s$|[&\\|\n\r<]/u;
+// plain cell matching none of them is returned by `escapeCell` unchanged, so
+// the fast path below can skip the writer. The class is deliberately wider than
+// the grammar: `<` sends every tag-like cell down the general path rather than
+// only the spellings the decoder reads, `_`, `*`, and `~` go there even where
+// they stay literal, and `\s` carries the `u` flag the boundary encoding uses,
+// so a non-breaking space is not mistaken for an ordinary one.
+const NEEDS_ESCAPING = /^\s|\s$|[&\\|\n\r<*_~`[\]!]/u;
 
 export interface EscapedCell {
 	readonly text: string;
@@ -105,103 +43,15 @@ export interface EscapedCell {
 // One escaping implementation with two entry points. The serializer needs each
 // cell's escaped text and its display width together, and measuring here is
 // what lets the width scan and the padding pass share one measurement instead
-// of calling `stringWidth` twice per cell. Cells that need no escaping skip the
-// loop entirely; everything else goes through `escapeCell` itself, so the
-// grammar of docs/adr/0002 stays in exactly one place.
-export function escapeAndMeasure(value: string): EscapedCell {
-	const text = NEEDS_ESCAPING.test(value) ? escapeCell(value) : value;
+// of calling `stringWidth` twice per cell. Plain cells that need no escaping
+// skip the writer entirely; everything else goes through it, so the grammar of
+// docs/adr/0002 and docs/adr/0011 stays in exactly one place.
+export function escapeAndMeasure(value: TextContent): EscapedCell {
+	const text =
+		typeof value === "string" && !NEEDS_ESCAPING.test(value)
+			? value
+			: writeMarkdownCell(value);
 	return { text, width: displayWidth(text) };
-}
-
-// Sticky, so the entity match is anchored at `lastIndex` instead of searching
-// forward, with none of the copying that matching `^` against a fresh slice of
-// the remaining cell required.
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/sticky
-const ENTITY = /&#([0-9]+);/y;
-
-// The one reader of Markdown's escape grammar, at one offset. Only `&`, `\`,
-// and `<` can begin an escape sequence, so the switch reaches the right branch
-// directly and an ordinary character falls straight through with no test at
-// all. A branch that matches nothing must reach the same `null`: `break` leaves
-// the switch, where returning early would swallow a trailing backslash or a
-// lone `<`.
-//
-// The decoder below and the source view's escape glyphs both read this, so
-// there is exactly one description of what `&#32;` stands for and the editor
-// never becomes a second parser. What a match reports is never examined again,
-// which is what keeps literal text such as `&amp;#32;` literal once its
-// protected ampersand is restored.
-export const matchMarkdownEscape: EscapeMatcher = (value, index) => {
-	switch (value[index]) {
-		// Decode only the entity forms the serializer emits.
-		case "&": {
-			if (value.startsWith("&amp;", index)) {
-				return { source: "&amp;", decoded: "&", kind: "character" };
-			}
-			// Set on every attempt rather than trusting what the previous call
-			// left behind: the regex is shared module state, and a stale
-			// `lastIndex` after a failed match is the classic defect with this
-			// flag.
-			ENTITY.lastIndex = index;
-			const entity = ENTITY.exec(value);
-			const decimal = entity?.[1];
-			if (entity && decimal !== undefined) {
-				const codePoint = Number(decimal);
-				const decoded =
-					codePoint <= 0x10ffff && String(codePoint) === decimal
-						? String.fromCodePoint(codePoint)
-						: "";
-				if (codePoint !== 13 && /^\s$/u.test(decoded)) {
-					return { source: entity[0], decoded, kind: "whitespace" };
-				}
-			}
-			break;
-		}
-		// Longest escape first, and every escaped break form before the plain
-		// backslash rule, or `\<br>` would decode as a backslash followed by a
-		// line break.
-		case "\\": {
-			const spelling = breakSpellingAt(value, index + 1);
-			if (spelling) {
-				return {
-					source: `\\${spelling}`,
-					decoded: spelling,
-					kind: "character",
-				};
-			}
-			if (value.startsWith("\\\\", index)) {
-				return { source: "\\\\", decoded: "\\", kind: "character" };
-			}
-			if (value.startsWith("\\|", index)) {
-				return { source: "\\|", decoded: "|", kind: "character" };
-			}
-			break;
-		}
-		case "<": {
-			const spelling = breakSpellingAt(value, index);
-			if (spelling) {
-				return { source: spelling, decoded: "\n", kind: "line-break" };
-			}
-			break;
-		}
-	}
-	return null;
-};
-
-export function unescapeCell(value: string): string {
-	let out = "";
-	for (let index = 0; index < value.length; index += 1) {
-		const char = value[index];
-		if (char === undefined) break;
-		const match = matchMarkdownEscape(value, index);
-		if (match) {
-			out += match.decoded;
-			index += match.source.length - 1;
-			continue;
-		}
-		out += char;
-	}
-	return out;
 }
 
 // The header row owns the alignment divider under it: the divider is how
@@ -295,12 +145,12 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 				line: start + 3 + offset,
 			});
 		}
-		return cells.map(unescapeCell);
+		return cells.map(parseMarkdownCell);
 	});
 
 	// Ragged rows are padded rather than rejected: the user is mid-edit, and
 	// their data should survive it.
-	const matrix = [headerCells.map(unescapeCell), ...bodyRows];
+	const matrix = [headerCells.map(parseMarkdownCell), ...bodyRows];
 	return {
 		ok: true,
 		table: {
@@ -386,11 +236,11 @@ function serializeMarkdown(document: TableDocument): string {
 	// One pass: each cell is escaped, measured, and folded into its column's
 	// maximum as it is produced. The widths are complete once this is done.
 	const headers = document.columns.map((column, index) =>
-		reserve(index, escapeAndMeasure(cellText(column.header))),
+		reserve(index, escapeAndMeasure(column.header)),
 	);
 	const body = document.rows.map((row) =>
 		document.columns.map((column, index) =>
-			reserve(index, escapeAndMeasure(cellTextAt(row, column.id))),
+			reserve(index, escapeAndMeasure(cellTextContentAt(row, column.id))),
 		),
 	);
 
@@ -422,7 +272,7 @@ export const markdownCodec: TableCodec = {
 	reconciliation: {
 		cellValues: "text",
 		columnAlignment: "carried",
-		inlineContent: "unexpressed",
+		inlineContent: "carried",
 	},
 	extension: "md",
 	mimeType: "text/markdown",

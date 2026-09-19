@@ -2,7 +2,8 @@ import { assert, describe, expect, it } from "vitest";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import { csvCodec } from "./csv";
-import { escapeCell, markdownCodec, unescapeCell } from "./markdown";
+import { markdownCodec } from "./markdown";
+import { escapeCell, unescapeCell } from "./markdown-inline";
 
 // The escaping contract from docs/adr/0002 is the one thing in this project
 // that must never regress: a value has to survive the round trip byte-exact.

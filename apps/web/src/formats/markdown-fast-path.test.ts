@@ -2,11 +2,8 @@ import { test } from "@fast-check/vitest";
 import stringWidth from "string-width";
 import { describe, expect, it } from "vitest";
 import { documentFromMatrix } from "@/core/document";
-import {
-	escapeAndMeasure,
-	escapeCell,
-	markdownCodec,
-} from "@/formats/markdown";
+import { escapeAndMeasure, markdownCodec } from "@/formats/markdown";
+import { escapeCell } from "@/formats/markdown-inline";
 import {
 	cellStringArbitrary,
 	PROPERTY_RUNS,

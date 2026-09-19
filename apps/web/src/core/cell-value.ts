@@ -100,6 +100,13 @@ export function cellTextAt(row: Row, columnId: ColumnId): string {
 	return cellText(readCell(row, columnId));
 }
 
+// What a format that spells inline structure writes for a cell: text content
+// with its structure, and a native value as its projection, exactly as a
+// header receives one.
+export function cellTextContentAt(row: Row, columnId: ColumnId): TextContent {
+	return headerContent(readCell(row, columnId));
+}
+
 // Blank is the empty string and nothing else. A `0`, a `false`, or an explicit
 // `null` is content someone put there, and counting it as blank would let the
 // destructive actions guarded by `isDocumentBlank` skip their confirmation.

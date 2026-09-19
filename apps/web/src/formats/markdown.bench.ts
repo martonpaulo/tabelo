@@ -1,5 +1,6 @@
 import { bench, describe } from "vitest";
-import { escapeAndMeasure, escapeCell, unescapeCell } from "@/formats/markdown";
+import { escapeAndMeasure } from "@/formats/markdown";
+import { escapeCell, unescapeCell } from "@/formats/markdown-inline";
 import {
 	benchCells,
 	benchOptions,

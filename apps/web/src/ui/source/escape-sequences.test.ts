@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { escapeCell } from "@/formats/markdown";
+import { escapeJiraCell } from "@/formats/jira-inline";
+import { escapeCell } from "@/formats/markdown-inline";
 import {
 	escapeAt,
 	escapeGlyph,
@@ -63,8 +64,8 @@ describe("scanEscapes", () => {
 		const found = scanEscapes(line, "markdown");
 		expect(found).toHaveLength(1);
 		expect(found[0]?.match.source).toBe("&amp;");
-		// Jira spells no whitespace entity, so the same run is content there.
-		expect(scanEscapes("|&#32;|", "jira")).toHaveLength(0);
+		// Jira protects its ampersand the same way.
+		expect(scanEscapes(`|${escapeJiraCell("&#32;")}|`, "jira")).toHaveLength(1);
 	});
 
 	it("passes over a line once, never over what a match restored", () => {

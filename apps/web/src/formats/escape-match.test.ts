@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { escapeJiraCell, matchJiraEscape, unescapeJiraCell } from "./jira";
-import { escapeCell, matchMarkdownEscape, unescapeCell } from "./markdown";
+import {
+	escapeJiraCell,
+	matchJiraEscape,
+	unescapeJiraCell,
+} from "./jira-inline";
+import {
+	escapeCell,
+	matchMarkdownEscape,
+	unescapeCell,
+} from "./markdown-inline";
 import type { EscapeMatcher } from "./types";
 
 // The matchers are the single description of each format's escape grammar: the
@@ -76,9 +84,10 @@ describe("matchMarkdownEscape", () => {
 		expect(matchMarkdownEscape("a & b", 2)).toBeNull();
 		expect(matchMarkdownEscape("a \\ b", 2)).toBeNull();
 		expect(matchMarkdownEscape("a < b", 2)).toBeNull();
-		// An entity for a character that is not whitespace is not one of the
-		// sequences the serializer writes.
-		expect(matchMarkdownEscape("&#65;", 0)).toBeNull();
+		// An entity for punctuation is not one of the sequences the serializer
+		// writes: only whitespace, and a letter or digit beside an italic
+		// delimiter (docs/adr/0011), are.
+		expect(matchMarkdownEscape("&#60;", 0)).toBeNull();
 		expect(matchMarkdownEscape("&#13;", 0)).toBeNull();
 	});
 
@@ -146,8 +155,10 @@ describe("matchJiraEscape", () => {
 		expect(matchJiraEscape("plain", 0)).toBeNull();
 		expect(matchJiraEscape("a & b", 2)).toBeNull();
 		expect(matchJiraEscape("a \\ b", 2)).toBeNull();
-		// Jira has no whitespace entity of its own, so this one is user text.
-		expect(matchJiraEscape("&#32;", 0)).toBeNull();
+		// An entity for punctuation is not one of the sequences the serializer
+		// writes: only whitespace, a letter or digit beside a marker, and the
+		// backslash are (docs/adr/0011).
+		expect(matchJiraEscape("&#60;", 0)).toBeNull();
 	});
 
 	it("leaves a protected literal literal after its ampersand", () => {

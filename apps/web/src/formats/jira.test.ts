@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
-import { escapeJiraCell, jiraCodec, unescapeJiraCell } from "./jira";
+import { jiraCodec } from "./jira";
+import { escapeJiraCell, unescapeJiraCell } from "./jira-inline";
 
 describe("jira cell escaping", () => {
 	const hostile = [

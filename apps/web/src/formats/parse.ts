@@ -57,7 +57,14 @@ export function firstLineBlock(
 // their Tab field navigation (#54): the parse reads the text of these spans,
 // the source view reads their offsets, so the two can never disagree about
 // where a cell is.
-export function pipeCellSpans(line: string): SourceRowRange[] {
+//
+// `constructEnd` is for a format that reads some inline constructs before it
+// splits a row, as Jira reads `[label|url]`: given an offset, it returns where
+// the construct starting there ends, and the pipes inside it split nothing.
+export function pipeCellSpans(
+	line: string,
+	constructEnd?: (line: string, index: number) => number | null,
+): SourceRowRange[] {
 	const start = line.length - line.trimStart().length;
 	const end = Math.max(start, line.trimEnd().length);
 	const spans: SourceRowRange[] = [];
@@ -68,6 +75,12 @@ export function pipeCellSpans(line: string): SourceRowRange[] {
 		const char = line[index];
 		if (char === "\\" && index + 1 < end) {
 			index += 1;
+			endedOnPipe = false;
+			continue;
+		}
+		const constructTo = constructEnd?.(line, index) ?? null;
+		if (constructTo !== null && constructTo <= end) {
+			index = constructTo - 1;
 			endedOnPipe = false;
 			continue;
 		}

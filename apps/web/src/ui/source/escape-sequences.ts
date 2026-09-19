@@ -9,8 +9,8 @@ import {
 	WidgetType,
 } from "@codemirror/view";
 import { copy } from "@/copy/copy";
-import { matchJiraEscape } from "@/formats/jira";
-import { matchMarkdownEscape } from "@/formats/markdown";
+import { matchJiraEscape } from "@/formats/jira-inline";
+import { matchMarkdownEscape } from "@/formats/markdown-inline";
 import type { EscapeMatch, EscapeMatcher } from "@/formats/types";
 import type { HighlightLanguage } from "@/views/types";
 import { SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";

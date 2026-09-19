@@ -7,8 +7,8 @@ import { documentToMatrix, reconcileDocument } from "@/core/document";
 import { setCell } from "@/core/operations";
 import type { CellValue, TableDocument } from "@/core/types";
 import { canSerialize, csvCodec, listCodecs, type TableCodec } from "@/formats";
-import { escapeJiraCell, unescapeJiraCell } from "@/formats/jira";
-import { escapeCell, unescapeCell } from "@/formats/markdown";
+import { escapeJiraCell, unescapeJiraCell } from "@/formats/jira-inline";
+import { escapeCell, unescapeCell } from "@/formats/markdown-inline";
 import { cellAtPosition } from "@/formats/parse";
 import {
 	expectedDocumentForCodec,
@@ -19,6 +19,7 @@ import {
 	codecDocumentArbitrary,
 	documentPositionArbitrary,
 	formattedCodecDocumentArbitrary,
+	inlineCodecDocumentArbitrary,
 	PROPERTY_RUNS,
 	typedTextCodecDocumentArbitrary,
 	universallySerializableDocumentArbitrary,
@@ -137,6 +138,31 @@ describe("registered codec properties", () => {
 				);
 			},
 		);
+	}
+
+	// #306. A format that spells inline structure reads back exactly the
+	// structure it wrote, byte-exact in every run, URL, and alternative text,
+	// and writing what it read changes nothing, so switching views never
+	// accumulates normalization.
+	for (const codec of listCodecs().filter(
+		(codec) => codec.reconciliation.inlineContent === "carried",
+	)) {
+		test.prop(
+			{ document: inlineCodecDocumentArbitrary(codec) },
+			{ numRuns: PROPERTY_RUNS },
+		)(`${codec.id} round trips inline structure exactly`, ({ document }) => {
+			const text = codec.serialize(document);
+			const parsed = expectSuccessfulParse(codec.id, codec.parse(text));
+
+			expect(parsed.columns.map((column) => column.header)).toEqual(
+				document.columns.map((column) => column.header),
+			);
+			expect(valuesOf(parsed)).toEqual(valuesOf(document));
+			expect(codec.serialize(parsed)).toBe(text);
+			expect(reconcileDocument(document, parsed, codec.reconciliation)).toBe(
+				document,
+			);
+		});
 	}
 
 	for (const codec of listCodecs().filter(

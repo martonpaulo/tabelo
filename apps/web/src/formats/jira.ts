@@ -1,5 +1,6 @@
-import { cellText, cellTextAt } from "@/core/cell-value";
+import { cellTextContentAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
+import { jiraConstructEnd, parseJiraCell, writeJiraCell } from "./jira-inline";
 import {
 	firstLineBlock,
 	lineSpans,
@@ -7,7 +8,6 @@ import {
 	toDocumentParseResult,
 } from "./parse";
 import type {
-	EscapeMatcher,
 	MatrixParseResult,
 	ParseIssue,
 	SourceFieldRange,
@@ -20,97 +20,19 @@ import type {
 //   ||Name||Role||Active||
 //   |Ingrid|Designer|Yes|
 //
-// Like Markdown it is line-delimited and pipe-delimited, so pipes and newlines
-// inside a cell have to be escaped reversibly. Jira renders `\\` as a forced
-// line break, which is the closest equivalent to Markdown's `<br>`.
-// Atlassian documents that break syntax here:
-// https://confluence.atlassian.com/conf101/confluence-wiki-markup-1652924946.html
-// A Jira defect records `&#92;` as the compatible literal-backslash spelling:
-// https://jira.atlassian.com/browse/JRASERVER-76901
+// Like Markdown it is line-delimited and pipe-delimited. What a cell holds, its
+// escapes and its inline syntax, belongs to jira-inline.ts.
 
-export function escapeJiraCell(value: string): string {
-	let out = "";
-	for (let index = 0; index < value.length; index += 1) {
-		const char = value[index];
-		if (char === "&") {
-			out += "&amp;";
-			continue;
-		}
-		if (char === "\\") {
-			out += "&#92;";
-			continue;
-		}
-		if (char === "|") {
-			out += "\\|";
-			continue;
-		}
-		if (char === "\r") {
-			if (value[index + 1] === "\n") continue;
-			out += "\\\\";
-			continue;
-		}
-		if (char === "\n") {
-			out += "\\\\";
-			continue;
-		}
-		out += char;
-	}
-	return out;
+// Splits a Jira row on unescaped single pipes, outside the links and images
+// Jira reads first. Header rows arrive with their doubled pipes already
+// collapsed by the caller. Unlike Markdown, Jira pads nothing, so a cell's
+// surrounding space is its own.
+function jiraCellSpans(line: string): SourceRowRange[] {
+	return pipeCellSpans(line, jiraConstructEnd);
 }
 
-// The one reader of Jira's escape grammar, at one offset. Longest match first,
-// so `&#92;` is recognized before the backslash it restores could be read as
-// the start of another sequence. The decoder below and the source view's escape
-// glyphs both read this, which is what keeps the editor from becoming a second
-// parser. What a match reports is never examined again, so literal entity-like
-// user text stays literal and reversible.
-export const matchJiraEscape: EscapeMatcher = (value, index) => {
-	switch (value[index]) {
-		case "\\": {
-			if (value.startsWith("\\\\", index)) {
-				return { source: "\\\\", decoded: "\n", kind: "line-break" };
-			}
-			if (value.startsWith("\\|", index)) {
-				return { source: "\\|", decoded: "|", kind: "character" };
-			}
-			break;
-		}
-		case "&": {
-			if (value.startsWith("&#92;", index)) {
-				return { source: "&#92;", decoded: "\\", kind: "character" };
-			}
-			if (value.startsWith("&amp;", index)) {
-				return { source: "&amp;", decoded: "&", kind: "character" };
-			}
-			break;
-		}
-	}
-	return null;
-};
-
-export function unescapeJiraCell(value: string): string {
-	let out = "";
-	for (let index = 0; index < value.length; index += 1) {
-		const char = value[index];
-		if (char === undefined) break;
-		// Scan the serialized source once. Restored output is never examined
-		// again, which keeps literal entity-like user text reversible.
-		const match = matchJiraEscape(value, index);
-		if (match) {
-			out += match.decoded;
-			index += match.source.length - 1;
-			continue;
-		}
-		out += char;
-	}
-	return out;
-}
-
-// Splits a Jira row on unescaped single pipes. Header rows arrive with their
-// doubled pipes already collapsed by the caller. Unlike Markdown, Jira pads
-// nothing, so a cell's surrounding space is its own.
 function splitJiraRow(line: string): string[] {
-	return pipeCellSpans(line).map(({ from, to }) => line.slice(from, to));
+	return jiraCellSpans(line).map(({ from, to }) => line.slice(from, to));
 }
 
 // A header line with its doubled pipes collapsed to single ones, exactly as
@@ -126,6 +48,14 @@ function collapseHeaderPipes(line: string): {
 	const offsets: number[] = [];
 	for (let index = 0; index < line.length; index += 1) {
 		offsets.push(index);
+		// An escaped character is content, so an escaped pipe beside a delimiter
+		// is never read as half of a doubled one.
+		if (line[index] === "\\" && index + 1 < line.length) {
+			text += line.slice(index, index + 2);
+			offsets.push(index + 1);
+			index += 1;
+			continue;
+		}
 		if (line[index] === "|" && line[index + 1] === "|") {
 			text += "|";
 			index += 1;
@@ -170,7 +100,7 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 
 	// Collapse the header's doubled pipes so one splitter handles both rows.
 	const headerCells = splitJiraRow(collapseHeaderPipes(headerLine).text).map(
-		unescapeJiraCell,
+		parseJiraCell,
 	);
 
 	const warnings: ParseIssue[] = [];
@@ -185,7 +115,7 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 				line: start + 2 + offset,
 			});
 		}
-		return cells.map(unescapeJiraCell);
+		return cells.map(parseJiraCell);
 	});
 
 	return {
@@ -209,9 +139,9 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 // pipes are collapsed for the splitter and its spans mapped back, so a header
 // cell is placed in the line the user is editing.
 function jiraLineCells(line: string, header: boolean): SourceRowRange[] {
-	if (!header) return pipeCellSpans(line);
+	if (!header) return jiraCellSpans(line);
 	const { text: collapsed, offsets } = collapseHeaderPipes(line);
-	return pipeCellSpans(collapsed).map((cell) => ({
+	return jiraCellSpans(collapsed).map((cell) => ({
 		from: offsets[cell.from] ?? line.length,
 		to: offsets[cell.to] ?? line.length,
 	}));
@@ -242,13 +172,13 @@ function jiraFields(text: string): SourceFieldRange[] {
 
 function serializeJira(document: TableDocument): string {
 	const header = `||${document.columns
-		.map((column) => escapeJiraCell(cellText(column.header)))
+		.map((column) => writeJiraCell(column.header))
 		.join("||")}||`;
 
 	const body = document.rows.map(
 		(row) =>
 			`|${document.columns
-				.map((column) => escapeJiraCell(cellTextAt(row, column.id)))
+				.map((column) => writeJiraCell(cellTextContentAt(row, column.id)))
 				.join("|")}|`,
 	);
 
@@ -262,7 +192,7 @@ export const jiraCodec: TableCodec = {
 	reconciliation: {
 		cellValues: "text",
 		columnAlignment: "unexpressed",
-		inlineContent: "unexpressed",
+		inlineContent: "carried",
 	},
 	extension: "jira.txt",
 	mimeType: "text/plain",

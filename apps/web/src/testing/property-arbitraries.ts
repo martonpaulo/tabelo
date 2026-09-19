@@ -44,6 +44,26 @@ const escapeTokenArbitrary = fc.constantFrom(
 	": ",
 	"- ",
 	"<tag>",
+	// The inline syntax of Markdown and Jira (#306): every marker, alone and
+	// doubled, and a letter to stand beside one.
+	"*",
+	"**",
+	"_",
+	"~",
+	"~~",
+	"+",
+	"-",
+	"`",
+	"[",
+	"]",
+	"(",
+	")",
+	"!",
+	"{{",
+	"}}",
+	"<u>",
+	"</u>",
+	"a",
 	"é",
 	"漢",
 	"🧪",
@@ -447,6 +467,63 @@ export function formattedCodecDocumentArbitrary(
 					Object.values(row.cells).some(isInlineContent),
 				),
 		);
+}
+
+// Inline content with no carriage return anywhere, since every text format
+// that spells structure folds one into a line break (the separately tracked
+// line-ending contract), and this property is about structure.
+const lineFeedInlineContentArbitrary = inlineContentArbitrary.filter(
+	(content) => !JSON.stringify(content.nodes).includes("\\r"),
+);
+
+// A codec's grammar-safe document with arbitrary inline content in some of its
+// headers and cells: marks in every allowed combination, links, and images
+// beside plain text. For the formats that spell structure, reading one back
+// must give exactly the content that was written.
+export function inlineCodecDocumentArbitrary(
+	codec: TableCodec,
+): fc.Arbitrary<TableDocument> {
+	return codecDocumentArbitrary(codec)
+		.filter((document) =>
+			documentToMatrix(document).every((row) =>
+				row.every((value) => !value.includes("\r")),
+			),
+		)
+		.chain((document) => {
+			const cellCount = document.rows.length * document.columns.length;
+			const replacement = fc.option(lineFeedInlineContentArbitrary, {
+				nil: undefined,
+			});
+			return fc
+				.record({
+					headers: fc.array(replacement, {
+						minLength: document.columns.length,
+						maxLength: document.columns.length,
+					}),
+					cells: fc.array(replacement, {
+						minLength: cellCount,
+						maxLength: cellCount,
+					}),
+				})
+				.map(({ headers, cells }) => {
+					let cellIndex = 0;
+					const columns = document.columns.map((column, index) => ({
+						...column,
+						header: headers[index] ?? column.header,
+					}));
+					const rows = document.rows.map((row) => ({
+						...row,
+						cells: Object.fromEntries(
+							document.columns.map((column) => {
+								const value = cells[cellIndex] ?? readCell(row, column.id);
+								cellIndex += 1;
+								return [column.id, value];
+							}),
+						),
+					}));
+					return { columns, rows };
+				});
+		});
 }
 
 export interface DocumentPosition {

@@ -1,6 +1,6 @@
 import type { Locator } from "@playwright/test";
 import { samplePerson } from "@/core/sample-data";
-import { escapeCell } from "@/formats/markdown";
+import { escapeCell } from "@/formats/markdown-inline";
 import { expect, test } from "./fixtures";
 import {
 	lastCopied,
