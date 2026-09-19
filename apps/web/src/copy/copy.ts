@@ -392,6 +392,23 @@ export const copy = {
 		addViewNarrow: "A narrow window holds two views. Widen it to add another.",
 		undo: "Nothing to undo.",
 		redo: "Nothing to redo.",
+		// Transposing swaps rows for columns, so a table inside every import
+		// limit can come out beyond one. The reason names the shape it would make.
+		transposeLimit: (error: ImportError) => {
+			switch (error.code) {
+				case "too-many-rows":
+					return `Transposing would make ${error.actual} rows, over the ${error.limit} limit. Remove columns first.`;
+				case "too-many-columns":
+					return `Transposing would make ${error.actual} columns, over the ${error.limit} limit. Remove rows first.`;
+				case "too-many-cells":
+					return `Transposing would make ${error.actual} cells, over the ${error.limit} limit. Reduce the table first.`;
+				default:
+					return "This table can't be transposed.";
+			}
+		},
+		noEmptyRowsOrColumns: "There are no empty rows or columns.",
+		// An entirely empty table is left alone rather than reduced to nothing.
+		tableHasNoContent: "The table has no content yet.",
 		sourceNothingSelected: "Select some text first.",
 		sourceReadOnly: "This view is read-only.",
 		// A structural command in a source pane acts on the table row under the
@@ -536,6 +553,8 @@ export const copy = {
 		dismiss: "Dismiss",
 		undo: "Undo",
 		redo: "Redo",
+		transposeTable: "Transpose table",
+		deleteEmptyRowsAndColumns: "Delete empty rows and columns",
 		insertRowsAbove: (count: number) =>
 			`Insert ${count === 1 ? "row" : "rows"} above`,
 		insertRowsBelow: (count: number) =>
@@ -769,6 +788,17 @@ export const copy = {
 		// is the difference between a quiet success and a command that looks
 		// broken.
 		rowsAlreadySorted: "The rows are already in this order.",
+		tableTransposed: (columns: number, rows: number) =>
+			`Table transposed: ${columns} ${columns === 1 ? "column" : "columns"}, ${rows} ${rows === 1 ? "row" : "rows"}.`,
+		emptyRowsAndColumnsDeleted: (rows: number, columns: number) => {
+			const parts = [
+				rows > 0 ? `${rows} empty ${rows === 1 ? "row" : "rows"}` : "",
+				columns > 0
+					? `${columns} empty ${columns === 1 ? "column" : "columns"}`
+					: "",
+			].filter((part) => part !== "");
+			return `Deleted ${parts.join(" and ")}.`;
+		},
 		loading: "Loading…",
 	},
 

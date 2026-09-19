@@ -1455,9 +1455,15 @@ per keystroke.
   pane when stacked), adds `--fab-safe-area` below the content of each of its
   scrollers, and the grid's find bar pads its trailing edge by the same token,
   so no control, row, or line has to stay under the button. Its menu contains the Tabelo identity and description, the current
-  table name with a Rename command, Undo, Redo, New table, Import, the
-  `Copy as` submenu (#149), Download, Add view, Layout, Settings, and a link to
-  the GitHub repository. The trigger has a stable accessible name
+  table name with a Rename command, Undo, Redo, the whole-table commands
+  Transpose table and Delete empty rows and columns (#235), New table, Import,
+  the `Copy as` submenu (#149), Download, Add view, Layout, Settings, and a
+  link to the GitHub repository. The whole-table commands live here because
+  they act on the document rather than on a row, a column, or a pane: an axis
+  menu is named for the axis it acts on, and a pane menu for its pane. They are
+  one untitled group of plain items after Undo and Redo, each disabled with a
+  written reason when it cannot apply, and each announces its result through
+  the shared polite channel. The trigger has a stable accessible name
   and never replaces visible menu labels with unexplained icons. Global Add
   view chooses the first valid split in workspace reading order and opens the
   same view chooser as the pane-edge command. It does not ask for placement or

@@ -17,6 +17,7 @@ import {
 	IconAdjustmentsHorizontal,
 	IconArrowBackUp,
 	IconArrowForwardUp,
+	IconArrowsExchange,
 	IconBrandGithub,
 	IconClipboardCopy,
 	IconDownload,
@@ -27,11 +28,13 @@ import {
 	IconLayoutSidebarRightExpand,
 	IconPencil,
 	IconRefresh,
+	IconTableMinus,
 	IconUpload,
 } from "@tabler/icons-react";
-import { Fragment, type RefObject, useSyncExternalStore } from "react";
+import { Fragment, type RefObject, useMemo, useSyncExternalStore } from "react";
 import { copy } from "@/copy/copy";
 import { product } from "@/copy/product";
+import { deleteEmptyRowsAndColumns } from "@/core/operations";
 import { canSerialize, listCodecs } from "@/formats";
 import {
 	canRunHistory,
@@ -39,7 +42,7 @@ import {
 	runHistory,
 	subscribeHistory,
 } from "@/history/coordinator";
-import { useTabeloStore } from "@/state/store";
+import { transposeLimitError, useTabeloStore } from "@/state/store";
 import { copyCodecToClipboard } from "@/ui/clipboard-actions";
 import { preconditionRecovery } from "@/ui/precondition-recovery";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
@@ -263,6 +266,9 @@ export function AppMenu({
 				</DropdownMenuGroup>
 
 				<DropdownMenuSeparator />
+				<TableStructureGroup />
+
+				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuItem
 						variant="destructive"
@@ -417,5 +423,67 @@ function CopyAsSubmenu({
 				})}
 			</DropdownMenuSubContent>
 		</DropdownMenuSub>
+	);
+}
+
+// Commands that reshape the whole table rather than a row or a column, so they
+// sit with the other document commands instead of in an axis menu (#235). Each
+// is one step on the document timeline, and each says what it did through the
+// shared polite channel, because the menu that ran it has already closed.
+//
+// Its own component so the work of deciding whether Delete empty rows and
+// columns has anything to do runs only while the menu is open.
+function TableStructureGroup() {
+	const document = useTabeloStore((state) => state.document);
+	const transposeRefusal = useMemo(() => {
+		const error = transposeLimitError(document);
+		return error ? copy.disabled.transposeLimit(error) : undefined;
+	}, [document]);
+	const deleteEmptyRefusal = useMemo(() => {
+		const result = deleteEmptyRowsAndColumns(document);
+		if (result.tableIsEmpty) return copy.disabled.tableHasNoContent;
+		return result.document === document
+			? copy.disabled.noEmptyRowsOrColumns
+			: undefined;
+	}, [document]);
+
+	const transpose = () => {
+		const store = useTabeloStore.getState();
+		if (store.transposeTable()) return;
+		const { columns, rows } = useTabeloStore.getState().document;
+		store.announceStatus(
+			copy.status.tableTransposed(columns.length, rows.length),
+		);
+	};
+	const deleteEmpty = () => {
+		const store = useTabeloStore.getState();
+		const removed = store.deleteEmptyRowsAndColumns();
+		if (removed.rows === 0 && removed.columns === 0) return;
+		store.announceStatus(
+			copy.status.emptyRowsAndColumnsDeleted(removed.rows, removed.columns),
+		);
+	};
+
+	return (
+		<DropdownMenuGroup>
+			<ControlTooltip reason={transposeRefusal}>
+				<DropdownMenuItem
+					disabled={transposeRefusal !== undefined}
+					onClick={transpose}
+				>
+					<IconArrowsExchange aria-hidden />
+					{copy.actions.transposeTable}
+				</DropdownMenuItem>
+			</ControlTooltip>
+			<ControlTooltip reason={deleteEmptyRefusal}>
+				<DropdownMenuItem
+					disabled={deleteEmptyRefusal !== undefined}
+					onClick={deleteEmpty}
+				>
+					<IconTableMinus aria-hidden />
+					{copy.actions.deleteEmptyRowsAndColumns}
+				</DropdownMenuItem>
+			</ControlTooltip>
+		</DropdownMenuGroup>
 	);
 }
