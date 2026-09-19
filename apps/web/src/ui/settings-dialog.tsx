@@ -178,21 +178,16 @@ export function SettingsDialog({
 						<div className={cn(optionBlockStyles, "grid gap-3")}>
 							<div className="flex items-center gap-3">
 								<Glyph>{SPACE_GLYPH}</Glyph>
-								<span className="grid min-w-0 flex-1 gap-0.5">
-									<span id={spaceLabelId} className="font-medium">
-										{copy.settings.spaceIndicators.label}
-									</span>
-									<span
-										id={spaceDescriptionId}
-										className="text-muted-foreground text-xs"
-									>
-										{
-											copy.settings.spaceIndicators.options[
-												preferences.spaceIndicators
-											].description
-										}
-									</span>
-								</span>
+								<MenuOption
+									labelId={spaceLabelId}
+									descriptionId={spaceDescriptionId}
+									label={copy.settings.spaceIndicators.label}
+									description={
+										copy.settings.spaceIndicators.options[
+											preferences.spaceIndicators
+										].description
+									}
+								/>
 							</div>
 							<SegmentedControl
 								// Four labels of two words do not fit one row below the

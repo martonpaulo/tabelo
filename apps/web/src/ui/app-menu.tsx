@@ -197,17 +197,11 @@ export function AppMenu({
 						className="mx-1 mb-1 bg-muted"
 					>
 						<IconFileText aria-hidden />
-						<span className="grid min-w-0 flex-1 gap-0.5">
-							<span
-								data-slot="app-menu-table-name"
-								className="truncate font-medium"
-							>
-								{tableName}
-							</span>
-							<span className="text-muted-foreground text-xs">
-								{copy.workspace.tableSize(columnCount, rowCount)}
-							</span>
-						</span>
+						<MenuOption
+							truncateLabel
+							label={tableName}
+							description={copy.workspace.tableSize(columnCount, rowCount)}
+						/>
 						<IconPencil aria-hidden className="text-muted-foreground" />
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
