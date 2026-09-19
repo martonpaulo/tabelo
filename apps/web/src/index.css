@@ -51,6 +51,7 @@
 	--spacing-fab-inset: var(--fab-inset);
 	--spacing-fab-safe: var(--fab-safe-area);
 	--spacing-pane-end: var(--pane-end-room);
+	--spacing-pane-trailing: var(--pane-trailing-room);
 	--spacing-screen-fit-w: calc(100vw - var(--screen-inset));
 	--spacing-screen-fit-h: calc(100dvh - var(--screen-inset));
 	--radius-interactive: var(--control-radius);
@@ -160,6 +161,11 @@
 	   covers, so the pane under the button keeps that corner clear with the
 	   same room every other pane has. */
 	--pane-end-room: var(--fab-safe-area);
+	/* The room every pane's scroller leaves after its widest line, so a pane
+	   scrolled fully sideways ends one small, equal gap past the last column
+	   in the grid, every source view, and the rendered preview (owner,
+	   2026-09-19). */
+	--pane-trailing-room: 1rem;
 	/* What a floating layer as wide or tall as the window leaves free between
 	   itself and the screen's edges, summed over both sides: 1rem each. One
 	   value for dialogs, menus, and the start card (#354). */

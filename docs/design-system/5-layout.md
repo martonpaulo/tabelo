@@ -10,7 +10,13 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
   panes, the active pane adds a thicker blue edge. A one-pane workspace has no
   persistent active edge because there is no competing pane to distinguish;
   keyboard focus remains visible. This framing applies at every supported width.
-- The page never scrolls. Panes scroll independently.
+- The page never scrolls. Panes scroll independently. Every pane's content
+  ends the same way whatever its view (owner, 2026-09-19): `--pane-end-room`
+  below the last row (see the floating action button below) and
+  `--pane-trailing-room` after the widest line, so a pane scrolled fully
+  sideways shows one small gap past its last column, never a band. A source
+  view forgets the widths it measured at another zoom level, which is what
+  left that band after zooming in and back out.
 - Below 56.25rem panes stack; the chosen layout is remembered, not discarded.
   Stacked, the workspace grows to two panes at most: Add view is disabled with
   its reason and edge splits disappear, but no open pane is ever closed. See

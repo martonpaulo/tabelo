@@ -68,7 +68,7 @@ export default function HtmlPreview() {
 					paneFind.open();
 				}
 			}}
-			className="tabelo-scroll-boundary h-full select-text overflow-auto p-4 pb-pane-end"
+			className="tabelo-scroll-boundary h-full select-text overflow-auto p-4 pr-pane-trailing pb-pane-end"
 		>
 			{/* A table with nothing in it has nothing to read, so it shows the
 			    empty state rather than a grid of blank cells (#357). */}

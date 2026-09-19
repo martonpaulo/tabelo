@@ -686,8 +686,9 @@ export function GridContextMenu({
 						<div
 							ref={wrapperRef}
 							data-grid-surface
-							// The room every pane leaves below its last row.
-							className="relative min-w-max pb-pane-end"
+							// The room every pane leaves below its last row and after its
+							// last column.
+							className="relative min-w-max pr-pane-trailing pb-pane-end"
 						/>
 					}
 					onKeyDown={(event: React.KeyboardEvent) => {

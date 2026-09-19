@@ -143,6 +143,29 @@ function metricsSignal(zoom: number): Extension {
 	return signal;
 }
 
+// CodeMirror holds the text at least as wide as the widest line it has
+// measured (`DocView.minWidth`, written as the content's flex basis), so the
+// horizontal scroll range does not shrink while a long line scrolls out of the
+// drawn viewport. It lets go when that line's text changes, or when the line
+// height becomes one it has not measured before, but a return to a zoom level
+// it already knows is neither: zooming a pane in and back out kept the wider
+// width, which showed as an empty band after the last column (owner,
+// 2026-09-19). A zoom step makes every measured width stale, so it is dropped
+// here, in the same commit that publishes the new scale: the remembered width,
+// and the basis already written from it, since the next measurement reads the
+// content's width and would otherwise take the stale basis for a wide line.
+// The field is not public API, so it is written only where it exists and has
+// the expected type; if a CodeMirror release renames it, this does nothing and
+// the band returns, rather than anything breaking.
+// https://github.com/codemirror/view/blob/main/src/docview.ts
+function forgetMeasuredWidth(view: EditorView) {
+	const docView = (view as unknown as { docView?: { minWidth?: unknown } })
+		.docView;
+	if (!docView || typeof docView.minWidth !== "number") return;
+	docView.minWidth = 0;
+	view.contentDOM.style.flexBasis = "";
+}
+
 function wrapExtension(wrap: boolean) {
 	return wrap ? EditorView.lineWrapping : [];
 }
@@ -782,6 +805,7 @@ export function SourceEditor({
 	useLayoutEffect(() => {
 		const view = viewRef.current;
 		if (!view) return;
+		forgetMeasuredWidth(view);
 		view.dispatch({
 			effects: metricsCompartment.reconfigure(metricsSignal(zoom)),
 		});

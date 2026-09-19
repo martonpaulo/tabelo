@@ -128,7 +128,8 @@ export const editorTheme = EditorView.theme({
 	// edge instead, so character zero starts where the selection does. Moving it
 	// back here, or onto `.cm-content`, reopens the gap, because both leave
 	// character zero the same distance from the gutter.
-	".cm-line": { padding: "0 calc(var(--spacing) * 3) 0 0" },
+	// The trailing value is the room every pane leaves after its widest line.
+	".cm-line": { padding: "0 var(--pane-trailing-room) 0 0" },
 	// The numbers share the code box's surface, with no band or dividing line
 	// of their own; their tone and the active line's lift tell them apart.
 	".cm-gutters": {
