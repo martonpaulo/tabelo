@@ -592,7 +592,8 @@ export function SourceEditor({
 		return true;
 	};
 
-	// The menu-only structural commands (#255), on the same terms as a row move:
+	// The menu's structural commands (#255), and the insert chords, on the same
+	// terms as a row move:
 	// one document step, which clears the pane's keystroke history like any
 	// change from outside its typing (local-history.ts), and the caret carried into the cell the command leaves it in. The caret target is
 	// known only once the command has run (a sort decides where the row goes),
@@ -612,6 +613,18 @@ export function SourceEditor({
 		const caret = plan.run();
 		if (!caret) return;
 		pendingCaret.current = caret;
+	};
+
+	// An insert chord: the menu's insert command on the caret's row or column,
+	// refused with the menu's reason. False hands the key on in a pane without
+	// row commands.
+	const insertAt = (
+		view: EditorView,
+		command: SourceStructureCommand,
+	): boolean => {
+		if (!handlers.current.rowTarget) return false;
+		runStructure(view, command);
+		return true;
 	};
 
 	// A drop on a line number's or a letter's gap (#395): the same one document
@@ -789,6 +802,26 @@ export function SourceEditor({
 							// the default keymap below moves the text line.
 							{ key: "Alt-ArrowUp", run: (target) => moveRow(target, -1) },
 							{ key: "Alt-ArrowDown", run: (target) => moveRow(target, 1) },
+							// The grid's four insert chords, on the caret's row and
+							// column, in the same pane (owner, 2026-09-19). Mod+Enter
+							// replaces CodeMirror's insertBlankLine there; everywhere
+							// else they return false and the default keymap keeps it.
+							{
+								key: "Mod-Enter",
+								run: (target) => insertAt(target, "insert-row-below"),
+							},
+							{
+								key: "Mod-Shift-Enter",
+								run: (target) => insertAt(target, "insert-row-above"),
+							},
+							{
+								key: "Alt-Enter",
+								run: (target) => insertAt(target, "insert-column-right"),
+							},
+							{
+								key: "Alt-Shift-Enter",
+								run: (target) => insertAt(target, "insert-column-left"),
+							},
 							{
 								key: "Mod-z",
 								preventDefault: true,

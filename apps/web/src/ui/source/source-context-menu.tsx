@@ -94,7 +94,8 @@ import { sourceRowsField } from "./source-rows";
 
 // The table commands of a pane whose codec maps rows (#255): why each is
 // unavailable, read as the menu opens, and the command itself. The row moves
-// are the same ones Alt+ArrowUp and Alt+ArrowDown run; the rest are
+// are the same ones Alt+ArrowUp and Alt+ArrowDown run, the inserts the ones
+// the grid's four insert chords run (owner, 2026-09-19); the rest are
 // menu-only. Each names its row or column by an offset in the
 // text: the caret's when `at` is absent, or the one a column letter or a line
 // number stands for (#395).
@@ -153,8 +154,8 @@ type StructureRefusals = Readonly<
 // path to a command the editor's keymap already binds, carrying that shortcut,
 // so they add reach and never behaviour the keyboard lacks. The table's
 // structural commands are the one carved-out group (#255): they are the
-// grid's operations, reached from the text, and only the row moves have a
-// key. Every menu lists its commands in the order the grid's
+// grid's operations, reached from the text, and only the row moves and the
+// inserts have a key. Every menu lists its commands in the order the grid's
 // share (menu-order.ts).
 //
 // Right-click and the keyboard's context-menu gesture (the Menu key, Shift+F10)
@@ -590,6 +591,7 @@ export function SourceContextMenu({
 						"insert-row-above",
 						copy.actions.insertRowsAbove(1),
 						IconArrowBarToUp,
+						copy.shortcuts.addRowAbove,
 					),
 					structural(
 						commands,
@@ -597,6 +599,7 @@ export function SourceContextMenu({
 						"insert-row-below",
 						copy.actions.insertRowsBelow(1),
 						IconArrowBarToDown,
+						copy.shortcuts.addRowBelow,
 					),
 				]
 			: []),
@@ -608,6 +611,7 @@ export function SourceContextMenu({
 						"insert-column-left",
 						copy.actions.insertColumnsLeft(1),
 						IconArrowBarToLeft,
+						copy.shortcuts.addColumnLeft,
 					),
 					structural(
 						commands,
@@ -615,6 +619,7 @@ export function SourceContextMenu({
 						"insert-column-right",
 						copy.actions.insertColumnsRight(1),
 						IconArrowBarToRight,
+						copy.shortcuts.addColumnRight,
 					),
 				]
 			: []),

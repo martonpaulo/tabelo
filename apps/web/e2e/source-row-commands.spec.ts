@@ -9,7 +9,8 @@ import { openSubmenu, renderedSource, type TabeloPage } from "./helpers";
 // and the context menu offers the same two commands. Where it cannot, the menu
 // has none. Views are read from the registry by what their codec declares, so
 // a view added later is covered by its declaration rather than by name. The
-// menu also carries the grid's other structural commands.
+// menu also carries the grid's other structural commands, and the inserts
+// answer the grid's four insert chords.
 
 const TABLE = [
 	"| Name | City |",
@@ -296,3 +297,51 @@ test("a draft that does not parse disables every structural command", async ({
 		sort.getByRole("menuitem", { name: copy.actions.sortAscending }),
 	).toHaveAttribute("aria-disabled", "true");
 });
+
+// The grid's four insert chords, in every pane whose codec maps rows (owner,
+// 2026-09-19): Mod+Enter and Mod+Shift+Enter insert a row below and above the
+// caret's, Alt+Enter and Alt+Shift+Enter a column right and left of its cell,
+// each one document step. Each is undone from the grid before the next,
+// because a view that titles its rows by the first column, such as Records,
+// is unavailable while a row or column is still empty.
+for (const view of mappedViews) {
+	test(`${view.id}: the insert chords add a row and a column at the caret`, async ({
+		page,
+		tabelo,
+	}) => {
+		await seed(tabelo);
+		if (view.id !== "markdown")
+			await tabelo.choosePaneView("markdown", view.id);
+		const editor = tabelo.source(view.id);
+		const chord = async (keys: string) => {
+			await caretInFirstRow(page, editor);
+			await page.keyboard.press(keys);
+		};
+		const undoFromGrid = async () => {
+			await tabelo.cell(1, 1).click();
+			await page.keyboard.press("ControlOrMeta+Z");
+			await expectOrder(tabelo, ["Ingrid", "Paulo"]);
+			await expect(tabelo.header(1)).toHaveText("Name");
+			await expect(tabelo.header(2)).toHaveText("City");
+		};
+
+		await chord("ControlOrMeta+Enter");
+		await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+		await expect(tabelo.cell(3, 1)).toHaveText("Paulo");
+		await undoFromGrid();
+
+		await chord("ControlOrMeta+Shift+Enter");
+		await expect(tabelo.cell(2, 1)).toHaveText("Ingrid");
+		await expect(tabelo.cell(3, 1)).toHaveText("Paulo");
+		await undoFromGrid();
+
+		await chord("Alt+Enter");
+		await expect(tabelo.header(1)).toHaveText("Name");
+		await expect(tabelo.header(3)).toHaveText("City");
+		await undoFromGrid();
+
+		await chord("Alt+Shift+Enter");
+		await expect(tabelo.header(2)).toHaveText("Name");
+		await expect(tabelo.header(3)).toHaveText("City");
+	});
+}

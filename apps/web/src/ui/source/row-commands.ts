@@ -166,7 +166,8 @@ export function resolveSourceRowMove(
 }
 
 // The structural commands a source pane's context menu offers beside the row
-// moves, with no keyboard binding of their own (#255, option A).
+// moves (#255, option A). The four inserts are also the grid's insert chords
+// (owner, 2026-09-19); the rest have no key of their own.
 export type SourceStructureCommand =
 	| "move-column-left"
 	| "move-column-right"
