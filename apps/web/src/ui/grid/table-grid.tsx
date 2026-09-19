@@ -1286,7 +1286,12 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				>
 					{/* Where the letters meet the row numbers is a dead corner, not a
 					    control. */}
-					<div className="sticky left-0 z-30 bg-surface-code" />
+					<div
+						className={cn(
+							"sticky left-0 z-30 border-r border-r-transparent bg-surface-code",
+							!pinnedColumn && "edge-while-scrolled-x",
+						)}
+					/>
 					{document.columns.map((column, columnIndex) => (
 						<ColumnIndexCell
 							key={column.id}
@@ -1358,7 +1363,10 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								// menu fell through to cell actions on a non-cell.
 								data-row-header={HEADER_ROW}
 								className={cn(
-									"sticky top-grid-strip left-0 z-30 border-b border-b-line-strong bg-surface-code p-0 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums",
+									"sticky top-grid-strip left-0 z-30 border-r border-r-transparent border-b border-b-line-strong bg-surface-code p-0 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums",
+									// The gutter's edge appears only while content scrolls
+									// under it; a pinned column carries its own edge instead.
+									!pinnedColumn && "edge-while-scrolled-x",
 									headerRowSelected && selectedAxisClass,
 								)}
 								data-axis-selected={headerRowSelected || undefined}
@@ -1641,10 +1649,13 @@ const DataRow = memo(function DataRow({
 				aria-label={copy.a11y.rowNumber(rowIndex)}
 				data-row-header={rowIndex}
 				className={cn(
-					// The right edge is where chrome meets the table, so it takes the
-					// strong line the header row's gutter cell already draws; the
-					// edge between two numbers is a row boundary like any other.
-					"sticky left-0 border-b border-b-line-subtle bg-surface-code align-top",
+					// The right edge is where chrome meets the table. At rest the
+					// modern table draws no vertical line, so it stays transparent
+					// and takes the strong line only while content scrolls under the
+					// gutter, unless a pinned column stands there with its own edge.
+					// The edge between two numbers is a row boundary like any other.
+					"sticky left-0 border-r border-r-transparent border-b border-b-line-subtle bg-surface-code align-top",
+					!pinnedColumn && "edge-while-scrolled-x",
 					"p-0 text-right font-index font-normal text-muted-foreground text-xs tabular-nums",
 					// The row's number is how the row identifies itself,
 					// so they hold position with it. Pinned it sticks on both axes and
@@ -1751,7 +1762,7 @@ const DataRow = memo(function DataRow({
 							// the strong line the grid already draws around chrome,
 							// against the subtle one every interior boundary carries.
 							pinnedRow && "border-b-line-strong",
-							pinnedCell && "border-r-line-strong",
+							pinnedCell && "border-r border-r-line-strong",
 							// A cell being edited overrides the column's own clipping so
 							// its editor can grow and wrap over the rows below it while
 							// the value is too long for the column, without touching
@@ -1948,7 +1959,7 @@ function ColumnIndexCell({
 				// `relative`: pairing the two would win over `sticky` and turn the
 				// offset into a shift rather than a scroll threshold.
 				pinned
-					? "sticky left-grid-gutter z-30 border-r-line-strong"
+					? "sticky left-grid-gutter z-30 border-r border-r-line-strong"
 					: "relative z-20",
 			)}
 			onPointerEnter={onDragEnter}
@@ -2113,16 +2124,17 @@ function HeaderCell({
 				// Pinned it sticks on both axes and joins the corner layer, beside
 				// the gutter cell that names the header row, and carries the strong
 				// edge the pinned column draws all the way down.
-				pinned ? "left-grid-gutter z-30 border-r-line-strong" : "z-20",
+				pinned ? "left-grid-gutter z-30 border-r border-r-line-strong" : "z-20",
 				// See the data cell's identical rule: editing overrides clipping so a
 				// header longer than its column can grow and wrap while it's being
 				// typed, without changing the column's wrap preference.
 				editing ? "overflow-visible" : "cell-clip",
 				alignClass[align],
-				// Both fills are the sticky compositions rather than the bare tints:
-				// body rows scroll under this cell, and a translucent fill would let
-				// their text read through it. See index.css.
-				selected ? "bg-sticky-selection-fill" : "bg-sticky-table-header",
+				// Body rows scroll under this cell, so both fills are opaque: the
+				// selection is the sticky composition rather than the bare tint,
+				// and at rest the cell wears the content box's own surface. See
+				// index.css.
+				selected ? "bg-sticky-selection-fill" : "bg-surface-code",
 				focus && "outline-none",
 			)}
 			onPointerDown={(event) => {

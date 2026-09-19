@@ -141,14 +141,12 @@ user-issued resizing.
 | `--surface-app` | `bg-surface-app` | The page behind the panes |
 | `--surface-panel` | `bg-surface-panel` | A pane's content area |
 | `--surface-header` | `bg-surface-header` | Interface chrome such as the grid's column strip. A pane header is not on it: it sits on the pane's own surface with no dividing line, so a pane has two layers, the pane and its content (owner, 2026-09-19) |
-| `--surface-table-header` | `bg-surface-table-header` | Transparent since the modern table (owner, 2026-09-19): the header row is told apart by its weight and the strong line under it, and the grid draws row lines only, with no vertical dividers or chrome bands |
-| `--surface-gutter` | `bg-surface-gutter` | The grid's row-number gutter |
 | `--surface-code` | `bg-surface-code` | The inset rounded box a source view's text and line numbers sit in (owner, 2026-09-19) |
 | `--line-number` | CodeMirror gutter | Source line numbers: the dimmest tone that still reads at 4.5:1 on `--surface-code` |
 | `--surface-floating` | `bg-surface-floating` | Menus, tooltips, and dialogs above panes |
 
-Order matters: app is furthest back, gutter and interface chrome sit above the
-panel. Neighbouring surfaces are close in tone on purpose and are not held to a
+Order matters: app is furthest back, interface chrome sits above the panel,
+and a pane's content box sits inset in it. Neighbouring surfaces are close in tone on purpose and are not held to a
 contrast ratio: they group content, they do not identify a component. A
 floating layer is set apart by its own surface and a deep shadow, with a soft
 `--line-floating` edge (owner, 2026-09-19). That shadow is one token,
@@ -156,9 +154,12 @@ floating layer is set apart by its own surface and a deep shadow, with a soft
 layer: menus and their submenus, tooltips, dialogs, notices, the start card,
 the pane-edge Add view control, the source editor's diagnostic tooltip, and
 the floating action button on hover. A layer that writes its own `shadow-lg`,
-`shadow-md`, or ring is a pattern break (owner, 2026-09-19). The table-header surface is a quiet accent tint, so headers remain
-recognizable as mutable table data instead of reading as disabled chrome. Use
-tones to group related content before adding a line. Every pane's content, editable
+`shadow-md`, or ring is a pattern break (owner, 2026-09-19).
+
+The grid has no surface of its own for its header row, its row-number gutter,
+or its column letters (owner, 2026-09-19): all of them sit on the content box's
+`--surface-code`, and the header row is told apart by its weight and the strong
+line under it. Use tones to group related content before adding a line. Every pane's content, editable
 or read-only, sits in one `--surface-code` box (owner, 2026-09-19); a read-only
 pane says so with a quiet lock in its header whose name and tooltip are "Read-only", not with a tone.
 
@@ -325,7 +326,6 @@ what used to be two passes over every visual change is now one.
 | `--grid-gutter-w` | `w-grid-gutter` | 2.25rem: the row number and one small gap each side, nothing else (#288) |
 | `--grid-row-h` | `min-h-grid-row` | calc(var(--pane-zoom, 1) * 2rem): minimum table row height |
 | `--grid-col-w` | `w-grid-col` | 10.5rem: default column width |
-| `--grid-col-w-min` | `w-grid-col-min` | 4.5rem: resize floor |
 | `--control-radius` | `rounded-interactive` | 0.5rem: buttons, fields, menu items, option blocks, badges |
 | `--indicator-radius` | `rounded-indicator` | 0.25rem: a checkbox's 1rem box |
 | `--surface-radius` | `rounded-surface` | 0.75rem: panes, menus, dialogs, notices, empty states |
@@ -604,8 +604,8 @@ The trailing gap doubles as the source text's leading space, because the line
 itself cannot carry it without leaving a band the selection never paints.
 
 The visual table mirrors structure rather than source punctuation: its header
-row and the rendered preview use the shared editable table-header surface,
-while body cells keep the normal content treatment. Header text position shows
+row is set apart by weight and the strong line under it, while body cells keep
+the normal content treatment. Header text position shows
 alignment without an extra icon inside the editable cell. A native source
 selection must paint over the header treatment just as it does over any other
 line.
@@ -895,11 +895,11 @@ copy path produces. Decided on #77.
 - **No zebra striping.** An alternating tint encodes nothing about the row, so it
   is decoration under §1, and it borrows the header surface for rows that are not
   headers.
-- **Thin uniform rules.** `--line-subtle` at 0.0625rem on every cell including
-  the header, per §2. No heavier rule under the header row.
-- **Square outer corners.** Table structure is rectilinear, as in the grid.
-- **The header is bold text on `--surface-table-header`**, the same shared
-  editable table-header surface the grid uses.
+- **Thin rules.** `--line-subtle` at 0.0625rem between rows and around the
+  table, per §2, and none between columns.
+- **The header is medium-weight text on the `--surface-header` band**, the one
+  place the preview uses a tone, because a document table in the destinations
+  it previews shows its header that way.
 - **Tabelo's own type**, at `text-content` so the preview scales with the pane.
 - **Sized to its content, capped at the pane width.** A narrow table is not
   stretched across a wide pane, and a wide one wraps instead of forcing the
@@ -2154,8 +2154,8 @@ user moves along a row.
 
 That means header cells name themselves after what they contain, not after the
 controls they hold: the header row is visibly numbered 1, the first data row is
-"Row 2", and each column header is its own text. The header row uses its own
-editable table-header surface, matches the body row height, and paints the
+"Row 2", and each column header is its own text. The header row sits on the
+content surface in semibold, matches the body row height, and paints the
 selection fill whenever selected. Its text position reflects left, centre, or
 right alignment; the editable cell carries no separate alignment or menu icon.
 An `aria-label` on a gridcell is a defect: it replaces the content with
@@ -2191,48 +2191,48 @@ header row and the gesture means the same thing on row 1 as on any other row.
 Everything that acts on the column as a whole (selecting it, its menu, its
 resize handle) belongs to the column index strip, not to the header cell.
 
-Because it is a row, **the boundary under the header row is an ordinary row
-boundary** (#157): `--line-subtle`, the same one every pair of data rows draws, across
-the gutter and the cells alike.
+**The grid is the modern table** (owner, 2026-09-19): it draws row lines and
+nothing else, with no vertical dividers and no chrome bands, and a line's kind
+never changes with state.
 
-**The grid draws two kinds of line, and a line's kind never changes with
-state.**
-
-- A line that continues the table's own grid, between two columns or between
-  two rows, is `--line-subtle` wherever it runs: between cells, between header
-  cells, between two letters on the column index strip, and between two numbers
-  in the gutter. A column's divider is one line from its letter to its last row.
-- A line where the grid's chrome meets its table is `--line-strong`: the strip's
-  bottom edge, the gutter's right edge on every row, and the corner. A pinned
-  row or column draws the same strong edge along its whole length, strip and
-  header included, because its pinned edge is also a boundary between layers.
+- Between two rows runs `--line-subtle`, across the gutter and the cells alike.
+  Nothing divides two columns, two letters on the column index strip, or two
+  header cells.
+- The header row is told apart by its semibold weight and the `--line-strong`
+  line under it, which runs under the header row's gutter cell too. The strip
+  has no line under it.
+- A pinned row or column takes the strong line on its pinned edge, always, for
+  its whole length, strip and header included: that edge is the non-colour cue
+  that it is pinned.
+- The row-number gutter's trailing edge takes the same strong line only while
+  table content is scrolled sideways under it, so text never runs into the row
+  numbers, and draws nothing at rest. Where a pinned column stands beside the
+  gutter, that column's own edge does the job and the gutter draws none. The
+  hairline is always there and only its colour changes, so the edge appearing
+  moves nothing.
 
 Selection, focus, and copying never recolour a line. They draw their own marks
 over the grid, which is what keeps every divider legible in every state.
 
-Because it is sticky, **its fill is composited over an opaque base**. Body rows
-scroll under the header, and both fills it can wear, the header surface and
-`--selection-fill`, are translucent tints, so on their own they would let the
-scrolling text read through. The tints keep their values: `index.css` paints
-each one as a background layer over `--surface-panel` in a utility the header
-cell uses instead of the bare `bg-` utility, so the rendered colour at rest is
-unchanged and the non-sticky users of the same tokens are untouched. Any other
-sticky cell that carries a tint reuses that utility rather than raising a token
-to full opacity.
+Because it is sticky, **its fill is opaque**. Body rows scroll under the header,
+so at rest it wears the content box's own `--surface-code`, and selected it
+wears `--selection-fill` composited over that surface by the
+`bg-sticky-selection-fill` utility in `index.css`, because the bare tint is
+translucent and would let the scrolling text read through. The tint keeps its
+value, so the rendered colour is unchanged and its non-sticky users are
+untouched. Any other sticky cell that carries a tint reuses that utility rather
+than raising a token to full opacity.
 
 The numbered row gutter and the column index strip are interface chrome, not
 selected data, but they show where the selection is. A row number or column
-letter that any selected area reaches takes `--surface-axis-selected`, a
-neutral step above the chrome it sits on, and its label turns from muted
-normal weight to semibold foreground; under forced colours it takes the system
-highlight pair. The header row's number takes part like any other. The surface
-stays darker than `--line-subtle`, so every divider still reads across it and
-the line rule above holds in every state. It never takes `--selection-fill`:
-that colour means selected data, and chrome painted the same way reads as part
-of the selection. Two other treatments were tried and rejected on #291: an edge
-line on the side facing the table read as a stray fragment of the focus
-outline, and a lighter fill swallowed the grid lines until they had to be
-redrawn in another colour.
+letter that any selected area reaches turns from muted normal weight to
+semibold foreground, with no surface of its own (owner, 2026-09-19); under
+forced colours it takes the system highlight pair. The header row's number
+takes part like any other. It never takes `--selection-fill`: that colour means
+selected data, and chrome painted the same way reads as part of the selection.
+Two other treatments were tried and rejected on #291: an edge line on the side
+facing the table read as a stray fragment of the focus outline, and a lighter
+fill swallowed the grid lines until they had to be redrawn in another colour.
 
 The mark is derived from the selection on every render and is never stored as a
 second record of it. It is presentation only: `aria-selected` and the selection
