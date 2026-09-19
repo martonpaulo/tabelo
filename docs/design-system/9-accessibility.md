@@ -527,6 +527,25 @@ same position mapping, never by counting text lines:
   the column as one range each (inside a quoted field's quotes, past a
   Markdown cell's padding), with the header's first, so typing edits them all.
   Opening a label's menu selects it the same way.
+- **A selected row or column looks like the grid's** (owner, 2026-09-19),
+  whatever text the selection holds. A column is one `--selection-fill` band
+  per text line, from the delimiter before its cell to the delimiter after it,
+  padding, alignment room, and empty-value placeholders included, on every
+  line from the header's to the last row's: a line between two rows (the
+  Markdown divider) and a line inside a row that holds no cell of the column
+  (a CSV record's quoted line break) carry the band on, so it has no gap. A
+  row is one band per text line of the row, from its first cell's opening
+  delimiter to its last cell's closing one, never the text selection's ragged
+  shape. The active cell wears the grid's focus mark, the two-hairline
+  `--selection-edge` line inside the cell: the header cell for a column, the
+  row's first cell for a row. The text band does not draw these selections a
+  second time, and the carets stay, one per cell, where typing lands.
+- **One current line.** The active-line fill and its number's lift follow the
+  main selection alone, as the grid has one focused cell however many are
+  selected; a column no longer tints every row it crosses. Every other line a
+  selection reaches marks its number the way the grid marks a reached row
+  number, semibold foreground with no surface, and a selected column's letter
+  takes the same weight. A lone caret marks only its current line.
 - **A drag** from a label whose row or column is already selected moves it,
   with the grid's gesture: the threshold, the one line marking the gap it will
   land in, one document step on drop, and `Escape`, a lost pointer, or a drop

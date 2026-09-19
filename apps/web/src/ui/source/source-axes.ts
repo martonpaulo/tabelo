@@ -11,6 +11,7 @@ import {
 	GutterMarker,
 	gutterLineClass,
 	layer,
+	RectangleMarker,
 	ViewPlugin,
 	type ViewUpdate,
 } from "@codemirror/view";
@@ -20,7 +21,7 @@ import type {
 	SourceRowRange,
 	SourceTableRow,
 } from "@/formats/types";
-import { pitchBands } from "./drawn-selection";
+import { layerOrigin, selectionDrawnElsewhere } from "./drawn-selection";
 import { pinnedHeaderCovers } from "./pinned-header";
 import { sourceRowsField } from "./source-rows";
 
@@ -594,6 +595,13 @@ const axisTheme = EditorView.theme({
 		width: "0.125rem",
 		transform: "translateX(-50%)",
 	},
+	// The grid's focus mark on its focused cell: the selection edge, two
+	// hairlines, drawn inside the cell's box.
+	".cm-tabeloActiveCellLayer": { pointerEvents: "none" },
+	".cm-tabeloActiveCell": {
+		boxSizing: "border-box",
+		border: "var(--selection-edge-w) solid var(--selection-edge)",
+	},
 	".cm-lineNumbers .cm-gutterElement.cm-tabeloRowLabel": { cursor: "pointer" },
 	".cm-lineNumbers .cm-gutterElement.cm-tabeloMovableLabel": { cursor: "grab" },
 	"&.cm-tabeloAxisDragging, &.cm-tabeloAxisDragging *": {
@@ -601,37 +609,246 @@ const axisTheme = EditorView.theme({
 	},
 });
 
-// A selected column drawn as the grid draws one: a band over each of its
-// cells from delimiter to delimiter, padding included, in the same pitch the
-// selection band keeps. The selection itself stays on the text typing
-// replaces, which in an empty cell is a single point and would otherwise show
-// only a row of carets (owner, 2026-09-19).
-const selectedColumnLayer = layer({
-	above: false,
-	class: "cm-tabeloSelectedColumnLayer",
-	update: (update) =>
+// A selected row or column drawn as the grid draws one (owner, 2026-09-19:
+// every view's selection looks like the Visual Table's). The selection itself
+// stays on the text typing replaces, which in an empty cell is a single point
+// and in a row is text of every shape; what is drawn is the table's shape:
+//
+// - A column is one band per text line, from the delimiter before its cell to
+//   the delimiter after it, padding and aligned room included. Every line from
+//   the header's to the last row's takes it, so the band has no gap: a line
+//   inside a row that holds no cell of the column (a CSV record's quoted line
+//   break) takes its row's slot, and a line between two rows (Markdown's
+//   divider) takes the slot of the row above.
+// - A row is one band per text line of the row, from its first cell's opening
+//   delimiter to its last cell's closing one.
+// - The active cell, the one the grid would give focus, wears the grid's focus
+//   mark: the header cell for a column, the row's first cell for a row.
+//
+// Each band line names the row and the cells whose slot it spans, as pure data
+// over the mapping, so the geometry's decisions are pinned by unit tests; only
+// the conversion to pixels needs a browser.
+export interface AxisBandLine {
+	// A 1-based line number.
+	readonly line: number;
+	readonly row: number;
+	// The cells whose slots bound the band: its left edge is `from`'s, its
+	// right edge `to`'s. One cell for a column, the first and last for a row.
+	readonly from: SourceRowRange;
+	readonly to: SourceRowRange;
+	// A line between two rows, such as Markdown's divider, which only carries
+	// the band on to the next row.
+	readonly between: boolean;
+}
+
+export function axisBandLines(
+	doc: Text,
+	rows: readonly SourceTableRow[],
+	target: SourceAxisTarget,
+): AxisBandLine[] {
+	const linesOf = (row: SourceTableRow) => {
+		const span = rowSpan(doc, row);
+		return {
+			first: doc.lineAt(Math.min(span.from, doc.length)).number,
+			last: doc.lineAt(Math.min(span.to, doc.length)).number,
+		};
+	};
+	const bands: AxisBandLine[] = [];
+	if (target.axis === "row") {
+		const row = rows[target.index];
+		const from = row?.cells[0];
+		const to = row?.cells.at(-1);
+		if (!row || !from || !to) return bands;
+		const { first, last } = linesOf(row);
+		for (let line = first; line <= last; line += 1) {
+			bands.push({ line, row: target.index, from, to, between: false });
+		}
+		return bands;
+	}
+	let above: { row: number; cell: SourceRowRange; last: number } | null = null;
+	for (const [index, row] of rows.entries()) {
+		const cell = row.cells[target.index];
+		// A ragged row without the column breaks the band, as a missing cell
+		// would in the grid; the draft that has one is already flagged.
+		if (!cell) {
+			above = null;
+			continue;
+		}
+		const { first, last } = linesOf(row);
+		if (above) {
+			for (let line = above.last + 1; line < first; line += 1) {
+				bands.push({
+					line,
+					row: above.row,
+					from: above.cell,
+					to: above.cell,
+					between: true,
+				});
+			}
+		}
+		for (let line = first; line <= last; line += 1) {
+			bands.push({ line, row: index, from: cell, to: cell, between: false });
+		}
+		above = { row: index, cell, last };
+	}
+	return bands;
+}
+
+// The cell the grid would give focus for the row or column selected.
+export function axisActiveCell(
+	rows: readonly SourceTableRow[],
+	target: SourceAxisTarget,
+): SourceRowRange | null {
+	return target.axis === "row"
+		? (rows[target.index]?.cells[0] ?? null)
+		: (rows[0]?.cells[target.index] ?? null);
+}
+
+// The right edge of what a line draws: its text and every widget on it, the
+// alignment padding and empty-value placeholders included.
+function drawnLineRight(view: EditorView, from: number): number | null {
+	const { node } = view.domAtPos(from);
+	const element = node instanceof Element ? node : node.parentElement;
+	const line = element?.closest(".cm-line");
+	if (!line) return null;
+	const range = line.ownerDocument.createRange();
+	range.selectNodeContents(line);
+	return range.getBoundingClientRect().right;
+}
+
+// Where a cell's slot starts and ends on screen, from the delimiter before it
+// to the delimiter after it, on the line holding its start. A delimiter is
+// measured as a character, because a position next to one stands before any
+// padding or placeholder drawn there. Null while that line is not drawn.
+function cellSlot(
+	view: EditorView,
+	cell: SourceRowRange,
+): { readonly left: number; readonly right: number } | null {
+	const line = view.state.doc.lineAt(cell.from);
+	const left =
+		cell.from > line.from
+			? view.coordsForChar(cell.from - 1)?.right
+			: view.coordsAtPos(line.from, -1)?.left;
+	const right =
+		cell.to < line.to
+			? view.coordsForChar(cell.to)?.left
+			: drawnLineRight(view, line.from);
+	if (left === undefined || right === undefined || right === null) return null;
+	return { left, right: Math.max(left, right) };
+}
+
+interface Box {
+	readonly left: number;
+	readonly right: number;
+	readonly top: number;
+	readonly bottom: number;
+}
+
+// The selected row's or column's bands, and the active cell's box, in the
+// layers' coordinates. Only lines the editor has drawn are measured.
+function axisGeometry(
+	view: EditorView,
+): { readonly bands: Box[]; readonly active: Box | null } | null {
+	const axis = selectedSourceAxis(view.state);
+	const rows = view.state.field(sourceRowsField, false);
+	if (!axis || !rows) return null;
+	const { doc } = view.state;
+	const origin = layerOrigin(view);
+	const firstLineTop = view.documentTop - origin.top;
+	const { viewport } = view;
+	const slots = new Map<SourceRowRange, ReturnType<typeof cellSlot>>();
+	const slotOf = (cell: SourceRowRange) => {
+		if (!slots.has(cell)) slots.set(cell, cellSlot(view, cell));
+		return slots.get(cell) ?? null;
+	};
+	const activeCell = axisActiveCell(rows, axis);
+	const activeRow = axis.axis === "row" ? axis.index : 0;
+	const bands: Box[] = [];
+	const activeLines: Box[] = [];
+	for (const band of axisBandLines(doc, rows, axis)) {
+		const line = doc.line(band.line);
+		if (line.to < viewport.from || line.from > viewport.to) continue;
+		const from = slotOf(band.from);
+		const to = slotOf(band.to);
+		if (!from || !to) continue;
+		const block = view.lineBlockAt(line.from);
+		const top = firstLineTop + block.top;
+		const bottom = firstLineTop + block.bottom;
+		bands.push({
+			left: from.left - origin.left,
+			right: to.right - origin.left,
+			top,
+			bottom,
+		});
+		// The focus mark covers the active cell's own row, never the divider
+		// that follows the header.
+		const slot = activeCell ? slotOf(activeCell) : null;
+		if (!band.between && band.row === activeRow && slot) {
+			activeLines.push({
+				left: slot.left - origin.left,
+				right: slot.right - origin.left,
+				top,
+				bottom,
+			});
+		}
+	}
+	const first = activeLines[0];
+	const last = activeLines.at(-1);
+	const active = first && last ? { ...first, bottom: last.bottom } : null;
+	return { bands, active };
+}
+
+function marker(className: string, box: Box): RectangleMarker {
+	return new RectangleMarker(
+		className,
+		box.left,
+		box.top,
+		box.right - box.left,
+		box.bottom - box.top,
+	);
+}
+
+function redrawsAxis(update: ViewUpdate): boolean {
+	return (
 		update.selectionSet ||
 		update.docChanged ||
 		update.viewportChanged ||
 		update.geometryChanged ||
 		update.startState.field(sourceRowsField, false) !==
-			update.state.field(sourceRowsField, false),
+			update.state.field(sourceRowsField, false)
+	);
+}
+
+// The bands, under the text as the selection band is, in its colour.
+const axisBandLayer = layer({
+	above: false,
+	class: "cm-tabeloAxisSelectionLayer",
+	update: redrawsAxis,
+	markers: (view) =>
+		(axisGeometry(view)?.bands ?? []).map((box) =>
+			marker("cm-selectionBackground", box),
+		),
+});
+
+// The focus mark, over the text as the grid's is over its cell.
+const activeCellLayer = layer({
+	above: true,
+	class: "cm-tabeloActiveCellLayer",
+	update: redrawsAxis,
 	markers(view) {
-		const axis = selectedSourceAxis(view.state);
-		const rows = view.state.field(sourceRowsField, false);
-		if (axis?.axis !== "column" || !rows) return [];
-		return pitchBands(
-			view,
-			columnRanges(rows, axis.index),
-			"cm-selectionBackground",
-		);
+		const active = axisGeometry(view)?.active;
+		return active ? [marker("cm-tabeloActiveCell", active)] : [];
 	},
 });
 
 // Installed in every source editor; a pane without the configuration, which is
 // a pane whose codec maps no rows, offers nothing from its labels.
 export const sourceAxes: Extension = [
-	selectedColumnLayer,
+	axisBandLayer,
+	activeCellLayer,
+	// The text band would draw the selection a second time, in the ragged
+	// shape of the text it holds.
+	selectionDrawnElsewhere.of((state) => selectedSourceAxis(state) !== null),
 	rowLabelClasses,
 	axisTheme,
 	ViewPlugin.fromClass(AxisPointer),

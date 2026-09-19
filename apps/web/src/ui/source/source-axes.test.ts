@@ -1,10 +1,14 @@
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
+import { documentFromMatrix } from "@/core/document";
 import { samplePerson } from "@/core/sample-data";
 import { csvCodec } from "@/formats/csv";
+import { jiraCodec } from "@/formats/jira";
 import { markdownCodec } from "@/formats/markdown";
 import type { TableCodec } from "@/formats/types";
 import {
+	axisActiveCell,
+	axisBandLines,
 	axisSelection,
 	rowAtLine,
 	selectedSourceAxis,
@@ -141,5 +145,103 @@ describe("source axis labels", () => {
 		});
 		expect(axisSelection(state, { axis: "row", index: 1 })).toBeNull();
 		expect(selectedSourceAxis(state)).toBeNull();
+	});
+});
+
+// The shape a selected row or column is drawn in, as the grid draws one: which
+// text lines carry a band, and whose slot bounds each. Pixels come later, from
+// the editor; these are the decisions.
+describe("source axis bands", () => {
+	function bands(
+		codec: TableCodec,
+		text: string,
+		target: { axis: "row" | "column"; index: number },
+	) {
+		const state = mapped(codec, text);
+		const rows = state.field(sourceRowsField) ?? [];
+		return axisBandLines(state.doc, rows, target).map((band) => ({
+			line: band.line,
+			row: band.row,
+			between: band.between,
+			from: state.sliceDoc(band.from.from, band.from.to),
+			to: state.sliceDoc(band.to.from, band.to.to),
+		}));
+	}
+
+	it("runs a column's band through Markdown's divider without a gap", () => {
+		const lines = bands(markdownCodec, MARKDOWN, { axis: "column", index: 1 });
+		expect(lines.map(({ line }) => line)).toEqual([1, 2, 3, 4]);
+		// The divider carries the header cell's slot on to the first row.
+		expect(lines[1]).toEqual({
+			line: 2,
+			row: 0,
+			between: true,
+			from: " City ",
+			to: " City ",
+		});
+		expect(lines.filter(({ between }) => between)).toHaveLength(1);
+	});
+
+	it("carries a column through every line of a CSV record", () => {
+		const text = `Name,City\n${ingrid.name},"${ingrid.city}\nnorth"\n${paulo.name},${paulo.city}`;
+		const lines = bands(csvCodec, text, { axis: "column", index: 0 });
+		expect(lines.map(({ line, row }) => [line, row])).toEqual([
+			[1, 0],
+			[2, 1],
+			[3, 1],
+			[4, 2],
+		]);
+		// The continuation line takes the slot of its record's own cell.
+		expect(lines[2]?.from).toBe(ingrid.name);
+		expect(lines.some(({ between }) => between)).toBe(false);
+	});
+
+	it("draws a row across its cells, from the first to the last", () => {
+		const lines = bands(markdownCodec, MARKDOWN, { axis: "row", index: 2 });
+		expect(lines).toEqual([
+			{
+				line: 4,
+				row: 2,
+				between: false,
+				from: ` ${paulo.name} `,
+				to: ` ${paulo.city} `,
+			},
+		]);
+		// The header row stops before its divider.
+		expect(
+			bands(markdownCodec, MARKDOWN, { axis: "row", index: 0 }).map(
+				({ line }) => line,
+			),
+		).toEqual([1]);
+	});
+
+	it("marks the header cell of a column and the first cell of a row", () => {
+		const state = mapped(markdownCodec, MARKDOWN);
+		const rows = state.field(sourceRowsField) ?? [];
+		const text = (cell: { from: number; to: number } | null) =>
+			cell ? state.sliceDoc(cell.from, cell.to) : null;
+		expect(text(axisActiveCell(rows, { axis: "column", index: 1 }))).toBe(
+			" City ",
+		);
+		expect(text(axisActiveCell(rows, { axis: "row", index: 2 }))).toBe(
+			` ${paulo.name} `,
+		);
+		expect(axisActiveCell(rows, { axis: "row", index: 9 })).toBeNull();
+	});
+
+	it("gives an empty Jira table one band per row in the column", () => {
+		const text = jiraCodec.serialize(
+			documentFromMatrix(
+				[
+					["", "", ""],
+					["", "", ""],
+					["", "", ""],
+				],
+				{ headerRow: true },
+			),
+		);
+		const lines = bands(jiraCodec, text, { axis: "column", index: 1 });
+		expect(lines.map(({ line }) => line)).toEqual([1, 2, 3]);
+		expect(lines.every(({ from }) => from === " ")).toBe(true);
 	});
 });

@@ -263,9 +263,14 @@ export const editorTheme = EditorView.theme({
 	".cm-tabeloColumnMarker:hover, .cm-tabeloColumnMarker[data-selected]": {
 		color: "var(--foreground)",
 	},
-	// A selected column's letter and the current line's number are set as the
-	// grid sets a selected row's number and column's letter: semibold, in the
-	// foreground tone (owner, 2026-09-19).
+	// A selected column's letter, the current line's number, and the number of
+	// every other line a selection reaches are set as the grid sets a selected
+	// row's number and column's letter: semibold, in the foreground tone, with
+	// no surface of their own (owner, 2026-09-19).
+	".cm-lineNumbers .cm-gutterElement.cm-tabeloReachedLine": {
+		color: "var(--foreground)",
+		fontWeight: "600",
+	},
 	".cm-activeLineGutter": { backgroundColor: "transparent" },
 	"&.cm-focused .cm-activeLineGutter": {
 		backgroundColor: "var(--active-line-fill)",

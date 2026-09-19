@@ -23,8 +23,6 @@ import {
 	type DecorationSet,
 	drawSelection,
 	EditorView,
-	highlightActiveLine,
-	highlightActiveLineGutter,
 	highlightWhitespace,
 	hoverTooltip,
 	keymap,
@@ -667,9 +665,9 @@ export function SourceEditor({
 					// single transaction, possible at all.
 					EditorState.allowMultipleSelections.of(true),
 					drawSelection(),
+					// With the current line and its number, for the main selection
+					// alone.
 					drawnSelection,
-					highlightActiveLine(),
-					highlightActiveLineGutter(),
 					wrapCompartment.of(wrapExtension(wrap)),
 					indicatorCompartment.of(
 						indicatorExtensions({

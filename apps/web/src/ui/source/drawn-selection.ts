@@ -1,8 +1,18 @@
-import { EditorSelection } from "@codemirror/state";
 import {
+	EditorSelection,
+	type EditorState,
+	Facet,
+	RangeSet,
+} from "@codemirror/state";
+import {
+	Decoration,
+	type DecorationSet,
 	type EditorView,
+	GutterMarker,
+	gutterLineClass,
 	layer,
 	RectangleMarker,
+	ViewPlugin,
 	type ViewUpdate,
 } from "@codemirror/view";
 
@@ -34,7 +44,7 @@ function shouldRedraw(update: ViewUpdate): boolean {
 
 // Where the layer's own coordinates start, in client pixels. Markers are placed
 // relative to the scroller, which is where both layers are mounted.
-function layerOrigin(view: EditorView): { left: number; top: number } {
+export function layerOrigin(view: EditorView): { left: number; top: number } {
 	const box = view.scrollDOM.getBoundingClientRect();
 	return {
 		left: box.left - view.scrollDOM.scrollLeft,
@@ -127,6 +137,17 @@ export function pitchBands(
 	);
 }
 
+// Whether another layer draws the selection in the state, in a shape of its
+// own. A selected row or column is drawn as the grid draws one (source-axes.ts),
+// and the text band under it would show the ragged shape the axis layer is
+// there to replace.
+export const selectionDrawnElsewhere = Facet.define<
+	(state: EditorState) => boolean,
+	(state: EditorState) => boolean
+>({
+	combine: (values) => (state) => values.some((drawn) => drawn(state)),
+});
+
 // Every source line box is the same height, wrapped visual lines included, so a
 // band edge belongs on the nearest multiple of that height from the first line's
 // top. A band CodeMirror measured from the text sits a quarter of a line in from
@@ -137,7 +158,9 @@ const selectionLayer = layer({
 	class: "cm-tabeloSelectionLayer",
 	update: shouldRedraw,
 	markers: (view) =>
-		pitchBands(view, view.state.selection.ranges, "cm-selectionBackground"),
+		view.state.facet(selectionDrawnElsewhere)(view.state)
+			? []
+			: pitchBands(view, view.state.selection.ranges, "cm-selectionBackground"),
 });
 
 // One device pixel is the smallest step a line can move without blurring.
@@ -191,7 +214,82 @@ const caretLayer = layer({
 	},
 });
 
-export const drawnSelection = [selectionLayer, caretLayer];
+// The current line, drawn for the main selection alone. CodeMirror's own
+// `highlightActiveLine` tints the line of every range's head, so a selected
+// column lit every row it crossed across the whole pane and read as everything
+// selected (owner, 2026-09-19). The grid has one focused cell however many
+// cells are selected, and a source pane keeps one current line the same way:
+// the main selection's, whatever else is selected. Its line number takes the
+// same lift; the lines the other ranges reach are marked on the gutter below.
+const currentLine = Decoration.line({ class: "cm-activeLine" });
+
+const currentLineHighlight = ViewPlugin.fromClass(
+	class {
+		decorations: DecorationSet;
+		constructor(view: EditorView) {
+			this.decorations = this.build(view.state);
+		}
+		update(update: ViewUpdate) {
+			if (update.docChanged || update.selectionSet) {
+				this.decorations = this.build(update.state);
+			}
+		}
+		build(state: EditorState): DecorationSet {
+			const line = state.doc.lineAt(state.selection.main.head);
+			return Decoration.set([currentLine.range(line.from)]);
+		}
+	},
+	{ decorations: (plugin) => plugin.decorations },
+);
+
+class LineNumberMark extends GutterMarker {
+	constructor(override readonly elementClass: string) {
+		super();
+	}
+	override eq(other: GutterMarker): boolean {
+		return (
+			other instanceof LineNumberMark &&
+			other.elementClass === this.elementClass
+		);
+	}
+}
+const currentLineNumber = new LineNumberMark("cm-activeLineGutter");
+const reachedLineNumber = new LineNumberMark("cm-tabeloReachedLine");
+
+// The line numbers the selection reaches, as the grid marks the row numbers a
+// selected area reaches. A lone caret marks nothing here: its line is the
+// current line above. Any other selection marks every line one of its ranges
+// touches, an empty range included, which is what a selected column of empty
+// cells is made of.
+const lineNumberMarks = gutterLineClass.compute(
+	["selection", "doc"],
+	(state) => {
+		const { selection, doc } = state;
+		const marks = [
+			currentLineNumber.range(doc.lineAt(selection.main.head).from),
+		];
+		if (selection.ranges.length > 1 || !selection.main.empty) {
+			for (const range of selection.ranges) {
+				const last = doc.lineAt(range.to).number;
+				for (
+					let number = doc.lineAt(range.from).number;
+					number <= last;
+					number += 1
+				) {
+					marks.push(reachedLineNumber.range(doc.line(number).from));
+				}
+			}
+		}
+		return RangeSet.of(marks, true);
+	},
+);
+
+export const drawnSelection = [
+	selectionLayer,
+	caretLayer,
+	currentLineHighlight,
+	lineNumberMarks,
+];
 
 // The selection band alone, for the pinned header's copy (#252): it shows the
 // editor's selection over the header it pins, and never a caret of its own.
