@@ -2,6 +2,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { useEffect, useRef } from "react";
 import { samplePerson } from "@/core/sample-data";
+import { tsvCodec } from "@/formats";
 import type { Preferences } from "@/preferences/contract";
 import { syntaxTheme } from "./editor-theme";
 import { indicatorExtensions, languageFor } from "./source-editor";
@@ -43,13 +44,14 @@ export default function IndicatorPreview({
 					lineNumbers(),
 					languageFor("delimited"),
 					wrap ? EditorView.lineWrapping : [],
-					indicatorExtensions(
-						spaceIndicators,
-						tabIndicators,
-						emptyValueIndicators,
-						"delimited",
-						"\t",
-					),
+					indicatorExtensions({
+						spaces: spaceIndicators,
+						tabs: tabIndicators,
+						emptyValues: emptyValueIndicators,
+						language: "delimited",
+						fieldSeparator: tsvCodec.fieldSeparator,
+						lineBreakFields: tsvCodec.sourceFields,
+					}),
 					EditorState.readOnly.of(true),
 					EditorView.editable.of(false),
 					EditorView.contentAttributes.of({ "aria-label": label }),

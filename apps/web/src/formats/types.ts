@@ -234,6 +234,12 @@ export interface TableCodec {
 	// keeps moving while the user repairs it. Absent for formats that nest
 	// rather than delimit, whose source views indent instead.
 	readonly sourceFields?: (text: string) => readonly SourceFieldRange[];
+	// Whether a line break inside a cell is written as a real newline inside
+	// one of the `sourceFields`, as a quoted delimited field writes it, rather
+	// than as an escape sequence. A source view reads it to mark where such a
+	// break falls (owner, 2026-09-19); it is a fact about the grammar and
+	// never an input to parsing.
+	readonly literalLineBreaks?: boolean;
 	// This format's structural assistance, when it has any (#297). One function
 	// per codec: a format with several named features combines them here, and
 	// no two of them act on the same edit. Given the draft before and after a user edit, and the ranges that edit

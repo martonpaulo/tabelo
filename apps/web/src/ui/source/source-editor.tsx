@@ -63,6 +63,7 @@ import { escapeSequenceGlyphs, escapeSyntax } from "./escape-sequences";
 import { sourceTabExtension } from "./field-navigation";
 import { htmlHeaderCells, htmlLanguage } from "./html-language";
 import { jiraLanguage } from "./jira-language";
+import { literalLineBreakMarkers } from "./line-break-markers";
 import {
 	clearLocalHistory,
 	type ExternalChangeWatch,
@@ -186,13 +187,28 @@ function columnMarkersExtension(mapsHeaderCells: boolean) {
 // never changes what is in the document: every one of these is a decoration,
 // so none of them can reach the text, the draft, the clipboard, a download,
 // or the history timeline.
-export function indicatorExtensions(
-	spaces: SpaceIndicators,
-	tabs: boolean,
-	emptyValues: boolean,
-	language: HighlightLanguage,
-	fieldSeparator: string | undefined,
-): Extension {
+export interface IndicatorOptions {
+	readonly spaces: SpaceIndicators;
+	readonly tabs: boolean;
+	readonly emptyValues: boolean;
+	readonly language: HighlightLanguage;
+	readonly fieldSeparator: string | undefined;
+	// The fields of a format that writes a cell's line break as a real newline,
+	// which is where the literal break marker goes. Absent for every other
+	// format, whose breaks are escape sequences.
+	readonly lineBreakFields: SourceFields | undefined;
+}
+
+type SourceFields = (text: string) => readonly SourceFieldRange[];
+
+export function indicatorExtensions({
+	spaces,
+	tabs,
+	emptyValues,
+	language,
+	fieldSeparator,
+	lineBreakFields,
+}: IndicatorOptions): Extension {
 	const marksWhitespace = tabs || spaces !== "none";
 	const syntax = emptyValues
 		? emptyValueSyntax(language, fieldSeparator)
@@ -208,6 +224,7 @@ export function indicatorExtensions(
 		spaceScope(spaces),
 		syntax ? emptyValueMarkers(syntax) : [],
 		escapes ? escapeSequenceGlyphs(escapes) : [],
+		lineBreakFields ? literalLineBreakMarkers(lineBreakFields) : [],
 		classes ? EditorView.editorAttributes.of({ class: classes }) : [],
 	];
 }
@@ -387,6 +404,9 @@ interface SourceEditorProps {
 	readonly tabIndicators: boolean;
 	readonly emptyValueIndicators: boolean;
 	readonly fieldSeparator?: string;
+	// The fields a literal line break is marked inside, for the formats that
+	// write a cell's break as a real newline (`literalLineBreaks`).
+	readonly lineBreakFields?: SourceFields;
 	readonly diagnostics: readonly SourceDiagnostic[];
 	// Where the table's rows sit in `value`, for the boundaries between them
 	// (#296). Empty when the text does not parse or the format cannot map rows.
@@ -437,6 +457,7 @@ export function SourceEditor({
 	tabIndicators,
 	emptyValueIndicators,
 	fieldSeparator,
+	lineBreakFields,
 	diagnostics,
 	rows,
 	mapsHeaderCells,
@@ -573,13 +594,14 @@ export function SourceEditor({
 					highlightActiveLineGutter(),
 					wrapCompartment.of(wrapExtension(wrap)),
 					indicatorCompartment.of(
-						indicatorExtensions(
-							spaceIndicators,
-							tabIndicators,
-							emptyValueIndicators,
+						indicatorExtensions({
+							spaces: spaceIndicators,
+							tabs: tabIndicators,
+							emptyValues: emptyValueIndicators,
 							language,
 							fieldSeparator,
-						),
+							lineBreakFields,
+						}),
 					),
 					languageCompartment.of(languageFor(language)),
 					// Above the default keymap, which would otherwise take Enter.
@@ -599,13 +621,14 @@ export function SourceEditor({
 							language,
 							wrap,
 							zoom,
-							indicatorExtensions(
-								spaceIndicators,
-								tabIndicators,
-								emptyValueIndicators,
+							indicatorExtensions({
+								spaces: spaceIndicators,
+								tabs: tabIndicators,
+								emptyValues: emptyValueIndicators,
 								language,
 								fieldSeparator,
-							),
+								lineBreakFields,
+							}),
 						),
 					),
 					attributesCompartment.of(
@@ -890,13 +913,14 @@ export function SourceEditor({
 		if (!view) return;
 		view.dispatch({
 			effects: indicatorCompartment.reconfigure(
-				indicatorExtensions(
-					spaceIndicators,
-					tabIndicators,
-					emptyValueIndicators,
+				indicatorExtensions({
+					spaces: spaceIndicators,
+					tabs: tabIndicators,
+					emptyValues: emptyValueIndicators,
 					language,
 					fieldSeparator,
-				),
+					lineBreakFields,
+				}),
 			),
 		});
 	}, [
@@ -905,6 +929,7 @@ export function SourceEditor({
 		emptyValueIndicators,
 		language,
 		fieldSeparator,
+		lineBreakFields,
 	]);
 
 	// The pinned header follows every setting that changes how the header is
@@ -919,13 +944,14 @@ export function SourceEditor({
 					language,
 					wrap,
 					zoom,
-					indicatorExtensions(
-						spaceIndicators,
-						tabIndicators,
-						emptyValueIndicators,
+					indicatorExtensions({
+						spaces: spaceIndicators,
+						tabs: tabIndicators,
+						emptyValues: emptyValueIndicators,
 						language,
 						fieldSeparator,
-					),
+						lineBreakFields,
+					}),
 				),
 			),
 		});
@@ -937,6 +963,7 @@ export function SourceEditor({
 		tabIndicators,
 		emptyValueIndicators,
 		fieldSeparator,
+		lineBreakFields,
 	]);
 
 	useEffect(() => {

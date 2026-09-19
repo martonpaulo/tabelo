@@ -289,6 +289,8 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 		mapsSourceRows: true,
 		fieldSeparator: config.delimiter,
 		sourceFields: (text) => delimitedFields(text, config.delimiter),
+		// A quoted field carries its line breaks as they are.
+		literalLineBreaks: true,
 		// Import and the clipboard carry text this product did not write, so a
 		// European semicolon file still has to open.
 		parseMatrix: (text) => readMatrix(text, config.sniffDelimiter),

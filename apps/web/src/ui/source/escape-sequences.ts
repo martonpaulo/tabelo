@@ -212,6 +212,25 @@ export function owedPadding(
 	return owed;
 }
 
+// The drawn mark every notation glyph shares, in the room it is given: one
+// owner for its element, so an escape sequence's glyph and the marker for a
+// literal line break look and measure the same.
+export function glyphMarker(glyph: string, columns: number): HTMLSpanElement {
+	const marker = document.createElement("span");
+	marker.className = "cm-tabeloEscape";
+	marker.style.setProperty("--tabelo-escape-glyph", cssString(glyph));
+	marker.style.width = `${columns}ch`;
+
+	// The glyph itself is drawn for the eye only. It needs its own element so
+	// hiding it from assistive technology does not also hide the source text
+	// an escape widget keeps beside it.
+	const drawn = document.createElement("span");
+	drawn.className = "cm-tabeloEscapeGlyph";
+	drawn.setAttribute("aria-hidden", "true");
+	marker.appendChild(drawn);
+	return marker;
+}
+
 class EscapeWidget extends WidgetType {
 	constructor(
 		// Exactly the characters of the file this widget is drawn instead of.
@@ -227,18 +246,7 @@ class EscapeWidget extends WidgetType {
 	}
 
 	toDOM() {
-		const marker = document.createElement("span");
-		marker.className = "cm-tabeloEscape";
-		marker.style.setProperty("--tabelo-escape-glyph", cssString(this.glyph));
-		marker.style.width = `${this.columns}ch`;
-
-		// The glyph itself is drawn for the eye only. It needs its own element so
-		// hiding it from assistive technology does not also hide the source text
-		// beside it in this widget.
-		const glyph = document.createElement("span");
-		glyph.className = "cm-tabeloEscapeGlyph";
-		glyph.setAttribute("aria-hidden", "true");
-		marker.appendChild(glyph);
+		const marker = glyphMarker(this.glyph, this.columns);
 
 		// Replacing a run takes it out of the rendered DOM, and unlike the
 		// padding the empty-value placeholder covers, these are characters the

@@ -485,7 +485,12 @@ nothing, so there the glyph simply takes one character. The padding is a
 zero-length widget with no text; the file, copy, download, and draft are
 unchanged. The caret still treats the sequence as atomic and never lands inside
 it: a click on either half of the `¶` places it before or after the sequence.
-One constant owns the character. Every escape glyph is always on: a reader who cannot tell
+The same `¶` marks a real newline inside a quoted CSV or TSV field, drawn at
+the end of the visual line where the break occurs, because to the reader it is
+the same fact about the cell: a codec declares `literalLineBreaks` when its
+cells hold their breaks that way, and its own `sourceFields` decide which
+newlines are inside a cell, so a newline that ends a row is never marked. One
+constant owns the character. Every escape glyph is always on: a reader who cannot tell
 notation from content has no question a preference would answer.
 
 **The file carries the room, so the file decides the layout.** Markdown pads its

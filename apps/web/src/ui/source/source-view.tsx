@@ -140,6 +140,9 @@ export default function SourceView({
 				tabIndicators={tabIndicators}
 				emptyValueIndicators={emptyValueIndicators}
 				fieldSeparator={view.codec?.fieldSeparator}
+				lineBreakFields={
+					view.codec?.literalLineBreaks ? view.codec.sourceFields : undefined
+				}
 				diagnostics={diagnostics}
 				rows={rows}
 				mapsHeaderCells={view.codec?.mapsSourceRows === true}
