@@ -1,4 +1,4 @@
-import { IconTextWrap } from "@tabler/icons-react";
+import { IconColumns, IconTextWrap } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import {
@@ -34,4 +34,5 @@ const glyphs: Record<SourceDisplayKey, ReactNode> = {
 	tabIndicators: TAB_GLYPH,
 	emptyValueIndicators: EMPTY_VALUE_PLACEHOLDER,
 	lineBreakIndicators: LINE_BREAK_GLYPH,
+	alignColumns: <IconColumns aria-hidden className="size-4" />,
 };

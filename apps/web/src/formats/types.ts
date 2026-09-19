@@ -228,6 +228,11 @@ export interface TableCodec {
 	// structural commands. The header row's cells it maps are also where a
 	// source view stands its column letters (#368). See docs/adr/0005.
 	readonly mapsSourceRows?: boolean;
+	// Whether the format's own text pads every cell to its column's width, as
+	// Markdown's serializer does. A source view aligns the columns of a format
+	// that maps its rows and does not pad them, drawing the padding on screen
+	// only (#396); a format that pads has nothing left to align.
+	readonly padsColumns?: boolean;
 	// The fields of `text` in reading order, header first, for the formats whose
 	// syntax is a grid of delimited fields (#54). Tolerant by design: a draft
 	// that fails to parse still yields whatever fields its lines spell, so Tab

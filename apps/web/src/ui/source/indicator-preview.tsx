@@ -5,8 +5,10 @@ import { documentFromMatrix } from "@/core/document";
 import { samplePerson } from "@/core/sample-data";
 import { tsvCodec } from "@/formats";
 import type { Preferences } from "@/preferences/contract";
+import { showsAlignment } from "./column-alignment";
 import { syntaxTheme } from "./editor-theme";
 import { indicatorExtensions, languageFor } from "./source-editor";
+import { sourceRowsField } from "./source-rows";
 
 // A few synthetic TSV lines that exercise every setting the dialog switches:
 // tabs between values, an empty field, a run of spaces inside a value, spaces
@@ -25,6 +27,11 @@ const PREVIEW_TEXT = tsvCodec.serialize(
 	),
 );
 
+// Where the sample's rows sit, from the codec's own parse, which is what column
+// alignment reads in a real pane.
+const parsed = tsvCodec.parse(PREVIEW_TEXT);
+const PREVIEW_ROWS = parsed.ok ? (parsed.rows ?? null) : null;
+
 // The settings preview is a real source editor, read-only, built from the same
 // extensions every text view uses, so what it shows cannot drift from what the
 // views draw.
@@ -42,6 +49,7 @@ export default function IndicatorPreview({
 		tabIndicators,
 		emptyValueIndicators,
 		lineBreakIndicators,
+		alignColumns,
 	} = preferences;
 
 	useEffect(() => {
@@ -54,6 +62,7 @@ export default function IndicatorPreview({
 				extensions: [
 					syntaxTheme,
 					lineNumbers(),
+					sourceRowsField.init(() => PREVIEW_ROWS),
 					languageFor("delimited"),
 					wrap ? EditorView.lineWrapping : [],
 					indicatorExtensions({
@@ -61,6 +70,7 @@ export default function IndicatorPreview({
 						tabs: tabIndicators,
 						emptyValues: emptyValueIndicators,
 						lineBreaks: lineBreakIndicators,
+						align: showsAlignment(alignColumns, wrap),
 						language: "delimited",
 						fieldSeparator: tsvCodec.fieldSeparator,
 						lineBreakFields: tsvCodec.sourceFields,
@@ -78,6 +88,7 @@ export default function IndicatorPreview({
 		tabIndicators,
 		emptyValueIndicators,
 		lineBreakIndicators,
+		alignColumns,
 		label,
 	]);
 

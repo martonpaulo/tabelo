@@ -15,6 +15,7 @@ import {
 	persistedStateV8Schema,
 	persistedStateV9Schema,
 	persistedStateV10Schema,
+	persistedStateV11Schema,
 } from "./versions";
 
 export interface MigrationStep {
@@ -224,6 +225,23 @@ function migrateV10ToV11(input: unknown): unknown {
 	};
 }
 
+// Version 12 lets a pane override column alignment (#396). Every pane starts
+// by following the default; nothing else changes.
+function migrateV11ToV12(input: unknown): unknown {
+	const source = input as z.infer<typeof persistedStateV11Schema>;
+	return {
+		...source,
+		version: 12,
+		workspace: {
+			...source.workspace,
+			panes: source.workspace.panes.map((pane) => ({
+				...pane,
+				alignColumns: null,
+			})),
+		},
+	};
+}
+
 export const migrationRegistry: MigrationRegistry = {
 	1: {
 		source: persistedStateV1Schema,
@@ -272,8 +290,13 @@ export const migrationRegistry: MigrationRegistry = {
 	},
 	10: {
 		source: persistedStateV10Schema,
-		target: persistedStateSchema,
+		target: persistedStateV11Schema,
 		migrate: migrateV10ToV11,
+	},
+	11: {
+		source: persistedStateV11Schema,
+		target: persistedStateSchema,
+		migrate: migrateV11ToV12,
 	},
 };
 

@@ -509,6 +509,32 @@ cell whether or not anyone will see a placeholder in it. Where a syntax writes
 no padding at all, as `a,,b` does, the placeholder takes the width of the word
 itself.
 
+**Formats that pad nothing are aligned on screen** (#396, owner, 2026-09-19).
+CSV, TSV, and Jira write each field at its own length, so a source view draws
+the padding their files leave out: a zero-length widget with no text after
+each field, so every column starts at the same place on every row, as
+Markdown's own padding does. Which views do it is the codec's answer, never the
+view's: a format that maps its rows (`mapsSourceRows`) and does not pad its
+own text (`padsColumns`). Where a column starts comes from those rows, so an
+unparsed draft maps none and shows exactly as typed rather than aligned to rows
+it no longer has. A column is as wide as its widest field as drawn, in
+characters of the monospaced font: a wide character takes two, an empty field
+the placeholder's word while that marker is on, a line-break sequence its one
+`¶`, and a tab nothing, since the tab after an aligned field reaches the same
+stop on every row. Jira's doubled header delimiter is absorbed by padding
+drawn at the start of each body line, so its cells and closing pipes line up
+too. A quoted CSV or TSV field holding a line break is aligned where it starts;
+the lines it continues onto are not padded. The widget sits after the field,
+so a caret at a field's end stands against its text, typing there grows the
+field before the padding, and arrow keys have no stop inside it; a click on the
+padding places the caret at the field's end. The column letters (#368) stand
+over the header's cells and therefore over every row's. Text, copy, download,
+drafts, history, and persistence are byte-identical with it on or off.
+Wrapping turns it off: measured on 2026-09-19 at two 530 px panes, padding that
+cannot break moved to a visual line of its own and made lines wrap that fitted
+unaligned (CSV 8 to 12 visual lines over 7 rows, Jira 9 to 12 over 6), while
+every continuation line stayed out of line anyway.
+
 **Four choices, because they answer four questions.** Tabs are a delimiter, so
 seeing them is structural; the placeholder reports a value rather than a
 character; a line break inside a cell is the one character that cannot be
@@ -527,7 +553,9 @@ one as a new row, which misreads the table rather than leaving a preference
 unasked.
 
 **A global default, and a pane that may disagree** (#276). The four
-indicators and source wrapping are the five source display settings. Each has
+indicators, source wrapping, and column alignment are the six source display
+settings. Column alignment ships on (#396), and a pane offers it only where its
+format aligns on screen. Each has
 a global default, set in Settings and kept in the versioned
 `tabelo.preferences` payload, and each source pane may override each one,
 because a display setting answers a question about one pane's syntax while a

@@ -53,6 +53,7 @@ import type {
 	SourceTabBehaviour,
 	ViewId,
 } from "@/views/types";
+import { columnAlignment } from "./column-alignment";
 import { columnMarkers, columnMarkersEnabled } from "./column-markers";
 import { csvLanguage } from "./csv-language";
 import { drawnSelection } from "./drawn-selection";
@@ -88,7 +89,7 @@ import {
 } from "./row-commands";
 import { SourceContextMenu } from "./source-context-menu";
 import { sourceFind } from "./source-find";
-import { setSourceRows } from "./source-rows";
+import { setSourceRows, sourceRowsField } from "./source-rows";
 import { assistanceExtension } from "./structural-assistance";
 import { indicatorClasses, spaceScope } from "./whitespace-indicators";
 
@@ -192,6 +193,9 @@ export interface IndicatorOptions {
 	readonly tabs: boolean;
 	readonly emptyValues: boolean;
 	readonly lineBreaks: boolean;
+	// Whether the columns are aligned on screen (#396), already narrowed to the
+	// formats that map their rows and do not pad their own text.
+	readonly align: boolean;
 	readonly language: HighlightLanguage;
 	readonly fieldSeparator: string | undefined;
 	// The fields of a format that writes a cell's line break as a real newline,
@@ -207,6 +211,7 @@ export function indicatorExtensions({
 	tabs,
 	emptyValues,
 	lineBreaks,
+	align,
 	language,
 	fieldSeparator,
 	lineBreakFields,
@@ -229,6 +234,7 @@ export function indicatorExtensions({
 		lineBreaks && lineBreakFields
 			? literalLineBreakMarkers(lineBreakFields)
 			: [],
+		align ? columnAlignment({ emptyValues, lineBreaks, escapes }) : [],
 		classes ? EditorView.editorAttributes.of({ class: classes }) : [],
 	];
 }
@@ -408,6 +414,8 @@ interface SourceEditorProps {
 	readonly tabIndicators: boolean;
 	readonly emptyValueIndicators: boolean;
 	readonly lineBreakIndicators: boolean;
+	// Column alignment (#396), resolved and narrowed to the formats it applies to.
+	readonly alignColumns: boolean;
 	readonly fieldSeparator?: string;
 	// The fields a literal line break is marked inside, for the formats that
 	// write a cell's break as a real newline (`literalLineBreaks`).
@@ -462,6 +470,7 @@ export function SourceEditor({
 	tabIndicators,
 	emptyValueIndicators,
 	lineBreakIndicators,
+	alignColumns,
 	fieldSeparator,
 	lineBreakFields,
 	diagnostics,
@@ -605,6 +614,7 @@ export function SourceEditor({
 							tabs: tabIndicators,
 							emptyValues: emptyValueIndicators,
 							lineBreaks: lineBreakIndicators,
+							align: alignColumns,
 							language,
 							fieldSeparator,
 							lineBreakFields,
@@ -620,6 +630,7 @@ export function SourceEditor({
 					editableCompartment.of(EditorView.editable.of(editable)),
 					syntaxTheme,
 					sourceFind(() => paneFindRef.current),
+					sourceRowsField,
 					pinnedHeader,
 					columnMarkers,
 					columnMarkersCompartment.of(columnMarkersExtension(mapsHeaderCells)),
@@ -633,6 +644,7 @@ export function SourceEditor({
 								tabs: tabIndicators,
 								emptyValues: emptyValueIndicators,
 								lineBreaks: lineBreakIndicators,
+								align: alignColumns,
 								language,
 								fieldSeparator,
 								lineBreakFields,
@@ -926,6 +938,7 @@ export function SourceEditor({
 					tabs: tabIndicators,
 					emptyValues: emptyValueIndicators,
 					lineBreaks: lineBreakIndicators,
+					align: alignColumns,
 					language,
 					fieldSeparator,
 					lineBreakFields,
@@ -937,6 +950,7 @@ export function SourceEditor({
 		tabIndicators,
 		emptyValueIndicators,
 		lineBreakIndicators,
+		alignColumns,
 		language,
 		fieldSeparator,
 		lineBreakFields,
@@ -959,6 +973,7 @@ export function SourceEditor({
 						tabs: tabIndicators,
 						emptyValues: emptyValueIndicators,
 						lineBreaks: lineBreakIndicators,
+						align: alignColumns,
 						language,
 						fieldSeparator,
 						lineBreakFields,
@@ -974,6 +989,7 @@ export function SourceEditor({
 		tabIndicators,
 		emptyValueIndicators,
 		lineBreakIndicators,
+		alignColumns,
 		fieldSeparator,
 		lineBreakFields,
 	]);

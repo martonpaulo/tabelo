@@ -7,12 +7,13 @@ import { usePaneAssistance } from "@/ui/workspace/use-pane-assistance";
 import { PaneEntryContext } from "@/ui/workspace/use-pane-entry";
 import { useReportPaneOccurrences } from "@/ui/workspace/use-pane-occurrences";
 import { getView } from "@/views/registry";
-import type { ViewId } from "@/views/types";
+import { alignsColumns, type ViewId } from "@/views/types";
 import {
 	resolveSourceDisplay,
 	type SourceDisplayOverrides,
 } from "@/workspace/source-display";
 import { BlockedState } from "./blocked-state";
+import { showsAlignment } from "./column-alignment";
 import type { SourceRowTarget } from "./row-commands";
 import { type SourceDiagnostic, SourceEditor } from "./source-editor";
 import { sourceFeedbackIds } from "./source-feedback";
@@ -49,6 +50,7 @@ export default function SourceView({
 		tabIndicators,
 		emptyValueIndicators,
 		lineBreakIndicators,
+		alignColumns,
 	} = resolveSourceDisplay(usePreferences(), overrides);
 
 	// The projection recomputes only when the document changes, not when some
@@ -145,6 +147,7 @@ export default function SourceView({
 				tabIndicators={tabIndicators}
 				emptyValueIndicators={emptyValueIndicators}
 				lineBreakIndicators={lineBreakIndicators}
+				alignColumns={showsAlignment(alignColumns, wrap) && alignsColumns(view)}
 				fieldSeparator={view.codec?.fieldSeparator}
 				lineBreakFields={
 					view.codec?.literalLineBreaks ? view.codec.sourceFields : undefined

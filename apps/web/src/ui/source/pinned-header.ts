@@ -21,7 +21,7 @@ import type { SourceRowRange } from "@/formats/types";
 import { drawnSelectionBand } from "./drawn-selection";
 import { syntaxTheme } from "./editor-theme";
 import { followScrollX, followScrollXStyle } from "./follow-scroll";
-import { setSourceRows } from "./source-rows";
+import { setSourceRows, sourceRowsField } from "./source-rows";
 
 // The pinned header of a source view (#252): while the table's header row is
 // scrolled out of sight, a copy of it stays at the top of the pane.
@@ -242,6 +242,17 @@ class PinnedHeader {
 					selection: selectionInside(update.state.selection, range),
 					effects: [
 						setVisibleRange.of(range),
+						// The copy draws the header with the editor's column
+						// alignment (#396), whose widths come from every row.
+						...(update.state.field(sourceRowsField, false) !==
+						update.startState.field(sourceRowsField, false)
+							? [
+									setSourceRows.of({
+										rows: update.state.field(sourceRowsField, false) ?? [],
+										length: update.state.doc.length,
+									}),
+								]
+							: []),
 						...(setupChanged
 							? [
 									StateEffect.reconfigure.of(
@@ -344,6 +355,7 @@ class PinnedHeader {
 	): Extension {
 		return [
 			copyExtensions,
+			sourceRowsField.init(() => state.field(sourceRowsField, false) ?? null),
 			state.facet(pinnedHeaderSetup),
 			visibleRangeField(range),
 		];

@@ -10,6 +10,7 @@ import v7 from "./fixtures/v7.json";
 import v8 from "./fixtures/v8.json";
 import v9 from "./fixtures/v9.json";
 import v10 from "./fixtures/v10.json";
+import v11 from "./fixtures/v11.json";
 import {
 	type MigrationRegistry,
 	migrationRegistry,
@@ -282,21 +283,45 @@ describe("adjacent persistence migrations", () => {
 		);
 	});
 
+	// Column alignment (#396) joins the overrides on the same terms.
+	it("adds a following alignment override to every v11 pane", () => {
+		const result = runMigrationChain(v11, 11, 12, migrationRegistry);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		const migrated = result.value as typeof v11 & { version: number };
+		expect(migrated.version).toBe(12);
+		expect(migrated.document).toEqual(v11.document);
+		expect(migrated.workspace.panes).toEqual(
+			v11.workspace.panes.map((pane) => ({ ...pane, alignColumns: null })),
+		);
+	});
+
 	it("runs the oldest fixture through the complete chain", () => {
-		const result = runMigrationChain(v1, 1, 11, migrationRegistry);
+		const result = runMigrationChain(v1, 1, 12, migrationRegistry);
 
 		expect(result).toMatchObject({
 			ok: true,
 			value: {
-				version: 11,
+				version: 12,
 				name: "Untitled table",
 				draft: null,
 				workspace: {
 					pinFirstDataRow: false,
 					pinFirstDataColumn: false,
 					panes: [
-						{ wrap: null, spaceIndicators: null, lineBreakIndicators: null },
-						{ wrap: null, spaceIndicators: null, lineBreakIndicators: null },
+						{
+							wrap: null,
+							spaceIndicators: null,
+							lineBreakIndicators: null,
+							alignColumns: null,
+						},
+						{
+							wrap: null,
+							spaceIndicators: null,
+							lineBreakIndicators: null,
+							alignColumns: null,
+						},
 					],
 				},
 			},

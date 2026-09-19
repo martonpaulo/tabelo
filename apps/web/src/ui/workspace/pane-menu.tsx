@@ -452,7 +452,7 @@ export function PaneMenu({
 			{view.kind === "source" ? (
 				<PaneDisplayDialog
 					paneId={paneId}
-					viewLabel={view.label}
+					view={view}
 					open={displayOpen}
 					onOpenChange={setDisplayOpen}
 					finalFocus={() => triggerRef.current}

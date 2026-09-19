@@ -277,6 +277,7 @@ export const markdownCodec: TableCodec = {
 	extension: "md",
 	mimeType: "text/markdown",
 	mapsSourceRows: true,
+	padsColumns: true,
 	sourceFields: markdownFields,
 	structuralAssistance: markdownAssistance,
 	parseMatrix: parseMarkdownMatrix,

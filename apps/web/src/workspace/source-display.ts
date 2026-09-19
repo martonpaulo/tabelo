@@ -19,6 +19,7 @@ export const INHERIT_SOURCE_DISPLAY: SourceDisplayOverrides = {
 	tabIndicators: null,
 	emptyValueIndicators: null,
 	lineBreakIndicators: null,
+	alignColumns: null,
 };
 
 // The one rule that decides what a source pane shows: its own choice where it
@@ -36,5 +37,6 @@ export function resolveSourceDisplay(
 			overrides.emptyValueIndicators ?? defaults.emptyValueIndicators,
 		lineBreakIndicators:
 			overrides.lineBreakIndicators ?? defaults.lineBreakIndicators,
+		alignColumns: overrides.alignColumns ?? defaults.alignColumns,
 	};
 }

@@ -15,6 +15,7 @@ describe("preferences contract", () => {
 			tabIndicators: false,
 			emptyValueIndicators: true,
 			lineBreakIndicators: false,
+			alignColumns: false,
 		} as const;
 
 		expect(readStoredPreferences(serializePreferences(preferences))).toEqual({
@@ -24,8 +25,9 @@ describe("preferences contract", () => {
 	});
 
 	// #276: a source pane draws nothing and wraps nothing until the reader asks,
-	// except the line-break mark, which ships on (owner, 2026-09-19).
-	it("ships every source display default off but the line-break mark", () => {
+	// except the line-break mark and column alignment, which ship on (owner,
+	// 2026-09-19; #396).
+	it("ships every source display default off but two", () => {
 		expect(DEFAULT_PREFERENCES).toEqual({
 			version: PREFERENCES_VERSION,
 			wrap: false,
@@ -33,6 +35,27 @@ describe("preferences contract", () => {
 			tabIndicators: false,
 			emptyValueIndicators: false,
 			lineBreakIndicators: true,
+			alignColumns: true,
+		});
+	});
+
+	// Version 6 adds column alignment and carries every earlier choice.
+	it("carries a version 5 payload forward with alignment on", () => {
+		const stored = {
+			version: 5,
+			wrap: true,
+			spaceIndicators: "all",
+			tabIndicators: false,
+			emptyValueIndicators: true,
+			lineBreakIndicators: false,
+		};
+		expect(readStoredPreferences(JSON.stringify(stored))).toEqual({
+			status: "ok",
+			preferences: {
+				...stored,
+				version: PREFERENCES_VERSION,
+				alignColumns: true,
+			},
 		});
 	});
 
@@ -51,6 +74,7 @@ describe("preferences contract", () => {
 				...stored,
 				version: PREFERENCES_VERSION,
 				lineBreakIndicators: true,
+				alignColumns: true,
 			},
 		});
 	});
@@ -186,6 +210,24 @@ describe("preferences contract", () => {
 				spaceIndicators: "none",
 				tabIndicators: false,
 				emptyValueIndicators: false,
+			}),
+			"current-schema-invalid",
+		],
+		[
+			"an invalid version 5",
+			JSON.stringify({ version: 5, wrap: true, alignColumns: true }),
+			"migration-failed",
+		],
+		// Nor does alignment.
+		[
+			"a current payload without alignment",
+			JSON.stringify({
+				version: PREFERENCES_VERSION,
+				wrap: false,
+				spaceIndicators: "none",
+				tabIndicators: false,
+				emptyValueIndicators: false,
+				lineBreakIndicators: true,
 			}),
 			"current-schema-invalid",
 		],

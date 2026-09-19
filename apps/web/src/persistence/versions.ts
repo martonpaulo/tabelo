@@ -7,7 +7,7 @@ import { SPACE_INDICATOR_VALUES } from "@/preferences/contract";
 import { workspacePanesTileLayout } from "@/workspace/layout";
 import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
-export const PERSISTED_VERSION = 11 as const;
+export const PERSISTED_VERSION = 12 as const;
 
 // These schemas mirror the payloads shipped by the commits that introduced
 // versions 1 through 5. Keep them beside their stored fixtures: a migration
@@ -319,8 +319,30 @@ export const persistedStateV10Schema = z
 
 // Version 11 adds the line-break mark to what a pane may override (owner,
 // 2026-09-19). Like the four before it, `null` follows the default.
-const currentPaneSchema = paneV9Schema.extend({
+const paneV11Schema = paneV9Schema.extend({
 	lineBreakIndicators: z.boolean().nullable().default(null),
+});
+
+const workspaceV11Schema = persistedWorkspaceV8Schema.extend({
+	panes: z.array(paneV11Schema).min(1).max(4),
+});
+
+export const persistedStateV11Schema = z
+	.object({
+		version: z.literal(11),
+		name: tableNameSchema,
+		document: currentDocumentSchema,
+		draft: currentDraftSchema.nullable(),
+		workspace: workspaceV11Schema,
+	})
+	.superRefine((state, context) => {
+		refineCurrentRelationships(state, context);
+	});
+
+// Version 12 adds column alignment to what a pane may override (#396), on the
+// same terms: `null` follows the default.
+const currentPaneSchema = paneV11Schema.extend({
+	alignColumns: z.boolean().nullable().default(null),
 });
 
 const currentWorkspaceSchema = persistedWorkspaceV8Schema.extend({

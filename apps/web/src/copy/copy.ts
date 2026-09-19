@@ -355,6 +355,10 @@ export const copy = {
 			label: "Line breaks",
 			description: "A mark where a value continues on a new line",
 		},
+		alignColumns: {
+			label: "Align columns",
+			description: "CSV, TSV, and Jira columns line up while lines don't wrap",
+		},
 		saveError:
 			"Settings couldn't be saved. Allow browser storage or free some space, then try again.",
 		// Shown while the stored settings are unreadable: a change applies, but

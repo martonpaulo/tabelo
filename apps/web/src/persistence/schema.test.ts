@@ -11,6 +11,7 @@ import v8 from "./fixtures/v8.json";
 import v9 from "./fixtures/v9.json";
 import v10 from "./fixtures/v10.json";
 import v11 from "./fixtures/v11.json";
+import v12 from "./fixtures/v12.json";
 import { CURRENT_VERSION, validatePersistedState } from "./schema";
 
 const document = {
@@ -159,11 +160,13 @@ describe("loading a stored payload", () => {
 
 		expect(outcome.status).toBe("ok");
 		if (outcome.status !== "ok") return;
-		// Version 11's line-break override starts at "follow the default".
+		// Version 11's line-break override and version 12's alignment override
+		// start at "follow the default".
 		expect(outcome.state.workspace.panes).toEqual(
 			v9.workspace.panes.map((pane) => ({
 				...pane,
 				lineBreakIndicators: null,
+				alignColumns: null,
 			})),
 		);
 	});
@@ -173,7 +176,17 @@ describe("loading a stored payload", () => {
 
 		expect(outcome.status).toBe("ok");
 		if (outcome.status !== "ok") return;
-		expect(outcome.state.workspace.panes).toEqual(v11.workspace.panes);
+		expect(outcome.state.workspace.panes).toEqual(
+			v11.workspace.panes.map((pane) => ({ ...pane, alignColumns: null })),
+		);
+	});
+
+	it("carries the alignment override of the stored v12 fixture", () => {
+		const outcome = validatePersistedState(v12);
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.workspace.panes).toEqual(v12.workspace.panes);
 	});
 
 	it.each([
@@ -182,6 +195,7 @@ describe("loading a stored payload", () => {
 		["tabIndicators", 1],
 		["emptyValueIndicators", "none"],
 		["lineBreakIndicators", "on"],
+		["alignColumns", "yes"],
 	])("refuses a %s override Tabelo never writes", (key, value) => {
 		const workspace = payload().workspace;
 		expect(
@@ -208,6 +222,7 @@ describe("loading a stored payload", () => {
 		["v9", v9],
 		["v10", v10],
 		["v11", v11],
+		["v12", v12],
 	] as const)(
 		"loads the stored %s fixture as current state",
 		(_name, fixture) => {

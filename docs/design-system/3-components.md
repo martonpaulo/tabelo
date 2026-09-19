@@ -421,8 +421,9 @@ height". The diagram is supplemental; the words carry the destination for
 assistive technology. Choosing one swaps the two pane positions without
 changing the preset or pane count.
 
-Settings is the other deliberate exception. It holds the five global source
-display defaults (#55, #276, and the line-break mark, owner, 2026-09-19), and each one applies as it changes: a read-only preview at
+Settings is the other deliberate exception. It holds the six global source
+display defaults (#55, #276, the line-break mark, owner, 2026-09-19, and
+column alignment, #396), and each one applies as it changes: a read-only preview at
 the top of the dialog is a real source editor built from the same indicator
 extensions every text view uses, so the effect is visible before the dialog
 closes and no Apply step is left to confirm. Its sample holds a value with a
@@ -432,8 +433,9 @@ as the ordinary alternative and `Done` last, stacking at full width on a phone
 (owner, 2026-09-19). Each option block's glyph sits in one fixed slot as wide
 as the widest mark, so every row's label starts on the same line, and the
 preview keeps a trailing gap so a clipped line never touches its box. Wrap
-lines, empty values, tabs, and line breaks are option blocks whose icon is the mark they
-draw, wrapping's being the pane menu's own icon because it draws no mark, and
+lines, align columns, empty values, tabs, and line breaks are option blocks whose icon is the mark they
+draw, wrapping's being the pane menu's own icon and alignment's a columns icon
+because neither draws a mark, and
 whose control is a `Switch`; spaces is one option block holding a
 `SegmentedControl` of its four modes, with the chosen mode's description above
 it. A write the browser refuses is reported in place and the controls show what
@@ -443,11 +445,13 @@ this on 2026-09-18. There is no theme choice, because there is one palette
 pane menu.
 
 A source pane's `Display…` is Settings' counterpart for one pane (#276, option
-C, owner, 2026-09-19), and it qualifies for the same reason: five settings with
+C, owner, 2026-09-19), and it qualifies for the same reason: six settings with
 up to five states each are a form, not a command, and a submenu per setting
 would put a choice among states outside the submenu class above. It reuses
 Settings' layout, width, glyph slots, order, and footer, and applies each change
-as it is made; the pane behind it is the preview. Every setting is one option
+as it is made; the pane behind it is the preview. It offers a setting only
+where the pane's format can use it: column alignment appears only in a pane
+whose format aligns on screen (#396). Every setting is one option
 block holding a `SegmentedControl` whose first segment is `Default (<value>)`,
 following the default in Settings and naming the value it follows, then the
 setting's own values: `On` and `Off` for a switch, the four modes for spaces.

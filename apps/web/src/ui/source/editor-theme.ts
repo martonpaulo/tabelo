@@ -422,6 +422,13 @@ export const editorTheme = EditorView.theme({
 		...inlineWidgetBox,
 		userSelect: "none",
 	},
+	// The room column alignment draws after a CSV, TSV, or Jira field so the
+	// next column starts where it does on every other row (#396). Empty and
+	// sized by the width the widget carries, like the padding above.
+	".cm-tabeloAlignPadding": {
+		...inlineWidgetBox,
+		userSelect: "none",
+	},
 	// The sequence itself, kept in the accessible tree and out of sight. Clipped
 	// rather than hidden, because `display: none` and `visibility: hidden` both
 	// take it out of the accessible tree as well, which is the one thing it is

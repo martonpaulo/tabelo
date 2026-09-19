@@ -322,6 +322,30 @@ on 2026-09-11, same machine, with the method of the #275 entry for the first.
 | Parsing each projection for its rows is a new per-edit cost | `pnpm bench` parse, 200 rows: Markdown 0.33 ms (0.55 ms escape-heavy), Jira 0.31 ms, CSV and TSV 0.18 ms | **Accepted.** Under 0.6 ms per source pane per document change, only for the four formats that declare row mapping, and never while a draft owns the pane (its own parse already carries the rows). |
 | Reading CSV and TSV row by row to get each row's end is slower | the same bench before and after the step-mode parse: 0.129 ms and 0.131 ms at 200 rows, 0.60 ms both at 1000 | **Disproved.** Within the run-to-run noise. |
 
+### Column alignment in source views (#396)
+
+CSV, TSV, and Jira panes draw alignment padding after every field, computed
+from every row on each edit and parse. Measured on 2026-09-19, reference
+machine A, with the browser method under `## Method` except that Chromium ran
+headless: the view beside the grid, a pasted roster of 200 or 480 rows by 8
+columns, alignment off and on in the same build. Milliseconds, median of three
+runs; paste is long task and INP, typing is INP and long task.
+
+| view | rows | paste off | paste on | typing off | typing on | scroll worst frame |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `csv` | 200 | 83 / 160 | 87 / 160 | 40 / 0 | 48 / 0 | 33 both |
+| `tsv` | 200 | 82 / 136 | 91 / 152 | 48 / 0 | 56 / 0 | 33 both |
+| `jira` | 200 | 87 / 152 | 93 / 152 | 48 / 0 | 48 / 0 | 33 both |
+| `csv` | 480 | 158 / 208 | 167 / 216 | 48 / 0 | 56 / 0 | 33 both |
+| `tsv` | 480 | 160 / 208 | 166 / 216 | 48 / 0 | 56 / 0 | 33 both |
+| `jira` | 480 | 163 / 216 | 169 / 216 | 56 / 0 | 64 / 0 | 33 both |
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| Recomputing every column's width on each keystroke makes typing slow | Typing INP moves by at most one 8 ms step and no long task appears at either size. The padding pass itself costs about 1 ms at 480 rows in Node | **Accepted.** Within one rounding step of the browser's INP. |
+| Alignment adds to the paste commit | 4 to 9 ms more long task at both sizes, the layout of a few hundred padding boxes in the viewport | **Accepted.** Small beside the commit it joins, which is the grid's own first layout. |
+| Measuring a TSV delimiter goes through the grapheme scan | A first profile at 480 rows spent about 45 ms in `string-width`, called once per tab: a tab is not printable ASCII, so the fast path in `displayWidth` refused it | **Confirmed, and fixed** before the figures above: a run of printable ASCII and tabs is counted directly, a tab as nothing. |
+
 ### Committing a pasted 200-row table (#364)
 
 The owner reports views feeling slow after pasting a long table. Measured on

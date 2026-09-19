@@ -23,6 +23,7 @@ import {
 } from "@/ui/primitives/dialog-buttons";
 import { MenuOption } from "@/ui/primitives/menu-option";
 import { DisplayGlyph } from "@/ui/source/display-glyph";
+import type { ViewDefinition } from "@/views/types";
 import {
 	INHERIT_SOURCE_DISPLAY,
 	resolveSourceDisplay,
@@ -34,6 +35,7 @@ import {
 	explicitSegments,
 	FOLLOW_DEFAULT,
 	followsEveryDefault,
+	offersSetting,
 	overrideFromSegment,
 	segmentOf,
 } from "./pane-display-choices";
@@ -41,6 +43,7 @@ import {
 // Settings' own order, so a reader who knows one dialog knows the other.
 const ROWS: readonly SourceDisplayKey[] = [
 	"wrap",
+	"alignColumns",
 	"emptyValueIndicators",
 	"tabIndicators",
 	"lineBreakIndicators",
@@ -139,13 +142,13 @@ function DisplayChoice({
 // effect, so there is nothing for an Apply step to confirm.
 export function PaneDisplayDialog({
 	paneId,
-	viewLabel,
+	view,
 	open,
 	onOpenChange,
 	finalFocus,
 }: {
 	readonly paneId: string;
-	readonly viewLabel: string;
+	readonly view: ViewDefinition;
 	readonly open: boolean;
 	readonly onOpenChange: (open: boolean) => void;
 	readonly finalFocus: () => HTMLElement | null;
@@ -176,20 +179,22 @@ export function PaneDisplayDialog({
 				<DialogHeader>
 					<DialogTitle id={titleId}>{copy.paneDisplay.title}</DialogTitle>
 					<DialogDescription id={descriptionId}>
-						{copy.paneDisplay.description(viewLabel)}
+						{copy.paneDisplay.description(view.label)}
 					</DialogDescription>
 				</DialogHeader>
 
 				<div className="grid gap-1.5">
-					{ROWS.map((setting) => (
-						<DisplayChoice
-							key={setting}
-							setting={setting}
-							defaults={defaults}
-							overrides={overrides}
-							onChoose={(segment) => setOverride(setting, segment)}
-						/>
-					))}
+					{ROWS.filter((setting) => offersSetting(setting, view)).map(
+						(setting) => (
+							<DisplayChoice
+								key={setting}
+								setting={setting}
+								defaults={defaults}
+								overrides={overrides}
+								onChoose={(segment) => setOverride(setting, segment)}
+							/>
+						),
+					)}
 				</div>
 
 				<DialogActions>

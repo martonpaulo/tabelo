@@ -2,6 +2,7 @@ import {
 	SPACE_INDICATOR_VALUES,
 	type SpaceIndicators,
 } from "@/preferences/contract";
+import { alignsColumns, type ViewDefinition } from "@/views/types";
 import {
 	INHERIT_SOURCE_DISPLAY,
 	type SourceDisplayKey,
@@ -67,4 +68,16 @@ export function followsEveryDefault(
 	overrides: SourceDisplayOverrides,
 ): boolean {
 	return SOURCE_DISPLAY_KEYS.every((key) => overrides[key] === null);
+}
+
+// Whether a pane showing this view offers the setting. Every setting reaches
+// every text view but the ones a format's own facts decide: alignment belongs
+// to the formats that align on screen (#396), so a pane where it would do
+// nothing does not offer it.
+export function offersSetting(
+	key: SourceDisplayKey,
+	view: ViewDefinition,
+): boolean {
+	if (key === "alignColumns") return alignsColumns(view);
+	return true;
 }

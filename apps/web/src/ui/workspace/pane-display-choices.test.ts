@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { SPACE_INDICATOR_VALUES } from "@/preferences/contract";
+import { listViews } from "@/views/registry";
 import {
 	INHERIT_SOURCE_DISPLAY,
 	type SourceDisplayKey,
@@ -8,6 +9,7 @@ import {
 	explicitSegments,
 	FOLLOW_DEFAULT,
 	followsEveryDefault,
+	offersSetting,
 	overrideFromSegment,
 	segmentOf,
 } from "./pane-display-choices";
@@ -50,6 +52,18 @@ describe("pane display choices", () => {
 		expect(overrideFromSegment("wrap", "all")).toBeUndefined();
 		expect(overrideFromSegment("spaceIndicators", "on")).toBeUndefined();
 		expect(overrideFromSegment("tabIndicators", "")).toBeUndefined();
+	});
+
+	// #396: the formats that map their rows and do not pad their own text.
+	test("offers column alignment only where a pane can draw it", () => {
+		const offering = listViews()
+			.filter((view) => view.kind === "source")
+			.filter((view) => offersSetting("alignColumns", view))
+			.map((view) => view.id);
+		expect(offering.toSorted()).toEqual(["csv", "jira", "tsv"]);
+		for (const view of listViews()) {
+			expect(offersSetting("wrap", view)).toBe(true);
+		}
 	});
 
 	test("a pane follows every default only while it has chosen nothing", () => {

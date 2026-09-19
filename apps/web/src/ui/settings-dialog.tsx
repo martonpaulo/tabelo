@@ -133,7 +133,7 @@ export function SettingsDialog({
 						</Suspense>
 					</div>
 
-					{/* The five global defaults a source pane follows until it makes
+					{/* The six global defaults a source pane follows until it makes
 					    its own choice (#276). */}
 					<section className="grid gap-1.5" aria-labelledby={displayLabelId}>
 						<h3 id={displayLabelId} className="mb-1 font-medium text-sm">
@@ -144,6 +144,12 @@ export function SettingsDialog({
 							{...copy.settings.wrap}
 							checked={preferences.wrap}
 							onCheckedChange={(checked) => update({ wrap: checked })}
+						/>
+						<SwitchOption
+							setting="alignColumns"
+							{...copy.settings.alignColumns}
+							checked={preferences.alignColumns}
+							onCheckedChange={(checked) => update({ alignColumns: checked })}
 						/>
 						<SwitchOption
 							setting="emptyValueIndicators"
