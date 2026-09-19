@@ -194,7 +194,9 @@ the keys it names, so the rendered `<kbd>` count and the three-key limit in
 Key legends follow the user's platform, which the app already knows. Apple
 keyboards get the glyphs their keys are printed with: `⌘`, `⌃`, `⌥`, `⇧`, `⌫`,
 `↵`, `⎋`, `⇥`. Every other platform gets the words its keys are printed with:
-`Ctrl`, `Alt`, `Shift`, `Backspace`, `Enter`, `Esc`, `Tab`. Arrows and the
+`Ctrl`, `Alt`, `Shift`, `Backspace`, `Enter`, `Esc`, `Tab`. Those words and
+the spoken key names are copy, supplied from `copy.keys` through a provider
+the app mounts once at its root; the glyphs stay in `packages/ui`. Arrows and the
 plus and minus signs are glyphs everywhere. `@tabelo/ui/lib/platform` owns that
 decision; nothing else may detect the platform. The accessible name keeps the
 full key name, so saving horizontal space never makes the shortcut cryptic to a

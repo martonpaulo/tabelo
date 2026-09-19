@@ -1,5 +1,8 @@
 import { modShortcut } from "@tabelo/ui/lib/platform";
-import { spokenShortcut } from "@tabelo/ui/lib/shortcut";
+import {
+	type ShortcutKeyLabels,
+	spokenShortcut,
+} from "@tabelo/ui/lib/shortcut";
 import type { CopyScope } from "@/clipboard/serialize";
 import { product } from "@/copy/product";
 import { columnLetter } from "@/core/column-letter";
@@ -39,6 +42,43 @@ const SELECT_COLUMN = "Select column";
 // One name for source wrapping wherever it is chosen: the global default in
 // Settings and a pane's own choice in its menu.
 const WRAP_LINES = "Wrap lines";
+
+// Every word a shortcut legend speaks or prints. `@tabelo/ui/lib/shortcut`
+// owns the tokenizer and the glyphs; the words are copy and live here. Named
+// before `copy` because a hint below speaks a chord through it, and exposed as
+// `copy.keys` for the provider at the application root.
+const KEYS: ShortcutKeyLabels = {
+	spoken: {
+		command: "Command",
+		control: "Control",
+		option: "Option",
+		alt: "Alt",
+		shift: "Shift",
+		backspace: "Backspace",
+		enter: "Enter",
+		escape: "Escape",
+		tab: "Tab",
+		space: "Space",
+		upArrow: "Up arrow",
+		downArrow: "Down arrow",
+		leftArrow: "Left arrow",
+		rightArrow: "Right arrow",
+		plus: "Plus",
+		minus: "Minus",
+	},
+	// What a Windows or Linux keyboard prints on the key.
+	printed: {
+		control: "Ctrl",
+		alt: "Alt",
+		shift: "Shift",
+		backspace: "Backspace",
+		enter: "Enter",
+		escape: "Esc",
+		tab: "Tab",
+		space: "Space",
+	},
+	spokenJoiner: " plus ",
+};
 
 // A file ending as a reader sees it, with its leading dot.
 function fileExtension(extension: string): string {
@@ -1013,8 +1053,10 @@ export const copy = {
 		},
 		fillHandle: "Fill selected cells",
 		// Spoken, so the chord is named the way the user's keyboard names it.
-		fillHandleHint: `Drag to repeat the selection, or press ${spokenShortcut("Mod+Alt")} with an arrow key.`,
+		fillHandleHint: `Drag to repeat the selection, or press ${spokenShortcut("Mod+Alt", KEYS)} with an arrow key.`,
 	},
+
+	keys: KEYS,
 
 	shortcuts: {
 		find: "Mod+F",

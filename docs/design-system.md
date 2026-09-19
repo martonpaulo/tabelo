@@ -286,8 +286,10 @@ pairs a command family with its target reads "Family: target", as in
 the grid shows: row numbers and column letters, "Row 2, column A". A shortcut
 named inside a sentence is spoken through the platform key helper in
 `packages/ui` (`spokenShortcut`), never written as the placeholder `Mod`. The
-spoken key names themselves ("Command", "Option", "Up arrow") are platform
-vocabulary that `packages/ui` owns, not product copy.
+key names themselves, spoken ("Command", "Option", "Up arrow") and printed on
+non-Apple keyboards ("Ctrl", "Esc"), are product copy in `copy.keys`: the app
+passes that table to `spokenShortcut` and provides it once at its root for
+the menu legend, and `packages/ui` keeps only the tokenizer and the glyphs.
 
 **Composition.** A component never appends punctuation, a space, or another
 string to a copy value to finish a sentence or a name. When a string needs a

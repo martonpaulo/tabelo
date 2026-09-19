@@ -1,5 +1,7 @@
+import { ShortcutKeyLabelsProvider } from "@tabelo/ui/components/shortcut-keys";
 import ReactDOM from "react-dom/client";
 import "@/index.css";
+import { copy } from "@/copy/copy";
 import { TabeloApp } from "@/ui/tabelo-app";
 
 // GitHub Pages has no SPA rewrite rule, so the deploy workflow serves
@@ -32,8 +34,10 @@ if (rootElement.dataset.mounted !== "true") {
 	rootElement.dataset.mounted = "true";
 	const root = ReactDOM.createRoot(rootElement);
 	root.render(
-		<div className="h-full">
-			<TabeloApp />
-		</div>,
+		<ShortcutKeyLabelsProvider labels={copy.keys}>
+			<div className="h-full">
+				<TabeloApp />
+			</div>
+		</ShortcutKeyLabelsProvider>,
 	);
 }

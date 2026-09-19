@@ -15,65 +15,115 @@ export function shortcutRawKeys(shortcut: string): readonly string[] {
 	return shortcut.split("+");
 }
 
-// The name each key goes by, and the glyph or word its keyboard prints. The
-// names are platform vocabulary rather than product copy, so they live beside
-// the tokenizer: the legend speaks them, and product copy that has to name a
-// chord in a sentence reads them from here (docs/design-system.md section 8).
+// Every word a legend needs: the name a screen reader says for each key, the
+// word a Windows or Linux keyboard prints on it, and what joins spoken keys.
+// They are product copy, so the application supplies them from its copy
+// module and `packages/ui` keeps no table of its own. Only the tokenizer and
+// the glyphs, which are symbols rather than language, live here
+// (docs/design-system.md section 8).
+export interface ShortcutKeyLabels {
+	readonly spoken: {
+		readonly command: string;
+		readonly control: string;
+		readonly option: string;
+		readonly alt: string;
+		readonly shift: string;
+		readonly backspace: string;
+		readonly enter: string;
+		readonly escape: string;
+		readonly tab: string;
+		readonly space: string;
+		readonly upArrow: string;
+		readonly downArrow: string;
+		readonly leftArrow: string;
+		readonly rightArrow: string;
+		readonly plus: string;
+		readonly minus: string;
+	};
+	// Where an Apple keyboard prints a glyph, the others print these words.
+	readonly printed: {
+		readonly control: string;
+		readonly alt: string;
+		readonly shift: string;
+		readonly backspace: string;
+		readonly enter: string;
+		readonly escape: string;
+		readonly tab: string;
+		readonly space: string;
+	};
+	// Between spoken keys, as in "Command plus Option".
+	readonly spokenJoiner: string;
+}
+
+// The name each key goes by, and the glyph or word its keyboard prints.
 interface ShortcutKey {
 	readonly display: string;
 	readonly label: string;
 }
 
-export function shortcutKeys(shortcut: string): readonly ShortcutKey[] {
+export function shortcutKeys(
+	shortcut: string,
+	labels: ShortcutKeyLabels,
+): readonly ShortcutKey[] {
 	// Apple keyboards print the modifiers as glyphs. Windows and Linux
 	// keyboards print them as words, and a ⌃ there reads as a stray caret
 	// rather than as the Ctrl key the user is looking at.
 	const apple = isApplePlatform();
+	const { spoken, printed } = labels;
 
 	return shortcutRawKeys(shortcut).flatMap<ShortcutKey>((key) => {
 		switch (key) {
 			case "Mod":
 				return [
 					apple
-						? { display: "⌘", label: "Command" }
-						: { display: "Ctrl", label: "Control" },
+						? { display: "⌘", label: spoken.command }
+						: { display: printed.control, label: spoken.control },
 				];
 			case "Control":
 			case "Ctrl":
-				return [{ display: apple ? "⌃" : "Ctrl", label: "Control" }];
+				return [
+					{ display: apple ? "⌃" : printed.control, label: spoken.control },
+				];
 			case "Alt":
 			case "Option":
 				return [
 					apple
-						? { display: "⌥", label: "Option" }
-						: { display: "Alt", label: "Alt" },
+						? { display: "⌥", label: spoken.option }
+						: { display: printed.alt, label: spoken.alt },
 				];
 			case "Shift":
-				return [{ display: apple ? "⇧" : "Shift", label: "Shift" }];
+				return [{ display: apple ? "⇧" : printed.shift, label: spoken.shift }];
 			case "Backspace":
-				return [{ display: apple ? "⌫" : "Backspace", label: "Backspace" }];
+				return [
+					{
+						display: apple ? "⌫" : printed.backspace,
+						label: spoken.backspace,
+					},
+				];
 			case "Enter":
 			case "Return":
-				return [{ display: apple ? "↵" : "Enter", label: "Enter" }];
+				return [{ display: apple ? "↵" : printed.enter, label: spoken.enter }];
 			case "Escape":
 			case "Esc":
-				return [{ display: apple ? "⎋" : "Esc", label: "Escape" }];
+				return [
+					{ display: apple ? "⎋" : printed.escape, label: spoken.escape },
+				];
 			case "Tab":
-				return [{ display: apple ? "⇥" : "Tab", label: "Tab" }];
+				return [{ display: apple ? "⇥" : printed.tab, label: spoken.tab }];
 			case "Space":
-				return [{ display: apple ? "␠" : "Space", label: "Space" }];
+				return [{ display: apple ? "␠" : printed.space, label: spoken.space }];
 			case "ArrowUp":
-				return [{ display: "↑", label: "Up arrow" }];
+				return [{ display: "↑", label: spoken.upArrow }];
 			case "ArrowDown":
-				return [{ display: "↓", label: "Down arrow" }];
+				return [{ display: "↓", label: spoken.downArrow }];
 			case "ArrowLeft":
-				return [{ display: "←", label: "Left arrow" }];
+				return [{ display: "←", label: spoken.leftArrow }];
 			case "ArrowRight":
-				return [{ display: "→", label: "Right arrow" }];
+				return [{ display: "→", label: spoken.rightArrow }];
 			case "+":
-				return [{ display: "+", label: "Plus" }];
+				return [{ display: "+", label: spoken.plus }];
 			case "-":
-				return [{ display: "−", label: "Minus" }];
+				return [{ display: "−", label: spoken.minus }];
 			default:
 				return [{ display: key, label: key }];
 		}
@@ -82,8 +132,11 @@ export function shortcutKeys(shortcut: string): readonly ShortcutKey[] {
 
 // A chord as a screen reader should say it, "Command plus Option" on Apple
 // platforms and "Control plus Alt" elsewhere, never the placeholder "Mod".
-export function spokenShortcut(shortcut: string): string {
-	return shortcutKeys(shortcut)
+export function spokenShortcut(
+	shortcut: string,
+	labels: ShortcutKeyLabels,
+): string {
+	return shortcutKeys(shortcut, labels)
 		.map((key) => key.label)
-		.join(" plus ");
+		.join(labels.spokenJoiner);
 }
