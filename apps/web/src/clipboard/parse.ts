@@ -1,12 +1,8 @@
-import { cellText } from "@/core/cell-value";
+import { cellText, headerContent } from "@/core/cell-value";
 import { normalizeMatrix } from "@/core/document";
 import type { Alignment, CellValue, ExpectedColumnType } from "@/core/types";
 import { listSniffableCodecs } from "@/formats";
-import {
-	type HtmlTable,
-	normalizeLineEndings,
-	readHtmlTable,
-} from "@/formats/html";
+import { type HtmlTable, htmlProjection, readHtmlTable } from "@/formats/html";
 import type { CodecId, ParseIssue, TableCodec } from "@/formats/types";
 import { type ClipboardSelection, readTabeloPayload } from "./payload";
 
@@ -49,11 +45,12 @@ function describesPublicTable(
 	selection: ClipboardSelection,
 	table: HtmlTable,
 ): boolean {
-	// Compared on the terms HTML can spell. The flavour carries one line break,
-	// so a value whose only difference is a carriage return still describes the
-	// table beside it; that difference is precisely what the payload is for.
+	// Compared on the terms HTML can spell. The flavour carries one line break
+	// and writes each run of formatted text on its own, so a value whose only
+	// difference is a carriage return still describes the table beside it;
+	// that difference is precisely what the payload is for.
 	const projected = normalizeMatrix(selection.matrix).map((row) =>
-		row.map((value) => normalizeLineEndings(cellText(value))),
+		row.map((value) => htmlProjection(headerContent(value))),
 	);
 	if (projected.length !== table.matrix.length) return false;
 	const width = projected[0]?.length ?? 0;

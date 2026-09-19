@@ -407,6 +407,29 @@ function elementsMarkup(elements: readonly InlineElement[]): string {
 	return out;
 }
 
+// What a value reads as once this codec has written it and read it back: its
+// projection, with each run's line endings folded where the writer folds them.
+// A carriage return that ends one run and a line feed that starts the next are
+// two breaks here, because each run is written on its own.
+export function htmlProjection(value: TextContent): string {
+	if (typeof value === "string") return normalizeLineEndings(value);
+	return value.nodes
+		.map((node) => {
+			switch (node.kind) {
+				case "text":
+					return normalizeLineEndings(node.text);
+				case "link":
+					return node.children
+						.map((child) => normalizeLineEndings(child.text))
+						.join("");
+				case "image":
+					return normalizeLineEndings(node.alt);
+			}
+			return "";
+		})
+		.join("");
+}
+
 // The markup for one header or cell's content, semantic elements included.
 // Exported because the clipboard's public HTML flavour writes cells the same
 // way this codec reads them back.
