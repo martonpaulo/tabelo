@@ -555,9 +555,9 @@ export const highlightStyle = HighlightStyle.define([
 		color: "var(--syntax-notation)",
 	},
 	// An HTML element name is structure an HTML pane is almost made of, so it
-	// recedes with the brackets around it and the cells' content leads; the
-	// notation colour is left to the escapes (owner, 2026-09-19).
-	{ tag: tags.tagName, color: "var(--syntax-punctuation)" },
+	// takes a calm hue of its own and leaves the notation colour to the escapes
+	// that stand out against it (owner, 2026-09-19).
+	{ tag: tags.tagName, color: "var(--syntax-tag)" },
 	// An attribute name is tag machinery, not content, so it recedes with the
 	// brackets around it rather than competing with the element name.
 	{ tag: tags.attributeName, color: "var(--muted-foreground)" },
