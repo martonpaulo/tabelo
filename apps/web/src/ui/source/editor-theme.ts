@@ -109,7 +109,10 @@ export const editorTheme = EditorView.theme({
 		backgroundColor: "var(--surface-code)",
 		color: "var(--foreground)",
 	},
-	".cm-tabeloColumnMarker[data-selected]": { cursor: "grab" },
+	".cm-tabeloColumnMarker[data-selected]": {
+		cursor: "grab",
+		fontWeight: "600",
+	},
 	".cm-scroller": {
 		// The column markers (#368) float over the top of the scroller, which
 		// runs the pane's full height, so the text starts below them: they
@@ -148,11 +151,14 @@ export const editorTheme = EditorView.theme({
 	".cm-line": { padding: "0 var(--pane-trailing-room) 0 0" },
 	// The numbers share the code box's surface, with no band or dividing line
 	// of their own; their tone and the active line's lift tell them apart.
+	// Set exactly as the grid's row numbers are, face, size, tone and figures,
+	// so a row's number reads the same in every view (owner, 2026-09-19).
 	".cm-gutters": {
 		backgroundColor: "var(--surface-code)",
-		color: "var(--line-number)",
+		color: "var(--muted-foreground)",
 		fontFamily: "var(--font-family-index)",
-		fontSize: contentFontSize,
+		fontSize: "var(--text-xs)",
+		fontVariantNumeric: "tabular-nums",
 		// The same row box the content uses, so a number's natural height
 		// already equals the line block beside it. The numbers are then level
 		// from the first paint, rather than drifting until CodeMirror's own
@@ -257,10 +263,14 @@ export const editorTheme = EditorView.theme({
 	".cm-tabeloColumnMarker:hover, .cm-tabeloColumnMarker[data-selected]": {
 		color: "var(--foreground)",
 	},
+	// A selected column's letter and the current line's number are set as the
+	// grid sets a selected row's number and column's letter: semibold, in the
+	// foreground tone (owner, 2026-09-19).
 	".cm-activeLineGutter": { backgroundColor: "transparent" },
 	"&.cm-focused .cm-activeLineGutter": {
 		backgroundColor: "var(--active-line-fill)",
 		color: "var(--foreground)",
+		fontWeight: "600",
 	},
 	// `drawSelection`'s own layers are replaced by the ones in drawn-selection.ts,
 	// which fix their geometry; its selection and cursor layers stay mounted and

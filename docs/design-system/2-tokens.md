@@ -45,7 +45,6 @@ user-issued resizing.
 | `--surface-panel` | `bg-surface-panel` | A pane's content area |
 | `--surface-header` | `bg-surface-header` | Interface chrome such as the grid's column strip. A pane header is not on it: it sits on the pane's own surface with no dividing line, so a pane has two layers, the pane and its content (owner, 2026-09-19) |
 | `--surface-code` | `bg-surface-code` | The inset rounded box a source view's text and line numbers sit in (owner, 2026-09-19) |
-| `--line-number` | CodeMirror gutter | Source line numbers: the dimmest tone that still reads at 4.5:1 on `--surface-code` |
 | `--surface-floating` | `bg-surface-floating` | Menus, tooltips, and dialogs above panes |
 
 Order matters: app is furthest back, interface chrome sits above the panel,
