@@ -4,6 +4,7 @@ import {
 	TooltipTrigger,
 } from "@tabelo/ui/components/tooltip";
 import {
+	type ComponentProps,
 	cloneElement,
 	createContext,
 	type ReactElement,
@@ -14,6 +15,58 @@ import {
 type TooltipTargetProps = {
 	readonly "aria-describedby"?: string;
 	readonly "aria-label"?: string;
+};
+
+// The keys a user moves focus with: Tab through the page, and the arrow, Home,
+// End, and page keys inside a menu, a list, or a radio group.
+const NAVIGATION_KEYS = new Set([
+	"Tab",
+	"ArrowUp",
+	"ArrowDown",
+	"ArrowLeft",
+	"ArrowRight",
+	"Home",
+	"End",
+	"PageUp",
+	"PageDown",
+]);
+
+// Whether focus is arriving because the user is moving it from the keyboard.
+// It is true only between a navigation keydown and the next key release or
+// press, which is exactly when the focus that key causes lands. Focus handed
+// back by a closing menu or dialog, after Escape, Enter, or a click, or moved
+// by the product itself, lands outside that window.
+let navigating = false;
+if (typeof document !== "undefined") {
+	document.addEventListener(
+		"keydown",
+		(event) => {
+			navigating = NAVIGATION_KEYS.has(event.key);
+		},
+		true,
+	);
+	for (const type of ["keyup", "pointerdown"] as const) {
+		document.addEventListener(
+			type,
+			() => {
+				navigating = false;
+			},
+			true,
+		);
+	}
+}
+
+// A tooltip opens on keyboard focus so a keyboard user reads what a pointer
+// user reads on hover (section 9). Focus the user did not move there, such as
+// the focus a menu or dialog returns to its trigger on close, is not a request
+// to read it, and the tooltip it used to raise covered the next thing the user
+// looked at (owner, 2026-09-19).
+const onlyUserFocus: NonNullable<
+	ComponentProps<typeof Tooltip>["onOpenChange"]
+> = (open, details) => {
+	if (open && details.reason === "trigger-focus" && !navigating) {
+		details.cancel();
+	}
 };
 
 // Set inside a ControlTooltip, so a second one on the same control is refused
@@ -59,7 +112,7 @@ export function ControlTooltip({
 			.join(" ");
 		return (
 			<InsideControlTooltip.Provider value={true}>
-				<Tooltip>
+				<Tooltip onOpenChange={onlyUserFocus}>
 					{/* A disabled control receives no pointer events, so the wrapper
 					    is what the pointer reaches. */}
 					<TooltipTrigger render={<span className="block" />}>
@@ -80,7 +133,7 @@ export function ControlTooltip({
 
 	return (
 		<InsideControlTooltip.Provider value={true}>
-			<Tooltip>
+			<Tooltip onOpenChange={onlyUserFocus}>
 				{/* An enabled control takes the trigger's behaviour directly, with no
 				    wrapper between it and its own handlers, so a menu trigger still
 				    opens on the first click. */}

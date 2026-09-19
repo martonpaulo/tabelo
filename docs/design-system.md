@@ -727,7 +727,11 @@ owns it: the floating surface, one shadow, the `--line-floating` boundary, the
 clipped triangular pointer (§6). A tooltip explains its trigger and never
 carries the only copy of something the user needs, because it is transient and
 because pointer-only affordances fail §9. Every tooltip opens on keyboard focus
-as well as hover. When it explains why a control is unavailable, the tooltip is
+as well as hover. Keyboard focus means focus the user moved there, with Tab or
+with the arrow, Home, End, or page keys: focus the product places, such as a
+menu or dialog handing focus back to its trigger as it closes, raises no
+tooltip, because it covered whatever the user looked at next (owner,
+2026-09-19). `ControlTooltip` owns that distinction. When it explains why a control is unavailable, the tooltip is
 the visual echo of a persistent accessible description on the control. The
 shared disabled-tooltip pattern keeps an `sr-only` copy mounted and associates
 the control with it through `aria-describedby`; the transient popup is never

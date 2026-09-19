@@ -159,12 +159,13 @@ test("an icon-only action names itself on focus without a second announcement", 
 	tabelo,
 }) => {
 	const trigger = tabelo.paneMenuTrigger("grid");
-	// A key press first puts the page in keyboard modality, so the focus below
-	// is the kind a keyboard user produces.
-	await page.keyboard.press("Shift");
-	await trigger.focus();
-
 	const tooltip = page.locator('[role="tooltip"][data-open]');
+	// Tabbing onto the control is what raises its tooltip: focus the product
+	// places does not (owner, 2026-09-19).
+	await trigger.focus();
+	await page.keyboard.press("Shift+Tab");
+	await page.keyboard.press("Tab");
+	await expect(trigger).toBeFocused();
 	await expect(tooltip).toHaveCount(1);
 	const name = await trigger.getAttribute("aria-label");
 	expect(name).toBeTruthy();
@@ -176,6 +177,13 @@ test("an icon-only action names itself on focus without a second announcement", 
 	// first press.
 	await page.keyboard.press("Enter");
 	await expect(page.getByRole("menu")).toBeVisible();
+
+	// Closing the menu hands focus back to the trigger, which is not the user
+	// asking to read its name again.
+	await page.keyboard.press("Escape");
+	await expect(page.getByRole("menu")).toBeHidden();
+	await expect(trigger).toBeFocused();
+	await expect(tooltip).toHaveCount(0);
 });
 
 // A disabled icon-only action shows one tooltip, and it is the refusal: the
