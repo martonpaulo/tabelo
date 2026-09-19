@@ -88,3 +88,10 @@ export const segmentedItemStyles =
 // zoom's out, reset, and in: the segment geometry, the menu's own highlight.
 export const menuInlineItemStyles =
 	"min-h-control-sm justify-center gap-1.5 rounded-indicator px-2 py-1 text-xs";
+
+// A segment that turns on and off by itself rather than choosing among its
+// neighbours, such as a Format mark in the Visual Table's cell menu (#306).
+// On, it wears a segmented choice's checked fill; partly on, across a
+// selection that disagrees, the selection tint. The state is read from the
+// item's own `aria-checked`, so what is drawn and what is announced agree.
+export const menuToggleSegmentStyles = `${menuInlineItemStyles} aria-checked:bg-primary aria-checked:text-primary-foreground aria-checked:**:text-primary-foreground aria-[checked=mixed]:bg-selection-fill aria-[checked=mixed]:text-foreground`;

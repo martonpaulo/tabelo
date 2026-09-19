@@ -34,3 +34,20 @@ export function linkActivation(url: string): LinkActivation {
 export function imageLoads(url: string): boolean {
 	return protocolOf(url) === "https:";
 }
+
+// Opens a link the way the rendered page would, for the surfaces where the
+// link is not a native activation target: the grid, whose cells select on a
+// click and open a link only on Mod+click, and the cell editor's Mod+Enter.
+// Returns whether anything opened, so an inert address can say why not.
+export function openLink(url: string): boolean {
+	const activation = linkActivation(url);
+	if (activation === "inert") return false;
+	const anchor = document.createElement("a");
+	anchor.href = url;
+	if (activation === "web") {
+		anchor.target = "_blank";
+		anchor.rel = "noopener noreferrer";
+	}
+	anchor.click();
+	return true;
+}

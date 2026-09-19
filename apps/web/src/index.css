@@ -376,6 +376,20 @@ textarea,
 		color: HighlightText;
 	}
 
+	/* A Format mark that is on keeps the system's highlight pair, and one that
+	   is only partly on across the selection keeps a dashed edge, since the
+	   fills that tell the two apart are dropped here (#306). */
+	[data-format-toggle][aria-checked="true"] {
+		forced-color-adjust: none;
+		background-color: Highlight;
+		color: HighlightText;
+	}
+
+	[data-format-toggle][aria-checked="mixed"] {
+		outline: var(--selection-edge-w) dashed CanvasText;
+		outline-offset: calc(var(--selection-edge-w) * -1);
+	}
+
 	/* Forced colours paints no background image, so the source views' space dot
 	   would be the one annotation left with nothing, while the tab arrow and the
 	   empty-field placeholder survive as generated content. The glyph returns

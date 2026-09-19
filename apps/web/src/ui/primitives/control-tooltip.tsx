@@ -1,3 +1,4 @@
+import { ShortcutKeys } from "@tabelo/ui/components/shortcut-keys";
 import {
 	Tooltip,
 	TooltipContent,
@@ -88,10 +89,16 @@ const InsideControlTooltip = createContext(false);
 export function ControlTooltip({
 	name,
 	reason,
+	shortcut,
 	children,
 }: {
 	readonly name?: string;
 	readonly reason?: string;
+	// The chord an icon-only control answers to, drawn beside its name in the
+	// tooltip: an icon has no room for the legend a menu row prints (#306).
+	// The control states it for assistive technology through its own
+	// `aria-keyshortcuts`.
+	readonly shortcut?: string;
 	readonly children: ReactElement<TooltipTargetProps>;
 }) {
 	const nested = useContext(InsideControlTooltip);
@@ -138,7 +145,16 @@ export function ControlTooltip({
 				    wrapper between it and its own handlers, so a menu trigger still
 				    opens on the first click. */}
 				<TooltipTrigger render={named} />
-				<TooltipContent aria-hidden>{name}</TooltipContent>
+				<TooltipContent aria-hidden>
+					{shortcut ? (
+						<span className="inline-flex items-center gap-2">
+							{name}
+							<ShortcutKeys shortcut={shortcut} />
+						</span>
+					) : (
+						name
+					)}
+				</TooltipContent>
 			</Tooltip>
 		</InsideControlTooltip.Provider>
 	);

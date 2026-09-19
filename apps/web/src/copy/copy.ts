@@ -528,6 +528,14 @@ export const copy = {
 		cellTypeConversion: (label: string) =>
 			`This value can't be converted to ${label.toLowerCase()}.`,
 		updateInProgress: "The update is already being applied.",
+		// Formatting never converts a value (#306), so the reason names the step
+		// that comes first.
+		formatTypedValue: "Change the cell type to text to format it.",
+		formatEmpty: "Type some text to format it.",
+		formatUnavailable: "Inline code and images can't take this format.",
+		linkSingleCell: "Select one cell to add a link.",
+		imageSingleCell: "Select one cell to insert an image.",
+		linkAroundImage: "A link can't contain an image. Select text only.",
 		codecPrecondition: (failure: PreconditionFailure) =>
 			preconditionMessage(failure),
 	},
@@ -743,6 +751,17 @@ export const copy = {
 		pinFirstRow: "Keep this row visible",
 		pinFirstColumn: "Keep this column visible",
 		editHeader: "Rename column",
+		// The Visual Table's Format group (#306): five marks as one segmented
+		// row of icons, each named in full, then the two commands that need a
+		// dialog.
+		format: "Format",
+		bold: "Bold",
+		italic: "Italic",
+		underline: "Underline",
+		strikethrough: "Strikethrough",
+		code: "Inline code",
+		link: "Link…",
+		image: "Image…",
 		// The command that sits beside a choice its codec has refused. The
 		// refusal already says what is wrong; this takes the user to the cell.
 		goToCell: GO_TO_CELL,
@@ -835,6 +854,33 @@ export const copy = {
 		tooLarge: (max: number) => `Use ${max} rem or less.`,
 	},
 
+	// The link and image dialogs of the Visual Table (#306). An address is kept
+	// exactly as typed; the hints say which ones open or load.
+	link: {
+		addTitle: "Add link",
+		editTitle: "Edit link",
+		text: "Text",
+		address: "Address",
+		addressHint: "https, http, or mailto: addresses open.",
+		remove: "Remove link",
+		noLink: "This text has no link to remove.",
+		confirm: "Save",
+		textRequired: "Enter the text to show.",
+		addressRequired: "Enter an address.",
+		unchanged: "Change the text or the address first.",
+	},
+
+	image: {
+		title: "Insert image",
+		address: "Address",
+		addressHint: "Only https images load.",
+		alt: "Alternative text",
+		altHint: "Describes the image for anyone who can't see it.",
+		confirm: "Insert",
+		addressRequired: "Enter an address.",
+		altRequired: "Describe the image.",
+	},
+
 	addView: {
 		title: "Add view",
 		// Says where the pane will land, because the control that opened this is
@@ -921,6 +967,13 @@ export const copy = {
 			return `Deleted ${parts.join(" and ")}.`;
 		},
 		loading: "Loading…",
+		// Spoken after a Format command, since a mark changes nothing a screen
+		// reader would otherwise announce.
+		formatApplied: (format: string, on: boolean) =>
+			on ? `${format} applied.` : `${format} removed.`,
+		linkNotOpened:
+			"This address doesn't open from Tabelo. Only web and email addresses do.",
+		noLinkHere: "There's no link here to open.",
 	},
 
 	notices: {
@@ -1047,6 +1100,8 @@ export const copy = {
 
 	a11y: {
 		opensInNewTab: "(opens in a new tab)",
+		// A link in the grid is not a tab stop, so it says how it opens (#306).
+		gridLinkOpens: `${spokenShortcut("Mod", KEYS)} click to open`,
 		grid: "Table editor",
 		workspace: "Workspace",
 		notices: "Notices",
@@ -1167,5 +1222,14 @@ export const copy = {
 		moveDown: "Alt+ArrowDown",
 		moveLeft: "Alt+ArrowLeft",
 		moveRight: "Alt+ArrowRight",
+		// Inline formatting in the Visual Table (#306).
+		bold: "Mod+B",
+		italic: "Mod+I",
+		underline: "Mod+U",
+		strikethrough: "Mod+Shift+S",
+		code: "Mod+Shift+M",
+		link: "Mod+K",
+		// While a cell is being edited: opens the link at the caret.
+		openLink: "Mod+Enter",
 	},
 } as const;

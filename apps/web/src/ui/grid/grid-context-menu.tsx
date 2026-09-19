@@ -14,7 +14,10 @@ import {
 	ContextMenuSubTrigger,
 	ContextMenuTrigger,
 } from "@tabelo/ui/components/context-menu";
-import { segmentedGroupStyles } from "@tabelo/ui/components/menu-styles";
+import {
+	menuToggleSegmentStyles,
+	segmentedGroupStyles,
+} from "@tabelo/ui/components/menu-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
 	IconAlignCenter,
@@ -22,6 +25,8 @@ import {
 	IconAlignLeft,
 	IconAlignRight,
 	IconArrowsHorizontal,
+	IconLink,
+	IconPhoto,
 	IconPin,
 	IconRuler,
 	IconSortAscending,
@@ -63,6 +68,13 @@ import {
 } from "./cell-type-change-dialog";
 import { cellTypeOptions, expectedTypeOptions } from "./cell-type-options";
 import { measureColumnFitWidth } from "./column-fit";
+import {
+	cellCommandRefusal,
+	formatMarks,
+	runSelectionMark,
+	selectionMarkControl,
+	singleCellTarget,
+} from "./format-commands";
 import { menuSections } from "./menu-sections";
 import { targetAxisForMenu, targetCellForMenu } from "./menu-target";
 import { revealGridCell } from "./reveal-cell";
@@ -385,6 +397,95 @@ function singleSelectedCell(selection: GridSelection): CellPosition | null {
 	return range.focus;
 }
 
+// The Format group (#306), first in a cell menu: the five marks as one row of
+// icon segments that each turn on and off by themselves, then the two
+// commands that need a dialog. A segment reads its pressed state from the
+// selection, mixed when the selected cells disagree, and says why it is off
+// when the selection holds nothing it can format. A mark command acts on the
+// complete text of every selected textual cell, as one history step.
+function FormatMenuGroup({
+	onCommand,
+	onLink,
+	onImage,
+}: {
+	readonly onCommand: () => void;
+	readonly onLink: (position: CellPosition) => void;
+	readonly onImage: (position: CellPosition) => void;
+}) {
+	const labelId = useId();
+	const document = useTabeloStore((state) => state.document);
+	const selection = useTabeloStore((state) => state.selection);
+	const target = singleCellTarget(selection);
+	const linkRefusal = cellCommandRefusal(document, selection, "link");
+	const imageRefusal = cellCommandRefusal(document, selection, "image");
+
+	return (
+		<ContextMenuGroup aria-labelledby={labelId}>
+			<ContextMenuLabel id={labelId}>{copy.actions.format}</ContextMenuLabel>
+			<div className={cn(segmentedGroupStyles, "mx-1 mb-1")}>
+				{formatMarks.map((entry) => {
+					const control = selectionMarkControl(document, selection, entry.mark);
+					const checked =
+						control.state === "on"
+							? "true"
+							: control.state === "mixed"
+								? "mixed"
+								: "false";
+					return (
+						<ControlTooltip
+							key={entry.mark}
+							name={entry.label}
+							reason={control.refusal}
+							shortcut={entry.shortcut}
+						>
+							<ContextMenuItem
+								// A toggle, not one choice among its neighbours: each mark is
+								// on or off by itself, and mixed across a selection that
+								// disagrees.
+								role="menuitemcheckbox"
+								aria-checked={checked}
+								aria-keyshortcuts={entry.shortcut}
+								data-format-toggle={entry.mark}
+								disabled={control.refusal !== undefined}
+								className={menuToggleSegmentStyles}
+								onClick={() => {
+									onCommand();
+									runSelectionMark(entry.mark);
+								}}
+							>
+								<entry.icon aria-hidden />
+							</ContextMenuItem>
+						</ControlTooltip>
+					);
+				})}
+			</div>
+			<ControlTooltip reason={linkRefusal}>
+				<ContextMenuItem
+					disabled={linkRefusal !== undefined}
+					onClick={() => {
+						if (target) onLink(target);
+					}}
+				>
+					<IconLink aria-hidden />
+					{copy.actions.link}
+					<ContextMenuShortcut>{copy.shortcuts.link}</ContextMenuShortcut>
+				</ContextMenuItem>
+			</ControlTooltip>
+			<ControlTooltip reason={imageRefusal}>
+				<ContextMenuItem
+					disabled={imageRefusal !== undefined}
+					onClick={() => {
+						if (target) onImage(target);
+					}}
+				>
+					<IconPhoto aria-hidden />
+					{copy.actions.image}
+				</ContextMenuItem>
+			</ControlTooltip>
+		</ContextMenuGroup>
+	);
+}
+
 function CellTypeMenuGroup({
 	onConfirmChange,
 }: {
@@ -456,6 +557,8 @@ export function GridContextMenu({
 	tableRef,
 	zoom,
 	onSetColumnWidth,
+	onLink,
+	onImage,
 }: {
 	readonly children: ReactNode;
 	// The grid surface: the positioned box holding the column index strip and the
@@ -471,6 +574,9 @@ export function GridContextMenu({
 	readonly zoom: number;
 	// A command that opens a surface the menu cannot hold (#370).
 	readonly onSetColumnWidth: (index: number) => void;
+	// The Format group's two dialogs, for the one selected cell (#306).
+	readonly onLink: (position: CellPosition) => void;
+	readonly onImage: (position: CellPosition) => void;
 }) {
 	const [target, setTarget] = useState<MenuTarget>({ axis: "cell", index: 0 });
 	const { axis, onCell: openedOnCell } = target;
@@ -679,6 +785,16 @@ export function GridContextMenu({
 				>
 					{axis === "cell" ? (
 						<>
+							<FormatMenuGroup
+								onCommand={markCommand}
+								onLink={(position) =>
+									menuDialog.runAfterClose(() => onLink(position))
+								}
+								onImage={(position) =>
+									menuDialog.runAfterClose(() => onImage(position))
+								}
+							/>
+							<ContextMenuSeparator />
 							<CellTypeMenuGroup onConfirmChange={requestChange} />
 							<ContextMenuSeparator />
 						</>

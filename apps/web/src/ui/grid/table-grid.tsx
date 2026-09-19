@@ -3,6 +3,7 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import { cellText, readCell } from "@/core/cell-value";
+import { isTextContent, sliceInline } from "@/core/inline-content";
 import { dataEdgeTarget, type JumpDirection } from "@/core/navigation";
 import {
 	activeRange,
@@ -23,6 +24,7 @@ import type {
 	ColumnId,
 	ExpectedColumnType,
 	Row,
+	TextContent,
 } from "@/core/types";
 import {
 	currentMatch,
@@ -31,6 +33,10 @@ import {
 	type StructureDeletionRefusal,
 	useTabeloStore,
 } from "@/state/store";
+import {
+	InlineContentView,
+	type InlineSurface,
+} from "@/ui/inline/inline-content";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import { usePaneFind } from "@/ui/workspace/use-pane-find";
 import {
@@ -52,8 +58,23 @@ import { CellTypeMark } from "./cell-type-mark";
 import { ColumnWidthDialog } from "./column-width-dialog";
 import { FillHandle } from "./fill-handle";
 import { FillPreview, type FillPreviewSetter } from "./fill-preview";
+import {
+	cellCommandRefusal,
+	isLinkKey,
+	markForKey,
+	runSelectionMark,
+	singleCellTarget,
+	wholeCellImageRequest,
+	wholeCellLinkRequest,
+} from "./format-commands";
 import { GridContextMenu } from "./grid-context-menu";
 import { autoscrollAxisOf, type GridDragKind, gridTargetAt } from "./grid-drag";
+import {
+	ImageDialog,
+	type ImageRequest,
+	LinkDialog,
+	type LinkRequest,
+} from "./inline-dialogs";
 import { revealGridCell } from "./reveal-cell";
 import {
 	fillRefusalMessage,
@@ -241,15 +262,35 @@ const NO_MARK = 0;
 // and deliberately not a `<mark>`: its implicit semantics would announce a
 // highlight, and which occurrence this is belongs to the written count in the
 // find bar rather than to the cell. See docs/design-system/9-accessibility.md.
-function markedValue(value: string, start: number, end: number) {
-	if (start >= end) return value;
+//
+// Formatted content is cut the same way, through the core's own slice, so the
+// mark sits inside the formatting and a match that touches an image marks the
+// whole image (#306).
+function markedValue(
+	value: TextContent,
+	start: number,
+	end: number,
+	surface: InlineSurface,
+) {
+	if (start >= end)
+		return <InlineContentView value={value} surface={surface} />;
+	const length = cellText(value).length;
 	return (
 		<>
-			{value.slice(0, start)}
+			<InlineContentView
+				value={sliceInline(value, 0, start)}
+				surface={surface}
+			/>
 			<span data-find-current className="bg-primary text-primary-foreground">
-				{value.slice(start, end)}
+				<InlineContentView
+					value={sliceInline(value, start, end)}
+					surface={surface}
+				/>
 			</span>
-			{value.slice(end)}
+			<InlineContentView
+				value={sliceInline(value, end, length)}
+				surface={surface}
+			/>
 		</>
 	);
 }
@@ -288,6 +329,14 @@ const structureRefusalMessage: Record<StructureDeletionRefusal, string> = {
 const pasteRefusalMessage: Record<PasteRefusal, string> = {
 	"single-area": copy.disabled.singleAreaRequired,
 };
+
+// Whether a pointer landed on a rendered link inside a cell, which Mod+click
+// opens instead of toggling the cell in the selection (#306).
+function isOnLink(target: EventTarget | null): boolean {
+	return (
+		target instanceof Element && target.closest("[data-inline-link]") !== null
+	);
+}
 
 // What a pointer gesture on a select handle or a cell means. "replace" is a
 // plain click, "extend" is Shift, and "toggle" is the platform modifier adding
@@ -441,6 +490,32 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// The column whose exact width is being typed (#370). The ref outlives the
 	// closing state so focus can return to that column's header after the
 	// dialog's exit transition, when the state is already null.
+	// The Format group's dialogs (#306). Each request carries what its answer
+	// does and where focus goes back, so a whole cell and a range being edited
+	// share them.
+	const [linkRequest, setLinkRequest] = useState<LinkRequest | null>(null);
+	const [imageRequest, setImageRequest] = useState<ImageRequest | null>(null);
+	const cellElement = useCallback(
+		(position: CellPosition) =>
+			gridRef.current?.querySelector<HTMLElement>(
+				`[data-cell="${position.row}:${position.column}"]`,
+			) ?? null,
+		[],
+	);
+	const openCellLink = useCallback(
+		(position: CellPosition) =>
+			setLinkRequest(
+				wholeCellLinkRequest(position, () => cellElement(position)),
+			),
+		[cellElement],
+	);
+	const openCellImage = useCallback(
+		(position: CellPosition) =>
+			setImageRequest(
+				wholeCellImageRequest(position, () => cellElement(position)),
+			),
+		[cellElement],
+	);
 	const [widthDialogColumn, setWidthDialogColumn] = useState<number | null>(
 		null,
 	);
@@ -848,6 +923,30 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		// arrow at all. Several branches below ask, so it is asked once.
 		const arrowDirection = jumpDirections[event.key];
 
+		// Inline formatting (#306): a mark chord formats the complete text of
+		// every selected textual cell as one history step, and Mod+K opens the
+		// link dialog for the one selected cell. Each says why when it cannot.
+		const mark = markForKey(event);
+		if (mark) {
+			event.preventDefault();
+			runSelectionMark(mark);
+			return;
+		}
+		if (isLinkKey(event)) {
+			event.preventDefault();
+			const refusal = cellCommandRefusal(store.document, selection, "link");
+			const target = singleCellTarget(selection);
+			if (refusal || !target) {
+				store.pushNotice({
+					severity: "warning",
+					message: refusal ?? copy.disabled.linkSingleCell,
+				});
+				return;
+			}
+			openCellLink(target);
+			return;
+		}
+
 		// Find opens this pane's bar from the grid surface. The early return
 		// above already stood the whole handler down while a cell or header
 		// editor is open, so the editor keeps every key. Taken from the browser
@@ -1210,6 +1309,8 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 			tableRef={gridRef}
 			zoom={zoom}
 			onSetColumnWidth={openWidthDialog}
+			onLink={openCellLink}
+			onImage={openCellImage}
 		>
 			{/* The strip and the table are siblings, and these three events belong to
 			    both of them: an editor is committed by a pointer press anywhere on
@@ -1403,6 +1504,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									key={column.id}
 									columnIndex={columnIndex}
 									header={cellText(column.header)}
+									content={column.header}
 									align={column.align}
 									wrapped={wrappedColumns.includes(column.id)}
 									pinned={pinnedColumn && columnIndex === 0}
@@ -1520,6 +1622,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 						`[data-cell="${HEADER_ROW}:${widthDialogColumnRef.current}"]`,
 					) ?? null
 				}
+			/>
+			<LinkDialog request={linkRequest} onClose={() => setLinkRequest(null)} />
+			<ImageDialog
+				request={imageRequest}
+				onClose={() => setImageRequest(null)}
 			/>
 			<TypedCellDecisionDialog
 				decision={typedDecision}
@@ -1792,10 +1899,13 @@ const DataRow = memo(function DataRow({
 							// not focusable by default. The cell would look selected
 							// but ignore every keystroke.
 							event.preventDefault();
+							const intent = selectIntentOf(event);
+							// Mod+click on a link opens it (#306): the link's own click
+							// handler does, so the cell's selection is left alone.
+							if (intent === "toggle" && isOnLink(event.target)) return;
 							draggingRef.current = "cell";
 							const store = useTabeloStore.getState();
 							const at = { row: rowIndex, column: columnIndex };
-							const intent = selectIntentOf(event);
 							if (intent === "extend") store.extendSelection(at);
 							else if (intent === "toggle")
 								store.toggleSelectionRegion(at, "cell");
@@ -1860,9 +1970,16 @@ const DataRow = memo(function DataRow({
 										cellTypePresentationClass(type),
 									)}
 								>
-									{columnIndex === markColumn
-										? markedValue(value, markStart, markEnd)
-										: value}
+									{isTextContent(cellValue)
+										? markedValue(
+												cellValue,
+												columnIndex === markColumn ? markStart : NO_MARK,
+												columnIndex === markColumn ? markEnd : NO_MARK,
+												wrapped ? "grid-wrapped" : "grid",
+											)
+										: columnIndex === markColumn
+											? markedValue(value, markStart, markEnd, "grid")
+											: value}
 									{describesType ? (
 										<span className="sr-only">
 											{copy.a11y.cellTypeQualifier(type)}
@@ -2048,7 +2165,10 @@ function ColumnIndexCell({
 // Backspace to clear.
 interface HeaderCellProps {
 	readonly columnIndex: number;
+	// The header's plain projection, which names it, and its content, which is
+	// what the cell draws.
 	readonly header: string;
+	readonly content: TextContent;
 	readonly align: Alignment;
 	readonly wrapped: boolean;
 	// Whether this header belongs to the pinned first data column. See
@@ -2076,6 +2196,7 @@ interface HeaderCellProps {
 function HeaderCell({
 	columnIndex,
 	header,
+	content,
 	align,
 	wrapped,
 	pinned,
@@ -2148,10 +2269,11 @@ function HeaderCell({
 				// The header row is an ordinary row of the cell selection, so its
 				// drag is the data cells' own kind: starting it here is what lets
 				// one rectangle span the boundary in either direction.
+				const intent = selectIntentOf(event);
+				if (intent === "toggle" && isOnLink(event.target)) return;
 				onDragStart();
 				const store = useTabeloStore.getState();
 				const at = { row: HEADER_ROW, column: columnIndex };
-				const intent = selectIntentOf(event);
 				if (intent === "extend") store.extendSelection(at);
 				else if (intent === "toggle") store.toggleSelectionRegion(at, "cell");
 				else store.selectCell(at);
@@ -2189,7 +2311,12 @@ function HeaderCell({
 							: "h-content-line-box overflow-hidden text-ellipsis whitespace-pre leading-content-line-box",
 					)}
 				>
-					{markedValue(header, markStart, markEnd)}
+					{markedValue(
+						content,
+						markStart,
+						markEnd,
+						wrapped ? "grid-wrapped" : "grid",
+					)}
 				</span>
 			)}
 			<CellMarks
