@@ -37,7 +37,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { minimalChange } from "@/formats/minimal-change";
 import type {
 	SourceFieldRange,
-	SourceRowRange,
+	SourceTableRow,
 	StructuralAssistance,
 } from "@/formats/types";
 import {
@@ -327,7 +327,7 @@ interface SourceEditorProps {
 	readonly diagnostics: readonly SourceDiagnostic[];
 	// Where the table's rows sit in `value`, for the boundaries between them
 	// (#296). Empty when the text does not parse or the format cannot map rows.
-	readonly rows: readonly SourceRowRange[];
+	readonly rows: readonly SourceTableRow[];
 	readonly invalid: boolean;
 	readonly entered: boolean;
 	readonly describedBy?: string;

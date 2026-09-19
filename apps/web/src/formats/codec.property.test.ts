@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { test } from "@fast-check/vitest";
+import { fc, test } from "@fast-check/vitest";
 import { describe, expect } from "vitest";
 import { cellText, readCell } from "@/core/cell-value";
 import { documentToMatrix, reconcileDocument } from "@/core/document";
@@ -9,6 +9,7 @@ import type { CellValue, TableDocument } from "@/core/types";
 import { canSerialize, csvCodec, listCodecs, type TableCodec } from "@/formats";
 import { escapeJiraCell, unescapeJiraCell } from "@/formats/jira";
 import { escapeCell, unescapeCell } from "@/formats/markdown";
+import { cellAtPosition } from "@/formats/parse";
 import {
 	expectedDocumentForCodec,
 	observeDocumentForCodec,
@@ -186,4 +187,56 @@ describe("registered codec properties", () => {
 			}
 		},
 	);
+});
+
+// The position mapping names the cell a position renders, or a structural
+// command acts on the wrong row and looks like it worked (#255). Rewriting the
+// text a mapped cell covers must change that cell of the parsed table and no
+// other, which proves the range covers exactly the cell's spelling.
+const SENTINEL = "mapped";
+
+function mappedCellCase(codec: TableCodec) {
+	return codecDocumentArbitrary(codec).chain((document) =>
+		fc
+			.record({
+				row: fc.integer({ min: 0, max: document.rows.length }),
+				column: fc.integer({ min: 0, max: document.columns.length - 1 }),
+			})
+			.map((cell) => ({ document, cell })),
+	);
+}
+
+describe("source position mapping properties", () => {
+	for (const codec of listCodecs().filter((codec) => codec.mapsSourceRows)) {
+		test.prop({ case: mappedCellCase(codec) }, { numRuns: PROPERTY_RUNS })(
+			`${codec.id} maps every cell to the text it is parsed from`,
+			({ case: { document, cell } }) => {
+				const text = codec.serialize(document);
+				const parsed = codec.parse(text);
+				if (!parsed.ok) throw new Error(`${codec.id} rejected its own output`);
+				const rows = parsed.rows ?? [];
+				expect(rows).toHaveLength(document.rows.length + 1);
+				for (const row of rows) {
+					expect(row.cells).toHaveLength(document.columns.length);
+				}
+
+				const range = rows[cell.row]?.cells[cell.column];
+				if (!range) throw new Error("the mapped cell is missing");
+				expect(cellAtPosition(rows, range.from)).toEqual(cell);
+				expect(cellAtPosition(rows, range.to)).toEqual(cell);
+
+				const rewritten = expectSuccessfulParse(
+					codec.id,
+					codec.parse(
+						`${text.slice(0, range.from)}${SENTINEL}${text.slice(range.to)}`,
+					),
+				);
+				const expected = documentToMatrix(parsed.document);
+				const expectedRow = expected[cell.row];
+				if (!expectedRow) throw new Error("the parsed row is missing");
+				expectedRow[cell.column] = SENTINEL;
+				expect(documentToMatrix(rewritten)).toEqual(expected);
+			},
+		);
+	}
 });

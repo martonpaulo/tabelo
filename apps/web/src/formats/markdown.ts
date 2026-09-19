@@ -22,6 +22,7 @@ import type {
 	ParseIssue,
 	SourceFieldRange,
 	SourceRowRange,
+	SourceTableRow,
 	TableCodec,
 } from "./types";
 
@@ -206,15 +207,27 @@ export function unescapeCell(value: string): string {
 // The header row owns the alignment divider under it: the divider is how
 // Markdown says the line above is a header, not a row of its own. Every body
 // line after it is one row.
+// Every line's cells come from the same scanner that splits it for the parse,
+// so a cell the mapping names is exactly the cell the parse read (#255).
 function markdownRows(
 	text: string,
 	start: number,
 	end: number,
-): SourceRowRange[] {
+): SourceTableRow[] {
 	const spans = lineSpans(text).slice(start, end);
 	const [header, divider, ...body] = spans;
 	if (!header || !divider) return [];
-	return [{ from: header.from, to: divider.to }, ...body];
+	return [
+		{ from: header.from, to: divider.to, cells: lineCells(text, header) },
+		...body.map((line) => ({ ...line, cells: lineCells(text, line) })),
+	];
+}
+
+function lineCells(text: string, line: SourceRowRange): SourceRowRange[] {
+	return pipeCellSpans(text.slice(line.from, line.to)).map((cell) => ({
+		from: line.from + cell.from,
+		to: line.from + cell.to,
+	}));
 }
 
 function parseMarkdownMatrix(text: string): MatrixParseResult {

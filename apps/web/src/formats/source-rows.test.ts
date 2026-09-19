@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { csvCodec } from "./csv";
 import { jiraCodec } from "./jira";
 import { markdownCodec } from "./markdown";
+import { cellAtPosition } from "./parse";
 import { tsvCodec } from "./tsv";
 import type { ParseResult } from "./types";
 
@@ -110,5 +111,106 @@ describe("semantic source rows", () => {
 			expect(result.ok).toBe(false);
 			expect("rows" in result).toBe(false);
 		}
+	});
+});
+
+// Where each cell sits, and which cell a caret names (#255), read back as text
+// so every expectation says what a reader would point at.
+function cellTexts(text: string, result: ParseResult): string[][] {
+	if (!result.ok) throw new Error("expected a successful parse");
+	return (result.rows ?? []).map((row) =>
+		row.cells.map((cell) => text.slice(cell.from, cell.to)),
+	);
+}
+
+function mappedRows(result: ParseResult) {
+	if (!result.ok) throw new Error("expected a successful parse");
+	return result.rows ?? [];
+}
+
+function positionAt(text: string, marker: string, result: ParseResult) {
+	const offset = text.indexOf(marker);
+	if (offset === -1) throw new Error(`missing marker ${marker}`);
+	return cellAtPosition(mappedRows(result), offset);
+}
+
+describe("semantic source cells", () => {
+	it("gives each Markdown cell its padding and escapes, header first", () => {
+		const text = "| name | a \\| b |\n| --- | --- |\n| Ingrid | Rio |";
+		expect(cellTexts(text, markdownCodec.parse(text))).toEqual([
+			[" name ", " a \\| b "],
+			[" Ingrid ", " Rio "],
+		]);
+	});
+
+	it("gives a quoted CSV cell its quotes, with a delimiter and a line break inside", () => {
+		const text = 'name,note\nIngrid,"a, b\nc"\nPaulo,""""';
+		expect(cellTexts(text, csvCodec.parse(text))).toEqual([
+			["name", "note"],
+			["Ingrid", '"a, b\nc"'],
+			["Paulo", '""""'],
+		]);
+	});
+
+	it("keeps empty CSV and TSV cells apart", () => {
+		const csv = ",,\nIngrid,,";
+		expect(cellTexts(csv, csvCodec.parse(csv))).toEqual([
+			["", "", ""],
+			["Ingrid", "", ""],
+		]);
+		const tsv = "name\tcity\nIngrid\t";
+		expect(cellTexts(tsv, tsvCodec.parse(tsv))).toEqual([
+			["name", "city"],
+			["Ingrid", ""],
+		]);
+	});
+
+	it("places a Jira header cell in the line as written, doubled pipes and all", () => {
+		const text = "||name||a \\| b||\n|Ingrid|Rio|";
+		expect(cellTexts(text, jiraCodec.parse(text))).toEqual([
+			["name", "a \\| b"],
+			["Ingrid", "Rio"],
+		]);
+	});
+
+	it("names the cell under a caret, the header row first", () => {
+		const text =
+			"| name | city |\n| --- | --- |\n| Ingrid | Rio |\n| Paulo | Madrid |";
+		const result = markdownCodec.parse(text);
+		expect(positionAt(text, "city", result)).toEqual({ row: 0, column: 1 });
+		expect(positionAt(text, "Ingrid", result)).toEqual({ row: 1, column: 0 });
+		expect(positionAt(text, "Madrid", result)).toEqual({ row: 2, column: 1 });
+	});
+
+	it("names a Markdown divider's row and no column", () => {
+		const text = "| name |\n| --- |\n| Ingrid |";
+		expect(positionAt(text, "---", markdownCodec.parse(text))).toEqual({
+			row: 0,
+			column: null,
+		});
+	});
+
+	it("gives a caret beside a delimiter the cell on that side", () => {
+		const text = "name,city\nIngrid,Rio";
+		const rows = mappedRows(csvCodec.parse(text));
+		const comma = text.indexOf(",", text.indexOf("Ingrid"));
+		expect(cellAtPosition(rows, comma)).toEqual({ row: 1, column: 0 });
+		expect(cellAtPosition(rows, comma + 1)).toEqual({ row: 1, column: 1 });
+	});
+
+	it("names one row for every line of a quoted multi-line CSV cell", () => {
+		const text = 'name,note\nIngrid,"two\nlines"\nPaulo,one';
+		const result = csvCodec.parse(text);
+		expect(positionAt(text, "lines", result)).toEqual({ row: 1, column: 1 });
+		expect(positionAt(text, "Paulo", result)).toEqual({ row: 2, column: 0 });
+	});
+
+	it("names nothing on a blank line or past the last row", () => {
+		const text = "| name |\n| --- |\n| Ingrid |\n\ntrailing";
+		const result = markdownCodec.parse(text);
+		const rows = mappedRows(result);
+		expect(cellAtPosition(rows, text.indexOf("\n\n") + 1)).toBeNull();
+		expect(positionAt(text, "trailing", result)).toBeNull();
+		expect(cellAtPosition(rows, text.length + 5)).toBeNull();
 	});
 });

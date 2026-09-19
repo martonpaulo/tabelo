@@ -8,6 +8,7 @@ import type {
 	ParseIssue,
 	SourceFieldRange,
 	SourceRowRange,
+	SourceTableRow,
 	TableCodec,
 } from "./types";
 
@@ -25,8 +26,9 @@ const LINE_BREAK = /\r\n|\r|\n/;
 export interface DelimitedMatrix {
 	readonly matrix: string[][];
 	readonly issues: readonly ParseIssue[];
-	// Where each row of the matrix sits in the text (#296).
-	readonly rows: readonly SourceRowRange[];
+	// Where each row of the matrix, and each of its cells, sits in the text
+	// (#296, #255).
+	readonly rows: readonly SourceTableRow[];
 }
 
 interface PapaRun {
@@ -137,6 +139,10 @@ export function parseDelimitedMatrix(
 			rows.pop();
 		}
 	}
+	const mapped = rows.map((row, index) => ({
+		...row,
+		cells: rowCells(text, matrix[index] ?? [], row, effective),
+	}));
 
 	const issues: ParseIssue[] = result.errors.map((error) => {
 		const line = typeof error.row === "number" ? error.row + 1 : undefined;
@@ -155,42 +161,50 @@ export function parseDelimitedMatrix(
 		}
 	});
 
-	return { matrix, issues, rows };
+	return { matrix, issues, rows: mapped };
 }
 
-// Where each field of each row sits, read off the same Papa Parse run that
-// produces the table rather than by searching for delimiters, so a delimiter
-// or a line break inside a quoted value is never a stop (#54). Papa Parse
+// Where each cell of one row sits, read off the same Papa Parse run that
+// produces the table rather than by searching for delimiters, so a delimiter or
+// a line break inside a quoted value is never a boundary (#54, #255). Papa Parse
 // reports each field's value and each row's extent; a field's width in the text
 // follows from its value, since an unquoted field is its value verbatim and a
-// quoted one adds its two quotes and doubles every quote inside. The separator
-// is the declared one, because that is the one a source view parses with
-// (#217). A malformed quote can make a width disagree with the text, so every
-// offset is clamped to its row: a stop can land imprecisely in a broken draft,
-// never outside it.
+// quoted one adds its two quotes and doubles every quote inside. A malformed
+// quote can make a width disagree with the text, so every offset is clamped to
+// its row: a boundary can land imprecisely in a broken draft, never outside it.
+function rowCells(
+	text: string,
+	values: readonly string[],
+	row: SourceRowRange,
+	delimiter: string,
+): SourceRowRange[] {
+	const cells: SourceRowRange[] = [];
+	let at = row.from;
+	for (const value of values) {
+		const start = Math.min(at, row.to);
+		const width =
+			text[start] === '"'
+				? value.length + value.split('"').length - 1 + 2
+				: value.length;
+		const end = Math.min(row.to, start + width);
+		cells.push({ from: start, to: end });
+		at = end + delimiter.length;
+	}
+	return cells;
+}
+
+// A field's content is its cell less the quotes around a quoted value. The
+// separator is the declared one, because that is the one a source view parses
+// with (#217).
 function delimitedFields(text: string, delimiter: string): SourceFieldRange[] {
-	const { matrix, rows } = parseDelimitedMatrix(text, delimiter);
-	const fields: SourceFieldRange[] = [];
-	matrix.forEach((values, index) => {
-		const row = rows[index];
-		if (!row) return;
-		let at = row.from;
-		for (const value of values) {
-			const start = Math.min(at, row.to);
-			if (text[start] === '"') {
-				const quotes = value.split('"').length - 1;
-				const end = Math.min(row.to, start + value.length + quotes + 2);
-				const from = Math.min(start + 1, end);
-				fields.push({ from, to: Math.max(from, end - 1) });
-				at = end + delimiter.length;
-				continue;
-			}
-			const end = Math.min(row.to, start + value.length);
-			fields.push({ from: start, to: end });
-			at = end + delimiter.length;
-		}
-	});
-	return fields;
+	const { rows } = parseDelimitedMatrix(text, delimiter);
+	return rows.flatMap((row) =>
+		row.cells.map((cell) => {
+			if (text[cell.from] !== '"') return cell;
+			const from = Math.min(cell.from + 1, cell.to);
+			return { from, to: Math.max(from, cell.to - 1) };
+		}),
+	);
 }
 
 export function serializeDelimited(

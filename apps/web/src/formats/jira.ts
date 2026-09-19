@@ -11,6 +11,7 @@ import type {
 	MatrixParseResult,
 	ParseIssue,
 	SourceFieldRange,
+	SourceRowRange,
 	TableCodec,
 } from "./types";
 
@@ -191,9 +192,29 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 		ok: true,
 		table: { matrix: [headerCells, ...bodyRows], headerRow: true },
 		warnings: warnings.length > 0 ? warnings : undefined,
-		// One line per row, header included.
-		rows: lineSpans(text).slice(start, end),
+		// One line per row, header included, with its cells read by the same
+		// splitter the rows above were (#255).
+		rows: lineSpans(text)
+			.slice(start, end)
+			.map((line, index) => ({
+				...line,
+				cells: jiraLineCells(text.slice(line.from, line.to), index === 0).map(
+					(cell) => ({ from: line.from + cell.from, to: line.from + cell.to }),
+				),
+			})),
 	};
+}
+
+// Where each cell of one Jira line sits in that line. A header line's doubled
+// pipes are collapsed for the splitter and its spans mapped back, so a header
+// cell is placed in the line the user is editing.
+function jiraLineCells(line: string, header: boolean): SourceRowRange[] {
+	if (!header) return pipeCellSpans(line);
+	const { text: collapsed, offsets } = collapseHeaderPipes(line);
+	return pipeCellSpans(collapsed).map((cell) => ({
+		from: offsets[cell.from] ?? line.length,
+		to: offsets[cell.to] ?? line.length,
+	}));
 }
 
 // The cells of the table block in reading order, header first. Every cell's
@@ -211,17 +232,8 @@ function jiraFields(text: string): SourceFieldRange[] {
 		if (line === undefined || lineFrom === undefined) continue;
 		// Only the block's first line is read as a header, as the parse reads it;
 		// a body line that happens to open with `||` is split like any other.
-		if (index === found.start && isJiraHeaderLine(line)) {
-			const { text: collapsed, offsets } = collapseHeaderPipes(line);
-			for (const cell of pipeCellSpans(collapsed)) {
-				fields.push({
-					from: lineFrom + (offsets[cell.from] ?? line.length),
-					to: lineFrom + (offsets[cell.to] ?? line.length),
-				});
-			}
-			continue;
-		}
-		for (const cell of pipeCellSpans(line)) {
+		const header = index === found.start && isJiraHeaderLine(line);
+		for (const cell of jiraLineCells(line, header)) {
 			fields.push({ from: lineFrom + cell.from, to: lineFrom + cell.to });
 		}
 	}

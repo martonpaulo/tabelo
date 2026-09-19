@@ -87,7 +87,7 @@ import type {
 	OutputOptions,
 	ParseIssue,
 	PreconditionFailure,
-	SourceRowRange,
+	SourceTableRow,
 } from "@/formats/types";
 import { defaultOutputOptions } from "@/formats/types";
 import {
@@ -184,7 +184,7 @@ export interface Draft {
 	// Where the parsed table's rows sit in `text`, for the source view's row
 	// separators (#296). Empty unless the text parses, so an invalid draft never
 	// shows structure it does not have. Derived from the parse, never persisted.
-	readonly rows: readonly SourceRowRange[];
+	readonly rows: readonly SourceTableRow[];
 }
 
 // A pane change the user asked for that would destroy text the document has

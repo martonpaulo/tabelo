@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo } from "react";
 import { copy } from "@/copy/copy";
-import type { SourceRowRange } from "@/formats/types";
+import type { SourceTableRow } from "@/formats/types";
 import { usePreferences } from "@/preferences/use-preferences";
 import { textForView, useTabeloStore } from "@/state/store";
 import { usePaneAssistance } from "@/ui/workspace/use-pane-assistance";
@@ -16,7 +16,7 @@ import { sourceFeedbackIds } from "./source-feedback";
 // TSV, HTML, Jira, and JSON is entirely described by the registry: codec, highlight
 // language, editability, so there is nothing here that names a format.
 
-const NO_ROWS: readonly SourceRowRange[] = [];
+const NO_ROWS: readonly SourceTableRow[] = [];
 
 interface SourceViewProps {
 	readonly paneId: string;
@@ -63,7 +63,7 @@ export default function SourceView({
 	// its grace period, shows no structure. A projection is this codec's own
 	// output of the document, parsed once per document change, and only when
 	// the format declares it can map rows at all.
-	const rows = useMemo((): readonly SourceRowRange[] => {
+	const rows = useMemo((): readonly SourceTableRow[] => {
 		if (draft) return draft.status === "clean" ? draft.rows : NO_ROWS;
 		const codec = view.codec;
 		if (!codec?.mapsSourceRows || !projected.ok) return NO_ROWS;

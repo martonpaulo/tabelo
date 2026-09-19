@@ -1,5 +1,10 @@
 import { documentFromMatrix } from "@/core/document";
-import type { MatrixParseResult, ParseResult, SourceRowRange } from "./types";
+import type {
+	MatrixParseResult,
+	ParseResult,
+	SourceRowRange,
+	SourceTableRow,
+} from "./types";
 
 export function toDocumentParseResult(result: MatrixParseResult): ParseResult {
 	if (!result.ok) return result;
@@ -80,4 +85,31 @@ export function pipeCellSpans(line: string): SourceRowRange[] {
 	if (endedOnPipe && spans.length > 0) spans.pop();
 
 	return spans;
+}
+
+// The table row and column a source position names, from the rows a codec's
+// parse mapped (#255). Format-neutral: every format that maps rows reads a
+// position through this one function, so none of them can disagree about which
+// cell a caret is in. A position at either end of a row or cell belongs to it,
+// so a caret just before a delimiter names the cell it closes and one just
+// after it names the cell it opens. A position outside a row's outer pipes or in
+// a Markdown alignment divider names the row and no column; a blank line, or
+// anything before the first row or after the last, names nothing. `row` counts
+// the header as 0.
+export interface SourcePosition {
+	readonly row: number;
+	readonly column: number | null;
+}
+
+export function cellAtPosition(
+	rows: readonly SourceTableRow[],
+	offset: number,
+): SourcePosition | null {
+	const row = rows.findIndex(({ from, to }) => offset >= from && offset <= to);
+	const found = rows[row];
+	if (!found) return null;
+	const column = found.cells.findIndex(
+		({ from, to }) => offset >= from && offset <= to,
+	);
+	return { row, column: column === -1 ? null : column };
 }

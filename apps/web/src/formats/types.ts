@@ -62,6 +62,18 @@ export interface SourceRowRange {
 	readonly to: number;
 }
 
+// One table row as the parse found it in the source, with where each of its
+// cells sits (#255). A cell runs from just after the delimiter before it to just
+// before the delimiter after it, so it holds the cell's whole spelling: a
+// Markdown cell's padding, a CSV field's quotes, every escape. Cells are in
+// column order and never overlap, and a row holds as many as its line spells,
+// which in a ragged draft can differ from the table's column count. A Markdown
+// header's cells are on its first line; its alignment divider names the row
+// and no column.
+export interface SourceTableRow extends SourceRowRange {
+	readonly cells: readonly SourceRowRange[];
+}
+
 // Where one field's content sits in source text, as UTF-16 offsets, for the
 // source views that move between fields with Tab (#54). `from` is where typing
 // into the field begins: inside a quoted delimited field, after a Markdown
@@ -104,7 +116,7 @@ export type ParseResult =
 			readonly document: TableDocument;
 			readonly warnings?: readonly ParseIssue[];
 			// One per table row, header first, when the format can map them.
-			readonly rows?: readonly SourceRowRange[];
+			readonly rows?: readonly SourceTableRow[];
 	  }
 	| { readonly ok: false; readonly issues: readonly ParseIssue[] };
 
@@ -122,8 +134,8 @@ export type MatrixParseResult =
 			readonly ok: true;
 			readonly table: ParsedTable;
 			readonly warnings?: readonly ParseIssue[];
-			// One per matrix row: see SourceRowRange.
-			readonly rows?: readonly SourceRowRange[];
+			// One per matrix row: see SourceTableRow.
+			readonly rows?: readonly SourceTableRow[];
 	  }
 	| { readonly ok: false; readonly issues: readonly ParseIssue[] };
 
@@ -191,10 +203,14 @@ export interface TableCodec {
 	// reads back this codec's own output. Presentation reads it to place
 	// empty-value markers; parsing never consults it.
 	readonly fieldSeparator?: string;
-	// Whether a successful parse returns where each row sits in the source
-	// (#296). Declared so a source view parses a projection for its row
-	// separators only when that parse can answer; HTML, Records, and JSON have
-	// no reliable row boundary and do not declare it.
+	// Whether a successful parse returns where each row, and each cell of it,
+	// sits in the source (#296, #255). This is the codec's position mapping: a
+	// source view reads it to name the table row and column under the caret,
+	// which is what lets a structural command act from the text. Declared only
+	// where the mapping is exact, because a command on the wrong row is silent
+	// corruption that looks like success. HTML, Records, and JSON have no
+	// reliable row boundary and do not declare it, and their panes offer no
+	// structural commands. See docs/adr/0005.
 	readonly mapsSourceRows?: boolean;
 	// The fields of `text` in reading order, header first, for the formats whose
 	// syntax is a grid of delimited fields (#54). Tolerant by design: a draft

@@ -76,6 +76,27 @@ opening a new row with `| ` on Enter at the end of a row below the divider
 (Decided on #391). No other codec declares one, and adding one is a codec
 change, not an editor change.
 
+A codec may declare `mapsSourceRows`: its successful parse then also returns
+where each table row sits in the source, header first, and where each cell of
+that row sits, from the same scan that read the values (#296, #255). This is
+the codec's position mapping. One format-neutral function turns a source
+position into the row and column it names, so a structural command can act on
+the row under the caret from a source pane, and nothing outside the codec
+tokenizes the text again. A cell's range is its whole spelling between two
+delimiters, padding, quotes, and escapes included; a Markdown alignment
+divider names its header row and no column. Markdown, CSV, TSV, and Jira
+declare it, because one table row is one line there, or one quoted run of
+lines that the parser itself delimits. HTML, JSON, and Records do not: a row is
+an element, an object, or one field per line whose layout the text does not
+fix, and a mapping that is only nearly right would move a row the user did not
+mean, which is corruption that looks like success. Their panes offer no
+structural commands, and that absence is the complete design rather than a gap.
+A pane never maps a draft that does not parse: the text has no rows the
+document has read, so the commands refuse rather than act on the last valid
+parse. One flag covers rows and cells, because every format that can bound a
+row exactly can bound its cells with the scanner that split it. Decided on
+#255.
+
 **A view registry** holds what the workspace can display. A `ViewDefinition`
 adds presentation to a codec: a label, a description, an icon, a `kind`
 (`grid`, `source`, or `preview`), a highlight language named as a string, a
