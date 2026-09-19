@@ -7,6 +7,8 @@ import type { TabeloPage } from "./helpers";
 // A source pane's display follows the global default in Settings until the
 // pane makes its own choice, and that choice is kept as a choice: a pane told
 // to stay unwrapped does not start wrapping because the default did (#276).
+// A pasted table opens in the TSV pane beside the grid, so TSV is the pane that
+// follows the default here.
 
 const first = samplePerson(0);
 const second = samplePerson(1);
@@ -33,14 +35,14 @@ async function setWrapDefault(page: Page, wrap: boolean): Promise<void> {
 	await expect(dialog).toBeHidden();
 }
 
-async function wrapItem(tabelo: TabeloPage, view: "markdown" | "csv") {
+async function wrapItem(tabelo: TabeloPage, view: "tsv" | "csv") {
 	const menu = await tabelo.openPaneMenu(view);
 	return menu.getByRole("menuitemcheckbox", {
 		name: copy.workspace.wrapSource,
 	});
 }
 
-async function closePaneMenu(tabelo: TabeloPage, view: "markdown" | "csv") {
+async function closePaneMenu(tabelo: TabeloPage, view: "tsv" | "csv") {
 	await tabelo.paneMenuTrigger(view).click();
 	await expect(tabelo.page.getByRole("menu")).toHaveCount(0);
 }
@@ -56,10 +58,10 @@ test("a changed default moves only the panes that follow it, across a reload", a
 			[second.name, second.city].join("\t"),
 		].join("\n"),
 	);
-	await tabelo.addViewBySplit("markdown", "bottom", "csv");
-	const markdown = tabelo.pane("markdown");
+	await tabelo.addViewBySplit("tsv", "bottom", "csv");
+	const tsv = tabelo.pane("tsv");
 	const csv = tabelo.pane("csv");
-	await expect.poll(() => whiteSpace(markdown)).toBe("pre");
+	await expect.poll(() => whiteSpace(tsv)).toBe("pre");
 	await expect.poll(() => whiteSpace(csv)).toBe("pre");
 
 	// The CSV pane says "off" for itself: on, then off again. It shows what it
@@ -72,23 +74,23 @@ test("a changed default moves only the panes that follow it, across a reload", a
 	await closePaneMenu(tabelo, "csv");
 
 	await setWrapDefault(page, true);
-	await expect.poll(() => whiteSpace(markdown)).toBe("break-spaces");
+	await expect.poll(() => whiteSpace(tsv)).toBe("break-spaces");
 	await expect.poll(() => whiteSpace(csv)).toBe("pre");
 
 	await page.reload();
 	await expect(tabelo.workspace).toBeVisible();
-	await expect.poll(() => whiteSpace(markdown)).toBe("break-spaces");
+	await expect.poll(() => whiteSpace(tsv)).toBe("break-spaces");
 	await expect.poll(() => whiteSpace(csv)).toBe("pre");
-	item = await wrapItem(tabelo, "markdown");
+	item = await wrapItem(tabelo, "tsv");
 	await expect(item).toBeChecked();
-	await closePaneMenu(tabelo, "markdown");
+	await closePaneMenu(tabelo, "tsv");
 	item = await wrapItem(tabelo, "csv");
 	await expect(item).not.toBeChecked();
 	await closePaneMenu(tabelo, "csv");
 
 	// And back: the following pane moves again, the choosing one stays put.
 	await setWrapDefault(page, false);
-	await expect.poll(() => whiteSpace(markdown)).toBe("pre");
+	await expect.poll(() => whiteSpace(tsv)).toBe("pre");
 	await expect.poll(() => whiteSpace(csv)).toBe("pre");
 });
 
@@ -101,17 +103,17 @@ test("a pane's own choice survives a default that agrees and then disagrees", as
 			"\n",
 		),
 	);
-	const markdown = tabelo.pane("markdown");
+	const tsv = tabelo.pane("tsv");
 
-	const item = await wrapItem(tabelo, "markdown");
+	const item = await wrapItem(tabelo, "tsv");
 	await item.click();
 	await expect(item).toBeChecked();
-	await closePaneMenu(tabelo, "markdown");
-	await expect.poll(() => whiteSpace(markdown)).toBe("break-spaces");
+	await closePaneMenu(tabelo, "tsv");
+	await expect.poll(() => whiteSpace(tsv)).toBe("break-spaces");
 
 	// The default comes round to the pane's value and goes away again; the
 	// pane chose, so it keeps wrapping throughout.
 	await setWrapDefault(page, true);
 	await setWrapDefault(page, false);
-	await expect.poll(() => whiteSpace(markdown)).toBe("break-spaces");
+	await expect.poll(() => whiteSpace(tsv)).toBe("break-spaces");
 });

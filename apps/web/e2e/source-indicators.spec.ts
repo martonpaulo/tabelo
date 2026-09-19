@@ -260,13 +260,11 @@ test("a switch turns off exactly the marker it names", async ({
 	await setIndicators(page, { tabs: false });
 	await expect
 		.poll(() =>
-			pane.evaluate(
-				(element) =>
-					getComputedStyle(
-						element.querySelector(".cm-highlightTab") as Element,
-						"::before",
-					).content,
-			),
+			// No tab span at all is as unmarked as a span painting nothing.
+			pane.evaluate((element) => {
+				const span = element.querySelector(".cm-highlightTab");
+				return span ? getComputedStyle(span, "::before").content : "none";
+			}),
 		)
 		.toBe("none");
 	// The empty placeholder is a separate choice and is untouched by that one.
