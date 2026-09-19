@@ -18,6 +18,7 @@ import {
 	SingleSelectionOption,
 	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
+import { useContentWhileOpen } from "@/ui/primitives/use-content-while-open";
 import { type LayoutId, layoutsForPaneCount } from "@/workspace/layout";
 import { LayoutGlyph } from "./layout-glyph";
 
@@ -47,51 +48,54 @@ export function LayoutDialog({
 		onOpenChange(false);
 	};
 
+	const content = useContentWhileOpen(
+		open,
+		<DialogContent
+			aria-labelledby={titleId}
+			aria-describedby={hintId}
+			width="wide"
+			className={singleSelectionDialogContentStyles}
+		>
+			<DialogHeader>
+				<DialogTitle id={titleId}>{copy.workspace.layout}</DialogTitle>
+				<DialogDescription id={hintId} className="text-sm">
+					{copy.workspace.layoutHint}
+				</DialogDescription>
+			</DialogHeader>
+
+			<SingleSelectionList
+				aria-label={copy.workspace.layout}
+				value={selected}
+				onValueChange={(value) => setSelected(value as LayoutId)}
+			>
+				{presets.map((preset) => (
+					<SingleSelectionOption
+						key={preset.id}
+						value={preset.id}
+						selected={selected === preset.id}
+						icon={<LayoutGlyph preset={preset} />}
+						{...copy.layouts[preset.id]}
+					/>
+				))}
+			</SingleSelectionList>
+
+			<DialogActions>
+				<DialogCancel>{copy.actions.cancel}</DialogCancel>
+				<DialogConfirm
+					disabledReason={
+						selected === layout ? copy.disabled.layoutAlreadyApplied : undefined
+					}
+					onClick={apply}
+				>
+					{copy.workspace.applyLayout}
+				</DialogConfirm>
+			</DialogActions>
+		</DialogContent>,
+	);
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent
-				aria-labelledby={titleId}
-				aria-describedby={hintId}
-				width="wide"
-				className={singleSelectionDialogContentStyles}
-			>
-				<DialogHeader>
-					<DialogTitle id={titleId}>{copy.workspace.layout}</DialogTitle>
-					<DialogDescription id={hintId} className="text-sm">
-						{copy.workspace.layoutHint}
-					</DialogDescription>
-				</DialogHeader>
-
-				<SingleSelectionList
-					aria-label={copy.workspace.layout}
-					value={selected}
-					onValueChange={(value) => setSelected(value as LayoutId)}
-				>
-					{presets.map((preset) => (
-						<SingleSelectionOption
-							key={preset.id}
-							value={preset.id}
-							selected={selected === preset.id}
-							icon={<LayoutGlyph preset={preset} />}
-							{...copy.layouts[preset.id]}
-						/>
-					))}
-				</SingleSelectionList>
-
-				<DialogActions>
-					<DialogCancel>{copy.actions.cancel}</DialogCancel>
-					<DialogConfirm
-						disabledReason={
-							selected === layout
-								? copy.disabled.layoutAlreadyApplied
-								: undefined
-						}
-						onClick={apply}
-					>
-						{copy.workspace.applyLayout}
-					</DialogConfirm>
-				</DialogActions>
-			</DialogContent>
+			{content}
 		</Dialog>
 	);
 }

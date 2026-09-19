@@ -17,6 +17,7 @@ import {
 	DialogCancel,
 	DialogConfirm,
 } from "@/ui/primitives/dialog-buttons";
+import { useContentWhileOpen } from "@/ui/primitives/use-content-while-open";
 
 type NameError = "empty" | "too-long" | "save" | null;
 
@@ -83,57 +84,62 @@ export function RenameTableDialog({
 					? copy.tableName.saveError
 					: null;
 
+	const content = useContentWhileOpen(
+		open,
+		<DialogContent
+			aria-labelledby={titleId}
+			aria-describedby={descriptionId}
+			// A form dialog hands focus to its first field through the popup's
+			// own focus manager, never React's `autoFocus`: that fires on mount,
+			// before the menu that opened the dialog returns focus to its
+			// trigger, and typing then lands outside the dialog.
+			initialFocus={inputRef}
+		>
+			<form className="grid gap-4" onSubmit={submit}>
+				<DialogHeader>
+					<DialogTitle id={titleId}>{copy.actions.renameTable}</DialogTitle>
+					<DialogDescription id={descriptionId}>
+						{copy.tableName.description}
+					</DialogDescription>
+				</DialogHeader>
+
+				<div className="grid gap-2">
+					<Label htmlFor={inputId}>{copy.tableName.label}</Label>
+					<Input
+						ref={inputRef}
+						id={inputId}
+						value={draft}
+						placeholder={DEFAULT_TABLE_NAME}
+						aria-invalid={errorMessage ? true : undefined}
+						aria-describedby={errorMessage ? errorId : undefined}
+						onChange={(event) => {
+							setDraft(event.target.value);
+							setError(null);
+						}}
+					/>
+					{errorMessage ? (
+						<p id={errorId} className="text-destructive text-sm" role="alert">
+							{errorMessage}
+						</p>
+					) : null}
+				</div>
+
+				<DialogActions>
+					<DialogCancel>{copy.actions.cancel}</DialogCancel>
+					<DialogConfirm
+						type="submit"
+						disabledReason={unchanged ? copy.tableName.unchanged : undefined}
+					>
+						{copy.tableName.confirm}
+					</DialogConfirm>
+				</DialogActions>
+			</form>
+		</DialogContent>,
+	);
+
 	return (
 		<Dialog open={open} onOpenChange={close}>
-			<DialogContent
-				aria-labelledby={titleId}
-				aria-describedby={descriptionId}
-				// A form dialog hands focus to its first field through the popup's
-				// own focus manager, never React's `autoFocus`: that fires on mount,
-				// before the menu that opened the dialog returns focus to its
-				// trigger, and typing then lands outside the dialog.
-				initialFocus={inputRef}
-			>
-				<form className="grid gap-4" onSubmit={submit}>
-					<DialogHeader>
-						<DialogTitle id={titleId}>{copy.actions.renameTable}</DialogTitle>
-						<DialogDescription id={descriptionId}>
-							{copy.tableName.description}
-						</DialogDescription>
-					</DialogHeader>
-
-					<div className="grid gap-2">
-						<Label htmlFor={inputId}>{copy.tableName.label}</Label>
-						<Input
-							ref={inputRef}
-							id={inputId}
-							value={draft}
-							placeholder={DEFAULT_TABLE_NAME}
-							aria-invalid={errorMessage ? true : undefined}
-							aria-describedby={errorMessage ? errorId : undefined}
-							onChange={(event) => {
-								setDraft(event.target.value);
-								setError(null);
-							}}
-						/>
-						{errorMessage ? (
-							<p id={errorId} className="text-destructive text-sm" role="alert">
-								{errorMessage}
-							</p>
-						) : null}
-					</div>
-
-					<DialogActions>
-						<DialogCancel>{copy.actions.cancel}</DialogCancel>
-						<DialogConfirm
-							type="submit"
-							disabledReason={unchanged ? copy.tableName.unchanged : undefined}
-						>
-							{copy.tableName.confirm}
-						</DialogConfirm>
-					</DialogActions>
-				</form>
-			</DialogContent>
+			{content}
 		</Dialog>
 	);
 }
