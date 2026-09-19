@@ -172,7 +172,8 @@ number `1`, in accordance with ADR 0008.
 | `--value-number` | `text-value-number` | JSON numbers and carried number cells | Tabular numerals; 600 weight in sources only. A grid cell stays at the string weight and is told apart by the value typeface and its accessible type name, because weight in the grid belongs to the header row and a selected axis label (owner, 2026-09-19) |
 | `--value-boolean` | `text-value-boolean` | JSON booleans and carried boolean cells | Upright; 600 weight in sources only, the grid cell at the string weight like a number (owner, 2026-09-19) |
 | `--value-null` | `text-value-null` | JSON null and carried null cells | Literal shape in sources; grid type presentation also uses italics |
-| `--syntax-notation` | `text-syntax-notation` | Element names, escapes, entities, and other notation | Token shape and grammar position |
+| `--syntax-notation` | `text-syntax-notation` | Escapes, entities, and other notation | Token shape and grammar position |
+| `--syntax-tag` | `text-syntax-tag` | HTML element names: a calm lilac of their own, so the notation tone marks only escapes in an HTML pane (owner, 2026-09-19) | Token shape and grammar position |
 | `--syntax-punctuation` | (source views only) | Brackets, pipes, separators, the Markdown alignment divider, and markup markers | Grammar position; quieter than every value tone by design |
 | `--syntax-link` | `text-syntax-link` | Links, URLs, and autolinks | Underline on the link text and the address shape |
 

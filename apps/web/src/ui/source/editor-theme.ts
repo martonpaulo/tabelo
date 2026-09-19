@@ -545,15 +545,19 @@ export const highlightStyle = HighlightStyle.define([
 	},
 	{ tag: tags.null, color: "var(--value-null)" },
 	// A character standing in for one it cannot spell directly: a Markdown or
-	// Jira backslash escape, an HTML entity, a Markdown task marker, or an HTML
-	// element name. Its token shape and grammar position keep notation distinct
-	// from close value hues and in forced-colour mode. This treatment is
-	// deliberately not `--status-warning`: that token means one thing, a source
-	// that parsed with a non-blocking warning, and an escaped pipe is not one.
+	// Jira backslash escape, an HTML entity, or a Markdown task marker. Its token
+	// shape and grammar position keep notation distinct from close value hues
+	// and in forced-colour mode. This treatment is deliberately not
+	// `--status-warning`: that token means one thing, a source that parsed with
+	// a non-blocking warning, and an escaped pipe is not one.
 	{
-		tag: [tags.escape, tags.character, tags.atom, tags.tagName],
+		tag: [tags.escape, tags.character, tags.atom],
 		color: "var(--syntax-notation)",
 	},
+	// An HTML element name is structure an HTML pane is almost made of, so it
+	// takes a calm hue of its own and leaves the notation colour to the escapes
+	// that stand out against it (owner, 2026-09-19).
+	{ tag: tags.tagName, color: "var(--syntax-tag)" },
 	// An attribute name is tag machinery, not content, so it recedes with the
 	// brackets around it rather than competing with the element name.
 	{ tag: tags.attributeName, color: "var(--muted-foreground)" },
