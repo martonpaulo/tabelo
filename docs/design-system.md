@@ -871,8 +871,11 @@ Tabelo surface. Its job is to answer "what will this table look like once it
 leaves Tabelo", so it stays close to what a plain document shows and to what the
 copy path produces. Decided on #77.
 
-- **No card.** The pane already supplies the surface, radius, and outline. Do not
-  wrap the table in a second one.
+- **No card.** The pane already supplies the surface. Do not wrap the table in
+  a second container. The table itself is drawn like the tables in Claude's
+  answers (owner, 2026-09-19): one rounded hairline around it, the header on
+  the quiet `--surface-header` band in medium weight, and row lines only, with
+  no vertical dividers.
 - **No zebra striping.** An alternating tint encodes nothing about the row, so it
   is decoration under §1, and it borrows the header surface for rows that are not
   headers.

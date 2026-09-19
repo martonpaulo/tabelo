@@ -66,16 +66,19 @@ export default function HtmlPreview() {
 					// stretched across a wide pane, and a wide one wraps rather than
 					// forcing the reader sideways. The scroller still shows the overflow
 					// that content which cannot wrap produces.
-					className="w-auto max-w-full border-collapse text-content"
+					// Drawn like the tables in Claude's own answers (owner,
+					// 2026-09-19): one rounded hairline around the table, a quiet
+					// header band, and row lines only, no vertical dividers.
+					className="w-auto max-w-full border-separate border-spacing-0 overflow-hidden rounded-interactive border border-line-subtle text-content"
 				>
 					<thead>
-						<tr className="bg-surface-table-header">
+						<tr className="bg-surface-header">
 							{visibleColumns.map((column) => (
 								<th
 									key={column.id}
 									scope="col"
 									className={cn(
-										"border border-line-subtle px-3 py-1.5 align-top font-semibold",
+										"px-4 py-2 align-top font-medium",
 										alignClass[column.align],
 									)}
 								>
@@ -119,7 +122,7 @@ const PreviewRow = memo(function PreviewRow({ row, columns }: PreviewRowProps) {
 				<td
 					key={column.id}
 					className={cn(
-						"border border-line-subtle px-3 py-1.5 align-top",
+						"border-line-subtle border-t px-4 py-2 align-top",
 						alignClass[column.align],
 					)}
 				>
