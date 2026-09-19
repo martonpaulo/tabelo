@@ -284,8 +284,9 @@ parent-relative escape; they detect neither cycles nor orphan modules.
   sync-originated transactions never re-trigger a parse.
 - **History**: the document timeline and its interaction with the text editor's
   local history.
-- **Persistence**: one current, versioned `localStorage` schema, plus an
-  explicit forward-only migration chain from every version that has shipped.
+- **Persistence**: one current, versioned `localStorage` schema per stored
+  key, the document and the preferences, each with its own explicit
+  forward-only migration chain from every version that has shipped.
   Each step transforms only what changed, validates its result with Zod, and
   carries a stored fixture of the payload it migrates. A payload that fails to
   migrate or to validate is preserved raw and reported, never coerced into the
@@ -300,8 +301,15 @@ parent-relative escape; they detect neither cycles nor orphan modules.
   have different owners and compatibility windows, and validated at paste like
   any other untrusted input. It carries what the interoperable flavours cannot
   spell and never overrides what they visibly say.
-- **Visual grid**: selection, focus, keyboard model, and rendering. Presentation
-  only; it calls table operations rather than mutating the document itself.
+- **Visual grid**: rendering, focus, and pointer and keyboard wiring.
+  Presentation only; it calls table operations rather than mutating the
+  document itself. Its interaction model (selection coordinates, jump
+  navigation, matching cells) is pure, so it lives with the core under the
+  core's framework-free rule and is tested there.
+- **Source and preview views**: the lazily loaded source editor, its language
+  and structural-assistance adapters, and the rendered preview. They read the
+  view registry and the codecs and never own format syntax; every editor
+  transaction carries the origin annotation synchronization requires.
 
 A cell value is a string, a number, a boolean, or null, and its type is always
 carried rather than derived: a typed source stated it or the user chose it.
