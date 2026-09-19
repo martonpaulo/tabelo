@@ -140,10 +140,13 @@ vocabulary and `docs/adr/` for the reasoning.
 - **Escaping is reversible in every codec that owns it.** Markdown escapes `|`
   as `\|` and newlines as `<br>`, and encodes meaningful boundary whitespace
   before adding readable alignment padding. Jira escapes pipes, newlines,
-  backslashes, and literal ampersands. Each parser reverses only the grammar its
-  serializer emits, exactly once and without recursive decoding. A value must
-  survive a round trip through either codec byte-exact. Never flatten or drop
-  content to make serialized text look cleaner.
+  backslashes, and literal ampersands. Both also escape an inline-syntax marker
+  exactly where their own grammar could read it as syntax, so plain text keeps
+  its bytes unless it holds something that parses (`docs/adr/0011`). Each
+  parser reverses only the grammar its serializer emits, exactly once and
+  without recursive decoding. A value must survive a round trip through either
+  codec byte-exact. Never flatten or drop content to make serialized text look
+  cleaner.
 - **Every other view holds the last valid parse and stays editable.** When a
   draft does not parse, keep displaying the last successful parse everywhere
   else, surface the error in the owning pane, and leave the grid fully editable.

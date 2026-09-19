@@ -27,6 +27,11 @@ The Markdown serializer escapes rather than flattens:
   like a character reference
 - a literal `\|` or `<br>` already present in a cell value is itself escaped so
   the transformation stays reversible
+- amended by ADR 0011 (#306): a character the inline syntax could read where
+  it stands (a doubled `*` or `~`, an `_` not inside a word, a backtick, `[`,
+  and a literal `<u>`) is written with a backslash, and a letter or digit
+  beside an italic delimiter as a decimal reference. Text holding none of them
+  is written exactly as before.
 
 The Markdown parser removes alignment padding, then reverses the emitted grammar
 in one non-recursive pass. Decoded output is never fed back into that decoder,

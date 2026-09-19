@@ -155,6 +155,7 @@ reversible implementation choice does not belong here.
 | Column width commands | Pointer resize, Fit column to content, and a keyboard resize | design system §9 | #81 |
 | Cell types | Carried, never inferred from appearance | ADR 0008 | #147 |
 | Inline formatting | Normalized inline content (marks, links, images) is document data in headers and textual cells, never marker text; `cellText` is its one projection; native values are never formatted | ADR 0011 | #306 |
+| Inline syntax per format | Markdown, HTML, and Jira spell inline content in one canonical syntax each and never infer it from ordinary text; HTML input is untrusted; CSV, TSV, JSON, and Records disclose the projection instead; only https images load and only web and email links open | ADR 0011 | #306 |
 | Column type change | Changing a column's expected type converts its cells; cells that cannot follow without loss ask first, with Convert the rest or Cancel; one Undo | ADR 0008 | #392 |
 | JSON shape | An array of row objects with explicit serializer preconditions | `CONTEXT.md` | #42, #145 |
 | Source position mapping | A codec declares whether its parse maps each row and cell to source offsets; Markdown, CSV, TSV, and Jira do, HTML, JSON, and Records do not, and an unparsed draft maps nothing | ADR 0005 | #255 |

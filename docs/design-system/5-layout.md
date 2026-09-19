@@ -68,7 +68,11 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
   failure belongs to the document the whole workspace is showing, and the same
   message repeated in four panes would be four interruptions. A source pane's
   own parse diagnostics are not notices; they decorate the text and use
-  tooltips, as above.
+  tooltips, as above. The plain projection disclosure (#306) follows the same
+  rule: one warning names every open view that shows a formatted table as
+  text, rather than one per pane, and a dismissal holds until another such
+  view opens. The download chooser repeats it inline, below the formats, for a
+  chosen format that cannot spell the table's formatting.
 - There is no app header. One floating action button is the document-level
   command surface at every viewport width. It rests flush with the workspace, with no surface, border, or shadow of its
   own, and takes the floating surface and shadow only on hover (2ba36ed,

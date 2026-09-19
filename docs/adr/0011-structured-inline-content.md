@@ -91,6 +91,63 @@ clipboard payload moves to version 2 on its own schedule: version 1 is still
 read, since every value it holds is valid in version 2, and its fingerprint
 tags formatted text apart from the plain text it reads as.
 
+**Codec syntax** (#306, delivery slice 2). Markdown, HTML, and Jira declare
+`inlineContent: "carried"` and write exactly the syntax of the issue's view
+contract:
+
+| Feature | Markdown | HTML | Jira |
+| :--- | :--- | :--- | :--- |
+| Bold | `**text**` | `<strong>` | `*text*` |
+| Italic | `_text_` | `<em>` | `_text_` |
+| Underline | `<u>text</u>` | `<u>` | `+text+` |
+| Strikethrough | `~~text~~` | `<s>` | `-text-` |
+| Code | `` `text` `` | `<code>` | `{{text}}` |
+| Link | `[label](url)` | `<a href>` | `[label\|url]` |
+| Image | `![alt](url)` | `<img src alt>` | `!url\|alt=alt!` |
+
+- *Reading never infers.* A delimiter pairs only with a closer of its own mark
+  and content between them, by a reduced form of the CommonMark emphasis
+  algorithm, so every span nests properly. One that does not complete its
+  construct is literal text exactly as written. Markdown reads a single `*`
+  or `~` as text and, as GFM does, an `_` with a letter or digit on its outer
+  side; Jira reads a marker only at the start and end of a word, as its
+  renderer does, so `2020-01-01` and `snake_case` stay text.
+- *Writing escapes only what would parse.* Plain text keeps its bytes unless
+  a marker in it could pair where it stands, which is then escaped with a
+  backslash. Whitespace a mark must not start or end on, and a letter or digit
+  a delimiter must not touch (intraword italic in Markdown, a mark inside a
+  word in Jira), are written as decimal references, which both grammars now
+  read alongside the whitespace references Markdown already read. Code closes
+  every other mark before it, since a renderer would otherwise draw the code
+  formatted; an image leaves marks open, since no renderer draws one on an
+  image. Writing what was read gives the same bytes, so switching views never
+  accumulates normalization.
+- *Jira reads links and images before it splits a row*, as Jira does, so the
+  row splitter skips the pipes inside `[label|url]` and `!url|alt=...!`. One
+  function says where each construct ends, for the splitter and the parser.
+- *HTML is untrusted and read only as a tree.* `<b>`, `<i>`, and `<strike>`
+  normalize to bold, italic, and strikethrough. Declined formatting (`<sup>`,
+  `<mark>`, `<del>`, and the rest of the issue's non-goals), a mark around
+  code, and an image inside a link keep their text or image and add a
+  warning. An image without alternative text, or embedded content such as
+  `<video>` or `<svg>`, refuses the parse, because keeping the text would lose
+  what the reader sees. Script and style text never becomes a cell. The
+  clipboard's public HTML flavour writes cells through the same writer.
+
+**Rendering.** The rendered preview builds React elements from the validated
+nodes, never markup from authored text. Only `https:`, `http:`, and `mailto:`
+links activate; a web link opens in a separate browsing context with
+`noopener` and `noreferrer`, and any other address stays visible, inert, and
+explained. Only `https:` images load, lazily, with no referrer, capped by one
+shared token; any other, or one that fails, shows its alternative text in a
+stable unavailable state.
+
+**Disclosure.** CSV, TSV, JSON, and Records keep declaring `"unexpressed"`.
+While the document holds structure and one of their views is open for
+editing, an app-level notice says it shows formatting as plain text and that
+only an edited cell loses it. The download chooser says the same beside a
+chosen format before the file is written.
+
 ## Rejected alternatives
 
 - **Keep marker strings canonical.** It makes one format's syntax the model,
@@ -106,16 +163,30 @@ tags formatted text apart from the plain text it reads as.
 - **Offsets that count an image as one unit.** Closer to an editor's caret
   model, and it gives find and the projection a second coordinate system. The
   projection's own offsets keep one.
+- **Escape every marker character in plain text.** Simple and always safe,
+  and it rewrites every Markdown and Jira export holding `snake_case`, a date,
+  or a negative number for no reader's benefit. Escaping only what could
+  parse keeps those bytes.
+- **Accept `*text*` as Markdown italic.** GFM does, and then every `2*3*4`
+  already written by Tabelo would read back formatted. Only the canonical
+  spellings are syntax.
 
 ## Consequences
 
-The model lands dormant (#306, delivery slice 1). No codec parses or emits
-formatting yet, and every codec declares `inlineContent: "unexpressed"`, so a
-formatted value can only arrive through storage or a same-app paste and every
-view shows its projection. Reconciliation already keeps that structure through
-every source view, and a grid commit that leaves the projection unchanged
-writes nothing. Codec syntax, rendering, and the editor arrive in later
-slices, each flipping only its own capability.
+The model landed dormant in delivery slice 1. Slice 2 gives it codec syntax
+and rendering: Markdown, HTML, and Jira read and write it, the rendered
+preview shows it, and the plain formats disclose what they cannot spell. The
+grid still shows the projection until the Visual Table editor arrives, and
+the Copy as menu does not disclose yet (an open question on #306).
+Reconciliation keeps structure through every plain view, and a grid commit
+that leaves the projection unchanged writes nothing.
+
+Importing Markdown or Jira now reads their inline syntax: a hand-written
+`**x**` becomes bold, and a backslash escape such as `\*` reads as the
+character it protects. A file Tabelo exported before slice 2 wrote markers
+unescaped, so re-importing one reads a `**x**` in it as bold, which is how
+GitHub and Jira already rendered it. A stored document does not change; a
+stored source draft is read by the new grammar when it is next parsed.
 
 Find matches the projection, so a link label or an image's alternative text
 matches and a URL never does. Replace keeps the formatting around a match, and

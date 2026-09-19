@@ -265,6 +265,7 @@ One pane can scale what it displays without touching the rest of the app.
 | `--spacing-content-line` | `h-content-line` | A one-line clip box that scales with it |
 | `--spacing-content-line-box` | `h-content-line-box` | A line rhythm token shared by grid and source |
 | `--spacing-content-line-inset` | `py-content-line-inset` | Half the box's spare height, above and below a wrapped value |
+| `--spacing-inline-image` | `max-h-inline-image` | The tallest an inline image in a cell is drawn, 6rem at 100% (#306) |
 
 `--pane-zoom` is set on the pane body and nowhere else. At 100% both utilities
 resolve to exactly `text-sm`, so the default rendering is unchanged.

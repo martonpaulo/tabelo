@@ -345,6 +345,9 @@ the normal synchronization path, and undo treats it like typing.
 matching rule below, and offers find without replace. Its mark is painted
 through the CSS Custom Highlight API, so the preview's DOM never changes and its
 neutral-document treatment ([§3](3-components.md)) and every copy path keep one unbroken value.
+A formatted cell is searched as the text it reads as, across its formatting,
+with a link's label and an image's alternative text included and a URL never
+(#306); a match that touches an image marks the whole image.
 
 In the grid, matching is literal, left to right, non-overlapping, and
 case-insensitive until the toggle says otherwise. It runs over the canonical

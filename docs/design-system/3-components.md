@@ -231,6 +231,18 @@ copy path produces. Decided on #77.
   reader sideways. Cells keep `whitespace-pre-wrap`, so the line breaks the
   codecs escape survive. Alignment comes from the column's own alignment.
 - **A document with no rows shows a written empty state**, not a bare header row.
+- **Inline content renders as its semantic elements** (#306): `strong`, `em`,
+  `u`, `s`, and `code` on the `font-value` token, built as React elements from
+  the document's nodes, never from authored markup. Formatting is carried by
+  the elements, not by colour. A link that opens is underlined; an address
+  Tabelo will not open keeps a dotted underline, is not a link, and explains
+  itself through its title and accessible description. An image is capped by
+  `--spacing-inline-image`; one that may not load or fails shows the photo-off
+  icon beside its alternative text, in the muted tone, as one `img` named by
+  that text. The shared primitive lives in `apps/web/src/ui/inline/` so the
+  grid can render the same elements. The link and image styling here is the
+  minimal document default and awaits the owner's review with the Visual
+  Table mockup.
 
 ### Empty workspace
 
