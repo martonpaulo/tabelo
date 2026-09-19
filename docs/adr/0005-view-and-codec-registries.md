@@ -98,22 +98,49 @@ the row under the caret from a source pane, and nothing outside the codec
 tokenizes the text again. A cell's range is its whole spelling between two
 delimiters, padding, quotes, and escapes included; a Markdown alignment
 divider names its header row and no column. Markdown, CSV, TSV, and Jira
-declare it, because one table row is one line there, or one quoted run of
-lines that the parser itself delimits. HTML, JSON, and Records do not: a row is
-an element, an object, or one field per line whose layout the text does not
-fix, and a mapping that is only nearly right would move a row the user did not
-mean, which is corruption that looks like success. Their panes offer no
-structural commands, and that absence is the complete design rather than a gap.
-A pane never maps a draft that does not parse: the text has no rows the
-document has read, so the commands refuse rather than act on the last valid
-parse. One flag covers rows and cells, because every format that can bound a
-row exactly can bound its cells with the scanner that split it. Decided on
-#255.
+declared it first, because one table row is one line there, or one quoted run
+of lines that the parser itself delimits. A mapping that is only nearly right
+would move a row the user did not mean, which is corruption that looks like
+success, so a codec declares it only where the mapping is exact. A pane never
+maps a draft that does not parse: the text has no rows the document has read,
+so the commands refuse rather than act on the last valid parse. One flag
+covers rows and cells, because every format that can bound a row exactly can
+bound its cells with the scanner that split it. Decided on #255.
+
+JSON, Records, and HTML declare it too, each from its own parse (#402,
+amending #255, which left them out until their mapping could be exact). Their
+rows are blocks rather than lines of cells: a JSON row is one object of the
+top-level array, from `{` to `}` wherever the user's formatting puts it, found
+by a position scan over the text `JSON.parse` has already accepted, never a
+second grammar; a Records row is its title line through its last bullet; an
+HTML row is a `<tr>` from its opening tag to its closing one, found by the one
+scan of the text's tags that also places the editor's cells, and trusted only
+where it agrees with the browser parser row for row and cell for cell, so
+markup the parser has to repair maps nothing. A block row declares that every
+line of it names it, brackets and tags included, and a line outside every row
+(`[`, `]`, `<table>`, a blank line) names nothing. Cells are the values, a
+JSON value with its quotes and a Records value past its label's `: `, or an
+HTML cell's content between its tags; a keyed format maps them by the column
+each key names, in column order up to the first column a row does not spell,
+so a reordered or missing key never names the wrong column. JSON and Records
+spell their column names as keys inside every row, so their header row has no
+text of its own: it keeps index 0, so rows count as the document does, and
+names no position, line, or selection; an HTML table whose first row is data
+maps its header the same way.
+
+A second declaration, `mapsSourceColumns`, says the mapped rows also lay the
+columns out across lines: the header row is one line of cells and each row
+spells its cells left to right. Markdown, CSV, TSV, and Jira declare it; JSON,
+Records, and HTML do not. The column letters, the pinned header, and on-screen
+column alignment read it, since each needs a header line to stand on; the
+row commands, the line numbers, and the column commands at the caret need only
+`mapsSourceRows`. Decided on #402.
 
 The same position mapping places a source view's column letters: every pane
-whose codec declares `mapsSourceRows` labels the columns with letters over the
-header cells the mapping found, on the header line. Markdown, CSV, TSV, and
-Jira do; HTML, JSON, and Records have no header line of cells and show none.
+whose codec declares `mapsSourceColumns` labels the columns with letters over
+the header cells the mapping found, on the header line. Markdown, CSV, TSV, and
+Jira do; HTML, JSON, and Records have no header line of cells and show none
+(#402).
 A format need not pad its cells for this: the letters follow the header line,
 not the body rows, so an unpadded CSV row simply runs out of line under them
 (owner, 2026-09-19). An earlier `alignsSourceColumns` declaration limited the
@@ -125,8 +152,9 @@ declaration from the codec and never decides by the view's name. Decided on
 
 The letters and the line numbers are also where the mapping is acted on from
 a pointer (#395): a letter names the column of the header cell it stands on,
-and a line number names the row whose cells its line holds, so the divider
-and every line outside the table name nothing. Their menus, clicks, and drags
+and a line number names the row whose cells its line holds, or whose block
+it lies in (#402), so the divider and every line outside the table name
+nothing. Their menus, clicks, and drags
 resolve that row or column through the same mapping and the same refusals as
 a command at the caret, and a draft that does not parse offers nothing. The
 letters were presentation only until then; they are now the grid's column

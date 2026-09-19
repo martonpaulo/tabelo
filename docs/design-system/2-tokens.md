@@ -342,8 +342,9 @@ reads it to find the header row, and nothing draws it.
 the first line of a source view's header row has scrolled above the top of the
 pane, a copy of that row is pinned there, the way the grid's header row sticks.
 Which text is the header comes from the same row mapping as the boundaries
-above: the first `SourceRowRange` the parse returns. So the views that declare
-`mapsSourceRows` pin it and no other view does; a CSV or TSV header with a
+above: the first `SourceRowRange` the parse returns. So the views whose header
+is a line of cells, which declare `mapsSourceColumns` (#402), pin it and no
+other view does, not even one that maps its rows as blocks; a CSV or TSV header with a
 quoted line break is pinned whole; and a draft that does not parse pins
 nothing, like it draws no boundaries. The pin ends on the line that holds the
 header row's last cell, so Markdown pins its header line and not the alignment
@@ -518,8 +519,8 @@ CSV, TSV, and Jira write each field at its own length, so a source view draws
 the padding their files leave out: a zero-length widget with no text after
 each field, so every column starts at the same place on every row, as
 Markdown's own padding does. Which views do it is the codec's answer, never the
-view's: a format that maps its rows (`mapsSourceRows`) and does not pad its
-own text (`padsColumns`). Where a column starts comes from those rows, so an
+view's: a format that maps its rows as a line of columns (`mapsSourceRows` and
+`mapsSourceColumns`, #402) and does not pad its own text (`padsColumns`). Where a column starts comes from those rows, so an
 unparsed draft maps none and shows exactly as typed rather than aligned to rows
 it no longer has. A column is as wide as its widest field as drawn, in
 characters of the monospaced font: a wide character takes two, an empty field

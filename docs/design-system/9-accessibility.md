@@ -483,9 +483,11 @@ same written reason, and so is a caret outside the table and any draft that
 does not parse: its text names no row the document has read, and acting on the
 last valid parse would move a row the user is not looking at. The source pane's
 context menu offers the same two commands as Move row up and Move row down,
-disabled with that reason. HTML, JSON, and Records cannot map a row, so there
-the chord keeps CodeMirror's text line move and the menu has no row commands.
-Decided on #255.
+disabled with that reason. Decided on #255. HTML, JSON, and Records map their
+rows as blocks too (#402, amending #255, which had left them the text line
+move), so every editable source view now moves the table row; a view whose
+codec mapped no rows would keep CodeMirror's text line move and a menu with
+no row commands.
 
 **The rest of the grid's structure is in the same menu, with no key of its
 own** (owner, 2026-09-19, option A on #255). Beside the two row moves, a pane
@@ -508,7 +510,14 @@ after a column move or a sort.
 pane that maps rows, the column letters (see Column markers below) and the
 line number of every line holding a table row's cells behave as the grid's
 column letters and row numbers do, and reach the same commands through the
-same position mapping, never by counting text lines:
+same position mapping, never by counting text lines. Where a row is a block
+(#402), a JSON object, a Records entry, or an HTML `<tr>`, every line of it
+is that row's line number, its brackets and tags included, however the user
+spread it; those views have no header line of cells, so they show no letters
+and their header row, spelled as keys or as a `<tr>` of its own, is reached
+from the caret, and from the header `<tr>`'s line numbers in HTML; their
+column commands stay in the text menu wherever the caret is in a cell. In
+every pane that maps rows:
 
 - **Right-click** on a letter opens that column's menu: its expected type,
   its alignment where the format spells it (Markdown; the codec's
@@ -520,9 +529,10 @@ same position mapping, never by counting text lines:
   `Column actions: <column>` and `Row actions: Row N`, and each command is one
   document step that leaves the caret in the row or column it acted on. An
   expected type some cells cannot follow asks first, in the grid's dialog. The
-  alignment divider, a blank line, and text outside the table name no row, so
-  their line numbers offer nothing, and while a draft does not parse no line
-  names a row: a right-click there says why and opens nothing.
+  alignment divider, a blank line, and text outside the table (a JSON array's
+  `[` and `]`, HTML's `<table>` and section tags) name no row, so their line
+  numbers offer nothing, and while a draft does not parse no line names a row:
+  a right-click there says why and opens nothing.
 - **A click** selects what the label names: the row's text, or every cell of
   the column as one range each (inside a quoted field's quotes, past a
   Markdown cell's padding), with the header's first, so typing edits them all.
@@ -764,11 +774,12 @@ which is why only an unpinned strip cell adds `relative` for its resize handle.
 
 ### Column markers in a source view
 
-A source view whose codec maps where its header cells sit (`mapsSourceRows`,
-ADR 0005) shows the same letters above its text, one over each header cell
-(decided on #368; widened to every such view by the owner, 2026-09-19). A
-format with no header line of cells declares no mapping, so its pane shows no
-strip; the registry declaration decides, never the view's name.
+A source view whose codec maps its header cells as a line of columns
+(`mapsSourceColumns`, ADR 0005) shows the same letters above its text, one
+over each header cell (decided on #368; widened to every such view by the
+owner, 2026-09-19). A format with no header line of cells does not declare it,
+even where it maps its rows as blocks (JSON, Records, HTML, #402), so its pane
+shows no strip; the registry declaration decides, never the view's name.
 
 - **The header line places the letters.** Each letter stands at the measured
   position where its header cell's text begins, from the cells the codec's
