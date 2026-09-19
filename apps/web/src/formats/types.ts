@@ -225,16 +225,9 @@ export interface TableCodec {
 	// where the mapping is exact, because a command on the wrong row is silent
 	// corruption that looks like success. HTML, Records, and JSON have no
 	// reliable row boundary and do not declare it, and their panes offer no
-	// structural commands. See docs/adr/0005.
+	// structural commands. The header row's cells it maps are also where a
+	// source view stands its column letters (#368). See docs/adr/0005.
 	readonly mapsSourceRows?: boolean;
-	// Whether this format's own output sets each column at one horizontal
-	// position in a monospaced source view, so a letter can stand over it (#368).
-	// Declared only where the serializer pads cells to a shared width and the
-	// header line names every column; it needs `mapsSourceRows`, whose header
-	// cells say where each column starts. A format that separates fields without
-	// padding them has no such position, so its pane draws no column markers.
-	// See docs/adr/0005.
-	readonly alignsSourceColumns?: boolean;
 	// The fields of `text` in reading order, header first, for the formats whose
 	// syntax is a grid of delimited fields (#54). Tolerant by design: a draft
 	// that fails to parse still yields whatever fields its lines spell, so Tab

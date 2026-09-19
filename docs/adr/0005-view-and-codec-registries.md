@@ -101,14 +101,18 @@ parse. One flag covers rows and cells, because every format that can bound a
 row exactly can bound its cells with the scanner that split it. Decided on
 #255.
 
-A codec may also declare `alignsSourceColumns`: its own output sets each
-column at one horizontal position in a monospaced source view, so the pane
-labels the columns with letters placed over the header cells its position
-mapping found. Only Markdown declares it, because only its serializer pads
-cells to a shared width; a format that separates fields without padding them
-has no position to label, and its pane draws no letters. The declaration needs
-`mapsSourceRows`, and like it, the editor reads it from the codec and never
-decides by the view's name. Decided on #368.
+The same position mapping places a source view's column letters: every pane
+whose codec declares `mapsSourceRows` labels the columns with letters over the
+header cells the mapping found, on the header line. Markdown, CSV, TSV, and
+Jira do; HTML, JSON, and Records have no header line of cells and show none.
+A format need not pad its cells for this: the letters follow the header line,
+not the body rows, so an unpadded CSV row simply runs out of line under them
+(owner, 2026-09-19). An earlier `alignsSourceColumns` declaration limited the
+letters to the one format whose serializer pads cells to a shared width; it
+was removed when the letters became what every mapped view shows ("what one
+view has, every view that can have it should have"). The editor reads the
+declaration from the codec and never decides by the view's name. Decided on
+#368.
 
 **A view registry** holds what the workspace can display. A `ViewDefinition`
 adds presentation to a codec: a label, a description, an icon, a `kind`

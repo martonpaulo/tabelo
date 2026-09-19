@@ -704,12 +704,11 @@ which is why only an unpinned strip cell adds `relative` for its resize handle.
 
 ### Column markers in a source view
 
-A source view whose codec declares `alignsSourceColumns` shows the same letters
-above its text, one over each column (decided on #368). Markdown is the only
-such format today: its serializer pads every cell to its column's width, so a
-column has one horizontal position. CSV, TSV, and Jira separate fields without
-padding them, and HTML, JSON, and Records are not laid out in columns, so their
-panes show no strip; the registry declaration decides, never the view's name.
+A source view whose codec maps where its header cells sit (`mapsSourceRows`,
+ADR 0005) shows the same letters above its text, one over each header cell
+(decided on #368; widened to every such view by the owner, 2026-09-19). A
+format with no header line of cells declares no mapping, so its pane shows no
+strip; the registry declaration decides, never the view's name.
 
 - **The header line places the letters.** Each letter stands at the measured
   position where its header cell's text begins, from the cells the codec's
@@ -718,6 +717,8 @@ panes show no strip; the registry declaration decides, never the view's name.
   has drifted out of line with the header after typing, the letters still
   follow the header (owner, 2026-09-18): the header names the columns, and
   following the caret's line would make every letter jump on a line change.
+  A format that does not pad its cells, such as CSV, lines up only its header
+  line under the letters, and that is the intended reading.
 - **It wears the grid strip's look**: the fixed `--grid-strip-h` at every zoom,
   the code surface with no band or line under it, the index face at `text-xs`
   in the muted tone, and a dead corner above the line numbers.
@@ -730,8 +731,10 @@ panes show no strip; the registry declaration decides, never the view's name.
   does nothing, a scroll over it scrolls the text, and the pinned header
   (#252) stacks directly under it. A draft that does not parse, or has no mapped header,
   keeps the strip and draws no letters, so a draft that stops parsing mid-word
-  does not move every line by the strip's height. Turning wrapping on removes
-  the strip, because a wrapped header line has no single position per column.
+  does not move every line by the strip's height. Wrapping never removes the
+  strip (owner, 2026-09-19): with wrapping on, the letters stand over the
+  header cells that begin on the header's first visual line, and a cell that
+  wraps onto a later visual line has no letter.
 - **It is presentation only.** Each letter is drawn from an attribute, so it is
   not text in the page, and the strip is inert and hidden from assistive
   technology like the line numbers: it reaches no text, selection, clipboard,

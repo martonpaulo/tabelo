@@ -1,6 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { samplePeople, samplePeopleHeaders } from "@/core/sample-data";
+import { listViews } from "@/views/registry";
 import { expect, test } from "./fixtures";
 import {
 	lastCopied,
@@ -10,8 +11,8 @@ import {
 } from "./helpers";
 
 // The column markers of a source view (#368): a strip of column letters above
-// the text, one over each column, where the codec declares that its output
-// aligns columns. The strip is presentation only and hidden from assistive
+// the text, one over each header cell, wherever the codec maps where its
+// header cells sit. The strip is presentation only and hidden from assistive
 // technology, so it has no role or name to be found by: the class names and the
 // letter attribute are the technical contract. Positions are checked by
 // direction only, never by equality with the text they stand over.
@@ -114,36 +115,67 @@ test("the letters follow the header line through typing, zoom, and scrolling", a
 	await expect.poll(() => letterEdge(pane, 4)).toBeLessThan(resting);
 });
 
-test("wrapping hides the letters and unwrapping brings them back", async ({
+// A letter drawn over a header cell, as opposed to one kept for a cell that
+// begins on a later visual line of a wrapped header.
+function shownMarkers(pane: Locator): Locator {
+	return pane.locator(`${STRIP} ${MARKER}:not([hidden])`);
+}
+
+test("wrapping keeps the strip and its letters on the header's first line", async ({
 	tabelo,
 }) => {
 	const pane = await fillMarkdown(tabelo);
-	await expect(pane.locator(STRIP)).toBeVisible();
+	await expect(shownMarkers(pane)).toHaveCount(5);
 
 	const menu = await tabelo.openPaneMenu("markdown");
 	await menu
 		.getByRole("menuitemcheckbox", { name: copy.workspace.wrapSource })
 		.click();
 	await tabelo.paneMenuTrigger("markdown").click();
-	await expect(pane.locator(STRIP)).toHaveCount(0);
-
-	const again = await tabelo.openPaneMenu("markdown");
-	await again
-		.getByRole("menuitemcheckbox", { name: copy.workspace.wrapSource })
-		.click();
-	await tabelo.paneMenuTrigger("markdown").click();
-	await expect(markers(pane)).toHaveCount(5);
+	await expect(pane.locator(STRIP)).toBeVisible();
+	// The first header cell always begins on the header's first visual line.
+	await expect(shownMarkers(pane).first()).toHaveAttribute("data-letter", "A");
+	const edges = await shownMarkers(pane).evaluateAll((letters) =>
+		letters.map((letter) => letter.getBoundingClientRect().left),
+	);
+	for (let index = 1; index < edges.length; index += 1) {
+		expect(edges[index]).toBeGreaterThan(edges[index - 1] ?? Number.NaN);
+	}
 });
 
-test("a format that does not align its columns shows no letters", async ({
+test("every source view that maps its header cells labels them, and no other", async ({
 	tabelo,
 }) => {
 	await fillMarkdown(tabelo);
-	for (const view of ["csv", "tsv", "jira"] as const) {
-		await tabelo.showInSourcePane(view);
-		await expect(tabelo.source(view)).toBeVisible();
-		await expect(tabelo.pane(view).locator(STRIP)).toHaveCount(0);
+	for (const view of listViews()) {
+		if (view.kind !== "source") continue;
+		await tabelo.showInSourcePane(view.id);
+		await expect(tabelo.source(view.id)).toBeVisible();
+		const strip = tabelo.pane(view.id).locator(STRIP);
+		if (view.codec?.mapsSourceRows) {
+			await expect(shownMarkers(tabelo.pane(view.id))).toHaveCount(
+				samplePeopleHeaders.length + 1,
+			);
+		} else {
+			await expect(strip).toBeHidden();
+		}
 	}
+});
+
+test("the scroller runs the pane's full height behind the strip", async ({
+	tabelo,
+}) => {
+	const pane = await fillMarkdown(tabelo);
+	await expect(pane.locator(STRIP)).toBeVisible();
+	const tops = await pane.locator(".cm-editor").evaluate((editor) => ({
+		scroller:
+			editor.querySelector(".cm-scroller")?.getBoundingClientRect().top ??
+			Number.NaN,
+		strip:
+			editor.querySelector(".cm-tabeloColumnStrip")?.getBoundingClientRect()
+				.top ?? Number.NaN,
+	}));
+	expect(tops.scroller).toBeLessThanOrEqual(tops.strip);
 });
 
 test("the letters never reach the text, the clipboard, or assistive technology", async ({

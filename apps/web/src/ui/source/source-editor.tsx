@@ -170,11 +170,10 @@ function wrapExtension(wrap: boolean) {
 	return wrap ? EditorView.lineWrapping : [];
 }
 
-// The column markers (#368) show where the codec declares aligned columns and
-// the text is not wrapped: a wrapped header line has no single position per
-// column to stand a letter over.
-function columnMarkersExtension(alignsColumns: boolean, wrap: boolean) {
-	return columnMarkersEnabled.of(alignsColumns && !wrap);
+// The column markers (#368) show wherever the codec maps the header row's
+// cells, wrapped or not (owner, 2026-09-19).
+function columnMarkersExtension(mapsHeaderCells: boolean) {
+	return columnMarkersEnabled.of(mapsHeaderCells);
 }
 
 // The indicators, from the three global preferences that own them. Spaces,
@@ -392,9 +391,9 @@ interface SourceEditorProps {
 	// Where the table's rows sit in `value`, for the boundaries between them
 	// (#296). Empty when the text does not parse or the format cannot map rows.
 	readonly rows: readonly SourceTableRow[];
-	// Whether the codec lays its columns out at one horizontal position each,
-	// which is what lets the pane label them with letters (#368).
-	readonly alignsColumns: boolean;
+	// Whether the codec maps where the header row's cells sit, which is what
+	// lets the pane label its columns with letters (#368).
+	readonly mapsHeaderCells: boolean;
 	// The codec whose position mapping names the table row under the caret,
 	// when this pane runs row commands (#255). Absent for a format that cannot
 	// map rows and for a read-only view, where Alt+ArrowUp and Alt+ArrowDown
@@ -440,7 +439,7 @@ export function SourceEditor({
 	fieldSeparator,
 	diagnostics,
 	rows,
-	alignsColumns,
+	mapsHeaderCells,
 	rowTarget,
 	invalid,
 	entered,
@@ -594,9 +593,7 @@ export function SourceEditor({
 					sourceFind(() => paneFindRef.current),
 					pinnedHeader,
 					columnMarkers,
-					columnMarkersCompartment.of(
-						columnMarkersExtension(alignsColumns, wrap),
-					),
+					columnMarkersCompartment.of(columnMarkersExtension(mapsHeaderCells)),
 					pinnedHeaderCompartment.of(
 						pinnedHeaderExtension(
 							language,
@@ -851,10 +848,10 @@ export function SourceEditor({
 		if (!view) return;
 		view.dispatch({
 			effects: columnMarkersCompartment.reconfigure(
-				columnMarkersExtension(alignsColumns, wrap),
+				columnMarkersExtension(mapsHeaderCells),
 			),
 		});
-	}, [alignsColumns, wrap]);
+	}, [mapsHeaderCells]);
 
 	useEffect(() => {
 		const view = viewRef.current;

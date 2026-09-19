@@ -14,16 +14,18 @@ import { setSourceRows } from "./source-rows";
 // The column markers of a source view (#368): a strip of column letters above
 // the text, one over each column, like the grid's column index strip.
 //
-// Only a format whose own output sets every column at one horizontal position
-// draws them, and the codec says so (`alignsSourceColumns`); the editor never
-// decides by the view's name. Where a letter stands is the header line's
-// answer, never a character count: each one sits at the measured position of
-// the header cell the codec's parse mapped (`SourceTableRow.cells`), so a wide
-// character, a changed zoom, or a longer header name moves it with the text.
-// The markers follow the header line even when a body row has drifted out of
-// line with it after typing (owner, 2026-09-18): the header is what names the
-// columns, and following the caret's line would make the letters jump sideways
-// on every line change.
+// Every format whose codec maps where the header row's cells sit
+// (`mapsSourceRows`) draws them, and the editor never decides by the view's
+// name. Where a letter stands is the header line's answer, never a character
+// count: each one sits at the measured position of the header cell the codec's
+// parse mapped (`SourceTableRow.cells`), so a wide character, a changed zoom,
+// or a longer header name moves it with the text. The markers follow the header
+// line even when a body row is out of line with it, as an unpadded CSV row
+// always is (owner, 2026-09-18): the header is what names the columns, and
+// following the caret's line would make the letters jump sideways on every line
+// change. With wrapping on, the letters stand over the header cells that begin
+// on the header's first visual line; the strip itself never goes away (owner,
+// 2026-09-19).
 //
 // The strip is an overlay across the top of the editor rather than a line of
 // the document, so it is never text: it cannot be selected, copied, downloaded,
@@ -35,8 +37,7 @@ import { setSourceRows } from "./source-rows";
 // line-number gutter as a dead corner, and the pinned header (#252) stacks
 // directly under it.
 
-// Whether the pane shows the strip: the codec declares aligned columns and the
-// text is not wrapped. A wrapped header line has no single position per column.
+// Whether the pane shows the strip: the codec maps the header row's cells.
 export const columnMarkersEnabled = Facet.define<boolean, boolean>({
 	combine: (values) => values.at(-1) ?? false,
 });
