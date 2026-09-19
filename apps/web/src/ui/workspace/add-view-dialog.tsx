@@ -19,6 +19,7 @@ import {
 	SingleSelectionOption,
 	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
+import { useContentWhileOpen } from "@/ui/primitives/use-content-while-open";
 import { getView, listViews } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import type { SplitOption } from "@/workspace/layout";
@@ -74,67 +75,73 @@ export function AddViewDialog({
 		onClose();
 	};
 
+	const open = option !== null;
+	const content = useContentWhileOpen(
+		open,
+		<DialogContent
+			aria-labelledby={titleId}
+			aria-describedby={hintId}
+			width="wide"
+			className={singleSelectionDialogContentStyles}
+		>
+			<DialogHeader>
+				<DialogTitle id={titleId}>{copy.addView.title}</DialogTitle>
+				<DialogDescription id={hintId} className="text-sm">
+					{option && splitPane
+						? copy.addView.hint(
+								option.edge,
+								copy.workspace.pane(getView(splitPane.view).label),
+							)
+						: null}
+				</DialogDescription>
+			</DialogHeader>
+
+			<SingleSelectionList
+				aria-label={copy.addView.view}
+				value={selected ?? ""}
+				onValueChange={(value) => setChosen(value as ViewId)}
+			>
+				{views.map((candidate) => (
+					<ViewChoice
+						key={candidate.id}
+						id={candidate.id}
+						label={candidate.label}
+						description={candidate.description}
+						icon={<candidate.icon />}
+						availability={availabilityFor(candidate.id)}
+						selected={selected === candidate.id}
+						onRecover={() => {
+							setChosen(null);
+							onClose();
+						}}
+					/>
+				))}
+			</SingleSelectionList>
+
+			<DialogActions>
+				<DialogCancel>{copy.actions.cancel}</DialogCancel>
+				<DialogConfirm
+					disabledReason={
+						selected ? undefined : copy.disabled.chooseAvailableView
+					}
+					onClick={add}
+				>
+					{copy.workspace.addView}
+				</DialogConfirm>
+			</DialogActions>
+		</DialogContent>,
+	);
+
 	return (
 		<Dialog
-			open={option !== null}
+			open={open}
 			onOpenChange={(next) => {
 				if (next) return;
 				setChosen(null);
 				onClose();
 			}}
 		>
-			<DialogContent
-				aria-labelledby={titleId}
-				aria-describedby={hintId}
-				width="wide"
-				className={singleSelectionDialogContentStyles}
-			>
-				<DialogHeader>
-					<DialogTitle id={titleId}>{copy.addView.title}</DialogTitle>
-					<DialogDescription id={hintId} className="text-sm">
-						{option && splitPane
-							? copy.addView.hint(
-									option.edge,
-									copy.workspace.pane(getView(splitPane.view).label),
-								)
-							: null}
-					</DialogDescription>
-				</DialogHeader>
-
-				<SingleSelectionList
-					aria-label={copy.addView.view}
-					value={selected ?? ""}
-					onValueChange={(value) => setChosen(value as ViewId)}
-				>
-					{views.map((candidate) => (
-						<ViewChoice
-							key={candidate.id}
-							id={candidate.id}
-							label={candidate.label}
-							description={candidate.description}
-							icon={<candidate.icon />}
-							availability={availabilityFor(candidate.id)}
-							selected={selected === candidate.id}
-							onRecover={() => {
-								setChosen(null);
-								onClose();
-							}}
-						/>
-					))}
-				</SingleSelectionList>
-
-				<DialogActions>
-					<DialogCancel>{copy.actions.cancel}</DialogCancel>
-					<DialogConfirm
-						disabledReason={
-							selected ? undefined : copy.disabled.chooseAvailableView
-						}
-						onClick={add}
-					>
-						{copy.workspace.addView}
-					</DialogConfirm>
-				</DialogActions>
-			</DialogContent>
+			{content}
 		</Dialog>
 	);
 }

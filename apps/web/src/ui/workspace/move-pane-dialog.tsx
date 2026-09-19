@@ -18,6 +18,7 @@ import {
 	SingleSelectionOption,
 	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
+import { useContentWhileOpen } from "@/ui/primitives/use-content-while-open";
 import { getView } from "@/views/registry";
 import { getLayout, movePaneDestinations } from "@/workspace/layout";
 import { LayoutGlyph } from "./layout-glyph";
@@ -60,75 +61,77 @@ export function MovePaneDialog({
 		(destination) => destination.paneId === selected,
 	);
 
+	const open = paneId !== null && pane !== undefined;
+	const content = useContentWhileOpen(
+		open,
+		<DialogContent
+			aria-labelledby={titleId}
+			aria-describedby={hintId}
+			width="wide"
+			className={singleSelectionDialogContentStyles}
+		>
+			<DialogHeader>
+				<DialogTitle id={titleId}>{copy.workspace.movePane}</DialogTitle>
+				<DialogDescription id={hintId} className="text-sm">
+					{pane ? copy.workspace.movePaneHint(getView(pane.view).label) : null}
+				</DialogDescription>
+			</DialogHeader>
+
+			<SingleSelectionList
+				aria-label={copy.workspace.moveDestination}
+				value={selected ?? ""}
+				onValueChange={setSelected}
+			>
+				{destinations.map((destination) => {
+					const destinationPane = workspace.panes.find(
+						(candidate) => candidate.id === destination.paneId,
+					);
+					return (
+						<SingleSelectionOption
+							key={destination.paneId}
+							value={destination.paneId}
+							selected={selected === destination.paneId}
+							icon={
+								<LayoutGlyph
+									preset={getLayout(workspace.layout)}
+									highlightSlots={destination.slots}
+								/>
+							}
+							label={copy.panePositions[destination.position]}
+							description={
+								destinationPane
+									? copy.workspace.destinationView(
+											getView(destinationPane.view).label,
+										)
+									: undefined
+							}
+						/>
+					);
+				})}
+			</SingleSelectionList>
+
+			<DialogActions>
+				<DialogCancel>{copy.actions.cancel}</DialogCancel>
+				<DialogConfirm
+					disabledReason={
+						selectedAvailable ? undefined : copy.disabled.chooseMoveDestination
+					}
+					onClick={move}
+				>
+					{copy.workspace.movePane}
+				</DialogConfirm>
+			</DialogActions>
+		</DialogContent>,
+	);
+
 	return (
 		<Dialog
-			open={paneId !== null && pane !== undefined}
+			open={open}
 			onOpenChange={(next) => {
 				if (!next) onClose();
 			}}
 		>
-			<DialogContent
-				aria-labelledby={titleId}
-				aria-describedby={hintId}
-				width="wide"
-				className={singleSelectionDialogContentStyles}
-			>
-				<DialogHeader>
-					<DialogTitle id={titleId}>{copy.workspace.movePane}</DialogTitle>
-					<DialogDescription id={hintId} className="text-sm">
-						{pane
-							? copy.workspace.movePaneHint(getView(pane.view).label)
-							: null}
-					</DialogDescription>
-				</DialogHeader>
-
-				<SingleSelectionList
-					aria-label={copy.workspace.moveDestination}
-					value={selected ?? ""}
-					onValueChange={setSelected}
-				>
-					{destinations.map((destination) => {
-						const destinationPane = workspace.panes.find(
-							(candidate) => candidate.id === destination.paneId,
-						);
-						return (
-							<SingleSelectionOption
-								key={destination.paneId}
-								value={destination.paneId}
-								selected={selected === destination.paneId}
-								icon={
-									<LayoutGlyph
-										preset={getLayout(workspace.layout)}
-										highlightSlots={destination.slots}
-									/>
-								}
-								label={copy.panePositions[destination.position]}
-								description={
-									destinationPane
-										? copy.workspace.destinationView(
-												getView(destinationPane.view).label,
-											)
-										: undefined
-								}
-							/>
-						);
-					})}
-				</SingleSelectionList>
-
-				<DialogActions>
-					<DialogCancel>{copy.actions.cancel}</DialogCancel>
-					<DialogConfirm
-						disabledReason={
-							selectedAvailable
-								? undefined
-								: copy.disabled.chooseMoveDestination
-						}
-						onClick={move}
-					>
-						{copy.workspace.movePane}
-					</DialogConfirm>
-				</DialogActions>
-			</DialogContent>
+			{content}
 		</Dialog>
 	);
 }

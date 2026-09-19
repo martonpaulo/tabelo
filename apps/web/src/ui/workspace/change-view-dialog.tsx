@@ -19,6 +19,7 @@ import {
 	SingleSelectionOption,
 	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
+import { useContentWhileOpen } from "@/ui/primitives/use-content-while-open";
 import { getView, listViews } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import { availabilityForView } from "./view-availability";
@@ -49,72 +50,77 @@ export function ChangeViewDialog({
 		onClose();
 	};
 
+	const open = paneId !== null && current !== null;
+	const content = useContentWhileOpen(
+		open,
+		<DialogContent
+			aria-labelledby={titleId}
+			aria-describedby={hintId}
+			width="wide"
+			className={singleSelectionDialogContentStyles}
+		>
+			<DialogHeader>
+				<DialogTitle id={titleId}>{copy.workspace.changeView}</DialogTitle>
+				<DialogDescription id={hintId} className="text-sm">
+					{current ? copy.workspace.changeViewHint(current.label) : null}
+				</DialogDescription>
+			</DialogHeader>
+
+			<SingleSelectionList
+				aria-label={copy.workspace.changeView}
+				value={selected ?? ""}
+				onValueChange={(value) => setChosen(value as ViewId)}
+			>
+				{listViews().map((candidate) => {
+					const availability = availabilityForView({
+						view: candidate,
+						panes,
+						document,
+						currentPaneId: paneId ?? undefined,
+						currentViewId: current?.id,
+					});
+					return (
+						<SingleSelectionOption
+							key={candidate.id}
+							value={candidate.id}
+							selected={selected === candidate.id}
+							icon={<candidate.icon />}
+							label={candidate.label}
+							description={candidate.description}
+							availability={availability?.availability}
+							recovery={
+								preconditionRecovery(availability?.failure ?? null) ?? undefined
+							}
+							onRecover={onClose}
+						/>
+					);
+				})}
+			</SingleSelectionList>
+
+			<DialogActions>
+				<DialogCancel>{copy.actions.cancel}</DialogCancel>
+				<DialogConfirm
+					disabledReason={
+						selected === current?.id
+							? copy.disabled.viewAlreadyShown
+							: undefined
+					}
+					onClick={change}
+				>
+					{copy.workspace.changeView}
+				</DialogConfirm>
+			</DialogActions>
+		</DialogContent>,
+	);
+
 	return (
 		<Dialog
-			open={paneId !== null && current !== null}
+			open={open}
 			onOpenChange={(next) => {
 				if (!next) onClose();
 			}}
 		>
-			<DialogContent
-				aria-labelledby={titleId}
-				aria-describedby={hintId}
-				width="wide"
-				className={singleSelectionDialogContentStyles}
-			>
-				<DialogHeader>
-					<DialogTitle id={titleId}>{copy.workspace.changeView}</DialogTitle>
-					<DialogDescription id={hintId} className="text-sm">
-						{current ? copy.workspace.changeViewHint(current.label) : null}
-					</DialogDescription>
-				</DialogHeader>
-
-				<SingleSelectionList
-					aria-label={copy.workspace.changeView}
-					value={selected ?? ""}
-					onValueChange={(value) => setChosen(value as ViewId)}
-				>
-					{listViews().map((candidate) => {
-						const availability = availabilityForView({
-							view: candidate,
-							panes,
-							document,
-							currentPaneId: paneId ?? undefined,
-							currentViewId: current?.id,
-						});
-						return (
-							<SingleSelectionOption
-								key={candidate.id}
-								value={candidate.id}
-								selected={selected === candidate.id}
-								icon={<candidate.icon />}
-								label={candidate.label}
-								description={candidate.description}
-								availability={availability?.availability}
-								recovery={
-									preconditionRecovery(availability?.failure ?? null) ??
-									undefined
-								}
-								onRecover={onClose}
-							/>
-						);
-					})}
-				</SingleSelectionList>
-
-				<DialogActions>
-					<DialogCancel>{copy.actions.cancel}</DialogCancel>
-					<DialogConfirm
-						disabledReason={
-							selected === current?.id
-								? copy.disabled.viewAlreadyShown
-								: undefined
-						}
-						onClick={change}
-					>
-						{copy.workspace.changeView}
-					</DialogConfirm>
-				</DialogActions>
-			</DialogContent>
+			{content}
 		</Dialog>
 	);
 }
