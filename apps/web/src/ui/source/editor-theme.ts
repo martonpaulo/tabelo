@@ -34,8 +34,9 @@ const contentLineBox = "calc(var(--pane-zoom, 1) * 2rem)";
 // forced-colour mode and to anyone who cannot separate the two tones.
 const headerCellStyle = { color: "var(--foreground)", fontWeight: "600" };
 
-// One tone for every non-content annotation the editor draws: the tab arrow,
-// the trailing-space dots, and the empty-field placeholder. The muted tone that
+// One tone for the non-content annotations the editor draws as glyphs: the tab
+// arrow and the empty-field placeholder. The space dot mixes the same muted
+// tone at a higher strength, below. The muted tone that
 // structure already uses, at half strength, because an annotation answers a
 // question the reader has to ask before it matters and must not compete with
 // the text it describes. Mixed rather than applied as an opacity, so nesting
@@ -49,8 +50,7 @@ const annotationStyle = {
 // box, and no text shaping: the three things a marked space paid for on every
 // scroll repaint when Markdown's alignment padding put a thousand of them in
 // one viewport (#275). It is the mechanism CodeMirror's own
-// `highlightWhitespace()` uses, in Tabelo's tone rather than CodeMirror's, so
-// `annotationStyle`'s colour still has one owner. A background is not content
+// `highlightWhitespace()` uses, in Tabelo's tone rather than CodeMirror's. A background is not content
 // at all, which strengthens rather than weakens what the pseudo-element
 // promised: it can add no advance width, and it can never be read out, copied,
 // downloaded, or extracted from the DOM. `background-position` centres it in
@@ -64,8 +64,17 @@ const annotationStyle = {
 // twice the glyph's diameter. Measured from the closest side instead, the
 // radius is half the character's width and nothing else, and the two stops
 // give the edge a feather rather than leaving it aliased.
+//
+// The dot is the one annotation drawn stronger than the shared tone (owner,
+// 2026-09-19): at the tone and size the other markers use, a dot a few pixels
+// across all but vanished on a real screen. It stays in the muted family,
+// mixed to a higher strength, and its radius grows from 22% to 30% of the
+// character's half-width, so a run of spaces is countable at a glance and
+// still reads as a mark below the text rather than as a character.
+const spaceDotColor =
+	"color-mix(in oklab, var(--muted-foreground) 70%, transparent)";
 const spaceDot = {
-	backgroundImage: `radial-gradient(circle closest-side at 50% 55%, ${annotationStyle.color} 22%, transparent 34%)`,
+	backgroundImage: `radial-gradient(circle closest-side at 50% 55%, ${spaceDotColor} 30%, transparent 42%)`,
 	backgroundPosition: "center",
 	backgroundRepeat: "no-repeat",
 };

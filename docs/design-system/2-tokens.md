@@ -405,11 +405,14 @@ line is left unmarked rather than guessed at. Decided on #274. The escape glyph
 appears in Markdown and Jira, the two formats whose codecs escape reversibly
 inside a cell.
 
-**An annotation sits below the content, never beside it.** The whitespace
-glyphs and the placeholder share one tone, `--muted-foreground` mixed to 40%
+**An annotation sits below the content, never beside it.** The tab arrow
+and the placeholder share one tone, `--muted-foreground` mixed to 40%
 strength (lowered from half on #363), never a status colour and never the full text tone: a marker answers a
 question the reader has to ask before it matters, so it must be findable when
-looked for and ignorable when not. The escape glyph is the exception, and it is
+looked for and ignorable when not. The space dot mixes the same muted tone at
+70% and draws at 30% of the character's half-width rather than 22% (owner,
+2026-09-19): a dot a few pixels across at the shared strength all but vanished
+on a real screen, and a dot is only useful if a run of them can be counted. The escape glyph is the exception, and it is
 notation rather than annotation: it wears the same `--syntax-notation` tone as
 the syntax token it replaces, because it says the same thing more briefly. Each
 is a distinct glyph, so none is told apart from content by colour alone, and the
