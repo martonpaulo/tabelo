@@ -344,6 +344,30 @@ body {
 	}
 }
 
+/* Translates an element sideways by exactly its timeline's scroll offset: at
+   full progress it has moved the whole scroll range, which its owner writes
+   into `--tabelo-scroll-range-x`. A source view's column markers and pinned
+   header follow its text this way from outside its scroller
+   (ui/source/follow-scroll.ts); the hold keyframes undo the move for a part
+   that must stay put inside something that follows. */
+@keyframes tabelo-follow-scroll-x {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(calc(-1 * var(--tabelo-scroll-range-x, 0px)));
+	}
+}
+
+@keyframes tabelo-hold-scroll-x {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(var(--tabelo-scroll-range-x, 0px));
+	}
+}
+
 @utility edge-while-scrolled-x {
 	animation: tabelo-scrolled-edge linear both;
 	animation-timeline: scroll(nearest x);

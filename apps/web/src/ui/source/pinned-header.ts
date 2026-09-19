@@ -20,6 +20,7 @@ import {
 import type { SourceRowRange } from "@/formats/types";
 import { drawnSelectionBand } from "./drawn-selection";
 import { syntaxTheme } from "./editor-theme";
+import { followScrollX, followScrollXStyle } from "./follow-scroll";
 import { setSourceRows } from "./source-rows";
 
 // The pinned header of a source view (#252): while the table's header row is
@@ -160,10 +161,22 @@ const copyExtensions: Extension = [
 	Prec.highest(
 		EditorView.theme({
 			"&": { height: "auto" },
-			".cm-scroller": { overflow: "hidden" },
 			".cm-content": { paddingBottom: "0" },
 			".cm-selectionBackground": {
 				background: "var(--text-selection-fill)",
+			},
+			// The copy never scrolls itself. Its whole scroller, text and the
+			// selection drawn over it together, follows the editor's horizontal
+			// scroll on the browser's own scroll (follow-scroll.ts), so the pinned
+			// header never trails the rows under it, and the overlay clips it.
+			// Moving the scroller rather than the text keeps every position the
+			// copy measures relative to its own scroller, so its selection lines
+			// up at any offset. The gutter moves back by as much, and stays put
+			// like the editor's.
+			".cm-scroller": { overflow: "visible", ...followScrollXStyle },
+			".cm-gutters": {
+				animation: "tabelo-hold-scroll-x linear both",
+				animationTimeline: "--tabelo-source-x",
 			},
 		}),
 	),
@@ -177,7 +190,6 @@ interface Placement {
 	readonly top: number;
 	readonly width: number;
 	readonly contentWidth: number;
-	readonly scrollLeft: number;
 	readonly height: number;
 }
 
@@ -277,7 +289,6 @@ class PinnedHeader {
 			top: scroller.offsetTop,
 			width: scroller.clientWidth,
 			contentWidth: view.contentDOM.getBoundingClientRect().width,
-			scrollLeft: scroller.scrollLeft,
 			height: this.copy ? this.overlay.getBoundingClientRect().height : 0,
 		};
 	}
@@ -292,11 +303,10 @@ class PinnedHeader {
 		// Pixel values straight from the editor's own measurement, applied to the
 		// copy and never stored: the copy is exactly as wide as the editor's
 		// visible text area, so it wraps where the editor wraps, and its text is
-		// as wide as the editor's, so it can scroll as far sideways.
+		// as wide as the editor's, so it lines up with it at every scroll offset.
 		this.overlay.style.top = `${placement.top}px`;
 		this.overlay.style.width = `${placement.width}px`;
 		copy.contentDOM.style.minWidth = `${placement.contentWidth}px`;
-		copy.scrollDOM.scrollLeft = placement.scrollLeft;
 		this.margin = placement.height;
 		// The copy's height is known only once it has been laid out, and the
 		// scroll margin depends on it, so a copy that was just created is read
@@ -381,4 +391,8 @@ export function pinnedHeaderCopy(view: EditorView): EditorView | null {
 	return view.plugin(pinnedHeaderPlugin)?.copy ?? null;
 }
 
-export const pinnedHeader: Extension = [headerRange, pinnedHeaderPlugin];
+export const pinnedHeader: Extension = [
+	headerRange,
+	pinnedHeaderPlugin,
+	followScrollX,
+];

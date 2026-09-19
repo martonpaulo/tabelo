@@ -215,23 +215,25 @@ test("the pinned header follows horizontal scrolling", async ({ tabelo }) => {
 	const markdown = cases[0];
 	if (!markdown) throw new Error("missing Markdown case");
 	const pane = await fillSource(tabelo, markdown);
-	await scrollTo(pane, 800, 100);
+	await scrollTo(pane, 800);
 	await expect(pinned(pane)).toBeVisible();
-	const offsets = () =>
-		pane.evaluate((element, selector) => {
-			const scrollers = element.querySelectorAll<HTMLElement>(".cm-scroller");
-			const copyScroller = element
-				.querySelector(selector)
-				?.querySelector<HTMLElement>(".cm-scroller");
-			return {
-				editor: scrollers[0]?.scrollLeft,
-				copy: copyScroller?.scrollLeft,
-			};
-		}, PINNED);
-	await expect.poll(offsets).toMatchObject({ editor: 100, copy: 100 });
+	// The copy never scrolls itself: it is moved with the editor's own scroll
+	// by a scroll-driven animation, so what is read is where its text is drawn.
+	const textLeft = () =>
+		pinned(pane).evaluate(
+			(element) =>
+				element.querySelector(".cm-content")?.getBoundingClientRect().left ??
+				Number.NaN,
+		);
+	const resting = await textLeft();
+
+	await scrollTo(pane, 800, 100);
+	await expect.poll(textLeft).toBeLessThan(resting);
+	const scrolled = await textLeft();
 
 	await scrollTo(pane, 800, 40);
-	await expect.poll(offsets).toMatchObject({ editor: 40, copy: 40 });
+	await expect.poll(textLeft).toBeGreaterThan(scrolled);
+	await expect.poll(textLeft).toBeLessThan(resting);
 });
 
 test("the pinned header follows wrapping and zoom", async ({ tabelo }) => {

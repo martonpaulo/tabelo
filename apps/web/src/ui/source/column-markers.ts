@@ -5,13 +5,14 @@ import {
 	StateField,
 } from "@codemirror/state";
 import {
-	type EditorView,
+	EditorView,
 	type Panel,
 	showPanel,
 	type ViewUpdate,
 } from "@codemirror/view";
 import { columnLetter } from "@/core/column-letter";
 import type { SourceRowRange } from "@/formats/types";
+import { followScrollX, followScrollXStyle } from "./follow-scroll";
 import { pinnedHeaderCopy } from "./pinned-header";
 import { setSourceRows } from "./source-rows";
 
@@ -110,16 +111,27 @@ function offsetsIn(
 
 interface Placement {
 	readonly offsets: readonly number[];
-	// Where the text begins and where the gutter ends, from the strip's own
-	// left edge.
+	// Where the text begins when the pane is scrolled fully left, and where the
+	// gutter ends, from the strip's own left edge.
 	readonly origin: number;
 	readonly clip: number;
 }
+
+// The rail holding the letters follows the text sideways on the browser's own
+// scroll (follow-scroll.ts), so the letters never trail the columns they name.
+const railTheme = EditorView.theme({
+	".cm-tabeloColumnRail": {
+		position: "absolute",
+		inset: "0",
+		...followScrollXStyle,
+	},
+});
 
 class ColumnStrip implements Panel {
 	readonly dom: HTMLElement;
 	readonly top = true;
 	private readonly track: HTMLElement;
+	private readonly rail: HTMLElement;
 	private letters: HTMLElement[] = [];
 	// The last offsets measured while the header line was drawn. CodeMirror
 	// draws only the lines near the viewport, so once the header scrolls far
@@ -136,7 +148,9 @@ class ColumnStrip implements Panel {
 		this.track = document.createElement("div");
 		this.track.className = "cm-tabeloColumnTrack";
 		this.dom.appendChild(this.track);
-		view.scrollDOM.addEventListener("scroll", this.schedule, { passive: true });
+		this.rail = document.createElement("div");
+		this.rail.className = "cm-tabeloColumnRail";
+		this.track.appendChild(this.rail);
 	}
 
 	mount() {
@@ -152,10 +166,6 @@ class ColumnStrip implements Panel {
 		) {
 			this.schedule();
 		}
-	}
-
-	destroy() {
-		this.view.scrollDOM.removeEventListener("scroll", this.schedule);
 	}
 
 	private readonly schedule = () => {
@@ -177,9 +187,13 @@ class ColumnStrip implements Panel {
 		if (!offsets) return null;
 		const left = this.dom.getBoundingClientRect().left;
 		const gutters = view.dom.querySelector(".cm-gutters");
+		const scroller = view.scrollDOM;
 		return {
 			offsets,
-			origin: view.contentDOM.getBoundingClientRect().left - left,
+			origin:
+				view.contentDOM.getBoundingClientRect().left -
+				left +
+				scroller.scrollLeft,
 			clip: gutters ? gutters.getBoundingClientRect().right - left : 0,
 		};
 	}
@@ -197,7 +211,7 @@ class ColumnStrip implements Panel {
 			// the page: find in page, text extraction, and a stray selection all
 			// pass it by.
 			letter.dataset.letter = columnLetter(this.letters.length);
-			this.track.appendChild(letter);
+			this.rail.appendChild(letter);
 			this.letters.push(letter);
 		}
 		if (!placement) return;
@@ -219,6 +233,8 @@ function createColumnStrip(view: EditorView): Panel {
 // is shown, and the row mapping decides whether it has anything to label.
 export const columnMarkers: Extension = [
 	headerCells,
+	followScrollX,
+	railTheme,
 	showPanel.compute([columnMarkersEnabled], (state) =>
 		state.facet(columnMarkersEnabled) ? createColumnStrip : null,
 	),
