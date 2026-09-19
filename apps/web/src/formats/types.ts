@@ -212,6 +212,14 @@ export interface TableCodec {
 	// reliable row boundary and do not declare it, and their panes offer no
 	// structural commands. See docs/adr/0005.
 	readonly mapsSourceRows?: boolean;
+	// Whether this format's own output sets each column at one horizontal
+	// position in a monospaced source view, so a letter can stand over it (#368).
+	// Declared only where the serializer pads cells to a shared width and the
+	// header line names every column; it needs `mapsSourceRows`, whose header
+	// cells say where each column starts. A format that separates fields without
+	// padding them has no such position, so its pane draws no column markers.
+	// See docs/adr/0005.
+	readonly alignsSourceColumns?: boolean;
 	// The fields of `text` in reading order, header first, for the formats whose
 	// syntax is a grid of delimited fields (#54). Tolerant by design: a draft
 	// that fails to parse still yields whatever fields its lines spell, so Tab

@@ -97,6 +97,15 @@ parse. One flag covers rows and cells, because every format that can bound a
 row exactly can bound its cells with the scanner that split it. Decided on
 #255.
 
+A codec may also declare `alignsSourceColumns`: its own output sets each
+column at one horizontal position in a monospaced source view, so the pane
+labels the columns with letters placed over the header cells its position
+mapping found. Only Markdown declares it, because only its serializer pads
+cells to a shared width; a format that separates fields without padding them
+has no position to label, and its pane draws no letters. The declaration needs
+`mapsSourceRows`, and like it, the editor reads it from the codec and never
+decides by the view's name. Decided on #368.
+
 **A view registry** holds what the workspace can display. A `ViewDefinition`
 adds presentation to a codec: a label, a description, an icon, a `kind`
 (`grid`, `source`, or `preview`), a highlight language named as a string, a
