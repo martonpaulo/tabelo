@@ -1,4 +1,4 @@
-// The word a source view draws where a delimited syntax hides an empty field.
+// The word a source view draws where its syntax holds an empty field.
 //
 // It lives in the core rather than beside the rest of the interface copy
 // because Markdown's serializer reserves room for it: a column holding an empty

@@ -432,9 +432,9 @@ export const copy = {
 
 	source: {
 		blocked: (failure: PreconditionFailure) => preconditionMessage(failure),
-		// The placeholder standing where a delimited syntax hides an empty
-		// field. Parenthesised so it reads as an annotation rather than as text
-		// the user typed. Defined in the core because Markdown's serializer
+		// The placeholder standing where a source syntax holds an empty
+		// field. Drawn in the annotation tone so it reads as an annotation rather
+		// than as text the user typed. Defined in the core because Markdown's serializer
 		// reserves room for it: see core/empty-value.ts.
 		emptyValue: EMPTY_VALUE_PLACEHOLDER,
 		// What a glyph drawn over an escape sequence stands for, said on hover.

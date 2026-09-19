@@ -464,13 +464,21 @@ alike in TSV, `a,,b` has a middle field, `||a|||b||` is hard to count, and
 `&#32;` is five characters standing for one space nobody can spell. Four glyph
 families answer that, all of them CodeMirror decorations over unchanged text:
 `·` for a space and `→` for a tab, on the per-character marks
-`highlightWhitespace()` provides; `empty` where a delimited syntax hides an
-empty field; and one glyph over each escape sequence, showing the character the
-sequence stands for. The last two are the ones this project draws itself,
-because no editor has a concept of a field or of a codec's escaping grammar. The
-placeholder appears in Markdown, CSV, TSV, and Jira, while JSON, Records, and
-HTML spell an empty value out and get none; the escape glyph appears in Markdown
-and Jira, the two formats whose codecs escape reversibly inside a cell.
+`highlightWhitespace()` provides; `empty` where a syntax holds an empty field;
+and one glyph over each escape sequence, showing the character the sequence
+stands for. The last two are the ones this project draws itself, because no
+editor has a concept of a field or of a codec's escaping grammar. The
+placeholder appears in every source view, so the preference means one thing
+everywhere: between delimiters in Markdown, CSV, TSV, and Jira, after the
+separator of a Records line whose value is empty, inside an empty HTML
+`<td></td>` or `<th></th>`, and between the quotes of a JSON `""`. It has two
+exclusions. A typed literal, JSON's `null`, a number, or a boolean, is a value
+the document carries rather than an empty field, and is never marked
+(ADR 0008). A Records title whose column name is omitted and whose value is
+empty is a blank line, which is also the record separator, so that ambiguous
+line is left unmarked rather than guessed at. Decided on #274. The escape glyph
+appears in Markdown and Jira, the two formats whose codecs escape reversibly
+inside a cell.
 
 **An annotation sits below the content, never beside it.** The whitespace
 glyphs and the placeholder share one tone, `--muted-foreground` mixed to 40%

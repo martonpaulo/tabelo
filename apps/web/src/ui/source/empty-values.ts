@@ -15,11 +15,16 @@ import {
 	WidgetType,
 } from "@codemirror/view";
 import { isJiraHeaderLine } from "@/formats/jira";
+import { headerValueBoundary } from "@/formats/records";
 import type { HighlightLanguage } from "@/views/types";
+import { htmlCells } from "./html-language";
 
-// An empty field is invisible in every delimited syntax: `a,,b`, `| a |  | b |`,
-// and `|x||z|` all hold a value the user cannot see. CodeMirror has no concept
-// of a field, so this is the one marker the editor draws itself.
+// An empty field is easy to miss in every syntax Tabelo writes: `a,,b`,
+// `| a |  | b |`, and `|x||z|` hold a value the user cannot see, `- Price:` ends
+// where a value would start, `<td></td>` is a point between two tags, and `""`
+// is two quotes. CodeMirror has no concept of a field, so this is the one
+// marker the editor draws itself, and it means the same thing in every source
+// view (#274).
 //
 // It is a decoration and nothing else. Drawing over a cell's padding changes
 // what that run looks like and never what it is, so the text, the caret, the
@@ -34,7 +39,10 @@ import type { HighlightLanguage } from "@/views/types";
 export type EmptyValueSyntax =
 	| { readonly kind: "delimited"; readonly separator: string }
 	| { readonly kind: "markdown" }
-	| { readonly kind: "jira" };
+	| { readonly kind: "jira" }
+	| { readonly kind: "json" }
+	| { readonly kind: "html" }
+	| { readonly kind: "records" };
 
 export function emptyValueSyntax(
 	language: HighlightLanguage,
@@ -52,8 +60,13 @@ export function emptyValueSyntax(
 			return { kind: "markdown" };
 		case "jira":
 			return { kind: "jira" };
-		// JSON and Records spell an empty string out, and HTML has an explicit
-		// element pair around every cell. None of them hides an empty value.
+		case "json":
+			return { kind: "json" };
+		case "html":
+			return { kind: "html" };
+		case "records":
+			return { kind: "records" };
+		// Plain text has no field structure to read.
 		default:
 			return null;
 	}
@@ -297,6 +310,92 @@ function markdownEmptyCells(
 	return cells;
 }
 
+// Records lines whose value is empty, by the same escape-aware split the
+// Records codec parses with, so `\: ` in a header is never read as the boundary.
+// A bullet written `- Price:` and a title written `Name: ` both end where their
+// value would start, so the marker sits at the end of the line.
+//
+// Two empty values are deliberately left unmarked. A bullet the serializer
+// omitted, with empty values excluded from the output, has no position at all.
+// A title whose column name is omitted and whose value is empty is a blank
+// line, which is also the separator between records: that line is ambiguous in
+// the grammar, so, as everywhere else in this file, nothing is drawn rather
+// than a guess.
+export function recordsEmptyOffset(line: string): number | null {
+	if (line.trim() === "") return null;
+	const boundary = headerValueBoundary(line);
+	return boundary !== null && boundary.valueFrom === line.length
+		? line.length
+		: null;
+}
+
+function recordsEmptyCells(
+	state: EditorState,
+	from: number,
+	to: number,
+): readonly EmptyCell[] {
+	const cells: EmptyCell[] = [];
+	const lastLine = state.doc.lineAt(to).number;
+	for (
+		let number = state.doc.lineAt(from).number;
+		number <= lastLine;
+		number += 1
+	) {
+		const line = state.doc.line(number);
+		const offset = recordsEmptyOffset(line.text);
+		if (offset === null) continue;
+		const at = line.from + offset;
+		// The caret leaves backwards over the separator and forwards onto the
+		// next line.
+		cells.push(pointCell(at, 1, Math.min(at + 1, state.doc.length)));
+	}
+	return cells;
+}
+
+// JSON's empty strings, read from the JSON grammar the view already parses
+// with. Only a `String` value of exactly `""` is marked, never a property name,
+// which is a different node, and never `null`, a number, or a boolean: those are
+// typed values the document carries, not empty fields (docs/adr/0008). The
+// placeholder sits between the two quotes, so the reader still sees that the
+// value is a string.
+function jsonEmptyCells(
+	state: EditorState,
+	from: number,
+	to: number,
+): readonly EmptyCell[] {
+	const cells: EmptyCell[] = [];
+	syntaxTree(state).iterate({
+		from,
+		to,
+		enter: (node) => {
+			if (node.name !== "String" || node.to - node.from !== 2) return;
+			if (state.doc.sliceString(node.from, node.to) !== '""') return;
+			cells.push(pointCell(node.from + 1, 1, node.to));
+		},
+	});
+	return cells;
+}
+
+// HTML's empty cells, `<td></td>` and `<th></th>`, from the one walk that owns
+// where an HTML cell is. A self-closed `<td/>` has no content position and is
+// skipped by that walk. The caret leaves one character at a time, onto the
+// tag bracket on either side, because stepping over a whole `</td><td>` would
+// be a jump in text that is otherwise edited as markup.
+function htmlEmptyCells(
+	state: EditorState,
+	from: number,
+	to: number,
+): readonly EmptyCell[] {
+	const cells: EmptyCell[] = [];
+	for (const cell of htmlCells(state)) {
+		if (cell.contentTo !== cell.contentFrom) continue;
+		const at = cell.contentFrom;
+		if (at < from || at > to) continue;
+		cells.push(pointCell(at, 1, at + 1));
+	}
+	return cells;
+}
+
 // Every empty field the syntax hides between `from` and `to`, whole lines.
 export function emptyCells(
 	state: EditorState,
@@ -305,6 +404,9 @@ export function emptyCells(
 	to: number,
 ): readonly EmptyCell[] {
 	if (syntax.kind === "markdown") return markdownEmptyCells(state, from, to);
+	if (syntax.kind === "records") return recordsEmptyCells(state, from, to);
+	if (syntax.kind === "json") return jsonEmptyCells(state, from, to);
+	if (syntax.kind === "html") return htmlEmptyCells(state, from, to);
 
 	const firstLine = state.doc.lineAt(from).number;
 	const lastLine = state.doc.lineAt(to).number;

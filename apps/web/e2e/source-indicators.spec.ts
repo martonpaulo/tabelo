@@ -113,10 +113,66 @@ test("markers are drawn by default and describe the empty fields a codec reads",
 	await tabelo.choosePaneView("jira", "markdown");
 	await expect(tabelo.pane("markdown").locator(marker)).toHaveCount(1);
 
-	// JSON spells an empty value out, so it needs no marker of its own.
+	// The placeholder means the same thing in every source view (#274): inside
+	// JSON's `""`, inside HTML's `<td></td>`, and after Records' `- City:`.
 	await tabelo.choosePaneView("markdown", "json");
-	await expect(tabelo.pane("json").locator(marker)).toHaveCount(0);
+	await expect(tabelo.pane("json").locator(marker)).toHaveCount(1);
+
+	await tabelo.choosePaneView("json", "html");
+	await expect(tabelo.pane("html").locator(marker)).toHaveCount(1);
+
+	await tabelo.choosePaneView("html", "records");
+	await expect(tabelo.pane("records").locator(marker)).toHaveCount(1);
 });
+
+// `null`, a number, and a boolean are values the document carries, not empty
+// fields, so JSON marks the one empty string beside them and nothing else.
+test("JSON marks an empty string and never a typed literal", async ({
+	tabelo,
+}) => {
+	await tabelo.importFile(
+		"typed.json",
+		`[{"name":"${first.name}","city":"","age":0,"active":false,"note":null}]`,
+		"application/json",
+	);
+	await tabelo.showInSourcePane("json");
+	const pane = tabelo.pane("json");
+	await expect(pane.locator(marker)).toHaveCount(1);
+	const source = await renderedSource(pane);
+	expect(source).toContain("null");
+	expect(source).toContain("false");
+});
+
+// The three views #274 added take the placeholder the way the others do: a
+// click puts the caret in the field it speaks for, and what is typed there is an
+// ordinary edit that reaches the table. Records writes `- City:` with no space
+// after the colon, so its value is typed with the space its grammar asks for.
+for (const [view, typed] of [
+	["json", first.city],
+	["html", first.city],
+	["records", ` ${first.city}`],
+] as const) {
+	test(`typing into an empty ${view} field fills it`, async ({
+		tabelo,
+		page,
+	}) => {
+		await seed(
+			tabelo,
+			[
+				["Name", "City", "Role"].join("\t"),
+				[first.name, "", first.role].join("\t"),
+			].join("\n"),
+		);
+		await tabelo.choosePaneView("markdown", view);
+		const pane = tabelo.pane(view);
+		await expect(pane.locator(marker)).toHaveCount(1);
+
+		await pane.locator(marker).click();
+		await page.keyboard.type(typed);
+		await expect(pane.locator(marker)).toHaveCount(0);
+		await expect(tabelo.cell(1, 2)).toHaveText(first.city);
+	});
+}
 
 test("each space mode marks a different set of spaces", async ({
 	tabelo,
@@ -508,6 +564,47 @@ test("turning indicators off changes what is drawn and nothing else", async ({
 	expect(await storedDocument(page)).toBe(withMarkers.document);
 	await tabelo.runPaneCommand("csv", "copySource");
 	expect(await lastCopied(page)).toEqual(copiedWithMarkers);
+});
+
+// The same byte-identity contract in the three views #274 added: the stored
+// document, the copied source, and the pane's own text are unchanged by the
+// placeholder being drawn or not.
+test("the placeholder changes nothing but what is drawn in JSON, HTML, and Records", async ({
+	tabelo,
+	page,
+}) => {
+	await recordingClipboard(page);
+	await page.reload();
+	await tabelo.dismissWelcome();
+	await expect(tabelo.workspace).toBeVisible();
+	await seed(
+		tabelo,
+		[
+			["Name", "City", "Role"].join("\t"),
+			[first.name, "", first.role].join("\t"),
+		].join("\n"),
+	);
+	await expect.poll(() => storedDocument(page)).toContain(first.name);
+	const document = await storedDocument(page);
+
+	let current: "markdown" | "json" | "html" | "records" = "markdown";
+	for (const view of ["json", "html", "records"] as const) {
+		await tabelo.choosePaneView(current, view);
+		current = view;
+		const pane = tabelo.pane(view);
+		await setIndicators(page, { emptyValues: true });
+		await expect(pane.locator(marker)).toHaveCount(1);
+		const source = await renderedSource(pane);
+		await tabelo.runPaneCommand(view, "copySource");
+		const copied = await lastCopied(page);
+
+		await setIndicators(page, { emptyValues: false });
+		await expect(pane.locator(marker)).toHaveCount(0);
+		expect(await renderedSource(pane)).toBe(source);
+		await tabelo.runPaneCommand(view, "copySource");
+		expect(await lastCopied(page)).toEqual(copied);
+		expect(await storedDocument(page)).toBe(document);
+	}
 });
 
 test("indicators leave the caret, the pane's wrapping, and editing alone", async ({

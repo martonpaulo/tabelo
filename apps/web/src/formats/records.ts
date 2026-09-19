@@ -126,9 +126,9 @@ interface HeaderValue {
 // mistaken for the boundary. A trailing bare colon means an empty value (rule
 // 4: `- Status:` parses to `""`, never a skipped bullet). Returns null when no
 // boundary exists at all, which is a malformed line. One owner for the split:
-// the parse reads the two halves, and Tab navigation (#54) reads where the
-// value begins.
-function headerValueBoundary(
+// the parse reads the two halves, and Tab navigation (#54) and the editor's
+// empty-value placeholder (#274) read where the value begins.
+export function headerValueBoundary(
 	line: string,
 ): { readonly headerEnd: number; readonly valueFrom: number } | null {
 	for (let index = 0; index < line.length; index += 1) {
