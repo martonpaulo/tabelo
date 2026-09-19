@@ -1,4 +1,4 @@
-import { EditorSelection } from "@codemirror/state";
+import { EditorSelection, type SelectionRange } from "@codemirror/state";
 import {
 	type EditorView,
 	layer,
@@ -62,15 +62,48 @@ const selectionLayer = layer({
 		// that padding: it ends where the last line does.
 		const lastLineBottom =
 			firstLineTop + view.lineBlockAt(view.state.doc.length).bottom;
+		// CodeMirror measures only the lines it has rendered (its viewport), so
+		// the part of a range outside them is drawn here from the line-height
+		// map, which holds every line, as full-width bands. A band that depended
+		// on the rendered lines alone showed a selection cut off at their edge
+		// until something redrew it (owner report, 2026-09-19).
+		const content = view.contentDOM.getBoundingClientRect();
+		const contentLeft = content.left - layerOrigin(view).left;
+		const outside = (from: number, to: number): RectangleMarker[] => {
+			const top = firstLineTop + view.lineBlockAt(from).top;
+			const bottom = Math.min(
+				firstLineTop + view.lineBlockAt(to).bottom,
+				lastLineBottom,
+			);
+			return bottom > top
+				? [
+						new RectangleMarker(
+							"cm-selectionBackground",
+							contentLeft,
+							top,
+							content.width,
+							bottom - top,
+						),
+					]
+				: [];
+		};
+		const { viewport } = view;
+		const beyondViewport = (range: SelectionRange): RectangleMarker[] => [
+			...(range.from < viewport.from
+				? outside(range.from, Math.max(range.from, viewport.from - 1))
+				: []),
+			...(range.to > viewport.to
+				? outside(Math.min(range.to, viewport.to + 1), range.to)
+				: []),
+		];
 
 		return view.state.selection.ranges.flatMap((range) =>
 			range.empty
 				? []
-				: RectangleMarker.forRange(
-						view,
-						"cm-selectionBackground",
-						range,
-					).flatMap((band) => {
+				: [
+						...beyondViewport(range),
+						...RectangleMarker.forRange(view, "cm-selectionBackground", range),
+					].flatMap((band) => {
 						const top = snap(band.top);
 						const bottom = Math.min(
 							Math.max(snap(band.top + band.height), top + pitch),
