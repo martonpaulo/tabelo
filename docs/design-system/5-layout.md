@@ -77,11 +77,14 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
   command surface at every viewport width. It rests flush with the workspace, with no surface, border, or shadow of its
   own, and takes the floating surface and shadow only on hover (2ba36ed,
   d9f4322). Because it stays flush, the pane beneath it keeps its corner clear instead
-  (owner, 2026-09-19): the pane whose area reaches the workspace's bottom
-  trailing corner, decided from the layout and never from its view (the last
-  pane when stacked), adds `--fab-safe-area` below the content of each of its
-  scrollers, and the grid's find bar pads its trailing edge by the same token,
-  so no control, row, or line has to stay under the button. Its menu contains the Tabelo identity and description, the current
+  (owner, 2026-09-19): every pane, in any position and whatever its view,
+  leaves the same `--pane-end-room` below the content of its scroller (the
+  grid, every source view, and the rendered preview alike), and that room is
+  the button's `--fab-safe-area`, so the last row can always scroll out from
+  under it. The pane whose area reaches the workspace's bottom trailing
+  corner, decided from the layout and never from its view (the last pane when
+  stacked), also pads its find bar's trailing edge by `--fab-safe-area`, so no
+  control has to stay under the button. Its menu contains the Tabelo identity and description, the current
   table name with a Rename command, Undo, Redo, the whole-table commands
   Transpose table and Delete empty rows and columns (#235), New table, Import,
   the `Copy as` submenu (#149), Download, Add view, Layout, Settings, and a

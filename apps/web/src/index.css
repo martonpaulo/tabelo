@@ -50,6 +50,7 @@
 	--spacing-fab: var(--fab-size);
 	--spacing-fab-inset: var(--fab-inset);
 	--spacing-fab-safe: var(--fab-safe-area);
+	--spacing-pane-end: var(--pane-end-room);
 	--spacing-screen-fit-w: calc(100vw - var(--screen-inset));
 	--spacing-screen-fit-h: calc(100dvh - var(--screen-inset));
 	--radius-interactive: var(--control-radius);
@@ -152,9 +153,13 @@
 	/* The corner the button covers, measured from the viewport edge: what the
 	   pane beneath it keeps clear so no control or text sits under it. */
 	--fab-safe-area: calc(var(--fab-size) + var(--fab-inset));
-	/* What a pane's scrollers add below their content. Zero everywhere except
-	   the pane under the floating action button (see [data-under-fab]). */
-	--fab-clearance: 0rem;
+	/* The room every pane's scroller leaves below its last row, so the end of
+	   the content can be scrolled up off the pane's bottom edge. One value for
+	   the grid, every source view, and the rendered preview, in every pane
+	   position (owner, 2026-09-19): it is the corner the floating action button
+	   covers, so the pane under the button keeps that corner clear with the
+	   same room every other pane has. */
+	--pane-end-room: var(--fab-safe-area);
 	/* What a floating layer as wide or tall as the window leaves free between
 	   itself and the screen's edges, summed over both sides: 1rem each. One
 	   value for dialogs, menus, and the start card (#354). */
@@ -269,15 +274,6 @@ body {
    publishes each one's measured extent here while it is pinned and removes it
    again when it is not. Absent means unpinned, which is why the fallback is
    zero rather than a size. */
-/* The pane whose area reaches the workspace's bottom trailing corner sits
-   under the floating action button. The button stays flush with the canvas,
-   so the pane keeps the corner clear instead: every scroller in it adds this
-   much room below its content, and the grid's find bar pads its trailing edge
-   by the same amount (owner, 2026-09-19). */
-[data-under-fab] {
-	--fab-clearance: var(--fab-safe-area);
-}
-
 .tabelo-grid-scroller {
 	scroll-padding-top: calc(
 		var(--grid-strip-h) +

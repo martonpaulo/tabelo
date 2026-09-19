@@ -108,11 +108,10 @@ export const editorTheme = EditorView.theme({
 	},
 	".cm-content": {
 		// No top padding: the first line is the table's header row, so a gap above
-		// it would separate table data from its pane. The bottom padding stays,
-		// because it is the target for clicking below the last line to focus the
-		// editor. The pane under the floating action button adds its clearance,
-		// so the last line can scroll out from under the button.
-		padding: "0 0 calc(var(--spacing) * 3 + var(--fab-clearance, 0rem))",
+		// it would separate table data from its pane. The bottom padding is the
+		// room every pane leaves below its content (`--pane-end-room`), which is
+		// also the target for clicking below the last line to focus the editor.
+		padding: "0 0 var(--pane-end-room)",
 		outline: "none",
 		userSelect: "text",
 	},

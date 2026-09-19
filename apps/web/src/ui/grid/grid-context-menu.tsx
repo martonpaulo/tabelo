@@ -686,9 +686,8 @@ export function GridContextMenu({
 						<div
 							ref={wrapperRef}
 							data-grid-surface
-							// Room below the last row in the pane the floating action
-							// button covers, so no row has to stay under it.
-							className="relative min-w-max group-data-[under-fab]/pane:pb-fab-safe"
+							// The room every pane leaves below its last row.
+							className="relative min-w-max pb-pane-end"
 						/>
 					}
 					onKeyDown={(event: React.KeyboardEvent) => {
