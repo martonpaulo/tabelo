@@ -50,14 +50,28 @@ Tabelo is a **calm, compact, neutral table utility**. It follows the shadcn
 `base-lyra` style already configured in `packages/ui/components.json` without
 importing card-heavy dashboard styling.
 
-The neutral palette and radius scale were first inspired by
-[petrroll/markdown-to-teams](https://github.com/petrroll/markdown-to-teams). On
-2026-09-18 the owner replaced them with the look of the approved start surface:
-warm neutral greys one step apart per layer, Figtree, a deeper primary blue that
-carries white text, and a 0.5rem/0.75rem radius scale.
-This is visual direction, not a template: Tabelo keeps its own blue accent,
-stronger element hierarchy, and explicit editable/read-only distinction. No
-source code or visual asset from that project is copied into Tabelo.
+### Design references
+
+Four products are the reference for how Tabelo looks and behaves, each for one
+part of it (owner, 2026-09-19). A reference settles a question this document
+leaves open; it never overrides a rule stated here, and nothing is copied from
+any of them.
+
+| Reference | What it is the reference for |
+| :--- | :--- |
+| Claude (claude.ai) | The visual language: warm neutral greys one step apart per layer, the type, stacked option blocks with a line of detail, soft borders with shadowed floating layers, one blue accent. The approved start surface came from it |
+| Linear | Menus, keyboard-first operation, shortcut hints, and density: compact where the user works fast, never cramped |
+| Notion databases | The visual table: row lines only, no vertical dividers or chrome bands, the header set apart by weight |
+| VS Code and Zed | The source views: line numbers inside the code box, whitespace and empty-value markers, caret and selection behaviour |
+
+Spreadsheet products (Excel, Google Sheets) are deliberately not references:
+Tabelo is a focused table editor, not a spreadsheet (`docs/product.md`).
+
+The earlier palette and radius scale came from
+[petrroll/markdown-to-teams](https://github.com/petrroll/markdown-to-teams); on
+2026-09-18 the owner replaced them with the look above: warm neutral greys,
+Figtree, a deeper primary blue that carries white text, and a 0.5rem/0.75rem
+radius scale.
 
 - **Structured.** Grid cells, row and column headers, resize affordances, pane
   edges, and major workspace divisions are rectilinear. The table remains the
