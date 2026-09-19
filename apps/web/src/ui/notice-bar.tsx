@@ -84,6 +84,7 @@ function useAppNotices(): readonly AppNotice[] {
 	const storageIssue = useTabeloStore((state) => state.storageIssue);
 	const preferencesIssue = usePreferencesIssue();
 	const inputError = useTabeloStore((state) => state.inputError);
+	const importWarnings = useTabeloStore((state) => state.importWarnings);
 	const pendingPaneAction = useTabeloStore((state) => state.pendingPaneAction);
 	const fillSeriesOffer = useTabeloStore((state) => state.fillSeriesOffer);
 	const notices = useTabeloStore((state) => state.notices);
@@ -97,6 +98,7 @@ function useAppNotices(): readonly AppNotice[] {
 				storageIssue,
 				preferencesIssue,
 				inputError,
+				importWarnings,
 				pendingPaneAction,
 				fillSeriesOffer,
 				notices,
@@ -107,6 +109,7 @@ function useAppNotices(): readonly AppNotice[] {
 			storageIssue,
 			preferencesIssue,
 			inputError,
+			importWarnings,
 			pendingPaneAction,
 			fillSeriesOffer,
 			notices,

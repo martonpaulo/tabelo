@@ -158,6 +158,25 @@ describe("conditions are state, not messages", () => {
 		expect(find(conditionNoticeIds.storage)?.detail).not.toBe(before);
 	});
 
+	// #306: formatting an import or a paste could not keep is reported, as a
+	// warning the user dismisses rather than one that expires unread.
+	it("reports formatting an import left behind until it is dismissed", () => {
+		expect(find(conditionNoticeIds.importWarnings)).toBeUndefined();
+		useTabeloStore.setState({
+			importWarnings: [
+				{ code: "html-formatting-unsupported", tag: "mark" },
+				{ code: "html-formatting-unsupported", tag: "mark" },
+			],
+		});
+		const notice = find(conditionNoticeIds.importWarnings);
+		expect(notice?.severity).toBe("warning");
+		expect(notice?.dismissible).toBe(true);
+		expect(notice && autoDismissDelay(notice)).toBeNull();
+
+		useTabeloStore.getState().dismissNotice(conditionNoticeIds.importWarnings);
+		expect(find(conditionNoticeIds.importWarnings)).toBeUndefined();
+	});
+
 	// #32: "saved by a newer Tabelo" and "damaged" set opposite expectations,
 	// so the two must not read alike. Compared with each other rather than
 	// with the copy that renders them.

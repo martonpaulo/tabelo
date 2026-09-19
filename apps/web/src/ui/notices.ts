@@ -3,6 +3,7 @@ import { hasInlineContent } from "@/core/document";
 import type { FillSeriesOffer } from "@/core/series";
 import type { TableDocument } from "@/core/types";
 import { getCodec } from "@/formats";
+import type { ParseIssue } from "@/formats/types";
 import type { ImportError } from "@/import/prepare";
 import { downloadText, tableDownloadFilename } from "@/platform/files";
 import { type PreferencesIssue, preferencesStore } from "@/preferences/store";
@@ -61,6 +62,8 @@ export interface NoticeSources {
 	readonly storageIssue: StorageIssue | null;
 	readonly preferencesIssue: PreferencesIssue | null;
 	readonly inputError: ImportError | null;
+	// What the last import or paste kept only as text (#306).
+	readonly importWarnings?: readonly ParseIssue[];
 	readonly pendingPaneAction: PendingPaneAction | null;
 	readonly fillSeriesOffer: FillSeriesOffer | null;
 	readonly notices: readonly TransientNotice[];
@@ -160,6 +163,21 @@ function projectedNotices(sources: NoticeSources): readonly AppNotice[] {
 			urgency: "assertive",
 			message: copy.notices.importError(sources.inputError),
 			detail: copy.notices.importUnchanged,
+			actions: [],
+			dismissible: true,
+		});
+	}
+
+	const warnings = sources.importWarnings ?? [];
+	if (warnings.length > 0) {
+		// The table arrived, with its text, but something in it was not kept:
+		// the user is told what, never left to find it missing.
+		projected.push({
+			id: conditionNoticeIds.importWarnings,
+			severity: "warning",
+			urgency: "polite",
+			message: copy.notices.importWarnings,
+			detail: [...new Set(warnings.map(copy.source.issue))].join(" "),
 			actions: [],
 			dismissible: true,
 		});

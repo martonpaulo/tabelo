@@ -58,6 +58,19 @@ export interface PreparedImport {
 	readonly warnings: readonly ParseIssue[];
 }
 
+// The warnings that mean something the source showed was not kept: formatting
+// the product declines, whose text stays (#306). A ragged row is padded, not
+// lost, so it is not one of them; it stays the source pane's own diagnostic.
+export function droppedFormatting(
+	warnings: readonly ParseIssue[],
+): readonly ParseIssue[] {
+	return warnings.filter(
+		(issue) =>
+			issue.code === "html-formatting-unsupported" ||
+			issue.code === "html-linked-image-unsupported",
+	);
+}
+
 export type PrepareImportResult =
 	| { readonly ok: true; readonly value: PreparedImport }
 	| { readonly ok: false; readonly error: ImportError };

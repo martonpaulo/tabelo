@@ -107,6 +107,7 @@ import { defaultOutputOptions } from "@/formats/types";
 import type { HistoryDirection } from "@/history/coordinator";
 import {
 	createImportedDocument,
+	droppedFormatting,
 	type ImportError,
 	type PreparedImport,
 	prepareImport,
@@ -397,6 +398,10 @@ export interface TabeloState {
 	// nothing a producer says may be destroyed by whatever comes after it.
 	notices: readonly TransientNotice[];
 	inputError: ImportError | null;
+	// What the last import or paste read with a change, such as HTML formatting
+	// the product does not carry, whose text was kept without it (#306). Empty
+	// when it read everything as written.
+	importWarnings: readonly ParseIssue[];
 	// Polite text with no notice behind it: the grid's column width, the source
 	// editor's occurrence count. One slot rather than a queue, because the most
 	// recent one is the only one worth speaking, and it is shared by every
@@ -1056,6 +1061,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	storageIssue: null,
 	notices: [],
 	inputError: null,
+	importWarnings: [],
 	politeStatus: null,
 	pendingImport: null,
 	pendingPaneAction: null,
@@ -2427,13 +2433,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			state.applyDocument(document);
 			// Read after the document is applied, so the arrangement builds on the
 			// workspace whose column preferences reconciliation has just updated.
-			set((current) =>
-				importedWorkspaceState(
+			set((current) => ({
+				...importedWorkspaceState(
 					current.workspace,
 					prepared.value.source,
 					initialSession,
 				),
-			);
+				importWarnings: droppedFormatting(prepared.value.warnings),
+			}));
 			return null;
 		}
 
@@ -2468,6 +2475,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				prepared.value.matrix,
 			),
 		);
+		set({ importWarnings: droppedFormatting(prepared.value.warnings) });
 		return null;
 	},
 
@@ -2494,13 +2502,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			prepared.value.headerRow,
 		);
 		state.applyDocument(document);
-		set((current) =>
-			importedWorkspaceState(
+		set((current) => ({
+			...importedWorkspaceState(
 				current.workspace,
 				prepared.value.source,
 				initialSession,
 			),
-		);
+			importWarnings: droppedFormatting(prepared.value.warnings),
+		}));
 	},
 
 	reportInputError: (error) => set({ inputError: error }),
@@ -2515,13 +2524,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		// applying it is what sets the held-content flag.
 		const initialSession = pending.initialSession && isInitialSession(state);
 		state.applyDocument(createImportedDocument(pending.prepared, headerRow));
-		set((current) =>
-			importedWorkspaceState(
+		set((current) => ({
+			...importedWorkspaceState(
 				current.workspace,
 				pending.prepared.source,
 				initialSession,
 			),
-		);
+			importWarnings: droppedFormatting(pending.prepared.warnings),
+		}));
 	},
 
 	cancelPendingImport: () => set({ pendingImport: null }),
@@ -2544,6 +2554,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			switch (id) {
 				case conditionNoticeIds.inputError:
 					return { inputError: null };
+				case conditionNoticeIds.importWarnings:
+					return { importWarnings: [] };
 				case conditionNoticeIds.pendingPaneAction:
 					return { pendingPaneAction: null };
 				case conditionNoticeIds.fillSeries:

@@ -1026,6 +1026,9 @@ export const copy = {
 			}
 		},
 		importUnchanged: "Your table is unchanged.",
+		// A read that kept the text and left something behind (#306). The
+		// detail line is each reason the parser gave, said once.
+		importWarnings: "Imported with changes.",
 		copied: (scope: CopyScope) =>
 			scope === "source"
 				? "Source copied"

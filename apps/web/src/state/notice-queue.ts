@@ -43,6 +43,7 @@ export const conditionNoticeIds = {
 	storage: "condition-storage",
 	preferencesStorage: "condition-preferences-storage",
 	inputError: "condition-input-error",
+	importWarnings: "condition-import-warnings",
 	pendingPaneAction: "condition-pending-pane-action",
 	fillSeries: "condition-fill-series",
 	projectionLoss: "condition-projection-loss",
