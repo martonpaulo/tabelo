@@ -586,7 +586,36 @@ a larger or non-contiguous selection.
 Use Tailwind's scale, restricted to: `0.5`, `1`, `1.5`, `2`, `3`, `4`, `6`.
 Anything else is a pattern break. Gaps inside a control group are `1` or `1.5`;
 padding inside a pane header is `3`; cell padding is `2` horizontal, `1.5`
-vertical.
+vertical. The scale stays as written rather than moving to a doubling scale
+(`1`, `2`, `4`, `8`): `1.5` and `3` carry the documented cell and pane-header
+rhythm on every surface, so a doubling scale would be a redesign, not a
+cleanup (owner, 2026-09-18, decided on #354). No linter reads Tailwind classes,
+so review enforces it.
+
+### Where shared style lives
+
+One mechanism per kind of repetition, all already in the stack (#354):
+
+- **A value with no name** (a z-order layer, an inset, a width): a token in
+  `apps/web/src/index.css`. A value Tailwind has a theme namespace for goes in
+  `@theme` and is used as a normal utility (`h-control-md`, `rounded-surface`);
+  one it has none for, such as a z-index, is a custom property read with the
+  variable shorthand (`z-(--z-notice)`, `z-(--z-grid-pinned)`).
+- **Plain CSS that is one visual idea**: a Tailwind
+  [`@utility`](https://tailwindcss.com/docs/adding-custom-styles#adding-custom-utilities)
+  in `index.css`, such as `bg-sticky-selection-fill` or `cell-clip`, so it
+  takes variants like any utility.
+- **A multi-utility cluster that composes with component state**: an exported
+  class constant in the `*-styles.ts` modules in `packages/ui/src/components/`
+  (`menu-styles.ts`, `surface-styles.ts`, `motion-styles.ts`).
+- **A size or tone of one component**: `cva` variants inside that
+  `packages/ui` component, as the vendored primitives already declare them.
+- **The same markup twice**: compose the existing component, extending its
+  props when needed, rather than rewriting its classes. `MenuOption` is the
+  one label-and-description text stack for menus and dialogs.
+
+A cluster only earns a name once it repeats as one idea; two elements that
+happen to share `flex items-center` do not.
 
 ### Typography
 
