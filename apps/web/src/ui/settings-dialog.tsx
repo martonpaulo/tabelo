@@ -23,7 +23,10 @@ import {
 	type SpaceIndicators,
 } from "@/preferences/contract";
 import { preferencesStore } from "@/preferences/store";
-import { usePreferences } from "@/preferences/use-preferences";
+import {
+	usePreferences,
+	usePreferencesIssue,
+} from "@/preferences/use-preferences";
 import {
 	DialogActions,
 	DialogAlternative,
@@ -93,8 +96,13 @@ export function SettingsDialog({
 	const spaceLabelId = useId();
 	const spaceDescriptionId = useId();
 
+	// While the stored settings are unreadable a change applies for the session
+	// and is not written, which the line below the controls already says, so
+	// it is not reported again as a failed write.
+	const sessionOnly = usePreferencesIssue() !== null;
 	const commit = (next: Preferences) => {
-		setSaveError(preferencesStore.commit(next).status !== "saved");
+		const { status } = preferencesStore.commit(next);
+		setSaveError(status !== "saved" && status !== "blocked");
 	};
 	const update = (change: Partial<Preferences>) =>
 		commit({ ...preferences, ...change });
@@ -211,6 +219,11 @@ export function SettingsDialog({
 				{saveError ? (
 					<p role="alert" className="text-destructive text-sm">
 						{copy.settings.saveError}
+					</p>
+				) : null}
+				{sessionOnly ? (
+					<p className="text-muted-foreground text-sm">
+						{copy.settings.sessionOnly}
 					</p>
 				) : null}
 

@@ -70,24 +70,62 @@ function classifyWriteFailure(error: unknown): SaveOutcome {
 	return { status: quotaExceeded ? "quota" : "unavailable" };
 }
 
-export function saveState(state: SavePayload): SaveOutcome {
-	const payload = { ...state, version: CURRENT_VERSION };
+// The part of `Storage` a write needs. Each persisted payload (the table here,
+// the preferences in their own store) writes through the two functions below,
+// so both classify failures and replace unreadable data the same way.
+export interface WritableStorage {
+	readonly setItem: (key: string, value: string) => void;
+}
+
+export function writeItem(
+	storage: WritableStorage,
+	key: string,
+	value: string,
+): SaveOutcome {
 	try {
-		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+		storage.setItem(key, value);
 		return { status: "saved" };
 	} catch (error) {
 		return classifyWriteFailure(error);
 	}
 }
 
+export type ReplacementOutcome = SaveOutcome & {
+	readonly recoveryPreserved: boolean;
+};
+
+// The only way an unreadable payload is ever overwritten: its bytes are
+// copied to the recovery key first, and nothing is written when that copy
+// fails.
+export function preserveRawThenWrite(
+	storage: WritableStorage,
+	recoveryKey: string,
+	raw: string,
+	write: () => SaveOutcome,
+): ReplacementOutcome {
+	const preserved = writeItem(storage, recoveryKey, raw);
+	if (preserved.status !== "saved") {
+		return { ...preserved, recoveryPreserved: false };
+	}
+	return { ...write(), recoveryPreserved: true };
+}
+
+// Reaching `window.localStorage` can itself throw when storage is blocked, so
+// it is read inside the write rather than before it.
+const browserStorage: WritableStorage = {
+	setItem: (key, value) => window.localStorage.setItem(key, value),
+};
+
+export function saveState(state: SavePayload): SaveOutcome {
+	const payload = { ...state, version: CURRENT_VERSION };
+	return writeItem(browserStorage, STORAGE_KEY, JSON.stringify(payload));
+}
+
 export function preserveUnreadableAndSave(
 	raw: string,
 	state: SavePayload,
-): SaveOutcome & { readonly recoveryPreserved: boolean } {
-	try {
-		window.localStorage.setItem(RECOVERY_KEY, raw);
-	} catch (error) {
-		return { ...classifyWriteFailure(error), recoveryPreserved: false };
-	}
-	return { ...saveState(state), recoveryPreserved: true };
+): ReplacementOutcome {
+	return preserveRawThenWrite(browserStorage, RECOVERY_KEY, raw, () =>
+		saveState(state),
+	);
 }

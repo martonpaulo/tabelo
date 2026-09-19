@@ -2,6 +2,7 @@ import { Button } from "@tabelo/ui/components/button";
 import { IconX } from "@tabler/icons-react";
 import { useEffect, useMemo } from "react";
 import { copy } from "@/copy/copy";
+import { usePreferencesIssue } from "@/preferences/use-preferences";
 import { useTabeloStore } from "@/state/store";
 import { useSelectionAnnouncement } from "@/ui/grid/use-selection-announcement";
 import {
@@ -75,6 +76,7 @@ export function NoticeBar() {
 
 function useAppNotices(): readonly AppNotice[] {
 	const storageIssue = useTabeloStore((state) => state.storageIssue);
+	const preferencesIssue = usePreferencesIssue();
 	const inputError = useTabeloStore((state) => state.inputError);
 	const pendingPaneAction = useTabeloStore((state) => state.pendingPaneAction);
 	const fillSeriesOffer = useTabeloStore((state) => state.fillSeriesOffer);
@@ -84,12 +86,20 @@ function useAppNotices(): readonly AppNotice[] {
 		() =>
 			appNotices({
 				storageIssue,
+				preferencesIssue,
 				inputError,
 				pendingPaneAction,
 				fillSeriesOffer,
 				notices,
 			}),
-		[storageIssue, inputError, pendingPaneAction, fillSeriesOffer, notices],
+		[
+			storageIssue,
+			preferencesIssue,
+			inputError,
+			pendingPaneAction,
+			fillSeriesOffer,
+			notices,
+		],
 	);
 }
 

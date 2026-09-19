@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { documentFromMatrix } from "@/core/document";
 import type { PersistenceFailureReason } from "@/persistence/schema";
 import * as files from "@/platform/files";
+import type { PreferencesIssue } from "@/preferences/store";
 import { conditionNoticeIds } from "@/state/notice-queue";
 import { useTabeloStore } from "@/state/store";
 import {
@@ -18,13 +19,18 @@ import {
 
 const initialState = useTabeloStore.getInitialState();
 
+// The preferences store is a module singleton read from real storage, so the
+// issue it would report is supplied directly here.
+let preferencesIssue: PreferencesIssue | null = null;
+
 beforeEach(() => {
 	useTabeloStore.setState(initialState, true);
+	preferencesIssue = null;
 });
 
 function current(): readonly AppNotice[] {
 	const state = useTabeloStore.getState();
-	return appNotices(state);
+	return appNotices({ ...state, preferencesIssue });
 }
 
 function ids(): readonly string[] {
@@ -136,6 +142,37 @@ describe("conditions are state, not messages", () => {
 		useTabeloStore.getState().dismissNotice(conditionNoticeIds.inputError);
 
 		expect(ids()).toEqual([]);
+	});
+
+	it("reports unreadable settings beside the table's own notice, with their bytes untouched", () => {
+		const raw = '{"version": 99, "wrap": true';
+		const download = vi
+			.spyOn(files, "downloadText")
+			.mockImplementation(() => {});
+		useTabeloStore.setState({ storageIssue: { kind: "unavailable" } });
+		preferencesIssue = { kind: "unreadable", reason: "future-version", raw };
+
+		expect(ids()).toEqual([
+			conditionNoticeIds.storage,
+			conditionNoticeIds.preferencesStorage,
+		]);
+		const notice = find(conditionNoticeIds.preferencesStorage);
+		// Nothing in the table is at risk, so it does not interrupt, but it stays
+		// until the settings are replaced.
+		expect(notice?.severity).toBe("warning");
+		expect(notice?.urgency).toBe("polite");
+		expect(notice?.dismissible).toBe(false);
+		expect(notice && autoDismissDelay(notice)).toBeNull();
+
+		notice?.actions
+			.find((action) => action.id === "download-original-settings")
+			?.run();
+
+		const [filename, mimeType, contents] = download.mock.calls[0] ?? [];
+		expect(filename).toMatch(/\.json$/);
+		expect(mimeType).toBe("application/json");
+		expect(contents).toBe(raw);
+		download.mockRestore();
 	});
 
 	it("does not offer to dismiss a storage failure, which is still true either way", () => {

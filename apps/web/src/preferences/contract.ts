@@ -1,6 +1,10 @@
 import { z } from "zod";
+import type { PersistenceFailureReason } from "@/persistence/schema";
 
 export const PREFERENCES_STORAGE_KEY = "tabelo.preferences";
+// Where an unreadable payload is copied before the user replaces it, beside
+// the table's own recovery key and for the same reason.
+export const PREFERENCES_RECOVERY_KEY = "tabelo.preferences.recovery";
 export const PREFERENCES_VERSION = 4;
 
 // Which spaces a source view marks. These are the modes VS Code's
@@ -148,20 +152,42 @@ function storedVersion(value: unknown): unknown {
 		: undefined;
 }
 
-// The current payload, or the result of carrying an older one forward. Null
-// for anything else, including a payload an older version wrote invalidly: a
-// migration reads the old schema, it does not repair it.
-function readPreferences(value: unknown): Preferences | null {
+export type PreferencesReadOutcome =
+	| { readonly status: "ok"; readonly preferences: Preferences }
+	| {
+			readonly status: "unreadable";
+			readonly reason: PersistenceFailureReason;
+	  };
+
+// The current payload, or the result of carrying an older one forward.
+// Anything else is unreadable, for the same reasons the table's own
+// persistence reports, and that includes a payload an older version wrote
+// invalidly: a migration reads the old schema, it does not repair it. A version
+// this build does not know is left alone rather than guessed at.
+function readPreferences(value: unknown): PreferencesReadOutcome {
+	const version = storedVersion(value);
+	if (typeof version !== "number" || !Number.isInteger(version)) {
+		return { status: "unreadable", reason: "current-schema-invalid" };
+	}
+	if (version > PREFERENCES_VERSION) {
+		return { status: "unreadable", reason: "future-version" };
+	}
+	const failure: PreferencesReadOutcome = {
+		status: "unreadable",
+		reason:
+			version < PREFERENCES_VERSION
+				? "migration-failed"
+				: "current-schema-invalid",
+	};
 	let candidate = value;
 	for (;;) {
 		const current = validatePreferences(candidate);
-		if (current) return current;
-		const version = storedVersion(candidate);
-		const migration =
-			typeof version === "number" ? migrations[version] : undefined;
-		if (!migration) return null;
+		if (current) return { status: "ok", preferences: current };
+		const step = storedVersion(candidate);
+		const migration = typeof step === "number" ? migrations[step] : undefined;
+		if (!migration) return failure;
 		const parsed = migration.schema.safeParse(candidate);
-		if (!parsed.success) return null;
+		if (!parsed.success) return failure;
 		candidate = migration.step(parsed.data as never);
 	}
 }
@@ -171,15 +197,17 @@ export function validatePreferences(value: unknown): Preferences | null {
 	return parsed.success ? parsed.data : null;
 }
 
-// A payload from a version this build does not know is left alone rather than
-// guessed at, exactly as the table's own persistence treats one.
-export function parseStoredPreferences(raw: string | null): Preferences {
-	if (raw === null) return DEFAULT_PREFERENCES;
+// Reads the stored bytes without deciding what to do with a failure: the
+// store keeps an unreadable payload untouched and reports it, and runs on the
+// defaults meanwhile, never writing them over it.
+export function readStoredPreferences(raw: string): PreferencesReadOutcome {
+	let value: unknown;
 	try {
-		return readPreferences(JSON.parse(raw)) ?? DEFAULT_PREFERENCES;
+		value = JSON.parse(raw);
 	} catch {
-		return DEFAULT_PREFERENCES;
+		return { status: "unreadable", reason: "invalid-json" };
 	}
+	return readPreferences(value);
 }
 
 export function serializePreferences(preferences: Preferences): string {

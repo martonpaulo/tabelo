@@ -4,6 +4,12 @@ import v1 from "@/persistence/fixtures/v1.json" with { type: "json" };
 import v4 from "@/persistence/fixtures/v4.json" with { type: "json" };
 import v5 from "@/persistence/fixtures/v5.json" with { type: "json" };
 import { CURRENT_VERSION, STORAGE_KEY } from "@/persistence/schema";
+import {
+	DEFAULT_PREFERENCES,
+	PREFERENCES_RECOVERY_KEY,
+	PREFERENCES_STORAGE_KEY,
+	PREFERENCES_VERSION,
+} from "@/preferences/contract";
 import { expect, test } from "./fixtures";
 
 const validMarkdown = "| Name |\n| --- |\n| Ingrid |";
@@ -249,4 +255,39 @@ test("quota notice clears after a later successful write", async ({
 	await tabelo.editCell(1, 2, "Second");
 
 	await expect(tabelo.notice()).toHaveCount(0);
+});
+
+// The Settings payload follows the table's contract: a newer or damaged
+// payload is kept byte-exact and reported, never replaced by the defaults the
+// app runs on meanwhile, and only the explicit replacement overwrites it, after
+// copying it to its recovery key.
+test("unreadable settings stay byte-exact until explicit replacement", async ({
+	tabelo,
+}) => {
+	const raw = JSON.stringify({
+		...DEFAULT_PREFERENCES,
+		version: PREFERENCES_VERSION + 1,
+	});
+	await tabelo.page.addInitScript(
+		({ key, value }) => {
+			window.localStorage.setItem(key, value);
+		},
+		{ key: PREFERENCES_STORAGE_KEY, value: raw },
+	);
+	await tabelo.page.reload();
+	const stored = (key: string) =>
+		tabelo.page.evaluate((name) => window.localStorage.getItem(name), key);
+
+	await expect(tabelo.notice("warning")).toBeVisible();
+	expect(await stored(PREFERENCES_STORAGE_KEY)).toBe(raw);
+
+	await tabelo.page
+		.getByRole("button", { name: copy.notices.replaceSavedSettings })
+		.click();
+
+	await expect(tabelo.notice("warning")).toHaveCount(0);
+	expect(await stored(PREFERENCES_RECOVERY_KEY)).toBe(raw);
+	expect(JSON.parse((await stored(PREFERENCES_STORAGE_KEY)) ?? "null")).toEqual(
+		DEFAULT_PREFERENCES,
+	);
 });

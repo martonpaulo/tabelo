@@ -491,7 +491,11 @@ back restores the pane as it was. A schema change here gets a migration like
 any other. The step that introduced the defaults overwrote the old indicator
 values rather than carrying them, because they were written under the
 superseded default; a pane that had wrapping on kept it as its own choice, and
-one that had it off follows the default.
+one that had it off follows the default. A stored payload that cannot be read,
+damaged or written by a newer version, is kept untouched and reported like the
+table's: the defaults apply for the session, a change applies without being
+written, and only Replace saved settings overwrites it, after copying it to its
+recovery key.
 CodeMirror's own extensions carry as much of this as they can:
 `highlightWhitespace()` supplies the per-character span under every glyph, and
 `highlightTrailingWhitespace()` is the whole of the `trailing` mode. Only

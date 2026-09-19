@@ -3,6 +3,7 @@ import type { FillSeriesOffer } from "@/core/series";
 import { getCodec } from "@/formats";
 import type { ImportError } from "@/import/prepare";
 import { downloadText, tableDownloadFilename } from "@/platform/files";
+import { type PreferencesIssue, preferencesStore } from "@/preferences/store";
 import {
 	conditionNoticeIds,
 	type NoticeSeverity,
@@ -47,6 +48,7 @@ export interface AppNotice {
 
 export interface NoticeSources {
 	readonly storageIssue: StorageIssue | null;
+	readonly preferencesIssue: PreferencesIssue | null;
 	readonly inputError: ImportError | null;
 	readonly pendingPaneAction: PendingPaneAction | null;
 	readonly fillSeriesOffer: FillSeriesOffer | null;
@@ -85,6 +87,9 @@ function projectedNotices(sources: NoticeSources): readonly AppNotice[] {
 
 	const storage = storageNotice(sources.storageIssue);
 	if (storage) projected.push(storage);
+
+	const preferences = preferencesNotice(sources.preferencesIssue);
+	if (preferences) projected.push(preferences);
 
 	if (sources.inputError) {
 		// An import that was refused leaves the user looking at a table that is
@@ -182,23 +187,14 @@ function storageNotice(issue: StorageIssue | null): AppNotice | null {
 			detail:
 				recoveryFailure(issue.replacementFailure) ??
 				copy.notices.recoveryFileNote,
-			actions: [
-				{
-					id: "download-original",
-					label: copy.notices.downloadOriginal,
-					// The saved data exactly as it was found, never reserialized, so
-					// the file is evidence as well as a way back. Its envelope is
-					// JSON, so it is named and typed as JSON even when the bytes no
-					// longer parse, which is itself one of the reasons it is here.
-					run: () =>
-						downloadText(RECOVERY_FILENAME, "application/json", issue.raw),
-				},
-				{
-					id: "replace-saved-data",
-					label: copy.notices.replaceSavedData,
-					run: replaceSavedData,
-				},
-			],
+			actions: unreadableActions({
+				downloadId: "download-original",
+				replaceId: "replace-saved-data",
+				filename: RECOVERY_FILENAME,
+				raw: issue.raw,
+				replaceLabel: copy.notices.replaceSavedData,
+				replace: replaceSavedData,
+			}),
 		};
 	}
 
@@ -219,6 +215,75 @@ function storageNotice(issue: StorageIssue | null): AppNotice | null {
 }
 
 const RECOVERY_FILENAME = "tabelo-recovery.json";
+const SETTINGS_RECOVERY_FILENAME = "tabelo-settings-recovery.json";
+
+// The two ways out of any unreadable payload, table or settings: keep the
+// original by hand, or replace it after it has been copied aside.
+function unreadableActions({
+	downloadId,
+	replaceId,
+	filename,
+	raw,
+	replaceLabel,
+	replace,
+}: {
+	readonly downloadId: string;
+	readonly replaceId: string;
+	readonly filename: string;
+	readonly raw: string;
+	readonly replaceLabel: string;
+	readonly replace: () => void;
+}): readonly NoticeAction[] {
+	return [
+		{
+			id: downloadId,
+			label: copy.notices.downloadOriginal,
+			// The saved data exactly as it was found, never reserialized, so the
+			// file is evidence as well as a way back. Its envelope is JSON, so it
+			// is named and typed as JSON even when the bytes no longer parse,
+			// which is itself one of the reasons it is here.
+			run: () => downloadText(filename, "application/json", raw),
+		},
+		{ id: replaceId, label: replaceLabel, run: replace },
+	];
+}
+
+// Unreadable settings put nothing in the table at risk: the app runs on the
+// defaults and the stored bytes stay untouched. It is a warning that does not
+// interrupt, and it stays until the user replaces them, like the table's.
+function preferencesNotice(issue: PreferencesIssue | null): AppNotice | null {
+	if (!issue) return null;
+	return {
+		id: conditionNoticeIds.preferencesStorage,
+		severity: "warning",
+		urgency: "polite",
+		dismissible: false,
+		message: copy.notices.savedSettingsUnreadable[issue.reason],
+		detail:
+			recoveryFailure(issue.replacementFailure) ??
+			copy.notices.settingsRecoveryFileNote,
+		actions: unreadableActions({
+			downloadId: "download-original-settings",
+			replaceId: "replace-saved-settings",
+			filename: SETTINGS_RECOVERY_FILENAME,
+			raw: issue.raw,
+			replaceLabel: copy.notices.replaceSavedSettings,
+			replace: replaceSavedSettings,
+		}),
+	};
+}
+
+function replaceSavedSettings(): void {
+	const outcome = preferencesStore.replaceUnreadable();
+	if (outcome.status === "failed") return;
+	useTabeloStore
+		.getState()
+		.pushNotice(
+			outcome.status === "saved"
+				? { severity: "info", message: copy.notices.replacedSavedSettings }
+				: { severity: "warning", message: copy.settings.saveError },
+		);
+}
 
 function recoveryFailure(
 	failure: "unavailable" | "quota" | undefined,

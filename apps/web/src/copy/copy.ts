@@ -302,6 +302,10 @@ export const copy = {
 		},
 		saveError:
 			"Settings couldn't be saved. Allow browser storage or free some space, then try again.",
+		// Shown while the stored settings are unreadable: a change applies, but
+		// it is never what overwrites them.
+		sessionOnly:
+			"Your saved settings couldn't be read, so changes last until you close Tabelo. Replace saved settings to keep them.",
 	},
 
 	workspace: {
@@ -891,6 +895,22 @@ export const copy = {
 		},
 		recoveryFileNote:
 			"Download original saves that data exactly as found, for recovery by hand. It isn't a table to import.",
+		// The same four reasons for the Settings payload. Nothing in the table is
+		// at risk, so each says what is in use instead.
+		savedSettingsUnreadable: {
+			"future-version":
+				"Your settings were saved by a newer version and can't be read here. Defaults are in use, and the saved settings are untouched.",
+			"migration-failed":
+				"Your settings were saved by an older version and couldn't be updated. Defaults are in use, and the saved settings are untouched.",
+			"current-schema-invalid":
+				"The saved settings are damaged and couldn't be read. Defaults are in use, and the saved settings are untouched.",
+			"invalid-json":
+				"The saved settings are damaged and couldn't be read. Defaults are in use, and the saved settings are untouched.",
+		},
+		settingsRecoveryFileNote:
+			"Download original saves them exactly as found. Changes last until you close Tabelo unless you replace them.",
+		replaceSavedSettings: "Replace saved settings",
+		replacedSavedSettings: "Saved settings replaced. The original was kept.",
 		storageRecoveryUnavailable: "No recovery copy: storage is unavailable.",
 		storageRecoveryQuota: "No recovery copy: storage is full.",
 		// The fill already happened and the table is correct as it stands. This

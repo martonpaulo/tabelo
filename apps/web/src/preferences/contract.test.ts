@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	DEFAULT_PREFERENCES,
 	PREFERENCES_VERSION,
-	parseStoredPreferences,
+	readStoredPreferences,
 	serializePreferences,
 } from "./contract";
 
@@ -16,9 +16,10 @@ describe("preferences contract", () => {
 			emptyValueIndicators: true,
 		} as const;
 
-		expect(parseStoredPreferences(serializePreferences(preferences))).toEqual(
+		expect(readStoredPreferences(serializePreferences(preferences))).toEqual({
+			status: "ok",
 			preferences,
-		);
+		});
 	});
 
 	// #276: a source pane draws nothing and wraps nothing until the reader asks.
@@ -74,54 +75,90 @@ describe("preferences contract", () => {
 			},
 		],
 	])("migrates a %s payload to the new defaults", (_name, stored) => {
-		expect(parseStoredPreferences(JSON.stringify(stored))).toEqual(
-			DEFAULT_PREFERENCES,
-		);
+		expect(readStoredPreferences(JSON.stringify(stored))).toEqual({
+			status: "ok",
+			preferences: DEFAULT_PREFERENCES,
+		});
 	});
 
+	// Each failure carries the reason the table's own persistence would give,
+	// so the notice can say whether the saved settings are old or damaged. The
+	// payload itself is never replaced by defaults here: see the store.
 	it.each([
-		null,
-		"not json",
-		JSON.stringify({ version: PREFERENCES_VERSION + 1 }),
-		JSON.stringify({
-			version: PREFERENCES_VERSION,
-			wrap: false,
-			spaceIndicators: "everywhere",
-			tabIndicators: true,
-			emptyValueIndicators: true,
-		}),
+		["text that is not JSON", "not json", "invalid-json"],
+		[
+			"a version this build does not know",
+			JSON.stringify({
+				...DEFAULT_PREFERENCES,
+				version: PREFERENCES_VERSION + 1,
+			}),
+			"future-version",
+		],
+		[
+			"a payload without a version",
+			JSON.stringify({}),
+			"current-schema-invalid",
+		],
+		[
+			"a version that is not an integer",
+			JSON.stringify({ ...DEFAULT_PREFERENCES, version: "4" }),
+			"current-schema-invalid",
+		],
+		[
+			"an unknown space mode",
+			JSON.stringify({ ...DEFAULT_PREFERENCES, spaceIndicators: "everywhere" }),
+			"current-schema-invalid",
+		],
 		// Wrapping has no schema default: a current payload without it was not
 		// written by Tabelo.
-		JSON.stringify({
-			version: PREFERENCES_VERSION,
-			spaceIndicators: "trailing",
-			tabIndicators: true,
-			emptyValueIndicators: true,
-		}),
+		[
+			"a current payload without wrapping",
+			JSON.stringify({
+				version: PREFERENCES_VERSION,
+				spaceIndicators: "trailing",
+				tabIndicators: true,
+				emptyValueIndicators: true,
+			}),
+			"current-schema-invalid",
+		],
 		// The theme is gone from the current schema, so a payload still carrying
 		// one is not a current payload and is not silently accepted either.
-		JSON.stringify({
-			version: PREFERENCES_VERSION,
-			theme: "dark",
-			wrap: false,
-			spaceIndicators: "trailing",
-			tabIndicators: true,
-			emptyValueIndicators: true,
-		}),
-		JSON.stringify({
-			version: PREFERENCES_VERSION,
-			wrap: false,
-			spaceIndicators: "trailing",
-			tabIndicators: true,
-			emptyValueIndicators: true,
-			unknown: true,
-		}),
+		[
+			"a current payload with a theme",
+			JSON.stringify({ ...DEFAULT_PREFERENCES, theme: "dark" }),
+			"current-schema-invalid",
+		],
+		[
+			"a current payload with an unknown key",
+			JSON.stringify({ ...DEFAULT_PREFERENCES, unknown: true }),
+			"current-schema-invalid",
+		],
 		// An older payload that was already invalid stays invalid: a migration
 		// reads the old schema, it does not repair it.
-		JSON.stringify({ version: 1, theme: "light" }),
-		JSON.stringify({ version: 2, theme: "dark", spaceIndicators: "all" }),
-		JSON.stringify({ version: 3, spaceIndicators: "all", wrap: true }),
-	])("falls back to defaults for absent or unsupported storage", (raw) => {
-		expect(parseStoredPreferences(raw)).toEqual(DEFAULT_PREFERENCES);
+		[
+			"an invalid version 1",
+			JSON.stringify({ version: 1, theme: "light" }),
+			"migration-failed",
+		],
+		[
+			"an invalid version 2",
+			JSON.stringify({ version: 2, theme: "dark", spaceIndicators: "all" }),
+			"migration-failed",
+		],
+		[
+			"an invalid version 3",
+			JSON.stringify({ version: 3, spaceIndicators: "all", wrap: true }),
+			"migration-failed",
+		],
+		[
+			"a version that never shipped",
+			JSON.stringify({ version: 0 }),
+			"migration-failed",
+		],
+	] as const)("reports %s as unreadable", (_name, raw, reason) => {
+		expect(readStoredPreferences(raw)).toEqual({
+			status: "unreadable",
+			reason,
+		});
 	});
 });

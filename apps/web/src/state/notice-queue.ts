@@ -33,6 +33,7 @@ export interface NoticeRequest {
 // it clears the state that produced it rather than removing a queue entry.
 export const conditionNoticeIds = {
 	storage: "condition-storage",
+	preferencesStorage: "condition-preferences-storage",
 	inputError: "condition-input-error",
 	pendingPaneAction: "condition-pending-pane-action",
 	fillSeries: "condition-fill-series",
