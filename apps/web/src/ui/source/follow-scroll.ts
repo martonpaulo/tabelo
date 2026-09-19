@@ -20,9 +20,13 @@ import { EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 // and written to `--tabelo-scroll-range-x`, where the `tabelo-follow-scroll-x`
 // keyframes read it. The range changes only with the geometry, never while
 // scrolling.
+// The block-axis timeline is named the same way, for the pinned header's copy,
+// which is shown by the vertical scroll itself (pinned-header.ts).
 const timelineTheme = EditorView.theme({
-	"&": { timelineScope: "--tabelo-source-x" },
-	"& > .cm-scroller": { scrollTimeline: "--tabelo-source-x x" },
+	"&": { timelineScope: "--tabelo-source-x, --tabelo-source-y" },
+	"& > .cm-scroller": {
+		scrollTimeline: "--tabelo-source-x x, --tabelo-source-y y",
+	},
 });
 
 // The declarations an element needs to follow the editor's horizontal scroll.

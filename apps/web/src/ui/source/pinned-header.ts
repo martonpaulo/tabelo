@@ -194,6 +194,10 @@ interface Placement {
 	readonly contentWidth: number;
 	// How far the copy's bottom edge stands below the scroller's top.
 	readonly reach: number;
+	// The scroll offset past which the header is pinned, and whether the
+	// editor is scrolled past it now.
+	readonly pinAt: number;
+	readonly pinned: boolean;
 }
 
 class PinnedHeader {
@@ -204,6 +208,10 @@ class PinnedHeader {
 	// How far below the top of the pane the copy reaches while it is shown,
 	// which is how far a caret revealed by scrolling has to stay below it.
 	margin = 0;
+	// Whether the copy is showing, as of the last measurement. What the reader
+	// sees is decided by the scroll itself (see `read`); this is for the scroll
+	// margin and for a press on the copy, which may lag it by a frame.
+	private pinned = false;
 
 	constructor(private readonly view: EditorView) {
 		this.overlay = document.createElement("div");
@@ -281,13 +289,21 @@ class PinnedHeader {
 	// a short or unscrolled document shows no copy, and because the copy floats
 	// over the text rather than taking room from it, showing it moves nothing
 	// and cannot scroll the editor into hiding it again.
+	//
+	// The copy exists whenever there is a header to pin, and the scroll itself
+	// shows it: a scroll-driven animation over the editor's vertical scroll
+	// makes it visible from the first pixel past `--tabelo-pin-at` (index.css,
+	// `tabelo-pin-reveal`). The browser flips it in the same frame the scroll
+	// moves the real header; building or showing the copy from a scroll
+	// listener drew one frame of the header half gone with nothing over it.
 	private read(view: EditorView): Placement | null {
 		const range = pinnedHeaderRange(view.state);
 		if (!range) return null;
 		const scroller = view.scrollDOM;
-		const top = view.lineBlockAt(range.from).top + view.documentPadding.top;
-		if (scroller.scrollTop <= top) return null;
+		const pinAt = view.lineBlockAt(range.from).top + view.documentPadding.top;
 		return {
+			pinAt,
+			pinned: scroller.scrollTop > pinAt,
 			range,
 			top: scroller.offsetTop,
 			width: scroller.clientWidth,
@@ -312,8 +328,10 @@ class PinnedHeader {
 		// as wide as the editor's, so it lines up with it at every scroll offset.
 		this.overlay.style.top = `calc(${placement.top}px + var(--tabelo-source-top-inset, 0rem))`;
 		this.overlay.style.width = `${placement.width}px`;
+		this.overlay.style.setProperty("--tabelo-pin-at", `${placement.pinAt}px`);
 		copy.contentDOM.style.minWidth = `${placement.contentWidth}px`;
-		this.margin = placement.reach;
+		this.pinned = placement.pinned;
+		this.margin = placement.pinned ? placement.reach : 0;
 		// The copy's height is known only once it has been laid out, and the
 		// scroll margin depends on it, so a copy that was just created is read
 		// once more.
@@ -351,6 +369,7 @@ class PinnedHeader {
 		this.copy = null;
 		this.overlay.hidden = true;
 		this.margin = 0;
+		this.pinned = false;
 	}
 
 	// The copy cannot be clicked into, because it is not the header. A press on
@@ -358,7 +377,7 @@ class PinnedHeader {
 	// in the editor, which scrolls the header back into place to show it.
 	private readonly onPointerDown = (event: MouseEvent) => {
 		const copy = this.copy;
-		if (!copy || event.button !== 0) return;
+		if (!copy || !this.pinned || event.button !== 0) return;
 		const box = this.overlay.getBoundingClientRect();
 		if (
 			event.clientY < box.top ||

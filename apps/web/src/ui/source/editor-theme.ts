@@ -181,6 +181,9 @@ export const editorTheme = EditorView.theme({
 	// tint, is what says it stands in front. It never takes more than half the
 	// pane, so a tall wrapped or multi-line header still leaves room to edit, and
 	// it takes no pointer: a press over it is sent to the real header.
+	// Hidden unless the editor is scrolled past the header, which the
+	// scroll-driven reveal decides in the same frame as the scroll
+	// (pinned-header.ts).
 	".cm-tabeloPinnedHeader": {
 		position: "absolute",
 		top: "0",
@@ -192,6 +195,11 @@ export const editorTheme = EditorView.theme({
 		borderBottom: "var(--hairline-w) solid var(--line-strong)",
 		pointerEvents: "none",
 		userSelect: "none",
+		opacity: "0",
+		animation: "tabelo-pin-reveal linear both",
+		animationTimeline: "--tabelo-source-y",
+		animationRange:
+			"var(--tabelo-pin-at, 0px) calc(var(--tabelo-pin-at, 0px) + var(--hairline-w))",
 	},
 	// The column markers (#368), an overlay across the top of the scroller.
 	// They wear the grid's column index strip exactly: its fixed height, which

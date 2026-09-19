@@ -75,6 +75,24 @@ function pinned(pane: Locator): Locator {
 	return pane.locator(PINNED);
 }
 
+// Whether the copy is showing. It exists whenever there is a header to pin and
+// the scroll itself reveals it, through its opacity, which the compositor can
+// change in the frame it scrolls; so showing is full opacity, not presence.
+async function expectPinned(pane: Locator, shown: boolean): Promise<void> {
+	await expect
+		.poll(() =>
+			pane.evaluate((element, selector) => {
+				const copy = element.querySelector<HTMLElement>(selector);
+				return (
+					copy !== null &&
+					!copy.hidden &&
+					getComputedStyle(copy).opacity === "1"
+				);
+			}, PINNED),
+		)
+		.toBe(shown);
+}
+
 // The copy's text, line by line, as the DOM holds it. Every marker the editor
 // draws is generated content or a clipped copy of the notation it replaces, so
 // this is the source text itself.
@@ -117,7 +135,7 @@ for (const testCase of cases) {
 	}) => {
 		const pane = await fillSource(tabelo, testCase);
 		// A document at rest shows its real header and no copy.
-		await expect(pinned(pane)).toBeHidden();
+		await expectPinned(pane, false);
 		// The header as the editor now holds it: Markdown's divider assistance
 		// may have resized the divider the fixture typed.
 		const header = (await renderedSource(pane))
@@ -127,7 +145,7 @@ for (const testCase of cases) {
 		expect(header.split("\n")[0]).toBe(testCase.header.split("\n")[0]);
 
 		await scrollTo(pane, 800);
-		await expect(pinned(pane)).toBeVisible();
+		await expectPinned(pane, true);
 		expect(await pinnedText(pane)).toBe(header);
 
 		// The copy is not a second editor: it is hidden, inert, and holds no
@@ -139,7 +157,7 @@ for (const testCase of cases) {
 		await expect(pane.getByRole("textbox")).toHaveCount(1);
 
 		await scrollTo(pane, 0);
-		await expect(pinned(pane)).toBeHidden();
+		await expectPinned(pane, false);
 	});
 }
 
@@ -155,7 +173,7 @@ test("views without a mapped header row never pin one", async ({ tabelo }) => {
 			"scrollTop",
 			0,
 		);
-		await expect(pinned(pane)).toBeHidden();
+		await expectPinned(pane, false);
 	}
 });
 
@@ -169,7 +187,7 @@ test("a selection that covers the header shows on the pinned copy", async ({
 	await tabelo.source("markdown").click();
 	await page.keyboard.press("ControlOrMeta+a");
 	await scrollTo(pane, 800);
-	await expect(pinned(pane)).toBeVisible();
+	await expectPinned(pane, true);
 	// Drawn like the grid's pinned header row, which shows a selection over it.
 	await expect(
 		pinned(pane).locator(".cm-selectionBackground").first(),
@@ -216,7 +234,7 @@ test("the pinned header follows horizontal scrolling", async ({ tabelo }) => {
 	if (!markdown) throw new Error("missing Markdown case");
 	const pane = await fillSource(tabelo, markdown);
 	await scrollTo(pane, 800);
-	await expect(pinned(pane)).toBeVisible();
+	await expectPinned(pane, true);
 	// The copy never scrolls itself: it is moved with the editor's own scroll
 	// by a scroll-driven animation, so what is read is where its text is drawn.
 	const textLeft = () =>
@@ -241,7 +259,7 @@ test("the pinned header follows wrapping and zoom", async ({ tabelo }) => {
 	if (!csv) throw new Error("missing CSV case");
 	const pane = await fillSource(tabelo, csv);
 	await scrollTo(pane, 800);
-	await expect(pinned(pane)).toBeVisible();
+	await expectPinned(pane, true);
 	const height = () =>
 		pinned(pane).evaluate((element) => element.getBoundingClientRect().height);
 	const unzoomed = await height();
@@ -252,7 +270,7 @@ test("the pinned header follows wrapping and zoom", async ({ tabelo }) => {
 		.click();
 	await tabelo.paneMenuTrigger("csv").click();
 	await scrollTo(pane, 800);
-	await expect(pinned(pane)).toBeVisible();
+	await expectPinned(pane, true);
 	await expect(pinned(pane).locator(".cm-content")).toHaveCSS(
 		"white-space",
 		"break-spaces",
@@ -280,7 +298,7 @@ test("a header taller than half the pane is pinned no taller than that", async (
 	};
 	const pane = await fillSource(tabelo, tall);
 	await scrollTo(pane, 2000);
-	await expect(pinned(pane)).toBeVisible();
+	await expectPinned(pane, true);
 	const sizes = await pane.evaluate((element, selector) => {
 		const editor = element.querySelector(".cm-editor");
 		const copyBox = element.querySelector(selector);
@@ -308,7 +326,7 @@ test("the pinned header never changes the text or what is copied", async ({
 	const unpinned = (await lastCopied(page))?.text;
 
 	await scrollTo(pane, 800, 120);
-	await expect(pinned(pane)).toBeVisible();
+	await expectPinned(pane, true);
 	await tabelo.runPaneCommand("markdown", "copySource");
 	const whilePinned = (await lastCopied(page))?.text;
 
@@ -327,7 +345,7 @@ test("a press on the pinned header edits the real header", async ({
 	if (!tsv) throw new Error("missing TSV case");
 	const pane = await fillSource(tabelo, tsv);
 	await scrollTo(pane, 800);
-	await expect(pinned(pane)).toBeVisible();
+	await expectPinned(pane, true);
 
 	// Just inside the copy's text, at the start of its first line.
 	const line = pinned(pane).locator(".cm-line").first();
@@ -337,7 +355,7 @@ test("a press on the pinned header edits the real header", async ({
 
 	// The caret went to the real header, which scrolled back into place.
 	await expect(tabelo.source("tsv")).toBeFocused();
-	await expect(pinned(pane)).toBeHidden();
+	await expectPinned(pane, false);
 	await tabelo.page.keyboard.type("X");
 	await expect(tabelo.header(1)).toHaveText("Xname");
 });
@@ -349,7 +367,7 @@ test("a caret moving up is revealed below the pinned header, not under it", asyn
 	if (!tsv) throw new Error("missing TSV case");
 	const pane = await fillSource(tabelo, tsv);
 	await scrollTo(pane, 800);
-	await expect(pinned(pane)).toBeVisible();
+	await expectPinned(pane, true);
 
 	// A line just below the copy, then three lines up: the caret passes into
 	// the rows the copy covers, so revealing it has to leave room for the copy.
@@ -385,7 +403,7 @@ test("the pinned header follows edits and hides while the draft does not parse",
 	if (!markdown) throw new Error("missing Markdown case");
 	const pane = await fillSource(tabelo, markdown);
 	await scrollTo(pane, 800);
-	await expect(pinned(pane)).toBeVisible();
+	await expectPinned(pane, true);
 
 	// An edit from the grid reaches the copy through the document.
 	await tabelo.editHeader(1, "person", "name");
@@ -401,13 +419,13 @@ test("the pinned header follows edits and hides while the draft does not parse",
 		"true",
 	);
 	await scrollTo(pane, 800);
-	await expect(pinned(pane)).toBeHidden();
+	await expectPinned(pane, false);
 
 	await tabelo
 		.source("markdown")
 		.fill([markdown.header, ...markdown.body].join("\n"));
 	await scrollTo(pane, 800);
-	await expect(pinned(pane)).toBeVisible();
+	await expectPinned(pane, true);
 });
 
 test("the pinned header stays opaque and bounded in forced colours", async ({
@@ -419,7 +437,7 @@ test("the pinned header stays opaque and bounded in forced colours", async ({
 	await page.emulateMedia({ forcedColors: "active" });
 	const pane = await fillSource(tabelo, jira);
 	await scrollTo(pane, 800);
-	await expect(pinned(pane)).toBeVisible();
+	await expectPinned(pane, true);
 	const style = await pinned(pane).evaluate((element) => {
 		const computed = getComputedStyle(element);
 		return {

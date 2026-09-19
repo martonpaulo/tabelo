@@ -404,6 +404,20 @@ body {
 	animation-timeline: scroll(nearest y);
 }
 
+/* Shows a source view's pinned header once its editor has scrolled one
+   hairline past the header (ui/source/pinned-header.ts). Opacity rather than
+   visibility, because the compositor runs a scroll-driven opacity animation
+   itself, in the frame it scrolls; a visibility change waits for the main
+   thread, which is the frame late this exists to avoid. */
+@keyframes tabelo-pin-reveal {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
 @utility edge-while-scrolled-x {
 	animation: tabelo-scrolled-edge linear both;
 	animation-timeline: scroll(nearest x);
