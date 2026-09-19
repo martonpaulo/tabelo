@@ -427,7 +427,7 @@ the editor is created and on the frames after it.
 | The Figtree web font swaps in after first paint (`font-display: swap`) | Resource timing: the font arrived at 49 to 80 ms cold and 62 to 66 ms cached, before the application's first render at 123 ms or later; no `layout-shift` entry at load names text | **Disproved.** The font is in before any interface text is painted. |
 | Opening and closing menus, tooltips, typing in a cell or a source view, undo, scrolling the grid, starting an empty table | No `layout-shift` above 0.0001 in any of them, and the Tabelo menu's frames show only its own open and close transition | **Disproved.** Nothing to fix. |
 
-Still open from the same survey, because each would change a visual decision
+Still open from the same survey, because it would change a visual decision
 or lies with another owner: pasting on the welcome surface removes it before
 the header question opens, so the empty starting table shows for a frame and
 then sits under the question.
