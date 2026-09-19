@@ -1,10 +1,11 @@
 import { cn } from "@tabelo/ui/lib/utils";
 import { memo, useMemo, useRef } from "react";
 import { copy } from "@/copy/copy";
-import { cellText, cellTextAt } from "@/core/cell-value";
+import { cellTextContentAt } from "@/core/cell-value";
 import { isDocumentBlank } from "@/core/document";
 import type { Alignment, Column, Row } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
+import { InlineContentView } from "@/ui/inline/inline-content";
 import { usePaneFind } from "@/ui/workspace/use-pane-find";
 import { usePreviewFind } from "./preview-find";
 import { visibleShape } from "./visible-shape";
@@ -12,7 +13,9 @@ import { visibleShape } from "./visible-shape";
 // The rendered view shows the table as a reader would meet it, not as markup.
 // It is built from the document directly rather than by injecting the HTML
 // codec's output into the page: same result, no dangerouslySetInnerHTML, and
-// no way for pasted content to become live markup.
+// no way for pasted content to become live markup. Formatted content renders
+// as the semantic elements it means, with the link and image safety rules of
+// docs/adr/0011 (#306).
 //
 // The reading model is a neutral document table, decided on #77: no card, no
 // striping, thin uniform rules including the header, square outer corners. The
@@ -102,7 +105,7 @@ export default function HtmlPreview() {
 										alignClass[column.align],
 									)}
 								>
-									{cellText(column.header)}
+									<InlineContentView value={column.header} />
 								</th>
 							))}
 						</tr>
@@ -149,7 +152,7 @@ const PreviewRow = memo(function PreviewRow({ row, columns }: PreviewRowProps) {
 					{/* A cell may legitimately contain line breaks; preserving
 					    them is the point of the escaping the codecs do. */}
 					<span className="whitespace-pre-wrap">
-						{cellTextAt(row, column.id)}
+						<InlineContentView value={cellTextContentAt(row, column.id)} />
 					</span>
 				</td>
 			))}

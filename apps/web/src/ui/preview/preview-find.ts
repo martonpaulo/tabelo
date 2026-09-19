@@ -20,8 +20,9 @@ import {
 // https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API
 //
 // Matching is the grid's own literal rule, applied to each value as the
-// preview shows it: a preview value is exactly one text node, so no match can
-// span two cells, just as a grid match never does. Only the table is searched:
+// preview shows it: each cell is searched as the text it reads as, link labels
+// and image alternative text included (#306), so no match can span two cells,
+// just as a grid match never does. A URL is never searched. Only the table is searched:
 // the empty state's own words are not the reader's content.
 
 // The one name the stylesheet paints. Shared by every preview surface, each of
@@ -51,6 +52,61 @@ function currentHighlight(): Highlight {
 	return created;
 }
 
+// One piece of what a cell shows, in reading order: a text node, or an image
+// that reads as its alternative text and is marked whole.
+interface CellPiece {
+	readonly node: Node;
+	readonly start: number;
+	readonly length: number;
+	readonly atomic: boolean;
+}
+
+function cellPieces(cell: Element): CellPiece[] {
+	const pieces: CellPiece[] = [];
+	let position = 0;
+	const walker = document.createTreeWalker(
+		cell,
+		NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+	);
+	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+		if (node.nodeType === Node.TEXT_NODE) {
+			const length = node.textContent?.length ?? 0;
+			pieces.push({ node, start: position, length, atomic: false });
+			position += length;
+		} else if (node instanceof HTMLImageElement) {
+			const length = node.alt.length;
+			pieces.push({ node, start: position, length, atomic: true });
+			position += length;
+		}
+	}
+	return pieces;
+}
+
+// Where an offset into the cell's text falls. A range edge inside an image
+// widens to the whole image, the way the core snaps a range to one.
+function place(
+	range: Range,
+	pieces: readonly CellPiece[],
+	offset: number,
+	edge: "start" | "end",
+) {
+	const piece =
+		edge === "start"
+			? pieces.find((each) => offset < each.start + each.length)
+			: pieces.find((each) => offset <= each.start + each.length);
+	if (!piece) return;
+	if (piece.atomic) {
+		if (edge === "start") range.setStartBefore(piece.node);
+		else range.setEndAfter(piece.node);
+		return;
+	}
+	if (edge === "start") range.setStart(piece.node, offset - piece.start);
+	else range.setEnd(piece.node, offset - piece.start);
+}
+
+// A cell may render as several elements once it holds formatting, so its text
+// is read whole and each match is mapped back onto the pieces it spans. No
+// match crosses a cell, just as a grid match never does.
 function matchRanges(
 	root: HTMLElement,
 	query: string,
@@ -59,16 +115,19 @@ function matchRanges(
 	const table = root.querySelector("table");
 	if (query === "" || !table) return [];
 	const ranges: Range[] = [];
-	const walker = document.createTreeWalker(table, NodeFilter.SHOW_TEXT);
-	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-		for (const { start, end } of textMatches(
-			node.textContent ?? "",
-			query,
-			caseSensitive,
-		)) {
+	for (const cell of table.querySelectorAll("th, td")) {
+		const pieces = cellPieces(cell);
+		const text = pieces
+			.map((piece) =>
+				piece.atomic
+					? (piece.node as HTMLImageElement).alt
+					: (piece.node.textContent ?? ""),
+			)
+			.join("");
+		for (const { start, end } of textMatches(text, query, caseSensitive)) {
 			const range = new Range();
-			range.setStart(node, start);
-			range.setEnd(node, end);
+			place(range, pieces, start, "start");
+			place(range, pieces, end, "end");
 			ranges.push(range);
 		}
 	}

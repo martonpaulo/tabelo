@@ -77,6 +77,10 @@
 		(var(--spacing-content-line-box) - var(--spacing-content-line)) /
 		2
 	);
+	/* The tallest an inline image in a cell is drawn (#306). One value for
+	   every surface that renders a cell's content, scaled with the pane, so an
+	   image never sets its own row height. */
+	--spacing-inline-image: calc(var(--pane-zoom, 1) * 6rem);
 }
 
 :root {

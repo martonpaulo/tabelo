@@ -1051,6 +1051,12 @@ export const copy = {
 		goToCellFor: (label: string) => `${GO_TO_CELL} for ${label}`,
 		sourceEditor: (format: string) => `${format} source`,
 		preview: "Formatted table",
+		// Said about content in a cell rather than shown beside it, so the text a
+		// reader sees, searches, and copies stays the cell's own (#306).
+		inertLink:
+			"Not opened from Tabelo. Only web and email addresses open as links.",
+		imageNotShown:
+			"Image not shown. Only https images load, and this one didn't.",
 		blockedView: "Why this view is unavailable",
 		selectionSummary: (rows: number, columns: number) =>
 			rows === 1 && columns === 1
