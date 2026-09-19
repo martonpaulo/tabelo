@@ -11,7 +11,6 @@ import {
 	IconExternalLink,
 	IconFileUpload,
 	IconPlus,
-	IconTable,
 	type TablerIcon,
 } from "@tabler/icons-react";
 import { useEffect, useLayoutEffect, useRef } from "react";
@@ -112,7 +111,14 @@ export function EmptyState({
 					id="empty-state-title"
 					className="flex items-center gap-2 font-semibold text-xl"
 				>
-					<IconTable aria-hidden className="size-6 text-selection-edge" />
+					{/* The product's own mark, as the app menu shows it (owner,
+					    2026-09-19), rather than a generic table icon. */}
+					<img
+						aria-hidden
+						alt=""
+						src={`${import.meta.env.BASE_URL}logo.svg`}
+						className="size-6"
+					/>
 					{copy.empty.title}
 				</h2>
 				<p className="mt-2 text-muted-foreground text-sm leading-relaxed">
