@@ -153,8 +153,9 @@ vocabulary and `docs/adr/` for the reasoning.
   keystroke-level history. When that history is exhausted, or when focus is on
   the grid, undo walks a single document timeline in which each committed parse
   and each grid operation is one step.
-- **A cell's type is carried, never derived.** A cell holds a string, a number,
-  a boolean, or null, and a column declares the type it expects for editing. The
+- **A cell's type is carried, never derived.** A cell holds a string (plain or
+  with inline content, `docs/adr/0011`), a number, a boolean, or null, and a
+  column declares the type it expects for editing. The
   expectation guides entry, and changing it converts the column's cells by the
   user's choice (#392); one column may still hold values that disagree with
   it. A value becomes typed only because a typed source
@@ -303,7 +304,9 @@ A cell value is a string, a number, a boolean, or null, and its type is always
 carried rather than derived: a typed source stated it or the user chose it.
 Tabelo does not infer a type from text, coerce numbers, or reformat content.
 One core function projects a value to text, and every view, codec, and export
-reads a cell through it. See `docs/adr/0008`.
+reads a cell through it. See `docs/adr/0008`. A string may carry normalized
+inline content (marks, links, images), which is carried the same way and never
+derived from text; that projection reads its visible text. See `docs/adr/0011`.
 
 ## Build and validate
 

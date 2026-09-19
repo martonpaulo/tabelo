@@ -109,8 +109,8 @@ Related to: Cell, Table document
 
 ### Cell
 
-The value at one row/column intersection. It holds a **cell value**: a string, a
-number, a boolean, or null. Interface copy calls a string value **text**, as the
+The value at one row/column intersection. It holds a **cell value**: a string
+(plain or with inline content), a number, a boolean, or null. Interface copy calls a string value **text**, as the
 Cell type menu and every accessible name do; code keeps `string` (#78). Tabelo never infers a type, coerces a number, or
 reformats content: a type is carried from a source that stated it or chosen
 explicitly, never derived from how the text looks.
@@ -119,10 +119,26 @@ Related to: Cell value, Cell text, Expected column type, Row, Column
 
 ### Cell value
 
-The scalar a cell holds. `null` is one of them, chosen explicitly or carried
-from a typed source, and it is not a column mode or a nullability flag.
+What a cell holds: a string, formatted text (**inline content**), a number, a
+boolean, or `null`. `null` is chosen explicitly or carried from a typed source,
+and it is not a column mode or a nullability flag.
 
-Related to: Cell, Cell text
+Related to: Cell, Cell text, Inline content
+
+### Inline content
+
+Text with structure: runs of text carrying **marks** (bold, italic, underline,
+strikethrough, inline code), **links** to an authored URL, and atomic
+**images** with required alternative text. A header or a textual cell holds
+either a plain string or inline content, together called **text content**;
+formatted text is still text, so its type is `string`. It exists only while it
+carries structure: content that normalizes to unmarked text is the plain
+string it reads as. Every inline value has one normalized form, which is what
+persistence and the private clipboard payload accept. Its cell text is its
+runs, link labels, and image alternative text in document order. A number, a
+boolean, or `null` is never formatted. See `docs/adr/0011`.
+
+Related to: Cell value, Cell text, Codec
 
 ### Cell text
 
@@ -132,7 +148,9 @@ value looks like. `null` and the empty string project alike and remain distinct
 values: text is a projection, never a second home for the data. When a text
 source is reconciled, an exact match with the previous cell text retains the
 previous value. Changed or newly inserted text is a string. Without a previous
-document, empty text cannot identify whether it once represented `null`.
+document, empty text cannot identify whether it once represented `null`. The
+same holds for inline content: a source that cannot spell structure keeps it
+while the cell text is unchanged, and a changed cell becomes plain text.
 
 Related to: Cell value, Serializer
 
@@ -292,8 +310,9 @@ Related to: Import, Parser, Private clipboard payload
 
 Tabelo's own clipboard representation, carried inertly inside the public HTML
 flavour beside the interoperable text and HTML every other application reads.
-It holds the selected cell values with their types and the expected type of
-each selected column, which no interoperable format can spell. It is versioned
+It holds the selected cell values with their types and inline content, and the
+expected type of each selected column, which no interoperable format can
+spell. It is versioned
 independently of the persistence schema, because bytes in flight between two
 tabs have a different compatibility window from a stored document.
 
@@ -323,7 +342,8 @@ Related to: Table document, Import
   the header row can be deleted like any other row. Deleting it promotes the
   first surviving data row into the header, which is why the document never has
   zero header rows or two. It differs from a data cell in that it holds text
-  only, and in that it is never duplicated or reordered as a row.
+  content only (a plain string or inline content, never a native value), and
+  in that it is never duplicated or reordered as a row.
 - A selection holds at least one area and may hold several. Areas may overlap,
   and every count over them is a set, so the same row or column is never acted
   on twice. An operation needing one insertion point or one origin acts on the

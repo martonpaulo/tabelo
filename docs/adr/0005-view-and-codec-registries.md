@@ -29,11 +29,12 @@ this registry, so registering a codec makes a format downloadable, pasteable,
 and importable with no further edit.
 
 A codec also declares the syntax facts reconciliation needs: whether cell
-values are text-only or typed, and whether column alignment is carried or
-unexpressed. An unchanged text projection can then retain the previous native
-value, while alignment a format cannot express stays on the document. Markdown
-and HTML still apply alignment edits because their syntax carries it. This is
-registry data, not a switch on codec ids.
+values are text-only or typed, whether column alignment is carried or
+unexpressed, and whether inline content is carried or unexpressed (ADR 0011).
+An unchanged text projection can then retain the previous native value or
+inline structure, while alignment a format cannot express stays on the
+document. Markdown and HTML still apply alignment edits because their syntax
+carries it. This is registry data, not a switch on codec ids.
 
 A codec may also declare `outputOptions`: choices that belong to the file it
 writes and to nothing else. Records declares `includeFirstColumnName` and

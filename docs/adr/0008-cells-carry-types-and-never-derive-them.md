@@ -201,3 +201,15 @@ through the same conversion table above (`changeColumnType` in the core, over
 A column may therefore still hold values that disagree with its expectation:
 those a typed source put there, those the user kept with Convert the rest, and
 those entered later as explicit text.
+
+## Amendment: text may carry inline structure (#306)
+
+A textual cell, and a header, may hold inline content: text with marks, links,
+and images, defined in ADR 0011. Its carried type is still `string`, so a text
+column expects it and the Cell type command sees text. Structure follows the
+rule this ADR set for types: it is carried from a source that stated it or
+created by a command the user chose, and never derived from how text looks.
+`cellText` remains the one projection and reads link labels and image
+alternative text in document order. A number, a boolean, or null is never
+formatted, and converting formatted text to one of them always asks first,
+because the conversion discards the structure.
