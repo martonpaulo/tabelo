@@ -557,6 +557,20 @@ export const copy = {
 					message =
 						"No <table> found yet. A table needs rows of <th> or <td> cells.";
 					break;
+				case "html-formatting-unsupported":
+					message = `<${issue.tag}> formatting isn't supported, so its text is kept without it.`;
+					break;
+				case "html-linked-image-unsupported":
+					message =
+						"A link can't hold an image, so the image is kept without its link.";
+					break;
+				case "html-image-alt-required":
+					message =
+						'Every <img> needs alt text. Add an alt="..." that describes the image.';
+					break;
+				case "html-embedded-content-unsupported":
+					message = `<${issue.tag}> can't be kept in a cell. Remove it or replace it with text.`;
+					break;
 				case "json-invalid":
 					message = "This isn't valid JSON yet.";
 					break;

@@ -4,7 +4,9 @@
 // for parsing a table.
 
 import { describe, expect, it } from "vitest";
+import { readCell } from "@/core/cell-value";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
+import type { InlineMark, InlineText } from "@/core/types";
 import { htmlCodec } from "./html";
 
 describe("html parsing", () => {
@@ -191,5 +193,133 @@ describe("html serialization", () => {
 		expect(reparsed.ok).toBe(true);
 		if (!reparsed.ok) return;
 		expect(documentToMatrix(reparsed.document)).toEqual(original);
+	});
+});
+
+// #306. Inline HTML is untrusted input: approved elements become structure,
+// unsupported formatting keeps its text with a warning, and content with no
+// text to keep refuses the parse.
+function firstBodyCell(markup: string) {
+	const result = htmlCodec.parse(
+		`<table><tr><th>Name</th></tr><tr><td>${markup}</td></tr></table>`,
+	);
+	if (!result.ok) return { result, value: undefined };
+	const [row] = result.document.rows;
+	const [column] = result.document.columns;
+	return {
+		result,
+		value: row && column ? readCell(row, column.id) : undefined,
+	};
+}
+
+const text = (value: string, ...marks: InlineMark[]): InlineText => ({
+	kind: "text",
+	text: value,
+	marks,
+});
+
+describe("html inline content", () => {
+	it.each([
+		["<strong>", "<strong>Ingrid</strong>", ["bold"]],
+		["<b>", "<b>Ingrid</b>", ["bold"]],
+		["<em>", "<em>Ingrid</em>", ["italic"]],
+		["<i>", "<i>Ingrid</i>", ["italic"]],
+		["<u>", "<u>Ingrid</u>", ["underline"]],
+		["<s>", "<s>Ingrid</s>", ["strikethrough"]],
+		["<code>", "<code>Ingrid</code>", ["code"]],
+	] as const)("reads %s as its mark", (_tag, markup, marks) => {
+		expect(firstBodyCell(markup).value).toEqual({
+			kind: "inline",
+			nodes: [text("Ingrid", ...marks)],
+		});
+	});
+
+	it("reads links, email links, and images with their authored URLs", () => {
+		expect(
+			firstBodyCell(
+				'<a href="mailto:ingrid@example.com">Ingrid</a> <img src="https://example.com/rio.png" alt="Rio">',
+			).value,
+		).toEqual({
+			kind: "inline",
+			nodes: [
+				{
+					kind: "link",
+					url: "mailto:ingrid@example.com",
+					children: [text("Ingrid")],
+				},
+				text(" "),
+				{ kind: "image", url: "https://example.com/rio.png", alt: "Rio" },
+			],
+		});
+	});
+
+	it("keeps the text of unsupported formatting and warns", () => {
+		const { result, value } = firstBodyCell("x<sup>2</sup>");
+		expect(value).toBe("x2");
+		expect(result.ok && result.warnings).toEqual([
+			{ code: "html-formatting-unsupported", tag: "sup" },
+		]);
+	});
+
+	it("keeps a linked image without its link and warns", () => {
+		const { result, value } = firstBodyCell(
+			'<a href="https://example.com"><img src="https://example.com/a.png" alt="Rio"></a>',
+		);
+		expect(value).toEqual({
+			kind: "inline",
+			nodes: [{ kind: "image", url: "https://example.com/a.png", alt: "Rio" }],
+		});
+		expect(result.ok && result.warnings).toEqual([
+			{ code: "html-linked-image-unsupported" },
+		]);
+	});
+
+	it("refuses an image without alternative text and embedded content", () => {
+		expect(
+			firstBodyCell('<img src="https://example.com/a.png">').result,
+		).toEqual({ ok: false, issues: [{ code: "html-image-alt-required" }] });
+		expect(firstBodyCell('<video src="a.mp4"></video>').result).toEqual({
+			ok: false,
+			issues: [{ code: "html-embedded-content-unsupported", tag: "video" }],
+		});
+	});
+
+	it("never reads script or style text into a cell", () => {
+		expect(
+			firstBodyCell("<script>alert(1)</script><style>td{}</style>Paulo").value,
+		).toBe("Paulo");
+	});
+
+	it("writes each feature as its semantic element", () => {
+		const document = documentFromMatrix(
+			[
+				["Name"],
+				[
+					{
+						kind: "inline",
+						nodes: [
+							text("Ingrid", "bold", "italic"),
+							text(" "),
+							{
+								kind: "link",
+								url: "https://example.com/?a=1&b=2",
+								children: [text("site", "underline")],
+							},
+							text("x", "strikethrough"),
+							text("age", "code"),
+							{
+								kind: "image",
+								url: "https://example.com/r.png",
+								alt: 'Rio "at" dusk',
+							},
+						],
+					},
+				],
+			],
+			{ headerRow: true },
+		);
+		expect(htmlCodec.serialize(document)).toContain(
+			'<td><strong><em>Ingrid</em></strong> <u><a href="https://example.com/?a=1&amp;b=2">site</a></u><s>x</s><code>age</code><img src="https://example.com/r.png" alt="Rio &quot;at&quot; dusk"></td>',
+		);
 	});
 });

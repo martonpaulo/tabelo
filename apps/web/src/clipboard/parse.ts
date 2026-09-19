@@ -64,7 +64,10 @@ function describesPublicTable(
 		return (
 			published !== undefined &&
 			row.length === published.length &&
-			row.every((value, column) => value === published[column])
+			row.every((value, column) => {
+				const cell = published[column];
+				return cell !== undefined && value === cellText(cell);
+			})
 		);
 	});
 }
@@ -86,7 +89,11 @@ export function readClipboardTable(
 		? readTabeloPayload(payload.html)
 		: { html: "", selection: null };
 
-	const html = split.html ? readHtmlTable(split.html) : null;
+	// Markup that refuses to be read, such as an image with no alternative
+	// text, falls through to the plain text beside it, which is what every
+	// other application would paste.
+	const reading = split.html ? readHtmlTable(split.html) : null;
+	const html = reading?.ok ? reading.table : null;
 	if (html) {
 		const typed =
 			split.selection && describesPublicTable(split.selection, html)
@@ -101,6 +108,7 @@ export function readClipboardTable(
 			headerRow: html.headerRow,
 			alignments: html.alignments,
 			expectedTypes: typed?.expectedTypes,
+			warnings: typed || html.warnings.length === 0 ? undefined : html.warnings,
 		};
 	}
 

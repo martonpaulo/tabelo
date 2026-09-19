@@ -73,6 +73,11 @@ function forgedHtml(payload: unknown, matrix = typedSelection.matrix): string {
 	return `<!--tabelo:${btoa(binary)}-->${matrixToHtml(matrix)}`;
 }
 
+function publicMatrix(html: string) {
+	const reading = readHtmlTable(html);
+	return reading?.ok ? reading.table.matrix : undefined;
+}
+
 describe("the private clipboard payload", () => {
 	it("round-trips every scalar and the expected column types", () => {
 		const { html } = selectionClipboardPayload(typedSelection);
@@ -85,7 +90,7 @@ describe("the private clipboard payload", () => {
 
 		// Both halves of the guarantee: the payload is stripped before parsing,
 		// and it would still be inert if it were not.
-		expect(readHtmlTable(html)?.matrix).toEqual([
+		expect(publicMatrix(html)).toEqual([
 			["Ingrid", "35", "true", ""],
 			["Paulo", "35", "false", ""],
 		]);
@@ -106,7 +111,7 @@ describe("the private clipboard payload", () => {
 		const { html } = selectionClipboardPayload(selection);
 
 		expect(readTabeloPayload(html).selection).toEqual(selection);
-		expect(readHtmlTable(html)?.matrix).toEqual([
+		expect(publicMatrix(html)).toEqual([
 			["Ingrid Rio\nhome", "35"],
 			["Paulo", ""],
 		]);
@@ -251,7 +256,7 @@ describe("the private clipboard payload", () => {
 
 		expect(html).not.toContain("tabelo:");
 		// The values themselves still travel: it is only their types that do not.
-		expect(readHtmlTable(html)?.matrix).toEqual([[enormous]]);
+		expect(publicMatrix(html)).toEqual([[enormous]]);
 	});
 });
 

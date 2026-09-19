@@ -266,28 +266,28 @@ export function inlineElements(content: TextContent): InlineElement[] {
 	});
 }
 
-// The marks an element asks the surrounding nesting for. Code and images carry
-// no other mark, and the parsers drop one written around them, so both are
-// transparent: formatting stays open across them rather than closing and
-// reopening. A link asks for the marks every one of its text runs shares,
-// which lets `**[a](url)**` be written instead of repeating the mark inside.
+// The marks an element asks the surrounding nesting for. Code carries no other
+// mark, so it asks for none: formatting closes before it, because every
+// renderer would otherwise draw the code bold or struck through. An image is
+// transparent, since no renderer draws a mark on one and the parsers drop a
+// mark written around it, so formatting stays open across it. A link asks for
+// the marks all of its runs share, which lets `**[a](url)**` be written
+// instead of repeating the mark inside.
 function wantedMarks(element: InlineElement): DelimitedMark[] | null {
 	switch (element.kind) {
 		case "text":
 			return element.marks;
 		case "code":
+			return [];
 		case "image":
 			return null;
-		case "link": {
-			const runs = element.children.filter((child) => child.kind === "text");
-			if (runs.length === 0) return null;
+		case "link":
 			return INLINE_MARKS.filter((mark): mark is DelimitedMark =>
-				runs.every(
+				element.children.every(
 					(run) =>
 						run.kind === "text" && run.marks.includes(mark as DelimitedMark),
 				),
 			);
-		}
 	}
 }
 

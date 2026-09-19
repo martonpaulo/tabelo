@@ -35,6 +35,21 @@ export type ParseIssue =
 	| ({ readonly code: "jira-header-required" } & LocatedParseIssue)
 	| ({ readonly code: "html-unavailable" } & LocatedParseIssue)
 	| ({ readonly code: "html-table-required" } & LocatedParseIssue)
+	// Inline HTML the document cannot carry (#306). The first two are warnings:
+	// the text stays and only the formatting or the link around an image does
+	// not. The last two refuse the parse, because keeping the text would lose
+	// what the reader sees.
+	| ({
+			readonly code: "html-formatting-unsupported";
+			// The element's tag name, lowercase, as the markup spells it.
+			readonly tag: string;
+	  } & LocatedParseIssue)
+	| ({ readonly code: "html-linked-image-unsupported" } & LocatedParseIssue)
+	| ({ readonly code: "html-image-alt-required" } & LocatedParseIssue)
+	| ({
+			readonly code: "html-embedded-content-unsupported";
+			readonly tag: string;
+	  } & LocatedParseIssue)
 	| ({ readonly code: "json-invalid" } & LocatedParseIssue)
 	| ({ readonly code: "json-rows-required" } & LocatedParseIssue)
 	| ({ readonly code: "json-row-object-required" } & LocatedParseIssue)
