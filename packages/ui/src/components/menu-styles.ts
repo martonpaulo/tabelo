@@ -13,11 +13,14 @@ export const menuPopupStyles = `rounded-surface p-1 text-popover-foreground outl
 export const menuItemInsetStyles = "px-2 py-2";
 
 export const menuLabelStyles =
-	"px-2 py-1.5 text-muted-foreground text-xs leading-none data-inset:pl-7";
+	"px-2 py-1.5 text-muted-foreground text-xs leading-none data-inset:pl-6";
 
-export const menuItemLayoutStyles = `relative flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive ${menuItemInsetStyles} text-sm leading-snug outline-hidden data-disabled:cursor-not-allowed data-inset:pl-7 data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
+export const menuItemLayoutStyles = `relative flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive ${menuItemInsetStyles} text-sm leading-snug outline-hidden data-disabled:cursor-not-allowed data-inset:pl-6 data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
 
-export const menuChoiceItemLayoutStyles = `relative flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive py-2 pr-12 pl-2 text-sm leading-snug outline-hidden data-disabled:cursor-not-allowed data-inset:pl-7 data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
+// `pr-12` is clearance, not rhythm: it keeps a row's text off the trailing
+// on/off indicator (`right-2` plus its `w-7` track), so it stays off the
+// spacing scale on purpose (#354).
+export const menuChoiceItemLayoutStyles = `relative flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive py-2 pr-12 pl-2 text-sm leading-snug outline-hidden data-disabled:cursor-not-allowed data-inset:pl-6 data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
 
 export const menuInteractiveItemStateStyles =
 	"not-data-disabled:hover:bg-accent not-data-disabled:hover:text-accent-foreground not-data-disabled:hover:**:text-accent-foreground not-data-disabled:focus:bg-accent not-data-disabled:focus:text-accent-foreground not-data-disabled:focus:**:text-accent-foreground";
@@ -35,7 +38,7 @@ export const menuSingleSelectionItemStateStyles =
 // fill, a pointer lifts it to the accent, and the chosen one, or the one
 // action a surface recommends, is the solid primary with white text.
 export const optionBlockStyles =
-	"relative flex min-h-control-md w-full items-center gap-3 rounded-interactive bg-muted px-3 py-2.5 text-left text-sm leading-snug [&_[data-slot=selection-option-icon]>svg:not([class*='size-'])]:size-5";
+	"relative flex min-h-control-md w-full items-center gap-3 rounded-interactive bg-muted p-3 text-left text-sm leading-snug [&_[data-slot=selection-option-icon]>svg:not([class*='size-'])]:size-5";
 
 export const optionBlockStateStyles =
 	"cursor-pointer not-data-[disabled=true]:not-data-[selected=true]:not-data-[emphasis=primary]:hover:bg-accent not-data-[disabled=true]:not-data-[selected=true]:not-data-[emphasis=primary]:hover:text-accent-foreground not-data-[disabled=true]:not-data-[selected=true]:not-data-[emphasis=primary]:hover:**:text-accent-foreground data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground data-[selected=true]:**:text-primary-foreground data-[emphasis=primary]:bg-primary data-[emphasis=primary]:text-primary-foreground data-[emphasis=primary]:**:text-primary-foreground data-[emphasis=primary]:hover:bg-primary/90 data-[disabled=true]:cursor-not-allowed";
@@ -67,7 +70,7 @@ export const singleSelectionIndicatorShapeStyles =
 export const singleSelectionIndicatorFillStyles =
 	"absolute inset-0 rounded-full bg-primary";
 
-export const menuSubTriggerLayoutStyles = `flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive ${menuItemInsetStyles} text-sm leading-snug outline-hidden data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
+export const menuSubTriggerLayoutStyles = `flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive ${menuItemInsetStyles} text-sm leading-snug outline-hidden data-inset:pl-6 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
 
 export const menuSeparatorStyles = "-mx-1 my-2 h-hairline bg-border";
 

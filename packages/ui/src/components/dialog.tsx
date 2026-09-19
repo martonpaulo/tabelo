@@ -70,7 +70,7 @@ function DialogContent({
 				data-slot="dialog-content"
 				data-width={width}
 				className={cn(
-					`fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto overscroll-contain rounded-surface p-6 text-popover-foreground text-sm/relaxed outline-none ${floatingSurfaceStyles}`,
+					`fixed top-1/2 left-1/2 z-50 grid max-h-screen-fit-h w-full max-w-screen-fit-w -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto overscroll-contain rounded-surface p-6 text-popover-foreground text-sm/relaxed outline-none ${floatingSurfaceStyles}`,
 					dialogWidthStyles[width],
 					popupTransitionStyles,
 					className,

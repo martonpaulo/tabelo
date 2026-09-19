@@ -30,7 +30,7 @@ export function createStaticIntro(): string {
 	const link = (href: string, label: string) =>
 		`<a href="${escapeHtmlAttribute(href)}" class="text-foreground underline underline-offset-2">${escapeHtmlAttribute(label)}</a>`;
 	return [
-		`<main class="mx-auto max-w-xl p-8 text-muted-foreground text-sm leading-relaxed">`,
+		`<main class="mx-auto max-w-xl p-6 text-muted-foreground text-sm leading-relaxed">`,
 		`<h1 class="mb-2 font-semibold text-base text-foreground">${heading}</h1>`,
 		`<p>${description}.</p>`,
 		`<p class="mt-4 text-xs">${escapeHtmlAttribute(product.creditLabel)} ${link(product.author.url, author)} · ${link(product.repositoryUrl, product.sourceLabel)}</p>`,

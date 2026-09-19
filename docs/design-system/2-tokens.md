@@ -600,6 +600,22 @@ rhythm on every surface, so a doubling scale would be a redesign, not a
 cleanup (owner, 2026-09-18, decided on #354). No linter reads Tailwind classes,
 so review enforces it.
 
+The values that were off the scale were snapped to the nearest step (owner,
+2026-09-19, option A on #354): an option block and a notice pad `3` on every
+side (were `3` by `2.5`), an inset menu row or label starts at `6` (was `7`),
+and the offline page pads `6` (was `8`). One Tabelo-authored value stays off
+the scale on purpose: a checked menu row's `pr-12` is clearance for the trailing
+on/off indicator, not rhythm. Vendored shadcn primitives keep their upstream
+values.
+
+**One screen inset.** A floating layer that can grow as wide or as tall as the
+window (a dialog, the app menu, the start card) leaves `--screen-inset`, 2rem,
+between itself and the screen's edges, 1rem on each side. It is read through
+`max-w-screen-fit-w` and `max-h-screen-fit-h` rather than a `calc()` written at
+each call site; the app menu used 1.5rem until #354. The start card's
+`min(26rem, …)` clamp still spells the same 2rem inline and should read the
+token when that file is next touched.
+
 ### Where shared style lives
 
 One mechanism per kind of repetition, all already in the stack (#354):

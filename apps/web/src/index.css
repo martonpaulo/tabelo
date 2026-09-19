@@ -50,6 +50,8 @@
 	--spacing-fab: var(--fab-size);
 	--spacing-fab-inset: var(--fab-inset);
 	--spacing-fab-safe: var(--fab-safe-area);
+	--spacing-screen-fit-w: calc(100vw - var(--screen-inset));
+	--spacing-screen-fit-h: calc(100dvh - var(--screen-inset));
 	--radius-interactive: var(--control-radius);
 	--radius-indicator: var(--indicator-radius);
 	--radius-surface: var(--surface-radius);
@@ -153,6 +155,10 @@
 	/* What a pane's scrollers add below their content. Zero everywhere except
 	   the pane under the floating action button (see [data-under-fab]). */
 	--fab-clearance: 0rem;
+	/* What a floating layer as wide or tall as the window leaves free between
+	   itself and the screen's edges, summed over both sides: 1rem each. One
+	   value for dialogs, menus, and the start card (#354). */
+	--screen-inset: 2rem;
 	/* The one shadow every floating layer casts: menus and their submenus,
 	   tooltips, dialogs, notices, the start card, the pane-edge control, and
 	   the floating action button on hover (owner, 2026-09-19). Deep, in two

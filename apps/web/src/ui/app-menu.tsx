@@ -180,7 +180,7 @@ export function AppMenu({
 					aria-label={copy.actions.openAppMenu}
 					align="end"
 					side="top"
-					className="w-auto min-w-64 max-w-[calc(100vw-1.5rem)]"
+					className="w-auto min-w-64 max-w-screen-fit-w"
 				>
 					{/* The product mark and name, then the open table as one block that
 				    renames it: what the product is sits on the start surface, and
