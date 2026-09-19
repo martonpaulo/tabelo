@@ -373,6 +373,12 @@ export const copy = {
 		layoutHint: "Choose how the open views are arranged",
 		applyLayout: "Apply layout",
 		changeView: "Change view",
+		// A pane whose view failed while the rest of the app kept working. It
+		// promises only what is true: the document and any pending draft live
+		// in the store, not in the view that stopped.
+		viewFailed:
+			"This view ran into a problem and stopped. Your table and your unsaved text are safe.",
+		reloadView: "Reload view",
 		changeViewHint: (label: string) =>
 			`Choose the view shown in the ${label} pane`,
 		movePane: "Move pane",
@@ -1162,6 +1168,7 @@ export const copy = {
 		imageNotShown:
 			"Image not shown. Only https images load, and this one didn't.",
 		blockedView: "Why this view is unavailable",
+		failedView: "Why this view stopped",
 		selectionSummary: (rows: number, columns: number) =>
 			rows === 1 && columns === 1
 				? "1 cell selected"

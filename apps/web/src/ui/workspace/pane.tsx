@@ -21,6 +21,7 @@ import {
 } from "@/workspace/layout";
 import { PaneFindBar } from "./find-bar";
 import { PaneContent } from "./pane-content";
+import { PaneErrorBoundary } from "./pane-error-boundary";
 import { PaneIdentity, PaneMenu } from "./pane-menu";
 import { PaneAssistanceContext } from "./use-pane-assistance";
 import { PaneEntryContext, usePaneEntry } from "./use-pane-entry";
@@ -150,6 +151,11 @@ export const Pane = memo(function Pane({
 		servedView.current = pane.view;
 		enableAssistance();
 	}, [pane.view, enableAssistance]);
+	const changeView = useCallback(
+		(opener: HTMLButtonElement | null) => onChangeView(pane.id, opener),
+		[onChangeView, pane.id],
+	);
+
 	const assistance = useMemo(
 		() => ({ enabled: assistanceEnabled, onBufferReplaced: enableAssistance }),
 		[assistanceEnabled, enableAssistance],
@@ -208,7 +214,7 @@ export const Pane = memo(function Pane({
 					<PaneMenu
 						paneId={pane.id}
 						view={view}
-						onChangeView={(opener) => onChangeView(pane.id, opener)}
+						onChangeView={changeView}
 						onMovePane={(opener) => onMovePane(pane.id, opener)}
 						assistanceEnabled={assistanceEnabled}
 						onAssistanceChange={setAssistanceEnabled}
@@ -232,26 +238,30 @@ export const Pane = memo(function Pane({
 				>
 					<PaneOccurrencesContext.Provider value={setOccurrences}>
 						<PaneAssistanceContext.Provider value={assistance}>
-							{view.kind === "grid" ? (
-								<PaneContent
-									paneId={pane.id}
-									view={view}
-									zoom={pane.zoom}
-									display={pane}
-								/>
-							) : (
-								// A view that scrolls itself fills what the bar leaves, so
-								// opening the bar shortens it rather than pushing the bar
-								// out of the pane.
-								<div className="min-h-0 flex-1">
+							{/* Around the content only, so a view that fails leaves the
+							    header, its Change view command, and the find bar working. */}
+							<PaneErrorBoundary viewId={view.id} onChangeView={changeView}>
+								{view.kind === "grid" ? (
 									<PaneContent
 										paneId={pane.id}
 										view={view}
 										zoom={pane.zoom}
 										display={pane}
 									/>
-								</div>
-							)}
+								) : (
+									// A view that scrolls itself fills what the bar leaves, so
+									// opening the bar shortens it rather than pushing the bar
+									// out of the pane.
+									<div className="min-h-0 flex-1">
+										<PaneContent
+											paneId={pane.id}
+											view={view}
+											zoom={pane.zoom}
+											display={pane}
+										/>
+									</div>
+								)}
+							</PaneErrorBoundary>
 						</PaneAssistanceContext.Provider>
 					</PaneOccurrencesContext.Provider>
 					{/* Inside the pane body rather than below it, so for the grid,

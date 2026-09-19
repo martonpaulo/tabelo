@@ -46,6 +46,7 @@ import {
 } from "@/history/coordinator";
 import type { SpaceIndicators } from "@/preferences/contract";
 import { useTabeloStore } from "@/state/store";
+import { usePaneFailure } from "@/ui/workspace/pane-error-boundary";
 import { usePaneFind } from "@/ui/workspace/use-pane-find";
 import type {
 	HighlightLanguage,
@@ -55,6 +56,7 @@ import type {
 import { columnMarkers, columnMarkersEnabled } from "./column-markers";
 import { csvLanguage } from "./csv-language";
 import { drawnSelection } from "./drawn-selection";
+import { editorFailures } from "./editor-failures";
 import { syntaxTheme } from "./editor-theme";
 import { emptyValueMarkers, emptyValueSyntax } from "./empty-values";
 import { escapeSequenceGlyphs, escapeSyntax } from "./escape-sequences";
@@ -461,6 +463,12 @@ export function SourceEditor({
 	const paneFindRef = useRef(paneFind);
 	paneFindRef.current = paneFind;
 
+	// Where an exception inside the editor goes: the pane's failure state,
+	// read through a ref like the find bar above.
+	const paneFailure = usePaneFailure();
+	const paneFailureRef = useRef(paneFailure);
+	paneFailureRef.current = paneFailure;
+
 	// Where the caret goes once a row command's result is back in the text. Set
 	// before the document changes, and spent by the first rows mapped after it.
 	const pendingCaret = useRef<SourceCaretTarget | null>(null);
@@ -523,11 +531,14 @@ export function SourceEditor({
 		// Set once the editor exists: it is what tells this editor's own reports
 		// apart from every other change to the document.
 		let externalChanges: ExternalChangeWatch | null = null;
+		const failures = editorFailures(() => paneFailureRef.current);
 		const view = new EditorView({
 			parent: host,
+			dispatchTransactions: failures.dispatchTransactions,
 			state: EditorState.create({
 				doc: value,
 				extensions: [
+					failures.extension,
 					lineNumbers(),
 					localHistory(),
 					// Without this, every range CodeMirror adds collapses back to one.

@@ -109,6 +109,15 @@ do (owner, 2026-09-19): the same alert icon and `Unavailable` status above the
 reason, and the same `Go to cell` recovery command below it whenever the
 refusal names a position.
 
+**A view that fails stays in its pane.** Each pane catches an exception from
+the view it shows, whether React meets it while rendering or the source editor
+meets it inside CodeMirror, and replaces only its content with the blocked
+pane's anatomy: the alert and `Unavailable` status, a reason that says the
+table and any unsaved text are safe, and `Reload view` and `Change view` below
+it. The header, the other panes, the document, the pending draft, and autosave
+keep working, because none of them lives in the view. Focus moves to
+`Reload view` only when the failure took it from inside the pane.
+
 **A refusal that names a position offers the correction beside it** (#146). The
 refused choice stays natively disabled with its reason, and an ordinary enabled
 `Go to cell` command sits immediately after it as a sibling: never nested inside
