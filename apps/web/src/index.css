@@ -379,6 +379,31 @@ body {
 	}
 }
 
+@keyframes tabelo-hold-scroll-y {
+	from {
+		transform: translateY(0);
+	}
+	to {
+		transform: translateY(var(--tabelo-scroll-range-y, 0px));
+	}
+}
+
+/* Keeps an element that scrolls with the content in place on one axis, by
+   moving it back by exactly the nearest scroller's offset in the same frame
+   as the scroll. The grid's fill handle on a pinned corner cell uses it, so
+   it stays on the cell that sticks rather than trailing it by a frame; the
+   element's owner writes the scroll range into `--tabelo-scroll-range-x` or
+   `-y`. */
+@utility follow-scroll-hold-x {
+	animation: tabelo-hold-scroll-x linear both;
+	animation-timeline: scroll(nearest x);
+}
+
+@utility follow-scroll-hold-y {
+	animation: tabelo-hold-scroll-y linear both;
+	animation-timeline: scroll(nearest y);
+}
+
 @utility edge-while-scrolled-x {
 	animation: tabelo-scrolled-edge linear both;
 	animation-timeline: scroll(nearest x);
