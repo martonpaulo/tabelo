@@ -43,6 +43,7 @@ import { preconditionRecovery } from "@/ui/precondition-recovery";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
+import { paneSpelling } from "@/ui/spelling";
 import type { ViewDefinition } from "@/views/types";
 import { smallerLayout } from "@/workspace/layout";
 import {
@@ -193,6 +194,7 @@ export function PaneMenu({
 													state,
 													paneId,
 													view.id,
+													paneSpelling(paneId),
 												);
 												if (visible.ok) {
 													void copyToClipboard(

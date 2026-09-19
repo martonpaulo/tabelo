@@ -63,6 +63,17 @@ describe("codec escape properties", () => {
 		},
 	);
 
+	// #397: `<br>` is the chosen spelling's alternative, and text that spells
+	// either one literally still comes back as that text.
+	test.prop({ value: cellStringArbitrary }, { numRuns: PROPERTY_RUNS })(
+		"Markdown unescapes every cell escaped with <br> breaks",
+		({ value }) => {
+			expect(unescapeCell(escapeCell(value, true))).toBe(
+				normalizedLineEndings(value),
+			);
+		},
+	);
+
 	test.prop({ value: cellStringArbitrary }, { numRuns: PROPERTY_RUNS })(
 		"Jira unescapes every escaped cell",
 		({ value }) => {
@@ -74,6 +85,33 @@ describe("codec escape properties", () => {
 });
 
 describe("registered codec properties", () => {
+	// #397. A format offering a choice of spelling reads back, byte-exact, what
+	// either spelling wrote, and writing what it read in the same spelling
+	// changes nothing; the two spellings read back as the same table.
+	for (const codec of listCodecs()) {
+		for (const id of codec.spellings ?? []) {
+			test.prop(
+				{ document: inlineCodecDocumentArbitrary(codec) },
+				{ numRuns: PROPERTY_RUNS },
+			)(`${codec.id} round trips in both ${id} spellings`, ({ document }) => {
+				const tables = [false, true].map((chosen) => {
+					const spelling = { [id]: chosen };
+					const text = codec.serialize(document, spelling);
+					const parsed = expectSuccessfulParse(codec.id, codec.parse(text));
+					expect(valuesOf(parsed)).toEqual(valuesOf(document));
+					expect(parsed.columns.map((column) => column.header)).toEqual(
+						document.columns.map((column) => column.header),
+					);
+					expect(codec.serialize(parsed, spelling)).toBe(text);
+					return parsed;
+				});
+				expect(valuesOf(tables[0] as TableDocument)).toEqual(
+					valuesOf(tables[1] as TableDocument),
+				);
+			});
+		}
+	}
+
 	for (const codec of listCodecs()) {
 		test.prop(
 			{ document: codecDocumentArbitrary(codec) },

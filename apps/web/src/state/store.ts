@@ -102,6 +102,7 @@ import type {
 	ParseIssue,
 	PreconditionFailure,
 	SourceTableRow,
+	Spelling,
 } from "@/formats/types";
 import { defaultOutputOptions } from "@/formats/types";
 import type { HistoryDirection } from "@/history/coordinator";
@@ -975,6 +976,7 @@ export type TextProjection =
 export function textForView(
 	document: TableDocument,
 	viewId: ViewId,
+	spelling: Spelling = {},
 ): TextProjection {
 	const codec = getView(viewId).codec;
 	if (!codec) return { ok: true, text: "" };
@@ -984,10 +986,12 @@ export function textForView(
 	// options. A codec may declare output options that are lossy by design,
 	// existing purely so a download can offer them; only the download dialog
 	// narrows the user's choices in, through outputOptionsFor. Passing them
-	// here would make a pane show text its own codec cannot parse back.
+	// here would make a pane show text its own codec cannot parse back. A
+	// spelling does reach it (#397): it is lossless, and the pane shows the
+	// spelling every other output of the format writes.
 	return failure
 		? { ok: false, failure }
-		: { ok: true, text: codec.serialize(document) };
+		: { ok: true, text: codec.serialize(document, spelling) };
 }
 
 // The exact text a pane is showing. A pane owning an uncommitted draft is
@@ -998,11 +1002,12 @@ export function visibleTextForPane(
 	state: Pick<TabeloState, "document" | "draft">,
 	paneId: string,
 	viewId: ViewId,
+	spelling: Spelling = {},
 ): TextProjection {
 	const draft = state.draft;
 	return draft?.paneId === paneId && draft.viewId === viewId
 		? { ok: true, text: draft.text }
-		: textForView(state.document, viewId);
+		: textForView(state.document, viewId, spelling);
 }
 
 export function hasSessionWork(

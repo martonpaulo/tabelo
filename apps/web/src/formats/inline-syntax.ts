@@ -5,6 +5,7 @@ import type {
 	InlineText,
 	TextContent,
 } from "@/core/types";
+import type { EscapeKind } from "./types";
 
 // The machinery the text formats that spell inline structure share (#306):
 // Markdown and Jira. Each owns its grammar, its escapes, and its tokenizer;
@@ -79,6 +80,16 @@ export function decodableEntity(
 	if (SPACE.test(decoded)) return { decoded, whitespace: true };
 	if (ALNUM.test(decoded)) return { decoded, whitespace: false };
 	return null;
+}
+
+// What a decodable reference is to a reader: a line break, which is now the
+// spelling Markdown writes for one (#397), or whitespace, or a character.
+export function entityKind(decodable: {
+	readonly decoded: string;
+	readonly whitespace: boolean;
+}): EscapeKind {
+	if (decodable.decoded === "\n") return "line-break";
+	return decodable.whitespace ? "whitespace" : "character";
 }
 
 // The syntax both text grammars share for normalizing line endings: a cell

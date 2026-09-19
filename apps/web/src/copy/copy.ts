@@ -355,6 +355,10 @@ export const copy = {
 			label: "Line breaks",
 			description: "A mark where a value continues on a new line",
 		},
+		lineBreakTags: {
+			label: "Use <br> for line breaks in cells",
+			description: "Markdown writes <br> instead of &#10;",
+		},
 		alignColumns: {
 			label: "Align columns",
 			description: "CSV, TSV, and Jira columns line up while lines don't wrap",

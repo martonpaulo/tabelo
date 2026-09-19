@@ -423,7 +423,7 @@ changing the preset or pane count.
 
 Settings is the other deliberate exception. It holds the six global source
 display defaults (#55, #276, the line-break mark, owner, 2026-09-19, and
-column alignment, #396), and each one applies as it changes: a read-only preview at
+column alignment, #396) and Markdown's line-break spelling (#397), and each one applies as it changes: a read-only preview at
 the top of the dialog is a real source editor built from the same indicator
 extensions every text view uses, so the effect is visible before the dialog
 closes and no Apply step is left to confirm. Its sample holds a value with a
@@ -436,7 +436,8 @@ preview keeps a trailing gap so a clipped line never touches its box. Wrap
 lines, align columns, empty values, tabs, and line breaks are option blocks whose icon is the mark they
 draw, wrapping's being the pane menu's own icon and alignment's a columns icon
 because neither draws a mark, and
-whose control is a `Switch`; spaces is one option block holding a
+whose control is a `Switch`; so is Markdown's line-break spelling, whose icon
+is the `<br>` it writes; spaces is one option block holding a
 `SegmentedControl` of its four modes, with the chosen mode's description above
 it. A write the browser refuses is reported in place and the controls show what
 was actually saved. The owner replaced the earlier transactional draft with
@@ -445,13 +446,14 @@ this on 2026-09-18. There is no theme choice, because there is one palette
 pane menu.
 
 A source pane's `Display…` is Settings' counterpart for one pane (#276, option
-C, owner, 2026-09-19), and it qualifies for the same reason: six settings with
+C, owner, 2026-09-19), and it qualifies for the same reason: seven settings with
 up to five states each are a form, not a command, and a submenu per setting
 would put a choice among states outside the submenu class above. It reuses
 Settings' layout, width, glyph slots, order, and footer, and applies each change
 as it is made; the pane behind it is the preview. It offers a setting only
 where the pane's format can use it: column alignment appears only in a pane
-whose format aligns on screen (#396). Every setting is one option
+whose format aligns on screen (#396), and the line-break spelling only in a
+pane whose format offers a choice of it (#397). Every setting is one option
 block holding a `SegmentedControl` whose first segment is `Default (<value>)`,
 following the default in Settings and naming the value it follows, then the
 setting's own values: `On` and `Off` for a switch, the four modes for spaces.

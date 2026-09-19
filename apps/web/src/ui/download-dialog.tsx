@@ -38,6 +38,7 @@ import {
 	SingleSelectionOption,
 	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
+import { codecSpelling } from "@/ui/spelling";
 import { flattensInlineContent } from "@/views/projection-loss";
 import { getView } from "@/views/registry";
 
@@ -94,8 +95,12 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 		downloadText(
 			tableDownloadFilename(tableName, codec.extension),
 			codec.mimeType,
-			// Only what this format declared: see outputOptionsFor.
-			codec.serialize(document, outputOptionsFor(codec, outputOptions)),
+			// Only what this format declared: see outputOptionsFor. The spelling
+			// is the one this format's pane shows (#397).
+			codec.serialize(document, {
+				...outputOptionsFor(codec, outputOptions),
+				...codecSpelling(codec),
+			}),
 		);
 		onOpenChange(false);
 	};

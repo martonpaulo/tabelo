@@ -559,7 +559,9 @@ unasked.
 **A global default, and a pane that may disagree** (#276). The four
 indicators, source wrapping, and column alignment are the six source display
 settings. Column alignment ships on (#396), and a pane offers it only where its
-format aligns on screen. Each has
+format aligns on screen. Markdown's line-break spelling (#397, ADR 0002) is set
+the same way, a global default a Markdown pane may override, though it changes
+the pane's text rather than a drawing: every Markdown output follows it too. Each has
 a global default, set in Settings and kept in the versioned
 `tabelo.preferences` payload, and each source pane may override each one,
 because a display setting answers a question about one pane's syntax while a

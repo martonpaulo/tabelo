@@ -72,12 +72,16 @@ export function followsEveryDefault(
 
 // Whether a pane showing this view offers the setting. Every setting reaches
 // every text view but the ones a format's own facts decide: alignment belongs
-// to the formats that align on screen (#396), so a pane where it would do
-// nothing does not offer it.
+// to the formats that align on screen (#396), and a spelling to the formats
+// that offer it (#397), so a pane where it would do nothing does not offer it.
 export function offersSetting(
 	key: SourceDisplayKey,
 	view: ViewDefinition,
 ): boolean {
 	if (key === "alignColumns") return alignsColumns(view);
+	// A spelling belongs to the formats that offer a choice of it (#397).
+	if (key === "lineBreakTags") {
+		return view.codec?.spellings?.includes("lineBreakTags") === true;
+	}
 	return true;
 }

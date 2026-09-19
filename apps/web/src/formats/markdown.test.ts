@@ -43,6 +43,8 @@ describe("markdown cell escaping", () => {
 		"line one\nline two",
 		"back\\slash",
 		"literal <br> tag",
+		"literal &#10; reference",
+		"both &#10;<br>\nat once",
 		"already \\| escaped",
 		"trailing backslash \\",
 		"everything | \n \\ <br> at once",
@@ -55,6 +57,46 @@ describe("markdown cell escaping", () => {
 
 	it.each(hostile)("round-trips %j", (value) => {
 		expect(unescapeCell(escapeCell(value))).toBe(value);
+		expect(unescapeCell(escapeCell(value, true))).toBe(value);
+	});
+
+	// #397: a line break is the character reference by default and `<br>` on
+	// request, and text that spells either one literally is escaped whichever
+	// is chosen, so it never reads back as a break.
+	it("spells a line break as &#10; unless <br> is chosen", () => {
+		expect(escapeCell("a\nb")).toBe("a&#10;b");
+		expect(escapeCell("a\nb", true)).toBe("a<br>b");
+		for (const tags of [false, true]) {
+			expect(escapeCell("a&#10;b", tags)).toBe("a&amp;#10;b");
+			expect(escapeCell("a<br>b", tags)).toBe("a\\<br>b");
+		}
+	});
+
+	it("reads every break spelling whichever one it writes", () => {
+		for (const spelled of ["a&#10;b", "a<br>b", "a<br/>b", "a<br />b"]) {
+			expect(unescapeCell(spelled)).toBe("a\nb");
+		}
+	});
+
+	it("serializes a table's breaks in the chosen spelling", () => {
+		const document = documentFromMatrix(
+			[
+				["note", "city"],
+				["one\ntwo", "Rio"],
+			],
+			{ headerRow: true },
+		);
+		const reference = markdownCodec.serialize(document);
+		const tags = markdownCodec.serialize(document, { lineBreakTags: true });
+		expect(reference).toContain("one&#10;two");
+		expect(tags).toContain("one<br>two");
+		for (const text of [reference, tags]) {
+			const parsed = markdownCodec.parse(text);
+			assert(parsed.ok);
+			expect(documentToMatrix(parsed.document)).toEqual(
+				documentToMatrix(document),
+			);
+		}
 	});
 
 	it("never emits a bare pipe that would split a row", () => {

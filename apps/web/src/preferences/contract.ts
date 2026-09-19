@@ -5,7 +5,7 @@ export const PREFERENCES_STORAGE_KEY = "tabelo.preferences";
 // Where an unreadable payload is copied before the user replaces it, beside
 // the table's own recovery key and for the same reason.
 export const PREFERENCES_RECOVERY_KEY = "tabelo.preferences.recovery";
-export const PREFERENCES_VERSION = 6;
+export const PREFERENCES_VERSION = 7;
 
 // Which spaces a source view marks. These are the modes VS Code's
 // `editor.renderWhitespace` offers, kept by their names, because they are a
@@ -44,6 +44,11 @@ export interface SourceDisplay {
 	readonly emptyValueIndicators: boolean;
 	readonly lineBreakIndicators: boolean;
 	readonly alignColumns: boolean;
+	// How Markdown spells a line break inside a cell (#397): the character
+	// reference `&#10;` by default, `<br>` when this is on. Unlike the others it
+	// changes the text a Markdown pane and every Markdown output hold, never
+	// what the table is; the parser reads both whatever is chosen.
+	readonly lineBreakTags: boolean;
 }
 
 // The global default for every source pane's display. A pane may override each
@@ -69,6 +74,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
 	emptyValueIndicators: false,
 	lineBreakIndicators: true,
 	alignColumns: true,
+	lineBreakTags: false,
 };
 
 const indicatorShape = {
@@ -84,6 +90,7 @@ const preferencesSchema = z
 		...indicatorShape,
 		lineBreakIndicators: z.boolean(),
 		alignColumns: z.boolean(),
+		lineBreakTags: z.boolean(),
 	})
 	.strict();
 
@@ -136,7 +143,19 @@ const version5Schema = z
 	.strict();
 
 type Version4 = z.infer<typeof version4Schema>;
+// Version 6 added column alignment.
+const version6Schema = z
+	.object({
+		version: z.literal(6),
+		wrap: z.boolean(),
+		...indicatorShape,
+		lineBreakIndicators: z.boolean(),
+		alignColumns: z.boolean(),
+	})
+	.strict();
+
 type Version5 = z.infer<typeof version5Schema>;
+type Version6 = z.infer<typeof version6Schema>;
 
 // The single marker choice, split the way version 2 shipped it: a reader who
 // had markers on received that version's space default, `trailing`.
@@ -180,11 +199,17 @@ function migrateVersion4(value: Version4): Version5 {
 
 // Version 6 adds column alignment (#396). Every choice is carried as it was,
 // and the new setting starts at its default, on.
-function migrateVersion5(value: Version5): Preferences {
+function migrateVersion5(value: Version5): Version6 {
+	return { ...value, version: 6, alignColumns: true };
+}
+
+// Version 7 adds Markdown's line-break spelling (#397). Every choice is
+// carried as it was, and the new setting starts at its default, `&#10;`.
+function migrateVersion6(value: Version6): Preferences {
 	return {
 		...value,
 		version: PREFERENCES_VERSION,
-		alignColumns: DEFAULT_PREFERENCES.alignColumns,
+		lineBreakTags: DEFAULT_PREFERENCES.lineBreakTags,
 	};
 }
 
@@ -200,6 +225,7 @@ const migrations: Readonly<Partial<Record<number, PreferencesMigration>>> = {
 	3: { schema: version3Schema, step: migrateVersion3 },
 	4: { schema: version4Schema, step: migrateVersion4 },
 	5: { schema: version5Schema, step: migrateVersion5 },
+	6: { schema: version6Schema, step: migrateVersion6 },
 };
 
 function storedVersion(value: unknown): unknown {

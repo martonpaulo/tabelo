@@ -5,7 +5,7 @@ import { createEmptyDocument } from "@/core/document";
 import { createDefaultWorkspace } from "@/workspace/layout";
 import v2 from "./fixtures/v2.json";
 import v4 from "./fixtures/v4.json";
-import v12 from "./fixtures/v12.json";
+import v13 from "./fixtures/v13.json";
 import { CURRENT_VERSION, RECOVERY_KEY, STORAGE_KEY } from "./schema";
 import {
 	loadState,
@@ -52,7 +52,7 @@ describe("browser storage outcomes", () => {
 		],
 		[
 			"invalid current schema",
-			JSON.stringify({ ...v12, document: { columns: [] } }),
+			JSON.stringify({ ...v13, document: { columns: [] } }),
 			"current-schema-invalid",
 		],
 		// Formatting Tabelo would never write: two adjacent runs with the same
@@ -60,9 +60,9 @@ describe("browser storage outcomes", () => {
 		[
 			"non-normalized inline content",
 			JSON.stringify({
-				...v12,
+				...v13,
 				document: {
-					...v12.document,
+					...v13.document,
 					rows: [
 						{
 							id: "r-ingrid",

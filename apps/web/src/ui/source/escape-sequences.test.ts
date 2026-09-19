@@ -176,9 +176,14 @@ describe("line breaks", () => {
 		const line = `| ${escapeCell("a\nb\nc")} | ${escapeCell("a|b")} |`;
 		const escapes = scanEscapes(line, "markdown");
 		const owed = owedPadding(line, escapes);
-		// Two `<br>` of four characters each, drawn as one character each.
+		// Two `&#10;` of five characters each, drawn as one character each.
 		const cellEnd = line.indexOf(" | ") + 1;
-		expect([...owed]).toEqual([[cellEnd, 6]]);
+		expect([...owed]).toEqual([[cellEnd, 8]]);
+		// Written as `<br>`, four characters each (#397).
+		const tags = `| ${escapeCell("a\nb\nc", true)} |`;
+		expect([...owedPadding(tags, scanEscapes(tags, "markdown"))]).toEqual([
+			[tags.lastIndexOf("|"), 6],
+		]);
 		// The escaped pipe in the next cell is not a delimiter, and a cell
 		// without a break owes nothing.
 		expect(line[cellEnd]).toBe("|");

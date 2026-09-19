@@ -23,6 +23,7 @@ import type {
 	SourceFieldRange,
 	SourceRowRange,
 	SourceTableRow,
+	Spelling,
 	TableCodec,
 } from "./types";
 
@@ -46,11 +47,14 @@ export interface EscapedCell {
 // of calling `stringWidth` twice per cell. Plain cells that need no escaping
 // skip the writer entirely; everything else goes through it, so the grammar of
 // docs/adr/0002 and docs/adr/0011 stays in exactly one place.
-export function escapeAndMeasure(value: TextContent): EscapedCell {
+export function escapeAndMeasure(
+	value: TextContent,
+	lineBreakTags = false,
+): EscapedCell {
 	const text =
 		typeof value === "string" && !NEEDS_ESCAPING.test(value)
 			? value
-			: writeMarkdownCell(value);
+			: writeMarkdownCell(value, lineBreakTags);
 	return { text, width: displayWidth(text) };
 }
 
@@ -208,7 +212,10 @@ function markdownFields(text: string): SourceFieldRange[] {
 	return fields;
 }
 
-function serializeMarkdown(document: TableDocument): string {
+function serializeMarkdown(
+	document: TableDocument,
+	{ lineBreakTags = false }: Spelling = {},
+): string {
 	// Pad columns to a common width so the source stays readable by hand. An
 	// empty cell is padded to hold the empty-value placeholder, because a source
 	// view draws that word where the cell's value would be: reserving the room
@@ -236,11 +243,14 @@ function serializeMarkdown(document: TableDocument): string {
 	// One pass: each cell is escaped, measured, and folded into its column's
 	// maximum as it is produced. The widths are complete once this is done.
 	const headers = document.columns.map((column, index) =>
-		reserve(index, escapeAndMeasure(column.header)),
+		reserve(index, escapeAndMeasure(column.header, lineBreakTags)),
 	);
 	const body = document.rows.map((row) =>
 		document.columns.map((column, index) =>
-			reserve(index, escapeAndMeasure(cellTextContentAt(row, column.id))),
+			reserve(
+				index,
+				escapeAndMeasure(cellTextContentAt(row, column.id), lineBreakTags),
+			),
 		),
 	);
 
@@ -283,6 +293,7 @@ export const markdownCodec: TableCodec = {
 	parseMatrix: parseMarkdownMatrix,
 	parse: (text) => toDocumentParseResult(parseMarkdownMatrix(text)),
 	serialize: serializeMarkdown,
+	spellings: ["lineBreakTags"],
 	sniffPriority: 20,
 	canSniff: (text) => text.includes("|"),
 };

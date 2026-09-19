@@ -11,6 +11,7 @@ import v8 from "./fixtures/v8.json";
 import v9 from "./fixtures/v9.json";
 import v10 from "./fixtures/v10.json";
 import v11 from "./fixtures/v11.json";
+import v12 from "./fixtures/v12.json";
 import {
 	type MigrationRegistry,
 	migrationRegistry,
@@ -297,13 +298,27 @@ describe("adjacent persistence migrations", () => {
 		);
 	});
 
+	// Markdown's line-break spelling (#397) joins the overrides the same way.
+	it("adds a following line-break spelling override to every v12 pane", () => {
+		const result = runMigrationChain(v12, 12, 13, migrationRegistry);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		const migrated = result.value as typeof v12 & { version: number };
+		expect(migrated.version).toBe(13);
+		expect(migrated.document).toEqual(v12.document);
+		expect(migrated.workspace.panes).toEqual(
+			v12.workspace.panes.map((pane) => ({ ...pane, lineBreakTags: null })),
+		);
+	});
+
 	it("runs the oldest fixture through the complete chain", () => {
-		const result = runMigrationChain(v1, 1, 12, migrationRegistry);
+		const result = runMigrationChain(v1, 1, 13, migrationRegistry);
 
 		expect(result).toMatchObject({
 			ok: true,
 			value: {
-				version: 12,
+				version: 13,
 				name: "Untitled table",
 				draft: null,
 				workspace: {
@@ -315,12 +330,14 @@ describe("adjacent persistence migrations", () => {
 							spaceIndicators: null,
 							lineBreakIndicators: null,
 							alignColumns: null,
+							lineBreakTags: null,
 						},
 						{
 							wrap: null,
 							spaceIndicators: null,
 							lineBreakIndicators: null,
 							alignColumns: null,
+							lineBreakTags: null,
 						},
 					],
 				},

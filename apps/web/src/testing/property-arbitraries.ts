@@ -36,6 +36,8 @@ const escapeTokenArbitrary = fc.constantFrom(
 	"&amp;",
 	"&#32;",
 	"&#92;",
+	// Markdown's default line-break spelling (#397), typed as text.
+	"&#10;",
 	"<br>",
 	"<br/>",
 	"<br />",

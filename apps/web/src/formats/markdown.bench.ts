@@ -20,7 +20,7 @@ const ROWS = 200;
 
 for (const shape of ["plain", "escapeHeavy"] as const) {
 	const cells = benchCells(ROWS, shape);
-	const escaped = cells.map(escapeCell);
+	const escaped = cells.map((cell) => escapeCell(cell));
 	const options = benchOptions(ROWS);
 
 	describe(`markdown cells, ${ROWS} rows, ${shape}`, () => {

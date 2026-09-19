@@ -289,9 +289,11 @@ including with us.
   purpose. Paste 50,000 rows and it will warn you rather than pretend.
 - **Tabelo never guesses types.** It never coerces a number, never reformats a
   date, never strips a leading zero. What you typed is what is stored.
-- **Markdown output contains `<br>`** where a cell has a line break. That is the
-  price of not losing the line break. Strict CommonMark renderers that escape
-  raw HTML will show it literally.
+- **A line break inside a Markdown cell is written `&#10;`.** That is the price
+  of not losing it: a table row is one line. Renderers read it as whitespace
+  rather than as a visible break. Settings has **Use `<br>` for line breaks in
+  cells** for renderers that draw `<br>` as a break, such as GitHub's; strict
+  CommonMark renderers show `<br>` literally.
 - **Chromium only.** Tabelo is developed, tested, and verified in Chrome and
   other Chromium-based browsers. It may well work elsewhere, but nothing is
   checked there, and a bug that only appears in another browser is not something

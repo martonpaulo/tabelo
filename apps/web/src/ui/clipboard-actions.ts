@@ -13,6 +13,7 @@ import {
 } from "@/platform/clipboard";
 import type { NoticeRequest } from "@/state/notice-queue";
 import { useTabeloStore } from "@/state/store";
+import { codecSpelling } from "@/ui/spelling";
 
 // Every clipboard action the user can click goes through here, so the grid and
 // the source panes never disagree about what a refusal looks like. Tabelo
@@ -39,7 +40,12 @@ export async function copyCodecToClipboard(
 	codec: TableCodec,
 	document: TableDocument,
 ): Promise<boolean> {
-	return copyToClipboard({ text: codec.serialize(document) }, "format");
+	// The spelling is not an output option: it is the one the format's pane
+	// shows, so the clipboard holds what that pane holds (#397).
+	return copyToClipboard(
+		{ text: codec.serialize(document, codecSpelling(codec)) },
+		"format",
+	);
 }
 
 export async function copyToClipboard(

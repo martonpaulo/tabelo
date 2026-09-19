@@ -138,7 +138,7 @@ vocabulary and `docs/adr/` for the reasoning.
   first surviving data row is promoted into the header in the same step, so the
   document is never headerless, not even transiently.
 - **Escaping is reversible in every codec that owns it.** Markdown escapes `|`
-  as `\|` and newlines as `<br>`, and encodes meaningful boundary whitespace
+  as `\|` and newlines as `&#10;` (or `<br>` when the reader chooses it, #397), and encodes meaningful boundary whitespace
   before adding readable alignment padding. Jira escapes pipes, newlines,
   backslashes, and literal ampersands. Both also escape an inline-syntax marker
   exactly where their own grammar could read it as syntax, so plain text keeps

@@ -5,6 +5,7 @@ import {
 	codePointBefore,
 	type DelimitedMark,
 	decodableEntity,
+	entityKind,
 	inlineFromTokens,
 	neighbourChar,
 	neighbourClass,
@@ -86,7 +87,7 @@ export const matchJiraEscape: EscapeMatcher = (value, index) => {
 					return {
 						source: entity[0],
 						decoded: decodable.decoded,
-						kind: decodable.whitespace ? "whitespace" : "character",
+						kind: entityKind(decodable),
 					};
 				}
 			}

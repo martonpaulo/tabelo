@@ -51,13 +51,16 @@ export default function SourceView({
 		emptyValueIndicators,
 		lineBreakIndicators,
 		alignColumns,
+		lineBreakTags,
 	} = resolveSourceDisplay(usePreferences(), overrides);
 
 	// The projection recomputes only when the document changes, not when some
 	// other pane is being typed into.
+	// The spelling is the pane's own resolved choice (#397): changing it
+	// re-serializes the projection, and a pending draft keeps its text.
 	const projected = useMemo(
-		() => textForView(document, viewId),
-		[document, viewId],
+		() => textForView(document, viewId, { lineBreakTags }),
+		[document, viewId, lineBreakTags],
 	);
 
 	// Only the view holding the pending draft shows unsaved text; every other

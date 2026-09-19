@@ -35,4 +35,7 @@ const glyphs: Record<SourceDisplayKey, ReactNode> = {
 	emptyValueIndicators: EMPTY_VALUE_PLACEHOLDER,
 	lineBreakIndicators: LINE_BREAK_GLYPH,
 	alignColumns: <IconColumns aria-hidden className="size-4" />,
+	// The spelling the setting writes, as the mark of a setting that draws
+	// nothing.
+	lineBreakTags: "<br>",
 };

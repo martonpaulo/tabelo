@@ -16,6 +16,7 @@ describe("preferences contract", () => {
 			emptyValueIndicators: true,
 			lineBreakIndicators: false,
 			alignColumns: false,
+			lineBreakTags: true,
 		} as const;
 
 		expect(readStoredPreferences(serializePreferences(preferences))).toEqual({
@@ -36,6 +37,28 @@ describe("preferences contract", () => {
 			emptyValueIndicators: false,
 			lineBreakIndicators: true,
 			alignColumns: true,
+			lineBreakTags: false,
+		});
+	});
+
+	// Version 7 adds Markdown's line-break spelling at `&#10;`.
+	it("carries a version 6 payload forward with the reference spelling", () => {
+		const stored = {
+			version: 6,
+			wrap: false,
+			spaceIndicators: "trailing",
+			tabIndicators: true,
+			emptyValueIndicators: false,
+			lineBreakIndicators: true,
+			alignColumns: false,
+		};
+		expect(readStoredPreferences(JSON.stringify(stored))).toEqual({
+			status: "ok",
+			preferences: {
+				...stored,
+				version: PREFERENCES_VERSION,
+				lineBreakTags: false,
+			},
 		});
 	});
 
@@ -55,6 +78,7 @@ describe("preferences contract", () => {
 				...stored,
 				version: PREFERENCES_VERSION,
 				alignColumns: true,
+				lineBreakTags: false,
 			},
 		});
 	});
@@ -75,6 +99,7 @@ describe("preferences contract", () => {
 				version: PREFERENCES_VERSION,
 				lineBreakIndicators: true,
 				alignColumns: true,
+				lineBreakTags: false,
 			},
 		});
 	});
@@ -228,6 +253,24 @@ describe("preferences contract", () => {
 				tabIndicators: false,
 				emptyValueIndicators: false,
 				lineBreakIndicators: true,
+			}),
+			"current-schema-invalid",
+		],
+		[
+			"an invalid version 6",
+			JSON.stringify({ version: 6, wrap: true, lineBreakTags: true }),
+			"migration-failed",
+		],
+		[
+			"a current payload without the line-break spelling",
+			JSON.stringify({
+				version: PREFERENCES_VERSION,
+				wrap: false,
+				spaceIndicators: "none",
+				tabIndicators: false,
+				emptyValueIndicators: false,
+				lineBreakIndicators: true,
+				alignColumns: true,
 			}),
 			"current-schema-invalid",
 		],

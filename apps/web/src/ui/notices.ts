@@ -15,6 +15,7 @@ import {
 } from "@/state/notice-queue";
 import type { PendingPaneAction, StorageIssue } from "@/state/store";
 import { useTabeloStore } from "@/state/store";
+import { codecSpelling } from "@/ui/spelling";
 import {
 	plainEditableViews,
 	plainViewsSignature,
@@ -419,6 +420,6 @@ function downloadCurrentTable(): void {
 	downloadText(
 		tableDownloadFilename(state.name, codec.extension),
 		codec.mimeType,
-		codec.serialize(state.document),
+		codec.serialize(state.document, codecSpelling(codec)),
 	);
 }

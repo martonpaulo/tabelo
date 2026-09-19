@@ -12,6 +12,7 @@ import v9 from "./fixtures/v9.json";
 import v10 from "./fixtures/v10.json";
 import v11 from "./fixtures/v11.json";
 import v12 from "./fixtures/v12.json";
+import v13 from "./fixtures/v13.json";
 import { CURRENT_VERSION, validatePersistedState } from "./schema";
 
 const document = {
@@ -167,6 +168,7 @@ describe("loading a stored payload", () => {
 				...pane,
 				lineBreakIndicators: null,
 				alignColumns: null,
+				lineBreakTags: null,
 			})),
 		);
 	});
@@ -177,7 +179,11 @@ describe("loading a stored payload", () => {
 		expect(outcome.status).toBe("ok");
 		if (outcome.status !== "ok") return;
 		expect(outcome.state.workspace.panes).toEqual(
-			v11.workspace.panes.map((pane) => ({ ...pane, alignColumns: null })),
+			v11.workspace.panes.map((pane) => ({
+				...pane,
+				alignColumns: null,
+				lineBreakTags: null,
+			})),
 		);
 	});
 
@@ -186,7 +192,17 @@ describe("loading a stored payload", () => {
 
 		expect(outcome.status).toBe("ok");
 		if (outcome.status !== "ok") return;
-		expect(outcome.state.workspace.panes).toEqual(v12.workspace.panes);
+		expect(outcome.state.workspace.panes).toEqual(
+			v12.workspace.panes.map((pane) => ({ ...pane, lineBreakTags: null })),
+		);
+	});
+
+	it("carries the line-break spelling override of the stored v13 fixture", () => {
+		const outcome = validatePersistedState(v13);
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.workspace.panes).toEqual(v13.workspace.panes);
 	});
 
 	it.each([
@@ -196,6 +212,7 @@ describe("loading a stored payload", () => {
 		["emptyValueIndicators", "none"],
 		["lineBreakIndicators", "on"],
 		["alignColumns", "yes"],
+		["lineBreakTags", "br"],
 	])("refuses a %s override Tabelo never writes", (key, value) => {
 		const workspace = payload().workspace;
 		expect(
@@ -223,6 +240,7 @@ describe("loading a stored payload", () => {
 		["v10", v10],
 		["v11", v11],
 		["v12", v12],
+		["v13", v13],
 	] as const)(
 		"loads the stored %s fixture as current state",
 		(_name, fixture) => {

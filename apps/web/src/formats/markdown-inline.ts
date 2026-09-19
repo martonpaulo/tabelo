@@ -5,6 +5,7 @@ import {
 	codePointBefore,
 	type DelimitedMark,
 	decodableEntity,
+	entityKind,
 	inlineFromTokens,
 	literalsAhead,
 	neighbourChar,
@@ -99,7 +100,7 @@ export const matchMarkdownEscape: EscapeMatcher = (value, index) => {
 					return {
 						source: entity[0],
 						decoded: decodable.decoded,
-						kind: decodable.whitespace ? "whitespace" : "character",
+						kind: entityKind(decodable),
 					};
 				}
 			}
@@ -424,7 +425,19 @@ const DELIMITERS: Record<DelimitedMark, readonly [string, string]> = {
 	strikethrough: ["~~", "~~"],
 };
 
-function spellLiteral(tokens: readonly OutToken[], index: number): string {
+// How a line break inside a cell is written (#397): the decimal character
+// reference by default, which CommonMark reads as a reference rather than as
+// raw HTML, so no renderer shows markup; `<br>` when the reader chose it, for
+// renderers that draw it as a visible break. The decoder reads both, and any
+// other break spelling it knows, whichever is chosen here.
+const LINE_BREAK_REFERENCE = "&#10;";
+const LINE_BREAK_TAG = "<br>";
+
+function spellLiteral(
+	tokens: readonly OutToken[],
+	index: number,
+	lineBreak: string,
+): string {
 	const token = tokens[index];
 	if (token?.kind !== "literal") return "";
 	const { char, zone } = token;
@@ -438,7 +451,7 @@ function spellLiteral(tokens: readonly OutToken[], index: number): string {
 		case "`":
 			return "\\`";
 		case "\n":
-			return "<br>";
+			return lineBreak;
 		case "<": {
 			// Every spelling the decoder recognises has to be escaped here, or a
 			// literal `<br/>` typed by the user would come back as a line break,
@@ -481,30 +494,38 @@ function spellLiteral(tokens: readonly OutToken[], index: number): string {
 	}
 }
 
-const markdownGrammar: TextGrammar = {
-	delimiter: (mark, role) => DELIMITERS[mark][role === "open" ? 0 : 1],
-	flanking: (mark) => ({
-		inner: mark !== "underline",
-		outer: mark === "italic",
-	}),
-	codeOpen: "`",
-	codeClose: "`",
-	linkOpen: "[",
-	linkClose: (url) => `](${escapeDestination(url)})`,
-	imageOpen: () => "![",
-	imageClose: (url) => `](${escapeDestination(url)})`,
-	protectsEdges: true,
-	spell: spellLiteral,
-};
+function markdownGrammar(lineBreak: string): TextGrammar {
+	return {
+		delimiter: (mark, role) => DELIMITERS[mark][role === "open" ? 0 : 1],
+		flanking: (mark) => ({
+			inner: mark !== "underline",
+			outer: mark === "italic",
+		}),
+		codeOpen: "`",
+		codeClose: "`",
+		linkOpen: "[",
+		linkClose: (url) => `](${escapeDestination(url)})`,
+		imageOpen: () => "![",
+		imageClose: (url) => `](${escapeDestination(url)})`,
+		protectsEdges: true,
+		spell: (tokens, index) => spellLiteral(tokens, index, lineBreak),
+	};
+}
+
+const referenceGrammar = markdownGrammar(LINE_BREAK_REFERENCE);
+const tagGrammar = markdownGrammar(LINE_BREAK_TAG);
 
 // Markdown cannot hold a literal pipe or line break inside a table cell, so
 // both are escaped rather than dropped, and so is every character the inline
 // syntax would otherwise read. The transformation must be exactly reversible:
 // see docs/adr/0002 and docs/adr/0011.
-export function writeMarkdownCell(value: TextContent): string {
-	return writeInline(value, markdownGrammar);
+export function writeMarkdownCell(
+	value: TextContent,
+	lineBreakTags = false,
+): string {
+	return writeInline(value, lineBreakTags ? tagGrammar : referenceGrammar);
 }
 
-export function escapeCell(value: string): string {
-	return writeMarkdownCell(value);
+export function escapeCell(value: string, lineBreakTags = false): string {
+	return writeMarkdownCell(value, lineBreakTags);
 }

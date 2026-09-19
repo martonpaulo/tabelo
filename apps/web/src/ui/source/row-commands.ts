@@ -14,6 +14,7 @@ import {
 	visibleTextForPane,
 } from "@/state/store";
 import { moveRefusalMessage } from "@/ui/grid/table-actions";
+import { paneSpelling } from "@/ui/spelling";
 import type { ViewId } from "@/views/types";
 
 // Structural commands run from a source pane (#255). The caret names a table
@@ -84,7 +85,12 @@ function resolveSourceCaret(
 	const draft = store.draft;
 	const ownsDraft =
 		draft?.paneId === target.paneId && draft.viewId === target.viewId;
-	const shown = visibleTextForPane(store, target.paneId, target.viewId);
+	const shown = visibleTextForPane(
+		store,
+		target.paneId,
+		target.viewId,
+		paneSpelling(target.paneId),
+	);
 	if (
 		(ownsDraft && draft.status !== "clean") ||
 		!shown.ok ||

@@ -61,6 +61,13 @@ describe("pane display choices", () => {
 			.filter((view) => offersSetting("alignColumns", view))
 			.map((view) => view.id);
 		expect(offering.toSorted()).toEqual(["csv", "jira", "tsv"]);
+		// #397: the line-break spelling is Markdown's alone.
+		expect(
+			listViews()
+				.filter((view) => view.kind === "source")
+				.filter((view) => offersSetting("lineBreakTags", view))
+				.map((view) => view.id),
+		).toEqual(["markdown"]);
 		for (const view of listViews()) {
 			expect(offersSetting("wrap", view)).toBe(true);
 		}

@@ -47,7 +47,7 @@ describe("matchMarkdownEscape", () => {
 		{ value: "a|b", sequence: "\\|", decoded: "|", kind: "character" },
 		{ value: "a\\b", sequence: "\\\\", decoded: "\\", kind: "character" },
 		{ value: "a&b", sequence: "&amp;", decoded: "&", kind: "character" },
-		{ value: "a\nb", sequence: "<br>", decoded: "\n", kind: "line-break" },
+		{ value: "a\nb", sequence: "&#10;", decoded: "\n", kind: "line-break" },
 		{ value: "a<br>b", sequence: "\\<br>", decoded: "<br>", kind: "character" },
 		{
 			value: "a<br/>b",

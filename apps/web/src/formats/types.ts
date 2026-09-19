@@ -169,6 +169,20 @@ export interface OutputOptions {
 	readonly includeEmptyValues?: boolean;
 }
 
+// How a format spells what it can write more than one lossless way (#397).
+// Unlike an output option, a spelling is never lossy and reaches every text of
+// the format alike: a pane shows exactly what a download, a copy, or the
+// clipboard would hold, and the parser reads every spelling whatever is
+// chosen, so the choice decides only which one is written. A format ignores
+// a spelling it does not declare.
+export interface Spelling {
+	// Markdown only: write a line break inside a cell as `<br>` rather than
+	// as the character reference `&#10;`.
+	readonly lineBreakTags?: boolean;
+}
+
+export type SpellingId = keyof Spelling;
+
 // A precondition failure means the document is valid, but this codec cannot
 // represent it. Indices are zero-based application positions; presentation
 // code gives them user-facing row numbers and column letters.
@@ -204,7 +218,7 @@ export interface TableCodec {
 	readonly parse: (text: string) => ParseResult;
 	readonly serialize: (
 		document: TableDocument,
-		options?: OutputOptions,
+		options?: OutputOptions & Spelling,
 	) => string;
 	readonly precondition?: (
 		document: TableDocument,
@@ -213,6 +227,9 @@ export interface TableCodec {
 	// has nothing to ask, which is what keeps the chooser from offering an
 	// option that would do nothing.
 	readonly outputOptions?: readonly OutputOptionId[];
+	// Which spellings this format offers a choice between (#397). Absent means
+	// it writes one spelling of everything, and no pane offers a choice.
+	readonly spellings?: readonly SpellingId[];
 	// The separator this format writes between fields, for the formats that
 	// have one. Declared rather than sniffed, because a source view only ever
 	// reads back this codec's own output. Presentation reads it to place

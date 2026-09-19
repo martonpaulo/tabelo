@@ -16,6 +16,7 @@ import {
 	persistedStateV9Schema,
 	persistedStateV10Schema,
 	persistedStateV11Schema,
+	persistedStateV12Schema,
 } from "./versions";
 
 export interface MigrationStep {
@@ -242,6 +243,23 @@ function migrateV11ToV12(input: unknown): unknown {
 	};
 }
 
+// Version 13 lets a pane override how Markdown spells a line break in a cell
+// (#397). Every pane starts by following the default; nothing else changes.
+function migrateV12ToV13(input: unknown): unknown {
+	const source = input as z.infer<typeof persistedStateV12Schema>;
+	return {
+		...source,
+		version: 13,
+		workspace: {
+			...source.workspace,
+			panes: source.workspace.panes.map((pane) => ({
+				...pane,
+				lineBreakTags: null,
+			})),
+		},
+	};
+}
+
 export const migrationRegistry: MigrationRegistry = {
 	1: {
 		source: persistedStateV1Schema,
@@ -295,8 +313,13 @@ export const migrationRegistry: MigrationRegistry = {
 	},
 	11: {
 		source: persistedStateV11Schema,
-		target: persistedStateSchema,
+		target: persistedStateV12Schema,
 		migrate: migrateV11ToV12,
+	},
+	12: {
+		source: persistedStateV12Schema,
+		target: persistedStateSchema,
+		migrate: migrateV12ToV13,
 	},
 };
 

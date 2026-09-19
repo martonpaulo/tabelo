@@ -7,7 +7,7 @@ import { SPACE_INDICATOR_VALUES } from "@/preferences/contract";
 import { workspacePanesTileLayout } from "@/workspace/layout";
 import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
-export const PERSISTED_VERSION = 12 as const;
+export const PERSISTED_VERSION = 13 as const;
 
 // These schemas mirror the payloads shipped by the commits that introduced
 // versions 1 through 5. Keep them beside their stored fixtures: a migration
@@ -341,8 +341,30 @@ export const persistedStateV11Schema = z
 
 // Version 12 adds column alignment to what a pane may override (#396), on the
 // same terms: `null` follows the default.
-const currentPaneSchema = paneV11Schema.extend({
+const paneV12Schema = paneV11Schema.extend({
 	alignColumns: z.boolean().nullable().default(null),
+});
+
+const workspaceV12Schema = persistedWorkspaceV8Schema.extend({
+	panes: z.array(paneV12Schema).min(1).max(4),
+});
+
+export const persistedStateV12Schema = z
+	.object({
+		version: z.literal(12),
+		name: tableNameSchema,
+		document: currentDocumentSchema,
+		draft: currentDraftSchema.nullable(),
+		workspace: workspaceV12Schema,
+	})
+	.superRefine((state, context) => {
+		refineCurrentRelationships(state, context);
+	});
+
+// Version 13 adds Markdown's line-break spelling to what a pane may override
+// (#397), on the same terms.
+const currentPaneSchema = paneV12Schema.extend({
+	lineBreakTags: z.boolean().nullable().default(null),
 });
 
 const currentWorkspaceSchema = persistedWorkspaceV8Schema.extend({
