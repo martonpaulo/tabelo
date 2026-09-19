@@ -176,6 +176,33 @@ import { clampPaneZoom } from "@/workspace/zoom";
 // identical and nothing downstream sees a change that did not happen.
 const NO_COPIED_RANGES: readonly CellRect[] = [];
 
+// What one insert command just added: the axis it grew, the identifiers it
+// created, and which side of the insertion point they arrived on. The side is
+// the side the grid eases them in from.
+export interface InsertedAxis {
+	readonly axis: "row" | "column";
+	readonly ids: readonly string[];
+	readonly from: "before" | "after";
+}
+
+// The rows or columns one insert command added, named from the document it
+// produced. Read after `applyDocument`, so the identifiers are the ones the
+// table now holds.
+function insertionOf(
+	document: TableDocument,
+	axis: "row" | "column",
+	at: number,
+	count: number,
+	from: "before" | "after",
+): InsertedAxis {
+	const added = axis === "row" ? document.rows : document.columns;
+	return {
+		axis,
+		ids: added.slice(at, at + count).map((item) => item.id),
+		from,
+	};
+}
+
 export type StructureDeletionRefusal = "last-row" | "last-column";
 // Why a paste was refused. Like the refusal above, the store names the reason
 // and the interface owns the words for it.
@@ -329,6 +356,17 @@ export interface TabeloState {
 	// Transient by construction: it is never a history step, never persisted,
 	// and never document state. A copy is not an edit.
 	copiedRanges: readonly CellRect[];
+
+	// The rows or columns the last insert command added, so the grid can ease
+	// them in (owner, 2026-09-19). Stored rather than derived because only the
+	// command knows: the grid sees rows appear when a source view parses, when
+	// a paste grows the table, and when undo puts deleted rows back, and none of
+	// those is an insertion the user asked for at a point in the table.
+	//
+	// Transient by construction, exactly like `copiedRanges`: never a history
+	// step, never persisted, never document state, and dropped by the next
+	// change to the document.
+	insertedAxis: InsertedAxis | null;
 
 	// The one offer a completed copy fill may leave behind: the numbers it
 	// repeated could also be continued. Transient by construction, exactly like
@@ -837,6 +875,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editingSeed: null,
 	editingHeader: null,
 	copiedRanges: NO_COPIED_RANGES,
+	insertedAxis: null,
 	fillSeriesOffer: null,
 	projectionNoticeDismissedFor: null,
 	finds: NO_FINDS,
@@ -937,6 +976,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			// reconciled, which is also what a paste needs, since a paste is one of
 			// these changes.
 			copiedRanges: NO_COPIED_RANGES,
+			insertedAxis: null,
 			fillSeriesOffer: null,
 			// The bar stays open across an edit: the query is still what the user
 			// is looking for. Only what it found is recomputed.
@@ -999,6 +1039,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			inputError: null,
 			pendingPaneAction: null,
 			copiedRanges: NO_COPIED_RANGES,
+			insertedAxis: null,
 			fillSeriesOffer: null,
 			selection: clampSelection(
 				current.selection,
@@ -1328,6 +1369,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				inputError: null,
 				pendingPaneAction: null,
 				copiedRanges: NO_COPIED_RANGES,
+				insertedAxis: null,
 				fillSeriesOffer: null,
 				finds: refreshFinds(state.finds, entry.document),
 				selection: clampSelection(
@@ -1356,6 +1398,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				inputError: null,
 				pendingPaneAction: null,
 				copiedRanges: NO_COPIED_RANGES,
+				insertedAxis: null,
 				fillSeriesOffer: null,
 				finds: refreshFinds(state.finds, entry.document),
 				selection: clampSelection(
@@ -1569,7 +1612,10 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const count = Math.max(1, rectDataRows(rect).length);
 		const at = Math.max(0, rect.top);
 		state.applyDocument(insertRows(state.document, at, count));
-		set({ selection: createSelection({ row: at, column: rect.left }) });
+		set({
+			selection: createSelection({ row: at, column: rect.left }),
+			insertedAxis: insertionOf(get().document, "row", at, count, "before"),
+		});
 	},
 
 	addRowBelow: () => {
@@ -1581,6 +1627,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		state.applyDocument(insertRows(state.document, at, count));
 		set({
 			selection: createSelection({ row: at, column: rect.left }),
+			insertedAxis: insertionOf(get().document, "row", at, count, "after"),
 		});
 	},
 
@@ -1673,6 +1720,15 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		switch (edit.kind) {
 			case "insert-row":
 				state.applyDocument(insertRows(document, edit.at));
+				set({
+					insertedAxis: insertionOf(
+						get().document,
+						"row",
+						edit.at,
+						1,
+						"before",
+					),
+				});
 				return;
 			case "remove-row":
 				state.applyDocument(
@@ -1695,6 +1751,15 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			}
 			case "insert-column":
 				state.applyDocument(insertColumns(document, edit.at));
+				set({
+					insertedAxis: insertionOf(
+						get().document,
+						"column",
+						edit.at,
+						1,
+						"before",
+					),
+				});
 				return;
 			case "remove-column":
 				state.applyDocument(deleteColumns(document, [edit.column]));
@@ -1711,21 +1776,36 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const state = get();
 		if (!isContiguous(state.selection)) return;
 		const rect = currentRect(state);
-		state.applyDocument(
-			insertColumns(state.document, rect.left, rect.right - rect.left + 1),
-		);
-		set({ selection: createSelection({ row: rect.top, column: rect.left }) });
+		const leftCount = rect.right - rect.left + 1;
+		state.applyDocument(insertColumns(state.document, rect.left, leftCount));
+		set({
+			selection: createSelection({ row: rect.top, column: rect.left }),
+			insertedAxis: insertionOf(
+				get().document,
+				"column",
+				rect.left,
+				leftCount,
+				"before",
+			),
+		});
 	},
 
 	addColumnRight: () => {
 		const state = get();
 		if (!isContiguous(state.selection)) return;
 		const rect = currentRect(state);
-		state.applyDocument(
-			insertColumns(state.document, rect.right + 1, rect.right - rect.left + 1),
-		);
+		const rightCount = rect.right - rect.left + 1;
+		const rightAt = rect.right + 1;
+		state.applyDocument(insertColumns(state.document, rightAt, rightCount));
 		set({
-			selection: createSelection({ row: rect.top, column: rect.right + 1 }),
+			selection: createSelection({ row: rect.top, column: rightAt }),
+			insertedAxis: insertionOf(
+				get().document,
+				"column",
+				rightAt,
+				rightCount,
+				"after",
+			),
 		});
 	},
 

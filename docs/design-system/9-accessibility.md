@@ -24,6 +24,14 @@ These are requirements, not aspirations:
   instead of native text selection. Line numbers, pane titles, controls, dialog
   copy, menu copy, and portalled floating layers do not become selectable.
 - Status is conveyed by text as well as colour.
+- Motion never delays a command and never carries information. What moves is
+  listed in [§7](../design-system.md#7-motion), and each one is transform and
+  opacity over a shared duration token: a keystroke lands, the state changes,
+  and only the paint eases behind it. The grid's focus mark snaps rather than
+  trails when the selection moves again mid-travel, so a held arrow key is
+  never slowed by it. `prefers-reduced-motion` stands all of it down globally
+  in `index.css`, and no capability, no state, and no information is lost when
+  it does.
 - Contrast meets WCAG AA against the surface the element actually sits on.
 - Nothing depends on hover alone: hover-revealed affordances also appear on
   keyboard focus.
@@ -255,7 +263,9 @@ position state. Its crosshair cursor keeps it distinct from cell selection,
 column resize, and reorder. Once a drag crosses the shared threshold, its
 dominant axis locks for that gesture. A dashed selection-colour preview covers
 only the cells that would be added; it is static at every motion preference,
-because [§7](../design-system.md#7-motion) never animates grid geometry. `Escape`, pointer cancellation, lost
+because [§7](../design-system.md#7-motion) moves only the focus mark and an
+inserted row or column, and a preview of cells that do not exist yet is
+neither. `Escape`, pointer cancellation, lost
 capture, window blur, or a release back inside the source clears the preview and
 changes nothing.
 

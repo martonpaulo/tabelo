@@ -205,15 +205,45 @@ categories:
   shadow, and opacity;
 - pressable controls add transform for the subtle active press response;
 - pane-edge disclosure changes only colour and opacity;
-- transient layers transition opacity and a subtle 0.98 scale from the Base UI
+- transient layers transition opacity and a subtle 0.96 scale from the Base UI
   transform origin.
 
-Every shared transition is 100ms with an ease-out curve. Never use
-`transition-all`: a component may later add a layout property that must stay
-instant. Grid geometry, cell selection, editing, focus ownership, document
-synchronization, line numbers, and counters do not animate. Functional loading
-spinners, real loading skeletons, and notification entry or exit may animate;
-static status never pulses or bounces.
+**Four motion tokens own the pace**, in `index.css` and catalogued in
+[§2](design-system/2-tokens.md#motion): `--motion-enter` (150ms) for something
+arriving, `--motion-exit` (100ms) for something already dismissed,
+`--motion-selection` (120ms) for the grid's focus mark following a held key,
+and `--motion-ease`, the one ease-out curve all three use. A component picks a
+token rather than a number. Interactive control states keep their own 100ms,
+which is feedback on a press rather than something crossing the screen. Never
+use `transition-all`: a component may later add a layout property that must
+stay instant. Editing, focus ownership, document synchronization, line numbers,
+and counters do not animate. Functional loading spinners, real loading
+skeletons, and notification entry or exit may animate; static status never
+pulses or bounces.
+
+**Three things move, and only these** (owner, 2026-09-19, after a mockup: the
+interface read as blinking between states). Each is transform and opacity only,
+so nothing is laid out again while it runs, and none of them delays the command
+that caused it: the keystroke lands, the state changes, and only the paint
+eases.
+
+1. **Menus, submenus, dialogs, tooltips, and their backdrop** grow in over
+   `--motion-enter` from the Base UI transform origin, which is the side they
+   opened from, and leave over the quicker `--motion-exit`.
+2. **The grid's focus mark travels** to the cell the selection moved to over
+   `--motion-selection`. A cell clips its content, so the per-cell marks
+   themselves cannot move: one element over the grid surface stands in for the
+   mark while it travels and the real mark waits, hidden, for exactly that
+   long. A move arriving while one is still running snaps, so a held arrow key
+   can never leave the mark trailing behind the keyboard. Nothing else about
+   the selection moves: the fill, the fill handle, the copied marks, and the
+   pinned layers are where they always were, and the source views keep
+   CodeMirror's own caret.
+3. **A row or column an insert command added** eases in over `--motion-enter`,
+   from the side of the insertion point it arrived on. Only a command's own
+   insertion: the store names the rows or columns it added, so a paste, an
+   undo, a parse of a source view, and a table's first render all stay still,
+   as does every row the insertion displaced.
 
 Menus, context menus, tooltips, dialogs, and their backdrop use Base UI's
 `data-starting-style` and `data-ending-style` attributes with cancellable CSS
@@ -224,9 +254,10 @@ keyframe-based popup entry or side-dependent travel. See the
 
 `prefers-reduced-motion` is honoured globally in `index.css` and must not be
 re-enabled locally. Under reduced motion, popup scale becomes 1, transition
-durations become effectively immediate, and spinner, pulse, and CodeMirror
-cursor animations stop. The written state and progress label remain. This
-implements the [W3C reduced-motion technique](https://www.w3.org/WAI/WCAG21/Techniques/css/C39.html).
+durations become effectively immediate, an inserted row or column appears at
+once, the focus mark's stand-in never appears at all, and spinner, pulse, and
+CodeMirror cursor animations stop. The written state and progress label remain.
+This implements the [W3C reduced-motion technique](https://www.w3.org/WAI/WCAG21/Techniques/css/C39.html).
 
 ---
 

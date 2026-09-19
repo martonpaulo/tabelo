@@ -44,8 +44,9 @@ mark stays inside the cell and keeps its full width. The open cell editor is
 not a cell mark: it can outgrow its cell, so it draws its own frame and the
 focus mark stands down while it is open.
 
-**It is static.** It never becomes marching ants: [§7](../design-system.md#7-motion) puts grid geometry and cell
-selection outside motion, and a status that pulses is exactly what that rule
+**It is static.** It never becomes marching ants: [§7](../design-system.md#7-motion) lets the focus mark travel
+to the cell the selection moved to and nothing else about a mark move, and a
+status that pulses is exactly what that rule
 forbids. The dash pattern, not the colour, separates it from the solid focus
 line, so it carries meaning without colour. Where a cell is both focused and
 copied the two share one band, and a cell's own outline would be painted over

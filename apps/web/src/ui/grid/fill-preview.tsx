@@ -11,8 +11,10 @@ export interface FillPreviewGeometry {
 export type FillPreviewSetter = (geometry: FillPreviewGeometry | null) => void;
 
 // The cells a fill would add, drawn over the positioned grid wrapper. The
-// preview is static at every motion preference: grid geometry never animates,
-// and reduced motion therefore changes no capability or information.
+// preview is static at every motion preference: what moves in the grid is the
+// focus mark and a row or column an insert command added, and a preview of
+// cells that do not exist yet is neither (docs/design-system.md §7). Reduced
+// motion therefore changes no capability or information here.
 export function FillPreview({
 	setterRef,
 }: {

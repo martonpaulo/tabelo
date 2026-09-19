@@ -284,6 +284,64 @@ test("shared motion stays brief, cancellable, and reduced-motion safe", async ({
 	expect(reducedDurations.every((duration) => duration <= 0.001)).toBe(true);
 });
 
+// The grid's two moves, which are one contract a layer down: the focus mark
+// travelling between cells, and a row an insert command added arriving in the
+// table. Neither is asserted by its geometry or its timing, only by whether the
+// motion preference reaches it.
+test("the grid's selection travel and inserted rows follow the motion preference", async ({
+	page,
+	tabelo,
+}) => {
+	await page.emulateMedia({ reducedMotion: "no-preference" });
+
+	const travel = tabelo.gridSurface().locator("[data-selection-glide]");
+	const travelMotion = await travel.evaluate((element) => {
+		const style = getComputedStyle(element);
+		return {
+			properties: style.transitionProperty.split(", "),
+			durations: style.transitionDuration
+				.split(", ")
+				.map((duration) => Number.parseFloat(duration)),
+		};
+	});
+	expect(travelMotion.properties).toContain("transform");
+	expect(travelMotion.properties).not.toContain("all");
+	expect(travelMotion.properties).not.toContain("opacity");
+	expect(travelMotion.durations.every((duration) => duration > 0)).toBe(true);
+
+	await tabelo.cell(2, 1).click();
+	await page.keyboard.press("ControlOrMeta+Enter");
+	// The command leaves the selection on the row it added, so the row holding
+	// the focused cell is the inserted one.
+	const insertedRow = tabelo.grid().locator("tr:has([data-grid-active])");
+	const insertMotion = await insertedRow.evaluate((element) => {
+		const style = getComputedStyle(element);
+		return {
+			name: style.animationName,
+			duration: Number.parseFloat(style.animationDuration),
+		};
+	});
+	expect(insertMotion.name).not.toBe("none");
+	expect(insertMotion.duration).toBeGreaterThan(0);
+	// Only what the command added moves. The row it pushed along stays still,
+	// which is what keeps an insert from reading as the whole table redrawing.
+	// The row the command inserted below, still the second data row and still
+	// where it was.
+	const displacedRow = tabelo.grid().locator("tr:has([data-row-header='1'])");
+	await expect(displacedRow).toHaveCSS("animation-name", "none");
+
+	await page.emulateMedia({ reducedMotion: "reduce" });
+	const reduced = await Promise.all([
+		travel.evaluate((element) =>
+			Number.parseFloat(getComputedStyle(element).transitionDuration),
+		),
+		insertedRow.evaluate((element) =>
+			Number.parseFloat(getComputedStyle(element).animationDuration),
+		),
+	]);
+	expect(reduced.every((duration) => duration <= 0.001)).toBe(true);
+});
+
 test("the pane zoom label is announced", async ({ tabelo }) => {
 	const paneMenu = await tabelo.openPaneMenu("markdown");
 	const zoomLabel = paneMenu.getByText(copy.workspace.zoom(100), {

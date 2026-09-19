@@ -266,6 +266,24 @@ stored to one sixteenth of a rem. Reordering follows the id, deletion removes
 the orphaned preference, and duplication copies the source preference to the
 new adjacent id.
 
+### Motion
+
+One curve and three durations, so everything that eases shares a pace instead
+of each component picking a number (owner, 2026-09-19). What may move at all,
+and why, is [§7](../design-system.md#7-motion).
+
+| Token | Utility | Value |
+| :--- | :--- | :--- |
+| `--motion-enter` | `duration-(--motion-enter)` | 150ms: something arriving, a menu or dialog opening, a row or column an insert command added |
+| `--motion-exit` | `duration-(--motion-exit)` | 100ms: something leaving, quicker because it has already been dismissed |
+| `--motion-selection` | `duration-(--motion-selection)` | 120ms: the grid's focus mark travelling between cells, the shortest because it follows a key the user may be holding |
+| `--motion-ease` | `ease-(--motion-ease)` | `cubic-bezier(0, 0, 0.2, 1)`: ease-out, so a move reads as arriving rather than as being pushed |
+
+Interactive control state transitions keep their own 100ms and are not a fourth
+duration: a press response is feedback on the control under the pointer, not
+something crossing the screen. An inserted row or column runs the `insert-in`
+utility, which is the one keyframe these tokens drive rather than a transition.
+
 ### Per-pane content scale
 
 One pane can scale what it displays without touching the rest of the app.

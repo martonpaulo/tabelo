@@ -39,6 +39,7 @@ import type {
 import {
 	currentMatch,
 	gridFind,
+	type InsertedAxis,
 	type PasteRefusal,
 	type StructureDeletionRefusal,
 	useTabeloStore,
@@ -108,6 +109,7 @@ import {
 	useGridAutoscroll,
 } from "./use-grid-autoscroll";
 import { usePinnedAxes } from "./use-pinned-axes";
+import { useSelectionGlide } from "./use-selection-glide";
 
 // Where the selection is, marked on the chrome at the grid's edge. Never the
 // selection fill: that colour means selected data, and the letters and numbers
@@ -116,6 +118,34 @@ import { usePinnedAxes } from "./use-pinned-axes";
 // their own in the modern table (owner, 2026-09-19), and never touch a line.
 // See docs/design-system.md.
 const selectedAxisClass = "font-semibold text-foreground";
+
+// How a row or column an insert command just added arrives: from the side of
+// the insertion point it was added on, a quarter of a rem away and
+// transparent. Written out rather than composed from a distance, because
+// Tailwind reads these class names out of the source and never sees one built
+// at runtime. The animation itself, and what reduced motion does with it, are
+// in index.css.
+const insertMotionClass = {
+	row: {
+		before: "insert-in [--insert-from-y:-0.25rem]",
+		after: "insert-in [--insert-from-y:0.25rem]",
+	},
+	column: {
+		before: "insert-in [--insert-from-x:-0.25rem]",
+		after: "insert-in [--insert-from-x:0.25rem]",
+	},
+} as const;
+
+// The side an inserted row or column arrives from, or nothing when this one
+// was not part of the last insert command.
+type InsertedFrom = InsertedAxis["from"] | null;
+
+function insertionSide(
+	inserted: InsertedAxis | null,
+	id: string,
+): InsertedFrom {
+	return inserted?.ids.includes(id) ? inserted.from : null;
+}
 
 // A row number or column letter is the only control on its label (#288), and
 // the cursor is what tells its two gestures apart: `pointer` selects, and once
@@ -200,8 +230,10 @@ function cellMarkClass(reachTop: boolean, reachLeft: boolean) {
 // heights, and the two sticky chrome layers, and a measured overlay would have
 // to reproduce all four and keep them in step.
 //
-// Static, never animated. Grid geometry and cell selection do not animate, and
-// static status does not pulse: see docs/design-system.md §7. The dash pattern,
+// Both marks are drawn where they are and stay there. The focus mark travels
+// between cells, but it does so through one stand-in over the surface rather
+// than by moving here (use-selection-glide.ts), and static status does not
+// pulse: see docs/design-system.md §7. The dash pattern,
 // not the colour, is what distinguishes the copied mark from the solid focus
 // line, so the mark does not depend on colour alone.
 //
@@ -529,6 +561,13 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const editingSeed = useTabeloStore((state) => state.editingSeed);
 	const editingHeader = useTabeloStore((state) => state.editingHeader);
 	const copiedRanges = useTabeloStore((state) => state.copiedRanges);
+	// What the last insert command added, if the last change to the document was
+	// one. Kept as the store's own object so the reference is stable between
+	// renders and every row outside it is still reconciled away at the memo
+	// boundary below.
+	const inserted = useTabeloStore((state) => state.insertedAxis);
+	const insertedRows = inserted?.axis === "row" ? inserted : null;
+	const insertedColumns = inserted?.axis === "column" ? inserted : null;
 	const match = useTabeloStore((state) => currentMatch(gridFind(state)));
 	const paneFind = usePaneFind();
 	const copiedAt = (row: number, column: number) =>
@@ -645,6 +684,11 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// Tracks the edit that just ended, so focus can be handed back to the grid
 	// when the cell editor unmounts and drops it on <body>.
 	const wasEditingRef = useRef(false);
+
+	// The focus mark's travel between cells. It reads the marks the cells draw
+	// and owns one element over the surface; nothing else about the selection
+	// changes. See use-selection-glide.
+	const glideRef = useSelectionGlide(wrapperRef, gridRef, focus);
 
 	// Keep DOM focus on the focused cell, but never steal it from the source
 	// panel or a menu: follow the selection only when focus is already inside
@@ -1646,6 +1690,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								(rect) => columnIndex >= rect.left && columnIndex <= rect.right,
 							)}
 							movable={movableColumns.includes(columnIndex)}
+							insertedFrom={insertionSide(insertedColumns, column.id)}
 							width={resolveColumnWidth(columnWidths[column.id])}
 							zoom={zoom}
 							pinned={pinnedColumn && columnIndex === 0}
@@ -1752,6 +1797,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									wrapped={wrappedColumns.includes(column.id)}
 									pinned={pinnedColumn && columnIndex === 0}
 									afterPinnedColumn={pinnedColumn && columnIndex === 1}
+									insertedFrom={insertionSide(insertedColumns, column.id)}
 									selected={rects.some((candidate) =>
 										rectContains(candidate, HEADER_ROW, columnIndex),
 									)}
@@ -1831,6 +1877,8 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								}
 								editingSeed={editing?.row === rowIndex ? editingSeed : null}
 								wrappedColumns={wrappedColumns}
+								insertedFrom={insertionSide(insertedRows, row.id)}
+								insertedColumns={insertedColumns}
 								pinnedRow={pinnedRow && rowIndex === 0}
 								pinnedColumn={pinnedColumn}
 								belowPinnedRow={pinnedRow && rowIndex === 1}
@@ -1857,6 +1905,19 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				/>
 			) : null}
 			<FillPreview setterRef={setFillPreviewRef} />
+
+			{/* The focus mark on its way between two cells. It stands in for the
+			    real mark, which the arriving cell draws and which is hidden for
+			    exactly as long as this is up, and it carries the same two edges in
+			    the same colour. Above the header row and the cells, under the
+			    gutter and the index strip, which are chrome the mark passes beneath
+			    exactly as a cell's own mark does. See use-selection-glide. */}
+			<div
+				ref={glideRef}
+				aria-hidden
+				data-selection-glide
+				className="pointer-events-none absolute top-0 left-0 z-20 hidden border-2 border-selection-edge transition-transform duration-(--motion-selection) ease-(--motion-ease)"
+			/>
 
 			{/* Drawn against the positioned wrapper rather than the table, because a
 			    table cannot hold a non-table child. It scrolls with the table, so
@@ -1929,6 +1990,12 @@ interface DataRowProps {
 	// The character that opened the editor, when typing is what opened it.
 	readonly editingSeed: string | null;
 	readonly wrappedColumns: readonly ColumnId[];
+	// The side this row eases in from when an insert command just added it, and
+	// the columns of the same command, which every row draws. Both are null on
+	// every other change to the document, so an ordinary edit leaves each row's
+	// props exactly as they were.
+	readonly insertedFrom: InsertedFrom;
+	readonly insertedColumns: InsertedAxis | null;
 	// Whether this row is the pinned first data row, and whether the grid pins
 	// its first data column. Both arrive already narrowed to what actually
 	// renders, so an unpinned table passes the same two `false` values on every
@@ -1969,6 +2036,8 @@ const DataRow = memo(function DataRow({
 	editingColumn,
 	editingSeed,
 	wrappedColumns,
+	insertedFrom,
+	insertedColumns,
 	pinnedRow,
 	pinnedColumn,
 	belowPinnedRow,
@@ -2004,6 +2073,11 @@ const DataRow = memo(function DataRow({
 			// The header row is row 1, so the body starts at 2. This is
 			// what makes the declared aria-rowcount add up.
 			aria-rowindex={rowIndex + 2}
+			// A row an insert command just added eases in, number and all, from
+			// the side of the insertion point it arrived on. Once only: the
+			// animation runs when this row's element is created, and the rows it
+			// pushed along are untouched.
+			className={cn(insertedFrom && insertMotionClass.row[insertedFrom])}
 		>
 			<th
 				scope="row"
@@ -2075,6 +2149,7 @@ const DataRow = memo(function DataRow({
 				const isEditing = columnIndex === editingColumn;
 				const wrapped = wrappedColumns.includes(column.id);
 				const pinnedCell = pinnedColumn && columnIndex === 0;
+				const columnInsertedFrom = insertionSide(insertedColumns, column.id);
 
 				return (
 					// gridcell is stated rather than left implicit, for the same
@@ -2137,6 +2212,10 @@ const DataRow = memo(function DataRow({
 							// the wrap preference or any other row's height.
 							isEditing ? "z-20 overflow-visible" : "cell-clip",
 							alignClass[column.align],
+							// A column an insert command just added eases in the same
+							// way its rows do, cell by cell down the table.
+							columnInsertedFrom &&
+								insertMotionClass.column[columnInsertedFrom],
 							// A pinned cell has live rows and columns passing underneath
 							// it, so its selection tint is the sticky composition rather
 							// than the bare translucent token. See the header cell and
@@ -2311,6 +2390,8 @@ interface ColumnIndexCellProps {
 	readonly selected: boolean;
 	// Whether a press on the letter would pick up the selected block.
 	readonly movable: boolean;
+	// The side this column eases in from when an insert command just added it.
+	readonly insertedFrom: InsertedFrom;
 	// The stored width is in rem. Zoom scales what is rendered, so the drag
 	// gesture converts viewport pixels back before writing a width down.
 	readonly width: number;
@@ -2333,6 +2414,7 @@ function ColumnIndexCell({
 	expectedType,
 	selected,
 	movable,
+	insertedFrom: insertedColumnFrom,
 	width,
 	zoom,
 	pinned,
@@ -2374,6 +2456,9 @@ function ColumnIndexCell({
 				pinned
 					? "sticky left-grid-gutter z-30 border-r border-r-line-strong"
 					: "relative z-20",
+				// The letter of a column an insert command just added arrives with
+				// the column it names.
+				insertedColumnFrom && insertMotionClass.column[insertedColumnFrom],
 			)}
 			onPointerEnter={onDragEnter}
 		>
@@ -2472,6 +2557,8 @@ interface HeaderCellProps {
 	// Whether the column to its left is the pinned one, whose edge is chrome.
 	readonly afterPinnedColumn: boolean;
 	readonly selected: boolean;
+	// The side this column eases in from when an insert command just added it.
+	readonly insertedFrom: InsertedFrom;
 	// A column selection reaches the header row, so a copied column marks it too.
 	readonly copiedEdges: ClipboardEdges | null;
 	readonly focus: boolean;
@@ -2505,6 +2592,7 @@ function HeaderCell({
 	pinned,
 	afterPinnedColumn,
 	selected,
+	insertedFrom: insertedColumnFrom,
 	copiedEdges,
 	focus,
 	editing,
@@ -2565,6 +2653,9 @@ function HeaderCell({
 				// index.css.
 				selected ? "bg-sticky-selection-fill" : "bg-surface-code",
 				focus && "outline-none",
+				// The header of a column an insert command just added arrives with
+				// the rest of that column.
+				insertedColumnFrom && insertMotionClass.column[insertedColumnFrom],
 			)}
 			onPointerDown={(event) => {
 				if (event.button !== 0) return;

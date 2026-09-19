@@ -197,6 +197,21 @@
 	/* The width of the selection edge: the focus outline every control draws. */
 	--selection-edge-w: 0.125rem;
 
+	/* Motion. One curve and three durations, so everything that eases shares a
+	   pace instead of each component picking a number (owner, 2026-09-19).
+	   `--motion-enter` is what arrives: a menu, a dialog, a row or column an
+	   insert command added. `--motion-exit` is what leaves, quicker because a
+	   layer on its way out has already been dismissed. `--motion-selection` is
+	   the grid's focus mark travelling between cells, the shortest of the three
+	   because it follows a key the user is holding. Interactive control states
+	   keep their own 100ms; see docs/design-system.md §7. */
+	--motion-enter: 150ms;
+	--motion-exit: 100ms;
+	--motion-selection: 120ms;
+	/* Ease-out: quick to start, settling at the end, so a move reads as arriving
+	   rather than as being pushed. */
+	--motion-ease: cubic-bezier(0, 0, 0.2, 1);
+
 	/* The notice layer. Notices float over the workspace and over the floating
 	   action button, which owns z-index 40, but never over a menu, tooltip, or
 	   dialog, which own 50. Named here so the value is a decision rather than
@@ -442,6 +457,35 @@ body {
 @utility cell-clip {
 	overflow: clip;
 	overflow-clip-margin: var(--hairline-w);
+}
+
+/* A row or column an insert command added, arriving in the table that made
+   room for it (owner, 2026-09-19). It runs once, when the element is created,
+   which is why only an insertion can trigger it: the grid marks exactly the
+   rows or columns the command named (state/store.ts, `insertedAxis`), so a
+   paste, an undo, a parse of a source view, and the first render of a table
+   all stay still. Opacity and transform only, so nothing is laid out again
+   while it runs, and the rows or columns it displaced move at once. The
+   caller sets the axis it comes from; the reduced-motion block below leaves
+   it at its final state instead. */
+@keyframes tabelo-insert-in {
+	from {
+		opacity: 0;
+		transform: translate(var(--insert-from-x, 0), var(--insert-from-y, 0));
+	}
+}
+
+@utility insert-in {
+	animation: tabelo-insert-in var(--motion-enter) var(--motion-ease) both;
+}
+
+/* While the focus mark is travelling to the cell the selection moved to, the
+   stand-in over the surface is the mark the user sees and the real one waits
+   for it (ui/grid/use-selection-glide.ts). Opacity rather than `visibility` or
+   removal: the mark stays in the accessibility tree and in the box tree, so
+   nothing a test or a reader looks for disappears for those few frames. */
+[data-grid-surface][data-selection-gliding] [data-focus-mark] {
+	opacity: 0;
 }
 
 ::selection {
