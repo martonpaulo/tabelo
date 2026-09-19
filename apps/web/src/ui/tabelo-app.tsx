@@ -112,7 +112,13 @@ export function TabeloApp() {
 		(state) => state.pendingImport !== null,
 	);
 	const showWelcome = welcomeOpen;
-	const showWelcomeSurface = showWelcome && !importQuestionOpen;
+	// The welcome card stays up while a paste or an import asks whether row 1
+	// is the header, so the question sits over the card rather than over an
+	// empty table that is about to be replaced (owner, 2026-09-19). It only
+	// stops taking input until the question is answered: an answer closes the
+	// welcome surface with the imported table, and a cancel leaves the card
+	// where it was.
+	const acceptsWelcomeInput = showWelcome && !importQuestionOpen;
 
 	// Every way content can arrive while the welcome surface is open ends here:
 	// the surface goes, and focus follows the content into the workspace.
@@ -171,7 +177,7 @@ export function TabeloApp() {
 	// denies the async clipboard API. While the first-visit surface is open, it
 	// should be enough to press the standard paste shortcut anywhere.
 	useEffect(() => {
-		if (!showWelcomeSurface) return;
+		if (!acceptsWelcomeInput) return;
 		const onPaste = (event: ClipboardEvent) => {
 			if (!event.clipboardData) return;
 			const payload = {
@@ -191,7 +197,7 @@ export function TabeloApp() {
 		};
 		window.addEventListener("paste", onPaste);
 		return () => window.removeEventListener("paste", onPaste);
-	}, [finishWelcomeImport, showWelcomeSurface]);
+	}, [finishWelcomeImport, acceptsWelcomeInput]);
 
 	// Undo and redo are document-level, so they work wherever focus is, except
 	// inside a source editor, which owns the shortcut first and falls through to
@@ -274,8 +280,9 @@ export function TabeloApp() {
 						addViewOpenerRef={appMenuTriggerRef}
 					/>
 				</div>
-				{showWelcomeSurface ? (
+				{showWelcome ? (
 					<EmptyState
+						suspended={importQuestionOpen}
 						onStartEmpty={() => setWelcomeOpen(false)}
 						onStarted={finishWelcomeImport}
 					/>

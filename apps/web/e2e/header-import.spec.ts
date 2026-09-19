@@ -179,6 +179,10 @@ test("the trusted welcome paste keeps its payload through the question", async (
 
 	const dialog = headerDialog(page);
 	await expect(dialog).toBeVisible();
+	// The welcome card stays drawn under the question, inert, rather than
+	// giving way to the empty table the answer is about to replace. Located by
+	// its heading, because an inert card leaves the accessibility tree.
+	await expect(page.locator("#empty-state-title")).toBeVisible();
 	await dialog
 		.getByRole("button", { name: copy.headerImport.asHeaders })
 		.click();
@@ -186,6 +190,30 @@ test("the trusted welcome paste keeps its payload through the question", async (
 	await expect(welcome).toHaveCount(0);
 	await expect(tabelo.header(1)).toHaveText("Name");
 	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+});
+
+test("cancelling the welcome paste question leaves the welcome card as it was", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.runAppCommand("newTable");
+	const welcome = page.getByRole("region", { name: copy.empty.title });
+	await expect(welcome).toBeVisible();
+
+	await page.evaluate(() => {
+		const data = new DataTransfer();
+		data.setData("text/plain", "Name\tRole\nIngrid\tDesigner");
+		const event = new Event("paste", { bubbles: true, cancelable: true });
+		Object.defineProperty(event, "clipboardData", { value: data });
+		window.dispatchEvent(event);
+	});
+
+	const dialog = headerDialog(page);
+	await expect(dialog).toBeVisible();
+	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
+
+	await expect(dialog).toHaveCount(0);
+	await expect(welcome).toBeVisible();
 });
 
 test("paste into an existing selection never asks a document question", async ({

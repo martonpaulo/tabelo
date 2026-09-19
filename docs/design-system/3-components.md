@@ -303,7 +303,10 @@ surface, not a dialog: it does not claim modal semantics and never appears
 automatically over saved content, an unfinished draft, or a table the user
 emptied during the current visit. An explicit New table command resets the
 document first and then returns to this surface (#46). A trusted `Mod`+`V` paste event
-starts the table directly while the surface is open.
+starts the table directly while the surface is open. When a paste or an import
+has to ask whether row 1 is the header, the surface stays drawn under that
+question, inert, so no empty-table frame shows in between (owner, 2026-09-19):
+an answer closes it with the imported table, and a cancel leaves it as it was.
 
 **The first content of a session decides what the workspace opens as.** A
 paste or import made while nothing has been worked on yet arranges two panes in

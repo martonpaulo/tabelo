@@ -38,9 +38,13 @@ const importExtensions = [
 // option with a line saying what it takes, the empty table first and filled,
 // because it is the one that always works.
 export function EmptyState({
+	suspended,
 	onStartEmpty,
 	onStarted,
 }: {
+	// True while a question the surface's own import raised is open over it:
+	// the card stays on screen, inert, and its shortcut waits for the answer.
+	readonly suspended: boolean;
 	readonly onStartEmpty: () => void;
 	readonly onStarted: () => void;
 }) {
@@ -64,6 +68,7 @@ export function EmptyState({
 	// anywhere while the surface is up. Paste needs no handler here: the app
 	// already turns a trusted paste event into an import while it is open.
 	useEffect(() => {
+		if (suspended) return;
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (
 				(event.metaKey || event.ctrlKey) &&
@@ -80,7 +85,10 @@ export function EmptyState({
 	});
 
 	return (
-		<div className="absolute inset-0 z-40 flex items-center justify-center bg-surface-app/60 p-4 supports-backdrop-filter:backdrop-blur-sm">
+		<div
+			inert={suspended || undefined}
+			className="absolute inset-0 z-40 flex items-center justify-center bg-surface-app/60 p-4 supports-backdrop-filter:backdrop-blur-sm"
+		>
 			<section
 				ref={sectionRef}
 				aria-labelledby="empty-state-title"
