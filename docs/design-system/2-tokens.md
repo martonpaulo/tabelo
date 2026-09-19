@@ -481,7 +481,11 @@ supersedes, for this glyph only, the rule above that a glyph keeps the room of
 its sequence: the room the sequence gave back is drawn instead as extra padding
 at the end of its cell, just before the next delimiter, so in Markdown the pipe
 after it stays in the column the serializer measured. Jira and HTML pad
-nothing, so there the glyph simply takes one character. The padding is a
+nothing, so there the glyph simply takes one character. JSON and Records spell
+a break inside a value as `\n`, and that sequence is drawn as the same `¶`,
+one character wide (owner, 2026-09-19: what one view has, every view that can
+have it should have); a backslash that is itself escaped starts no sequence,
+and every other escape those formats write stays as written. The padding is a
 zero-length widget with no text; the file, copy, download, and draft are
 unchanged. The caret still treats the sequence as atomic and never lands inside
 it: a click on either half of the `¶` places it before or after the sequence.

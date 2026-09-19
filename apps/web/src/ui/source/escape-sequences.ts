@@ -12,6 +12,7 @@ import { copy } from "@/copy/copy";
 import { matchHtmlLineBreak } from "@/formats/html";
 import { matchJiraEscape } from "@/formats/jira-inline";
 import { matchMarkdownEscape } from "@/formats/markdown-inline";
+import { matchBackslashLineBreak } from "@/formats/parse";
 import type { EscapeMatch, EscapeMatcher } from "@/formats/types";
 import type { HighlightLanguage } from "@/views/types";
 import { LINE_BREAK_GLYPH, SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";
@@ -36,8 +37,12 @@ import { LINE_BREAK_GLYPH, SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";
 // reversibly inside a cell. HTML has the entity rules the browser itself
 // reads, so the only notation drawn there is its line break, `<br>`, which the
 // owner asked to see as the same mark as every other format's (2026-09-19).
-// CSV and TSV quote instead, and JSON and Records spell their values out.
-export type EscapeSyntax = "markdown" | "jira" | "html";
+// JSON and Records spell a line break inside a value as `\n`, and it is drawn
+// with that same mark (owner: what one view has, every view that can have it
+// should have, 2026-09-19); every other sequence they write stays as written.
+// CSV and TSV quote a break as a real newline, which line-break-markers.ts
+// marks instead.
+export type EscapeSyntax = "markdown" | "jira" | "html" | "json" | "records";
 
 export function escapeSyntax(language: HighlightLanguage): EscapeSyntax | null {
 	switch (language) {
@@ -47,6 +52,10 @@ export function escapeSyntax(language: HighlightLanguage): EscapeSyntax | null {
 			return "jira";
 		case "html":
 			return "html";
+		case "json":
+			return "json";
+		case "records":
+			return "records";
 		default:
 			return null;
 	}
@@ -60,12 +69,15 @@ function matcherFor(syntax: EscapeSyntax): EscapeMatcher {
 			return matchJiraEscape;
 		case "html":
 			return matchHtmlLineBreak;
+		case "json":
+		case "records":
+			return matchBackslashLineBreak;
 	}
 }
 
 // Whether a format pads its cells to a common width, which is what decides
 // whether a line break's narrower glyph owes the room it gave back. Only
-// Markdown aligns its columns; Jira and HTML write each cell at its own length.
+// Markdown aligns its columns; the others write each cell at its own length.
 function padsCells(syntax: EscapeSyntax): boolean {
 	return syntax === "markdown";
 }

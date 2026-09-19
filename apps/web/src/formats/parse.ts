@@ -1,10 +1,27 @@
 import { documentFromMatrix } from "@/core/document";
 import type {
+	EscapeMatcher,
 	MatrixParseResult,
 	ParseResult,
 	SourceRowRange,
 	SourceTableRow,
 } from "./types";
+
+// The line break as JSON and Records both spell it inside a value: a backslash
+// and `n`, where that backslash is not itself escaped. Both formats write a
+// literal backslash as two, so a backslash starts a sequence only when an even
+// number of backslashes stands right before it, which is what keeps `\\n`, a
+// backslash followed by the letter, from reading as a break. It recognizes the
+// break and nothing else: every other sequence either format writes is
+// ordinary text to a source view.
+export const matchBackslashLineBreak: EscapeMatcher = (value, index) => {
+	if (value[index] !== "\\" || value[index + 1] !== "n") return null;
+	let before = 0;
+	while (value[index - 1 - before] === "\\") before += 1;
+	return before % 2 === 0
+		? { source: "\\n", decoded: "\n", kind: "line-break" }
+		: null;
+};
 
 export function toDocumentParseResult(result: MatrixParseResult): ParseResult {
 	if (!result.ok) return result;

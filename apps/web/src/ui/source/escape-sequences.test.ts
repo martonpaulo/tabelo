@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { documentFromMatrix } from "@/core/document";
 import { samplePerson } from "@/core/sample-data";
+import { jsonCodec, recordsCodec } from "@/formats";
 import { escapeJiraCell } from "@/formats/jira-inline";
 import { escapeCell } from "@/formats/markdown-inline";
 import {
@@ -29,9 +31,34 @@ describe("escapeSyntax", () => {
 	});
 
 	it("draws nothing where a format has no escape grammar of its own", () => {
-		for (const language of ["delimited", "json", "records", "plain"] as const) {
+		for (const language of ["delimited", "plain"] as const) {
 			expect(escapeSyntax(language)).toBeNull();
 		}
+	});
+
+	// JSON and Records spell a line break inside a value as `\n`. That is the
+	// one sequence drawn there, and an escaped backslash before an `n` is a
+	// backslash and a letter, not a break.
+	it.each([
+		["json", jsonCodec],
+		["records", recordsCodec],
+	] as const)("draws %s's line break and nothing else", (syntax, codec) => {
+		expect(escapeSyntax(syntax)).toBe(syntax);
+		const first = samplePerson(0);
+		const second = samplePerson(1);
+		const text = codec.serialize(
+			documentFromMatrix(
+				[
+					["name", "city"],
+					[first.name, `${first.city}\n${second.city}`],
+					[second.name, 'a\\nb "quoted"'],
+				],
+				{ headerRow: true },
+			),
+		);
+		const found = text.split("\n").flatMap((line) => scanEscapes(line, syntax));
+		expect(found.map(({ match }) => match.source)).toEqual(["\\n"]);
+		expect(found.every(({ match }) => match.decoded === "\n")).toBe(true);
 	});
 });
 

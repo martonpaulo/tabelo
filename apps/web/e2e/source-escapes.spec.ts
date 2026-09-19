@@ -112,6 +112,21 @@ test("every sequence a codec writes is drawn as one glyph", async ({
 	expect(await drawnGlyphs(jira)).toEqual(["|", "\\", "&", LINE_BREAK_GLYPH]);
 });
 
+// JSON and Records spell a break inside a value as `\n`: that sequence, and
+// nothing else they escape, is drawn as the same one-character mark.
+for (const view of ["json", "records"] as const) {
+	test(`${view} draws a line break in a value as the same mark`, async ({
+		tabelo,
+	}) => {
+		await seedEscapes(tabelo);
+		await tabelo.choosePaneView("markdown", view);
+		const pane = tabelo.pane(view);
+		expect(await drawnGlyphs(pane)).toEqual([LINE_BREAK_GLYPH]);
+		expect(await declaredWidths(pane)).toEqual(["1ch"]);
+		expect(await renderedSource(pane)).toContain("line\\nbreak");
+	});
+}
+
 test("the notation keeps the room of the sequence it replaces", async ({
 	tabelo,
 }) => {
