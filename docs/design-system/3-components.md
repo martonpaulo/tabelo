@@ -149,6 +149,9 @@ selection cannot take is disabled with its written reason, which for typed
 values names them and the fix (change the cell to Text first). A selection
 mixing text with typed values stays enabled: the mark formats the text, and a
 notice says how many cells were skipped and why. A command closes the menu.
+The cell editor's own menu draws the same group for the range being edited
+(#398), where mixed means the range disagrees and a collapsed caret reads the
+marks it will type with.
 
 Every action collection uses the menu primitive's semantic Group, in dropdown
 and context menus alike (#75). A visible group title is reserved for the three
@@ -287,6 +290,12 @@ keeps the grid a grid:
 - **The Format group opens the cell menu**: the five mark segments described
   under menus above, then `Link…` with its `Mod`+`K` legend and `Image…`, then
   the Cell type group. There is no toolbar and no formatting panel.
+- **The cell editor has a menu of its own** (#398): right-click, `Shift`+`F10`,
+  or the `ContextMenu` key inside the editor opens the same Format group,
+  drawn by the same component, with only `Link…` and `Image…` after it. It
+  acts on the text being edited, reads pressed and mixed from that range, or
+  from the marks a collapsed caret will type with, and returns focus and the
+  selection to the editor, which stays open, whatever closes it.
 - **The cell editor shows formatting, never markers.** It is the same box the
   textarea drew, on `--surface-code` with the selection edge, growing over the
   rows below while it is taller than the cell, and it draws marks, links, and

@@ -14,10 +14,7 @@ import {
 	ContextMenuSubTrigger,
 	ContextMenuTrigger,
 } from "@tabelo/ui/components/context-menu";
-import {
-	menuToggleSegmentStyles,
-	segmentedGroupStyles,
-} from "@tabelo/ui/components/menu-styles";
+import { segmentedGroupStyles } from "@tabelo/ui/components/menu-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
 	IconAlignCenter,
@@ -25,8 +22,6 @@ import {
 	IconAlignLeft,
 	IconAlignRight,
 	IconArrowsHorizontal,
-	IconLink,
-	IconPhoto,
 	IconPin,
 	IconRuler,
 	IconSortAscending,
@@ -70,11 +65,11 @@ import { cellTypeOptions, expectedTypeOptions } from "./cell-type-options";
 import { measureColumnFitWidth } from "./column-fit";
 import {
 	cellCommandRefusal,
-	formatMarks,
 	runSelectionMark,
 	selectionMarkControl,
 	singleCellTarget,
 } from "./format-commands";
+import { FormatMenuGroup, markChecked } from "./format-menu-group";
 import { menuSections } from "./menu-sections";
 import { targetAxisForMenu, targetCellForMenu } from "./menu-target";
 import { revealGridCell } from "./reveal-cell";
@@ -397,13 +392,13 @@ function singleSelectedCell(selection: GridSelection): CellPosition | null {
 	return range.focus;
 }
 
-// The Format group (#306), first in a cell menu: the five marks as one row of
-// icon segments that each turn on and off by themselves, then the two
-// commands that need a dialog. A segment reads its pressed state from the
-// selection, mixed when the selected cells disagree, and says why it is off
-// when the selection holds nothing it can format. A mark command acts on the
-// complete text of every selected textual cell, as one history step.
-function FormatMenuGroup({
+// The Format group (#306), first in a cell menu. A segment reads its pressed
+// state from the selection, mixed when the selected cells disagree, and says
+// why it is off when the selection holds nothing it can format. A mark command
+// acts on the complete text of every selected textual cell, as one history
+// step; the cell editor's own menu carries the same group for the range being
+// edited (#398).
+function CellFormatGroup({
 	onCommand,
 	onLink,
 	onImage,
@@ -412,77 +407,32 @@ function FormatMenuGroup({
 	readonly onLink: (position: CellPosition) => void;
 	readonly onImage: (position: CellPosition) => void;
 }) {
-	const labelId = useId();
 	const document = useTabeloStore((state) => state.document);
 	const selection = useTabeloStore((state) => state.selection);
 	const target = singleCellTarget(selection);
-	const linkRefusal = cellCommandRefusal(document, selection, "link");
-	const imageRefusal = cellCommandRefusal(document, selection, "image");
 
 	return (
-		<ContextMenuGroup aria-labelledby={labelId}>
-			<ContextMenuLabel id={labelId}>{copy.actions.format}</ContextMenuLabel>
-			<div className={cn(segmentedGroupStyles, "mx-1 mb-1")}>
-				{formatMarks.map((entry) => {
-					const control = selectionMarkControl(document, selection, entry.mark);
-					const checked =
-						control.state === "on"
-							? "true"
-							: control.state === "mixed"
-								? "mixed"
-								: "false";
-					return (
-						<ControlTooltip
-							key={entry.mark}
-							name={entry.label}
-							reason={control.refusal}
-							shortcut={entry.shortcut}
-						>
-							<ContextMenuItem
-								// A toggle, not one choice among its neighbours: each mark is
-								// on or off by itself, and mixed across a selection that
-								// disagrees.
-								role="menuitemcheckbox"
-								aria-checked={checked}
-								aria-keyshortcuts={entry.shortcut}
-								data-format-toggle={entry.mark}
-								disabled={control.refusal !== undefined}
-								className={menuToggleSegmentStyles}
-								onClick={() => {
-									onCommand();
-									runSelectionMark(entry.mark);
-								}}
-							>
-								<entry.icon aria-hidden />
-							</ContextMenuItem>
-						</ControlTooltip>
-					);
-				})}
-			</div>
-			<ControlTooltip reason={linkRefusal}>
-				<ContextMenuItem
-					disabled={linkRefusal !== undefined}
-					onClick={() => {
-						if (target) onLink(target);
-					}}
-				>
-					<IconLink aria-hidden />
-					{copy.actions.link}
-					<ContextMenuShortcut>{copy.shortcuts.link}</ContextMenuShortcut>
-				</ContextMenuItem>
-			</ControlTooltip>
-			<ControlTooltip reason={imageRefusal}>
-				<ContextMenuItem
-					disabled={imageRefusal !== undefined}
-					onClick={() => {
-						if (target) onImage(target);
-					}}
-				>
-					<IconPhoto aria-hidden />
-					{copy.actions.image}
-				</ContextMenuItem>
-			</ControlTooltip>
-		</ContextMenuGroup>
+		<FormatMenuGroup
+			markControl={(mark) => {
+				const control = selectionMarkControl(document, selection, mark);
+				return {
+					checked: markChecked(control.state),
+					refusal: control.refusal,
+				};
+			}}
+			onMark={(mark) => {
+				onCommand();
+				runSelectionMark(mark);
+			}}
+			linkRefusal={cellCommandRefusal(document, selection, "link")}
+			onLink={() => {
+				if (target) onLink(target);
+			}}
+			imageRefusal={cellCommandRefusal(document, selection, "image")}
+			onImage={() => {
+				if (target) onImage(target);
+			}}
+		/>
 	);
 }
 
@@ -694,8 +644,9 @@ export function GridContextMenu({
 					onKeyDown={(event: React.KeyboardEvent) => {
 						// The platform's own menu chords, and the keyboard equal of
 						// right-click now that no row or column carries a menu trigger
-						// (#288). A text field keeps them: the cell editor is a native
-						// text control, and its own menu is the one that belongs there.
+						// (#288). A text field keeps them: the rich cell editor opens
+						// its own menu for the text being edited (#398), and a typed
+						// value's textarea is a native text control.
 						const chord =
 							event.key === "ContextMenu" ||
 							(event.key === "F10" && event.shiftKey);
@@ -786,7 +737,7 @@ export function GridContextMenu({
 				>
 					{axis === "cell" ? (
 						<>
-							<FormatMenuGroup
+							<CellFormatGroup
 								onCommand={markCommand}
 								onLink={(position) =>
 									menuDialog.runAfterClose(() => onLink(position))

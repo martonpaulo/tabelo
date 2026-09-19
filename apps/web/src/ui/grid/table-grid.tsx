@@ -1577,6 +1577,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 											: NO_MARK
 									}
 									onRequestLink={setLinkRequest}
+									onRequestImage={setImageRequest}
 									onDragStart={() => {
 										draggingRef.current = "cell";
 									}}
@@ -1636,6 +1637,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								selectRow={selectRow}
 								onFinishCellEdit={finishCellEdit}
 								onRequestLink={setLinkRequest}
+								onRequestImage={setImageRequest}
 								draggingRef={draggingRef}
 								onAxisPointerDown={reorder.onAxisPointerDown}
 							/>
@@ -1743,6 +1745,7 @@ interface DataRowProps {
 	) => void;
 	// The rich editor's Mod+K, answered by the grid's link dialog (#306).
 	readonly onRequestLink: (request: LinkRequest) => void;
+	readonly onRequestImage: (request: ImageRequest) => void;
 	readonly draggingRef: React.RefObject<GridDragKind | null>;
 	readonly onAxisPointerDown: AxisReorderController["onAxisPointerDown"];
 }
@@ -1769,6 +1772,7 @@ const DataRow = memo(function DataRow({
 	selectRow,
 	onFinishCellEdit,
 	onRequestLink,
+	onRequestImage,
 	draggingRef,
 	onAxisPointerDown,
 }: DataRowProps) {
@@ -1995,6 +1999,7 @@ const DataRow = memo(function DataRow({
 								}
 								wrapped={wrapped}
 								onRequestLink={onRequestLink}
+								onRequestImage={onRequestImage}
 								onFinish={(next, exit) =>
 									onFinishCellEdit(
 										{ row: rowIndex, column: columnIndex },
@@ -2268,6 +2273,7 @@ interface HeaderCellProps {
 	readonly markStart: number;
 	readonly markEnd: number;
 	readonly onRequestLink: (request: LinkRequest) => void;
+	readonly onRequestImage: (request: ImageRequest) => void;
 	// The grid owns the drag lifecycle, so the header only reports the two
 	// edges of the gesture. See ColumnIndexCell: same split, different kind.
 	readonly onDragStart: () => void;
@@ -2290,6 +2296,7 @@ function HeaderCell({
 	markStart,
 	markEnd,
 	onRequestLink,
+	onRequestImage,
 	onDragStart,
 	onDragEnter,
 }: HeaderCellProps) {
@@ -2373,6 +2380,7 @@ function HeaderCell({
 					ariaLabel={copy.a11y.headerEditor(header, columnIndex)}
 					wrapped={wrapped}
 					onRequestLink={onRequestLink}
+					onRequestImage={onRequestImage}
 					onFinish={(next, exit) => {
 						const store = useTabeloStore.getState();
 						// An unchanged commit is not an edit, formatting included.

@@ -338,6 +338,159 @@ test("the image dialog requires alternative text and inserts an image", async ({
 	await expect(cell).toHaveText("Madrid");
 });
 
+// #398: the rich editor opens its own menu, which acts on the text being
+// edited rather than on the whole cell.
+async function openEditorMenu(
+	tabelo: TabeloPage,
+	editor: Locator,
+	via: "pointer" | "keyboard",
+): Promise<Locator> {
+	if (via === "pointer") {
+		const box = await editor.boundingBox();
+		if (!box) throw new Error("the editor has no box");
+		// Past the end of the text, where the caret already is.
+		await editor.click({
+			button: "right",
+			position: { x: box.width - 8, y: box.height / 2 },
+		});
+	} else {
+		await tabelo.page.keyboard.press("Shift+F10");
+	}
+	const menu = tabelo.page.getByRole("menu");
+	await expect(menu).toBeVisible();
+	return menu;
+}
+
+test("the editor's menu formats the selected text and keeps editing", async ({
+	page,
+	tabelo,
+}) => {
+	await loadFixture(tabelo);
+	const cell = tabelo.cell(2, 1);
+	await cell.dblclick();
+	const editor = tabelo.grid().getByRole("textbox", {
+		name: copy.a11y.cellEditor(1, 0),
+	});
+	await expect(editor).toBeFocused();
+	await page.keyboard.press("Shift+ArrowLeft");
+	await page.keyboard.press("Shift+ArrowLeft");
+
+	let menu = await openEditorMenu(tabelo, editor, "keyboard");
+	// The Format group, Link, and Image, and nothing that acts on cells.
+	await expect(menu.getByRole("menuitemcheckbox")).toHaveCount(5);
+	await expect(menu.getByRole("menuitemradio")).toHaveCount(0);
+	await expect(menu.getByRole("menuitem")).toHaveCount(2);
+	await formatToggle(menu, copy.actions.bold).click();
+	await expect(menu).toBeHidden();
+
+	// Only the selected letters, and the editor is still editing them.
+	await expect(editor).toBeFocused();
+	await expect(editor.locator("strong")).toHaveText("lo");
+
+	// The same range now reads as bold, and closing the menu keeps editing.
+	menu = await openEditorMenu(tabelo, editor, "keyboard");
+	await expect(formatToggle(menu, copy.actions.bold)).toHaveAttribute(
+		"aria-checked",
+		"true",
+	);
+	await page.keyboard.press("Escape");
+	await expect(menu).toBeHidden();
+	await expect(editor).toBeFocused();
+
+	// The menu's change is a local undo step.
+	await page.keyboard.press("ControlOrMeta+Z");
+	await expect(editor.locator("strong")).toHaveCount(0);
+	await page.keyboard.press("ControlOrMeta+Shift+Z");
+	await page.keyboard.press("Enter");
+	await expect(cell.locator("strong")).toHaveText("lo");
+	await expect.poll(() => markdown(tabelo)).toContain("Pau**lo**");
+});
+
+test("a right-click in the editor sets the caret's typing marks", async ({
+	page,
+	tabelo,
+}) => {
+	await loadFixture(tabelo);
+	const cell = tabelo.cell(2, 2);
+	await cell.dblclick();
+	const editor = tabelo.grid().getByRole("textbox", {
+		name: copy.a11y.cellEditor(1, 1),
+	});
+	await expect(editor).toBeFocused();
+
+	const menu = await openEditorMenu(tabelo, editor, "pointer");
+	await expect(formatToggle(menu, copy.actions.italic)).toHaveAttribute(
+		"aria-checked",
+		"false",
+	);
+	await formatToggle(menu, copy.actions.italic).click();
+	await expect(menu).toBeHidden();
+	await expect(editor).toBeFocused();
+	await page.keyboard.type("!");
+	await expect(editor.locator("em")).toHaveText("!");
+	await page.keyboard.press("Enter");
+	await expect(cell.locator("em")).toHaveText("!");
+	await expect.poll(() => markdown(tabelo)).toContain("_!_");
+});
+
+test("the editor's menu links the selected text and inserts an image at the caret", async ({
+	page,
+	tabelo,
+}) => {
+	await loadFixture(tabelo);
+	const cell = tabelo.cell(2, 2);
+	await cell.dblclick();
+	const editor = tabelo.grid().getByRole("textbox", {
+		name: copy.a11y.cellEditor(1, 1),
+	});
+	await expect(editor).toBeFocused();
+
+	// The first three letters become a link. The caret starts at the end.
+	for (let step = 0; step < "Madrid".length; step += 1) {
+		await page.keyboard.press("ArrowLeft");
+	}
+	for (let step = 0; step < 3; step += 1) {
+		await page.keyboard.press("Shift+ArrowRight");
+	}
+	let menu = await openEditorMenu(tabelo, editor, "keyboard");
+	await menu.getByRole("menuitem", { name: copy.actions.link }).click();
+	let dialog = page.getByRole("dialog");
+	await expect(
+		dialog.getByRole("textbox", { name: copy.link.text }),
+	).toHaveValue("Mad");
+	await dialog
+		.getByRole("textbox", { name: copy.link.address })
+		.fill("https://example.com/madrid");
+	await dialog.getByRole("button", { name: copy.link.confirm }).click();
+	await expect(dialog).toBeHidden();
+	await expect(editor).toBeFocused();
+	await expect(editor.locator("[data-editor-link]")).toHaveText("Mad");
+
+	// The image goes where the caret is, between the link and the rest.
+	menu = await openEditorMenu(tabelo, editor, "keyboard");
+	await menu.getByRole("menuitem", { name: copy.actions.image }).click();
+	dialog = page.getByRole("dialog");
+	// Adding: nothing to remove yet.
+	await expect(
+		dialog.getByRole("button", { name: copy.image.remove }),
+	).toHaveCount(0);
+	await dialog
+		.getByRole("textbox", { name: copy.image.address })
+		.fill("https://example.com/retiro.png");
+	await dialog.getByRole("textbox", { name: copy.image.alt }).fill("Retiro");
+	await dialog.getByRole("button", { name: copy.image.insert }).click();
+	await expect(dialog).toBeHidden();
+	await expect(editor).toBeFocused();
+
+	await page.keyboard.press("Enter");
+	await expect(cell.getByRole("img", { name: "Retiro" })).toHaveCount(1);
+	await expect
+		.poll(() => markdown(tabelo))
+		.toContain(
+			"[Mad](https://example.com/madrid)![Retiro](https://example.com/retiro.png)rid",
+		);
+});
+
 // #399: an image is edited or removed through the same dialog that adds one.
 test("the cell menu edits and removes a cell's only image", async ({
 	page,
@@ -396,6 +549,40 @@ test("the cell menu edits and removes a cell's only image", async ({
 	await expect(cell.getByRole("img")).toHaveCount(0);
 	await tabelo.runAppCommand("undo");
 	await expect(cell.getByRole("img", { name: "Retiro park" })).toHaveCount(1);
+});
+
+test("the editor's menu edits the image beside the caret", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.importFile(
+		"photo.md",
+		"| Photo |\n| --- |\n| Madrid ![Retiro](https://example.com/madrid.png) |",
+		"text/markdown",
+	);
+	await tabelo.showInSourcePane("markdown");
+	const cell = tabelo.cell(1, 1);
+	await cell.dblclick();
+	const editor = tabelo.grid().getByRole("textbox", {
+		name: copy.a11y.cellEditor(0, 0),
+	});
+	await expect(editor).toBeFocused();
+
+	// The caret starts at the end, just after the image.
+	const menu = await openEditorMenu(tabelo, editor, "keyboard");
+	await menu.getByRole("menuitem", { name: copy.actions.image }).click();
+	const dialog = page.getByRole("dialog");
+	await expect(
+		dialog.getByRole("textbox", { name: copy.image.alt }),
+	).toHaveValue("Retiro");
+	await dialog.getByRole("button", { name: copy.image.remove }).click();
+	await expect(dialog).toBeHidden();
+	await expect(editor).toBeFocused();
+	await expect(editor.getByRole("img")).toHaveCount(0);
+
+	await page.keyboard.press("Enter");
+	await expect(cell).toContainText("Madrid");
+	await expect(cell.getByRole("img")).toHaveCount(0);
 });
 
 test("find matches the text a formatted cell shows", async ({

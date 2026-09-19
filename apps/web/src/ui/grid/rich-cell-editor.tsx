@@ -1,8 +1,20 @@
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuTrigger,
+} from "@tabelo/ui/components/context-menu";
 import { cn } from "@tabelo/ui/lib/utils";
 import { IconPhotoOff } from "@tabler/icons-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
-import { applyLink, linkDraft, linkRange } from "@/core/cell-formatting";
+import {
+	applyLink,
+	imageAt,
+	insertImage,
+	linkDraft,
+	linkRange,
+	removeImage,
+} from "@/core/cell-formatting";
 import { cellText } from "@/core/cell-value";
 import {
 	INLINE_MARKS,
@@ -20,6 +32,7 @@ import type { InlineMark, TextContent } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { InlineContentView } from "@/ui/inline/inline-content";
 import { openLink } from "@/ui/inline/url-policy";
+import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import {
 	type CellEditMode,
 	type EditorExit,
@@ -27,7 +40,12 @@ import {
 } from "./cell-editor";
 import { offsetAt, pointAt, renderEditorContent } from "./editor-dom";
 import { isLinkKey, markForKey, markLabel } from "./format-commands";
-import type { LinkRequest } from "./inline-dialogs";
+import {
+	type FormatMarkControl,
+	FormatMenuGroup,
+	markChecked,
+} from "./format-menu-group";
+import type { ImageRequest, LinkRequest } from "./inline-dialogs";
 
 // The restricted, single-cell rich editor of the Visual Table (#306). It edits
 // one textual cell or header on the browser's own editing surface: a native
@@ -63,6 +81,9 @@ const formatInputs: Partial<Record<string, InlineMark>> = {
 	formatUnderline: "underline",
 	formatStrikeThrough: "strikethrough",
 };
+
+const stopReactPropagation = (event: { stopPropagation: () => void }) =>
+	event.stopPropagation();
 
 function ordered(selection: EditorSelection): readonly [number, number] {
 	return [
@@ -116,6 +137,8 @@ interface RichCellEditorProps {
 	// Mod+K: the link dialog for the selected text, whose answer comes back to
 	// this editor rather than to the document.
 	readonly onRequestLink: (request: LinkRequest) => void;
+	// Image… in the editor's menu: the image dialog, answered the same way.
+	readonly onRequestImage: (request: ImageRequest) => void;
 }
 
 export function RichCellEditor({
@@ -126,6 +149,7 @@ export function RichCellEditor({
 	initialMode = "edit",
 	onFinish,
 	onRequestLink,
+	onRequestImage,
 }: RichCellEditorProps) {
 	const rootRef = useRef<HTMLDivElement>(null);
 	const iconRef = useRef<HTMLSpanElement>(null);
@@ -154,6 +178,21 @@ export function RichCellEditor({
 	// not a commit.
 	const suspended = useRef(false);
 	const finished = useRef(false);
+	// The editor's own menu (#398), and the range it was opened on, read when
+	// it opened because the menu holds focus while it is open.
+	const menu = useMenuDialogCommand();
+	const menuSelection = useRef<EditorSelection>(model.current);
+	// Set from a dialog request until that dialog hands focus back, so focus
+	// passing through the editor on its way to the dialog, as it does when the
+	// menu closes first, does not lift the suspension.
+	const dialogOpen = useRef(false);
+
+	// Where a dialog this editor opened hands focus back as it closes, however
+	// it closed; from here the focus handler lifts the suspension.
+	const dialogFocus = () => {
+		dialogOpen.current = false;
+		return rootRef.current;
+	};
 
 	const draw = () => {
 		const root = rootRef.current;
@@ -254,8 +293,7 @@ export function RichCellEditor({
 	const announce = (message: string) =>
 		useTabeloStore.getState().announceStatus(message);
 
-	const toggle = (mark: InlineMark) => {
-		const selection = readSelection();
+	const toggle = (mark: InlineMark, selection = readSelection()) => {
 		const [from, to] = ordered(selection);
 		const { content } = model.current;
 		if (from === to) {
@@ -298,8 +336,7 @@ export function RichCellEditor({
 		placeSelection();
 	};
 
-	const requestLink = () => {
-		const selection = readSelection();
+	const requestLink = (selection = readSelection()) => {
 		const [from, to] = ordered(selection);
 		const { content } = model.current;
 		const draft = linkDraft(content, from, to);
@@ -311,6 +348,7 @@ export function RichCellEditor({
 			return;
 		}
 		suspended.current = true;
+		dialogOpen.current = true;
 		onRequestLink({
 			draft,
 			onSave: (text, url) => {
@@ -327,8 +365,95 @@ export function RichCellEditor({
 					selection,
 					"other",
 				),
-			finalFocus: () => rootRef.current,
+			finalFocus: dialogFocus,
 		});
+	};
+
+	// Image… from the editor's menu: the image the range or the caret is on is
+	// edited or removed, and otherwise a new one goes in place of the range, at
+	// the caret when it is collapsed (#398, #399).
+	const requestImage = (selection: EditorSelection) => {
+		const [from, to] = ordered(selection);
+		const image = imageAt(model.current.content, from, to);
+		const [start, stop] = image ? [image.start, image.end] : [from, to];
+		suspended.current = true;
+		dialogOpen.current = true;
+		onRequestImage({
+			image: image && { url: image.url, alt: image.alt },
+			onSave: (url, alt) => {
+				const current = model.current.content;
+				const next = insertImage(current, start, stop, url, alt);
+				if (next === null) return;
+				const [at] = snapInlineRange(current, start, stop);
+				const caret = at + alt.length;
+				commitEdit(next, { anchor: caret, focus: caret }, "other");
+			},
+			onRemove: () => {
+				if (!image) return;
+				commitEdit(
+					removeImage(model.current.content, image),
+					{ anchor: image.start, focus: image.start },
+					"other",
+				);
+			},
+			finalFocus: dialogFocus,
+		});
+	};
+
+	// Link… and Image… open their dialog once the menu has closed, on the
+	// range the menu was opened on.
+	const runDialogCommand = (command: (selection: EditorSelection) => void) => {
+		menu.runAfterClose(() => command(menuSelection.current));
+	};
+
+	// What each Format segment of the editor's menu reads: the marks of the
+	// selected range, or at a collapsed caret the marks typing will use.
+	const menuMarkControl = (mark: InlineMark): FormatMarkControl => {
+		const [from, to] = ordered(menuSelection.current);
+		const { content } = model.current;
+		if (from === to) {
+			const marks = pendingMarks.current ?? caretMarks(content, from);
+			return {
+				checked: marks.includes(mark) ? "true" : "false",
+				refusal: undefined,
+			};
+		}
+		const state = markState(content, from, to, mark);
+		return {
+			checked: markChecked(state),
+			refusal:
+				state === "unavailable" ? copy.disabled.formatUnavailable : undefined,
+		};
+	};
+
+	const menuLinkRefusal = () => {
+		const [from, to] = ordered(menuSelection.current);
+		return linkDraft(model.current.content, from, to).holdsImage
+			? copy.disabled.linkAroundImage
+			: undefined;
+	};
+
+	// The keyboard's way to the editor's menu, Shift+F10 or the ContextMenu
+	// key: a `contextmenu` event on the editor, anchored under the caret, so
+	// the pointer's path is reused rather than repeated.
+	const openMenuFromKeyboard = () => {
+		const root = rootRef.current;
+		if (!root) return;
+		let box = root.getBoundingClientRect();
+		const selection = window.getSelection();
+		if (selection?.rangeCount && root.contains(selection.focusNode)) {
+			const caret = selection.getRangeAt(0).getBoundingClientRect();
+			if (caret.width > 0 || caret.height > 0) box = caret;
+		}
+		root.dispatchEvent(
+			new MouseEvent("contextmenu", {
+				bubbles: true,
+				cancelable: true,
+				button: 2,
+				clientX: box.left,
+				clientY: box.bottom,
+			}),
+		);
 	};
 
 	const openLinkAtCaret = () => {
@@ -460,9 +585,10 @@ export function RichCellEditor({
 
 	const editor = (
 		// A textarea cannot hold formatting, links, or images, which is the
-		// whole reason this editor exists (#306).
-		// biome-ignore lint/a11y/useSemanticElements: see above
-		<div
+		// whole reason this editor exists (#306). It is its own menu's trigger,
+		// a `div` like the grid surface's, with the trigger's `select-none`
+		// overridden by the editor's `select-text`.
+		<ContextMenuTrigger
 			ref={rootRef}
 			// The editor is a control, named by position like the textarea was.
 			role="textbox"
@@ -478,7 +604,7 @@ export function RichCellEditor({
 				finish("commit");
 			}}
 			onFocus={() => {
-				if (!suspended.current) return;
+				if (!suspended.current || dialogOpen.current) return;
 				suspended.current = false;
 				placeSelection();
 			}}
@@ -534,6 +660,18 @@ export function RichCellEditor({
 				event.stopPropagation();
 				if (composing.current || event.nativeEvent.isComposing) return;
 				const mod = event.metaKey || event.ctrlKey;
+
+				if (
+					(event.key === "ContextMenu" ||
+						(event.key === "F10" && event.shiftKey)) &&
+					!event.altKey &&
+					!mod
+				) {
+					// Stops the browser raising its own menu for the same chord.
+					event.preventDefault();
+					openMenuFromKeyboard();
+					return;
+				}
 
 				const mark = markForKey(event);
 				if (mark) {
@@ -609,6 +747,51 @@ export function RichCellEditor({
 		/>
 	);
 
+	// Right-click, Shift+F10, or the ContextMenu key inside the editor opens a
+	// menu of its own rather than the cell menu (#398): the Format group, Link…,
+	// and Image…, acting on the range or the caret being edited, as their
+	// shortcuts do. While it is open the editor is suspended, so the focus the
+	// menu takes is not a commit, and closing it, whichever way, hands focus and
+	// the selection back to the editor.
+	const editorMenu = (
+		<ContextMenu
+			open={menu.open}
+			onOpenChange={(open) => {
+				if (open) {
+					const selection = readSelection();
+					menuSelection.current = selection;
+					model.current = { ...model.current, ...selection };
+					suspended.current = true;
+				}
+				menu.onOpenChange(open);
+			}}
+			onOpenChangeComplete={menu.onOpenChangeComplete}
+		>
+			{editor}
+			<ContextMenuContent
+				className="w-auto min-w-56"
+				finalFocus={() => rootRef.current ?? true}
+				// The menu is portalled out of the cell but still sits inside it in
+				// React's tree, where a press would reach the cell's own handlers
+				// and select it, ending the edit the menu acts on.
+				onPointerDown={stopReactPropagation}
+				onMouseDown={stopReactPropagation}
+				onClick={stopReactPropagation}
+				onDoubleClick={stopReactPropagation}
+				onContextMenu={stopReactPropagation}
+			>
+				<FormatMenuGroup
+					markControl={menuMarkControl}
+					onMark={(mark) => toggle(mark, menuSelection.current)}
+					linkRefusal={menuLinkRefusal()}
+					onLink={() => runDialogCommand(requestLink)}
+					imageRefusal={undefined}
+					onImage={() => runDialogCommand(requestImage)}
+				/>
+			</ContextMenuContent>
+		</ContextMenu>
+	);
+
 	return (
 		<>
 			{/* The unavailable-image glyph, drawn once by React for the editor to
@@ -626,7 +809,7 @@ export function RichCellEditor({
 					<InlineContentView value={sizer} surface="grid-wrapped" />{" "}
 				</span>
 			) : null}
-			{editor}
+			{editorMenu}
 		</>
 	);
 }

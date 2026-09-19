@@ -168,7 +168,19 @@ wraps. Formatting is a document command built from the range operations:
   Edit image, prefilled, saves over the image or removes it. From the cell
   menu, which has no caret, the image it edits is the cell's only image: a
   cell holding several names none of them, so the command adds one after the
-  text.
+  text. From the cell editor's menu it is the image a selection covers
+  exactly, or at a caret the one just before it, else just after it, the
+  image Backspace or Delete would remove; with none, the new image goes in
+  place of the selection, at the caret when it is collapsed.
+- *The cell editor's menu* (#398, option A). Right-click, `Shift`+`F10`, or
+  the `ContextMenu` key inside the rich cell editor opens a menu of its own,
+  not the cell menu: the same Format group, `Link…`, and `Image…`, and
+  nothing that acts on cells. It acts on the range or the caret being edited
+  exactly as the shortcuts do, as a local undo step, and closing it,
+  whichever way, returns focus and the selection to the editor, which stays
+  open: the focus the menu and its dialogs take is not a commit. One
+  component draws the Format group for both menus; each says what its
+  controls read and do.
 - *The rich cell editor* replaces the textarea for text, and only for text: a
   typed value, and typing over a cell in a column that expects one, keep the
   textarea. It is native `contenteditable` with the Selection API and
@@ -249,12 +261,10 @@ coverage takes one table holding every feature through the structured and
 plain views, their drafts, the clipboard both ways, Copy as, download, import,
 a reload, forced colours, and the keyboard; `docs/performance.md` records the
 target scale measured with formatted content. The rich cell editor stays
-narrower than the rest in three ways, each current behaviour rather than an
+narrower than the rest in two ways, each current behaviour rather than an
 accident: paste into it and copy out of it carry plain text only, since the
-same-app clipboard flavour belongs to the grid selection; the cell menu
-commits the edit before its Format group runs, so from the menu a mark
-applies to the whole cell and an image goes after the text (#398); and once
-the editor's own undo is exhausted, `Mod`+`Z` does nothing until the edit is
+same-app clipboard flavour belongs to the grid selection; and once the
+editor's own undo is exhausted, `Mod`+`Z` does nothing until the edit is
 committed or cancelled, as with the textarea it replaced.
 
 ADR 0008 is amended by this one: a textual cell may now carry structure, and
