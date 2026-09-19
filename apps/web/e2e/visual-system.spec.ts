@@ -360,7 +360,7 @@ test("the active pane boundary replaces the resting one", async ({
 				],
 				stroke: style.getPropertyValue("--hairline-color").trim(),
 				accent: style.getPropertyValue("--active-pane-edge").trim(),
-				subtle: style.getPropertyValue("--line-subtle").trim(),
+				subtle: style.getPropertyValue("--line-pane").trim(),
 			};
 		});
 

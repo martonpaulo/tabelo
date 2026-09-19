@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import { samplePerson } from "@/core/sample-data";
 import { escapeCell } from "@/formats/markdown";
 import { expect, test } from "./fixtures";
@@ -33,11 +33,10 @@ const markdownSource = [
 	`| ${first.city}${sequences[0]} | a${sequences[1]}b | back${sequences[2]}slash | x${sequences[3]}y | line${sequences[4]}break |`,
 ].join("\n");
 
-async function seedEscapes(tabelo: TabeloPage, page: Page): Promise<void> {
-	const editor = tabelo.source("markdown");
-	await editor.click();
-	await page.keyboard.press("ControlOrMeta+a");
-	await page.keyboard.type(markdownSource);
+async function seedEscapes(tabelo: TabeloPage): Promise<void> {
+	// Filled rather than typed key by key: Enter at the end of a row starts the
+	// next one with its delimiter (#391), which would add a pipe of its own.
+	await tabelo.source("markdown").fill(markdownSource);
 	// The parse has to land before another view can re-serialize it.
 	await expect(tabelo.cell(1, 2)).toHaveText("a|b");
 }
@@ -69,9 +68,8 @@ async function declaredWidths(pane: Locator): Promise<string[]> {
 
 test("every sequence a codec writes is drawn as one glyph", async ({
 	tabelo,
-	page,
 }) => {
-	await seedEscapes(tabelo, page);
+	await seedEscapes(tabelo);
 
 	const markdown = tabelo.pane("markdown");
 	// The space entity, the escaped pipe, the escaped backslash, the escaped
@@ -91,9 +89,8 @@ test("every sequence a codec writes is drawn as one glyph", async ({
 
 test("a glyph keeps the room of the sequence it replaces", async ({
 	tabelo,
-	page,
 }) => {
-	await seedEscapes(tabelo, page);
+	await seedEscapes(tabelo);
 	const pane = tabelo.pane("markdown");
 
 	// Markdown padded each column counting the sequence's own characters, so the
@@ -132,7 +129,7 @@ test("the glyph is drawn over the source without joining it", async ({
 	await page.reload();
 	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
-	await seedEscapes(tabelo, page);
+	await seedEscapes(tabelo);
 	const pane = tabelo.pane("markdown");
 	await expect(pane.locator(glyph).first()).toBeVisible();
 
@@ -197,7 +194,7 @@ test("hovering a glyph says what the sequence stands for", async ({
 	tabelo,
 	page,
 }) => {
-	await seedEscapes(tabelo, page);
+	await seedEscapes(tabelo);
 	const pane = tabelo.pane("markdown");
 	await pane.locator(glyph).first().hover();
 
