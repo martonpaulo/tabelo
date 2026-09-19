@@ -165,13 +165,19 @@ function tagOf(element: Element): string {
 	return element.tagName.toLowerCase();
 }
 
+// The DOM's node-type numbers, spelled out rather than read from the global
+// `Node`, which only exists where a DOM does: a DOMParser supplied from
+// elsewhere (the browser suite reads copied HTML in Node) brings no globals.
+const ELEMENT_NODE = 1;
+const TEXT_NODE = 3;
+
 function readNode(node: Node, reading: CellReading, context: Context) {
 	if (reading.refusal) return;
-	if (node.nodeType === Node.TEXT_NODE) {
+	if (node.nodeType === TEXT_NODE) {
 		pushText(reading, normalizeLineEndings(node.textContent ?? ""), context);
 		return;
 	}
-	if (node.nodeType !== Node.ELEMENT_NODE) return;
+	if (node.nodeType !== ELEMENT_NODE) return;
 	const element = node as Element;
 	const name = element.tagName.toUpperCase();
 
