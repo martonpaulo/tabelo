@@ -234,6 +234,10 @@ test("the link dialog links a cell, edits it, and removes it", async ({
 	dialog = page.getByRole("dialog");
 	await dialog.getByRole("button", { name: copy.link.confirm }).click();
 	const address = dialog.getByRole("textbox", { name: copy.link.address });
+	// Adding a link: there is no link yet, so nothing to remove.
+	await expect(
+		dialog.getByRole("button", { name: copy.link.remove }),
+	).toHaveCount(0);
 	await expect(address).toHaveAttribute("aria-invalid", "true");
 	await address.fill("mailto:paulo@example.com");
 	await dialog.getByRole("button", { name: copy.link.confirm }).click();

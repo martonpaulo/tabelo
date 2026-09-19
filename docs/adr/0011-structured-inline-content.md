@@ -159,7 +159,9 @@ wraps. Formatting is a document command built from the range operations:
   caret sits in, keeps the label's formatting when the label is unchanged,
   and refuses a range holding an image. An image needs an address and
   non-empty alternative text. Both are answered through dialogs that write
-  nothing until confirmed.
+  nothing until confirmed. The link dialog is Add link, with no Remove, when
+  the range holds no link, and Edit link with Remove link when it does (owner,
+  2026-09-19).
 - *The rich cell editor* replaces the textarea for text, and only for text: a
   typed value, and typing over a cell in a column that expects one, keep the
   textarea. It is native `contenteditable` with the Selection API and

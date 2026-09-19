@@ -869,7 +869,6 @@ export const copy = {
 		address: "Address",
 		addressHint: "https, http, or mailto: addresses open.",
 		remove: "Remove link",
-		noLink: "This text has no link to remove.",
 		confirm: "Save",
 		textRequired: "Enter the text to show.",
 		addressRequired: "Enter an address.",

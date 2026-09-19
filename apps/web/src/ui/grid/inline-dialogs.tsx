@@ -102,6 +102,11 @@ export function LinkDialog({
 	// transition, when `request` is already null, so focus goes back to it.
 	const lastRequest = useRef<LinkRequest | null>(null);
 	if (request) lastRequest.current = request;
+	// Whether the range already holds a link decides what the dialog is: Add
+	// link with no Remove, or Edit link with Remove link (owner, 2026-09-19).
+	// Read from the last request, so the closing dialog does not turn into the
+	// other one while it fades.
+	const editing = lastRequest.current?.draft.linked === true;
 
 	// Each opening starts from what the range holds, not the last draft.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: see above
@@ -143,7 +148,7 @@ export function LinkDialog({
 				<form className="grid gap-4" onSubmit={submit}>
 					<DialogHeader>
 						<DialogTitle id={titleId}>
-							{draft?.linked ? copy.link.editTitle : copy.link.addTitle}
+							{editing ? copy.link.editTitle : copy.link.addTitle}
 						</DialogTitle>
 					</DialogHeader>
 					<Field
@@ -161,16 +166,17 @@ export function LinkDialog({
 						onChange={setUrl}
 					/>
 					<DialogActions>
-						<DialogAlternative
-							type="button"
-							disabledReason={draft?.linked ? undefined : copy.link.noLink}
-							onClick={() => {
-								request?.onRemove();
-								onClose();
-							}}
-						>
-							{copy.link.remove}
-						</DialogAlternative>
+						{editing ? (
+							<DialogAlternative
+								type="button"
+								onClick={() => {
+									request?.onRemove();
+									onClose();
+								}}
+							>
+								{copy.link.remove}
+							</DialogAlternative>
+						) : null}
 						<DialogCancel>{copy.actions.cancel}</DialogCancel>
 						<DialogConfirm
 							type="submit"
