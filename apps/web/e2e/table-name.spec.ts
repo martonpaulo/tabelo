@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { tableDocumentTitle } from "@/copy/product";
 import { expect, test } from "./fixtures";
+import { downloadConfirm } from "./helpers";
 
 async function openRenameDialog(page: Page) {
 	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
@@ -26,9 +27,7 @@ async function savedFilename(page: Page, formatName: string): Promise<string> {
 		.click();
 	const dialog = page.getByRole("dialog", { name: copy.actions.downloadTable });
 	await dialog.getByRole("radio", { name: formatName }).click();
-	await dialog
-		.getByRole("button", { name: copy.actions.download, exact: true })
-		.click();
+	await downloadConfirm(page).click();
 	const download = await waiting;
 	const filename = download.suggestedFilename();
 	await download.path();

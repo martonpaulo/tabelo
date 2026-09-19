@@ -166,6 +166,17 @@ export function lastCopied(page: Page): Promise<CopiedFlavours | undefined> {
 // The rendered text of a source pane, decorations excluded. Every marker a
 // source view draws is generated content or a widget rather than a text node,
 // so what the DOM reports here is the source and nothing else.
+// The download chooser's confirm button. Its name carries the chosen
+// extension, so it is found by the part that stays the same across formats.
+export function downloadConfirm(page: Page): Locator {
+	const prefix = copy.download
+		.downloadAs("")
+		.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return page
+		.getByRole("dialog")
+		.getByRole("button", { name: new RegExp(`^${prefix}`) });
+}
+
 export function renderedSource(pane: Locator): Promise<string> {
 	return pane.evaluate((element) =>
 		Array.from(

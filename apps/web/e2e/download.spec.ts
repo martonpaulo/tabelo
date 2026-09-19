@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { getCodec, listCodecs } from "@/formats";
 import { expect, test } from "./fixtures";
-import { renderedSource } from "./helpers";
+import { downloadConfirm, renderedSource } from "./helpers";
 
 // Downloading is a choice, so it is a chooser. The user chooses the format and,
 // only where the format declares an option, how the file should be written. The
@@ -45,9 +45,10 @@ test("the chooser uses the shared dialog button hierarchy", async ({
 	await expect(
 		dialog.getByRole("button", { name: copy.actions.cancel }),
 	).toHaveAttribute("data-variant", "ghost");
-	await expect(
-		dialog.getByRole("button", { name: copy.actions.download, exact: true }),
-	).toHaveAttribute("data-variant", "default");
+	await expect(downloadConfirm(page)).toHaveAttribute(
+		"data-variant",
+		"default",
+	);
 
 	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
 	await expect(
@@ -94,9 +95,7 @@ test("CSV includes the header row by default", async ({ page, tabelo }) => {
 			.getByRole("dialog")
 			.getByRole("radio", { name: copy.views.csv.label })
 			.click();
-		await page
-			.getByRole("button", { name: copy.actions.download, exact: true })
-			.click();
+		await downloadConfirm(page).click();
 	});
 
 	expect(file.name).toBe("untitled-table.csv");
@@ -126,9 +125,7 @@ test("source edits preserve whitespace and adjacent Jira escapes in CSV", async 
 			.getByRole("dialog")
 			.getByRole("radio", { name: copy.views.csv.label })
 			.click();
-		await page
-			.getByRole("button", { name: copy.actions.download, exact: true })
-			.click();
+		await downloadConfirm(page).click();
 	});
 
 	expect(file.body).toBe('Name\n"  start\n\\end  "');
@@ -145,9 +142,7 @@ test("Mod+S downloads CSV with its header row too", async ({
 		await page.keyboard.press(shortcut);
 		const dialog = page.getByRole("dialog");
 		await dialog.getByRole("radio", { name: copy.views.csv.label }).click();
-		await page
-			.getByRole("button", { name: copy.actions.download, exact: true })
-			.click();
+		await downloadConfirm(page).click();
 	});
 
 	expect(file.name).toBe("untitled-table.csv");
@@ -171,9 +166,7 @@ test("a downloaded CSV reimports as the same table", async ({
 			.getByRole("dialog")
 			.getByRole("radio", { name: copy.views.csv.label })
 			.click();
-		await page
-			.getByRole("button", { name: copy.actions.download, exact: true })
-			.click();
+		await downloadConfirm(page).click();
 	});
 
 	await tabelo.importFile(file.name, file.body, "text/csv");
@@ -206,9 +199,7 @@ test("TSV keeps its own bytes, header row included", async ({
 			.getByRole("dialog")
 			.getByRole("radio", { name: copy.views.tsv.label })
 			.click();
-		await page
-			.getByRole("button", { name: copy.actions.download, exact: true })
-			.click();
+		await downloadConfirm(page).click();
 	});
 
 	expect(file.name).toBe("untitled-table.tsv");
@@ -239,9 +230,7 @@ test("a Records option still works and changes only its own file", async ({
 			.getByRole("dialog")
 			.getByRole("radio", { name: copy.views.records.label })
 			.click();
-		await page
-			.getByRole("button", { name: copy.actions.download, exact: true })
-			.click();
+		await downloadConfirm(page).click();
 	});
 
 	const withoutName = await savedFile(page, async () => {
@@ -254,9 +243,7 @@ test("a Records option still works and changes only its own file", async ({
 		await expect(option).toBeChecked();
 		await option.click();
 		await expect(option).not.toBeChecked();
-		await page
-			.getByRole("button", { name: copy.actions.download, exact: true })
-			.click();
+		await downloadConfirm(page).click();
 	});
 
 	expect(withoutName.body).not.toBe(withName.body);
@@ -268,9 +255,7 @@ test("a Records option still works and changes only its own file", async ({
 			.getByRole("dialog")
 			.getByRole("radio", { name: copy.views.csv.label })
 			.click();
-		await page
-			.getByRole("button", { name: copy.actions.download, exact: true })
-			.click();
+		await downloadConfirm(page).click();
 	});
 	expect(csv.body.split("\n")[0]).toBe("Name,City,Role");
 });
@@ -336,9 +321,7 @@ test("valid source work is already in the file the shortcut downloads", async ({
 	const file = await savedFile(page, async () => {
 		await page.keyboard.press(shortcut);
 		await expect(page.getByRole("dialog")).toBeVisible();
-		await page
-			.getByRole("button", { name: copy.actions.download, exact: true })
-			.click();
+		await downloadConfirm(page).click();
 	});
 
 	expect(file.name).toBe("untitled-table.md");
@@ -366,9 +349,7 @@ test("an invalid draft is named rather than silently left out", async ({
 
 	// Downloading gives exactly what the message promised: the last valid table.
 	const file = await savedFile(page, async () => {
-		await page
-			.getByRole("button", { name: copy.actions.download, exact: true })
-			.click();
+		await downloadConfirm(page).click();
 	});
 	expect(file.body).toContain("Ingrid");
 	expect(file.body).not.toContain("Bo");
