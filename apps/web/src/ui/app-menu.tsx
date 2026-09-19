@@ -58,6 +58,7 @@ import { preconditionRecovery } from "@/ui/precondition-recovery";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
 import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
+import { useContentWhileOpen } from "@/ui/primitives/use-content-while-open";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import { useStackedWorkspace } from "@/ui/workspace/stacking";
 import { flattensInlineContent } from "@/views/projection-loss";
@@ -133,6 +134,194 @@ export function AppMenu({
 			if (direction === "undo") state.undo();
 			else state.redo();
 		});
+	// A command run from the menu changes what the menu shows, the table's size
+	// and whether Undo is available, while the menu is still fading out. It
+	// keeps what it showed while open until it has gone.
+	const content = useContentWhileOpen(
+		menuDialog.open,
+		<DropdownMenuContent
+			aria-label={copy.actions.openAppMenu}
+			align="end"
+			side="top"
+			className="w-auto min-w-64 max-w-screen-fit-w"
+		>
+			{/* The product mark and name, then the open table as one block that
+				    renames it: what the product is sits on the start surface, and
+				    this menu starts from the document at hand (owner, 2026-09-19;
+				    #358 kept identity and document as separate contexts). */}
+			<div
+				className={cn(
+					"flex items-center gap-2 font-medium text-sm",
+					menuItemInsetStyles,
+				)}
+			>
+				<img
+					aria-hidden
+					alt=""
+					src={`${import.meta.env.BASE_URL}logo.svg`}
+					className="size-4"
+				/>
+				{copy.app.name}
+			</div>
+			<DropdownMenuGroup>
+				<DropdownMenuItem
+					aria-label={copy.actions.renameTable}
+					aria-description={tableName}
+					onClick={() => menuDialog.runAfterClose(onRename)}
+					className="mx-1 mb-1 bg-muted"
+				>
+					<IconFileText aria-hidden />
+					<MenuOption
+						truncateLabel
+						label={tableName}
+						description={copy.workspace.tableSize(columnCount, rowCount)}
+					/>
+					<IconPencil aria-hidden className="text-muted-foreground" />
+				</DropdownMenuItem>
+			</DropdownMenuGroup>
+			{pwaUpdate.ready ? (
+				<>
+					<DropdownMenuSeparator />
+					<DropdownMenuGroup>
+						<ControlTooltip
+							reason={
+								pwaUpdate.updating ? copy.disabled.updateInProgress : undefined
+							}
+						>
+							<DropdownMenuItem
+								disabled={pwaUpdate.updating}
+								onClick={pwaUpdate.apply}
+							>
+								<IconRefresh aria-hidden />
+								<MenuOption {...copy.appUpdate} />
+							</DropdownMenuItem>
+						</ControlTooltip>
+					</DropdownMenuGroup>
+				</>
+			) : null}
+
+			<DropdownMenuSeparator />
+			{/* Undo and redo side by side: two halves of one control. */}
+			<DropdownMenuGroup className="mx-1 grid grid-cols-2 gap-1">
+				<ControlTooltip reason={canUndo ? undefined : copy.disabled.undo}>
+					<DropdownMenuItem
+						disabled={!canUndo}
+						onClick={() => run("undo")}
+						className="justify-center bg-muted"
+					>
+						<IconArrowBackUp aria-hidden />
+						{copy.actions.undo}
+						<DropdownMenuShortcut className="ml-0">
+							{copy.shortcuts.undo}
+						</DropdownMenuShortcut>
+					</DropdownMenuItem>
+				</ControlTooltip>
+				<ControlTooltip reason={canRedo ? undefined : copy.disabled.redo}>
+					<DropdownMenuItem
+						disabled={!canRedo}
+						onClick={() => run("redo")}
+						className="justify-center bg-muted"
+					>
+						<IconArrowForwardUp aria-hidden />
+						{copy.actions.redo}
+						<DropdownMenuShortcut className="ml-0">
+							{copy.shortcuts.redo}
+						</DropdownMenuShortcut>
+					</DropdownMenuItem>
+				</ControlTooltip>
+			</DropdownMenuGroup>
+
+			<DropdownMenuSeparator />
+			<TableStructureGroup
+				onConfirmTranspose={(typedValues) =>
+					menuDialog.runAfterClose(() => setPendingTranspose(typedValues))
+				}
+			/>
+
+			<DropdownMenuSeparator />
+			<DropdownMenuGroup>
+				<DropdownMenuItem
+					variant="destructive"
+					onClick={() => menuDialog.runAfterClose(onNewTable)}
+				>
+					<IconFilePlus aria-hidden />
+					{copy.actions.newTable}
+				</DropdownMenuItem>
+				{/* Import runs on the click itself, not after the menu's close
+					    animation. The file picker is the browser's own layer, so it
+					    never stacks over the menu, and asking for it needs the user
+					    activation that this click carries: deferred behind a
+					    transition, a slow frame can let that activation lapse and the
+					    browser then drops the request without a word. Every other
+					    command here opens an in-app dialog and still waits. */}
+				<DropdownMenuItem onClick={onImport}>
+					<IconUpload aria-hidden />
+					{copy.actions.importFile}
+				</DropdownMenuItem>
+				<CopyAsSubmenu runAfterClose={menuDialog.runAfterClose} />
+				<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onDownload)}>
+					<IconDownload aria-hidden />
+					{copy.actions.downloadTable}
+				</DropdownMenuItem>
+			</DropdownMenuGroup>
+
+			<DropdownMenuSeparator />
+			<DropdownMenuGroup>
+				<ControlTooltip reason={addViewRefusal}>
+					<DropdownMenuItem
+						disabled={addViewRefusal !== undefined}
+						onClick={() => menuDialog.runAfterClose(onAddView)}
+					>
+						<IconLayoutSidebarRightExpand aria-hidden />
+						{copy.workspace.addView}
+					</DropdownMenuItem>
+				</ControlTooltip>
+				<ControlTooltip
+					reason={
+						canChangeLayout ? undefined : copy.disabled.layoutOnlyArrangement
+					}
+				>
+					<DropdownMenuItem
+						disabled={!canChangeLayout}
+						onClick={() => menuDialog.runAfterClose(onLayout)}
+					>
+						<IconLayoutGrid aria-hidden />
+						{copy.workspace.changeLayout}
+					</DropdownMenuItem>
+				</ControlTooltip>
+				<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onSettings)}>
+					<IconAdjustmentsHorizontal aria-hidden />
+					{copy.settings.title}
+				</DropdownMenuItem>
+			</DropdownMenuGroup>
+
+			<DropdownMenuSeparator />
+			<DropdownMenuGroup>
+				<DropdownMenuItem
+					render={
+						<a href={product.repositoryUrl} target="_blank" rel="noreferrer" />
+					}
+				>
+					<IconBrandGithub aria-hidden />
+					{copy.actions.github}
+					<IconExternalLink
+						aria-hidden
+						className="ml-auto text-muted-foreground"
+					/>
+				</DropdownMenuItem>
+			</DropdownMenuGroup>
+			<p
+				className={cn(
+					"text-muted-foreground text-xs",
+					menuItemInsetStyles,
+					"pt-0",
+				)}
+			>
+				{copy.app.copyright}
+			</p>
+		</DropdownMenuContent>,
+	);
+
 	return (
 		<>
 			<DropdownMenu
@@ -179,199 +368,7 @@ export function AppMenu({
 					</DropdownMenuTrigger>
 				</ControlTooltip>
 
-				<DropdownMenuContent
-					aria-label={copy.actions.openAppMenu}
-					align="end"
-					side="top"
-					className="w-auto min-w-64 max-w-screen-fit-w"
-				>
-					{/* The product mark and name, then the open table as one block that
-				    renames it: what the product is sits on the start surface, and
-				    this menu starts from the document at hand (owner, 2026-09-19;
-				    #358 kept identity and document as separate contexts). */}
-					<div
-						className={cn(
-							"flex items-center gap-2 font-medium text-sm",
-							menuItemInsetStyles,
-						)}
-					>
-						<img
-							aria-hidden
-							alt=""
-							src={`${import.meta.env.BASE_URL}logo.svg`}
-							className="size-4"
-						/>
-						{copy.app.name}
-					</div>
-					<DropdownMenuGroup>
-						<DropdownMenuItem
-							aria-label={copy.actions.renameTable}
-							aria-description={tableName}
-							onClick={() => menuDialog.runAfterClose(onRename)}
-							className="mx-1 mb-1 bg-muted"
-						>
-							<IconFileText aria-hidden />
-							<MenuOption
-								truncateLabel
-								label={tableName}
-								description={copy.workspace.tableSize(columnCount, rowCount)}
-							/>
-							<IconPencil aria-hidden className="text-muted-foreground" />
-						</DropdownMenuItem>
-					</DropdownMenuGroup>
-					{pwaUpdate.ready ? (
-						<>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<ControlTooltip
-									reason={
-										pwaUpdate.updating
-											? copy.disabled.updateInProgress
-											: undefined
-									}
-								>
-									<DropdownMenuItem
-										disabled={pwaUpdate.updating}
-										onClick={pwaUpdate.apply}
-									>
-										<IconRefresh aria-hidden />
-										<MenuOption {...copy.appUpdate} />
-									</DropdownMenuItem>
-								</ControlTooltip>
-							</DropdownMenuGroup>
-						</>
-					) : null}
-
-					<DropdownMenuSeparator />
-					{/* Undo and redo side by side: two halves of one control. */}
-					<DropdownMenuGroup className="mx-1 grid grid-cols-2 gap-1">
-						<ControlTooltip reason={canUndo ? undefined : copy.disabled.undo}>
-							<DropdownMenuItem
-								disabled={!canUndo}
-								onClick={() => run("undo")}
-								className="justify-center bg-muted"
-							>
-								<IconArrowBackUp aria-hidden />
-								{copy.actions.undo}
-								<DropdownMenuShortcut className="ml-0">
-									{copy.shortcuts.undo}
-								</DropdownMenuShortcut>
-							</DropdownMenuItem>
-						</ControlTooltip>
-						<ControlTooltip reason={canRedo ? undefined : copy.disabled.redo}>
-							<DropdownMenuItem
-								disabled={!canRedo}
-								onClick={() => run("redo")}
-								className="justify-center bg-muted"
-							>
-								<IconArrowForwardUp aria-hidden />
-								{copy.actions.redo}
-								<DropdownMenuShortcut className="ml-0">
-									{copy.shortcuts.redo}
-								</DropdownMenuShortcut>
-							</DropdownMenuItem>
-						</ControlTooltip>
-					</DropdownMenuGroup>
-
-					<DropdownMenuSeparator />
-					<TableStructureGroup
-						onConfirmTranspose={(typedValues) =>
-							menuDialog.runAfterClose(() => setPendingTranspose(typedValues))
-						}
-					/>
-
-					<DropdownMenuSeparator />
-					<DropdownMenuGroup>
-						<DropdownMenuItem
-							variant="destructive"
-							onClick={() => menuDialog.runAfterClose(onNewTable)}
-						>
-							<IconFilePlus aria-hidden />
-							{copy.actions.newTable}
-						</DropdownMenuItem>
-						{/* Import runs on the click itself, not after the menu's close
-					    animation. The file picker is the browser's own layer, so it
-					    never stacks over the menu, and asking for it needs the user
-					    activation that this click carries: deferred behind a
-					    transition, a slow frame can let that activation lapse and the
-					    browser then drops the request without a word. Every other
-					    command here opens an in-app dialog and still waits. */}
-						<DropdownMenuItem onClick={onImport}>
-							<IconUpload aria-hidden />
-							{copy.actions.importFile}
-						</DropdownMenuItem>
-						<CopyAsSubmenu runAfterClose={menuDialog.runAfterClose} />
-						<DropdownMenuItem
-							onClick={() => menuDialog.runAfterClose(onDownload)}
-						>
-							<IconDownload aria-hidden />
-							{copy.actions.downloadTable}
-						</DropdownMenuItem>
-					</DropdownMenuGroup>
-
-					<DropdownMenuSeparator />
-					<DropdownMenuGroup>
-						<ControlTooltip reason={addViewRefusal}>
-							<DropdownMenuItem
-								disabled={addViewRefusal !== undefined}
-								onClick={() => menuDialog.runAfterClose(onAddView)}
-							>
-								<IconLayoutSidebarRightExpand aria-hidden />
-								{copy.workspace.addView}
-							</DropdownMenuItem>
-						</ControlTooltip>
-						<ControlTooltip
-							reason={
-								canChangeLayout
-									? undefined
-									: copy.disabled.layoutOnlyArrangement
-							}
-						>
-							<DropdownMenuItem
-								disabled={!canChangeLayout}
-								onClick={() => menuDialog.runAfterClose(onLayout)}
-							>
-								<IconLayoutGrid aria-hidden />
-								{copy.workspace.changeLayout}
-							</DropdownMenuItem>
-						</ControlTooltip>
-						<DropdownMenuItem
-							onClick={() => menuDialog.runAfterClose(onSettings)}
-						>
-							<IconAdjustmentsHorizontal aria-hidden />
-							{copy.settings.title}
-						</DropdownMenuItem>
-					</DropdownMenuGroup>
-
-					<DropdownMenuSeparator />
-					<DropdownMenuGroup>
-						<DropdownMenuItem
-							render={
-								<a
-									href={product.repositoryUrl}
-									target="_blank"
-									rel="noreferrer"
-								/>
-							}
-						>
-							<IconBrandGithub aria-hidden />
-							{copy.actions.github}
-							<IconExternalLink
-								aria-hidden
-								className="ml-auto text-muted-foreground"
-							/>
-						</DropdownMenuItem>
-					</DropdownMenuGroup>
-					<p
-						className={cn(
-							"text-muted-foreground text-xs",
-							menuItemInsetStyles,
-							"pt-0",
-						)}
-					>
-						{copy.app.copyright}
-					</p>
-				</DropdownMenuContent>
+				{content}
 			</DropdownMenu>
 			<TransposeTypeChangeDialog
 				typedValues={pendingTranspose}
