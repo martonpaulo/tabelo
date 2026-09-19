@@ -20,7 +20,12 @@ import {
 	sliceInline,
 	toggleMark,
 } from "./inline-content";
-import type { InlineMark, InlineNode, TextContent } from "./types";
+import type {
+	InlineContent,
+	InlineMark,
+	InlineNode,
+	TextContent,
+} from "./types";
 
 // The invariants every later slice of #306 builds on: normalization never
 // changes what content reads as, every operation keeps content in the one
@@ -186,9 +191,31 @@ describe("inline content properties", () => {
 		},
 	);
 
+	// Seed -1965532039 once found two links to one URL around an unlinked
+	// space: putting the space back made it join both links into one.
+	const apartLinks: InlineContent = {
+		kind: "inline",
+		nodes: [
+			{
+				kind: "link",
+				url: "https://example.com/<pipe|and>",
+				children: [{ kind: "text", text: " ", marks: [] }],
+			},
+			{ kind: "text", text: " ", marks: [] },
+			{
+				kind: "link",
+				url: "https://example.com/<pipe|and>",
+				children: [{ kind: "text", text: " ", marks: [] }],
+			},
+		],
+	};
+
 	test.prop(
 		{ input: withRange(textContentArbitrary) },
-		{ numRuns: PROPERTY_RUNS },
+		{
+			numRuns: PROPERTY_RUNS,
+			examples: [{ input: { value: apartLinks, start: 2, end: 1 } }],
+		},
 	)(
 		"putting a slice back where it came from changes nothing",
 		({ input: { value, start, end } }) => {

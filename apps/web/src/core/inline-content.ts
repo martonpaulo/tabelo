@@ -430,8 +430,9 @@ export function sliceInline(
 // an image are all this. Formatted content keeps its own formatting. Plain
 // text typed over a range takes the marks and link of the first text it
 // replaces, the way typing over a selection does; inserted at a caret it is
-// unmarked. Unlinked text inserted strictly inside a link joins it, so typing
-// in the middle of a label extends that label; an image never joins a link,
+// unmarked. Unlinked text inserted strictly inside a link, over nothing but
+// that link's own text, joins it, so typing in the middle of a label extends
+// that label; an image never joins a link,
 // so inserting one there splits the link around it.
 export function replaceRange(
 	value: TextContent,
@@ -453,7 +454,14 @@ export function replaceRange(
 			inserted.map((segment) => ({ ...segment, link: replaced.link })),
 		);
 	}
-	const link = enclosingLink(before, after);
+	// A replaced range is inside a link only when everything it held was: two
+	// separate links to one URL around unlinked text are not one link.
+	const enclosing = enclosingLink(before, after);
+	const link = middle.every(
+		(segment) => segment.kind === "text" && segment.link === enclosing,
+	)
+		? enclosing
+		: null;
 	return contentOf([
 		...before,
 		...inserted.map((segment) =>

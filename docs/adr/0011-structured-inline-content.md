@@ -71,7 +71,9 @@ with a fragment; slice a range; link and unlink a range; list links and
 images. An image is atomic and an edge that falls inside it, or inside a
 surrogate pair, widens outward. Plain text typed over a range takes the marks
 and link of the first text it replaces; inserted at a caret it is unmarked and
-joins a link only when it sits strictly inside one. Code replaces every other
+joins a link only when it sits strictly inside one, and a replaced range joins
+one only when it held nothing but that link's text, so two links to one URL
+stay apart when the text between them is replaced. Code replaces every other
 mark and stops at each line break. Every operation returns normalized content.
 
 **Reconciliation.** A codec declares `inlineContent: "carried" | "unexpressed"`

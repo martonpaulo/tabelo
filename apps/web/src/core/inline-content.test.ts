@@ -288,6 +288,21 @@ describe("replacing a range", () => {
 		]);
 	});
 
+	it("keeps two links to one URL apart when the text between is replaced", () => {
+		const url = "https://example.com/rio";
+		const link = (text: string): InlineNode => ({
+			kind: "link",
+			url,
+			children: [run(text)],
+		});
+		const apart = content(link(ingrid.name), run(" "), link(paulo.name));
+		const gap = ingrid.name.length;
+		expect(replaceRange(apart, gap, gap + 1, " ")).toEqual(apart);
+		expect(replaceRange(apart, gap + 1, gap, "-")).toEqual(
+			content(link(ingrid.name), run("-"), link(paulo.name)),
+		);
+	});
+
 	it("splits a link around an inserted image", () => {
 		const url = "https://example.com/ingrid";
 		const linked = content({ kind: "link", url, children: [run(ingrid.name)] });
