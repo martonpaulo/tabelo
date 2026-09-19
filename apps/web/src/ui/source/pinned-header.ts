@@ -160,7 +160,9 @@ const copyExtensions: Extension = [
 	// below it: the copy ends where the header ends.
 	Prec.highest(
 		EditorView.theme({
-			"&": { height: "auto" },
+			// The copy sits inside the editor's own element, so it inherits the
+			// inset the column strip publishes there; its text starts at its top.
+			"&": { height: "auto", "--tabelo-source-top-inset": "0rem" },
 			".cm-content": { paddingBottom: "0" },
 			".cm-selectionBackground": {
 				background: "var(--text-selection-fill)",
@@ -185,12 +187,13 @@ const copyExtensions: Extension = [
 interface Placement {
 	readonly range: SourceRowRange;
 	// Where the scroller begins inside the editor. The copy stands at the top
-	// of the text, so it sits below anything drawn above the scroller, such as
-	// the column markers (#368), rather than over it.
+	// of the text, so it sits below the column markers (#368), which float over
+	// the scroller and publish their height as `--tabelo-source-top-inset`.
 	readonly top: number;
 	readonly width: number;
 	readonly contentWidth: number;
-	readonly height: number;
+	// How far the copy's bottom edge stands below the scroller's top.
+	readonly reach: number;
 }
 
 class PinnedHeader {
@@ -198,8 +201,8 @@ class PinnedHeader {
 	// Read by the column markers (#368), which measure the header here while
 	// the editor has scrolled too far to have drawn the real one.
 	copy: EditorView | null = null;
-	// The copy's height while it is shown, which is how far a caret revealed
-	// by scrolling has to stay below the top of the pane to be seen.
+	// How far below the top of the pane the copy reaches while it is shown,
+	// which is how far a caret revealed by scrolling has to stay below it.
 	margin = 0;
 
 	constructor(private readonly view: EditorView) {
@@ -289,7 +292,10 @@ class PinnedHeader {
 			top: scroller.offsetTop,
 			width: scroller.clientWidth,
 			contentWidth: view.contentDOM.getBoundingClientRect().width,
-			height: this.copy ? this.overlay.getBoundingClientRect().height : 0,
+			reach: this.copy
+				? this.overlay.getBoundingClientRect().bottom -
+					scroller.getBoundingClientRect().top
+				: 0,
 		};
 	}
 
@@ -304,10 +310,10 @@ class PinnedHeader {
 		// copy and never stored: the copy is exactly as wide as the editor's
 		// visible text area, so it wraps where the editor wraps, and its text is
 		// as wide as the editor's, so it lines up with it at every scroll offset.
-		this.overlay.style.top = `${placement.top}px`;
+		this.overlay.style.top = `calc(${placement.top}px + var(--tabelo-source-top-inset, 0rem))`;
 		this.overlay.style.width = `${placement.width}px`;
 		copy.contentDOM.style.minWidth = `${placement.contentWidth}px`;
-		this.margin = placement.height;
+		this.margin = placement.reach;
 		// The copy's height is known only once it has been laid out, and the
 		// scroll margin depends on it, so a copy that was just created is read
 		// once more.

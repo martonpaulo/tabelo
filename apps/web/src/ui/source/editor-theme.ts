@@ -101,7 +101,11 @@ export const editorTheme = EditorView.theme({
 		color: "var(--foreground)",
 	},
 	".cm-scroller": {
-		paddingTop: "calc(var(--spacing) * 1.5)",
+		// The column markers (#368) float over the top of the scroller, which
+		// runs the pane's full height, so the text starts below them: they
+		// publish their height as `--tabelo-source-top-inset` while shown.
+		paddingTop:
+			"calc(var(--spacing) * 1.5 + var(--tabelo-source-top-inset, 0rem))",
 		fontFamily: "var(--font-family-source)",
 		lineHeight: contentLineBox,
 		overscrollBehavior: "contain",
@@ -187,19 +191,16 @@ export const editorTheme = EditorView.theme({
 		pointerEvents: "none",
 		userSelect: "none",
 	},
-	// The column markers (#368), in a CodeMirror panel above the scroller. They
-	// wear the grid's column index strip exactly: its fixed height, which keeps
-	// its size at every zoom like the grid's, the code surface with no band and
-	// no line under it, and the index face in the muted tone. The container's
-	// own light-theme fill and border from CodeMirror are cleared, with a
-	// selector specific enough to beat its `&light` rule.
-	"&.cm-editor .cm-panels.cm-panels-top": {
-		backgroundColor: "var(--surface-code)",
-		color: "inherit",
-		borderBottom: "none",
-	},
+	// The column markers (#368), an overlay across the top of the scroller.
+	// They wear the grid's column index strip exactly: its fixed height, which
+	// keeps its size at every zoom like the grid's, the code surface with no
+	// band and no line under it, and the index face in the muted tone. Opaque,
+	// because the text scrolls underneath, and above the pinned header, which
+	// stands directly below. No pointer, so a wheel over it still scrolls.
 	".cm-tabeloColumnStrip": {
-		position: "relative",
+		position: "absolute",
+		left: "0",
+		zIndex: "2",
 		height: "var(--grid-strip-h)",
 		overflow: "hidden",
 		backgroundColor: "var(--surface-code)",

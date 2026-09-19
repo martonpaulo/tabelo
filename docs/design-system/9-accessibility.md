@@ -721,10 +721,14 @@ panes show no strip; the registry declaration decides, never the view's name.
 - **It wears the grid strip's look**: the fixed `--grid-strip-h` at every zoom,
   the code surface with no band or line under it, the index face at `text-xs`
   in the muted tone, and a dead corner above the line numbers.
-- **It is a CodeMirror panel above the scroller, not a line of the text.** It
-  takes room of its own rather than floating over the first line, it follows
-  horizontal scrolling by remeasuring, and the pinned header (#252) stacks
-  directly under it. A draft that does not parse, or has no mapped header,
+- **It is an overlay across the top of the scroller, not a line of the
+  text.** The scroller, and so its vertical scrollbar, runs the pane's full
+  height, and its text starts the strip's height further down, so at rest the
+  strip covers nothing (owner, 2026-09-19); text scrolled up passes under it.
+  It spans the text area and never the scrollbar, it follows horizontal
+  scrolling on the browser's own scroll (`follow-scroll.ts`), a press on it
+  does nothing, a scroll over it scrolls the text, and the pinned header
+  (#252) stacks directly under it. A draft that does not parse, or has no mapped header,
   keeps the strip and draws no letters, so a draft that stops parsing mid-word
   does not move every line by the strip's height. Turning wrapping on removes
   the strip, because a wrapped header line has no single position per column.
