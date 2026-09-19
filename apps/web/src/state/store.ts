@@ -11,7 +11,6 @@ import { readCell } from "@/core/cell-value";
 import {
 	createEmptyDocument,
 	isDocumentBlank,
-	type ReconciliationSource,
 	reconcileDocument,
 } from "@/core/document";
 import {
@@ -107,6 +106,16 @@ import type {
 import { defaultOutputOptions } from "@/formats/types";
 import type { HistoryDirection } from "@/history/coordinator";
 import {
+	findTimelineStep,
+	type HistoryEntry,
+	reconcileColumnPreferences,
+	recordStep,
+	type SelectionRestore,
+	stepTimeline,
+	walkTimeline,
+	workspaceForEntry,
+} from "@/history/timeline";
+import {
 	createImportedDocument,
 	droppedFormatting,
 	type ImportError,
@@ -155,10 +164,6 @@ import type {
 	SourceDisplayOverrides,
 } from "@/workspace/source-display";
 import { clampPaneZoom } from "@/workspace/zoom";
-
-// How many steps the document timeline keeps. Deep enough to cover a working
-// session, bounded so a long session cannot grow without limit.
-const HISTORY_LIMIT = 200;
 
 // "Nothing has been copied." One shared value rather than a fresh array each
 // time, so clearing a mark that was already clear leaves state referentially
@@ -228,44 +233,6 @@ export interface Draft {
 export type PendingPaneAction =
 	| { readonly kind: "view"; readonly paneId: string; readonly view: ViewId }
 	| { readonly kind: "close"; readonly paneId: string };
-
-// The exact selections on either side of one document transition, for the
-// operations that permute rows rather than editing in place. Undo restores
-// `before` and redo restores `after`, so a sort comes back to precisely what
-// was selected before it and returns to precisely what it left selected, even
-// when the selection moved in between.
-//
-// Transient timeline metadata, not persisted sort state: it lives on the
-// in-memory history entry, never reaches storage, and describes no order the
-// document should be kept in. Every other operation carries none of it and
-// keeps the clamping behaviour it always had.
-export interface SelectionRestore {
-	readonly before: GridSelection;
-	readonly after: GridSelection;
-}
-
-export interface HistoryEntry {
-	readonly document: TableDocument;
-	// A draft that was still uncommitted when this entry was superseded.
-	// Restoring it is what keeps a grid edit from destroying pending text.
-	readonly draft: Draft | null;
-	// Present only on the entry adjacent to a row permutation. It travels with
-	// the transition through undo and redo, so both directions restore an exact
-	// selection rather than a clamped one.
-	readonly selectionRestore?: SelectionRestore;
-	// The column widths and wrapped columns as they were when this document was
-	// left. Both are keyed by column id and dropped once no column carries the
-	// id, so this is what lets undo and redo bring a returning column back at
-	// the width and wrapping it had, whichever operation removed it (#235).
-	// Transient like the selection pair: it shares the workspace's own objects
-	// and never reaches storage.
-	readonly columnPreferences: ColumnPreferences;
-}
-
-export type ColumnPreferences = Pick<
-	Workspace,
-	"columnWidths" | "wrappedColumns"
->;
 
 // What sorting did. "unchanged" is a real answer rather than a failure: a table
 // already in that order is sorted, and saying so is what keeps the
@@ -576,19 +543,6 @@ export interface TabeloState {
 let invalidTimer: ReturnType<typeof setTimeout> | null = null;
 let statusSequence = 0;
 
-function snapshotOf(state: TabeloState): HistoryEntry {
-	const draft =
-		state.draft?.status === "invalid-grace"
-			? { ...state.draft, status: "invalid" as const }
-			: state.draft;
-	const { columnWidths, wrappedColumns } = state.workspace;
-	return {
-		document: state.document,
-		draft,
-		columnPreferences: { columnWidths, wrappedColumns },
-	};
-}
-
 // The match list after the document moved underneath it. Recomputing is the
 // whole contract: patching offsets is how a mark ends up on the wrong
 // characters, and a stale range is what makes a replace write into a cell the
@@ -719,55 +673,6 @@ function clearInvalidTimer(): void {
 	invalidTimer = null;
 }
 
-function reconcileColumnPreferences(
-	workspace: Workspace,
-	document: TableDocument,
-): Workspace {
-	const valid = new Set(document.columns.map((column) => column.id));
-	const wrappedColumns = workspace.wrappedColumns.filter((id) => valid.has(id));
-	const columnWidths = Object.fromEntries(
-		Object.entries(workspace.columnWidths).filter(([id]) => valid.has(id)),
-	);
-	return wrappedColumns.length === workspace.wrappedColumns.length &&
-		Object.keys(columnWidths).length ===
-			Object.keys(workspace.columnWidths).length
-		? workspace
-		: { ...workspace, wrappedColumns, columnWidths };
-}
-
-// The workspace after the timeline moves from `current` to `entry`. A column
-// the entry's document holds and the current one does not is coming back, so
-// it takes the preferences recorded with the entry. Every other column keeps
-// what it has now: a width set after the entry was left is newer than the one
-// the entry remembers. The single owner of that rule for every history move.
-function workspaceForEntry(
-	workspace: Workspace,
-	current: TableDocument,
-	entry: HistoryEntry,
-): Workspace {
-	const present = new Set(current.columns.map((column) => column.id));
-	const saved = entry.columnPreferences;
-	const columnWidths = { ...workspace.columnWidths };
-	const wrappedColumns = [...workspace.wrappedColumns];
-	let changed = false;
-	for (const { id } of entry.document.columns) {
-		if (present.has(id)) continue;
-		const width = saved.columnWidths[id];
-		if (width !== undefined && columnWidths[id] !== width) {
-			columnWidths[id] = width;
-			changed = true;
-		}
-		if (saved.wrappedColumns.includes(id) && !wrappedColumns.includes(id)) {
-			wrappedColumns.push(id);
-			changed = true;
-		}
-	}
-	return reconcileColumnPreferences(
-		changed ? { ...workspace, columnWidths, wrappedColumns } : workspace,
-		entry.document,
-	);
-}
-
 function widthsAfterDuplication(
 	previous: TableDocument,
 	next: TableDocument,
@@ -786,93 +691,6 @@ function widthsAfterDuplication(
 		changed = true;
 	}
 	return changed ? widths : columnWidths;
-}
-
-function pushHistory(
-	past: readonly HistoryEntry[],
-	entry: HistoryEntry,
-): readonly HistoryEntry[] {
-	const next = [...past, entry];
-	return next.length > HISTORY_LIMIT
-		? next.slice(next.length - HISTORY_LIMIT)
-		: next;
-}
-
-// Where a source editor's own undo or redo lands in the document timeline.
-// Every committed parse is one timeline step, so the text a local undo restores
-// usually parses to a state the timeline already holds. Committing it as a new
-// edit would add a step and clear redo, and the next undo, once local history
-// is exhausted, would walk forward into the text just undone (docs/adr/0003).
-//
-// `entries` run nearest first: `past` reversed for undo, `future` for redo.
-// The result is how many entries to cross to reach the matching state, or null
-// when there is none. One local undo can span several committed keystrokes, so
-// the walk may cross entries, but only states this same pane's draft produced:
-// anything else, a grid operation or another pane's text, is a boundary the
-// editor's history knows nothing about, and the change then stays an edit.
-function findTimelineStep(
-	entries: readonly HistoryEntry[],
-	document: TableDocument,
-	reconciliation: ReconciliationSource,
-	owner: Pick<Draft, "paneId" | "viewId">,
-): number | null {
-	for (const [index, entry] of entries.entries()) {
-		if (entry.selectionRestore) return null;
-		if (
-			reconcileDocument(entry.document, document, reconciliation) ===
-			entry.document
-		) {
-			return index;
-		}
-		const ownDraft =
-			entry.draft?.paneId === owner.paneId &&
-			entry.draft.viewId === owner.viewId;
-		if (!ownDraft) return null;
-	}
-	return null;
-}
-
-// Moves across `steps` entries to the state `findTimelineStep` matched. The
-// state being left and every entry crossed stay on the timeline, so redo, or
-// undo again, walks back through each of them one step at a time.
-function walkTimeline(
-	state: TabeloState,
-	direction: HistoryDirection,
-	steps: number,
-): {
-	readonly timeline: Pick<TabeloState, "past" | "future" | "document">;
-	readonly target: HistoryEntry;
-} | null {
-	if (direction === "undo") {
-		const targetIndex = state.past.length - 1 - steps;
-		const target = state.past[targetIndex];
-		if (!target) return null;
-		return {
-			timeline: {
-				past: state.past.slice(0, targetIndex),
-				future: [
-					...state.past.slice(targetIndex + 1),
-					snapshotOf(state),
-					...state.future,
-				],
-				document: target.document,
-			},
-			target,
-		};
-	}
-	const target = state.future[steps];
-	if (!target) return null;
-	return {
-		timeline: {
-			past: [snapshotOf(state), ...state.future.slice(0, steps)].reduce(
-				pushHistory,
-				state.past,
-			),
-			future: state.future.slice(steps + 1),
-			document: target.document,
-		},
-		target,
-	};
 }
 
 function deriveDraft(
@@ -1145,13 +963,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		if (next === get().document) return;
 		clearInvalidTimer();
 		set((state) => ({
-			past: pushHistory(
-				state.past,
-				selectionRestore
-					? { ...snapshotOf(state), selectionRestore }
-					: snapshotOf(state),
-			),
-			future: [],
+			...recordStep(state, selectionRestore),
 			document: next,
 			hasHeldContent: state.hasHeldContent || !isDocumentBlank(next),
 			workspace: reconcileColumnPreferences(state.workspace, next),
@@ -1213,10 +1025,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				draft,
 				pendingPaneAction: null,
 				...(ownerChanged && previousDraft.status !== "clean"
-					? {
-							past: pushHistory(current.past, snapshotOf(current)),
-							future: [],
-						}
+					? recordStep(current)
 					: {}),
 			}));
 
@@ -1261,11 +1070,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const timeline =
 			walk?.timeline ??
 			(documentChanged || displacedInvalid
-				? {
-						past: pushHistory(state.past, snapshotOf(state)),
-						future: [],
-						document,
-					}
+				? { ...recordStep(state), document }
 				: { document });
 		const next = timeline.document;
 
@@ -1603,20 +1408,12 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	undo: () => {
 		clearInvalidTimer();
 		set((state) => {
-			const entry = state.past.at(-1);
-			if (!entry) return state;
+			const step = stepTimeline(state, "undo");
+			if (!step) return state;
+			const { timeline, target: entry } = step;
 			const restore = entry.selectionRestore;
 			return {
-				past: state.past.slice(0, -1),
-				// The pair travels with the transition rather than with a
-				// document, so redo finds it again on the other side.
-				future: [
-					restore
-						? { ...snapshotOf(state), selectionRestore: restore }
-						: snapshotOf(state),
-					...state.future,
-				],
-				document: entry.document,
+				...timeline,
 				hasHeldContent:
 					state.hasHeldContent || !isDocumentBlank(entry.document),
 				workspace: workspaceForEntry(state.workspace, state.document, entry),
@@ -1639,18 +1436,12 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	redo: () => {
 		clearInvalidTimer();
 		set((state) => {
-			const entry = state.future[0];
-			if (!entry) return state;
+			const step = stepTimeline(state, "redo");
+			if (!step) return state;
+			const { timeline, target: entry } = step;
 			const restore = entry.selectionRestore;
 			return {
-				past: pushHistory(
-					state.past,
-					restore
-						? { ...snapshotOf(state), selectionRestore: restore }
-						: snapshotOf(state),
-				),
-				future: state.future.slice(1),
-				document: entry.document,
+				...timeline,
 				hasHeldContent:
 					state.hasHeldContent || !isDocumentBlank(entry.document),
 				workspace: workspaceForEntry(state.workspace, state.document, entry),
