@@ -7,6 +7,7 @@ import v4 from "./fixtures/v4.json";
 import v5 from "./fixtures/v5.json";
 import v6 from "./fixtures/v6.json";
 import v7 from "./fixtures/v7.json";
+import v8 from "./fixtures/v8.json";
 import {
 	type MigrationRegistry,
 	migrationRegistry,
@@ -156,16 +157,89 @@ describe("adjacent persistence migrations", () => {
 		});
 	});
 
-	it("runs the oldest fixture through the complete chain", () => {
-		const result = runMigrationChain(v1, 1, 8, migrationRegistry);
+	// #276. Every pane starts following the three indicator defaults, which
+	// were never pane state. Wrapping is the asymmetric case: `true` was a
+	// deliberate choice and stays an explicit override, while `false` was the
+	// old default and becomes `null`, so the new global default can reach it.
+	it("turns v8 pane wrapping into an override only where it was on", () => {
+		const [grid, markdown] = v8.workspace.panes;
+		const source = {
+			...v8,
+			workspace: {
+				...v8.workspace,
+				panes: [
+					{ ...grid, wrap: false },
+					{ ...markdown, wrap: true },
+				],
+			},
+		};
+
+		const result = runMigrationChain(source, 8, 9, migrationRegistry);
 
 		expect(result).toMatchObject({
 			ok: true,
 			value: {
-				version: 8,
+				version: 9,
+				name: v8.name,
+				workspace: {
+					pinFirstDataRow: true,
+					columnWidths: v8.workspace.columnWidths,
+					panes: [
+						{
+							id: grid?.id,
+							zoom: grid?.zoom,
+							wrap: null,
+							spaceIndicators: null,
+							tabIndicators: null,
+							emptyValueIndicators: null,
+						},
+						{
+							id: markdown?.id,
+							zoom: markdown?.zoom,
+							wrap: true,
+							spaceIndicators: null,
+							tabIndicators: null,
+							emptyValueIndicators: null,
+						},
+					],
+				},
+			},
+		});
+	});
+
+	it("leaves a v8 pane that never stored wrapping following the default", () => {
+		const [grid, markdown] = v8.workspace.panes;
+		const { wrap: _omitted, ...unwrapped } = markdown ?? {};
+		const source = {
+			...v8,
+			workspace: { ...v8.workspace, panes: [grid, unwrapped] },
+		};
+
+		const result = runMigrationChain(source, 8, 9, migrationRegistry);
+
+		expect(result).toMatchObject({
+			ok: true,
+			value: { workspace: { panes: [{ wrap: null }, { wrap: null }] } },
+		});
+	});
+
+	it("runs the oldest fixture through the complete chain", () => {
+		const result = runMigrationChain(v1, 1, 9, migrationRegistry);
+
+		expect(result).toMatchObject({
+			ok: true,
+			value: {
+				version: 9,
 				name: "Untitled table",
 				draft: null,
-				workspace: { pinFirstDataRow: false, pinFirstDataColumn: false },
+				workspace: {
+					pinFirstDataRow: false,
+					pinFirstDataColumn: false,
+					panes: [
+						{ wrap: null, spaceIndicators: null },
+						{ wrap: null, spaceIndicators: null },
+					],
+				},
 			},
 		});
 	});

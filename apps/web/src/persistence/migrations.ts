@@ -12,6 +12,7 @@ import {
 	persistedStateV5Schema,
 	persistedStateV6Schema,
 	persistedStateV7Schema,
+	persistedStateV8Schema,
 } from "./versions";
 
 export interface MigrationStep {
@@ -167,6 +168,32 @@ function migrateV7ToV8(input: unknown): unknown {
 	};
 }
 
+// Version 9 makes each pane's source display an override of the global default
+// in Settings, `null` while the pane follows it (#276). The three indicators
+// were never pane state, so every pane starts following them. Wrapping is the
+// one judgment: a stored `true` was a reader's deliberate choice and stays an
+// explicit override, because only an explicit value survives a default that is
+// off. A stored `false` was the old default, indistinguishable from a pane
+// nobody touched, so it becomes `null`: pinning it would leave the new default
+// unable to reach any existing pane.
+function migrateV8ToV9(input: unknown): unknown {
+	const source = input as z.infer<typeof persistedStateV8Schema>;
+	return {
+		...source,
+		version: 9,
+		workspace: {
+			...source.workspace,
+			panes: source.workspace.panes.map((pane) => ({
+				...pane,
+				wrap: pane.wrap ? true : null,
+				spaceIndicators: null,
+				tabIndicators: null,
+				emptyValueIndicators: null,
+			})),
+		},
+	};
+}
+
 export const migrationRegistry: MigrationRegistry = {
 	1: {
 		source: persistedStateV1Schema,
@@ -200,8 +227,13 @@ export const migrationRegistry: MigrationRegistry = {
 	},
 	7: {
 		source: persistedStateV7Schema,
-		target: persistedStateSchema,
+		target: persistedStateV8Schema,
 		migrate: migrateV7ToV8,
+	},
+	8: {
+		source: persistedStateV8Schema,
+		target: persistedStateSchema,
+		migrate: migrateV8ToV9,
 	},
 };
 

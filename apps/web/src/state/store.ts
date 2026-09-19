@@ -135,6 +135,10 @@ import {
 	splitOptions,
 	type Workspace,
 } from "@/workspace/layout";
+import type {
+	SourceDisplayKey,
+	SourceDisplayOverrides,
+} from "@/workspace/source-display";
 import { clampPaneZoom } from "@/workspace/zoom";
 
 // How many steps the document timeline keeps. Deep enough to cover a working
@@ -374,7 +378,13 @@ export interface TabeloState {
 		name: string,
 	) => SaveOutcome | { readonly status: "invalid" | "blocked" };
 	setPaneZoom: (paneId: string, zoom: number) => void;
-	setPaneWrap: (paneId: string, wrap: boolean) => void;
+	// One of a source pane's display overrides; null returns it to the global
+	// default (#276).
+	setPaneSourceDisplay: <Key extends SourceDisplayKey>(
+		paneId: string,
+		key: Key,
+		value: SourceDisplayOverrides[Key],
+	) => void;
 	toggleColumnWrap: (columnId: string) => void;
 	setAllColumnsWrap: (wrapped: boolean) => void;
 	setPinnedAxis: (axis: PinnedGridAxis, pinned: boolean) => void;
@@ -1312,17 +1322,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		});
 	},
 
-	// Source wrapping is pane presentation. It is persisted with the pane but
-	// never changes the document or consumes a document-history step.
-	setPaneWrap: (paneId, wrap) =>
+	// A pane's source display is presentation. It is persisted with the pane but
+	// never changes the document or consumes a document-history step, and an
+	// unchanged value writes nothing.
+	setPaneSourceDisplay: (paneId, key, value) =>
 		set((state) => {
 			const target = state.workspace.panes.find((pane) => pane.id === paneId);
-			if (!target || target.wrap === wrap) return state;
+			if (!target || target[key] === value) return state;
 			return {
 				workspace: {
 					...state.workspace,
 					panes: state.workspace.panes.map((pane) =>
-						pane.id === paneId ? { ...pane, wrap } : pane,
+						pane.id === paneId ? { ...pane, [key]: value } : pane,
 					),
 				},
 			};

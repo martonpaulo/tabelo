@@ -32,6 +32,7 @@ import {
 import { useRef } from "react";
 import { copy } from "@/copy/copy";
 import { canSerialize } from "@/formats";
+import { usePreferences } from "@/preferences/use-preferences";
 import { useTabeloStore, visibleTextForPane } from "@/state/store";
 import {
 	copyFormattedTableToClipboard,
@@ -43,6 +44,10 @@ import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import type { ViewDefinition } from "@/views/types";
 import { smallerLayout } from "@/workspace/layout";
+import {
+	INHERIT_SOURCE_DISPLAY,
+	resolveSourceDisplay,
+} from "@/workspace/source-display";
 import {
 	DEFAULT_PANE_ZOOM,
 	MAX_PANE_ZOOM,
@@ -108,10 +113,12 @@ export function PaneMenu({
 			state.workspace.panes.find((pane) => pane.id === paneId)?.zoom ??
 			DEFAULT_PANE_ZOOM,
 	);
-	const wrap = useTabeloStore(
+	const overrides = useTabeloStore(
 		(state) =>
-			state.workspace.panes.find((pane) => pane.id === paneId)?.wrap ?? false,
+			state.workspace.panes.find((pane) => pane.id === paneId) ??
+			INHERIT_SOURCE_DISPLAY,
 	);
+	const { wrap } = resolveSourceDisplay(usePreferences(), overrides);
 	const canClose = useTabeloStore(
 		(state) => smallerLayout(state.workspace.layout) !== undefined,
 	);
@@ -346,8 +353,14 @@ export function PaneMenu({
 							<DropdownMenuCheckboxItem
 								checked={wrap}
 								closeOnClick={false}
+								// Shows what the pane displays, and a choice made here is this
+								// pane's own override. How a pane returns to the default, and
+								// how the menu says it is following one, waits on the pane
+								// menu treatment #276 left open.
 								onCheckedChange={(checked) =>
-									useTabeloStore.getState().setPaneWrap(paneId, checked)
+									useTabeloStore
+										.getState()
+										.setPaneSourceDisplay(paneId, "wrap", checked)
 								}
 							>
 								<IconTextWrap aria-hidden />

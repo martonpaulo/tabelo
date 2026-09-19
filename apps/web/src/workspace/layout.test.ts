@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { INHERIT_SOURCE_DISPLAY } from "@/workspace/source-display";
 import {
 	applyLayout,
 	createDefaultWorkspace,
@@ -242,12 +243,17 @@ describe("applying a layout", () => {
 				view: "grid",
 				slots: ["a", "b", "c", "d"],
 				zoom: 1,
-				wrap: false,
+				...INHERIT_SOURCE_DISPLAY,
 			},
 		]);
 		expect(after).toHaveLength(4);
 		expect(required(after[0]).view).toBe("grid");
 		expect(after.every((pane) => pane.view.length > 0)).toBe(true);
+		// A gained pane follows every source display default rather than
+		// starting with an explicit value of its own (#276).
+		for (const pane of after.slice(1)) {
+			expect(pane).toMatchObject(INHERIT_SOURCE_DISPLAY);
+		}
 	});
 
 	it("fills a new pane with a view the workspace is not already showing", () => {
@@ -735,7 +741,9 @@ describe("opening workspace for an import", () => {
 		const zoomed = {
 			...previous,
 			panes: previous.panes.map((pane) =>
-				pane.id === first.id ? { ...pane, zoom: 1.5, wrap: true } : pane,
+				pane.id === first.id
+					? { ...pane, zoom: 1.5, wrap: true, spaceIndicators: "all" as const }
+					: pane,
 			),
 			pinFirstDataRow: true,
 			columnRatio: 0.3,
@@ -747,7 +755,12 @@ describe("opening workspace for an import", () => {
 			workspace.panes.find((pane) => pane.id === first.id),
 		);
 		expect(carried.zoom).toBe(1.5);
-		expect(carried.wrap).toBe(true);
+		expect(carried).toMatchObject({
+			wrap: true,
+			spaceIndicators: "all",
+			tabIndicators: null,
+			emptyValueIndicators: null,
+		});
 		expect(workspace.pinFirstDataRow).toBe(true);
 		expect(workspace.columnRatio).toBe(0.3);
 	});

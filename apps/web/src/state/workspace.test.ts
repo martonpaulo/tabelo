@@ -6,6 +6,7 @@ import { readCell } from "@/core/cell-value";
 import { HEADER_ROW } from "@/core/selection";
 import type { ViewId } from "@/views/types";
 import { paneCount, splitOptions } from "@/workspace/layout";
+import { INHERIT_SOURCE_DISPLAY } from "@/workspace/source-display";
 import {
 	DEFAULT_PANE_ZOOM,
 	MAX_PANE_ZOOM,
@@ -304,7 +305,7 @@ describe("rearranging at a fixed pane count", () => {
 		const target = required(before.panes[0]);
 		const store = useTabeloStore.getState();
 		store.setPaneZoom(target.id, 1.3);
-		store.setPaneWrap(target.id, true);
+		store.setPaneSourceDisplay(target.id, "wrap", true);
 		store.setActivePane(target.id);
 
 		useTabeloStore.getState().setLayout("bottom-split");
@@ -654,39 +655,65 @@ describe("per-pane zoom", () => {
 	});
 });
 
-describe("per-pane source wrapping", () => {
-	it("stays with its pane, outside history, and defaults off for new panes", () => {
+describe("per-pane source display overrides", () => {
+	const paneOf = (paneId: string | undefined) =>
+		useTabeloStore
+			.getState()
+			.workspace.panes.find((pane) => pane.id === paneId);
+
+	it("stays with its pane, outside history, and new panes follow the default", () => {
 		const before = useTabeloStore.getState();
 		const paneId = markdownPaneId();
 		const otherPaneId = before.workspace.panes.find(
 			(pane) => pane.id !== paneId,
 		)?.id;
 
-		before.setPaneWrap(paneId, true);
+		before.setPaneSourceDisplay(paneId, "wrap", true);
 		let current = useTabeloStore.getState();
-		expect(
-			current.workspace.panes.find((pane) => pane.id === paneId)?.wrap,
-		).toBe(true);
-		expect(
-			current.workspace.panes.find((pane) => pane.id === otherPaneId)?.wrap,
-		).toBe(false);
+		expect(paneOf(paneId)?.wrap).toBe(true);
+		expect(paneOf(otherPaneId)?.wrap).toBeNull();
 		expect(current.document).toBe(before.document);
 		expect(current.past).toBe(before.past);
 
 		current.setPaneView(paneId, "jira");
 		current.setLayout("rows");
-		current = useTabeloStore.getState();
-		expect(
-			current.workspace.panes.find((pane) => pane.id === paneId)?.wrap,
-		).toBe(true);
+		expect(paneOf(paneId)?.wrap).toBe(true);
 
 		addFirstSplit();
 		current = useTabeloStore.getState();
-		expect(
-			current.workspace.panes.find(
-				(pane) => pane.id !== paneId && pane.id !== otherPaneId,
-			)?.wrap,
-		).toBe(false);
+		const gained = current.workspace.panes.find(
+			(pane) => pane.id !== paneId && pane.id !== otherPaneId,
+		);
+		expect(gained).toMatchObject(INHERIT_SOURCE_DISPLAY);
+	});
+
+	it("sets each override independently and returns it to the default", () => {
+		const paneId = markdownPaneId();
+		const store = useTabeloStore.getState();
+
+		store.setPaneSourceDisplay(paneId, "spaceIndicators", "all");
+		store.setPaneSourceDisplay(paneId, "tabIndicators", false);
+		expect(paneOf(paneId)).toMatchObject({
+			wrap: null,
+			spaceIndicators: "all",
+			tabIndicators: false,
+			emptyValueIndicators: null,
+		});
+
+		store.setPaneSourceDisplay(paneId, "spaceIndicators", null);
+		expect(paneOf(paneId)?.spaceIndicators).toBeNull();
+		expect(paneOf(paneId)?.tabIndicators).toBe(false);
+	});
+
+	it("writes nothing when the value is unchanged", () => {
+		const paneId = markdownPaneId();
+		useTabeloStore.getState().setPaneSourceDisplay(paneId, "wrap", true);
+		const workspaceBefore = useTabeloStore.getState().workspace;
+
+		useTabeloStore.getState().setPaneSourceDisplay(paneId, "wrap", true);
+		useTabeloStore.getState().setPaneSourceDisplay("missing", "wrap", false);
+
+		expect(useTabeloStore.getState().workspace).toBe(workspaceBefore);
 	});
 });
 
@@ -700,7 +727,7 @@ describe("moving panes", () => {
 		expect(destinationId).toBeDefined();
 
 		initial.setPaneZoom(paneId, 1.4);
-		initial.setPaneWrap(paneId, true);
+		initial.setPaneSourceDisplay(paneId, "wrap", true);
 		initial.setDraft(paneId, "markdown", invalidMarkdown);
 		const before = useTabeloStore.getState();
 		const sourceSlots = before.workspace.panes.find(

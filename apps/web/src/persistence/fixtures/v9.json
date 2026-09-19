@@ -1,0 +1,71 @@
+{
+	"version": 9,
+	"name": "Source display roster",
+	"document": {
+		"columns": [
+			{
+				"id": "c-name",
+				"header": "Name",
+				"align": "left",
+				"expectedType": "text"
+			},
+			{
+				"id": "c-role",
+				"header": "Role",
+				"align": "default",
+				"expectedType": "text"
+			}
+		],
+		"rows": [
+			{
+				"id": "r-ingrid",
+				"cells": {
+					"c-name": "Ingrid",
+					"c-role": "Designer"
+				}
+			},
+			{
+				"id": "r-paulo",
+				"cells": {
+					"c-name": "Paulo",
+					"c-role": "Engineer"
+				}
+			}
+		]
+	},
+	"workspace": {
+		"layout": "columns",
+		"panes": [
+			{
+				"id": "ac",
+				"view": "grid",
+				"slots": ["a", "c"],
+				"zoom": 1,
+				"wrap": null,
+				"spaceIndicators": null,
+				"tabIndicators": null,
+				"emptyValueIndicators": null
+			},
+			{
+				"id": "bd",
+				"view": "markdown",
+				"slots": ["b", "d"],
+				"zoom": 1.2,
+				"wrap": true,
+				"spaceIndicators": "all",
+				"tabIndicators": false,
+				"emptyValueIndicators": null
+			}
+		],
+		"wrappedColumns": [],
+		"columnWidths": {
+			"c-name": 18
+		},
+		"columnRatio": 0.4,
+		"rowRatio": 0.5,
+		"activePaneId": "bd",
+		"pinFirstDataRow": true,
+		"pinFirstDataColumn": true
+	},
+	"draft": null
+}

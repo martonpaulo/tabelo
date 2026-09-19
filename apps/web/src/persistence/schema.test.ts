@@ -8,6 +8,7 @@ import v5 from "./fixtures/v5.json";
 import v6 from "./fixtures/v6.json";
 import v7 from "./fixtures/v7.json";
 import v8 from "./fixtures/v8.json";
+import v9 from "./fixtures/v9.json";
 import { CURRENT_VERSION, validatePersistedState } from "./schema";
 
 const document = {
@@ -63,9 +64,10 @@ describe("loading a stored payload", () => {
 		expect(outcome.state.workspace.panes.map((pane) => pane.zoom)).toEqual([
 			1, 1.2,
 		]);
+		// A pane that names no source display override follows every default.
 		expect(outcome.state.workspace.panes.map((pane) => pane.wrap)).toEqual([
-			false,
-			false,
+			null,
+			null,
 		]);
 	});
 
@@ -130,7 +132,7 @@ describe("loading a stored payload", () => {
 		).toBe(true);
 	});
 
-	it("preserves pane wrapping while defaulting older version-4 panes", () => {
+	it("preserves a pane's explicit wrapping beside one that follows the default", () => {
 		const workspace = payload().workspace;
 		const outcome = validatePersistedState(
 			payload({
@@ -145,9 +147,36 @@ describe("loading a stored payload", () => {
 		expect(outcome.status).toBe("ok");
 		if (outcome.status !== "ok") return;
 		expect(outcome.state.workspace.panes.map((pane) => pane.wrap)).toEqual([
-			false,
+			null,
 			true,
 		]);
+	});
+
+	it("carries every source display override of the stored v9 fixture", () => {
+		const outcome = validatePersistedState(v9);
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.workspace.panes).toEqual(v9.workspace.panes);
+	});
+
+	it.each([
+		["wrap", "yes"],
+		["spaceIndicators", "selection"],
+		["tabIndicators", 1],
+		["emptyValueIndicators", "none"],
+	])("refuses a %s override Tabelo never writes", (key, value) => {
+		const workspace = payload().workspace;
+		expect(
+			validatePersistedState(
+				payload({
+					workspace: {
+						...workspace,
+						panes: workspace.panes.map((pane) => ({ ...pane, [key]: value })),
+					},
+				}),
+			),
+		).toEqual({ status: "unreadable", reason: "current-schema-invalid" });
 	});
 
 	it.each([
@@ -159,6 +188,7 @@ describe("loading a stored payload", () => {
 		["v6", v6],
 		["v7", v7],
 		["v8", v8],
+		["v9", v9],
 	] as const)(
 		"loads the stored %s fixture as current state",
 		(_name, fixture) => {

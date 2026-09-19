@@ -5,6 +5,7 @@ import { useTabeloStore } from "@/state/store";
 import { TableGrid } from "@/ui/grid/table-grid";
 import { BlockedState } from "@/ui/source/blocked-state";
 import type { ViewDefinition } from "@/views/types";
+import type { SourceDisplayOverrides } from "@/workspace/source-display";
 
 // CodeMirror and the preview are the two heavy things in the bundle, and a
 // workspace showing only the grid should not pay for either. Both load on
@@ -36,10 +37,11 @@ interface PaneContentProps {
 	// Content scale. Text-only views read it from `--pane-zoom` in the cascade;
 	// the grid needs the number because column widths are measured, not styled.
 	readonly zoom: number;
-	readonly wrap: boolean;
+	// The pane's own source display choices, resolved by the source view.
+	readonly display: SourceDisplayOverrides;
 }
 
-export function PaneContent({ paneId, view, zoom, wrap }: PaneContentProps) {
+export function PaneContent({ paneId, view, zoom, display }: PaneContentProps) {
 	const document = useTabeloStore((state) => state.document);
 	const failure = view.codec ? canSerialize(view.codec, document) : null;
 	if (failure) return <BlockedState failure={failure} target={view.label} />;
@@ -61,7 +63,12 @@ export function PaneContent({ paneId, view, zoom, wrap }: PaneContentProps) {
 				// here would remount CodeMirror on every view change, which flashes an
 				// empty editor for a frame and discards the caret and the local undo
 				// history with it.
-				<SourceView paneId={paneId} viewId={view.id} zoom={zoom} wrap={wrap} />
+				<SourceView
+					paneId={paneId}
+					viewId={view.id}
+					zoom={zoom}
+					overrides={display}
+				/>
 			)}
 		</Suspense>
 	);

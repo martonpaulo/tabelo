@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { MAX_TABLE_NAME_CODE_POINTS } from "@/copy/product";
 import { EXPECTED_COLUMN_TYPES } from "@/core/cell-value";
+import { SPACE_INDICATOR_VALUES } from "@/preferences/contract";
 import { workspacePanesTileLayout } from "@/workspace/layout";
 import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
-export const PERSISTED_VERSION = 8 as const;
+export const PERSISTED_VERSION = 9 as const;
 
 // These schemas mirror the payloads shipped by the commits that introduced
 // versions 1 through 5. Keep them beside their stored fixtures: a migration
@@ -148,21 +149,21 @@ export const persistedStateV3Schema = z
 		}
 	});
 
-const currentPaneSchema = z.object({
+const historicalPaneV4Schema = z.object({
 	id: z.string().min(1),
 	view: currentViewIdSchema,
 	slots: z.array(slotSchema).min(1).max(4),
 	// Bounded like the split ratios: a value outside the ladder means the
 	// payload was not written by Tabelo, so it is reported rather than coerced.
 	zoom: z.number().min(MIN_PANE_ZOOM).max(MAX_PANE_ZOOM),
-	// Version-4 payloads predate pane-owned source wrapping. Keep the current
-	// version readable while making the runtime contract explicit.
+	// Pane wrapping arrived inside version 4 without a version of its own, so a
+	// pane written by versions 4 through 8 without the key was unwrapped.
 	wrap: z.boolean().default(false),
 });
 
 const persistedWorkspaceV4Schema = z.object({
 	layout: layoutSchema,
-	panes: z.array(currentPaneSchema).min(1).max(4),
+	panes: z.array(historicalPaneV4Schema).min(1).max(4),
 	// Defaulting keeps version-4 payloads written before per-column wrapping
 	// valid while making the in-memory workspace contract required.
 	wrappedColumns: z.array(z.string().min(1)).default([]),
@@ -234,28 +235,68 @@ export const persistedStateV7Schema = z
 // Version 8 records whether the grid pins its first data row and first data
 // column. Both are presentation, so they sit beside per-column wrapping in the
 // workspace rather than anywhere the document can reach.
-const currentWorkspaceSchema = persistedWorkspaceV5Schema.extend({
+const persistedWorkspaceV8Schema = persistedWorkspaceV5Schema.extend({
 	pinFirstDataRow: z.boolean(),
 	pinFirstDataColumn: z.boolean(),
 });
 
-export const persistedStateSchema = z
+const persistedStateV8Shape = {
+	name: tableNameSchema,
+	document: currentDocumentSchema,
+	draft: currentDraftSchema.nullable(),
+};
+
+export const persistedStateV8Schema = z
 	.object({
-		version: z.literal(PERSISTED_VERSION),
-		name: tableNameSchema,
-		document: currentDocumentSchema,
-		workspace: currentWorkspaceSchema,
-		draft: currentDraftSchema.nullable(),
+		version: z.literal(8),
+		...persistedStateV8Shape,
+		workspace: persistedWorkspaceV8Schema,
 	})
 	.superRefine((state, context) => {
 		refineCurrentRelationships(state, context);
 	});
 
+// Version 9 turns a pane's source display into overrides of the global default
+// in Settings (#276). Each value is `null` while the pane follows the default,
+// so an absent key means the same thing and defaults to it; `wrap`, a boolean
+// until version 8, becomes one of the four.
+const currentPaneSchema = historicalPaneV4Schema.extend({
+	wrap: z.boolean().nullable().default(null),
+	spaceIndicators: z.enum(SPACE_INDICATOR_VALUES).nullable().default(null),
+	tabIndicators: z.boolean().nullable().default(null),
+	emptyValueIndicators: z.boolean().nullable().default(null),
+});
+
+const currentWorkspaceSchema = persistedWorkspaceV8Schema.extend({
+	panes: z.array(currentPaneSchema).min(1).max(4),
+});
+
+export const persistedStateSchema = z
+	.object({
+		version: z.literal(PERSISTED_VERSION),
+		...persistedStateV8Shape,
+		workspace: currentWorkspaceSchema,
+	})
+	.superRefine((state, context) => {
+		refineCurrentRelationships(state, context);
+	});
+
+// Only what the relationships below read, so every version's workspace, old
+// pane shape or new, is checked by the same code.
+interface RelationshipState {
+	readonly workspace: {
+		readonly layout: z.infer<typeof layoutSchema>;
+		readonly panes: readonly {
+			readonly id: string;
+			readonly view: z.infer<typeof currentViewIdSchema>;
+			readonly slots: readonly z.infer<typeof slotSchema>[];
+		}[];
+	};
+	readonly draft: z.infer<typeof currentDraftSchema> | null;
+}
+
 function refineCurrentRelationships(
-	state: {
-		readonly workspace: z.infer<typeof persistedWorkspaceV4Schema>;
-		readonly draft: z.infer<typeof currentDraftSchema> | null;
-	},
+	state: RelationshipState,
 	context: z.RefinementCtx,
 ): void {
 	if (

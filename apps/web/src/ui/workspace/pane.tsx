@@ -207,7 +207,7 @@ export const Pane = memo(function Pane({
 								paneId={pane.id}
 								view={view}
 								zoom={pane.zoom}
-								wrap={pane.wrap}
+								display={pane}
 							/>
 						</PaneAssistanceContext.Provider>
 					</PaneOccurrencesContext.Provider>

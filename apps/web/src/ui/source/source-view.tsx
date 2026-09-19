@@ -8,6 +8,10 @@ import { PaneEntryContext } from "@/ui/workspace/use-pane-entry";
 import { useReportPaneOccurrences } from "@/ui/workspace/use-pane-occurrences";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
+import {
+	resolveSourceDisplay,
+	type SourceDisplayOverrides,
+} from "@/workspace/source-display";
 import { BlockedState } from "./blocked-state";
 import type { SourceRowTarget } from "./row-commands";
 import { type SourceDiagnostic, SourceEditor } from "./source-editor";
@@ -23,24 +27,24 @@ interface SourceViewProps {
 	readonly paneId: string;
 	readonly viewId: ViewId;
 	readonly zoom: number;
-	readonly wrap: boolean;
+	readonly overrides: SourceDisplayOverrides;
 }
 
 export default function SourceView({
 	paneId,
 	viewId,
 	zoom,
-	wrap,
+	overrides,
 }: SourceViewProps) {
 	const view = getView(viewId);
 	const document = useTabeloStore((state) => state.document);
 	const entered = useContext(PaneEntryContext);
 	const assistance = usePaneAssistance();
-	// The indicator preferences drive every marker in every pane: see #93.
-	// Nothing about them is pane state, so they neither reach the workspace nor
-	// survive as a copy here.
-	const { spaceIndicators, tabIndicators, emptyValueIndicators } =
-		usePreferences();
+	// The global default and this pane's overrides, resolved by the one rule
+	// that owns the answer (#276). Neither is copied here, so a change to the
+	// default reaches every pane that follows it at once.
+	const { wrap, spaceIndicators, tabIndicators, emptyValueIndicators } =
+		resolveSourceDisplay(usePreferences(), overrides);
 
 	// The projection recomputes only when the document changes, not when some
 	// other pane is being typed into.

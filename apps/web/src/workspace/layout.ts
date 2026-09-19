@@ -1,4 +1,5 @@
 import type { ViewId } from "@/views/types";
+import type { SourceDisplayOverrides } from "./source-display";
 import { DEFAULT_PANE_ZOOM } from "./zoom";
 
 // The workspace is a 2x2 grid of slots:
@@ -224,16 +225,17 @@ export function smallerLayout(id: LayoutId): LayoutId | undefined {
 	return SMALLER_LAYOUT[id];
 }
 
-export interface WorkspacePane {
+// A pane's source display (wrapping and the three indicators) is its own
+// override of the global default in Settings, each value `null` until the pane
+// chooses one: see workspace/source-display.ts. Never the format's or the
+// document's. A non-source view carries the dormant overrides so changing the
+// view back restores the pane exactly as the user left it.
+export interface WorkspacePane extends SourceDisplayOverrides {
 	readonly id: string;
 	readonly view: ViewId;
 	readonly slots: readonly SlotId[];
 	// Local content scale. Presentation only: see workspace/zoom.ts.
 	readonly zoom: number;
-	// Source soft wrapping belongs to the pane, not the format or document. A
-	// non-source view carries the dormant preference so changing the view back
-	// restores the pane exactly as the user left it.
-	readonly wrap: boolean;
 }
 
 // Which edge of a pane carries its split control, and therefore which side the
@@ -336,7 +338,7 @@ function sameSlots(left: readonly SlotId[], right: readonly SlotId[]): boolean {
 // rather than being turned into another invalid arrangement.
 export function workspacePanesTileLayout(
 	layoutId: LayoutId,
-	panes: readonly WorkspacePane[],
+	panes: readonly Pick<WorkspacePane, "slots">[],
 ): boolean {
 	const preset = getLayout(layoutId);
 	return (
@@ -479,7 +481,12 @@ export function applyLayout(
 			view: existing?.view ?? nextView(),
 			slots,
 			zoom: existing?.zoom ?? DEFAULT_PANE_ZOOM,
-			wrap: existing?.wrap ?? false,
+			// A pane the workspace gains follows every default until it is told
+			// otherwise; one it keeps carries whatever it had chosen.
+			wrap: existing?.wrap ?? null,
+			spaceIndicators: existing?.spaceIndicators ?? null,
+			tabIndicators: existing?.tabIndicators ?? null,
+			emptyValueIndicators: existing?.emptyValueIndicators ?? null,
 		};
 	});
 }

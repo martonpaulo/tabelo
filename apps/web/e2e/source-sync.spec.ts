@@ -4,6 +4,7 @@ import {
 	type PersistedState,
 	STORAGE_KEY,
 } from "@/persistence/schema";
+import { INHERIT_SOURCE_DISPLAY } from "@/workspace/source-display";
 import { expect, test } from "./fixtures";
 import type { TabeloPage } from "./helpers";
 
@@ -71,14 +72,14 @@ const typedSourceState = {
 				view: "grid",
 				slots: ["a", "c"],
 				zoom: 1,
-				wrap: false,
+				...INHERIT_SOURCE_DISPLAY,
 			},
 			{
 				id: "bd",
 				view: "markdown",
 				slots: ["b", "d"],
 				zoom: 1,
-				wrap: false,
+				...INHERIT_SOURCE_DISPLAY,
 			},
 		],
 		wrappedColumns: [],
