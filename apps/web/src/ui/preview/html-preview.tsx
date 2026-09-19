@@ -1,10 +1,12 @@
 import { cn } from "@tabelo/ui/lib/utils";
-import { memo, useMemo } from "react";
+import { memo, useMemo, useRef } from "react";
 import { copy } from "@/copy/copy";
 import { cellTextAt } from "@/core/cell-value";
 import { isDocumentBlank } from "@/core/document";
 import type { Alignment, Column, Row } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
+import { usePaneFind } from "@/ui/workspace/use-pane-find";
+import { usePreviewFind } from "./preview-find";
 import { visibleShape } from "./visible-shape";
 
 // The rendered view shows the table as a reader would meet it, not as markup.
@@ -35,8 +37,14 @@ export default function HtmlPreview() {
 		[document],
 	);
 
+	const scroller = useRef<HTMLDivElement>(null);
+	usePreviewFind(scroller, document);
+	const paneFind = usePaneFind();
+
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: the pane's focusable entry target takes the find chord, like the grid surface does
 		<div
+			ref={scroller}
 			data-slot="preview-scroller"
 			// The preview holds no controls, so this scroller is what entering the
 			// pane has to land on: arrows scroll a focused scrollable element, and
@@ -45,6 +53,18 @@ export default function HtmlPreview() {
 			// make an overflowing scroller a tab stop in the workspace ring.
 			data-pane-entry
 			tabIndex={-1}
+			// Find is taken from the browser here as in every other pane (#280):
+			// its own find would search the page chrome, not what this pane shows.
+			onKeyDown={(event) => {
+				if (
+					(event.metaKey || event.ctrlKey) &&
+					!event.altKey &&
+					event.key.toLowerCase() === "f"
+				) {
+					event.preventDefault();
+					paneFind.open();
+				}
+			}}
 			className="tabelo-scroll-boundary h-full select-text overflow-auto p-4 group-data-[under-fab]/pane:pb-fab-safe"
 		>
 			{/* A table with nothing in it has nothing to read, so it shows the

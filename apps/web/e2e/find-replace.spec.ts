@@ -1,6 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { samplePeople } from "@/core/sample-data";
+import type { ViewId } from "@/views/types";
 import { expect, test } from "./fixtures";
 import type { TabeloPage } from "./helpers";
 
@@ -299,4 +300,155 @@ test("opens from the pane menu as well as the chord", async ({ tabelo }) => {
 	await menu.getByRole("menuitem", { name: copy.find.title }).click();
 
 	await expect(queryField(tabelo)).toBeFocused();
+});
+
+// Every pane finds in what it shows (#280). These address each bar through its
+// own pane, because several can be open at once.
+
+function paneBar(tabelo: TabeloPage, view: ViewId): Locator {
+	return tabelo.pane(view).locator('[data-slot="find-bar"]');
+}
+
+function paneQuery(tabelo: TabeloPage, view: ViewId): Locator {
+	return paneBar(tabelo, view).getByRole("textbox", { name: copy.find.query });
+}
+
+function paneCount(tabelo: TabeloPage, view: ViewId): Locator {
+	return paneBar(tabelo, view).locator('[data-slot="find-position"]');
+}
+
+async function openSourceFind(
+	tabelo: TabeloPage,
+	view: ViewId,
+	query: string,
+): Promise<void> {
+	await tabelo.showInSourcePane(view);
+	await tabelo.source(view).click();
+	// From the top of the text, so the first occurrence is the one reached.
+	await tabelo.page.keyboard.press("ControlOrMeta+Home");
+	await tabelo.page.keyboard.press("ControlOrMeta+f");
+	await expect(paneQuery(tabelo, view)).toBeFocused();
+	await paneQuery(tabelo, view).fill(query);
+}
+
+test("a source pane finds its own syntax, not the table behind it", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.paste(PEOPLE);
+	// The separator after a value exists only in the CSV text, so no cell
+	// matches this, while the CSV pane holds it twice: after "Rio" and after
+	// "Paulo".
+	await openSourceFind(tabelo, "csv", "o,");
+
+	await expect(paneCount(tabelo, "csv")).toHaveText("1/2");
+	await paneQuery(tabelo, "csv").press("Enter");
+	await expect(paneCount(tabelo, "csv")).toHaveText("2/2");
+	await expect(paneQuery(tabelo, "csv")).toBeFocused();
+
+	// Escape hands the keyboard back to the editor, whose own selection is the
+	// occurrence the count was reporting.
+	await paneQuery(tabelo, "csv").press("Escape");
+	await expect(paneBar(tabelo, "csv")).toHaveCount(0);
+	await expect(tabelo.source("csv")).toBeFocused();
+	await expect(
+		page.evaluate(() => window.getSelection()?.toString()),
+	).resolves.toBe("o,");
+});
+
+test("a source pane replaces in its text and every other view follows", async ({
+	tabelo,
+}) => {
+	await tabelo.paste(PEOPLE);
+	await openSourceFind(tabelo, "csv", "Rio");
+	await paneBar(tabelo, "csv")
+		.getByRole("button", { name: copy.find.showReplace })
+		.click();
+	await paneBar(tabelo, "csv")
+		.getByRole("textbox", { name: copy.find.replacement })
+		.fill("Lisbon");
+	await paneBar(tabelo, "csv")
+		.getByRole("button", { name: copy.find.replaceAll })
+		.click();
+
+	await expect(tabelo.source("csv")).toContainText("Ingrid,Lisbon,");
+	// The replacement is the draft's, and reaches the table through the
+	// ordinary synchronization path.
+	await expect(tabelo.cell(1, 2)).toHaveText("Lisbon");
+});
+
+test("a replace that breaks the source leaves it invalid, exactly as typing would", async ({
+	tabelo,
+}) => {
+	await tabelo.paste(PEOPLE);
+	await openSourceFind(tabelo, "json", '"Rio"');
+	await paneBar(tabelo, "json")
+		.getByRole("button", { name: copy.find.showReplace })
+		.click();
+	await paneBar(tabelo, "json")
+		.getByRole("textbox", { name: copy.find.replacement })
+		.fill('"Rio');
+	await paneBar(tabelo, "json")
+		.getByRole("button", { name: copy.find.replaceAll })
+		.click();
+
+	await expect(tabelo.source("json")).toHaveAttribute("aria-invalid", "true");
+	// Every other view keeps the last valid parse.
+	await expect(tabelo.cell(1, 2)).toHaveText("Rio");
+});
+
+test("the rendered preview finds and offers no replacing at all", async ({
+	tabelo,
+}) => {
+	await tabelo.paste(PEOPLE);
+	await tabelo.showInSourcePane("html-preview");
+	await tabelo.pane("html-preview").locator("[data-pane-entry]").click();
+	await tabelo.page.keyboard.press("ControlOrMeta+f");
+
+	const bar = tabelo.page.getByRole("region", {
+		name: copy.find.titleReadOnly,
+		exact: true,
+	});
+	await expect(bar).toBeVisible();
+	await paneQuery(tabelo, "html-preview").fill("rio");
+	await expect(paneCount(tabelo, "html-preview")).toHaveText("1/1");
+
+	// Absent, not disabled: a read-only view has nothing to replace with.
+	await expect(
+		bar.getByRole("button", { name: copy.find.showReplace }),
+	).toHaveCount(0);
+	await expect(
+		bar.getByRole("textbox", { name: copy.find.replacement }),
+	).toHaveCount(0);
+
+	// The mark is presentation only: nothing was wrapped around the matched
+	// characters, so the value still reads whole.
+	await expect(
+		tabelo.pane("html-preview").getByRole("cell", { name: "Rio" }),
+	).toHaveText("Rio");
+	await expect(
+		tabelo.pane("html-preview").locator("mark, [data-find-current]"),
+	).toHaveCount(0);
+});
+
+test("two panes search for different things at once", async ({ tabelo }) => {
+	await tabelo.paste(PEOPLE);
+	await openSourceFind(tabelo, "csv", "o,");
+	await tabelo.cell(2, 1).click();
+	await tabelo.page.keyboard.press("ControlOrMeta+f");
+	await expect(paneQuery(tabelo, "grid")).toBeFocused();
+	await paneQuery(tabelo, "grid").fill("Madrid");
+
+	await expect(paneCount(tabelo, "grid")).toHaveText("1/1");
+	await expect(paneCount(tabelo, "csv")).toHaveText("1/2");
+	await expect(paneQuery(tabelo, "csv")).toHaveValue("o,");
+});
+
+test("closing a pane's view drops its find with it", async ({ tabelo }) => {
+	await tabelo.paste(PEOPLE);
+	await openSourceFind(tabelo, "csv", "o,");
+
+	await tabelo.choosePaneView("csv", "tsv");
+
+	await expect(paneBar(tabelo, "tsv")).toHaveCount(0);
 });

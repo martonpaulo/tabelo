@@ -8,7 +8,6 @@ import { IconPlus } from "@tabler/icons-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
-import { GridFindBar } from "@/ui/grid/find-bar";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { Panel } from "@/ui/primitives/panel";
 import type { OccurrenceSummary } from "@/ui/source/occurrence-selection";
@@ -20,10 +19,17 @@ import {
 	type SplitOption,
 	type WorkspacePane,
 } from "@/workspace/layout";
+import { PaneFindBar } from "./find-bar";
 import { PaneContent } from "./pane-content";
 import { PaneIdentity, PaneMenu } from "./pane-menu";
 import { PaneAssistanceContext } from "./use-pane-assistance";
 import { PaneEntryContext, usePaneEntry } from "./use-pane-entry";
+import {
+	type FindSummary,
+	type FindTarget,
+	type PaneFind,
+	PaneFindContext,
+} from "./use-pane-find";
 import { PaneOccurrencesContext } from "./use-pane-occurrences";
 
 // One pane frame for every view. The header carries only what belongs to this
@@ -101,6 +107,28 @@ export const Pane = memo(function Pane({
 		null,
 	);
 
+	// This pane's find (#280). The query is in the store; the surface that
+	// searches this pane's own text registers itself here and reports its
+	// count, both as local state that lives exactly as long as that surface.
+	const [findTarget, setFindTarget] = useState<FindTarget | null>(null);
+	const [findSummary, setFindSummary] = useState<FindSummary | null>(null);
+	const [findFocusRequest, setFindFocusRequest] = useState(0);
+	const paneFind = useMemo(
+		(): PaneFind => ({
+			open: () => {
+				useTabeloStore.getState().openFind(pane.id);
+				setFindFocusRequest((request) => request + 1);
+			},
+			report: setFindSummary,
+			register: (target) => {
+				setFindTarget(target);
+				return () =>
+					setFindTarget((current) => (current === target ? null : current));
+			},
+		}),
+		[pane.id],
+	);
+
 	// The structural-assistance switch for this pane's current buffer (#297).
 	// Local React state, so it is never persisted and a reload or the pane
 	// closing starts it on again. It lasts while the same buffer is edited,
@@ -128,7 +156,7 @@ export const Pane = memo(function Pane({
 	);
 
 	return (
-		<PaneEntryContext.Provider value={entered}>
+		<PaneContexts entered={entered} find={paneFind}>
 			<Panel
 				ref={ref}
 				data-pane-id={pane.id}
@@ -192,9 +220,10 @@ export const Pane = memo(function Pane({
 				<Panel.Body
 					style={{ "--pane-zoom": pane.zoom } as React.CSSProperties}
 					className={cn(
-						// A column, so the grid's find bar can be pushed to the foot of
-						// the scrollport by the space the table does not use.
-						view.kind === "grid" && "tabelo-grid-scroller flex flex-col",
+						// A column, so the find bar can be pushed to the foot of the
+						// pane by the space the content does not use.
+						"flex flex-col",
+						view.kind === "grid" && "tabelo-grid-scroller",
 						view.kind === "source" && "overflow-hidden",
 						// Editable and read-only content share the one content box
 						// surface (owner, 2026-09-19); the header's read-only badge
@@ -203,22 +232,42 @@ export const Pane = memo(function Pane({
 				>
 					<PaneOccurrencesContext.Provider value={setOccurrences}>
 						<PaneAssistanceContext.Provider value={assistance}>
-							<PaneContent
-								paneId={pane.id}
-								view={view}
-								zoom={pane.zoom}
-								display={pane}
-							/>
+							{view.kind === "grid" ? (
+								<PaneContent
+									paneId={pane.id}
+									view={view}
+									zoom={pane.zoom}
+									display={pane}
+								/>
+							) : (
+								// A view that scrolls itself fills what the bar leaves, so
+								// opening the bar shortens it rather than pushing the bar
+								// out of the pane.
+								<div className="min-h-0 flex-1">
+									<PaneContent
+										paneId={pane.id}
+										view={view}
+										zoom={pane.zoom}
+										display={pane}
+									/>
+								</div>
+							)}
 						</PaneAssistanceContext.Provider>
 					</PaneOccurrencesContext.Provider>
-					{/* Inside the scroller rather than below it, so the pane's own
-					    horizontal scrollbar stays at the very bottom edge instead of
-					    running between the table and the bar. It sticks to both the
-					    bottom and the leading edge, so it neither scrolls away nor
-					    slides sideways with the table. Chosen by the view's kind, like
-					    every other decision about what a pane shows, and it renders
-					    nothing until the grid's find state exists. */}
-					{view.kind === "grid" ? <GridFindBar /> : null}
+					{/* Inside the pane body rather than below it, so for the grid,
+					    whose body is the scroller, the pane's own horizontal scrollbar
+					    stays at the very bottom edge instead of running between the
+					    table and the bar. It sticks to both the bottom and the leading
+					    edge, so it neither scrolls away nor slides sideways with the
+					    table. Every pane has one (#280), and it renders nothing until
+					    this pane's find state exists. */}
+					<PaneFindBar
+						paneId={pane.id}
+						view={view}
+						target={findTarget}
+						summary={findSummary}
+						focusRequest={findFocusRequest}
+					/>
 				</Panel.Body>
 
 				{splitRight ? (
@@ -244,9 +293,29 @@ export const Pane = memo(function Pane({
 					{announcement}
 				</div>
 			</Panel>
-		</PaneEntryContext.Provider>
+		</PaneContexts>
 	);
 });
+
+// The contexts a pane publishes to what it holds: whether the keyboard has
+// entered it, and its find (#280).
+function PaneContexts({
+	entered,
+	find,
+	children,
+}: {
+	readonly entered: boolean;
+	readonly find: PaneFind;
+	readonly children: React.ReactNode;
+}) {
+	return (
+		<PaneEntryContext.Provider value={entered}>
+			<PaneFindContext.Provider value={find}>
+				{children}
+			</PaneFindContext.Provider>
+		</PaneEntryContext.Provider>
+	);
+}
 
 // The control that grows the workspace, sitting on the edge the new pane will
 // appear along. Because a pane is only ever cut across an axis it spans whole,

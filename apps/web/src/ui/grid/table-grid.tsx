@@ -26,11 +26,13 @@ import type {
 } from "@/core/types";
 import {
 	currentMatch,
+	gridFind,
 	type PasteRefusal,
 	type StructureDeletionRefusal,
 	useTabeloStore,
 } from "@/state/store";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
+import { usePaneFind } from "@/ui/workspace/use-pane-find";
 import {
 	atMaximumColumnWidth,
 	atMinimumColumnWidth,
@@ -399,7 +401,8 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const editingSeed = useTabeloStore((state) => state.editingSeed);
 	const editingHeader = useTabeloStore((state) => state.editingHeader);
 	const copiedRanges = useTabeloStore((state) => state.copiedRanges);
-	const match = useTabeloStore((state) => currentMatch(state.find));
+	const match = useTabeloStore((state) => currentMatch(gridFind(state)));
+	const paneFind = usePaneFind();
 	const copiedAt = (row: number, column: number) =>
 		coveredByRects(copiedRanges, row, column);
 	const wrappedColumns = useTabeloStore(
@@ -845,16 +848,15 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		// arrow at all. Several branches below ask, so it is asked once.
 		const arrowDirection = jumpDirections[event.key];
 
-		// Find opens from the grid surface and nowhere else. The early return
+		// Find opens this pane's bar from the grid surface. The early return
 		// above already stood the whole handler down while a cell or header
-		// editor is open, and a source editor never routes its keys through
-		// here, so both keep whatever find behaviour they have. Taken from the
-		// browser deliberately: its own find would search the rendered chrome
-		// rather than the table, and would miss every value scrolled out of the
-		// DOM's view.
+		// editor is open, so the editor keeps every key. Taken from the browser
+		// deliberately: its own find would search the rendered chrome rather
+		// than the table, and would miss every value scrolled out of the DOM's
+		// view. The other panes take it at their own surfaces (#280).
 		if (mod && event.key.toLowerCase() === "f") {
 			event.preventDefault();
-			store.openFind();
+			paneFind.open();
 			return;
 		}
 

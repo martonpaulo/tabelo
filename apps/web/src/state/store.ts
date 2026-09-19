@@ -160,17 +160,27 @@ export type StructureDeletionRefusal = "last-row" | "last-column";
 // and the interface owns the words for it.
 export type PasteRefusal = "single-area";
 
-// What the grid's find bar is looking for and what it found.
+// What one pane's find bar is looking for, and, for the grid, what it found
+// (#280).
 //
 // Transient by construction, exactly like `copiedRanges` and
 // `fillSeriesOffer`: never a history step, never persisted, and never document
-// state. `null` is the bar closed; opening it is the only thing that creates
-// one, and closing it is the only thing that drops one.
+// state. A pane with no entry has its bar closed; opening it is what creates
+// one, and closing it, closing the pane, or changing the pane's view is what
+// drops one.
 //
-// `matches` is recomputed from the document rather than patched, so it can
-// never describe cells the table no longer holds. `index` is which occurrence
-// is current, and `-1` when there are none.
+// The query is state and the results are not. What the user typed lives here
+// for every pane. Where the matches are lives here only for the grid, because
+// the document is what the grid searches and the store is where the document
+// lives: `matches` is recomputed from it rather than patched, so it can never
+// describe cells the table no longer holds, and `index` is which occurrence is
+// current, `-1` when there are none. A source or preview pane searches what it
+// shows, which only its own surface knows, so its entry keeps `matches` empty
+// and its surface reports the count instead: see `ui/workspace/use-pane-find`.
 export interface FindState {
+	// The view the bar was opened on. A pane that has since changed view is
+	// showing different text, so its entry no longer applies to anything.
+	readonly viewId: ViewId;
 	readonly query: string;
 	readonly replacement: string;
 	readonly caseSensitive: boolean;
@@ -327,8 +337,9 @@ export interface TabeloState {
 	// ask for the series, so until they do the copied result is the result.
 	fillSeriesOffer: FillSeriesOffer | null;
 
-	// The find bar's own state, or null while it is closed. See `FindState`.
-	find: FindState | null;
+	// Each open find bar's state, keyed by the id of the pane it belongs to.
+	// See `FindState`.
+	finds: Readonly<Record<string, FindState>>;
 
 	storageIssue: StorageIssue | null;
 	// Messages waiting to be read, oldest first. A queue rather than one slot:
@@ -459,12 +470,15 @@ export interface TabeloState {
 	applyFillSeries: () => FillSeriesOutcome;
 	dismissFillSeriesOffer: () => void;
 
-	openFind: () => void;
-	closeFind: () => void;
-	setFindQuery: (query: string) => void;
-	setFindReplacement: (replacement: string) => void;
-	setFindCaseSensitive: (caseSensitive: boolean) => void;
-	setFindReplacing: (replacing: boolean) => void;
+	openFind: (paneId: string) => void;
+	closeFind: (paneId: string) => void;
+	setFindQuery: (paneId: string, query: string) => void;
+	setFindReplacement: (paneId: string, replacement: string) => void;
+	setFindCaseSensitive: (paneId: string, caseSensitive: boolean) => void;
+	setFindReplacing: (paneId: string, replacing: boolean) => void;
+	// The four below act on the grid pane's find, the one whose matches the
+	// store derives. See `gridFind`.
+	//
 	// Turn every matching cell into the grid selection, one area per cell.
 	// Returns how many cells that came to.
 	selectAllMatches: () => number;
@@ -509,13 +523,68 @@ function snapshotOf(state: TabeloState): HistoryEntry {
 //
 // The position is kept where it was, clamped into the new list, so an edit
 // elsewhere in the table does not send the user back to the first occurrence.
-function refreshFind(
-	find: FindState | null,
-	document: TableDocument,
-): FindState | null {
-	if (!find) return null;
+function refreshFind(find: FindState, document: TableDocument): FindState {
 	const matches = findMatches(document, find.query, find.caseSensitive);
 	return { ...find, matches, index: clampMatchIndex(matches, find.index) };
+}
+
+const NO_FINDS: Readonly<Record<string, FindState>> = {};
+
+// Whether the store derives this entry's matches, which it does for the view
+// that searches the document. Decided by the view's kind, never its id: see
+// docs/adr/0005.
+function searchesDocument(find: FindState): boolean {
+	return getView(find.viewId).kind === "grid";
+}
+
+// The grid pane's entry and its pane id. A workspace holds at most one grid
+// pane, and entries follow the workspace, so there is at most one of these.
+function gridFindEntry(
+	finds: Readonly<Record<string, FindState>>,
+): readonly [string, FindState] | null {
+	for (const entry of Object.entries(finds)) {
+		if (searchesDocument(entry[1])) return entry;
+	}
+	return null;
+}
+
+// The grid pane's find state, or null while its bar is closed.
+export function gridFind(state: Pick<TabeloState, "finds">): FindState | null {
+	return gridFindEntry(state.finds)?.[1] ?? null;
+}
+
+// Every entry after the document moved underneath it. Only the grid's has
+// results here to recompute; a source or preview surface recounts its own.
+function refreshFinds(
+	finds: Readonly<Record<string, FindState>>,
+	document: TableDocument,
+): Readonly<Record<string, FindState>> {
+	const entry = gridFindEntry(finds);
+	if (!entry) return finds;
+	return { ...finds, [entry[0]]: refreshFind(entry[1], document) };
+}
+
+// The entries whose pane still shows the view its bar was opened on. Returns
+// the same object when nothing was dropped, so an unchanged workspace is not
+// a state change.
+function findsForWorkspace(
+	finds: Readonly<Record<string, FindState>>,
+	workspace: Workspace,
+): Readonly<Record<string, FindState>> {
+	const kept: Record<string, FindState> = {};
+	let dropped = false;
+	for (const [paneId, find] of Object.entries(finds)) {
+		if (
+			workspace.panes.some(
+				(pane) => pane.id === paneId && pane.view === find.viewId,
+			)
+		) {
+			kept[paneId] = find;
+		} else {
+			dropped = true;
+		}
+	}
+	return dropped ? kept : finds;
 }
 
 // Changing what is being looked for starts the walk again at the first
@@ -524,15 +593,24 @@ function refreshFind(
 // navigated to.
 function searchedState(
 	state: TabeloState,
+	paneId: string,
 	change: Partial<Pick<FindState, "query" | "caseSensitive">>,
 ): Partial<TabeloState> {
-	const find = state.find;
+	const find = state.finds[paneId];
 	if (!find) return {};
 	const next = { ...find, ...change };
+	// A surface that searches its own text moves itself: the store only holds
+	// what the user asked for.
+	if (!searchesDocument(next)) {
+		return { finds: { ...state.finds, [paneId]: next } };
+	}
 	const matches = findMatches(state.document, next.query, next.caseSensitive);
 	const match = matches[0];
 	return {
-		find: { ...next, matches, index: match ? 0 : -1 },
+		finds: {
+			...state.finds,
+			[paneId]: { ...next, matches, index: match ? 0 : -1 },
+		},
 		// Navigation replaces the selection while the bar keeps DOM focus, so
 		// the grid follows without the input losing the caret.
 		...(match
@@ -863,7 +941,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editingHeader: null,
 	copiedRanges: NO_COPIED_RANGES,
 	fillSeriesOffer: null,
-	find: null,
+	finds: NO_FINDS,
 
 	storageIssue: null,
 	notices: [],
@@ -894,7 +972,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				pendingImport: null,
 				inputError: null,
 				pendingPaneAction: null,
-				find: null,
+				finds: NO_FINDS,
 				selection: createSelection({ row: 0, column: 0 }),
 			});
 			return;
@@ -969,7 +1047,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			fillSeriesOffer: null,
 			// The bar stays open across an edit: the query is still what the user
 			// is looking for. Only what it found is recomputed.
-			find: refreshFind(state.find, next),
+			finds: refreshFinds(state.finds, next),
 			selection: clampSelection(
 				selectionRestore ? selectionRestore.after : state.selection,
 				next.rows.length,
@@ -1423,7 +1501,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				pendingPaneAction: null,
 				copiedRanges: NO_COPIED_RANGES,
 				fillSeriesOffer: null,
-				find: refreshFind(state.find, entry.document),
+				finds: refreshFinds(state.finds, entry.document),
 				selection: clampSelection(
 					restore ? restore.before : state.selection,
 					entry.document.rows.length,
@@ -1457,7 +1535,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				pendingPaneAction: null,
 				copiedRanges: NO_COPIED_RANGES,
 				fillSeriesOffer: null,
-				find: refreshFind(state.find, entry.document),
+				finds: refreshFinds(state.finds, entry.document),
 				selection: clampSelection(
 					restore ? restore.after : state.selection,
 					entry.document.rows.length,
@@ -1933,39 +2011,61 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	dismissFillSeriesOffer: () => set({ fillSeriesOffer: null }),
 
 	// Opening an already-open bar changes nothing: the query the user built is
-	// what they came back to, and the surface focuses its own input.
-	openFind: () =>
-		set((state) =>
-			state.find
-				? {}
-				: {
-						find: {
-							query: "",
-							replacement: "",
-							caseSensitive: false,
-							replacing: false,
-							matches: [],
-							index: -1,
-						},
+	// what they came back to, and the surface focuses its own input. A pane
+	// that does not exist has no bar to open.
+	openFind: (paneId) =>
+		set((state) => {
+			if (state.finds[paneId]) return {};
+			const pane = state.workspace.panes.find(
+				(candidate) => candidate.id === paneId,
+			);
+			if (!pane) return {};
+			return {
+				finds: {
+					...state.finds,
+					[paneId]: {
+						viewId: pane.view,
+						query: "",
+						replacement: "",
+						caseSensitive: false,
+						replacing: false,
+						matches: [],
+						index: -1,
 					},
-		),
+				},
+			};
+		}),
 
 	// The selection stays where the last match left it. Restoring what was
 	// selected before the bar opened would put the user back somewhere they
 	// have since navigated away from.
-	closeFind: () => set({ find: null }),
+	closeFind: (paneId) =>
+		set((state) => {
+			if (!state.finds[paneId]) return {};
+			const { [paneId]: _closed, ...rest } = state.finds;
+			return { finds: rest };
+		}),
 
-	setFindQuery: (query) => set((state) => searchedState(state, { query })),
-	setFindCaseSensitive: (caseSensitive) =>
-		set((state) => searchedState(state, { caseSensitive })),
+	setFindQuery: (paneId, query) =>
+		set((state) => searchedState(state, paneId, { query })),
+	setFindCaseSensitive: (paneId, caseSensitive) =>
+		set((state) => searchedState(state, paneId, { caseSensitive })),
 
-	setFindReplacement: (replacement) =>
-		set((state) =>
-			state.find ? { find: { ...state.find, replacement } } : {},
-		),
+	setFindReplacement: (paneId, replacement) =>
+		set((state) => {
+			const find = state.finds[paneId];
+			return find
+				? { finds: { ...state.finds, [paneId]: { ...find, replacement } } }
+				: {};
+		}),
 
-	setFindReplacing: (replacing) =>
-		set((state) => (state.find ? { find: { ...state.find, replacing } } : {})),
+	setFindReplacing: (paneId, replacing) =>
+		set((state) => {
+			const find = state.finds[paneId];
+			return find
+				? { finds: { ...state.finds, [paneId]: { ...find, replacing } } }
+				: {};
+		}),
 
 	// One area per matching cell, not per occurrence: a cell holding the query
 	// twice is still one cell, and the grid counts coverage rather than overlap.
@@ -1973,7 +2073,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// does not also move the user somewhere else.
 	selectAllMatches: () => {
 		const state = get();
-		const find = state.find;
+		const find = gridFind(state);
 		if (!find || find.matches.length === 0) return 0;
 
 		const cells = new Map<string, CellPosition>();
@@ -2005,8 +2105,10 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	stepFindMatch: (offset) => {
 		const state = get();
-		const find = state.find;
-		if (!find || find.matches.length === 0) return null;
+		const entry = gridFindEntry(state.finds);
+		if (!entry) return null;
+		const [paneId, find] = entry;
+		if (find.matches.length === 0) return null;
 		// Wrapping in both directions, so the ends of the table are not dead
 		// stops: the count is what says where the user is.
 		const total = find.matches.length;
@@ -2014,7 +2116,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const match = find.matches[index];
 		if (!match) return null;
 		set({
-			find: { ...find, index },
+			finds: { ...state.finds, [paneId]: { ...find, index } },
 			selection: createSelection(matchPosition(match)),
 			editing: null,
 			editingSeed: null,
@@ -2030,15 +2132,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// top of itself.
 	replaceCurrentMatch: () => {
 		const state = get();
-		const find = state.find;
+		const entry = gridFindEntry(state.finds);
+		if (!entry) return false;
+		const [paneId, find] = entry;
 		const match = currentMatch(find);
-		if (!find || !match) return false;
+		if (!match) return false;
 
 		const next = replaceMatches(state.document, [match], find.replacement);
 		if (next === state.document) return false;
 		state.applyDocument(next);
 
-		const applied = get().find;
+		const finds = get().finds;
+		const applied = finds[paneId];
 		if (!applied) return true;
 		const index = matchIndexFrom(
 			applied.matches,
@@ -2046,7 +2151,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		);
 		const resumed = applied.matches[index];
 		set({
-			find: { ...applied, index },
+			finds: { ...finds, [paneId]: { ...applied, index } },
 			...(resumed
 				? {
 						selection: createSelection(matchPosition(resumed)),
@@ -2063,7 +2168,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// rather than unwinding the replacements one at a time.
 	replaceAllMatches: () => {
 		const state = get();
-		const find = state.find;
+		const find = gridFind(state);
 		if (!find || find.matches.length === 0) return 0;
 
 		const count = find.matches.length;
@@ -2375,6 +2480,18 @@ export function flushPersistence(): FlushOutcome {
 	});
 	return outcome;
 }
+
+// A find bar belongs to one pane showing one view, so it goes when either
+// does: the pane closing, its view changing, a layout that removes it, an
+// import that rearranges the workspace, or a reload. One subscription rather
+// than a line in every action that can change the workspace, so a path added
+// later cannot forget it and leave an entry keyed by a pane that is gone.
+useTabeloStore.subscribe((state, previous) => {
+	if (state.workspace === previous.workspace && state.finds === previous.finds)
+		return;
+	const finds = findsForWorkspace(state.finds, state.workspace);
+	if (finds !== state.finds) useTabeloStore.setState({ finds });
+});
 
 export function startAutosave(): () => void {
 	const flush = () => {

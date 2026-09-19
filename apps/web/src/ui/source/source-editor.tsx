@@ -47,6 +47,7 @@ import {
 } from "@/history/coordinator";
 import type { SpaceIndicators } from "@/preferences/contract";
 import { useTabeloStore } from "@/state/store";
+import { usePaneFind } from "@/ui/workspace/use-pane-find";
 import type {
 	HighlightLanguage,
 	SourceTabBehaviour,
@@ -76,6 +77,7 @@ import {
 	sourceRowRefusalMessage,
 } from "./row-commands";
 import { SourceContextMenu } from "./source-context-menu";
+import { sourceFind } from "./source-find";
 import { setSourceRows } from "./source-rows";
 import { assistanceExtension } from "./structural-assistance";
 import { indicatorClasses, spaceScope } from "./whitespace-indicators";
@@ -454,6 +456,13 @@ export function SourceEditor({
 		onOccurrenceAdded,
 	};
 
+	// The pane's find bar (#280), read through a ref for the same reason as the
+	// handlers above: the editor is built once and must not close over a stale
+	// pane.
+	const paneFind = usePaneFind();
+	const paneFindRef = useRef(paneFind);
+	paneFindRef.current = paneFind;
+
 	// Where the caret goes once a row command's result is back in the text. Set
 	// before the document changes, and spent by the first rows mapped after it.
 	const pendingCaret = useRef<SourceCaretTarget | null>(null);
@@ -529,6 +538,7 @@ export function SourceEditor({
 					diagnosticsCompartment.of(diagnosticExtension(diagnostics)),
 					editableCompartment.of(EditorView.editable.of(editable)),
 					syntaxTheme,
+					sourceFind(() => paneFindRef.current),
 					pinnedHeader,
 					columnMarkers,
 					columnMarkersCompartment.of(

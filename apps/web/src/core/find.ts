@@ -187,12 +187,29 @@ function collectMatches(
 	query: string,
 	caseSensitive: boolean,
 ): void {
+	for (const { start, end } of textMatches(text, query, caseSensitive)) {
+		target.push({ row, column, start, end });
+	}
+}
+
+// Every occurrence of the query in one run of text, left to right and never
+// overlapping, as half-open UTF-16 offsets into that text. The rendered preview
+// searches the values it shows with this too (#280), so a value is matched the
+// same way whichever surface displays it. An empty query matches nothing.
+export function textMatches(
+	text: string,
+	query: string,
+	caseSensitive: boolean,
+): readonly { readonly start: number; readonly end: number }[] {
+	if (query === "") return [];
+	const found: { start: number; end: number }[] = [];
 	const last = text.length - query.length;
 	for (let at = 0; at <= last; at += 1) {
 		if (!matchesAt(text, query, at, caseSensitive)) continue;
-		target.push({ row, column, start: at, end: at + query.length });
+		found.push({ start: at, end: at + query.length });
 		at += query.length - 1;
 	}
+	return found;
 }
 
 // Whether the query sits at exactly this offset.

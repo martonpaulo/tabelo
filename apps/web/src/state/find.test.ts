@@ -4,7 +4,8 @@ import { documentFromMatrix } from "@/core/document";
 import { samplePeopleMatrix } from "@/core/sample-data";
 import { activeRange, HEADER_ROW } from "@/core/selection";
 import type { CellValue, TableDocument } from "@/core/types";
-import { currentMatch, useTabeloStore } from "./store";
+import type { ViewId } from "@/views/types";
+import { currentMatch, gridFind, useTabeloStore } from "./store";
 
 // The find bar's transient state: what it looked for, what it found, where it
 // is in that list, and what a replacement does to the document underneath it.
@@ -21,15 +22,29 @@ function load(document: TableDocument): void {
 	useTabeloStore.getState().applyDocument(document);
 }
 
+// The id of the pane showing a view, which is what a find bar is keyed by.
+function paneShowing(view: ViewId): string {
+	const pane = useTabeloStore
+		.getState()
+		.workspace.panes.find((candidate) => candidate.view === view);
+	if (!pane) throw new Error(`No pane shows ${view}.`);
+	return pane.id;
+}
+
+function gridPane(): string {
+	return paneShowing("grid");
+}
+
 function search(query: string, caseSensitive = false): void {
-	const store = useTabeloStore.getState();
-	store.openFind();
-	if (caseSensitive) useTabeloStore.getState().setFindCaseSensitive(true);
-	useTabeloStore.getState().setFindQuery(query);
+	const paneId = gridPane();
+	useTabeloStore.getState().openFind(paneId);
+	if (caseSensitive)
+		useTabeloStore.getState().setFindCaseSensitive(paneId, true);
+	useTabeloStore.getState().setFindQuery(paneId, query);
 }
 
 function find() {
-	const state = useTabeloStore.getState().find;
+	const state = gridFind(useTabeloStore.getState());
 	if (!state) throw new Error("The find bar is not open.");
 	return state;
 }
@@ -54,11 +69,11 @@ beforeEach(() => {
 
 describe("the find bar's state", () => {
 	it("does not exist until the command opens it, and reopening keeps the query", () => {
-		expect(useTabeloStore.getState().find).toBeNull();
+		expect(useTabeloStore.getState().finds).toEqual({});
 
 		load(tableOf([["city"], ["Rio"]]));
 		search("Rio");
-		useTabeloStore.getState().openFind();
+		useTabeloStore.getState().openFind(gridPane());
 
 		expect(find().query).toBe("Rio");
 	});
@@ -128,9 +143,9 @@ describe("the find bar's state", () => {
 		search("Madrid");
 		const reached = focusedCell();
 
-		useTabeloStore.getState().closeFind();
+		useTabeloStore.getState().closeFind(gridPane());
 
-		expect(useTabeloStore.getState().find).toBeNull();
+		expect(useTabeloStore.getState().finds).toEqual({});
 		expect(focusedCell()).toEqual(reached);
 	});
 
@@ -179,7 +194,7 @@ describe("replacing from the find bar", () => {
 	it("replaces one occurrence as one history step and resumes past it", () => {
 		load(tableOf([["city"], ["Rio"], ["Rio"]]));
 		search("Rio");
-		useTabeloStore.getState().setFindReplacement("Lisbon");
+		useTabeloStore.getState().setFindReplacement(gridPane(), "Lisbon");
 		const history = useTabeloStore.getState().past.length;
 
 		expect(useTabeloStore.getState().replaceCurrentMatch()).toBe(true);
@@ -195,7 +210,7 @@ describe("replacing from the find bar", () => {
 	it("does not press Replace back on top of what it just wrote", () => {
 		load(tableOf([["count"], ["aa"]]));
 		search("a", true);
-		useTabeloStore.getState().setFindReplacement("aa");
+		useTabeloStore.getState().setFindReplacement(gridPane(), "aa");
 
 		useTabeloStore.getState().replaceCurrentMatch();
 		useTabeloStore.getState().replaceCurrentMatch();
@@ -219,7 +234,7 @@ describe("replacing from the find bar", () => {
 		]);
 		load(before);
 		search("Rio");
-		useTabeloStore.getState().setFindReplacement("Lisbon");
+		useTabeloStore.getState().setFindReplacement(gridPane(), "Lisbon");
 		const history = useTabeloStore.getState().past.length;
 
 		expect(useTabeloStore.getState().replaceAllMatches()).toBe(3);
@@ -236,7 +251,7 @@ describe("replacing from the find bar", () => {
 	it("replaces inside a header cell too", () => {
 		load(tableOf([["city"], ["Rio"]]));
 		search("city");
-		useTabeloStore.getState().setFindReplacement("town");
+		useTabeloStore.getState().setFindReplacement(gridPane(), "town");
 		useTabeloStore.getState().replaceAllMatches();
 
 		expect(useTabeloStore.getState().document.columns[0]?.header).toBe("town");
@@ -245,7 +260,7 @@ describe("replacing from the find bar", () => {
 	it("writes a replaced native value back as a string", () => {
 		load(tableOf(samplePeopleMatrix(1)));
 		search("35");
-		useTabeloStore.getState().setFindReplacement("36");
+		useTabeloStore.getState().setFindReplacement(gridPane(), "36");
 		useTabeloStore.getState().replaceAllMatches();
 
 		const document = useTabeloStore.getState().document;
@@ -261,5 +276,72 @@ describe("replacing from the find bar", () => {
 
 		expect(useTabeloStore.getState().replaceAllMatches()).toBe(0);
 		expect(useTabeloStore.getState().replaceCurrentMatch()).toBe(false);
+	});
+});
+
+describe("one find bar per pane (#280)", () => {
+	function sourcePane(): string {
+		const pane = useTabeloStore
+			.getState()
+			.workspace.panes.find((candidate) => candidate.view !== "grid");
+		if (!pane) throw new Error("The default workspace has no source pane.");
+		return pane.id;
+	}
+
+	it("keeps a separate query for each pane searching at once", () => {
+		load(tableOf([["city"], ["Rio"]]));
+		const source = sourcePane();
+		search("Rio");
+		useTabeloStore.getState().openFind(source);
+		useTabeloStore.getState().setFindQuery(source, "city");
+
+		const finds = useTabeloStore.getState().finds;
+		expect(finds[gridPane()]?.query).toBe("Rio");
+		expect(finds[source]?.query).toBe("city");
+		// Only the grid's results live in the store; a source pane counts what
+		// it shows itself.
+		expect(find().matches).toHaveLength(1);
+		expect(finds[source]?.matches).toEqual([]);
+	});
+
+	it("leaves the grid selection and the document alone when a source pane searches", () => {
+		load(tableOf([["city"], ["Rio"], ["Madrid"]]));
+		const before = useTabeloStore.getState();
+		const source = sourcePane();
+
+		useTabeloStore.getState().openFind(source);
+		useTabeloStore.getState().setFindQuery(source, "Madrid");
+
+		const after = useTabeloStore.getState();
+		expect(after.selection).toBe(before.selection);
+		expect(after.document).toBe(before.document);
+	});
+
+	it("drops a pane's entry when that pane closes", () => {
+		load(tableOf([["city"], ["Rio"]]));
+		const source = sourcePane();
+		useTabeloStore.getState().openFind(source);
+		search("Rio");
+
+		useTabeloStore.getState().closePane(source);
+
+		expect(Object.keys(useTabeloStore.getState().finds)).toEqual([gridPane()]);
+	});
+
+	it("drops a pane's entry when the pane changes view", () => {
+		load(tableOf([["city"], ["Rio"]]));
+		const source = sourcePane();
+		useTabeloStore.getState().openFind(source);
+		useTabeloStore.getState().setFindQuery(source, "Rio");
+
+		useTabeloStore.getState().setPaneView(source, "csv");
+
+		expect(useTabeloStore.getState().finds[source]).toBeUndefined();
+	});
+
+	it("opens nothing for a pane that does not exist", () => {
+		useTabeloStore.getState().openFind("no-such-pane");
+
+		expect(useTabeloStore.getState().finds).toEqual({});
 	});
 });

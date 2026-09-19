@@ -355,9 +355,11 @@ export const copy = {
 		// it. One value, so the menu item and the surface it reveals cannot drift
 		// apart.
 		title: "Find and replace",
-		// Each field's label and its placeholder are the same word: the bar
-		// floats over the table, so a visible label beside every control would
-		// cost the rows underneath it for nothing a programmer needs told twice.
+		// The same, for a read-only pane, whose bar finds and cannot replace.
+		titleReadOnly: "Find",
+		// Each field's label and its placeholder are the same word: the bar is
+		// one dense row docked at the foot of its pane, so a visible label
+		// beside every control would cost the width the field exists to have.
 		query: "Find",
 		replacement: "Replace with",
 		matchCase: "Match case",
@@ -376,6 +378,12 @@ export const copy = {
 		count: (index: number, total: number) => `${index}/${total}`,
 		position: (index: number, total: number) =>
 			`${index} of ${total} ${total === 1 ? "match" : "matches"}`,
+		// A source pane's caret can stand away from every match: the user
+		// clicked elsewhere in the text. The total still holds, and there is no
+		// position to claim.
+		countUnplaced: (total: number) => `?/${total}`,
+		positionUnplaced: (total: number) =>
+			`${total} ${total === 1 ? "match" : "matches"}`,
 		noMatches: "No matches",
 		replaced: (count: number) =>
 			`${count} ${count === 1 ? "match" : "matches"} replaced.`,
@@ -452,6 +460,8 @@ export const copy = {
 		// Both the step and the replace controls refuse for the same reason, so
 		// they say the same thing rather than inventing two wordings for it.
 		noMatchingCell: "No cell holds that text.",
+		// The same refusal in a pane that searches its own text rather than cells.
+		noMatchingText: "This view does not contain that text.",
 		cellTypeConversion: (label: string) =>
 			`This value can't be converted to ${label.toLowerCase()}.`,
 		updateInProgress: "The update is already being applied.",

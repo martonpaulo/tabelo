@@ -233,7 +233,7 @@ content the user is already looking at and carry no floor either.
 | `--selection-fill` | `bg-selection-fill` | Background of selected cells |
 | `--selection-edge` | `border-selection-edge` | The focused cell's mark, focus rings, resize affordance |
 | `--text-selection-fill` | CSS selection | Native and source-editor text selection |
-| `--primary` / `--primary-foreground` | `bg-primary text-primary-foreground` | The solid accent with a contrast-paired label: the primary decision button, a checked control, and the grid's current find match |
+| `--primary` / `--primary-foreground` | `bg-primary text-primary-foreground` | The solid accent with a contrast-paired label: the primary decision button, a checked control, and the current find match in every pane |
 | `--active-line-fill` | Source editor theme | Current source line without competing with selected text, drawn with its gutter number only in the editor that has focus (owner, 2026-09-19) |
 
 The find match is the one place the solid accent fills a run of text rather than
@@ -986,9 +986,11 @@ vertical padding rather than larger text, with no gap between the two lines
 
 ### A pane's own tool bar
 
-The grid's find bar (#144) is the one surface of this shape, and adding a second one is
-a pattern break under §0. It is not a dialog and not a floating layer: it is a
-tool the user works **alongside** the table for as long as the errand lasts, so
+The find bar is the one surface of this shape, and adding a second kind is a
+pattern break under §0. Every pane has its own (#280, superseding #144's
+grid-only bar), each searching what that pane shows, and the rules below hold
+for all of them. It is not a dialog and not a floating layer: it is a tool the
+user works **alongside** the pane's content for as long as the errand lasts, so
 it belongs to the pane the way the header does.
 
 - **Docked at the foot of the pane, outside its scroller.** It covers no cell,
@@ -1000,7 +1002,10 @@ it belongs to the pane the way the header does.
   exists and gets the row to itself. Replacing is a different job, so it sits
   behind one disclosure control at the leading edge, and the two fields line up
   on that edge rather than stepping. The disclosure is transient state like
-  everything else in the bar.
+  everything else in the bar. A read-only pane renders no replace row and no
+  disclosure at all, rather than disabled ones: there is nothing it could
+  replace, and the bar's name drops "and replace" with them. The view's
+  `editable` capability decides, never its id.
 - **Dense, and labelled by placeholder.** Every control is one field or one icon
   at the 1.75rem dense-toolbar size, and each field's placeholder is also its
   accessible name. A row of written labels would cost the width the fields
@@ -1013,7 +1018,9 @@ it belongs to the pane the way the header does.
   one row tall, grows through the browser's own `field-sizing: content` that the
   shared primitive already declares, and scrolls once it reaches three rows.
   Enter navigates and replaces, so a line break reaches a field by paste rather
-  than by keystroke. The controls beside a field stay on its first row.
+  than by keystroke. The controls beside a field stay on its first row. A field
+  takes the typeface of the view it belongs to, so a query typed against a
+  monospaced source reads the way the source does.
 - **Its one piece of state is passive text.** The match count is a legend beside
   the controls with no role and nothing to press, and it reads compactly
   (`3/14`) while the same number is spoken in full through the shared polite
@@ -1526,8 +1533,10 @@ per keystroke.
   background alone to communicate editability.
 - The pane actions menu is flat and follows one semantic reading order (#70).
   An applicable capability-driven Copy command comes first, and zoom follows as
-  its own group. A grid pane then adds Find (#144) and Wrap all columns (#360),
-  each in its own group; a source pane adds Wrap lines, followed in the same
+  its own group. Every pane then adds Find in its own group (#144, #280),
+  named Find and replace where the view is editable and Find where it is not. A
+  grid pane adds Wrap all columns (#360) in its own group; a source pane adds
+  Wrap lines, followed in the same
   group by the checked Smart editing item when the view's format
   declares a structural-assistance feature (#297). Both are ordinary checked
   menu items, reached and toggled from the keyboard like every other pane
@@ -1880,7 +1889,7 @@ leaves the pane.
 | `Mod`+`Shift`+`Enter` | Add a row above |
 | `Alt`+`Enter` | Add a column after |
 | `Alt`+`Shift`+`Enter` | Add a column before |
-| `Mod`+`F` | Open the find bar and put the caret in it. Taken from the browser deliberately: its own find searches the rendered chrome rather than the table |
+| `Mod`+`F` | Open this pane's find bar and put the caret in it. Taken from the browser deliberately: its own find searches the rendered chrome rather than what the pane shows |
 | Any printable character | Replace the cell and start editing |
 
 **A jump reads what the grid shows, and follows one rule on both axes** (#142).
@@ -2095,15 +2104,39 @@ still claims the key and changes nothing. An outcome that depended on whether a
 next match happened to exist would be a shortcut the user cannot predict.
 
 **Find is a second way of moving the selection, never a second highlight.**
-`Mod`+`F` opens the grid pane's find bar (§3) and `Escape` closes it,
-returning the caret to the grid. The chord fires from the grid surface only: a
-cell or header editor owns every key while it is open, and a source editor keeps
-whatever find behaviour it has. The pane menu carries the same command, because
-a capability whose only entry point is a chord nobody was told about fails the
-progressive-disclosure rule above.
+Every pane finds in what it shows (#280, superseding #144's "grid-pane only"
+and "the rendered preview is out of scope"). `Mod`+`F` opens the find bar (§3)
+of the pane the user is in, and that pane's only, and `Escape` closes it,
+returning the caret to the pane's own surface: the grid cell the last match
+reached, the source editor, or the preview's scroller. Each pane takes the chord
+at its own surface, the grid surface, the source editor, and the preview's
+scroller, so the browser's find never opens over a pane. A cell or header editor
+still owns every key while it is open. The pane menu carries the same command,
+because a capability whose only entry point is a chord nobody was told about
+fails the progressive-disclosure rule above. Each pane keeps its own query, so
+two panes can search for different things at once; one query shared across
+panes is out of scope. What the user typed is transient state, never persisted,
+and closing a pane or changing its view drops it.
 
-Matching is literal, left to right, non-overlapping, and case-insensitive until
-the toggle says otherwise. It runs over the canonical table in document order,
+**A source pane searches its own text**, not the table behind it: a match in
+Markdown is a match in the Markdown the user is looking at, separators and
+escapes included. Matching, stepping, and replacing are CodeMirror's own search
+commands, literal and never a regular expression, driven from the pane's bar
+rather than from CodeMirror's panel. The count and the current position come
+from the same search the commands run, and the current occurrence is the
+editor's own selection, so what the bar says and where Enter lands cannot
+disagree. A replace is an ordinary editor edit: it leaves the draft valid or
+invalid exactly as typing the same change would, the other views follow through
+the normal synchronization path, and undo treats it like typing.
+
+**The rendered preview searches the text the reader is shown**, with the grid's
+matching rule below, and offers find without replace. Its mark is painted
+through the CSS Custom Highlight API, so the preview's DOM never changes and its
+neutral-document treatment (§3) and every copy path keep one unbroken value.
+
+In the grid, matching is literal, left to right, non-overlapping, and
+case-insensitive until the toggle says otherwise. It runs over the canonical
+table in document order,
 the header row first, because a header cell is an ordinary cell for every
 purpose the user can observe. Cell values are opaque strings: nothing is
 trimmed, normalized, unescaped, or read as a type, so a value holding `|` or a
@@ -2119,7 +2152,8 @@ navigated away from would be a second surprise.
 
 Only the **current** occurrence is marked, and only the characters that matched:
 the product's solid accent with its paired foreground, drawn inside the value
-the cell already shows. Every other match receives no second grid highlight,
+the cell already shows. A source pane and the preview mark theirs the same way.
+Every other match receives no second highlight,
 because a second kind of highlight is a second visual language and §1 commits to
 one. The mark is presentation and nothing else: the cell's accessible value, its
 native tooltip, and every copy path still see one unbroken value, and which

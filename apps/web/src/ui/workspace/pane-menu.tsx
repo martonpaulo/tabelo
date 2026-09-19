@@ -55,6 +55,7 @@ import {
 	paneZoomPercent,
 	stepPaneZoom,
 } from "@/workspace/zoom";
+import { usePaneFind } from "./use-pane-find";
 
 interface PaneIdentityProps {
 	readonly view: ViewDefinition;
@@ -107,6 +108,7 @@ export function PaneMenu({
 	readonly onAssistanceChange: (enabled: boolean) => void;
 }) {
 	const triggerRef = useRef<HTMLButtonElement>(null);
+	const paneFind = usePaneFind();
 	const menuDialog = useMenuDialogCommand();
 	const zoom = useTabeloStore(
 		(state) =>
@@ -304,21 +306,23 @@ export function PaneMenu({
 				    discoverable: §9 does not allow a capability whose only entry point
 				    is a chord nobody was told about. It belongs to the pane rather
 				    than the app menu because the bar it opens is attached to this
-				    pane, and it is offered by view kind, never by view id. */}
+				    pane. Every pane has one (#280); its name says whether it can
+				    replace, which the view's editability decides. */}
+				<DropdownMenuSeparator />
+				<DropdownMenuGroup>
+					<DropdownMenuItem onClick={paneFind.open}>
+						<IconSearch aria-hidden />
+						{view.capabilities.editable
+							? copy.find.title
+							: copy.find.titleReadOnly}
+						<DropdownMenuShortcut aria-hidden>
+							{copy.shortcuts.find}
+						</DropdownMenuShortcut>
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
+
 				{view.kind === "grid" ? (
 					<>
-						<DropdownMenuSeparator />
-						<DropdownMenuGroup>
-							<DropdownMenuItem
-								onClick={() => useTabeloStore.getState().openFind()}
-							>
-								<IconSearch aria-hidden />
-								{copy.find.title}
-								<DropdownMenuShortcut aria-hidden>
-									{copy.shortcuts.find}
-								</DropdownMenuShortcut>
-							</DropdownMenuItem>
-						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
 							{/* A bulk command over the per-column preference, the grid's

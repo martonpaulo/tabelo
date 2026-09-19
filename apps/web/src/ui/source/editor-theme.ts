@@ -242,6 +242,20 @@ export const editorTheme = EditorView.theme({
 		backgroundColor: "var(--text-selection-fill)",
 	},
 	".cm-selectionMatch": { backgroundColor: "var(--text-selection-fill)" },
+	// Find in a source pane (#280) marks what the grid's bar marks: the current
+	// occurrence alone, in the solid accent with its paired foreground, and no
+	// second highlight on the others (docs/design-system.md §9). Upstream paints
+	// every match, so its plain match class is cleared and only the selected one
+	// is drawn. `!important` for the reason given above: the base theme's
+	// scheme-specific selector is more specific than this one.
+	".cm-searchMatch": { backgroundColor: "transparent !important" },
+	".cm-searchMatch.cm-searchMatch-selected, .cm-searchMatch-selected *": {
+		backgroundColor: "var(--primary) !important",
+		color: "var(--primary-foreground) !important",
+	},
+	// Upstream's panel is only the switch that turns its highlighting on; the
+	// pane draws its own bar. See source-find.ts.
+	".cm-panels:has(> .cm-tabeloFindHost:only-child)": { display: "none" },
 	// HTML is the one format whose header cells no grammar marks for us, so the
 	// project-owned decorator in html-language.ts supplies them. It wears the
 	// same treatment the `heading` tag carries everywhere else, from the same
