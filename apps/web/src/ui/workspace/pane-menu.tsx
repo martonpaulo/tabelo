@@ -61,19 +61,20 @@ import { usePaneFind } from "./use-pane-find";
 
 interface PaneIdentityProps {
 	readonly view: ViewDefinition;
-	readonly compact: boolean;
 }
 
 // The heading identifies the pane and does nothing else. Change view is a pane
 // command in the trailing actions menu, so identity does not masquerade as a
-// dropdown trigger.
-export function PaneIdentity({ view, compact }: PaneIdentityProps) {
+// dropdown trigger. A view has one name everywhere, so a narrow pane truncates
+// it with an ellipsis rather than switching to a second, shorter name (owner,
+// 2026-09-19).
+export function PaneIdentity({ view }: PaneIdentityProps) {
 	const Icon = view.icon;
 
 	return (
 		<h2 className="flex min-w-0 items-center gap-1.5 font-medium text-sm">
 			<Icon aria-hidden className="shrink-0 text-muted-foreground" />
-			<span className="truncate">{compact ? view.shortLabel : view.label}</span>
+			<span className="truncate">{view.label}</span>
 
 			{/* A quiet lock with the words in its tooltip and accessible name,
 			    rather than an outlined chip (owner, 2026-09-19). */}

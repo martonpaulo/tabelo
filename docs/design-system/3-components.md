@@ -389,7 +389,7 @@ length. Seven views are something a menu holds comfortably, so the list is not
 what earns the dialog. Two other things do. The choice has a consequence the
 list cannot show, because the same seven views mean a different workspace
 depending on which edge was clicked, and the dialog's supporting copy is where
-that lands: "The new view opens below the Visual table pane." And a view that
+that lands: "The new view opens below the Visual Table pane." And a view that
 cannot be added has a reason worth reading, whether it is already open
 elsewhere or its format cannot represent the current table; a dialog can
 disable it and explain, where a menu that did the same would be a menu whose

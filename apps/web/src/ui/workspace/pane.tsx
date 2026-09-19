@@ -43,9 +43,6 @@ interface PaneProps {
 	// With one pane there is no competing selection to identify. The pane still
 	// owns focus and aria-current, but the persistent active edge would be noise.
 	readonly showActiveIndicator: boolean;
-	// A pane occupying a single slot has half the width, so its header labels
-	// shorten rather than wrap.
-	readonly compact: boolean;
 	// Stacked, the pane takes the full width in reading order and must not name
 	// a slot: an inline grid area pointing at column two would conjure that
 	// column back into existence.
@@ -81,7 +78,6 @@ export const Pane = memo(function Pane({
 	pane,
 	active,
 	showActiveIndicator,
-	compact,
 	stacked,
 	underFab,
 	splitBottom,
@@ -193,7 +189,7 @@ export const Pane = memo(function Pane({
 				{/* Static identity and one command trigger share the row. The spacer
 				    keeps the actions button right-aligned as the name shortens. */}
 				<Panel.Header className="overflow-hidden">
-					<PaneIdentity view={view} compact={compact} />
+					<PaneIdentity view={view} />
 					<Panel.Spacer />
 					{/* Passive state, not a third action: text with no role, no focus,
 					    and nothing to press. It grows leftward into the spacer, so the

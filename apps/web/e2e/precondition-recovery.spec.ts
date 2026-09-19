@@ -90,10 +90,10 @@ test("the download chooser offers the same correction", async ({
 	await tabelo.runAppCommand("downloadTable");
 	const dialog = page.getByRole("dialog");
 	await expect(
-		dialog.getByRole("radio", { name: copy.views.json.shortLabel }),
+		dialog.getByRole("radio", { name: copy.views.json.label }),
 	).toBeDisabled();
 
-	await fixTable(dialog, copy.views.json.shortLabel).click();
+	await fixTable(dialog, copy.views.json.label).click();
 
 	await expect(dialog).toBeHidden();
 	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "true");
@@ -138,7 +138,7 @@ test("with no grid open the correction reports without opening one", async ({
 
 	await tabelo.runAppCommand("downloadTable");
 	const dialog = page.getByRole("dialog");
-	await fixTable(dialog, copy.views.json.shortLabel).click();
+	await fixTable(dialog, copy.views.json.label).click();
 
 	await expect(dialog).toBeHidden();
 	await expect(tabelo.notice("warning")).toBeVisible();

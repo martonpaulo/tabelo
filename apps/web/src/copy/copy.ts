@@ -142,48 +142,39 @@ const expectedColumnTypeLabels = {
 
 const views = {
 	grid: {
-		label: "Visual table",
-		shortLabel: "Table",
+		label: "Visual Table",
 		description: "Cells you edit directly",
 	},
 	markdown: {
 		label: "Markdown",
-		shortLabel: "Markdown",
 		description: "For READMEs and docs, alignment included",
 	},
 	csv: {
 		label: "CSV",
-		shortLabel: "CSV",
 		description: "Comma-separated, for data tools",
 	},
 	tsv: {
 		label: "TSV",
-		shortLabel: "TSV",
 		description: "Tab-separated, pastes into spreadsheets",
 	},
 	html: {
-		label: "HTML source",
-		shortLabel: "HTML",
+		label: "HTML Source",
 		description: "A table element for web pages",
 	},
 	jira: {
 		label: "Jira",
-		shortLabel: "Jira",
 		description: "Jira wiki table syntax",
 	},
 	json: {
 		label: "JSON",
-		shortLabel: "JSON",
 		description: "An array of objects keyed by column name",
 	},
 	records: {
 		label: "Records",
-		shortLabel: "Records",
 		description: "One titled bullet list per row",
 	},
 	"html-preview": {
-		label: "Rendered preview",
-		shortLabel: "Preview",
+		label: "Rendered Preview",
 		description: "A formatted table for Word, Google Docs, Slack, and email",
 	},
 } as const;
@@ -1017,7 +1008,7 @@ export const copy = {
 		importError: (error: ImportError) => {
 			switch (error.code) {
 				case "invalid-format":
-					return `Not valid ${views[error.format].shortLabel}.`;
+					return `Not valid ${views[error.format].label}.`;
 				case "too-many-rows":
 					return `${error.actual} rows, over the ${error.limit} limit. Remove rows and try again.`;
 				case "too-many-columns":

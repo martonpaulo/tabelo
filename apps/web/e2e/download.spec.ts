@@ -64,7 +64,7 @@ test("the chooser lists every registered format", async ({ page, tabelo }) => {
 
 	for (const codec of listCodecs()) {
 		await expect(
-			dialog.getByRole("radio", { name: copy.views[codec.id].shortLabel }),
+			dialog.getByRole("radio", { name: copy.views[codec.id].label }),
 		).toBeVisible();
 	}
 });

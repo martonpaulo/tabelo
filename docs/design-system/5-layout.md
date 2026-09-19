@@ -132,8 +132,8 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
   as how many occurrences an incremental selection has gathered, and a healthy
   idle pane leaves it empty. It grows leftward, so the trigger never moves, and
   it uses tabular figures so a rising count does not resize itself. Width
-  pressure is absorbed by the identity's own truncation and the registry's
-  short labels, never by shrinking status text below [§2](2-tokens.md)'s floor. No state owns
+  pressure is absorbed by the identity's own truncation, an ellipsis on the
+  view's one name, never by shrinking status text below [§2](2-tokens.md)'s floor. No state owns
   the slot exclusively: two conditions present at once still keep the header
   one row, with both meanings readable and no control displaced.
 - The `Read-only` badge sits beside the view identity because it reports state.
@@ -186,8 +186,10 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
 - Nothing may reflow because of a selection change or a status change.
 - Two-pane layouts may breathe, but do not enlarge controls or introduce an
   otherwise absent card. Four-pane layouts keep the same 0.875rem critical labels,
-  focus treatment, and action ownership; labels shorten only through the
-  registry's explicit short label and optional descriptions may disappear.
+  focus treatment, and action ownership. A view keeps its one name at every
+  width: a narrow pane truncates it with an ellipsis rather than switching to
+  a shorter second name (owner, 2026-09-19), and optional descriptions may
+  disappear.
 - Four-pane density is recovered by hiding healthy status, removing empty
   reserved rows, and grouping low-frequency actions. Never shrink critical
   text, focus targets, or state cues to make four panes fit.

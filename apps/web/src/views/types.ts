@@ -46,9 +46,9 @@ export interface ViewCapabilities {
 
 export interface ViewDefinition {
 	readonly id: ViewId;
+	// The view's one name, in Title Case, wherever it appears: the pane
+	// header, every view chooser, and accessible names (owner, 2026-09-19).
 	readonly label: string;
-	// Used where space is tight, such as a pane header on a narrow slot.
-	readonly shortLabel: string;
 	readonly description: string;
 	readonly icon: TablerIcon;
 	readonly kind: ViewKind;

@@ -4,7 +4,6 @@ import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
 import { paneEntryTarget } from "@/ui/primitives/panel";
 import {
-	gridAreaOf,
 	layoutColumnSplitExtent,
 	layoutRowSplitExtent,
 	paneCapacity,
@@ -291,9 +290,6 @@ export function Workspace({
 			}
 		>
 			{workspace.panes.map((pane, index) => {
-				const area = gridAreaOf(pane.slots);
-				// Stacked panes have the whole width, so nothing needs shortening.
-				const compact = !stacked && area.columnEnd - area.columnStart === 1;
 				const splits = options.filter((option) => option.paneId === pane.id);
 				return (
 					<Pane
@@ -301,7 +297,6 @@ export function Workspace({
 						pane={pane}
 						active={pane.id === workspace.activePaneId}
 						showActiveIndicator={workspace.panes.length > 1}
-						compact={compact}
 						stacked={stacked}
 						underFab={
 							stacked

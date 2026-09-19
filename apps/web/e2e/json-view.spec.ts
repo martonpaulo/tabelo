@@ -136,7 +136,7 @@ test("the download chooser offers JSON for a table with no headers", async ({
 	await expect(
 		page
 			.getByRole("dialog")
-			.getByRole("radio", { name: copy.views.json.shortLabel }),
+			.getByRole("radio", { name: copy.views.json.label }),
 	).toBeEnabled();
 });
 
@@ -152,12 +152,12 @@ test("the download chooser refuses JSON while the headers conflict", async ({
 		.click();
 
 	const dialog = page.getByRole("dialog");
-	const json = dialog.getByRole("radio", { name: copy.views.json.shortLabel });
+	const json = dialog.getByRole("radio", { name: copy.views.json.label });
 	// Listed, not hidden: the user has to be able to see why it is unavailable.
 	await expect(json).toBeVisible();
 	await expect(json).toBeDisabled();
 
 	await expect(
-		dialog.getByRole("radio", { name: copy.views.csv.shortLabel }),
+		dialog.getByRole("radio", { name: copy.views.csv.label }),
 	).toBeEnabled();
 });
