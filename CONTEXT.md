@@ -19,7 +19,10 @@ Related to: Column, Row, Cell, View
 One way of showing the table document: the grid, a source format (Markdown,
 CSV, TSV, HTML, Jira, JSON, Records), or the rendered preview. A view is always derived from
 the table document: never an independent copy of it. Every view is described
-in the view registry by its capabilities rather than by its name.
+in the view registry by its capabilities rather than by its name. A view that
+shows the table as editable or read-only text is a **source view**, in code and
+in interface copy alike. The rendered preview produces a **formatted table**,
+which is what interface copy calls its output (#78).
 
 Related to: Table document, Pane, Codec, Workspace
 
@@ -107,7 +110,8 @@ Related to: Cell, Table document
 ### Cell
 
 The value at one row/column intersection. It holds a **cell value**: a string, a
-number, a boolean, or null. Tabelo never infers a type, coerces a number, or
+number, a boolean, or null. Interface copy calls a string value **text**, as the
+Cell type menu and every accessible name do; code keeps `string` (#78). Tabelo never infers a type, coerces a number, or
 reformats content: a type is carried from a source that stated it or chosen
 explicitly, never derived from how the text looks.
 
@@ -165,7 +169,8 @@ is literal and case-sensitive, and narrows to whole words when the selection is
 exactly a word. The most recently added range is the primary one. Transient
 editor state: never a draft, never document state, never persisted, and never a
 document-timeline step. Editing every selected range at once is one editor
-transaction and therefore one step of the editor's own history.
+transaction and therefore one step of the editor's own history. Interface copy
+calls the ranges **matches**, as Find does (#78).
 
 Related to: Draft, Document timeline, View
 
@@ -182,7 +187,8 @@ Related to: Column, Serializer
 Text in a source view that has not yet been committed to the table document.
 Exactly one draft exists at a time, owned by the view being typed into; every
 other view is a pure projection. A draft may be invalid, and an invalid draft
-never modifies the table document.
+never modifies the table document. Interface copy calls a draft the user's
+**unfinished edits**; "draft" stays a code and documentation term (#78).
 
 Related to: Commit, Parser, Superseded draft, View
 
@@ -208,6 +214,8 @@ current draft in the same transaction as the user edit that triggered it, such
 as keeping the Markdown alignment divider in step with its header. It is
 transient editor behaviour: never document state, never persisted, never a
 hidden canonical source. Each one can be switched off for the current buffer.
+Interface copy names the feature and its switch **Smart editing**; "structural
+assistance" stays the code and documentation term (#78).
 
 Related to: Draft, Document timeline
 

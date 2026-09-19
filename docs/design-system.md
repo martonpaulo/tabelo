@@ -155,7 +155,7 @@ floating layer is set apart by its own surface and a deep shadow, with a soft
 recognizable as mutable table data instead of reading as disabled chrome. Use
 tones to group related content before adding a line. Every pane's content, editable
 or read-only, sits in one `--surface-code` box (owner, 2026-09-19); a read-only
-pane says so with a quiet lock in its header whose name and tooltip are "Read only", not with a tone.
+pane says so with a quiet lock in its header whose name and tooltip are "Read-only", not with a tone.
 
 ### Lines
 
@@ -575,7 +575,7 @@ unwrapped; changing or rearranging a view retains the preference of the pane.
 
 **Structural assistance can always be switched off** (#294). A source view
 whose format has a structural-assistance feature (the first is the Markdown
-alignment divider, #297) shows one checked `Structural assistance` item in its
+alignment divider, #297) shows one checked `Smart editing` item in its
 pane actions menu, beside `Wrap lines`. Turning it off reconfigures the live
 editor through its own compartment: the text, caret, selection, and history
 stay exactly as they are, and from then on the buffer is plain text. Turning it
@@ -1213,10 +1213,10 @@ its parent surface or turn it into a heavy filled square.
 Unavailable selection options distinguish two causes. An option already used
 elsewhere is an informative `in-use` state with a neutral status label and an
 eye icon. An option blocked by the current document or another precondition is
-an `unavailable` state with an alert icon and the concise `Blocked` status. Both
+an `unavailable` state with an alert icon and the concise `Unavailable` status. Both
 are actually disabled, both keep their identity icon, and both expose the full
 reason in a tooltip. The written status and different icon shapes keep the
-distinction from depending on colour alone. `Blocked` uses an attenuated
+distinction from depending on colour alone. `Unavailable` uses an attenuated
 destructive tone so it communicates a precondition without competing with the
 selected option.
 
@@ -1231,7 +1231,7 @@ columns without relying on the grid being visible.
 
 **A refusal that names a position offers the correction beside it** (#146). The
 refused choice stays natively disabled with its reason, and an ordinary enabled
-`Fix table` command sits immediately after it as a sibling: never nested inside
+`Go to cell` command sits immediately after it as a sibling: never nested inside
 the disabled option, its label, or its full-row overlay. A control must not
 report itself as disabled while answering to activation, and an enabled control
 must not perform a command other than the one its label states. The correction
@@ -1427,18 +1427,18 @@ per keystroke.
   short labels, never by shrinking status text below §2's floor. No state owns
   the slot exclusively: two conditions present at once still keep the header
   one row, with both meanings readable and no control displaced.
-- The `Read only` badge sits beside the view identity because it reports state.
+- The `Read-only` badge sits beside the view identity because it reports state.
   The actions trigger names the view it belongs to, because with four panes open
   the view is what says which pane the command affects: "Pane actions:
   Markdown", never a bare "Pane".
 - Editable pane bodies use the main panel surface. A non-editable pane uses the
-  read-only surface and the written "Read only" label. Never rely on a muted
+  read-only surface and the written "Read-only" label. Never rely on a muted
   background alone to communicate editability.
 - The pane actions menu is flat and follows one semantic reading order (#70).
   An applicable capability-driven Copy command comes first, and zoom follows as
   its own group. A grid pane then adds Find (#144) and Wrap all columns (#360),
   each in its own group; a source pane adds Wrap lines, followed in the same
-  group by the checked Structural assistance item when the view's format
+  group by the checked Smart editing item when the view's format
   declares a structural-assistance feature (#297). Both are ordinary checked
   menu items, reached and toggled from the keyboard like every other pane
   command, with their state exposed through native checked semantics. Change
@@ -1597,16 +1597,69 @@ about behavior, semantics, or state. Data-derived identifiers such as column
 letters remain technical contracts rather than editorial wording.
 
 Voice: plain, calm, present tense. Say what happened and what the user can do.
-Never blame, never exclaim, never use humour in an error. Prefer "The source
-does not parse yet" to "Oops! Something went wrong".
+Never blame, never exclaim, never use humour in an error. Prefer "These edits
+aren't valid yet" to "Oops! Something went wrong".
 
-Labels are sentence case. Actions are verbs: "Add row", not "New row".
+The rules below were settled in the full copy review (Decided on #78).
+
+**Capitalization.** Labels, titles, buttons, menu items, and accessible names
+are sentence case. Product, format, and key names keep their own capitals
+(Markdown, CSV, Enter). Inside an accessible name, a qualifier after a comma
+stays lowercase: "Name, expected type number".
+
+**Commands.** Actions are verbs: "Add row", not "New row". Each action has one
+wording everywhere it appears, and the label says what the command does:
+"Go to cell" selects the offending cell, so it is not called a fix. Two
+conventional names are allowed although they are not verbs: `New table`, the
+"New <thing>" command every editor offers, and `Settings`, the entry named for
+what it opens. A dialog is titled for what it holds while the command that
+opens it stays a verb: the `Change layout` command opens the `Layout` dialog.
+
+**Descriptions.** The line under a label, in a menu, a choice list, or a
+dialog field, is a fragment or noun phrase of roughly 45 characters or fewer:
+"Tab-separated, pastes into spreadsheets". It carries no full stop.
+
+**Disabled reasons.** One or two sentences. The first states what blocks the
+action; when the user can change that, the second says how: "Four views is
+the maximum. Close one to add another." A block the user cannot lift is
+stated alone: "At least one view must stay open."
+
+**Contractions.** Descriptions, notices, errors, and disabled reasons use
+contractions ("can't", "isn't", "doesn't"), because they are read as speech.
+Labels, buttons, and titles never do.
+
+**Vocabulary.** Copy names each concept once, with the interface names in
+`CONTEXT.md`: a string value is **text**, a view that shows the table as text
+is a **source view**, a draft is **unfinished edits**, the rendered preview
+produces a **formatted table**, the ranges a source editor gathers are
+**matches**, and structural assistance is **Smart editing**. "Header" stays
+the word in sentences. A choice that cannot be taken says `Unavailable`;
+"blocked" is kept for a browser that refused a permission, such as the
+clipboard.
+
+**Accessible names.** They get the same review as visible copy. A name that
+pairs a command family with its target reads "Family: target", as in
+"Pane actions: Markdown", and one copy function builds it. Positions use what
+the grid shows: row numbers and column letters, "Row 2, column A". A shortcut
+named inside a sentence is spoken through the platform key helper in
+`packages/ui` (`spokenShortcut`), never written as the placeholder `Mod`. The
+spoken key names themselves ("Command", "Option", "Up arrow") are platform
+vocabulary that `packages/ui` owns, not product copy.
+
+**Composition.** A component never appends punctuation, a space, or another
+string to a copy value to finish a sentence or a name. When a string needs a
+variable part or its closing stop, the copy function returns the whole string.
+Placing a separate element beside a label, such as a link after "Made by", is
+layout and not composition.
 
 A notice is read at a glance while the user is doing something else, so it says
 the least that still helps: what happened, and the recovery only when there is
 one. Its action label is one short verb phrase, "Use as data" rather than "Use
 it as data instead". Do not restate in the message what the interface already
-shows, and do not name the product inside its own notice.
+shows, and do not name the product inside its own notice. The message carries
+what happened and what to do; a consequence that holds for every case, such as
+"Your table is unchanged." after any refused import, goes on the notice's
+detail line instead of being repeated in each message.
 
 Prose names an alternative with the word "or", never a slash: a slash between
 two options reads as a fraction and is spoken as one by a screen reader. A
@@ -1615,7 +1668,7 @@ platform has, as §3 requires.
 
 Terminal punctuation follows a structural split:
 
-- **No full stop** on labels, fragments, and single noun phrases: view descriptions, layout descriptions, menu option descriptions, hints, and short confirmations.
+- **No full stop** on labels, fragments, and single noun phrases: view descriptions, layout descriptions, menu option descriptions, dialog hints, and short confirmations.
 - **Full stop** on complete sentences, and on any string of more than one sentence: multi-sentence error and recovery copy. Disabled reasons keep their stop because they are read aloud from tooltips and require a prosodic pause.
 
 Never use the Unicode em dash character (U+2014) in product copy, metadata,
@@ -1693,7 +1746,7 @@ Right-click, the Menu key, and `Shift`+`F10` are one request, so the grid and
 every source view answer all three with their own menu, and a keyboard user
 reaches it exactly as a pointer user does. The source view's menu offers only
 commands its keymap already binds, each with that shortcut: Cut, Copy, Paste,
-Undo, Redo, Select all, and Select next occurrence. `Shift`+right-click in a
+Undo, Redo, Select all, and Select next match. `Shift`+right-click in a
 source view is left to the browser, because inside a text surface the browser's
 menu holds things worth keeping: spelling suggestions, look up, its text
 actions. The grid takes the gesture outright, since a cell offers the browser
@@ -1843,12 +1896,12 @@ changes nothing.
 **A series is a second command, never a reading of the first** (#204). A fill repeats
 what was selected and stops there. When the repeated cells were a single row or
 column of at least two cells that already held numbers, separated by one
-constant step, the fill leaves behind an offer: an info notice carrying `Fill
-series` and `Keep copied values`. It says what a series would do and does
+constant step, the fill leaves behind an offer: an info notice carrying
+`Continue series` and `Keep repeated`. It says what a series would do and does
 nothing until the user picks one. Choosing the series is a second document
 operation and therefore a second undo step, so undo returns the copied result
 before it returns the table the fill replaced. Dismissing it, answering `Keep
-copied values`, or any change to the document clears it, and it is never
+repeated`, or any change to the document clears it, and it is never
 persisted, never history, and never document state.
 
 The offer is a notice rather than a dialog because the fill already did what it

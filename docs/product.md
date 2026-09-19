@@ -181,6 +181,7 @@ reversible implementation choice does not belong here.
 | Decision | Current outcome | Recorded in | Decided on |
 | :--- | :--- | :--- | :--- |
 | Notices | A fixed overlay, never layout content | design system §5 | #44 |
+| Copy rules and vocabulary | Text, source view, unfinished edits, formatted table, match, Smart editing; `New table` and `Settings` allowed; contractions outside labels; disabled reasons say how to unblock | design system §8, `CONTEXT.md` | #78 |
 | Active pane | A non-layout-shifting boundary | design system §5 | #64 |
 | Destructive contrast | The token and the variant both own the correction | design system §2 | #109 |
 | Precondition correction | Lead the user to the first offending cell when possible | design system §4 | #146 |
