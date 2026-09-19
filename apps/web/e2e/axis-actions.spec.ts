@@ -25,7 +25,10 @@ test("a row number and a column letter are the only control on their cell", asyn
 		await expect(tabelo.rowIndex(row).getByRole("button")).toHaveCount(1);
 		await expect(
 			tabelo.rowIndex(row).getByRole("button", {
-				name: new RegExp(`^${copy.actions.selectRow}:`),
+				name:
+					row === 1
+						? copy.a11y.selectHeaderRow
+						: new RegExp(`^${copy.actions.selectRow}:`),
 			}),
 		).toHaveCount(1);
 	}

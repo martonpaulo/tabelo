@@ -126,7 +126,7 @@ export const Pane = memo(function Pane({
 				ref={ref}
 				data-pane-id={pane.id}
 				aria-current={active ? "true" : undefined}
-				aria-label={copy.a11y.pane(view.label)}
+				aria-label={copy.workspace.pane(view.label)}
 				aria-description={entered ? undefined : copy.a11y.paneInteractHint}
 				style={stacked ? undefined : { gridArea: gridAreaStyle(pane.slots) }}
 				data-pane-active={active && showActiveIndicator ? "true" : undefined}
@@ -269,7 +269,9 @@ function SplitControl({
 					: "absolute top-0 right-0 z-20 h-full w-2",
 			)}
 		>
-			<ControlTooltip name={copy.a11y.addViewAt(edge, copy.a11y.pane(view))}>
+			<ControlTooltip
+				name={copy.a11y.addViewAt(edge, copy.workspace.pane(view))}
+			>
 				<button
 					type="button"
 					onClick={onSplit}

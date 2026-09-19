@@ -27,7 +27,7 @@ import { SelectionOptionContent } from "@/ui/primitives/selection-option";
 // `.txt`, so the last segment is what a reader recognises, once.
 const importExtensions = [
 	...new Set(
-		listCodecs().map((codec) => `.${codec.extension.split(".").at(-1)}`),
+		listCodecs().map((codec) => codec.extension.split(".").at(-1) ?? ""),
 	),
 ];
 
@@ -104,7 +104,7 @@ export function EmptyState({
 					{copy.empty.title}
 				</h2>
 				<p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-					{copy.empty.intro}.
+					{copy.empty.intro}
 				</p>
 				<div className="mt-6 flex flex-col gap-2">
 					<Option
@@ -117,7 +117,7 @@ export function EmptyState({
 					/>
 					<Option
 						icon={IconClipboard}
-						label={copy.empty.pasteHint}
+						label={copy.empty.pasteAction}
 						detail={copy.empty.pasteDetail}
 						shortcut={{ keys: "Meta+V Control+V", shown: modShortcut("V") }}
 						onClick={() => {

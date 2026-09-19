@@ -115,10 +115,16 @@ function menuLabel(
 	expectedType?: ExpectedColumnType,
 ): string | undefined {
 	if (target.axis === "column") {
-		return `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType(header, target.index, expectedType ?? "text")}`;
+		return copy.actions.columnActionsFor(
+			copy.a11y.columnWithExpectedType(
+				header,
+				target.index,
+				expectedType ?? "text",
+			),
+		);
 	}
 	if (target.axis === "row") {
-		return `${copy.actions.rowActions}: ${copy.a11y.rowNumber(target.index)}`;
+		return copy.actions.rowActionsFor(copy.a11y.rowNumber(target.index));
 	}
 	return undefined;
 }

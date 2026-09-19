@@ -57,7 +57,6 @@ export function ChangeViewDialog({
 			}}
 		>
 			<DialogContent
-				showCloseButton={false}
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
 				className={singleSelectionDialogContentStyles}

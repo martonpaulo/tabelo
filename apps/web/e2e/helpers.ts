@@ -260,7 +260,7 @@ export class TabeloPage {
 
 	pane(view: ViewId): Locator {
 		return this.page.getByRole("region", {
-			name: copy.a11y.pane(getView(view).label),
+			name: copy.workspace.pane(getView(view).label),
 		});
 	}
 
@@ -359,7 +359,7 @@ export class TabeloPage {
 				break;
 			}
 			await dialog
-				.getByRole("button", { name: copy.addView.confirm, exact: true })
+				.getByRole("button", { name: copy.workspace.addView, exact: true })
 				.click();
 			await dialog.waitFor({ state: "hidden" });
 		}
@@ -465,7 +465,7 @@ export class TabeloPage {
 	async openLayoutDialog(): Promise<Locator> {
 		const menu = await this.openAppMenu();
 		await this.page
-			.getByRole("menuitem", { name: copy.workspace.layout })
+			.getByRole("menuitem", { name: copy.workspace.changeLayout })
 			.click();
 		await menu.waitFor({ state: "hidden" });
 		const dialog = this.page.getByRole("dialog", {
@@ -518,7 +518,7 @@ export class TabeloPage {
 	// direction, because that pair is the whole content of the choice.
 	splitControl(view: ViewId, edge: "bottom" | "right", index = 0): Locator {
 		return this.paneAt(view, index).getByRole("button", {
-			name: copy.a11y.addViewAt(edge, copy.a11y.pane(getView(view).label)),
+			name: copy.a11y.addViewAt(edge, copy.workspace.pane(getView(view).label)),
 		});
 	}
 
@@ -533,7 +533,7 @@ export class TabeloPage {
 		const dialog = this.page.getByRole("dialog");
 		await dialog.getByRole("radio", { name: getView(nextView).label }).click();
 		await dialog
-			.getByRole("button", { name: copy.addView.confirm, exact: true })
+			.getByRole("button", { name: copy.workspace.addView, exact: true })
 			.click();
 		await dialog.waitFor({ state: "hidden" });
 	}
@@ -565,7 +565,7 @@ export class TabeloPage {
 	async restoreDefaultArrangement(): Promise<void> {
 		await this.showInSourcePane("markdown");
 		const leading = await this.panes().first().getAttribute("aria-label");
-		if (leading === copy.a11y.pane(getView("grid").label)) return;
+		if (leading === copy.workspace.pane(getView("grid").label)) return;
 		const dialog = await this.openMovePaneDialog("grid");
 		// Two panes leave exactly one destination: the other pane's position.
 		await dialog.getByRole("radio").first().click();

@@ -25,7 +25,7 @@ export function NewTableDialog({
 }: NewTableDialogProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent showCloseButton={false}>
+			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>{copy.newTable.title}</DialogTitle>
 					<DialogDescription>{copy.newTable.description}</DialogDescription>

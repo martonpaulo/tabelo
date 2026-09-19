@@ -50,7 +50,6 @@ export function LayoutDialog({
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
-				showCloseButton={false}
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
 				className={singleSelectionDialogContentStyles}

@@ -84,7 +84,6 @@ export function AddViewDialog({
 			}}
 		>
 			<DialogContent
-				showCloseButton={false}
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
 				className={singleSelectionDialogContentStyles}
@@ -95,7 +94,7 @@ export function AddViewDialog({
 						{option && splitPane
 							? copy.addView.hint(
 									option.edge,
-									copy.a11y.pane(getView(splitPane.view).label),
+									copy.workspace.pane(getView(splitPane.view).label),
 								)
 							: null}
 					</DialogDescription>
@@ -131,7 +130,7 @@ export function AddViewDialog({
 						}
 						onClick={add}
 					>
-						{copy.addView.confirm}
+						{copy.workspace.addView}
 					</DialogConfirm>
 				</DialogActions>
 			</DialogContent>

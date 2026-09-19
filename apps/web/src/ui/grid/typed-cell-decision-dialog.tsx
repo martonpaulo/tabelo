@@ -62,7 +62,6 @@ export function TypedCellDecisionDialog({
 			onOpenChangeComplete={onOpenChangeComplete}
 		>
 			<DialogContent
-				showCloseButton={false}
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
 				finalFocus={finalFocus}
@@ -98,7 +97,7 @@ export function TypedCellDecisionDialog({
 					<DialogConfirm type="button" onClick={lossy ? onConvert : onKeepText}>
 						{lossy
 							? copy.typedEditing.convertTo(decision.expectedType)
-							: copy.typedEditing.changeToText}
+							: copy.typedEditing.keepAsText}
 					</DialogConfirm>
 				</DialogActions>
 			</DialogContent>

@@ -50,7 +50,7 @@ export function preconditionRecovery(
 
 	const reason = copy.disabled.codecPrecondition(failure);
 	return {
-		label: copy.actions.fixTable,
+		label: copy.actions.goToCell,
 		reason,
 		target,
 		run: () => {

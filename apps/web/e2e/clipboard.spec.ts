@@ -79,7 +79,7 @@ test("a browser without the clipboard API still explains the failure", async ({
 	await page.reload();
 	await expect(page.locator("main")).toBeVisible();
 
-	await page.getByRole("button", { name: copy.empty.pasteHint }).click();
+	await page.getByRole("button", { name: copy.empty.pasteAction }).click();
 
 	await expect(tabelo.notice().filter({ hasText: readRecovery })).toBeVisible();
 });
@@ -92,7 +92,7 @@ test("an empty clipboard says so rather than claiming it was blocked", async ({
 	await page.reload();
 	await expect(page.locator("main")).toBeVisible();
 
-	await page.getByRole("button", { name: copy.empty.pasteHint }).click();
+	await page.getByRole("button", { name: copy.empty.pasteAction }).click();
 
 	await expect(
 		tabelo.notice().filter({ hasText: copy.notices.clipboardEmpty }),

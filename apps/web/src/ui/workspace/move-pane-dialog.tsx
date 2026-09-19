@@ -68,7 +68,6 @@ export function MovePaneDialog({
 			}}
 		>
 			<DialogContent
-				showCloseButton={false}
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
 				className={singleSelectionDialogContentStyles}

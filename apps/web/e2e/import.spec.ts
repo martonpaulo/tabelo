@@ -165,7 +165,7 @@ async function paneLabels(tabelo: TabeloPage): Promise<(string | null)[]> {
 }
 
 function paneLabel(view: ViewId): string {
-	return copy.a11y.pane(getView(view).label);
+	return copy.workspace.pane(getView(view).label);
 }
 
 test("a first Jira paste opens the Jira source before the grid", async ({

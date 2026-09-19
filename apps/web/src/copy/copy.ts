@@ -1,10 +1,15 @@
 import { modShortcut } from "@tabelo/ui/lib/platform";
+import { spokenShortcut } from "@tabelo/ui/lib/shortcut";
 import type { CopyScope } from "@/clipboard/serialize";
 import { product } from "@/copy/product";
 import { columnLetter } from "@/core/column-letter";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import type { FillSeriesRefusal } from "@/core/series";
-import type { CellValueType, ExpectedColumnType } from "@/core/types";
+import type {
+	CellValue,
+	CellValueType,
+	ExpectedColumnType,
+} from "@/core/types";
 import type {
 	EscapeMatch,
 	OutputOptionId,
@@ -20,7 +25,32 @@ import type { PanePositionId, SplitEdge } from "@/workspace/layout";
 
 // Named once because it is both the visible label of the recovery command and
 // the opening of the accessible name that says which refusal it belongs to.
-const FIX_TABLE = "Fix table";
+// The command selects the offending cell, so it is named for where it goes.
+const GO_TO_CELL = "Go to cell";
+
+// Menu names that open with the command family and end with what it acts on.
+// Each is named once so the family and its per-target names cannot drift.
+const PANE_ACTIONS = "Pane actions";
+const ROW_ACTIONS = "Row actions";
+const COLUMN_ACTIONS = "Column actions";
+const SELECT_ROW = "Select row";
+const SELECT_COLUMN = "Select column";
+
+// A file ending as a reader sees it, with its leading dot.
+function fileExtension(extension: string): string {
+	return `.${extension}`;
+}
+
+function plural(count: number, one: string, many: string): string {
+	return `${count} ${count === 1 ? one : many}`;
+}
+
+// A cell value shown the way a person could tell values apart: text in
+// quotes, so an empty cell reads as "" and the number 35 is not taken for the
+// text "35"; null, numbers, and booleans as they are.
+function shownValue(value: CellValue): string {
+	return typeof value === "string" ? JSON.stringify(value) : String(value);
+}
 
 // What an escape sequence resolves to, named rather than shown: the character
 // is the one thing the source view cannot draw there, which is why the sequence
@@ -50,7 +80,8 @@ function escapeTarget(decoded: string): string {
 }
 
 const cellTypeLabels = {
-	string: "String",
+	// A string is called text wherever a person reads it (CONTEXT.md).
+	string: "Text",
 	number: "Number",
 	boolean: "Boolean",
 	null: "Null",
@@ -66,27 +97,27 @@ const views = {
 	grid: {
 		label: "Visual table",
 		shortLabel: "Table",
-		description: "Edit cells, rows, and columns directly",
+		description: "Cells you edit directly",
 	},
 	markdown: {
 		label: "Markdown",
 		shortLabel: "Markdown",
-		description: "A Markdown table, alignment included",
+		description: "For READMEs and docs, alignment included",
 	},
 	csv: {
 		label: "CSV",
 		shortLabel: "CSV",
-		description: "Comma-separated values",
+		description: "Comma-separated, for data tools",
 	},
 	tsv: {
 		label: "TSV",
 		shortLabel: "TSV",
-		description: "Tab-separated values, what spreadsheets paste",
+		description: "Tab-separated, pastes into spreadsheets",
 	},
 	html: {
 		label: "HTML source",
 		shortLabel: "HTML",
-		description: "A table element you can paste into a page",
+		description: "A table element for web pages",
 	},
 	jira: {
 		label: "Jira",
@@ -96,18 +127,17 @@ const views = {
 	json: {
 		label: "JSON",
 		shortLabel: "JSON",
-		description: "An array of rows, each one keyed by the headers",
+		description: "An array of objects keyed by column name",
 	},
 	records: {
 		label: "Records",
 		shortLabel: "Records",
-		description: "Each row as a titled block of bullets",
+		description: "One titled bullet list per row",
 	},
 	"html-preview": {
 		label: "Rendered preview",
 		shortLabel: "Preview",
-		description:
-			"A formatted table for pasting into Microsoft Word, Microsoft Teams, Slack, Google Docs, Gmail, and similar rich-text apps",
+		description: "A formatted table for Word, Google Docs, Slack, and email",
 	},
 } as const;
 
@@ -162,7 +192,7 @@ function preconditionMessage(failure: PreconditionFailure): string {
 		);
 	}
 	const subject = locations.length ? ` ${joinedPositions(locations)}` : "";
-	return `This view cannot represent${subject}. Correct the table to use this view.`;
+	return `This view can't represent${subject}. Correct the table to use this view.`;
 }
 
 export const copy = {
@@ -212,49 +242,46 @@ export const copy = {
 
 	newTable: {
 		title: "Start a new table?",
-		description:
-			"This clears the current table and any unfinished source edits.",
+		description: "This clears the current table and any unfinished edits.",
 		confirm: "Start new table",
 	},
 
 	headerImport: {
-		title: "Does row 1 contain headers?",
-		description:
-			"Choose whether row 1 names the columns or stays as the first data row.",
-		asData: "Keep row 1 as data",
-		asHeaders: "Use row 1 as headers",
+		title: "Is row 1 a header row?",
+		description: "Row 1 can hold column names or be the first data row.",
+		asData: "Keep as data",
+		asHeaders: "Use as header row",
 	},
 
 	appUpdate: {
 		label: "Reload to update",
-		description: "A new version of Tabelo is ready",
+		description: "A new version is ready",
 	},
 
 	settings: {
 		title: "Settings",
 		description:
-			"Text views can mark characters you can't see. The table itself never changes.",
+			"Mark invisible characters in source views. Your table doesn't change.",
 		done: "Done",
 		reset: "Reset to defaults",
 		previewLabel: "Preview",
-		preview: "Preview of a text view with the chosen marks",
+		preview: "Preview of a source view with the chosen marks",
 		indicators: {
-			label: "Show in text views",
+			label: "Show in source views",
 		},
 		spaceIndicators: {
 			label: "Spaces",
 			options: {
-				none: { label: "Never", description: "No space is marked." },
+				none: { label: "Never", description: "Spaces aren't marked" },
 				boundary: {
 					label: "Around values",
-					description: "Runs of spaces, and spaces at the edges of a value.",
+					description: "Runs of spaces, and spaces at a value's edges",
 				},
 				trailing: {
-					label: "Line ends",
-					description:
-						"Spaces at the end of a line, the ones nobody meant to type.",
+					label: "At line ends",
+					description: "Spaces at the end of a line",
 				},
-				all: { label: "Always", description: "Every space in the text." },
+				all: { label: "Always", description: "Every space" },
 			},
 		},
 		tabIndicators: {
@@ -266,27 +293,35 @@ export const copy = {
 			description: "A word where a field holds nothing",
 		},
 		saveError:
-			"Settings could not be saved. Allow browser storage or free some space, then try again.",
+			"Settings couldn't be saved. Allow browser storage or free some space, then try again.",
 	},
 
 	workspace: {
+		// The dialog is titled for what it holds; the command that opens it is a
+		// verb like every other command.
 		layout: "Layout",
+		changeLayout: "Change layout",
 		layoutHint: "Choose how the open views are arranged",
 		applyLayout: "Apply layout",
 		changeView: "Change view",
 		changeViewHint: (label: string) =>
-			`Choose the view shown in the ${label} pane.`,
+			`Choose the view shown in the ${label} pane`,
 		movePane: "Move pane",
-		movePaneHint: (label: string) => `Choose where to move the ${label} pane.`,
+		movePaneHint: (label: string) => `Choose where to move the ${label} pane`,
 		moveDestination: "Pane position",
 		destinationView: (label: string) => `Currently ${label}`,
 		addView: "Add view",
 		closeView: "Close view",
-		paneActions: "Pane actions",
-		readOnly: "Read only",
-		activePane: "Active pane",
-		resizeColumns: "Resize columns",
-		resizeRows: "Resize rows",
+		paneActions: PANE_ACTIONS,
+		paneActionsFor: (label: string) => `${PANE_ACTIONS}: ${label}`,
+		// A pane named by the view it shows, on screen and to assistive
+		// technology alike.
+		pane: (label: string) => `${label} pane`,
+		readOnly: "Read-only",
+		// The splitters move panes, not table columns or rows, so their names
+		// say so while still telling the two directions apart.
+		resizeColumns: "Resize side-by-side panes",
+		resizeRows: "Resize stacked panes",
 		zoom: (percent: number) => `Zoom ${percent}%`,
 		zoomPercent: (percent: number) => `${percent}%`,
 		zoomLabel: "Zoom",
@@ -297,8 +332,9 @@ export const copy = {
 		resetZoom: "Reset zoom",
 		wrapSource: "Wrap lines",
 		wrapAllColumns: "Wrap all columns",
-		// The checked escape mode for a format's structural assistance (#297).
-		structuralAssistance: "Structural assistance",
+		// The checked escape mode for a format's structural assistance (#297),
+		// called smart editing wherever a person reads it (CONTEXT.md).
+		structuralAssistance: "Smart editing",
 		// Both halves of one piece of feedback: the pane header shows this and
 		// the polite live region speaks it. How many occurrences the user has
 		// gathered, out of how many the source holds.
@@ -339,9 +375,8 @@ export const copy = {
 	},
 
 	disabled: {
-		inUseStatus: "In use",
-		unavailableStatus: "Blocked",
-		viewAlreadyOpen: (label: string) => `${label} is already open.`,
+		viewAlreadyOpen: (label: string) =>
+			`${label} is already open in another pane.`,
 		chooseAvailableView: "Choose an available view first.",
 		layoutAlreadyApplied: "This layout is already applied.",
 		layoutOnlyArrangement:
@@ -353,21 +388,20 @@ export const copy = {
 		closeOnlyView: "At least one view must stay open.",
 		moveOnlyView: "Add another view before moving this pane.",
 		chooseMoveDestination: "Choose an available pane position first.",
-		addViewMaximum: "The maximum is four views.",
+		addViewMaximum: "Four views is the maximum. Close one to add another.",
 		addViewNarrow: "A narrow window holds two views. Widen it to add another.",
-		undo: "There is nothing to undo.",
-		redo: "There is nothing to redo.",
+		undo: "Nothing to undo.",
+		redo: "Nothing to redo.",
 		sourceNothingSelected: "Select some text first.",
 		sourceReadOnly: "This view is read-only.",
-		noOccurrence: "Select text first. The next match of it is added.",
 		fitWrappedColumn: "Turn off Wrap text to fit this column.",
 		columnAlreadyFitted: "This column already fits its content.",
-		columnFitUnavailable: "This column cannot be measured right now.",
+		columnFitUnavailable: "This column can't be measured right now.",
 		firstRow: "The selected row is already first.",
 		lastRow: "The selected row is already last.",
 		firstColumn: "The selected column is already first.",
 		lastColumn: "The selected column is already last.",
-		sortSingleRow: "A table needs at least two rows to sort.",
+		sortSingleRow: "Sorting needs at least two rows. Add a row first.",
 		lastRemainingRow: "A table must keep at least one row.",
 		lastRemainingColumn: "A table must keep at least one column.",
 		headerRowRequired: "Every table keeps its header row.",
@@ -390,7 +424,7 @@ export const copy = {
 		// they say the same thing rather than inventing two wordings for it.
 		noMatchingCell: "No cell holds that text.",
 		cellTypeConversion: (label: string) =>
-			`This value cannot be converted to ${label.toLowerCase()}.`,
+			`This value can't be converted to ${label.toLowerCase()}.`,
 		updateInProgress: "The update is already being applied.",
 		codecPrecondition: (failure: PreconditionFailure) =>
 			preconditionMessage(failure),
@@ -432,14 +466,14 @@ export const copy = {
 						"A Jira table starts with a header row using || around each cell.";
 					break;
 				case "html-unavailable":
-					message = "HTML cannot be read in this environment.";
+					message = "HTML can't be read in this environment.";
 					break;
 				case "html-table-required":
 					message =
 						"No <table> found yet. A table needs rows of <th> or <td> cells.";
 					break;
 				case "json-invalid":
-					message = "This is not valid JSON yet.";
+					message = "This isn't valid JSON yet.";
 					break;
 				case "json-rows-required":
 					message = "JSON must be a non-empty array of rows.";
@@ -455,19 +489,19 @@ export const copy = {
 						"Every JSON cell must be a string, number, boolean, or null.";
 					break;
 				case "delimited-unclosed-quote":
-					message = "A quoted field is not closed.";
+					message = "A quoted field isn't closed.";
 					break;
 				case "delimited-invalid-quote":
 					message = "A quoted field contains an unexpected quote.";
 					break;
 				case "delimited-delimiter-undetected":
-					message = "The column separator could not be detected.";
+					message = "The column separator couldn't be detected.";
 					break;
 				case "delimited-field-count":
 					message = "This row has a different number of fields.";
 					break;
 				case "delimited-parse-error":
-					message = "This source could not be read yet.";
+					message = "This text couldn't be read yet.";
 					break;
 				case "records-title-required":
 					message = "Each record starts with a title line like Header: Value.";
@@ -482,7 +516,7 @@ export const copy = {
 					break;
 				case "records-unknown-column":
 					message =
-						"This bullet's header does not match a column from the first record.";
+						"This bullet's header doesn't match a column from the first record.";
 					break;
 			}
 			return issue.line === undefined
@@ -492,9 +526,9 @@ export const copy = {
 	},
 
 	actions: {
-		openAppMenu: "Open Tabelo menu",
-		openAppMenuWithUpdate: "Open Tabelo menu, update available",
-		github: "View on GitHub",
+		openAppMenu: "Tabelo menu",
+		openAppMenuWithUpdate: "Tabelo menu, update available",
+		github: product.sourceLabel,
 		dismiss: "Dismiss",
 		undo: "Undo",
 		redo: "Redo",
@@ -549,11 +583,13 @@ export const copy = {
 		paste: "Paste",
 		// Source-view text commands, offered by its context menu (#234).
 		selectAllText: "Select all",
-		selectNextOccurrence: "Select next occurrence",
-		rowActions: "Row actions",
-		columnActions: "Column actions",
+		selectNextOccurrence: "Select next match",
+		rowActions: ROW_ACTIONS,
+		rowActionsFor: (row: string) => `${ROW_ACTIONS}: ${row}`,
+		columnActions: COLUMN_ACTIONS,
+		columnActionsFor: (column: string) => `${COLUMN_ACTIONS}: ${column}`,
 		copySource: "Copy source",
-		copyFormattedTable: "Copy rich-text table",
+		copyFormattedTable: "Copy formatted table",
 		// The document as a chosen format, whatever the workspace happens to be
 		// showing. Distinct from Copy source, which copies the pane in front of
 		// the user, draft and all.
@@ -564,8 +600,8 @@ export const copy = {
 		renameTable: "Rename table",
 		importFile: "Import file",
 		newTable: "New table",
-		selectRow: "Select row",
-		selectColumn: "Select column",
+		selectRow: SELECT_ROW,
+		selectColumn: SELECT_COLUMN,
 		fitColumnToContent: "Fit column to content",
 		setColumnWidth: "Set column width",
 		wrapColumnText: "Wrap text",
@@ -576,8 +612,8 @@ export const copy = {
 		pinFirstColumn: "Keep this column visible",
 		editHeader: "Rename column",
 		// The command that sits beside a choice its codec has refused. The
-		// refusal already says what is wrong; this takes the user to it.
-		fixTable: FIX_TABLE,
+		// refusal already says what is wrong; this takes the user to the cell.
+		goToCell: GO_TO_CELL,
 	},
 
 	typedEditing: {
@@ -587,38 +623,40 @@ export const copy = {
 			input: string,
 			converted: string,
 		) =>
-			`${JSON.stringify(input)} is valid ${expectedColumnTypeLabels[type].toLowerCase()} input. Converting it stores ${JSON.stringify(converted)}; keeping it as text preserves the exact entry.`,
-		invalidTitle: "Value does not match the column type",
+			`${JSON.stringify(input)} is valid ${expectedColumnTypeLabels[type].toLowerCase()} input and converts to ${JSON.stringify(converted)}. Keep it as text to store exactly what you typed.`,
+		invalidTitle: "Value doesn't match the expected type",
 		invalidDescription: (type: ExpectedColumnType, input: string) =>
-			`${JSON.stringify(input)} is not a valid ${expectedColumnTypeLabels[type].toLowerCase()}. Keep editing it or store it as text.`,
+			`${JSON.stringify(input)} isn't a valid ${expectedColumnTypeLabels[type].toLowerCase()}. Keep editing it or keep it as text.`,
 		keepEditing: "Keep editing",
 		keepAsText: "Keep as text",
-		changeToText: "Change to text",
 		convertTo: (type: ExpectedColumnType) =>
-			`Convert to ${expectedColumnTypeLabels[type]}`,
+			`Convert to ${expectedColumnTypeLabels[type].toLowerCase()}`,
 	},
 
 	tableName: {
 		label: "Table name",
-		dialogTitle: "Rename table",
-		description: "Choose the name used for this table and its downloads",
+		description: "Used for downloads and the browser tab",
 		confirm: "Rename",
 		empty: "Enter a table name.",
 		tooLong: "Use 120 characters or fewer.",
 		unchanged: "Enter a different table name.",
-		saveError: "The table name could not be saved. Try again.",
+		saveError: "The table name couldn't be saved. Try again.",
 	},
 
 	// Confirming a Cell type change that replaces a value (#371). Values are
-	// shown the way a person could tell them apart: text in quotes, so an empty
-	// cell reads as "" and the number 35 is not mistaken for the text "35".
+	// shown by shownValue, so the reader can tell text from other types.
 	cellTypeChange: {
 		title: (label: string) => `Change this cell to ${label.toLowerCase()}?`,
-		fillsEmpty: (after: string) => `The empty cell becomes ${after}.`,
-		losesOriginal: (before: string, after: string, back: string | null) =>
+		fillsEmpty: (after: CellValue) =>
+			`The empty cell becomes ${shownValue(after)}.`,
+		losesOriginal: (
+			before: CellValue,
+			after: CellValue,
+			back: CellValue | null,
+		) =>
 			back === null
-				? `${before} becomes ${after}. Changing the type back cannot bring ${before} back.`
-				: `${before} becomes ${after}. Changing the type back gives ${back}, not ${before}.`,
+				? `${shownValue(before)} becomes ${shownValue(after)}. Changing the type back can't bring ${shownValue(before)} back.`
+				: `${shownValue(before)} becomes ${shownValue(after)}. Changing the type back gives ${shownValue(back)}, not ${shownValue(before)}.`,
 		confirm: "Change type",
 	},
 
@@ -630,9 +668,9 @@ export const copy = {
 		description: (min: number, max: number, fallback: number) =>
 			`A width from ${min} to ${max} rem. The default is ${fallback} rem.`,
 		label: "Width in rem",
-		isDefault: "This is the default width.",
+		// Both the note under the field and the reason Use default is off.
+		atDefault: "This column already has the default width.",
 		useDefault: "Use default",
-		alreadyDefault: "This column already has the default width.",
 		confirm: "Set width",
 		unchanged: "Enter a different width.",
 		notANumber: "Enter a number, for example 12.",
@@ -641,36 +679,34 @@ export const copy = {
 	},
 
 	addView: {
-		title: "Add a view",
+		title: "Add view",
 		// Says where the pane will land, because the control that opened this is
 		// on one particular edge and the answer differs per edge.
 		hint: (edge: SplitEdge, paneLabel: string) =>
 			edge === "bottom"
-				? `The new view opens below the ${paneLabel}.`
-				: `The new view opens to the right of the ${paneLabel}.`,
+				? `The new view opens below the ${paneLabel}`
+				: `The new view opens to the right of the ${paneLabel}`,
 		view: "View",
-		confirm: "Add view",
 	},
 
 	download: {
-		title: "Download table",
-		hint: "Choose a file format",
-		savedAs: "Saved as",
-		downloadAs: (extension: string) => `Download .${extension}`,
+		savesAs: (filename: string) => `Saves as ${filename}`,
+		fileExtension,
+		downloadAs: (extension: string) => `Download ${fileExtension(extension)}`,
 		format: "File format",
 		options: "Options",
 		// Output-only choices, listed by the id the codec declares.
 		option: (id: OutputOptionId) =>
 			id === "includeFirstColumnName"
-				? "Include the first column name"
+				? "Include column name in titles"
 				: "Include empty values",
 		optionHint: (id: OutputOptionId) =>
 			id === "includeFirstColumnName"
-				? 'Each record title is prefixed with it, like "Product: Product A".'
-				: "A field with no value prints an empty bullet instead of being left out.",
+				? 'Each record title starts with it, like "Name: Ingrid"'
+				: "A field with no value prints an empty bullet instead of being left out",
 		invalidDraft:
-			"This source is not valid yet. Download the last valid table or copy the draft.",
-		copyDraft: "Copy the draft",
+			"Your unfinished edits aren't valid yet. The download uses the last valid table.",
+		copyDraft: "Copy source",
 	},
 
 	empty: {
@@ -679,21 +715,23 @@ export const copy = {
 		// Said once, on first sight: what the product is, who made it, and where
 		// its source lives (#362). The same words reach the HTML shell at build
 		// time, so a reader without JavaScript and a search engine see them too.
-		intro: product.description,
+		intro: `${product.description}.`,
 		credit: product.creditLabel,
 		source: product.sourceLabel,
 		emptyAction: "Start with an empty table",
 		emptyDetail: (columns: number) => `${columns} columns, ready to type`,
-		pasteHint: "Paste a table",
-		pasteDetail: "From a spreadsheet, a page, or text",
-		importDetail: (extensions: readonly string[]) => extensions.join(", "),
-		sourceTitle: "Nothing here yet",
-		sourceBody: (label: string) => `Paste ${label} here to create the table.`,
-		previewTitle: "Nothing to read yet",
-		previewBody: "Add a row to the table to see it rendered here.",
+		pasteAction: "Paste a table",
+		pasteDetail: "From a spreadsheet, web page, or text editor",
+		importDetail: (extensions: readonly string[]) =>
+			extensions.map(fileExtension).join(", "),
+		previewTitle: "No rows yet",
+		previewBody: "Add a row to see the formatted table here",
 	},
 
 	status: {
+		// The state a choice carries beside its label when it can't be chosen.
+		inUse: "In use",
+		unavailable: "Unavailable",
 		columnWidth: (column: string, rem: number) =>
 			`Column ${column} width ${Number.parseFloat(rem.toFixed(2))} rem.`,
 		columnWidthMinimum: (column: string) =>
@@ -716,26 +754,29 @@ export const copy = {
 	notices: {
 		pendingPaneAction: (kind: "view" | "close") =>
 			kind === "close"
-				? "This source is not valid yet. Keep editing or discard it to close the view."
-				: "This source is not valid yet. Keep editing or discard it to change views.",
+				? "These edits aren't valid yet. Fix them, or discard them to close the view."
+				: "These edits aren't valid yet. Fix them, or discard them to change views.",
 		discardPaneAction: (kind: "view" | "close") =>
 			kind === "close" ? "Discard and close" : "Discard and change",
+		// The message says what went wrong and what to do; the detail line
+		// says what did not happen, the same for every refusal.
 		importError: (error: ImportError) => {
 			switch (error.code) {
 				case "invalid-format":
-					return `Not valid ${views[error.format].shortLabel}. Your table is unchanged.`;
+					return `Not valid ${views[error.format].shortLabel}.`;
 				case "too-many-rows":
-					return `${error.actual} rows, over the ${error.limit} limit. Remove rows and try again. Your table is unchanged.`;
+					return `${error.actual} rows, over the ${error.limit} limit. Remove rows and try again.`;
 				case "too-many-columns":
-					return `${error.actual} columns, over the ${error.limit} limit. Remove columns and try again. Your table is unchanged.`;
+					return `${error.actual} columns, over the ${error.limit} limit. Remove columns and try again.`;
 				case "too-many-cells":
-					return `${error.actual} cells, over the ${error.limit} limit. Reduce the table and try again. Your table is unchanged.`;
+					return `${error.actual} cells, over the ${error.limit} limit. Reduce the table and try again.`;
 				case "payload-too-large":
-					return "Over the 1 MB limit. Use less data and try again. Your table is unchanged.";
+					return "Over the 1 MB limit. Use less data and try again.";
 				case "empty":
-					return "Nothing to import. Your table is unchanged.";
+					return "Nothing to import.";
 			}
 		},
+		importUnchanged: "Your table is unchanged.",
 		copied: (scope: CopyScope) =>
 			scope === "source"
 				? "Source copied"
@@ -762,7 +803,6 @@ export const copy = {
 						? `Copy was blocked. Open the format in a pane and use ${modShortcut("C")}.`
 						: `Copy was blocked. Select the cells and use ${modShortcut("C")}.`,
 		clipboardEmpty: "Nothing on the clipboard",
-		imported: "Table imported",
 		storageUnavailable:
 			"Browser storage is unavailable. Download a copy before closing.",
 		storageQuota: "Browser storage is full. Download a copy before closing.",
@@ -772,25 +812,25 @@ export const copy = {
 		// is the saved data as it was found and cannot be imported as a table.
 		savedTableUnreadable: {
 			"future-version":
-				"This table was saved by a newer version of Tabelo and cannot be opened here. The saved data was kept unchanged.",
+				"This table was saved by a newer version and can't be opened here. The saved data is untouched.",
 			"migration-failed":
-				"This table was saved by an older version of Tabelo and could not be updated. The saved data was kept unchanged.",
+				"This table was saved by an older version and couldn't be updated. The saved data is untouched.",
 			"current-schema-invalid":
-				"The saved table is damaged and could not be opened. The saved data was kept unchanged.",
+				"The saved table is damaged and couldn't be opened. The saved data is untouched.",
 			"invalid-json":
-				"The saved table is damaged and could not be read. The saved data was kept unchanged.",
+				"The saved table is damaged and couldn't be read. The saved data is untouched.",
 		},
 		recoveryFileNote:
-			"Download original saves that data as it was found, for recovery by hand; it is not a table to import.",
+			"Download original saves that data exactly as found, for recovery by hand. It isn't a table to import.",
 		storageRecoveryUnavailable: "No recovery copy: storage is unavailable.",
 		storageRecoveryQuota: "No recovery copy: storage is full.",
 		// The fill already happened and the table is correct as it stands. This
 		// offers the other reading of the same selection; it never says the
 		// repeat was a mistake.
 		fillSeriesOffer:
-			"The selected numbers were repeated. Continue them instead?",
-		fillSeries: "Fill series",
-		keepCopiedValues: "Keep copied values",
+			"The selected numbers were repeated. Continue them as a series?",
+		fillSeries: "Continue series",
+		keepCopiedValues: "Keep repeated",
 		fillSeriesUnavailable: (refusal: FillSeriesRefusal) => {
 			switch (refusal) {
 				case "stale":
@@ -808,8 +848,8 @@ export const copy = {
 		downloadOriginal: "Download original",
 		replaceSavedData: "Replace saved data",
 		replacedSavedData: "Saved data replaced. The original was kept.",
-		updateCheckFailed: "Could not check for an update. Try again later.",
-		updateFailed: "Could not update. Reload and try again.",
+		updateCheckFailed: "Couldn't check for an update. Try again later.",
+		updateFailed: "Couldn't update. Reload and try again.",
 	},
 
 	a11y: {
@@ -818,7 +858,6 @@ export const copy = {
 		workspace: "Workspace",
 		notices: "Notices",
 		headerRow: "Row 1",
-		pane: (label: string) => `${label} pane`,
 		paneInteractHint: "Press Enter to interact, Escape to exit.",
 		enteredPane: "Entered pane. Press Escape to exit.",
 		paneAdded: (label: string) => `${label} pane added`,
@@ -829,6 +868,9 @@ export const copy = {
 				? `Add a view below the ${paneLabel}`
 				: `Add a view to the right of the ${paneLabel}`,
 		rowNumber: (index: number) => `Row ${index + 2}`,
+		selectHeaderRow: "Select header row",
+		selectRowNamed: (row: string) => `${SELECT_ROW}: ${row}`,
+		selectColumnNamed: (column: string) => `${SELECT_COLUMN}: ${column}`,
 		columnLetter,
 		// Header cells name themselves after what they contain, because that name
 		// is what a screen reader reads out as the context for every cell beneath
@@ -842,29 +884,33 @@ export const copy = {
 			column: number,
 			type: ExpectedColumnType,
 		) =>
-			`${header.trim() === "" ? columnLetter(column) : header}, Expected type ${expectedColumnTypeLabels[type].toLowerCase()}`,
-		realCellType: (type: CellValueType) =>
-			`Type ${cellTypeLabels[type].toLowerCase()}`,
+			`${header.trim() === "" ? columnLetter(column) : header}, expected type ${expectedColumnTypeLabels[type].toLowerCase()}`,
+		// Read after a cell value it qualifies, so it opens with its own comma
+		// and stays lowercase.
+		cellTypeQualifier: (type: CellValueType) =>
+			`, type ${cellTypeLabels[type].toLowerCase()}`,
 		expectedColumnType: (type: ExpectedColumnType) =>
 			`Expected type ${expectedColumnTypeLabels[type].toLowerCase()}`,
 		// The editor that opens inside a cell is a control, not a cell, so it
 		// names itself by position rather than borrowing the cell's value.
+		// Columns go by the letters of the index strip, as everywhere else.
 		cellEditor: (row: number, column: number) =>
-			`Row ${row + 2}, column ${column + 1}`,
+			`Row ${row + 2}, column ${columnLetter(column)}`,
+		cellEditorWithType: (row: number, column: number, type: CellValueType) =>
+			`Row ${row + 2}, column ${columnLetter(column)}, type ${cellTypeLabels[type].toLowerCase()}`,
 		headerEditor: (header: string, column: number) =>
 			`Rename ${header.trim() === "" ? `column ${columnLetter(column)}` : header}`,
 		// A list can refuse more than one choice at a time, and every recovery
-		// command in it reads "Fix table". The refused choice is what tells them
-		// apart, so it opens the accessible name while the visible label stays
-		// inside it.
-		fixTableFor: (label: string) => `${FIX_TABLE} for ${label}`,
+		// command in it reads "Go to cell". The refused choice is what tells them
+		// apart, so it ends the accessible name while the visible label opens it.
+		goToCellFor: (label: string) => `${GO_TO_CELL} for ${label}`,
 		sourceEditor: (format: string) => `${format} source`,
-		preview: "Rendered table preview",
-		blockedView: "Blocked view reason",
+		preview: "Formatted table",
+		blockedView: "Why this view is unavailable",
 		selectionSummary: (rows: number, columns: number) =>
 			rows === 1 && columns === 1
 				? "1 cell selected"
-				: `${rows} × ${columns} cells selected`,
+				: `${plural(rows, "row", "rows")} by ${plural(columns, "column", "columns")} selected`,
 		// A selection holding several separate areas has no single extent to
 		// read out, so the summary states the total instead: how many columns,
 		// how many rows, or how many areas when the areas are not one shape.
@@ -877,8 +923,8 @@ export const copy = {
 			return `${total} ${noun}${total === 1 ? "" : "s"} selected`;
 		},
 		fillHandle: "Fill selected cells",
-		fillHandleHint:
-			"Drag to repeat the selection, or use Mod+Alt with an arrow key.",
+		// Spoken, so the chord is named the way the user's keyboard names it.
+		fillHandleHint: `Drag to repeat the selection, or press ${spokenShortcut("Mod+Alt")} with an arrow key.`,
 	},
 
 	shortcuts: {
@@ -907,10 +953,6 @@ export const copy = {
 		resetZoom: "Mod+Alt+0",
 		zoomIn: "Mod+Alt++",
 		editHeader: "F2",
-		// The keyboard equal of a modifier click. Ctrl is the modifier that
-		// reaches the page on every platform: macOS keeps Cmd+Space for itself.
-		toggleColumn: "Ctrl+Space",
-		toggleRow: "Ctrl+Shift+Space",
 		// Named arrow keys rather than bare glyphs: the legend renders the same
 		// arrow either way, and only the named form carries a spoken label.
 		fillUp: "Mod+Alt+ArrowUp",

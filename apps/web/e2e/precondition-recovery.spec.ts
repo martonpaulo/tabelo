@@ -19,7 +19,7 @@ async function nameColumns(
 }
 
 function fixTable(scope: Locator, view: string): Locator {
-	return scope.getByRole("button", { name: copy.a11y.fixTableFor(view) });
+	return scope.getByRole("button", { name: copy.a11y.goToCellFor(view) });
 }
 
 test("a refused view stays disabled and offers the correction beside it", async ({
@@ -114,7 +114,7 @@ test("a blocked pane offers the correction beside its refused copy command", asy
 
 	await menu
 		.getByRole("menuitem", {
-			name: copy.a11y.fixTableFor(copy.views.json.label),
+			name: copy.a11y.goToCellFor(copy.views.json.label),
 		})
 		.click();
 

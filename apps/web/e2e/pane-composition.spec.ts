@@ -385,7 +385,9 @@ test("Layout is disabled and explained where the pane count has one arrangement"
 	for (const count of [1, 4]) {
 		await tabelo.goToPaneCount(count);
 		const menu = await tabelo.openAppMenu();
-		const command = menu.getByRole("menuitem", { name: copy.workspace.layout });
+		const command = menu.getByRole("menuitem", {
+			name: copy.workspace.changeLayout,
+		});
 		// Fixed rather than hidden: the command keeps its place in the menu and
 		// says why it cannot act.
 		await expect(command).toBeVisible();

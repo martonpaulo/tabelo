@@ -108,7 +108,6 @@ export function ColumnWidthDialog({
 			}}
 		>
 			<DialogContent
-				showCloseButton={false}
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
 				finalFocus={finalFocus}
@@ -154,7 +153,7 @@ export function ColumnWidthDialog({
 							)}
 							role={error ? "alert" : undefined}
 						>
-							{error ?? (isDefault ? copy.columnWidth.isDefault : null)}
+							{error ?? (isDefault ? copy.columnWidth.atDefault : null)}
 						</p>
 					</div>
 
@@ -163,7 +162,7 @@ export function ColumnWidthDialog({
 						<DialogAlternative
 							type="button"
 							disabledReason={
-								isDefault ? copy.columnWidth.alreadyDefault : undefined
+								isDefault ? copy.columnWidth.atDefault : undefined
 							}
 							onClick={() => apply(undefined)}
 						>

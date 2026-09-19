@@ -587,7 +587,7 @@ test("critical document controls remain available at 200% text size", async ({
 	).toBeVisible();
 	const menu = await tabelo.openAppMenu();
 	await expect(
-		menu.getByRole("menuitem", { name: copy.workspace.layout }),
+		menu.getByRole("menuitem", { name: copy.workspace.changeLayout }),
 	).toBeVisible();
 	await expect(tabelo.workspace).toBeVisible();
 	expect(
@@ -718,7 +718,7 @@ test("start actions keep one priority order across widths", async ({
 	// filled, and the other two follow it in reading and focus order.
 	const buttons = [
 		page.getByRole("button", { name: copy.empty.emptyAction }),
-		page.getByRole("button", { name: copy.empty.pasteHint }),
+		page.getByRole("button", { name: copy.empty.pasteAction }),
 		page.getByRole("button", { name: copy.actions.importFile }),
 	] as const;
 

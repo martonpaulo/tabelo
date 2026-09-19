@@ -433,7 +433,7 @@ test("Add view and Download reuse the dialog option anatomy", async ({
 
 	await tabelo.runAppCommand("downloadTable");
 	const downloadDialog = page.getByRole("dialog", {
-		name: copy.download.title,
+		name: copy.actions.downloadTable,
 	});
 	await expectDialogOptionAnatomy(downloadDialog, 7);
 	await expect(

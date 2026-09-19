@@ -24,7 +24,7 @@ test("document actions live in one compact floating menu", async ({
 		menu.getByRole("menuitem", { name: copy.actions.downloadTable }),
 	).toBeVisible();
 	await expect(
-		menu.getByRole("menuitem", { name: copy.workspace.layout }),
+		menu.getByRole("menuitem", { name: copy.workspace.changeLayout }),
 	).toBeVisible();
 	await expect(
 		menu.getByRole("menuitem", { name: copy.workspace.addView }),
@@ -49,7 +49,7 @@ test("global Add view reuses the chooser and picks placement automatically", asy
 
 	const dialog = page.getByRole("dialog", { name: copy.addView.title });
 	await expect(dialog).toBeVisible();
-	await dialog.getByRole("button", { name: copy.addView.confirm }).click();
+	await dialog.getByRole("button", { name: copy.workspace.addView }).click();
 	await expect(dialog).toBeHidden();
 	await expect(tabelo.workspace.getByRole("region")).toHaveCount(3);
 	const grid = await tabelo.paneArea("grid");
@@ -143,7 +143,7 @@ test("pane actions follow content, display, then pane reading order", async ({
 		menu.getByRole("menuitem", { name: copy.actions.downloadTable }),
 	).toHaveCount(0);
 	await expect(
-		menu.getByRole("menuitem", { name: copy.workspace.layout }),
+		menu.getByRole("menuitem", { name: copy.workspace.changeLayout }),
 	).toHaveCount(0);
 });
 
@@ -157,7 +157,7 @@ test("a global shortcut never stacks a second dialog", async ({
 	await expect(page.getByRole("dialog")).toHaveCount(1);
 	await expect(layout).toBeVisible();
 	await expect(
-		page.getByRole("dialog", { name: copy.download.title }),
+		page.getByRole("dialog", { name: copy.actions.downloadTable }),
 	).toHaveCount(0);
 });
 
@@ -171,7 +171,7 @@ test("a dialog command fully replaces the app menu", async ({
 		.click();
 
 	await expect(
-		page.getByRole("dialog", { name: copy.download.title }),
+		page.getByRole("dialog", { name: copy.actions.downloadTable }),
 	).toBeVisible();
 	await expect(menu).toBeHidden();
 });

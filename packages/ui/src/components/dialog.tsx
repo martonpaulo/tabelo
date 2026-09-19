@@ -1,7 +1,6 @@
 "use client";
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { Button } from "@tabelo/ui/components/button";
 import {
 	overlayTransitionStyles,
 	popupTransitionStyles,
@@ -9,7 +8,6 @@ import {
 
 import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { cn } from "@tabelo/ui/lib/utils";
-import { IconX } from "@tabler/icons-react";
 import type * as React from "react";
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
@@ -45,14 +43,14 @@ function DialogOverlay({
 	);
 }
 
+// No built-in close button: every Tabelo dialog ends in its own labelled
+// actions, and a corner icon would need an accessible name this package
+// cannot own (docs/design-system.md section 8).
 function DialogContent({
 	className,
 	children,
-	showCloseButton = true,
 	...props
-}: DialogPrimitive.Popup.Props & {
-	showCloseButton?: boolean;
-}) {
+}: DialogPrimitive.Popup.Props) {
 	return (
 		<DialogPortal>
 			<DialogOverlay />
@@ -66,21 +64,6 @@ function DialogContent({
 				{...props}
 			>
 				{children}
-				{showCloseButton && (
-					<DialogPrimitive.Close
-						data-slot="dialog-close"
-						render={
-							<Button
-								variant="ghost"
-								className="absolute top-2 right-2"
-								size="icon-sm"
-							/>
-						}
-					>
-						<IconX />
-						<span className="sr-only">Close</span>
-					</DialogPrimitive.Close>
-				)}
 			</DialogPrimitive.Popup>
 		</DialogPortal>
 	);

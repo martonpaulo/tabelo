@@ -95,18 +95,16 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
-				showCloseButton={false}
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
 				className={singleSelectionDialogContentStyles}
 			>
 				<DialogHeader>
-					<DialogTitle id={titleId}>{copy.download.title}</DialogTitle>
+					<DialogTitle id={titleId}>{copy.actions.downloadTable}</DialogTitle>
 					<DialogDescription id={hintId} className="text-sm">
-						{copy.download.hint}. {copy.download.savedAs}{" "}
-						<span className="font-medium text-foreground">
-							{tableDownloadFilename(tableName, codec.extension)}
-						</span>
+						{copy.download.savesAs(
+							tableDownloadFilename(tableName, codec.extension),
+						)}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -213,7 +211,7 @@ function FormatChoice({
 				onRecover={onRecover}
 				icon={icon}
 				label={label}
-				metadata={`.${extension}`}
+				metadata={copy.download.fileExtension(extension)}
 			/>
 		</div>
 	);

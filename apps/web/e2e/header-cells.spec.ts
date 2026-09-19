@@ -140,7 +140,7 @@ test("the strip selects the column and the header cell selects itself", async ({
 test("row 1 uses the same selectable number anatomy", async ({ tabelo }) => {
 	const gutter = tabelo.grid().locator('[data-row-header="-1"]');
 	const select = gutter.getByRole("button", {
-		name: `${copy.actions.selectRow}: ${copy.a11y.headerRow}`,
+		name: copy.a11y.selectHeaderRow,
 	});
 	// The number is the gutter cell's only control, as on every data row.
 	await expect(gutter.getByRole("button")).toHaveCount(1);

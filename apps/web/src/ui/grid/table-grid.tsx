@@ -1372,7 +1372,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								<button
 									type="button"
 									tabIndex={entered ? 0 : -1}
-									aria-label={`${copy.actions.selectRow}: ${copy.a11y.headerRow}`}
+									aria-label={copy.a11y.selectHeaderRow}
 									className={axisNumberClass(false)}
 									onPointerDown={(event) => {
 										if (event.button !== 0) return;
@@ -1665,7 +1665,7 @@ const DataRow = memo(function DataRow({
 				<button
 					type="button"
 					tabIndex={entered ? 0 : -1}
-					aria-label={`${copy.actions.selectRow}: ${copy.a11y.rowNumber(rowIndex)}`}
+					aria-label={copy.a11y.selectRowNamed(copy.a11y.rowNumber(rowIndex))}
 					className={axisNumberClass(movable)}
 					onPointerDown={(event) => {
 						if (event.button !== 0) return;
@@ -1807,7 +1807,11 @@ const DataRow = memo(function DataRow({
 								initialValue={editingSeed ?? value}
 								initialMode={editingSeed === null ? "edit" : "enter"}
 								align={alignClass[column.align]}
-								ariaLabel={`${copy.a11y.cellEditor(rowIndex, columnIndex)}${describesType ? `, ${copy.a11y.realCellType(type)}` : ""}`}
+								ariaLabel={
+									describesType
+										? copy.a11y.cellEditorWithType(rowIndex, columnIndex, type)
+										: copy.a11y.cellEditor(rowIndex, columnIndex)
+								}
 								monospace={type !== "string"}
 								wrapped={wrapped}
 								onFinish={(next, exit) =>
@@ -1848,7 +1852,7 @@ const DataRow = memo(function DataRow({
 										: value}
 									{describesType ? (
 										<span className="sr-only">
-											{`, ${copy.a11y.realCellType(type)}`}
+											{copy.a11y.cellTypeQualifier(type)}
 										</span>
 									) : null}
 								</span>
@@ -1958,7 +1962,9 @@ function ColumnIndexCell({
 			<button
 				type="button"
 				tabIndex={entered ? 0 : -1}
-				aria-label={`${copy.actions.selectColumn}: ${copy.a11y.columnWithExpectedType(header, columnIndex, expectedType)}`}
+				aria-label={copy.a11y.selectColumnNamed(
+					copy.a11y.columnWithExpectedType(header, columnIndex, expectedType),
+				)}
 				className={cn(
 					"flex h-full w-full min-w-0 items-center rounded-interactive px-2 text-left hover:text-foreground",
 					axisLabelCursor(movable),

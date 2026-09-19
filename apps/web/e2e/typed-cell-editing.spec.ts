@@ -158,7 +158,7 @@ test("invalid typed input remains editable before it can become text", async ({
 		name: copy.typedEditing.invalidTitle,
 	});
 	await dialog
-		.getByRole("button", { name: copy.typedEditing.changeToText })
+		.getByRole("button", { name: copy.typedEditing.keepAsText })
 		.click();
 	await expect(dialog).toBeHidden();
 	await expect(cell).toHaveAttribute("title", "yes");

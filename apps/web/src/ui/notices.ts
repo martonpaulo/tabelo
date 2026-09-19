@@ -94,6 +94,7 @@ function projectedNotices(sources: NoticeSources): readonly AppNotice[] {
 			severity: "error",
 			urgency: "assertive",
 			message: copy.notices.importError(sources.inputError),
+			detail: copy.notices.importUnchanged,
 			actions: [],
 			dismissible: true,
 		});

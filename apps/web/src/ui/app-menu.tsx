@@ -312,7 +312,7 @@ export function AppMenu({
 							onClick={() => menuDialog.runAfterClose(onLayout)}
 						>
 							<IconLayoutGrid aria-hidden />
-							{copy.workspace.layout}
+							{copy.workspace.changeLayout}
 						</DropdownMenuItem>
 					</ControlTooltip>
 					<DropdownMenuItem

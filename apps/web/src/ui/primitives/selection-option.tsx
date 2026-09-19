@@ -30,9 +30,7 @@ export function SelectionOptionContent({
 }: SelectionOptionContentProps) {
 	const unavailable = availability?.kind === "unavailable";
 	const StatusIcon = unavailable ? IconAlertCircle : IconEye;
-	const statusLabel = unavailable
-		? copy.disabled.unavailableStatus
-		: copy.disabled.inUseStatus;
+	const statusLabel = unavailable ? copy.status.unavailable : copy.status.inUse;
 
 	return (
 		<>
@@ -127,9 +125,7 @@ export function CompactOptionContent({
 								className={cn("size-3.5", unavailable && "text-status-warning")}
 							/>
 							<span>
-								{unavailable
-									? copy.disabled.unavailableStatus
-									: copy.disabled.inUseStatus}
+								{unavailable ? copy.status.unavailable : copy.status.inUse}
 							</span>
 						</span>
 					) : null}

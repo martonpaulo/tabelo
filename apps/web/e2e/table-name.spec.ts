@@ -8,7 +8,7 @@ async function openRenameDialog(page: Page) {
 	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
 	await menu.getByRole("menuitem", { name: copy.actions.renameTable }).click();
 	await menu.waitFor({ state: "hidden" });
-	return page.getByRole("dialog", { name: copy.tableName.dialogTitle });
+	return page.getByRole("dialog", { name: copy.actions.renameTable });
 }
 
 async function renameTable(page: Page, name: string): Promise<void> {
@@ -24,7 +24,7 @@ async function savedFilename(page: Page, formatName: string): Promise<string> {
 	await page
 		.getByRole("menuitem", { name: copy.actions.downloadTable })
 		.click();
-	const dialog = page.getByRole("dialog", { name: copy.download.title });
+	const dialog = page.getByRole("dialog", { name: copy.actions.downloadTable });
 	await dialog.getByRole("radio", { name: formatName }).click();
 	await dialog
 		.getByRole("button", { name: copy.actions.download, exact: true })

@@ -30,22 +30,12 @@ export interface PendingCellTypeChange {
 	readonly confirm: ConversionConfirmation;
 }
 
-// Text in quotes, so an empty cell reads as "" and the number 35 is not taken
-// for the text "35"; null, numbers, and booleans as they are.
-function shown(value: CellValue): string {
-	return typeof value === "string" ? JSON.stringify(value) : String(value);
-}
-
 function description(change: PendingCellTypeChange): string {
 	if (change.confirm.kind === "fills-empty") {
-		return copy.cellTypeChange.fillsEmpty(shown(change.after));
+		return copy.cellTypeChange.fillsEmpty(change.after);
 	}
 	const { back } = change.confirm;
-	return copy.cellTypeChange.losesOriginal(
-		shown(change.before),
-		shown(change.after),
-		back === null ? null : shown(back),
-	);
+	return copy.cellTypeChange.losesOriginal(change.before, change.after, back);
 }
 
 export function CellTypeChangeDialog({
@@ -78,7 +68,6 @@ export function CellTypeChangeDialog({
 			}}
 		>
 			<DialogContent
-				showCloseButton={false}
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
 				finalFocus={finalFocus}

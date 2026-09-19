@@ -243,7 +243,9 @@ export function SourceContextMenu({
 				shortcut: copy.shortcuts.selectNextOccurrence,
 				reason:
 					readOnly ??
-					(state.canOccurrence ? undefined : copy.disabled.noOccurrence),
+					(state.canOccurrence
+						? undefined
+						: copy.disabled.sourceNothingSelected),
 				run: nextOccurrence,
 			},
 		],

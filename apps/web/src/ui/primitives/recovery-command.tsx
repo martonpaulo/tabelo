@@ -29,7 +29,7 @@ export function RecoveryButton({
 			// One step above the option block it sits on, so it reads as a
 			// control rather than as part of the dimmed choice.
 			className="bg-accent"
-			aria-label={copy.a11y.fixTableFor(target)}
+			aria-label={copy.a11y.goToCellFor(target)}
 			aria-description={recovery.reason}
 			onClick={() => {
 				onRun();
@@ -53,7 +53,7 @@ export function RecoveryMenuItem({
 }) {
 	return (
 		<DropdownMenuItem
-			aria-label={copy.a11y.fixTableFor(target)}
+			aria-label={copy.a11y.goToCellFor(target)}
 			aria-description={recovery.reason}
 			onClick={() => onRun(recovery.run)}
 		>

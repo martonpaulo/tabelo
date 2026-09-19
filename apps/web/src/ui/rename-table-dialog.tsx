@@ -84,14 +84,13 @@ export function RenameTableDialog({
 	return (
 		<Dialog open={open} onOpenChange={close}>
 			<DialogContent
-				showCloseButton={false}
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
 				className="sm:w-md"
 			>
 				<form className="grid gap-4" onSubmit={submit}>
 					<DialogHeader>
-						<DialogTitle id={titleId}>{copy.tableName.dialogTitle}</DialogTitle>
+						<DialogTitle id={titleId}>{copy.actions.renameTable}</DialogTitle>
 						<DialogDescription id={descriptionId}>
 							{copy.tableName.description}
 						</DialogDescription>

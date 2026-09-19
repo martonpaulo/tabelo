@@ -66,7 +66,7 @@ export function HeaderRowDialog({
 				if (!nextOpen) useTabeloStore.getState().cancelPendingImport();
 			}}
 		>
-			<DialogContent showCloseButton={false} finalFocus={finalFocus}>
+			<DialogContent finalFocus={finalFocus}>
 				<DialogHeader>
 					<DialogTitle>{copy.headerImport.title}</DialogTitle>
 					<DialogDescription>{copy.headerImport.description}</DialogDescription>

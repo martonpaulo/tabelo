@@ -123,7 +123,7 @@ test("refuses a format that cannot represent the table, in the same words", asyn
 	// The correction is a separate command beside the refused row, never the
 	// row answering to a click it reports itself unable to take.
 	const fix = submenu.getByRole("menuitem", {
-		name: copy.a11y.fixTableFor(copy.views.json.label),
+		name: copy.a11y.goToCellFor(copy.views.json.label),
 	});
 	await expect(fix).toBeEnabled();
 

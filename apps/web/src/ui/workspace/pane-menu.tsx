@@ -148,7 +148,7 @@ export function PaneMenu({
 			    labelled button repeated the word "Pane" on every pane at once. The
 			    accessible name is the only signal left, so it names the view: with
 			    four panes open, "Pane actions" alone would not say which. */}
-			<ControlTooltip name={`${copy.workspace.paneActions}: ${view.label}`}>
+			<ControlTooltip name={copy.workspace.paneActionsFor(view.label)}>
 				<DropdownMenuTrigger
 					render={<Button ref={triggerRef} variant="ghost" size="icon-sm" />}
 				>
