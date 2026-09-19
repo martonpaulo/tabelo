@@ -37,6 +37,7 @@ export const conditionNoticeIds = {
 	inputError: "condition-input-error",
 	pendingPaneAction: "condition-pending-pane-action",
 	fillSeries: "condition-fill-series",
+	projectionLoss: "condition-projection-loss",
 } as const;
 
 // Enough to hold a burst, such as a refused copy followed by a refused paste,

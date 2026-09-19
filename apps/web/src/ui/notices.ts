@@ -1,5 +1,7 @@
 import { copy } from "@/copy/copy";
+import { hasInlineContent } from "@/core/document";
 import type { FillSeriesOffer } from "@/core/series";
+import type { TableDocument } from "@/core/types";
 import { getCodec } from "@/formats";
 import type { ImportError } from "@/import/prepare";
 import { downloadText, tableDownloadFilename } from "@/platform/files";
@@ -12,6 +14,12 @@ import {
 } from "@/state/notice-queue";
 import type { PendingPaneAction, StorageIssue } from "@/state/store";
 import { useTabeloStore } from "@/state/store";
+import {
+	plainEditableViews,
+	plainViewsSignature,
+} from "@/views/projection-loss";
+import type { ViewDefinition } from "@/views/types";
+import type { Workspace } from "@/workspace/layout";
 
 // Everything the notice area has to say, in one list. Two kinds of thing end
 // up here and they behave differently:
@@ -53,6 +61,31 @@ export interface NoticeSources {
 	readonly pendingPaneAction: PendingPaneAction | null;
 	readonly fillSeriesOffer: FillSeriesOffer | null;
 	readonly notices: readonly TransientNotice[];
+	// The plain views a formatted document is open in, when the user has not
+	// dismissed the disclosure for exactly these views (#306).
+	readonly projectionLoss?: ProjectionLoss | null;
+}
+
+export interface ProjectionLoss {
+	readonly views: readonly ViewDefinition[];
+}
+
+// The projection-loss condition, derived and never stored: the document holds
+// inline structure, and at least one open view that can edit it shows it only
+// as text. A dismissal holds for the set of views it was given for.
+export function projectionLossOf(state: {
+	readonly document: TableDocument;
+	readonly workspace: Workspace;
+	readonly projectionNoticeDismissedFor: string | null;
+}): ProjectionLoss | null {
+	const views = plainEditableViews(
+		state.workspace.panes.map((pane) => pane.view),
+	);
+	if (views.length === 0) return null;
+	if (plainViewsSignature(views) === state.projectionNoticeDismissedFor) {
+		return null;
+	}
+	return hasInlineContent(state.document) ? { views } : null;
 }
 
 // How long a plain confirmation stays before clearing itself.
@@ -119,6 +152,23 @@ function projectedNotices(sources: NoticeSources): readonly AppNotice[] {
 					run: () => useTabeloStore.getState().confirmPaneAction(),
 				},
 			],
+			dismissible: true,
+		});
+	}
+
+	if (sources.projectionLoss) {
+		// A disclosure, not a failure: nothing has been lost, and nothing will
+		// be unless a cell is edited there. It stays until dismissed, because
+		// it describes the workspace for as long as the workspace is like this.
+		projected.push({
+			id: conditionNoticeIds.projectionLoss,
+			severity: "warning",
+			urgency: "polite",
+			message: copy.notices.plainProjection(
+				sources.projectionLoss.views.map((view) => view.label),
+			),
+			detail: copy.notices.plainProjectionDetail,
+			actions: [],
 			dismissible: true,
 		});
 	}

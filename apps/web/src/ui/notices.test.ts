@@ -10,7 +10,9 @@ import {
 	appNotices,
 	autoDismissDelay,
 	NOTICE_AUTO_DISMISS_MS,
+	projectionLossOf,
 } from "@/ui/notices";
+import type { ViewId } from "@/views/types";
 
 // The notice list is the whole render input. These tests pin the three rules
 // the previous precedence chain broke: nothing is suppressed, tone follows the
@@ -65,6 +67,68 @@ describe("what is shown", () => {
 		useTabeloStore.setState({ storageIssue: { kind: "quota" } });
 
 		expect(ids()[0]).toBe(conditionNoticeIds.storage);
+	});
+});
+
+// #306. A formatted table open in a view that shows it only as text is
+// disclosed, and the disclosure is derived from the document and the open
+// views rather than raised by an event.
+describe("the plain projection disclosure", () => {
+	const formatted = documentFromMatrix(
+		[
+			["Name"],
+			[
+				{
+					kind: "inline",
+					nodes: [{ kind: "text", text: "Ingrid", marks: ["bold"] }],
+				},
+			],
+		],
+		{ headerRow: true },
+	);
+
+	function showIn(view: ViewId) {
+		const [first] = useTabeloStore.getState().workspace.panes;
+		if (!first) throw new Error("the workspace has a pane");
+		useTabeloStore.setState((state) => ({
+			workspace: {
+				...state.workspace,
+				panes: state.workspace.panes.map((pane) =>
+					pane.id === first.id ? { ...pane, view } : pane,
+				),
+			},
+		}));
+	}
+
+	function disclosed(): AppNotice | undefined {
+		const state = useTabeloStore.getState();
+		return appNotices({
+			...state,
+			preferencesIssue,
+			projectionLoss: projectionLossOf(state),
+		}).find((notice) => notice.id === conditionNoticeIds.projectionLoss);
+	}
+
+	it("appears only while formatted content is open in a plain view", () => {
+		showIn("csv");
+		expect(disclosed()).toBeUndefined();
+
+		useTabeloStore.setState({ document: formatted });
+		expect(disclosed()?.severity).toBe("warning");
+		expect(disclosed()?.dismissible).toBe(true);
+
+		showIn("jira");
+		expect(disclosed()).toBeUndefined();
+	});
+
+	it("stays dismissed for the views it was dismissed for", () => {
+		useTabeloStore.setState({ document: formatted });
+		showIn("csv");
+		useTabeloStore.getState().dismissNotice(conditionNoticeIds.projectionLoss);
+		expect(disclosed()).toBeUndefined();
+
+		showIn("tsv");
+		expect(disclosed()).toBeDefined();
 	});
 });
 

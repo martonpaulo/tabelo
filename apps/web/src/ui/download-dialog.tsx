@@ -8,8 +8,9 @@ import {
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { Label } from "@tabelo/ui/components/label";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useId, useMemo, useState } from "react";
 import { copy } from "@/copy/copy";
+import { hasInlineContent } from "@/core/document";
 import {
 	canSerialize,
 	DEFAULT_CODEC_ID,
@@ -37,6 +38,7 @@ import {
 	SingleSelectionOption,
 	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
+import { flattensInlineContent } from "@/views/projection-loss";
 import { getView } from "@/views/registry";
 
 // Downloading is a choice, not a click. The user chooses the format and, where
@@ -79,6 +81,12 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 	const pendingDraft = useTabeloStore((state) =>
 		state.draft && state.draft.status !== "clean" ? state.draft : null,
 	);
+
+	// A file in a format that cannot spell inline structure holds only what
+	// the table reads as. Choosing the format is the user's authorization, so
+	// it is said before the download, beside the choice (#306).
+	const formatted = useMemo(() => hasInlineContent(document), [document]);
+	const flattens = formatted && flattensInlineContent(codec);
 
 	const download = () => {
 		const failure = canSerialize(codec, document);
@@ -158,6 +166,15 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 					{options.map((option) => (
 						<OutputOption key={option} option={option} />
 					))}
+					{/* Below the formats, with the description it qualifies, so
+					    choosing a format never moves the list under the pointer. */}
+					{flattens ? (
+						<Notice severity="warning">
+							<span data-projection-disclosure className="flex-1">
+								{copy.download.plainProjection}
+							</span>
+						</Notice>
+					) : null}
 				</div>
 
 				<DialogActions>

@@ -71,6 +71,15 @@ export function isDocumentBlank(document: TableDocument): boolean {
 	return headersBlank && cellsBlank;
 }
 
+// True when any header or cell carries inline structure, which is what a
+// format that cannot spell it would show only as text (docs/adr/0011).
+export function hasInlineContent(document: TableDocument): boolean {
+	return (
+		document.columns.some((column) => isInlineContent(column.header)) ||
+		document.rows.some((row) => Object.values(row.cells).some(isInlineContent))
+	);
+}
+
 // Pads every row to the widest row so the matrix is rectangular.
 export function normalizeMatrix(
 	matrix: readonly (readonly string[])[],

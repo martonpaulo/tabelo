@@ -118,6 +118,10 @@ import {
 	removeNotice,
 	type TransientNotice,
 } from "@/state/notice-queue";
+import {
+	plainEditableViews,
+	plainViewsSignature,
+} from "@/views/projection-loss";
 import { editableViewForCodec, getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import { clampColumnWidth } from "@/workspace/column-width";
@@ -336,6 +340,12 @@ export interface TabeloState {
 	// state, and cleared by the next change to the document. The user has to
 	// ask for the series, so until they do the copied result is the result.
 	fillSeriesOffer: FillSeriesOffer | null;
+
+	// Which set of plain views the user last dismissed the projection notice
+	// for (#306), as `plainViewsSignature` spells it. Transient, never
+	// persisted: the notice is a disclosure about the current workspace, and
+	// opening another plain view is a new one.
+	projectionNoticeDismissedFor: string | null;
 
 	// Each open find bar's state, keyed by the id of the pane it belongs to.
 	// See `FindState`.
@@ -941,6 +951,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editingHeader: null,
 	copiedRanges: NO_COPIED_RANGES,
 	fillSeriesOffer: null,
+	projectionNoticeDismissedFor: null,
 	finds: NO_FINDS,
 
 	storageIssue: null,
@@ -2392,6 +2403,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 					return { pendingPaneAction: null };
 				case conditionNoticeIds.fillSeries:
 					return { fillSeriesOffer: null };
+				case conditionNoticeIds.projectionLoss:
+					return {
+						projectionNoticeDismissedFor: plainViewsSignature(
+							plainEditableViews(
+								state.workspace.panes.map((pane) => pane.view),
+							),
+						),
+					};
 				default:
 					return { notices: removeNotice(state.notices, id) };
 			}

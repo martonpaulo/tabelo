@@ -10,10 +10,15 @@ import {
 	announcementText,
 	appNotices,
 	autoDismissDelay,
+	type ProjectionLoss,
+	projectionLossOf,
 } from "@/ui/notices";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { LiveRegions } from "@/ui/primitives/live-region";
 import { Notice } from "@/ui/primitives/notice";
+import { plainViewsSignature } from "@/views/projection-loss";
+import { getView } from "@/views/registry";
+import type { ViewId } from "@/views/types";
 
 // Notices float over the workspace in their own layer. Standing in the layout
 // was the interruption: an idle notice area renders nothing, so the first
@@ -81,6 +86,7 @@ function useAppNotices(): readonly AppNotice[] {
 	const pendingPaneAction = useTabeloStore((state) => state.pendingPaneAction);
 	const fillSeriesOffer = useTabeloStore((state) => state.fillSeriesOffer);
 	const notices = useTabeloStore((state) => state.notices);
+	const projectionLoss = useProjectionLoss();
 
 	return useMemo(
 		() =>
@@ -91,6 +97,7 @@ function useAppNotices(): readonly AppNotice[] {
 				pendingPaneAction,
 				fillSeriesOffer,
 				notices,
+				projectionLoss,
 			}),
 		[
 			storageIssue,
@@ -99,7 +106,26 @@ function useAppNotices(): readonly AppNotice[] {
 			pendingPaneAction,
 			fillSeriesOffer,
 			notices,
+			projectionLoss,
 		],
+	);
+}
+
+// Read as a string so the notice bar re-renders only when the condition itself
+// changes, not on every keystroke that edits the document.
+function useProjectionLoss(): ProjectionLoss | null {
+	const signature = useTabeloStore((state) => {
+		const loss = projectionLossOf(state);
+		return loss ? plainViewsSignature(loss.views) : null;
+	});
+	return useMemo(
+		() =>
+			signature === null
+				? null
+				: {
+						views: signature.split(",").map((id) => getView(id as ViewId)),
+					},
+		[signature],
 	);
 }
 
@@ -131,7 +157,7 @@ function NoticeRow({ notice }: { readonly notice: AppNotice }) {
 			    corner, and the message and its actions share the column beside
 			    it, so an action never runs under the dismissal and nothing moves
 			    with the message length. */}
-			<div className="flex w-full items-start gap-2">
+			<div data-notice-id={id} className="flex w-full items-start gap-2">
 				<div className="flex min-w-0 flex-1 flex-col gap-1">
 					<span className="font-medium">{notice.message}</span>
 					{notice.detail ? (

@@ -825,6 +825,10 @@ export const copy = {
 		invalidDraft:
 			"Your unfinished edits aren't valid yet. The download uses the last valid table.",
 		copyDraft: "Copy source",
+		// Said before a file in a format that cannot spell inline structure is
+		// written, when the table holds some (#306).
+		plainProjection:
+			"This format keeps text only. Formatting and link addresses are left out, and images become their alt text.",
 	},
 
 	empty: {
@@ -972,6 +976,11 @@ export const copy = {
 		// The fill already happened and the table is correct as it stands. This
 		// offers the other reading of the same selection; it never says the
 		// repeat was a mistake.
+		// A formatted table open in a view that shows it as text (#306).
+		plainProjection: (views: readonly string[]) =>
+			`${joinedPositions(views)} ${views.length === 1 ? "shows" : "show"} formatting, links, and images as plain text.`,
+		plainProjectionDetail:
+			"Editing a cell there removes its formatting. Cells you don't change keep theirs.",
 		fillSeriesOffer:
 			"The selected numbers were repeated. Continue them as a series?",
 		fillSeries: "Continue series",
