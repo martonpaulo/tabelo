@@ -265,7 +265,7 @@ One pane can scale what it displays without touching the rest of the app.
 | `--text-content` | `text-content` | Any text that is pane *content* |
 | `--text-cell-type-mark` | `text-cell-type-mark` | A compact real-type mark that scales with grid content |
 | `--spacing-content-line` | `h-content-line` | A one-line clip box that scales with it |
-| `--spacing-content-line-box` | `h-content-line-box` | A line rhythm token shared by grid and source |
+| `--spacing-content-line-box` | `h-content-line-box` | A line rhythm token shared by grid and source: one row pitch, the same in every view. A grid row's line is drawn inside it, never added to it (owner, 2026-09-19), so a grid row and a source line keep step row for row |
 | `--spacing-content-line-inset` | `py-content-line-inset` | Half the box's spare height, above and below a wrapped value |
 | `--spacing-inline-image` | `max-h-inline-image` | The tallest an inline image in a cell is drawn, 6rem at 100% (#306) |
 

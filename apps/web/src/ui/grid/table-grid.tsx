@@ -119,6 +119,18 @@ function axisLabelCursor(movable: boolean): string {
 	return movable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer";
 }
 
+// Every row is one row pitch tall, the `--spacing-content-line-box` a source
+// line is, so the grid and a source pane beside it keep step row for row
+// (owner, 2026-09-19). A cell's line under its row is a border, and a border
+// adds to the height, which made every grid row one hairline taller and put
+// the two views a row apart every 32 rows. So the content of every cell in a
+// row, the row number, a header cell, and a data cell alike, wrapped or not,
+// gives that hairline back by reaching over the line beneath it: the row line
+// is drawn inside the pitch. Nothing is painted there, since a line box
+// centres its text, and the marks on a cell's edge are placed from the cell,
+// not its content, so they stay where they were.
+const rowLineInside = "-mb-hairline";
+
 // A row number fills its gutter cell, so the whole cell is the target and the
 // gutter needs no width beyond the digits and the gaps around them (#288). The
 // trailing gap and the cell's own leading padding add up to the index gap a
@@ -126,6 +138,7 @@ function axisLabelCursor(movable: boolean): string {
 function axisNumberClass(movable: boolean): string {
 	return cn(
 		"flex h-content-line-box w-full items-center justify-end rounded-interactive pr-grid-gutter-trailing pl-1 text-right hover:text-foreground",
+		rowLineInside,
 		axisLabelCursor(movable),
 	);
 }
@@ -2017,6 +2030,7 @@ const DataRow = memo(function DataRow({
 								data-column-content={columnIndex}
 								className={cn(
 									"grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1 leading-content-line-box",
+									rowLineInside,
 									wrapped
 										? "min-h-grid-row"
 										: "h-content-line-box overflow-hidden",
@@ -2373,6 +2387,7 @@ function HeaderCell({
 					data-column-content={columnIndex}
 					className={cn(
 						"block",
+						rowLineInside,
 						// The same line pitch as a wrapped data cell (#374).
 						wrapped
 							? cn("min-h-grid-row", wrappedLinesClass)
