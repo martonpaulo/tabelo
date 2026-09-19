@@ -399,6 +399,24 @@ cell:
 Nothing but the paste commit is above 100 ms at the target scale. The one
 figure above it past the target, typing in HTML at 480 rows, was not traced.
 
+### Flicker and redraw
+
+The owner reports the screen "blinking" and redrawing visibly. A flash is a
+frame, not a duration, so it is measured by what was painted. Measured on
+2026-09-19, reference machine A, production build served by `vite preview`,
+headed Chromium at 1440 x 860 driven by the Playwright library, with a restored
+roster-shaped table of 100 rows by 7 columns. Instruments: a CDP screencast
+(`Page.startScreencast`, every frame) and, where a frame could be dropped, a
+CDP trace with compositor screenshots
+(`disabled-by-default-devtools.screenshot`); `PerformanceObserver` for
+`layout-shift` with its sources, `longtask`, and `paint`; and, for the source
+editor, a sampler that compares each line number's top with its line's top when
+the editor is created and on the frames after it.
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| A source pane's first frame draws its line numbers squashed | When the editor is created, the numbers sit 14 px apart at the top while the lines are already 32 px: worst offset 126 px over eight lines. CodeMirror corrects it in the measure it schedules for the next animation frame. Changing a grid pane to Markdown and adding a Markdown view both reported a `layout-shift` of the gutter elements (0.0156 and 0.004), so the uncorrected state was laid out; whether a frame paints it depends on where the commit falls in the frame | **Confirmed, and fixed.** Reading a line block right after creating the editor runs the pending measure inside the commit. Offset at creation 126 px to 0 in both flows, gutter layout shift gone in three runs of each; the long task of the commit unchanged (71 to 97 ms before, 74 to 79 ms after). |
+
 ### Adding an entry
 
 An entry belongs here when a suspicion has been measured, whatever the answer.

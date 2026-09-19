@@ -698,6 +698,14 @@ export function SourceEditor({
 		// can appear as a dialog closes or a layout changes, and waiting for focus
 		// would leave wrapped line numbers positioned from stale geometry.
 		view.requestMeasure();
+		// Until that measure runs, the height map holds CodeMirror's default
+		// estimate of a line, well short of the theme's line box, so the gutter
+		// stacks its numbers at the top while the text already sits on its real
+		// lines. A scheduled measure waits for the next animation frame, and a
+		// frame can be painted before it. Reading a line block runs the pending
+		// measure now (CodeMirror's `readMeasured`), in this commit, so the first
+		// frame that shows the editor already has its numbers on their lines.
+		view.lineBlockAtHeight(0);
 		// CodeMirror deliberately ignores resize notifications that arrive very
 		// close to its own document update. A pane can change size in that exact
 		// window when a view or layout dialog closes, leaving the gutter stale until
