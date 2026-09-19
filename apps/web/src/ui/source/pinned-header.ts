@@ -25,10 +25,12 @@ import { setSourceRows } from "./source-rows";
 //
 // Which text is the header is the format's answer, never the view's: it is the
 // first row the codec's own parse maps (`SourceRowRange`, header first), the
-// same rows the row boundaries of #296 follow. So Markdown pins its header line
-// together with the alignment divider the codec counts as part of it, CSV and
-// TSV pin a whole quoted multi-line record, and a format that maps no rows, or a
-// draft that does not parse, pins nothing at all.
+// same rows the row boundaries of #296 follow, ending on the line that holds its
+// last cell. So Markdown pins its header line and not the alignment divider the
+// codec counts as part of that row (owner, 2026-09-19: the divider names no
+// column, so pinning it only costs a line), CSV and TSV pin a whole quoted
+// multi-line record, and a format that maps no rows, or a draft that does not
+// parse, pins nothing at all.
 //
 // The copy is a second, read-only CodeMirror view over the same text, with
 // everything outside the header collapsed. That is what makes it the same
@@ -57,11 +59,17 @@ const headerRange = StateField.define<SourceRowRange | null>({
 			if (effect.is(setSourceRows)) {
 				const { rows, length } = effect.value;
 				const header = rows[0];
-				return header &&
-					length === transaction.state.doc.length &&
-					header.to <= length
-					? header
-					: null;
+				if (
+					!header ||
+					length !== transaction.state.doc.length ||
+					header.to > length
+				) {
+					return null;
+				}
+				const lastCell = header.cells.at(-1);
+				if (!lastCell) return header;
+				const end = transaction.state.doc.lineAt(lastCell.to).to;
+				return { from: header.from, to: Math.min(header.to, end) };
 			}
 		}
 		if (!range || !transaction.docChanged) return range;

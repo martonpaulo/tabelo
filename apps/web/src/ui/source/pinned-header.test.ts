@@ -1,6 +1,7 @@
 import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
 import { csvCodec } from "@/formats/csv";
+import { markdownCodec } from "@/formats/markdown";
 import type { TableCodec } from "@/formats/types";
 import { pinnedHeader, pinnedHeaderRange } from "./pinned-header";
 import { setSourceRows } from "./source-rows";
@@ -29,6 +30,13 @@ describe("the pinned header range", () => {
 		const text = 'name,"note\nsecond line"\nIngrid,Rio\nPaulo,Madrid';
 		expect(pinnedText(pinnedAfterParse(csvCodec, text))).toBe(
 			'name,"note\nsecond line"',
+		);
+	});
+
+	it("stops at the header's last cell, leaving Markdown's divider unpinned", () => {
+		const text = "| name | city |\n| ---- | ---- |\n| Ingrid | Rio |";
+		expect(pinnedText(pinnedAfterParse(markdownCodec, text))).toBe(
+			"| name | city |",
 		);
 	});
 

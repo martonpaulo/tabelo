@@ -40,14 +40,18 @@ interface Case {
 	readonly view: ViewId;
 	readonly header: string;
 	readonly body: readonly string[];
+	// How many of the header's lines are pinned, when not all of them.
+	readonly pinnedLines?: number;
 }
 
 const cases: readonly Case[] = [
 	{
 		view: "markdown",
-		// The divider belongs to the header row, so it is pinned with it.
+		// The divider belongs to the header row but names no column, so only
+		// the header line is pinned (owner, 2026-09-19).
 		header: "| name | note | role \\| team |\n| --- | --- | --- |",
 		body: bodyRows((cells) => `| ${cells.join(" | ")} |`),
+		pinnedLines: 1,
 	},
 	{
 		view: "csv",
@@ -118,7 +122,7 @@ for (const testCase of cases) {
 		// may have resized the divider the fixture typed.
 		const header = (await renderedSource(pane))
 			.split("\n")
-			.slice(0, testCase.header.split("\n").length)
+			.slice(0, testCase.pinnedLines ?? testCase.header.split("\n").length)
 			.join("\n");
 		expect(header.split("\n")[0]).toBe(testCase.header.split("\n")[0]);
 

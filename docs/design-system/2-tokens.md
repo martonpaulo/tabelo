@@ -332,11 +332,12 @@ Which text is the header comes from the same row mapping as the boundaries
 above: the first `SourceRowRange` the parse returns. So the views that declare
 `mapsSourceRows` pin it and no other view does; a CSV or TSV header with a
 quoted line break is pinned whole; and a draft that does not parse pins
-nothing, like it draws no boundaries. Markdown pins its alignment divider with
-the header line, because the codec counts the divider as part of the header
-row and it is where the column alignment, which is document state, is spelled;
-pinning the header line alone would need a second, Markdown-only answer to
-what the header is, for one line of pane height. The copy is a second,
+nothing, like it draws no boundaries. The pin ends on the line that holds the
+header row's last cell, so Markdown pins its header line and not the alignment
+divider the codec counts as part of that row: the divider names no column and
+only costs a line of pane height (owner, 2026-09-19, reversing the earlier
+choice to pin both). The answer comes from the row's own cell ranges, so it is
+still one rule for every format rather than a Markdown-only case. The copy is a second,
 read-only CodeMirror view over the same text with every line outside the
 header collapsed, fed the pane's own language, indicators, wrapping, and zoom,
 so it is the same rendering rather than a lookalike: the escape glyphs,
