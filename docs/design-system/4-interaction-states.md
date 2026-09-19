@@ -10,7 +10,7 @@ not a polish item.
 | Rest | No background |
 | Hover or keyboard highlight | Shared `bg-accent` interaction background |
 | Focus | One treatment everywhere (owner, 2026-09-19): a 0.125rem `--focus-ring` outline drawn outside the control with a 0.125rem gap, from the base-layer `:focus-visible` rule; components add no ring, border, or shadow of their own for focus. A pane frame that fills its container draws it inset. Menu rows show the highlight instead. A grid cell draws the same line as a cell mark instead of an outline (see below). Never remove it |
-| Selected | `bg-selection-fill`, plus the focus mark when it is the focused cell |
+| Selected | `bg-selection-fill`, plus the focus mark when it is the focused cell. While a draft typed over several cells is open, the same fill is what marks the cells its commit will write (owner, 2026-09-19, §9) |
 | Copied | 0.125rem dashed `--selection-edge` border on the range's own outer edges. A focused cell inside the range draws focus and copy as one static two-tone border: the solid focus line on all four sides with `--foreground` dashes over it on the outer sides |
 | Carried cell type | Strings use the editable header row's plain foreground; numbers, booleans, and null use the cross-view semantic value token selected by `cellValueType`, reinforced by the value typeface, italics for null, numeric spacing, literal shape, and the accessible type name. No typed value is bold in the grid (owner, 2026-09-19) |
 | Divergent cell type | Compact textual `CellTypeMark` inside the cell, never alignment or colour alone |

@@ -108,7 +108,25 @@ leaves the pane.
 | `Mod`+`Shift`+`S` / `Mod`+`Shift`+`M` | Toggle strikethrough or inline code the same way |
 | `Mod`+`K` | Open the link dialog for the one selected cell |
 | `Mod`+click on a link | Open the link. A plain click selects the cell |
-| Any printable character | Replace the cell and start editing |
+| Any printable character | Replace the cell and start editing. With several cells selected, the commit writes every selected cell (see below). On a row number or column letter, type over the selection it made; `Space` stays the button's own |
+
+**Typing over a selection writes every selected cell** (owner, 2026-09-19).
+The source views put one caret in each selected cell, so the grid does the
+same. The editor still opens on the focused cell alone, however the edit
+starts: a printable key, `Enter`, or `F2` on a cell, or a printable key on
+the row number or column letter that made the selection. The other selected cells keep the
+ordinary selection fill while the draft is open, which is what says they will
+receive it; nothing new is drawn. The commit (`Enter`, `Tab`, or a click away)
+writes the committed value into every selected cell, header cells included,
+as one history step, so one undo restores them all, and `Escape` writes none.
+Each column enters the value by the single-cell rule for its expected type
+(`docs/adr/0008`); a draft some column cannot take unambiguously asks the
+typed-cell question once for the whole selection, preferring the column being
+typed in. Opening an editor and committing without typing anything writes
+nothing. The selection stays as it was rather than moving on, since moving
+would collapse it, and the polite channel says how many cells were set,
+because only the edited cell shows it happen. A double-click still collapses
+the selection to the cell it lands on first.
 
 **Formatting keeps the grid's keyboard model** (#306). A mark chord that
 the selection cannot take, because it holds only numbers, booleans, null, or
