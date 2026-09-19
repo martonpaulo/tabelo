@@ -356,6 +356,34 @@ export function readHtmlTable(html: string): HtmlTableReading | null {
 	};
 }
 
+export type HtmlFragmentReading =
+	| {
+			readonly ok: true;
+			readonly content: TextContent;
+			readonly warnings: readonly ParseIssue[];
+	  }
+	| { readonly ok: false; readonly issue: ParseIssue };
+
+// Reads a fragment with no table, such as a selection copied out of a rich
+// editor, as the content of one cell, by exactly the rules a table cell is read
+// with. The clipboard uses it for a paste that inserts into one cell (#306).
+// Null when there is nothing to read, or when the fragment holds a table,
+// which is a matrix and belongs to `readHtmlTable`.
+export function readHtmlFragment(html: string): HtmlFragmentReading | null {
+	if (typeof DOMParser === "undefined") return null;
+	if (!html.trim()) return null;
+
+	const body = new DOMParser().parseFromString(html, "text/html").body;
+	if (body.querySelector("table")) return null;
+	const reading = readCell(body);
+	if (reading.refusal) return { ok: false, issue: reading.refusal };
+	return {
+		ok: true,
+		content: normalizeInline(reading.nodes),
+		warnings: reading.warnings,
+	};
+}
+
 function parseHtmlMatrix(text: string): MatrixParseResult {
 	if (text.trim() === "") {
 		return { ok: false, issues: [{ code: "empty-source" }] };

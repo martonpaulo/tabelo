@@ -338,6 +338,66 @@ describe("replacing a range", () => {
 	});
 });
 
+// A fragment copied out of one cell's editor and pasted into another's is a
+// slice inserted with `replaceRange` (#306).
+describe("inline fragments", () => {
+	const rosterLength = cellText(roster).length;
+
+	it("puts back every slice it took, exactly", () => {
+		for (let start = 0; start <= rosterLength; start += 1) {
+			for (let end = start; end <= rosterLength; end += 1) {
+				const slice = sliceInline(roster, start, end);
+				expect(replaceRange(roster, start, end, slice)).toEqual(roster);
+			}
+		}
+	});
+
+	it("inserts a slice elsewhere with its marks, link, and image", () => {
+		const imageStart = `${ingrid.name} in `.length;
+		const slice = sliceInline(roster, 0, imageStart + ingrid.city.length);
+		const next = replaceRange(paulo.name, 2, 2, slice);
+		expect(cellText(next)).toBe(
+			`Pa${ingrid.name} in ${ingrid.city}${paulo.name.slice(2)}`,
+		);
+		expect(markState(next, 2, 2 + ingrid.name.length, "bold")).toBe("on");
+		expect(inlineLinks(next)).toEqual([
+			{
+				start: 2,
+				end: 2 + ingrid.name.length,
+				url: "mailto:ingrid@example.com",
+			},
+		]);
+		expect(inlineImages(next)).toEqual([
+			{ start: 2 + imageStart, end: 2 + imageStart + ingrid.city.length },
+		]);
+	});
+
+	it("keeps a fragment's own formatting rather than its surroundings'", () => {
+		const bold = content(run(paulo.name, "bold"));
+		const italic = content(run("x", "italic"));
+		expect(replaceRange(bold, 2, 2, italic)).toEqual(
+			content(run("Pa", "bold"), run("x", "italic"), run("ulo", "bold")),
+		);
+		expect(replaceRange(bold, 0, paulo.name.length, italic)).toEqual(italic);
+	});
+
+	it("keeps a pasted link apart from the link it lands in", () => {
+		const rio = "https://example.com/rio";
+		const madrid = "https://example.com/madrid";
+		const linked = content({ kind: "link", url: rio, children: [run("Rio")] });
+		const pasted = content({
+			kind: "link",
+			url: madrid,
+			children: [run("Madrid")],
+		});
+		expect(inlineLinks(replaceRange(linked, 1, 1, pasted))).toEqual([
+			{ start: 0, end: 1, url: rio },
+			{ start: 1, end: 7, url: madrid },
+			{ start: 7, end: 9, url: rio },
+		]);
+	});
+});
+
 describe("links", () => {
 	it("links a range and refuses one that holds an image or has no URL", () => {
 		expect(

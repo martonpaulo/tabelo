@@ -1,6 +1,6 @@
 import Papa from "papaparse";
 import { cellText, headerContent } from "@/core/cell-value";
-import type { CellValue } from "@/core/types";
+import type { CellValue, TextContent } from "@/core/types";
 import { htmlCellContent } from "@/formats/html";
 import { type ClipboardSelection, embedTabeloPayload } from "./payload";
 
@@ -54,5 +54,23 @@ export function selectionClipboardPayload(selection: ClipboardSelection): {
 	return {
 		text: matrixToTsv(selection.matrix),
 		html: embedTabeloPayload(matrixToHtml(selection.matrix), selection),
+	};
+}
+
+// A fragment of one cell, copied out of the rich cell editor (#306): its plain
+// text, its semantic markup for other applications, and its exact structure for
+// Tabelo, which the markup beside it is checked against when it is pasted back.
+// The markup is wrapped in one neutral element because the HTML parser drops
+// whitespace that opens a document, and a fragment may start with a space.
+export function inlineClipboardPayload(content: TextContent): {
+	readonly text: string;
+	readonly html: string;
+} {
+	return {
+		text: cellText(content),
+		html: embedTabeloPayload(`<span>${htmlCellContent(content)}</span>`, {
+			matrix: [[content]],
+			expectedTypes: ["text"],
+		}),
 	};
 }
