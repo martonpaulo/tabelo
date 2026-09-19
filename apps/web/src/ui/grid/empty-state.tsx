@@ -138,7 +138,11 @@ export function EmptyState({
 						onClick={startImport}
 					/>
 				</div>
-				<div className="mt-6 flex flex-col items-center gap-1 text-muted-foreground text-xs">
+				{/* Each link is at least 1.5rem tall, the WCAG 2.5.8 target
+				    minimum, through vertical padding rather than larger text, so
+				    the two lines sit flush with no gap between them (owner,
+				    2026-09-19). */}
+				<div className="mt-6 flex flex-col items-center text-muted-foreground text-xs">
 					<p>
 						{copy.empty.credit}{" "}
 						<ExternalLinkText href={product.author.url}>
@@ -170,7 +174,7 @@ function ExternalLinkText({
 			href={href}
 			target="_blank"
 			rel="noreferrer"
-			className="inline-flex items-center gap-1 underline-offset-2 transition-colors hover:text-foreground hover:underline"
+			className="inline-flex items-center gap-1 py-1 underline-offset-2 transition-colors hover:text-foreground hover:underline"
 		>
 			{children}
 			<IconExternalLink aria-hidden className="size-3" />

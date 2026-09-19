@@ -941,6 +941,11 @@ and the primary starting action comes last, at the far right. Their DOM and
 focus order follows that same semantic priority. The surface grows to the row's
 intrinsic width and the action row never becomes a scroll container.
 
+The credit and source links under the actions keep the `text-xs` helper size
+and are each at least 1.5rem tall, the WCAG 2.5.8 target minimum, through
+vertical padding rather than larger text, with no gap between the two lines
+(owner, 2026-09-19).
+
 ### A pane's own tool bar
 
 The grid's find bar (#144) is the one surface of this shape, and adding a second one is
