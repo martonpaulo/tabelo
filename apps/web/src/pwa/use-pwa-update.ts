@@ -1,8 +1,8 @@
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { useState } from "react";
 import { copy } from "@/copy/copy";
-import { activateUpdateAfterSave } from "@/pwa/update";
 import { flushPersistence, useTabeloStore } from "@/state/store";
+import { activateUpdateAfterSave } from "./update";
 
 export interface PwaUpdate {
 	readonly ready: boolean;

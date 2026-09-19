@@ -8,15 +8,15 @@ import {
 import { product, tableDocumentTitle } from "@/copy/product";
 import { isDocumentBlank } from "@/core/document";
 import { runHistory } from "@/history/coordinator";
+import { usePwaUpdate } from "@/pwa/use-pwa-update";
 import { hasSessionWork, startAutosave, useTabeloStore } from "@/state/store";
 import { AppMenu } from "@/ui/app-menu";
 import { DownloadDialog } from "@/ui/download-dialog";
 import { EmptyState } from "@/ui/grid/empty-state";
 import { HeaderRowDialog } from "@/ui/header-row-dialog";
-import { importTableFile } from "@/ui/import";
+import { importTableFile } from "@/ui/import-actions";
 import { NewTableDialog } from "@/ui/new-table-dialog";
 import { NoticeBar } from "@/ui/notice-bar";
-import { usePwaUpdate } from "@/ui/pwa-update";
 import { RenameTableDialog } from "@/ui/rename-table-dialog";
 import { SettingsDialog } from "@/ui/settings-dialog";
 import { LayoutDialog } from "@/ui/workspace/layout-dialog";

@@ -20,7 +20,7 @@ import { product } from "@/copy/product";
 import { DEFAULT_COLUMN_COUNT } from "@/core/document";
 import { listCodecs } from "@/formats";
 import { pasteFromClipboard } from "@/ui/clipboard-actions";
-import { importTableFile } from "@/ui/import";
+import { importTableFile } from "@/ui/import-actions";
 import { SelectionOptionContent } from "@/ui/primitives/selection-option";
 
 // The file endings the import accepts, from the codec registry rather than a

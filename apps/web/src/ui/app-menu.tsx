@@ -42,6 +42,7 @@ import {
 	runHistory,
 	subscribeHistory,
 } from "@/history/coordinator";
+import type { PwaUpdate } from "@/pwa/use-pwa-update";
 import { transposeLimitError, useTabeloStore } from "@/state/store";
 import { copyCodecToClipboard } from "@/ui/clipboard-actions";
 import { preconditionRecovery } from "@/ui/precondition-recovery";
@@ -49,7 +50,6 @@ import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { MenuOption } from "@/ui/primitives/menu-option";
 import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
-import type { PwaUpdate } from "@/ui/pwa-update";
 import { useStackedWorkspace } from "@/ui/workspace/stacking";
 import { getView } from "@/views/registry";
 import {
