@@ -98,7 +98,9 @@ export default function SourceView({
 	// update an element assistive technology already knows. It is not a live
 	// region because aria-describedby is the sole announcement channel here.
 	const description = diagnostics.map(({ message }) => message).join(" ");
-	if (!projected.ok) return <BlockedState failure={projected.failure} />;
+	if (!projected.ok) {
+		return <BlockedState failure={projected.failure} target={view.label} />;
+	}
 
 	return (
 		<>

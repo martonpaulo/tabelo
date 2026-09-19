@@ -17,6 +17,33 @@ export interface SelectionOptionContentProps {
 	readonly availability?: SelectionOptionAvailability;
 }
 
+// The written status of a choice that cannot be taken: an eye and "In use" for
+// a view already open elsewhere, an alert and "Unavailable" for one the
+// document blocks. The words and the two icon shapes carry the difference, so
+// it never rests on colour. Shared by option rows, option tiles, and a pane
+// whose view became unavailable, so all three say it the same way.
+export function AvailabilityStatus({
+	kind,
+}: {
+	readonly kind: SelectionOptionAvailability["kind"];
+}) {
+	const unavailable = kind === "unavailable";
+	const StatusIcon = unavailable ? IconAlertCircle : IconEye;
+	return (
+		<span
+			data-availability={kind}
+			data-slot="selection-option-status"
+			className="inline-flex items-center gap-1 text-muted-foreground text-xs"
+		>
+			<StatusIcon
+				aria-hidden
+				className={cn("size-3.5", unavailable && "text-status-warning")}
+			/>
+			<span>{unavailable ? copy.status.unavailable : copy.status.inUse}</span>
+		</span>
+	);
+}
+
 // Menus and dialogs use different interaction primitives, but every choice has
 // the same readable anatomy. Availability is deliberately content here, not a
 // feature-specific decoration, so "already used" cannot drift into the same
@@ -28,10 +55,6 @@ export function SelectionOptionContent({
 	metadata,
 	availability,
 }: SelectionOptionContentProps) {
-	const unavailable = availability?.kind === "unavailable";
-	const StatusIcon = unavailable ? IconAlertCircle : IconEye;
-	const statusLabel = unavailable ? copy.status.unavailable : copy.status.inUse;
-
 	return (
 		<>
 			<span
@@ -55,20 +78,7 @@ export function SelectionOptionContent({
 					className="grid shrink-0 justify-items-end gap-0.5"
 				>
 					{availability ? (
-						<span
-							data-availability={availability.kind}
-							data-slot="selection-option-status"
-							className={cn(
-								"inline-flex items-center gap-1 text-xs",
-								"text-muted-foreground",
-							)}
-						>
-							<StatusIcon
-								aria-hidden
-								className={cn("size-3.5", unavailable && "text-status-warning")}
-							/>
-							<span>{statusLabel}</span>
-						</span>
+						<AvailabilityStatus kind={availability.kind} />
 					) : null}
 					{metadata ? (
 						<span
@@ -95,8 +105,6 @@ export function CompactOptionContent({
 	metadata,
 	availability,
 }: Omit<SelectionOptionContentProps, "description">) {
-	const unavailable = availability?.kind === "unavailable";
-	const StatusIcon = unavailable ? IconAlertCircle : IconEye;
 	return (
 		<span className="grid w-full min-w-0 gap-1">
 			<span className="flex items-center justify-between gap-2">
@@ -112,22 +120,7 @@ export function CompactOptionContent({
 				</span>
 				<span className="flex items-center gap-2">
 					{availability ? (
-						<span
-							data-availability={availability.kind}
-							data-slot="selection-option-status"
-							className={cn(
-								"inline-flex items-center gap-1 text-xs",
-								"text-muted-foreground",
-							)}
-						>
-							<StatusIcon
-								aria-hidden
-								className={cn("size-3.5", unavailable && "text-status-warning")}
-							/>
-							<span>
-								{unavailable ? copy.status.unavailable : copy.status.inUse}
-							</span>
-						</span>
+						<AvailabilityStatus kind={availability.kind} />
 					) : null}
 					{metadata ? (
 						<span

@@ -42,7 +42,7 @@ interface PaneContentProps {
 export function PaneContent({ paneId, view, zoom, wrap }: PaneContentProps) {
 	const document = useTabeloStore((state) => state.document);
 	const failure = view.codec ? canSerialize(view.codec, document) : null;
-	if (failure) return <BlockedState failure={failure} />;
+	if (failure) return <BlockedState failure={failure} target={view.label} />;
 
 	// Every view goes through this one path. Whether it shows a loading state
 	// first comes from its own registry declaration, not from a check against

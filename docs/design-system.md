@@ -1251,7 +1251,10 @@ become unique object keys rather than merely saying that a column is invalid.
 An already-open pane that becomes
 blocked replaces its content with one keyboard-focusable written status. The
 status is announced to assistive technology and identifies affected rows or
-columns without relying on the grid being visible.
+columns without relying on the grid being visible. It says so the way the choosers
+do (owner, 2026-09-19): the same alert icon and `Unavailable` status above the
+reason, and the same `Go to cell` recovery command below it whenever the
+refusal names a position.
 
 **A refusal that names a position offers the correction beside it** (#146). The
 refused choice stays natively disabled with its reason, and an ordinary enabled

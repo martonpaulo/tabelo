@@ -18,9 +18,10 @@ export function RecoveryButton({
 	// What was refused, so several recovery commands in one list can be told
 	// apart by name.
 	readonly target: string;
-	// The surface closes itself first, because recovery moves focus into the
-	// grid and a dialog left open would take it straight back.
-	readonly onRun: () => void;
+	// A surface that holds the command closes itself first, because recovery
+	// moves focus into the grid and a dialog left open would take it straight
+	// back. A blocked pane has nothing to close and passes none.
+	readonly onRun?: () => void;
 }) {
 	return (
 		<Button
@@ -32,7 +33,7 @@ export function RecoveryButton({
 			aria-label={copy.a11y.goToCellFor(target)}
 			aria-description={recovery.reason}
 			onClick={() => {
-				onRun();
+				onRun?.();
 				recovery.run();
 			}}
 		>
