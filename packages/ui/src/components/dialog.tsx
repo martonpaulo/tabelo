@@ -43,21 +43,35 @@ function DialogOverlay({
 	);
 }
 
+// Two widths and no third (owner, 2026-09-19): `narrow` for a confirmation
+// or a short form, `wide` for a chooser that lists options with descriptions.
+// A dialog picks one; it never sizes itself with a width class of its own, so
+// two dialogs of the same kind open at the same width.
+const dialogWidthStyles = {
+	narrow: "sm:w-md",
+	wide: "sm:w-lg",
+} as const;
+
 // No built-in close button: every Tabelo dialog ends in its own labelled
 // actions, and a corner icon would need an accessible name this package
 // cannot own (docs/design-system.md section 8).
 function DialogContent({
 	className,
 	children,
+	width = "narrow",
 	...props
-}: DialogPrimitive.Popup.Props) {
+}: DialogPrimitive.Popup.Props & {
+	readonly width?: keyof typeof dialogWidthStyles;
+}) {
 	return (
 		<DialogPortal>
 			<DialogOverlay />
 			<DialogPrimitive.Popup
 				data-slot="dialog-content"
+				data-width={width}
 				className={cn(
-					`fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto overscroll-contain rounded-surface p-6 text-popover-foreground text-sm/relaxed outline-none sm:w-auto sm:min-w-sm sm:max-w-xl ${floatingSurfaceStyles}`,
+					`fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto overscroll-contain rounded-surface p-6 text-popover-foreground text-sm/relaxed outline-none ${floatingSurfaceStyles}`,
+					dialogWidthStyles[width],
 					popupTransitionStyles,
 					className,
 				)}

@@ -52,6 +52,7 @@ export function LayoutDialog({
 			<DialogContent
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
+				width="wide"
 				className={singleSelectionDialogContentStyles}
 			>
 				<DialogHeader>

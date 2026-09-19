@@ -86,6 +86,7 @@ export function AddViewDialog({
 			<DialogContent
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
+				width="wide"
 				className={singleSelectionDialogContentStyles}
 			>
 				<DialogHeader>

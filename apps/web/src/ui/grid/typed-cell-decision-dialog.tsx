@@ -65,7 +65,6 @@ export function TypedCellDecisionDialog({
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
 				finalFocus={finalFocus}
-				className="sm:w-md"
 			>
 				<DialogHeader>
 					<DialogTitle id={titleId}>

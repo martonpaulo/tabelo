@@ -97,6 +97,7 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 			<DialogContent
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
+				width="wide"
 				className={singleSelectionDialogContentStyles}
 			>
 				<DialogHeader>

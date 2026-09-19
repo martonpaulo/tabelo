@@ -1039,9 +1039,11 @@ than independent booleans. Raising `z-index` is not a hierarchy fix.
 | Rule | Treatment |
 | :--- | :--- |
 | Surface | `rounded-surface`, `bg-popover`, one shadow: a floating layer |
+| Width | One of two presets on `DialogContent` (owner, 2026-09-19): `narrow` (28rem) for a confirmation or a short form, `wide` (32rem) for a chooser whose options carry descriptions, and Settings. A dialog never sets a width class of its own; below the `sm` breakpoint both fill the window less a 1rem margin each side |
 | Body text | `text-sm`; the same 0.875rem floor as everywhere else |
-| Title | `DialogTitle`, `text-base font-semibold` (see Typography) |
+| Title | `DialogTitle`, `text-lg font-semibold` (see Typography) |
 | Supporting copy | `DialogDescription`, one sentence saying what to choose |
+| Initial focus | A dialog that asks for text names its first field as `DialogContent`'s `initialFocus` (owner, 2026-09-19). React's `autoFocus` is never used in a dialog: it fires on mount, before a menu that opened the dialog has returned focus to its trigger, so the first keystrokes land outside the modal |
 | Dismissal | Escape and an explicit Cancel; focus returns to what opened it |
 | Button hierarchy | One right-aligned, non-wrapping action row; below the `sm` breakpoint the actions stack at full width in the same order instead. Cancel or another neutral dismissal comes first, ordinary alternatives follow, and exactly one emphasized decision comes last. That decision is destructive red or primary blue, never both |
 | Confirmation | One primary verb naming the operation: "Download", not "OK" |

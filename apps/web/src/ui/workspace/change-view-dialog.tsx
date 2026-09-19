@@ -59,6 +59,7 @@ export function ChangeViewDialog({
 			<DialogContent
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
+				width="wide"
 				className={singleSelectionDialogContentStyles}
 			>
 				<DialogHeader>
