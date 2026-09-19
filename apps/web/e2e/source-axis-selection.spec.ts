@@ -19,11 +19,15 @@ const TABLE = [
 	"| Paulo | Madrid |",
 ].join("\n");
 
+// The views whose rows are lines of cells laid out as columns. A view whose
+// rows are blocks draws its selection with the text band instead (#402): see
+// source-block-rows.spec.ts.
 const mappedViews = listViews().filter(
 	(view) =>
 		view.kind === "source" &&
 		view.capabilities.editable &&
-		view.codec?.mapsSourceRows,
+		view.codec?.mapsSourceRows &&
+		view.codec.mapsSourceColumns,
 );
 
 async function seed(tabelo: TabeloPage, view: ViewId): Promise<Locator> {

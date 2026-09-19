@@ -552,7 +552,10 @@ every pane that maps rows:
   one of them named a target that is not there (owner, 2026-09-19). The text
   band does not draw these selections a second time, and a selected row or
   column is not a search: the pane header shows no match count for it, even
-  when its cells read alike.
+  when its cells read alike. Where rows are blocks (#402), a JSON object, a
+  Records entry, or an HTML `<tr>`, their lines do not line up in cell slots,
+  so a selected row or column there keeps the text band, which shows exactly
+  the text it holds; it is still no search and shows no match count.
 - **One current line.** The active-line fill and its number's lift follow the
   main selection alone, as the grid has one focused cell however many are
   selected; a column no longer tints every row it crosses. Every other line a

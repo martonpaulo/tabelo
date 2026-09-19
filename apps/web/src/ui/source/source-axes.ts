@@ -738,10 +738,20 @@ function cellSlot(
 	return { left, right: Math.max(left, right) };
 }
 
+// The selected row or column this layer draws: only where every row is a line
+// of cells. A row that is a block (#402), such as a JSON object or an HTML
+// `<tr>`, keeps the text's own selection band, which shows exactly the text
+// the selection holds rather than a slot its lines do not line up in.
+function bandedAxis(state: EditorState): SourceAxisTarget | null {
+	const rows = state.field(sourceRowsField, false);
+	if (rows?.some((row) => row.lines === "all")) return null;
+	return selectedSourceAxis(state);
+}
+
 // The selected row's or column's bands, in the layer's coordinates. Only lines
 // the editor has drawn are measured.
 function axisBands(view: EditorView): RectangleMarker[] {
-	const axis = selectedSourceAxis(view.state);
+	const axis = bandedAxis(view.state);
 	const rows = view.state.field(sourceRowsField, false);
 	if (!axis || !rows) return [];
 	const { doc } = view.state;
@@ -794,7 +804,7 @@ export const sourceAxes: Extension = [
 	axisBandLayer,
 	// The text band would draw the selection a second time, in the ragged
 	// shape of the text it holds.
-	selectionDrawnElsewhere.of((state) => selectedSourceAxis(state) !== null),
+	selectionDrawnElsewhere.of((state) => bandedAxis(state) !== null),
 	rowLabelClasses,
 	axisTheme,
 	ViewPlugin.fromClass(AxisPointer),

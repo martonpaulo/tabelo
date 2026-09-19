@@ -120,6 +120,15 @@ for (const view of blockViews) {
 		const line = await lineIndex(pane, (text) => text.includes(ingrid.name));
 		await lineNumberAt(pane, line).click();
 		await expect(tabelo.source(view.id)).toBeFocused();
+		// A block's lines do not line up in cell slots, so the text's own band
+		// shows the selection, and the grid-style axis band draws nothing.
+		const scroller = editorScroller(pane);
+		await expect(
+			scroller.locator(".cm-tabeloSelectionLayer .cm-selectionBackground"),
+		).not.toHaveCount(0);
+		await expect(
+			scroller.locator(".cm-tabeloAxisSelectionLayer .cm-selectionBackground"),
+		).toHaveCount(0);
 		await page.keyboard.press("ContextMenu");
 		const menu = page.getByRole("menu");
 		await expect(menu).toHaveAccessibleName(
