@@ -4,18 +4,8 @@ import type { CellValueType, ExpectedColumnType } from "@/core/types";
 import { expect, test } from "./fixtures";
 import type { TabeloPage } from "./helpers";
 
-async function setExpectedType(
-	page: Page,
-	tabelo: TabeloPage,
-	type: ExpectedColumnType,
-) {
-	const trigger = tabelo.columnIndex(1).getByRole("button", {
-		name: /column actions: .*expected type/i,
-	});
-	await trigger.click();
-	const menu = page.getByRole("menu", {
-		name: /column actions: .*expected type/i,
-	});
+async function setExpectedType(tabelo: TabeloPage, type: ExpectedColumnType) {
+	const menu = await tabelo.openColumnMenu(1);
 	const group = menu.getByRole("group", { name: copy.actions.expectedType });
 	await expect(group.getByRole("menuitemradio")).toHaveCount(3);
 	await expect(group.getByRole("menuitemradio", { checked: true })).toHaveCount(
@@ -82,7 +72,7 @@ test("column expectation guides canonical and escaped cell entry", async ({
 
 	// "007" would come back as "7", so the column change asks, and the cell
 	// keeps its text when the rest convert (#392).
-	await setExpectedType(page, tabelo, "number");
+	await setExpectedType(tabelo, "number");
 	const confirm = page.getByRole("dialog");
 	await confirm
 		.getByRole("button", { name: copy.columnTypeChange.confirm })
@@ -107,7 +97,7 @@ test("representation-changing number input requires an explicit choice", async (
 	page,
 	tabelo,
 }) => {
-	await setExpectedType(page, tabelo, "number");
+	await setExpectedType(tabelo, "number");
 	const cell = tabelo.cell(1, 1);
 
 	await enterCellText(tabelo, 1, 1, "007");
@@ -146,7 +136,7 @@ test("invalid typed input remains editable before it can become text", async ({
 	page,
 	tabelo,
 }) => {
-	await setExpectedType(page, tabelo, "boolean");
+	await setExpectedType(tabelo, "boolean");
 	const cell = tabelo.cell(1, 1);
 
 	await enterCellText(tabelo, 1, 1, "yes");

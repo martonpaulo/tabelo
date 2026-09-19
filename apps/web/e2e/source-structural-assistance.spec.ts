@@ -121,7 +121,7 @@ test.describe("markdown divider assistance", () => {
 		await expect
 			.poll(() => renderedSource(tabelo.pane("markdown")))
 			.toBe(TABLE);
-		await page.keyboard.press("ControlOrMeta+Shift+z");
+		await page.keyboard.press("ControlOrMeta+Shift+Z");
 		await expectDivider(tabelo, "| ------ | -------- |");
 		await expect(tabelo.header(2)).toHaveText("city!!!!");
 

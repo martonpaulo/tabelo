@@ -123,12 +123,12 @@ test("the grid exposes real and expected types without replacing cell names", as
 
 	// The column's menu from the keyboard, on the letter that holds focus.
 	await page.keyboard.press("Shift+F10");
-	await expect(
-		page.getByRole("menu", {
-			name: /column actions: qty, expected type text/i,
-		}),
-	).toBeVisible();
+	const columnMenu = page.getByRole("menu", {
+		name: /column actions: qty, expected type text/i,
+	});
+	await expect(columnMenu).toBeVisible();
 	await page.keyboard.press("Escape");
+	await expect(columnMenu).toBeHidden();
 
 	await numberCell.dblclick();
 	const editor = tabelo.grid().getByRole("textbox");
@@ -205,7 +205,7 @@ test("a mixed column distinguishes real type from its number expectation", async
 	await expect(numberCell).toHaveCSS("text-align", "center");
 	await expect(stringCell).toHaveCSS("text-align", "center");
 	await expect(numberCell).toHaveAccessibleName(/number/i);
-	await expect(stringCell).toHaveAccessibleName(/string/i);
+	await expect(stringCell).toHaveAccessibleName(/text/i);
 
 	const columnIndex = tabelo.columnIndex(1);
 	await expect(columnIndex).toHaveAttribute("data-expected-type", "number");

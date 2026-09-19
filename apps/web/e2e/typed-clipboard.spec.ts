@@ -1,4 +1,3 @@
-import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import type { ExpectedColumnType } from "@/core/types";
 import { expect, test } from "./fixtures";
@@ -42,14 +41,11 @@ async function startBlankTable(tabelo: TabeloPage): Promise<void> {
 }
 
 async function setExpectedType(
-	page: Page,
 	tabelo: TabeloPage,
 	column: number,
 	type: ExpectedColumnType,
 ): Promise<void> {
-	const name = /column actions: .*expected type/i;
-	await tabelo.columnIndex(column).getByRole("button", { name }).click();
-	const menu = page.getByRole("menu", { name });
+	const menu = await tabelo.openColumnMenu(column);
 	await menu
 		.getByRole("group", { name: copy.actions.expectedType })
 		.getByRole("menuitemradio", {
@@ -91,18 +87,18 @@ test("a paste carries the value's type without restructuring the destination", a
 	await tabelo.paste(copied.text, copied.html);
 
 	await expect(tabelo.cell(1, 4)).toHaveAttribute("data-cell-type", "number");
-	await expect(
-		tabelo.columnIndex(4).getByRole("button", { name: /column actions/i }),
-	).toHaveAttribute("data-expected-type", "text");
+	await expect(tabelo.columnIndex(4)).toHaveAttribute(
+		"data-expected-type",
+		"text",
+	);
 });
 
 test("the expected column types travel with a copy into an empty table", async ({
-	page,
 	tabelo,
 }) => {
 	await importTypedRows(tabelo);
-	await setExpectedType(page, tabelo, 1, "number");
-	await setExpectedType(page, tabelo, 2, "boolean");
+	await setExpectedType(tabelo, 1, "number");
+	await setExpectedType(tabelo, 2, "boolean");
 	await selectRange(tabelo, [1, 1], [2, 2]);
 	const copied = await tabelo.copyFlavours();
 
@@ -110,8 +106,7 @@ test("the expected column types travel with a copy into an empty table", async (
 	await tabelo.cell(1, 1).click();
 	await tabelo.paste(copied.text, copied.html);
 
-	const expectedTypeOf = (column: number) =>
-		tabelo.columnIndex(column).getByRole("button", { name: /column actions/i });
+	const expectedTypeOf = (column: number) => tabelo.columnIndex(column);
 	await expect(expectedTypeOf(1)).toHaveAttribute(
 		"data-expected-type",
 		"number",

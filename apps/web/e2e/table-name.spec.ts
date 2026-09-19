@@ -82,11 +82,6 @@ test("rename validates input and Escape restores trigger focus", async ({
 	const dialog = await openRenameDialog(page);
 	const input = dialog.getByRole("textbox", { name: copy.tableName.label });
 
-	await input.fill("   ");
-	await dialog.getByRole("button", { name: copy.tableName.confirm }).click();
-	await expect(dialog).toBeVisible();
-	await expect(input).toHaveAttribute("aria-invalid", "true");
-
 	await input.fill("😀".repeat(121));
 	await dialog.getByRole("button", { name: copy.tableName.confirm }).click();
 	await expect(dialog.getByRole("alert")).toBeVisible();

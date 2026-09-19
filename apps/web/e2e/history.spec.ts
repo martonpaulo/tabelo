@@ -47,7 +47,7 @@ test("global undo supports both redo shortcuts", async ({ tabelo }) => {
 	await tabelo.cell(1, 1).press("ControlOrMeta+z");
 	await expect(tabelo.cell(1, 1)).toHaveText("");
 
-	await tabelo.cell(1, 1).press("ControlOrMeta+Shift+z");
+	await tabelo.cell(1, 1).press("ControlOrMeta+Shift+Z");
 	await expect(tabelo.cell(1, 1)).toHaveText("A");
 
 	await tabelo.cell(1, 1).press("ControlOrMeta+z");
