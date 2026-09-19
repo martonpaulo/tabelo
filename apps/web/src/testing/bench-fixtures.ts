@@ -2,6 +2,7 @@ import type { BenchOptions } from "vitest";
 import type { ClipboardSelection } from "@/clipboard/payload";
 import { cellText } from "@/core/cell-value";
 import { documentFromMatrix } from "@/core/document";
+import { normalizeInline } from "@/core/inline-content";
 import { samplePeople, samplePeopleHeaders } from "@/core/sample-data";
 import type {
 	CellValue,
@@ -58,7 +59,11 @@ export function benchOptions(rows: BenchRowCount): BenchOptions {
 // of that for plain text, and the path #263 and #264 exist to make cheaper.
 // Figures for these fixtures are in docs/performance.md; the study's are not
 // comparable with them, being a different table on a different machine.
-export type BenchShape = "plain" | "escapeHeavy";
+// `formatted` carries inline content (#306): a bold name, a linked city, and a
+// note mixing marks, inline code, an email link, and an image, so the codecs
+// that spell structure run their inline grammar and the plain ones their
+// projection.
+export type BenchShape = "plain" | "escapeHeavy" | "formatted";
 
 // One extra column beside the roster's four, holding the escape-triggering
 // characters. Kept as its own column rather than mixed into the names so the
@@ -73,19 +78,55 @@ const PLAIN_NOTE = "no escaping needed here";
 // serializer must protect so it survives as text.
 const ESCAPED_NOTE = "a | b\nsecond line \\ third & <br> fourth";
 
-function noteFor(shape: BenchShape): string {
+// The note of the formatted shape: marks alone and combined, inline code, an
+// email link, and an image with its alternative text. The web link is the
+// city, beside it.
+const FORMATTED_NOTE = normalizeInline([
+	{ kind: "text", text: "old", marks: ["strikethrough"] },
+	{ kind: "text", text: " new ", marks: [] },
+	{ kind: "text", text: "note", marks: ["bold", "italic", "underline"] },
+	{ kind: "text", text: " ", marks: [] },
+	{ kind: "text", text: "id-7", marks: ["code"] },
+	{ kind: "text", text: " ", marks: [] },
+	{
+		kind: "link",
+		url: "mailto:team@example.com",
+		children: [{ kind: "text", text: "Write", marks: [] }],
+	},
+	{ kind: "text", text: " ", marks: [] },
+	{ kind: "image", url: "https://example.com/view.png", alt: "City view" },
+]);
+
+function noteFor(shape: BenchShape): CellValue {
+	if (shape === "formatted") return FORMATTED_NOTE;
 	return shape === "plain" ? PLAIN_NOTE : ESCAPED_NOTE;
 }
 
 // The roster cycled to the requested length. `age` stays a real number because
 // the roster declares that type; nothing here reads a type off the text, and a
-// fixture that implied one would contradict docs/adr/0008.
+// fixture that implied one would contradict docs/adr/0008. The formatted shape
+// states its structure, as a formatted cell always does (docs/adr/0011).
 function benchMatrix(rows: number, shape: BenchShape): CellValue[][] {
 	const note = noteFor(shape);
 	const body = Array.from({ length: rows }, (_, index) => {
 		const person = samplePeople[index % samplePeople.length];
 		if (!person) throw new Error("The sample roster is empty.");
-		return [person.name, person.city, person.role, person.age, note];
+		if (shape !== "formatted") {
+			return [person.name, person.city, person.role, person.age, note];
+		}
+		return [
+			normalizeInline([{ kind: "text", text: person.name, marks: ["bold"] }]),
+			normalizeInline([
+				{
+					kind: "link",
+					url: `https://example.com/${person.city.toLowerCase().replaceAll(" ", "-")}`,
+					children: [{ kind: "text", text: person.city, marks: [] }],
+				},
+			]),
+			person.role,
+			person.age,
+			note,
+		];
 	});
 	return [[...samplePeopleHeaders, NOTE_HEADER], ...body];
 }

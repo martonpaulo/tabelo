@@ -29,7 +29,7 @@ import {
 // Recorded in docs/performance.md as a known gap rather than hidden here.
 const PARSE_EXCLUDED: readonly CodecId[] = ["html"];
 
-const shapes: readonly BenchShape[] = ["plain", "escapeHeavy"];
+const shapes: readonly BenchShape[] = ["plain", "escapeHeavy", "formatted"];
 
 for (const rows of BENCH_ROWS) {
 	for (const shape of shapes) {

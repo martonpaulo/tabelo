@@ -48,12 +48,13 @@ process measured slower than the identical one after it, which is V8 still
 tiering up rather than anything about the code.
 
 **Fixtures are deterministic and come from the shared roster.** Rows cycle
-`samplePeople`, so two runs measure the same bytes. Two shapes: `plain`, the
-roster as it stands, and `escapeHeavy`, whose extra column carries a pipe, an
-embedded newline, a backslash, a literal ampersand, and a `<br>`. The escape
-path is where Markdown's cost lives, and a fixture without it hides the
-difference. Two sizes: 200 rows, the documented target scale, and 1000, one step
-past it to expose growth that is not linear.
+`samplePeople`, so two runs measure the same bytes. Three shapes: `plain`, the
+roster as it stands; `escapeHeavy`, whose extra column carries a pipe, an
+embedded newline, a backslash, a literal ampersand, and a `<br>`; and
+`formatted`, which carries inline content (#306), so the codecs that spell it
+run their inline grammar. The escape path is where Markdown's cost lives, and a
+fixture without it hides the difference. Two sizes: 200 rows, the documented
+target scale, and 1000, one step past it to expose growth that is not linear.
 
 **Read the `min` column.** Noise only ever adds time, so the fastest observed
 call is the closest estimate of what the code costs. Across four runs on the
@@ -431,6 +432,51 @@ Still open from the same survey, because it would change a visual decision
 or lies with another owner: pasting on the welcome surface removes it before
 the header question opens, so the empty starting table shows for a frame and
 then sits under the question.
+
+### Formatted content at the target scale (#306)
+
+Inline content adds a grammar to three codecs, a validated payload to the
+clipboard, and semantic elements to every grid cell and preview cell, so the
+target scale was measured with it. `pnpm bench` now carries a third fixture
+shape, `formatted`: a bold name, a linked city, and a note holding marks alone
+and combined, inline code, an email link, and an image. Reference machine A,
+2026-09-19, same Node and Vitest majors as the baseline, `min` of 200 samples
+at 200 rows; `plain` is the same run's figure for comparison.
+
+| call | plain | formatted |
+| --- | ---: | ---: |
+| `markdown` serialize | 0.144 | 1.306 |
+| `markdown` parse | 0.375 | 2.313 |
+| `html` serialize | 0.260 | 1.009 |
+| `jira` serialize | 0.480 | 1.405 |
+| `jira` parse | 0.347 | 2.200 |
+| `csv` serialize | 0.122 | 0.186 |
+| clipboard `copy` | 0.629 | 3.794 |
+| clipboard `paste` | 0.707 | 9.163 |
+
+At 1000 rows the formatted figures grow linearly (Markdown serialize 7.1,
+parse 12.0; clipboard copy 20.4, paste 45.7). The plain `jira` serialize figure
+is four times the August baseline (0.480 against 0.118): the inline escaping
+of slice 2 checks every marker, and half a millisecond per table is not worth
+pursuing.
+
+In the browser, with the method under `## Method` (production build, headed
+Chromium 1243 at 1440 x 860, median of three runs, commit `468aafa`): paste a
+200-row, 8-column Markdown table into the grid beside the view, format a whole
+column with `Mod`+`B`, type five characters into the rich cell editor, commit
+with `Enter`, and scroll the grid to the end and back. `plain` pastes the same
+table with every marker removed. Milliseconds.
+
+| beside | content | paste: long task | format column: INP | format column: long task | typing: INP | commit: INP | scroll: worst frame |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Markdown | plain | 80 | 88 | 0 | 88 | 72 | 19 |
+| Markdown | formatted | 156 | 136 | 61 | 88 | 120 | 19 |
+| Rendered Preview | plain | 104 | 72 | 0 | 72 | 56 | 19 |
+| Rendered Preview | formatted | 161 | 88 | 0 | 32 | 80 | 19 |
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| Formatted content makes the target scale slow | Every interaction stays under 200 ms INP and scrolling keeps its 19 ms worst frame. Formatting adds about 60 ms to the paste commit, the one figure that was already above 100 ms, and brings formatting a whole column beside Markdown and committing a cell beside it to 136 and 120 ms INP, from 88 and 72 | **Accepted, not traced.** Nothing crosses the 200 ms line, and the codec and clipboard figures above account for under 10 ms of any of it, so the rest is rendering the semantic elements and the source editor's update. Trace the Markdown column format first if a report names it. |
 
 ### Adding an entry
 

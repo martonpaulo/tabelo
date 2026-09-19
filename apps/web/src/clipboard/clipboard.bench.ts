@@ -21,7 +21,7 @@ import { selectionClipboardPayload } from "./serialize";
 //
 // This file runs in the default `node` environment, like every other bench.
 
-const shapes: readonly BenchShape[] = ["plain", "escapeHeavy"];
+const shapes: readonly BenchShape[] = ["plain", "escapeHeavy", "formatted"];
 
 for (const rows of BENCH_ROWS) {
 	for (const shape of shapes) {
