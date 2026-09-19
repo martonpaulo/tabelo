@@ -137,6 +137,14 @@ test("formatting is unavailable for a number and says why", async ({
 	await page.keyboard.press("ControlOrMeta+B");
 	await expect(tabelo.notice("warning")).toBeVisible();
 	await expect(tabelo.cell(1, 3)).toHaveAttribute("data-cell-type", "number");
+
+	// Beside text, the text is formatted and a notice reports the skipped cell.
+	await tabelo.cell(1, 2).click();
+	await tabelo.cell(1, 3).click({ modifiers: ["Shift"] });
+	await page.keyboard.press("ControlOrMeta+B");
+	await expect(tabelo.cell(1, 2).locator("strong")).toHaveText("Rio");
+	await expect(tabelo.notice("info")).toBeVisible();
+	await expect(tabelo.cell(1, 3)).toHaveAttribute("data-cell-type", "number");
 });
 
 test("every mark shortcut formats the selected cell", async ({
@@ -226,6 +234,10 @@ test("the link dialog links a cell, edits it, and removes it", async ({
 	const text = dialog.getByRole("textbox", { name: copy.link.text });
 	await expect(text).toBeFocused();
 	await expect(text).toHaveValue("Madrid");
+	// Adding a link: there is no link yet, so nothing to remove.
+	await expect(
+		dialog.getByRole("button", { name: copy.link.remove }),
+	).toHaveCount(0);
 
 	// Cancel leaves nothing behind, and focus returns to the cell.
 	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
@@ -238,10 +250,6 @@ test("the link dialog links a cell, edits it, and removes it", async ({
 	dialog = page.getByRole("dialog");
 	await dialog.getByRole("button", { name: copy.link.confirm }).click();
 	const address = dialog.getByRole("textbox", { name: copy.link.address });
-	// Adding a link: there is no link yet, so nothing to remove.
-	await expect(
-		dialog.getByRole("button", { name: copy.link.remove }),
-	).toHaveCount(0);
 	await expect(address).toHaveAttribute("aria-invalid", "true");
 	await address.fill("mailto:paulo@example.com");
 	await dialog.getByRole("button", { name: copy.link.confirm }).click();

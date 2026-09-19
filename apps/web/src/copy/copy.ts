@@ -5,6 +5,7 @@ import {
 } from "@tabelo/ui/lib/shortcut";
 import type { CopyScope } from "@/clipboard/serialize";
 import { product } from "@/copy/product";
+import type { TypedValueType } from "@/core/cell-formatting";
 import { cellText } from "@/core/cell-value";
 import { columnLetter } from "@/core/column-letter";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
@@ -191,6 +192,23 @@ function joinedPositions(values: readonly string[]): string {
 	if (values.length <= 1) return values[0] ?? "";
 	if (values.length === 2) return `${values[0]} and ${values[1]}`;
 	return `${values.slice(0, -1).join(", ")}, and ${values.at(-1)}`;
+}
+
+// What formatting cannot reach, named in the plural a sentence about them
+// needs. The labels stay the cell type names a person picks from, so the
+// notice points at the same words the type choice shows.
+const typedValueNouns = {
+	number: "numbers",
+	boolean: "booleans",
+	null: "null values",
+} as const satisfies Record<TypedValueType, string>;
+
+function typedValues(types: readonly TypedValueType[]): string {
+	return joinedPositions(types.map((type) => typedValueNouns[type]));
+}
+
+function capitalized(text: string): string {
+	return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function preconditionMessage(failure: PreconditionFailure): string {
@@ -536,7 +554,8 @@ export const copy = {
 		updateInProgress: "The update is already being applied.",
 		// Formatting never converts a value (#306), so the reason names the step
 		// that comes first.
-		formatTypedValue: "Change the cell type to text to format it.",
+		formatTypedValue: (types: readonly TypedValueType[], cells: number) =>
+			`${capitalized(typedValues(types))} have no formatting. Change ${cells === 1 ? "the cell" : "the cells"} to ${cellTypeLabels.string} first.`,
 		formatEmpty: "Type some text to format it.",
 		formatUnavailable: "Inline code and images can't take this format.",
 		linkSingleCell: "Select one cell to add a link.",
@@ -971,6 +990,10 @@ export const copy = {
 	},
 
 	notices: {
+		// A mark applied over a selection that also held typed values: the text
+		// was formatted, and this says what was left and how to reach it.
+		formatSkipped: (types: readonly TypedValueType[], cells: number) =>
+			`Skipped ${plural(cells, "cell", "cells")}: ${typedValues(types)} have no formatting. Change ${cells === 1 ? "it" : "them"} to ${cellTypeLabels.string} first.`,
 		// Whole-table commands report in a notice rather than the status line,
 		// because the notice is also where their Undo is offered (#235).
 		tableTransposed: "Table transposed.",

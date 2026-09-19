@@ -1,4 +1,4 @@
-import { cellText, readCell } from "./cell-value";
+import { cellText, cellValueType, readCell } from "./cell-value";
 import {
 	inlineImages,
 	inlineLength,
@@ -15,6 +15,7 @@ import {
 import { type CellRect, rectContains, rectCoversHeader } from "./selection";
 import type {
 	CellValue,
+	CellValueType,
 	InlineMark,
 	TableDocument,
 	TextContent,
@@ -30,10 +31,6 @@ import type {
 // holds no text to format at all: only numbers, booleans, or `null`, which
 // formatting never converts (docs/adr/0008), or only empty cells.
 export type SelectionMarkState = MarkState | "no-text";
-
-// Why a selection holds nothing to format, so the refusal can say which step
-// comes first: changing a typed value to text, or typing some.
-export type NoTextReason = "typed" | "empty";
 
 interface FormatTarget {
 	// The data row, or -1 for the header row.
@@ -107,15 +104,36 @@ export function selectionMarkState(
 	return states.has("on") ? "on" : "off";
 }
 
-export function noTextReason(
+// A value formatting cannot reach: anything but text (docs/adr/0008).
+export type TypedValueType = Exclude<CellValueType, "string">;
+
+const typedValueOrder: readonly TypedValueType[] = [
+	"number",
+	"boolean",
+	"null",
+];
+
+// The selected cells a mark leaves alone because they hold a typed value, and
+// which types those are, in a fixed order, so the notice about them can name
+// what to change first and how many cells it concerns (owner, 2026-09-19).
+// A selection with nothing to format and no typed cell holds only empty text.
+export interface TypedCells {
+	readonly count: number;
+	readonly types: readonly TypedValueType[];
+}
+
+export function typedCells(
 	document: TableDocument,
 	rects: readonly CellRect[],
-): NoTextReason {
-	return selectedCells(document, rects).some(
-		(target) => !isTextContent(target.value),
-	)
-		? "typed"
-		: "empty";
+): TypedCells {
+	const found = new Set<CellValueType>();
+	let count = 0;
+	for (const target of selectedCells(document, rects)) {
+		if (isTextContent(target.value)) continue;
+		count += 1;
+		found.add(cellValueType(target.value));
+	}
+	return { count, types: typedValueOrder.filter((type) => found.has(type)) };
 }
 
 function writeTargets(

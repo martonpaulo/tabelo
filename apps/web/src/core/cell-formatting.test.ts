@@ -3,9 +3,9 @@ import {
 	applyLink,
 	insertImage,
 	linkDraft,
-	noTextReason,
 	selectionMarkState,
 	toggleMarkInCells,
+	typedCells,
 } from "./cell-formatting";
 import { cellText, readCell } from "./cell-value";
 import { documentFromMatrix } from "./document";
@@ -92,18 +92,36 @@ describe("formatting the grid selection", () => {
 		// The age column holds real numbers.
 		const ages = [rect(0, 3, 1, 3)];
 		expect(selectionMarkState(document, ages, "bold")).toBe("no-text");
-		expect(noTextReason(document, ages)).toBe("typed");
+		expect(typedCells(document, ages)).toEqual({
+			count: 2,
+			types: ["number"],
+		});
 		expect(toggleMarkInCells(document, ages, "bold")).toBe(document);
 
-		// Mixed with text, the numbers are left exactly as they were.
-		const next = toggleMarkInCells(document, [rect(0, 2, 0, 3)], "bold");
+		// Mixed with text, the text is formatted and the numbers are left
+		// exactly as they were, counted as skipped.
+		const mixed = [rect(0, 2, 0, 3)];
+		const next = toggleMarkInCells(document, mixed, "bold");
 		expect(cell(next, 0, 3)).toBe(ingrid.age);
+		const role = cell(next, 0, 2) as TextContent;
+		expect(markState(role, 0, whole(role), "bold")).toBe("on");
+		expect(typedCells(document, mixed).count).toBe(1);
+	});
+
+	it("names each kind of typed value once, in a fixed order", () => {
+		const document = documentFromMatrix([[null, true, 3, false]], {
+			headerRow: false,
+		});
+		expect(typedCells(document, [rect(0, 0, 0, 3)])).toEqual({
+			count: 4,
+			types: ["number", "boolean", "null"],
+		});
 	});
 
 	it("says an empty selection has nothing to format", () => {
 		const document = documentFromMatrix([["", ""]], { headerRow: false });
 		expect(selectionMarkState(document, [rect(0, 0)], "bold")).toBe("no-text");
-		expect(noTextReason(document, [rect(0, 0)])).toBe("empty");
+		expect(typedCells(document, [rect(0, 0)]).count).toBe(0);
 	});
 });
 

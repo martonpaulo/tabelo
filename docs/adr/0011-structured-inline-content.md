@@ -153,8 +153,11 @@ wraps. Formatting is a document command built from the range operations:
 - *A mark on the grid selection* formats the complete text of each selected
   textual header and data cell once, however many selected areas cover it,
   and removes the mark only when every cell it reaches already has it. It is
-  one history step. Numbers, booleans, and null are left untouched, and a
-  selection holding only those, or only empty cells, refuses with a reason.
+  one history step. Numbers, booleans, and null are left untouched. A
+  selection holding some of them formats its text and says in a notice how
+  many cells it skipped and why; a selection holding only those refuses with
+  a notice that names them and the fix, changing the cells to Text first; a
+  selection of only empty cells refuses with a reason (owner, 2026-09-19).
 - *A link or an image* acts on one cell. The link command edits the link a
   caret sits in, keeps the label's formatting when the label is unchanged,
   and refuses a range holding an image. An image needs an address and

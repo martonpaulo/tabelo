@@ -145,8 +145,10 @@ Forced colours keep the system highlight for on, and a dashed edge plus the
 dot in the system text colour for mixed. Each segment is named in full, states its chord
 in `aria-keyshortcuts`, and shows its name and its legend in its tooltip,
 because an icon has no room for the legend a menu row prints. A mark the
-selection cannot take is disabled with its written reason. A command closes
-the menu.
+selection cannot take is disabled with its written reason, which for typed
+values names them and the fix (change the cell to Text first). A selection
+mixing text with typed values stays enabled: the mark formats the text, and a
+notice says how many cells were skipped and why. A command closes the menu.
 
 Every action collection uses the menu primitive's semantic Group, in dropdown
 and context menus alike (#75). A visible group title is reserved for the three

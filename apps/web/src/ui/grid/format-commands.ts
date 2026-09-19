@@ -10,12 +10,12 @@ import {
 	applyLink,
 	insertImage,
 	linkDraft,
-	type NoTextReason,
-	noTextReason,
 	type SelectionMarkState,
 	selectionMarkState,
+	type TypedCells,
+	typedCells,
 } from "@/core/cell-formatting";
-import { readCell } from "@/core/cell-value";
+import { cellValueType, readCell } from "@/core/cell-value";
 import { inlineLength, isTextContent, removeLink } from "@/core/inline-content";
 import {
 	activeRange,
@@ -118,21 +118,25 @@ export function isLinkKey(event: {
 	);
 }
 
-// Why a mark cannot be applied here, or nothing when it can.
+// Why a mark cannot be applied here, or nothing when it can. A selection of
+// typed values names them and the step that comes first (owner, 2026-09-19).
 export function markRefusal(
 	state: SelectionMarkState,
-	reason: () => NoTextReason,
+	typed: () => TypedCells,
 ): string | undefined {
 	if (state === "unavailable") return copy.disabled.formatUnavailable;
 	if (state !== "no-text") return undefined;
-	return reason() === "typed"
-		? copy.disabled.formatTypedValue
+	const cells = typed();
+	return cells.count > 0
+		? copy.disabled.formatTypedValue(cells.types, cells.count)
 		: copy.disabled.formatEmpty;
 }
 
 export interface MarkControlState {
 	readonly state: SelectionMarkState;
 	readonly refusal: string | undefined;
+	// The typed cells the mark would leave alone beside the text it formats.
+	readonly typed: TypedCells;
 }
 
 export function selectionMarkControl(
@@ -146,17 +150,17 @@ export function selectionMarkControl(
 		document.columns.length,
 	);
 	const state = selectionMarkState(document, rects, mark);
-	return {
-		state,
-		refusal: markRefusal(state, () => noTextReason(document, rects)),
-	};
+	const typed = typedCells(document, rects);
+	return { state, refusal: markRefusal(state, () => typed), typed };
 }
 
 // Toggles a mark over the grid selection and says what happened: the new
-// state when it changed something, the reason when it could not.
+// state when it changed something, the reason in a notice when it could not.
+// A selection mixing text with typed values formats the text and says in a
+// notice how many cells it skipped and why (owner, 2026-09-19).
 export function runSelectionMark(mark: InlineMark): void {
 	const store = useTabeloStore.getState();
-	const { refusal } = selectionMarkControl(
+	const { refusal, typed } = selectionMarkControl(
 		store.document,
 		store.selection,
 		mark,
@@ -169,6 +173,12 @@ export function runSelectionMark(mark: InlineMark): void {
 	store.announceStatus(
 		copy.status.formatApplied(markLabel(mark), before !== "on"),
 	);
+	if (typed.count > 0) {
+		store.pushNotice({
+			severity: "info",
+			message: copy.notices.formatSkipped(typed.types, typed.count),
+		});
+	}
 }
 
 // The one cell a link or an image command acts on: a single selected header
@@ -218,8 +228,12 @@ export function cellCommandRefusal(
 			: copy.disabled.imageSingleCell;
 	}
 	const value = readTarget(document, target);
-	if (value === undefined || !isTextContent(value)) {
-		return copy.disabled.formatTypedValue;
+	if (value === undefined) return copy.disabled.formatEmpty;
+	if (!isTextContent(value)) {
+		const type = cellValueType(value);
+		return type === "string"
+			? copy.disabled.formatEmpty
+			: copy.disabled.formatTypedValue([type], 1);
 	}
 	if (command === "link") {
 		const length = inlineLength(value);
