@@ -149,6 +149,12 @@ export interface TableActionContext {
 	// Which axis the menu was opened on. Cells offer both; a row or column
 	// header offers only its own, which is what keeps the menu short.
 	readonly axis: "cell" | "row" | "column";
+	// Whether the menu was opened on a cell rather than on a row number or a
+	// column letter. The keyboard opens the row or column menu on a cell whose
+	// whole row or column is selected (#288), and Move focus, keep selection
+	// still belongs there: it is the only keyboard path from one selected
+	// column to the next, so it follows the cell, not the axis.
+	readonly openedOnCell?: boolean;
 }
 
 // Built from live store state on each call, so disabled states are always
@@ -414,7 +420,7 @@ export function buildTableActions(
 				})
 			: [];
 	const focus: TableAction[] =
-		context.axis === "cell"
+		context.axis === "cell" || context.openedOnCell === true
 			? focusDirections.map(([direction, icon, label, atEdge]) => {
 					const target = neighbourCell(
 						activeRange(selection).focus,

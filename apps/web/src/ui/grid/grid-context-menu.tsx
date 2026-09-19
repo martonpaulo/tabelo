@@ -80,10 +80,13 @@ import {
 type ContextAxis = TableActionContext["axis"];
 
 // What the menu was opened on. The index names the row or column an axis menu
-// acts on; a cell menu acts on the selection and needs none.
+// acts on; a cell menu acts on the selection and needs none. `onCell` records
+// that a cell opened it, which an axis menu the keyboard opens from a cell
+// still is.
 interface MenuTarget {
 	readonly axis: ContextAxis;
 	readonly index: number;
+	readonly onCell?: boolean;
 }
 
 const alignments: {
@@ -169,7 +172,10 @@ function PinAxisItem({ axis }: { readonly axis: PinnedGridAxis }) {
 // keyed by that column, so the fit width is measured once per opening.
 //
 // None of these moves the focused cell, so closing the menu after one hands
-// focus back to wherever the menu was opened from, the letter included.
+// focus back to where it stood when the menu opened. Opened on a letter whose
+// column was not yet selected, that is the column's header cell: opening the
+// menu selected the column, and a selection made from the strip hands focus to
+// the table (#288).
 function ColumnMenuGroups({
 	index,
 	tableRef,
@@ -454,7 +460,7 @@ export function GridContextMenu({
 	readonly onSetColumnWidth: (index: number) => void;
 }) {
 	const [target, setTarget] = useState<MenuTarget>({ axis: "cell", index: 0 });
-	const { axis } = target;
+	const { axis, onCell: openedOnCell } = target;
 	const column = useTabeloStore((state) =>
 		target.axis === "column" ? state.document.columns[target.index] : undefined,
 	);
@@ -617,8 +623,8 @@ export function GridContextMenu({
 							// selection, so a selected row or column yields its axis menu.
 							setTarget(
 								fromKeyboard
-									? targetFromSelection()
-									: { axis: "cell", index: 0 },
+									? { ...targetFromSelection(), onCell: true }
+									: { axis: "cell", index: 0, onCell: true },
 							);
 							return;
 						}
@@ -660,7 +666,7 @@ export function GridContextMenu({
 							<ContextMenuSeparator />
 						</>
 					) : null}
-					{buildTableActions({ axis }).map((group, index) => (
+					{buildTableActions({ axis, openedOnCell }).map((group, index) => (
 						<Fragment key={group.id}>
 							{index > 0 ? <ContextMenuSeparator /> : null}
 							{group.submenu && group.label ? (

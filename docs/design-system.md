@@ -1770,7 +1770,7 @@ leaves the pane.
 | `Space` | On a column header, select the column: activating a button does what buttons do |
 | `Ctrl`+`Space` | Add the focused cell's column to the selection, or take it away |
 | `Ctrl`+`Shift`+`Space` | The same for its row |
-| `Shift`+`F10` / `ContextMenu` | Open the grid menu where focus is. On a row number or column letter it is that axis's menu; on a cell the selection decides: whole rows get the row menu, whole columns the column menu, anything else the cell menu (#288) |
+| `Shift`+`F10` / `ContextMenu` | Open the grid menu where focus is. On a row number or column letter it is that axis's menu; on a cell the selection decides: whole rows get the row menu, whole columns the column menu, anything else the cell menu (#288). Opened on a cell, every one of them carries Move focus, keep selection |
 | `Escape` | Close the innermost thing first: cancel an edit, close a menu, clear the copied mark, collapse a selection to one cell. If nothing else is open, exit the pane |
 | `Backspace` | Clear the contents of the selection |
 | `Mod`+`Backspace` | Remove the selected rows or columns |
@@ -1813,7 +1813,10 @@ disabled at the table's edges with the reason written out. That is what keeps
 multi-area selection off the pointer: `Ctrl`+`Space` adds the column the focus
 is in, and the menu is what carries the areas already selected past the move to
 the next column. The menu opens from the focused cell with `Shift`+`F10` or the
-`ContextMenu` key as well as with a right-click, and closing it returns focus to the cell the
+`ContextMenu` key as well as with a right-click. Once `Ctrl`+`Space` has selected
+the whole column, that key opens the column menu instead (#288), and the
+submenu stays there too: it follows the cell the menu was opened on, not the
+axis, or the first step of the path would be lost. Closing it returns focus to the cell the
 action moved to, revealed clear of the sticky chrome like every other focus
 move. `Alt`+`Shift` with the left or right arrow sets column width only while
 `Mod` is not held (#137; the guard in `table-grid.tsx` requires `!mod`).
