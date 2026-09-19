@@ -251,6 +251,10 @@ test("the move actions advertise the binding the grid already answers", async ({
 	// same row the menu item would have.
 	await page.keyboard.press("Escape");
 	await page.keyboard.press("Escape");
+	// A closing menu hands the focus back to the row it opened on once its exit
+	// finishes, so the cell is chosen only after the menu is gone: a click in
+	// between loses the focus to that row.
+	await expect(page.getByRole("menu")).toHaveCount(0);
 	await tabelo.cell(2, 1).click();
 	await page.keyboard.press("Alt+ArrowDown");
 	await expect(tabelo.cell(2, 1)).toHaveText("Mabel");

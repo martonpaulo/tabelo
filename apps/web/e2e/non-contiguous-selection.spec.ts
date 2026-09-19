@@ -129,6 +129,11 @@ async function moveFocusByMenu(
 		left: copy.actions.moveFocusLeft,
 		right: copy.actions.moveFocusRight,
 	}[direction];
+	// The flow is the keyboard's alone. A pointer left resting where the menu
+	// opens hovers whatever item scrolls under it when the focused row is
+	// brought into view, and that hover takes the highlight, and the submenu,
+	// away from the row.
+	await page.mouse.move(0, 0);
 	await page.keyboard.press("ContextMenu");
 	const menu = page.locator('[data-slot="context-menu-content"]');
 	await expect(menu).toBeVisible();
