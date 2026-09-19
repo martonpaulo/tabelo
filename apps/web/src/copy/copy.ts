@@ -394,6 +394,10 @@ export const copy = {
 		redo: "Nothing to redo.",
 		sourceNothingSelected: "Select some text first.",
 		sourceReadOnly: "This view is read-only.",
+		// A structural command in a source pane acts on the table row under the
+		// caret, so text the table has not read back names no row (#255).
+		sourceRowUnparsed: "Fix the text so it reads as a table first.",
+		sourceRowOutside: "Put the caret in a table row first.",
 		fitWrappedColumn: "Turn off Wrap text to fit this column.",
 		columnAlreadyFitted: "This column already fits its content.",
 		columnFitUnavailable: "This column can't be measured right now.",
@@ -552,6 +556,10 @@ export const copy = {
 		moveDown: "Move down",
 		moveLeft: "Move left",
 		moveRight: "Move right",
+		// A source pane's menu also holds text commands, so its row move names
+		// the row (#255).
+		moveRowUp: "Move row up",
+		moveRowDown: "Move row down",
 		fill: "Fill",
 		// The menu path that replaces the removed four-key focus chord. Named
 		// for what it preserves, because that is the whole reason to reach for

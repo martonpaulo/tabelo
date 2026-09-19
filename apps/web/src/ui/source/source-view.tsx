@@ -9,6 +9,7 @@ import { useReportPaneOccurrences } from "@/ui/workspace/use-pane-occurrences";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import { BlockedState } from "./blocked-state";
+import type { SourceRowTarget } from "./row-commands";
 import { type SourceDiagnostic, SourceEditor } from "./source-editor";
 import { sourceFeedbackIds } from "./source-feedback";
 
@@ -84,6 +85,16 @@ export default function SourceView({
 	const editable = view.capabilities.editable;
 	const feedbackIds = sourceFeedbackIds(paneId);
 
+	// Row commands reach a pane only when its codec declares the position
+	// mapping and the view can be edited (#255): the declaration decides, never
+	// the view's name.
+	const codec = view.codec;
+	const rowTarget = useMemo(
+		(): SourceRowTarget | null =>
+			editable && codec?.mapsSourceRows ? { paneId, viewId, codec } : null,
+		[editable, codec, paneId, viewId],
+	);
+
 	// Leaving for the grid or the preview, and the pane closing, both unmount
 	// this component while the header outlives it, so the summary has to be
 	// dropped on the way out. A change to another source view keeps this
@@ -127,6 +138,7 @@ export default function SourceView({
 				fieldSeparator={view.codec?.fieldSeparator}
 				diagnostics={diagnostics}
 				rows={rows}
+				rowTarget={rowTarget}
 				invalid={invalid}
 				entered={entered}
 				describedBy={description ? feedbackIds.description : undefined}

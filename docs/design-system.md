@@ -2169,11 +2169,32 @@ syntactic depth, and typing a closing bracket or tag re-indents its line. Each
 indentation is one ordinary edit: one step of local undo, then the document
 timeline beyond it (ADR 0003), and a draft like any other typing.
 
+**`Alt`+`ArrowUp` and `Alt`+`ArrowDown` move the table row, as in the grid,
+wherever the format can say which row the caret is in** (owner, 2026-09-18).
+Whether it can is the codec's position mapping (`mapsSourceRows`, ADR 0005),
+never the view's name: Markdown, CSV, TSV, and Jira map a caret to a row and
+column, so there the chord runs the grid's row move on the row under the caret,
+as one document step. A text line move would break a Markdown divider or split
+a quoted CSV row, which is why one key means one thing in every tabular view.
+The caret follows the moved row into the same cell. The move clears the pane's
+own keystroke history, so the next undo there reverses the move rather than
+older typing; nothing is lost, because every committed parse is already a step
+of the document timeline (ADR 0003). A move the grid would refuse (the header
+row, the first row upward, the last row downward) is refused here with the
+same written reason, and so is a caret outside the table and any draft that
+does not parse: its text names no row the document has read, and acting on the
+last valid parse would move a row the user is not looking at. The source pane's
+context menu offers the same two commands as Move row up and Move row down,
+disabled with that reason. HTML, JSON, and Records cannot map a row, so there
+the chord keeps CodeMirror's text line move and the menu has no row commands.
+Decided on #255.
+
 | Key | Field views | Indent views |
 | :--- | :--- | :--- |
 | `Tab` | Next field, wrapping to the first | Indent the line one unit |
 | `Shift`+`Tab` | Previous field, wrapping to the last | Outdent the line one unit |
 | `Enter` | A plain line break | A line break at the current depth |
+| `Alt`+`ArrowUp` / `Alt`+`ArrowDown` | Move the table row, where the codec maps rows; otherwise move the text line | Move the text line |
 | `Escape` | Return focus to the pane frame | Return focus to the pane frame |
 
 ### Naming inside the grid

@@ -12,6 +12,8 @@ import {
 import {
 	IconArrowBackUp,
 	IconArrowForwardUp,
+	IconArrowNarrowDown,
+	IconArrowNarrowUp,
 	IconClipboard,
 	IconCopy,
 	IconCursorText,
@@ -40,6 +42,15 @@ import {
 	occurrenceSummary,
 	selectNextOccurrenceAsPrimary,
 } from "./occurrence-selection";
+import { type SourceRowRefusal, sourceRowRefusalMessage } from "./row-commands";
+
+// The row commands of a pane whose codec maps rows (#255): why a move is
+// unavailable, read as the menu opens, and the move itself, the same one
+// Alt+ArrowUp and Alt+ArrowDown run.
+export interface SourceRowMoveCommands {
+	readonly refusal: (offset: number) => SourceRowRefusal | null;
+	readonly run: (offset: number) => void;
+}
 
 // A source pane's own context menu (#234). Every item is a second path to a
 // command the editor's keymap already binds, carrying that shortcut, so the
@@ -57,6 +68,8 @@ interface MenuState {
 	readonly canOccurrence: boolean;
 	readonly canUndo: boolean;
 	readonly canRedo: boolean;
+	readonly moveUp: SourceRowRefusal | null;
+	readonly moveDown: SourceRowRefusal | null;
 }
 
 const closed: MenuState = {
@@ -65,6 +78,8 @@ const closed: MenuState = {
 	canOccurrence: false,
 	canUndo: false,
 	canRedo: false,
+	moveUp: null,
+	moveDown: null,
 };
 
 // What the selection holds, as the clipboard would receive it: CodeMirror's
@@ -81,11 +96,15 @@ export function SourceContextMenu({
 	paneId,
 	viewRef,
 	onOccurrenceAdded,
+	rowMove,
 	children,
 }: {
 	readonly paneId: string;
 	readonly viewRef: RefObject<EditorView | null>;
 	readonly onOccurrenceAdded: (summary: OccurrenceSummary) => void;
+	// Absent where the pane's codec cannot name a row, which leaves the menu
+	// without row commands rather than with disabled ones that never apply.
+	readonly rowMove: SourceRowMoveCommands | null;
 	// The element the editor mounts into. It becomes the menu's trigger, so the
 	// whole editor body opens the menu and nothing outside it does.
 	readonly children: ReactElement<{ ref?: RefObject<HTMLDivElement | null> }>;
@@ -125,6 +144,8 @@ export function SourceContextMenu({
 			canOccurrence: occurrenceSelectionApplies(editor.state),
 			canUndo: canRunHistory(paneId, "undo", store.past.length > 0),
 			canRedo: canRunHistory(paneId, "redo", store.future.length > 0),
+			moveUp: rowMove?.refusal(-1) ?? null,
+			moveDown: rowMove?.refusal(1) ?? null,
 		};
 	};
 
@@ -249,6 +270,36 @@ export function SourceContextMenu({
 				run: nextOccurrence,
 			},
 		],
+		...(rowMove
+			? [
+					[
+						{
+							id: "move-row-up",
+							label: copy.actions.moveRowUp,
+							icon: IconArrowNarrowUp,
+							shortcut: copy.shortcuts.moveUp,
+							reason:
+								readOnly ??
+								(state.moveUp
+									? sourceRowRefusalMessage[state.moveUp]
+									: undefined),
+							run: () => rowMove.run(-1),
+						},
+						{
+							id: "move-row-down",
+							label: copy.actions.moveRowDown,
+							icon: IconArrowNarrowDown,
+							shortcut: copy.shortcuts.moveDown,
+							reason:
+								readOnly ??
+								(state.moveDown
+									? sourceRowRefusalMessage[state.moveDown]
+									: undefined),
+							run: () => rowMove.run(1),
+						},
+					],
+				]
+			: []),
 	];
 
 	return (

@@ -45,6 +45,7 @@ import {
 	registerLocalHistory,
 } from "@/history/coordinator";
 import type { SpaceIndicators } from "@/preferences/contract";
+import { useTabeloStore } from "@/state/store";
 import type {
 	HighlightLanguage,
 	SourceTabBehaviour,
@@ -65,6 +66,13 @@ import {
 } from "./occurrence-selection";
 import { pinnedHeader, pinnedHeaderSetup } from "./pinned-header";
 import { recordsLanguage } from "./records-language";
+import {
+	caretOffset,
+	resolveSourceRowMove,
+	type SourceCaretTarget,
+	type SourceRowTarget,
+	sourceRowRefusalMessage,
+} from "./row-commands";
 import { SourceContextMenu } from "./source-context-menu";
 import { setSourceRows } from "./source-rows";
 import { assistanceExtension } from "./structural-assistance";
@@ -100,6 +108,14 @@ const pinnedHeaderCompartment = new Compartment();
 // scale itself keeps its single owner. Levels are reused rather than rebuilt,
 // so stepping up and down does not register a new theme every time.
 const metricsSignals = new Map<number, Extension>();
+
+// Drops the editor's local undo history and starts an empty one. Dropping the
+// field and adding it back is what clears it: reconfiguring a compartment that
+// keeps the field keeps its contents too, so this has to be two transactions.
+function clearLocalHistory(view: EditorView): void {
+	view.dispatch({ effects: historyCompartment.reconfigure([]) });
+	view.dispatch({ effects: historyCompartment.reconfigure(history()) });
+}
 
 function metricsSignal(zoom: number): Extension {
 	const known = metricsSignals.get(zoom);
@@ -328,6 +344,11 @@ interface SourceEditorProps {
 	// Where the table's rows sit in `value`, for the boundaries between them
 	// (#296). Empty when the text does not parse or the format cannot map rows.
 	readonly rows: readonly SourceTableRow[];
+	// The codec whose position mapping names the table row under the caret,
+	// when this pane runs row commands (#255). Absent for a format that cannot
+	// map rows and for a read-only view, where Alt+ArrowUp and Alt+ArrowDown
+	// keep CodeMirror's own line move.
+	readonly rowTarget: SourceRowTarget | null;
 	readonly invalid: boolean;
 	readonly entered: boolean;
 	readonly describedBy?: string;
@@ -366,6 +387,7 @@ export function SourceEditor({
 	fieldSeparator,
 	diagnostics,
 	rows,
+	rowTarget,
 	invalid,
 	entered,
 	describedBy,
@@ -384,6 +406,7 @@ export function SourceEditor({
 	// tearing it down on every render would destroy history and cursor state.
 	const handlers = useRef({
 		sourceFields,
+		rowTarget,
 		onChange,
 		onBufferReplaced,
 		onUndoBeyondLocal,
@@ -393,12 +416,45 @@ export function SourceEditor({
 	});
 	handlers.current = {
 		sourceFields,
+		rowTarget,
 		onChange,
 		onBufferReplaced,
 		onUndoBeyondLocal,
 		onRedoBeyondLocal,
 		onOccurrencesChange,
 		onOccurrenceAdded,
+	};
+
+	// Where the caret goes once a row command's result is back in the text. Set
+	// before the document changes, and spent by the first rows mapped after it.
+	const pendingCaret = useRef<SourceCaretTarget | null>(null);
+
+	// Moves the table row under the caret (#255). Reads only refs, so the keymap
+	// built once at mount and the context menu share it. False means this pane
+	// has no row commands, which hands the key to CodeMirror's line move.
+	//
+	// The move is a document step, not a keystroke, so the editor's own history
+	// is cleared with it: otherwise the next undo in this pane would revert older
+	// typing through the moved text instead of the move. Nothing is lost, because
+	// every committed parse is already its own step in the document timeline, and
+	// the step this move adds carries the draft it replaced (docs/adr/0003).
+	const moveRow = (view: EditorView, offset: number): boolean => {
+		const target = handlers.current.rowTarget;
+		if (!target) return false;
+		const store = useTabeloStore.getState();
+		const move = resolveSourceRowMove(view.state, target, offset);
+		if (move.ok) pendingCaret.current = move.caret;
+		const refusal = move.ok ? store.moveRowAt(move.row, offset) : move.refusal;
+		if (refusal) {
+			pendingCaret.current = null;
+			store.pushNotice({
+				severity: "warning",
+				message: sourceRowRefusalMessage[refusal],
+			});
+		} else {
+			clearLocalHistory(view);
+		}
+		return true;
 	};
 
 	// The editor is created once and lives for the panel's lifetime. Re-running
@@ -499,6 +555,12 @@ export function SourceEditor({
 									return true;
 								},
 							},
+							// In a pane whose codec maps rows, Alt+ArrowUp and
+							// Alt+ArrowDown move the table row, as in the grid (owner,
+							// 2026-09-18, #255). Everywhere else they return false and
+							// the default keymap below moves the text line.
+							{ key: "Alt-ArrowUp", run: (target) => moveRow(target, -1) },
+							{ key: "Alt-ArrowDown", run: (target) => moveRow(target, 1) },
 							{
 								key: "Mod-z",
 								preventDefault: true,
@@ -608,11 +670,19 @@ export function SourceEditor({
 
 	// After the text above, so the rows always describe the text the editor now
 	// holds; the field refuses rows parsed from any other text.
+	// A row command's caret lands here, in the rows mapped from the text the
+	// command regenerated, so it follows the moved row into its new place.
 	useEffect(() => {
 		const view = viewRef.current;
 		if (!view) return;
+		const pending = pendingCaret.current;
+		pendingCaret.current = null;
+		const caret = pending ? caretOffset(rows, pending) : null;
 		view.dispatch({
 			effects: setSourceRows.of({ rows, length: value.length }),
+			...(caret === null
+				? {}
+				: { selection: { anchor: caret }, scrollIntoView: true }),
 		});
 	}, [rows, value]);
 
@@ -639,8 +709,7 @@ export function SourceEditor({
 		servedViewId.current = viewId;
 		const view = viewRef.current;
 		if (!view) return;
-		view.dispatch({ effects: historyCompartment.reconfigure([]) });
-		view.dispatch({ effects: historyCompartment.reconfigure(history()) });
+		clearLocalHistory(view);
 
 		// Occurrences were gathered in the format the pane has left, and the
 		// ranges CodeMirror maps into the new text no longer mean what the user
@@ -789,6 +858,26 @@ export function SourceEditor({
 			viewRef={viewRef}
 			onOccurrenceAdded={(summary) =>
 				handlers.current.onOccurrenceAdded(summary)
+			}
+			rowMove={
+				rowTarget
+					? {
+							refusal: (offset) => {
+								const view = viewRef.current;
+								if (!view) return "unparsed";
+								const move = resolveSourceRowMove(
+									view.state,
+									rowTarget,
+									offset,
+								);
+								return move.ok ? null : move.refusal;
+							},
+							run: (offset) => {
+								const view = viewRef.current;
+								if (view) moveRow(view, offset);
+							},
+						}
+					: null
 			}
 		>
 			<div ref={hostRef} className="h-full min-h-0 [&_.cm-editor]:h-full" />

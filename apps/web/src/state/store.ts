@@ -400,6 +400,9 @@ export interface TabeloState {
 	removeSelectedRows: () => void;
 	duplicateSelectedRows: () => void;
 	moveSelectedRow: (offset: number) => SelectionMoveRefusal | null;
+	// One data row named by index rather than by the grid selection, for a
+	// source pane's row commands (#255). The grid selection is left alone.
+	moveRowAt: (row: number, offset: number) => SelectionMoveRefusal | null;
 
 	addColumnLeft: () => void;
 	addColumnRight: () => void;
@@ -1593,6 +1596,25 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		if (next === state.document) return null;
 		state.applyDocument(next);
 		set({ selection: translateSelection(state.selection, "row", offset) });
+		return null;
+	},
+
+	// The grid's own guard decides the refusal, so a source pane and the grid
+	// can never disagree about which moves exist. One `applyDocument` makes the
+	// move one history step, carrying the displaced draft as any table edit does.
+	moveRowAt: (row, offset) => {
+		const state = get();
+		const refusal = selectionMoveRefusal(
+			createSelection({ row, column: 0 }),
+			state.document.rows.length,
+			state.document.columns.length,
+			"row",
+			offset,
+		);
+		if (refusal) return refusal;
+		state.applyDocument(
+			moveRows(state.document, { from: row, count: 1 }, offset),
+		);
 		return null;
 	},
 

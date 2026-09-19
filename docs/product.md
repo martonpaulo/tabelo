@@ -141,6 +141,7 @@ reversible implementation choice does not belong here.
 | Automatic source rewriting | Only named structural-assistance features: smallest deterministic range, one undo step with the triggering edit, invalid drafts untouched, switchable off per buffer | `AGENTS.md` domain rules | #294 |
 | Markdown divider assistance | The alignment divider follows the header, rows, columns, and valid markers of the current draft, and is left alone whenever the draft is ambiguous; the first codec-declared structural-assistance feature | ADR 0005 | #297 |
 | Markdown row-start assistance | Enter at the end of a table row below the divider opens the new line with `\| ` and the caret after it, in the same undo step; a break anywhere else, after the header, or with Smart editing off stays plain | ADR 0005 | #391 |
+| Source row move | `Alt`+`ArrowUp`/`ArrowDown` in a pane whose codec maps rows moves the table row under the caret as one document step, also offered in the pane's context menu; a draft that does not parse is refused with its reason; HTML, JSON, and Records keep the text line move | design system §9 | #255 |
 
 ### Documents, formats, and persistence
 
