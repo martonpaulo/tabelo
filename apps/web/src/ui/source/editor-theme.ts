@@ -113,9 +113,11 @@ export const editorTheme = EditorView.theme({
 	".cm-scroller": {
 		// The column markers (#368) float over the top of the scroller, which
 		// runs the pane's full height, so the text starts below them: they
-		// publish their height as `--tabelo-source-top-inset` while shown.
-		paddingTop:
-			"calc(var(--spacing) * 1.5 + var(--tabelo-source-top-inset, 0rem))",
+		// publish their height as `--tabelo-source-top-inset` while shown. With
+		// the strip the text starts right under it, as the grid's header row
+		// starts right under its letters, so every row sits at the same height
+		// in every view (owner, 2026-09-19); without one, a small inset.
+		paddingTop: "var(--tabelo-source-top-inset, calc(var(--spacing) * 1.5))",
 		fontFamily: "var(--font-family-source)",
 		lineHeight: contentLineBox,
 		overscrollBehavior: "contain",
