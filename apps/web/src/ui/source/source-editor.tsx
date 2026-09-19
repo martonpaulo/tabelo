@@ -41,6 +41,7 @@ import type {
 	StructuralAssistance,
 } from "@/formats/types";
 import {
+	type HistoryDirection,
 	notifyLocalHistoryChanged,
 	registerLocalHistory,
 } from "@/history/coordinator";
@@ -115,6 +116,19 @@ const metricsSignals = new Map<number, Extension>();
 function clearLocalHistory(view: EditorView): void {
 	view.dispatch({ effects: historyCompartment.reconfigure([]) });
 	view.dispatch({ effects: historyCompartment.reconfigure(history()) });
+}
+
+// Whether a text change is the editor's own undo or redo. CodeMirror's history
+// marks every transaction it dispatches with one of these user events:
+// https://codemirror.net/docs/ref/#state.Transaction^userEvent
+function historyDirectionOf(
+	transactions: readonly Transaction[],
+): HistoryDirection | undefined {
+	for (const direction of ["undo", "redo"] as const) {
+		if (transactions.some((transaction) => transaction.isUserEvent(direction)))
+			return direction;
+	}
+	return undefined;
 }
 
 function metricsSignal(zoom: number): Extension {
@@ -355,7 +369,9 @@ interface SourceEditorProps {
 	// Read-only views still get selection and copy, just no typing.
 	readonly editable: boolean;
 	readonly ariaLabel: string;
-	readonly onChange: (value: string) => void;
+	// `history` is set when the change is the editor's own undo or redo, which
+	// the document timeline treats as navigation rather than a new edit.
+	readonly onChange: (value: string, history?: HistoryDirection) => void;
 	// Called when the editor's own history is exhausted. This is the fall-through
 	// that makes undo layered rather than split: see docs/adr/0003.
 	readonly onUndoBeyondLocal: () => void;
@@ -620,7 +636,10 @@ export function SourceEditor({
 						) {
 							return;
 						}
-						handlers.current.onChange(update.state.doc.toString());
+						handlers.current.onChange(
+							update.state.doc.toString(),
+							historyDirectionOf(update.transactions),
+						);
 					}),
 				],
 			}),

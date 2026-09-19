@@ -6,6 +6,7 @@ import { readCell } from "@/core/cell-value";
 import {
 	createEmptyDocument,
 	isDocumentBlank,
+	type ReconciliationSource,
 	reconcileDocument,
 } from "@/core/document";
 import {
@@ -90,6 +91,7 @@ import type {
 	SourceTableRow,
 } from "@/formats/types";
 import { defaultOutputOptions } from "@/formats/types";
+import type { HistoryDirection } from "@/history/coordinator";
 import {
 	createImportedDocument,
 	type ImportError,
@@ -327,7 +329,14 @@ export interface TabeloState {
 		selectionRestore?: SelectionRestore,
 	) => void;
 
-	setDraft: (paneId: string, viewId: ViewId, text: string) => void;
+	// `history` names a text change the editor's own undo or redo produced, as
+	// opposed to one the user typed: see `findTimelineStep`.
+	setDraft: (
+		paneId: string,
+		viewId: ViewId,
+		text: string,
+		history?: HistoryDirection,
+	) => void;
 	discardDraft: () => void;
 
 	setLayout: (layout: LayoutId) => void;
@@ -566,6 +575,74 @@ function pushHistory(
 	return next.length > HISTORY_LIMIT
 		? next.slice(next.length - HISTORY_LIMIT)
 		: next;
+}
+
+// Where a source editor's own undo or redo lands in the document timeline.
+// Every committed parse is one timeline step, so the text a local undo restores
+// usually parses to a state the timeline already holds. Committing it as a new
+// edit would add a step and clear redo, and the next undo, once local history
+// is exhausted, would walk forward into the text just undone (docs/adr/0003).
+//
+// `entries` run nearest first: `past` reversed for undo, `future` for redo.
+// The result is how many entries to cross to reach the matching state, or null
+// when there is none. One local undo can span several committed keystrokes, so
+// the walk may cross entries, but only states this same pane's draft produced:
+// anything else, a grid operation or another pane's text, is a boundary the
+// editor's history knows nothing about, and the change then stays an edit.
+function findTimelineStep(
+	entries: readonly HistoryEntry[],
+	document: TableDocument,
+	reconciliation: ReconciliationSource,
+	owner: Pick<Draft, "paneId" | "viewId">,
+): number | null {
+	for (const [index, entry] of entries.entries()) {
+		if (entry.selectionRestore) return null;
+		if (
+			reconcileDocument(entry.document, document, reconciliation) ===
+			entry.document
+		) {
+			return index;
+		}
+		const ownDraft =
+			entry.draft?.paneId === owner.paneId &&
+			entry.draft.viewId === owner.viewId;
+		if (!ownDraft) return null;
+	}
+	return null;
+}
+
+// Moves across `steps` entries to the state `findTimelineStep` matched. The
+// state being left and every entry crossed stay on the timeline, so redo, or
+// undo again, walks back through each of them one step at a time.
+function walkTimeline(
+	state: TabeloState,
+	direction: HistoryDirection,
+	steps: number,
+): Pick<TabeloState, "past" | "future" | "document"> | null {
+	if (direction === "undo") {
+		const targetIndex = state.past.length - 1 - steps;
+		const target = state.past[targetIndex];
+		if (!target) return null;
+		return {
+			past: state.past.slice(0, targetIndex),
+			future: [
+				...state.past.slice(targetIndex + 1),
+				snapshotOf(state),
+				...state.future,
+			],
+			document: target.document,
+		};
+	}
+	const target = state.future[steps];
+	if (!target) return null;
+	return {
+		past: [snapshotOf(state), ...state.future.slice(0, steps)].reduce(
+			pushHistory,
+			state.past,
+		),
+		future: state.future.slice(steps + 1),
+		document: target.document,
+	};
 }
 
 function deriveDraft(
@@ -864,7 +941,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		}));
 	},
 
-	setDraft: (paneId, viewId, text) => {
+	setDraft: (paneId, viewId, text, history) => {
 		const state = get();
 		const pane = state.workspace.panes.find(
 			(candidate) => candidate.id === paneId && candidate.view === viewId,
@@ -932,17 +1009,32 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		);
 		const documentChanged = document !== state.document;
 		const displacedInvalid = ownerChanged && previousDraft.status !== "clean";
+		// A displaced invalid draft from another pane always gets its own step, so
+		// a local undo never walks past it and leaves it unrecoverable.
+		const step =
+			history && documentChanged && !displacedInvalid
+				? findTimelineStep(
+						history === "undo" ? state.past.toReversed() : state.future,
+						document,
+						codec.reconciliation,
+						{ paneId, viewId },
+					)
+				: null;
+		const timeline =
+			(history && step !== null ? walkTimeline(state, history, step) : null) ??
+			(documentChanged || displacedInvalid
+				? {
+						past: pushHistory(state.past, snapshotOf(state)),
+						future: [],
+						document,
+					}
+				: { document });
+		const next = timeline.document;
 
 		set((current) => ({
-			...(documentChanged || displacedInvalid
-				? {
-						past: pushHistory(current.past, snapshotOf(current)),
-						future: [],
-					}
-				: {}),
-			document,
-			hasHeldContent: current.hasHeldContent || !isDocumentBlank(document),
-			workspace: reconcileColumnPreferences(current.workspace, document),
+			...timeline,
+			hasHeldContent: current.hasHeldContent || !isDocumentBlank(next),
+			workspace: reconcileColumnPreferences(current.workspace, next),
 			draft: {
 				paneId,
 				viewId,
@@ -959,8 +1051,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			fillSeriesOffer: null,
 			selection: clampSelection(
 				current.selection,
-				document.rows.length,
-				document.columns.length,
+				next.rows.length,
+				next.columns.length,
 			),
 		}));
 	},

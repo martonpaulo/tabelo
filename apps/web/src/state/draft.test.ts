@@ -397,3 +397,89 @@ describe("source synchronization", () => {
 		expect(state.past).toHaveLength(1);
 	});
 });
+
+// A source editor's own undo and redo change its text, and that text parses
+// like any other. When the parse lands on a state the document timeline already
+// holds, the change is navigation through that timeline, not a new edit: it
+// must neither add a step nor clear redo, or the next undo would bring the
+// undone text back (docs/adr/0003).
+describe("local history reaching the document timeline", () => {
+	const seeded = "| name | city |\n| --- | --- |\n| Ingrid | Rio |";
+	const edited = "| name | city |\n| --- | --- |\n| Ingrid | Rix |";
+
+	function currentMarkdown(): string {
+		const projection = textForView(
+			useTabeloStore.getState().document,
+			"markdown",
+		);
+		if (!projection.ok) throw new Error("Markdown unexpectedly declined.");
+		return projection.text;
+	}
+
+	it("walks back and forward instead of recording undone text as an edit", () => {
+		const paneId = markdownPaneId();
+		const blank = useTabeloStore.getState().document;
+		const initial = currentMarkdown();
+		const store = useTabeloStore.getState();
+		store.setDraft(paneId, "markdown", seeded);
+		const seededDocument = useTabeloStore.getState().document;
+		store.setDraft(paneId, "markdown", edited);
+
+		store.setDraft(paneId, "markdown", seeded, "undo");
+		expect(useTabeloStore.getState().document).toBe(seededDocument);
+		expect(useTabeloStore.getState().past).toHaveLength(1);
+		expect(useTabeloStore.getState().future).toHaveLength(1);
+
+		store.setDraft(paneId, "markdown", initial, "undo");
+		expect(useTabeloStore.getState().document).toBe(blank);
+		expect(useTabeloStore.getState().past).toHaveLength(0);
+
+		// The local history is exhausted, so the next undo reaches the timeline,
+		// which holds nothing older: the undone text must not come back.
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().document).toBe(blank);
+		expect(useTabeloStore.getState().future).toHaveLength(2);
+
+		store.setDraft(paneId, "markdown", seeded, "redo");
+		expect(useTabeloStore.getState().document).toBe(seededDocument);
+		store.setDraft(paneId, "markdown", edited, "redo");
+		expect(documentToMatrix(useTabeloStore.getState().document)[1]).toEqual([
+			"Ingrid",
+			"Rix",
+		]);
+		expect(useTabeloStore.getState().past).toHaveLength(2);
+		expect(useTabeloStore.getState().future).toHaveLength(0);
+	});
+
+	it("walks every step one grouped local undo spans", () => {
+		const paneId = markdownPaneId();
+		const store = useTabeloStore.getState();
+		store.setDraft(paneId, "markdown", seeded);
+		const seededDocument = useTabeloStore.getState().document;
+		store.setDraft(paneId, "markdown", seeded.replace("Rio", "Rioa"));
+		store.setDraft(paneId, "markdown", seeded.replace("Rio", "Rioab"));
+
+		store.setDraft(paneId, "markdown", seeded, "undo");
+
+		const state = useTabeloStore.getState();
+		expect(state.document).toBe(seededDocument);
+		expect(state.past).toHaveLength(1);
+		expect(state.future).toHaveLength(2);
+		state.redo();
+		expect(documentToMatrix(useTabeloStore.getState().document)[1]).toEqual([
+			"Ingrid",
+			"Rioa",
+		]);
+	});
+
+	it("records a local undo as an edit when the timeline does not hold its result", () => {
+		const paneId = markdownPaneId();
+		const store = useTabeloStore.getState();
+		store.setDraft(paneId, "markdown", seeded);
+
+		store.setDraft(paneId, "markdown", edited, "undo");
+
+		expect(useTabeloStore.getState().past).toHaveLength(2);
+		expect(useTabeloStore.getState().future).toHaveLength(0);
+	});
+});

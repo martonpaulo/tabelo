@@ -72,6 +72,40 @@ test("app menu undo and redo use the active source editor first", async ({
 	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid X");
 });
 
+// A source editor's own undo lands on states the document timeline already
+// holds. Recording them as new edits cleared redo and let the next undo walk
+// forward into the text just undone, so repeated undo looped.
+test("repeated undo in a source view stops at the start and keeps redo", async ({
+	tabelo,
+}) => {
+	const source = tabelo.source("markdown");
+	await source.fill("| Name |\n| --- |\n| Ingrid |");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await source.press("ControlOrMeta+End");
+	await source.press("ArrowLeft");
+	await source.press("X");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid X");
+
+	await source.press("ControlOrMeta+z");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await source.press("ControlOrMeta+z");
+	await expect(tabelo.cell(1, 1)).toHaveText("");
+	await source.press("ControlOrMeta+z");
+	await source.press("ControlOrMeta+z");
+	await expect(tabelo.cell(1, 1)).toHaveText("");
+
+	const menu = await tabelo.openAppMenu();
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.undo }),
+	).toBeDisabled();
+	await tabelo.page.keyboard.press("Escape");
+
+	await source.press("ControlOrMeta+Shift+Z");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await source.press("ControlOrMeta+Shift+Z");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid X");
+});
+
 test("document undo restores an invalid draft with explicit feedback", async ({
 	tabelo,
 }) => {

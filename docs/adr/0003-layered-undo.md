@@ -64,3 +64,19 @@ enters local history like any keystroke. It is distinct from a
 synchronization transaction, which rewrites the text from the document and
 stays excluded from local history. Switching a feature's escape mode on or off
 changes no text and creates no history step at all.
+
+## Amendment: a local undo walks the timeline, it never extends it
+
+The editor's own undo and redo change its text, and that text is parsed like
+any other. Because every committed parse is already a timeline step, the parse
+a local undo produces usually names a state the timeline holds. The change is
+then navigation: the document timeline moves back to that state (forward, for a
+local redo) instead of recording a new step, and redo is kept. Recording it as
+an edit cleared redo and let the next undo, once local history ran out, walk
+forward into the text just undone, so repeated undo looped.
+
+One local undo can span several committed keystrokes, so the walk may cross
+several steps, but only steps produced by the same pane's draft. A grid
+operation, another pane's text, or a displaced invalid draft is a boundary the
+editor's history does not know about; a local undo that meets one, or whose
+parse matches no neighbouring state, stays an ordinary edit.

@@ -144,9 +144,9 @@ export default function SourceView({
 				describedBy={description ? feedbackIds.description : undefined}
 				editable={editable}
 				ariaLabel={copy.a11y.sourceEditor(view.label)}
-				onChange={(text) => {
+				onChange={(text, history) => {
 					if (!editable) return;
-					useTabeloStore.getState().setDraft(paneId, viewId, text);
+					useTabeloStore.getState().setDraft(paneId, viewId, text, history);
 				}}
 				onUndoBeyondLocal={() => useTabeloStore.getState().undo()}
 				onRedoBeyondLocal={() => useTabeloStore.getState().redo()}
