@@ -264,6 +264,11 @@ export function RichCellEditor({
 				mark,
 			);
 			pendingMarks.current = marks;
+			// The caret these marks belong to is the one just read. Its own
+			// selectionchange can still be queued behind this key, because the
+			// browser moves the caret at once but reports it later, and it must
+			// not read as the user moving away and drop the marks.
+			placed.current = selection;
 			announce(
 				copy.status.formatApplied(markLabel(mark), marks.includes(mark)),
 			);
