@@ -33,6 +33,11 @@ export const jiraLanguage = StreamLanguage.define<JiraState>({
 				state.header ? "heading" : "punctuation",
 			);
 		}
+		// A backslash that escapes anything else (`\[`, `\!`, `\*`) is ordinary
+		// text here, so it is consumed with its line. A token must always advance
+		// the stream: CodeMirror throws, and the page goes blank, on one that
+		// returns without consuming.
+		stream.next();
 		while (!stream.eol()) {
 			const next = stream.peek();
 			if (next === "|" || next === "\\") break;
