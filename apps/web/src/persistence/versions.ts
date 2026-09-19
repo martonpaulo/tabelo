@@ -7,7 +7,7 @@ import { SPACE_INDICATOR_VALUES } from "@/preferences/contract";
 import { workspacePanesTileLayout } from "@/workspace/layout";
 import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
-export const PERSISTED_VERSION = 10 as const;
+export const PERSISTED_VERSION = 11 as const;
 
 // These schemas mirror the payloads shipped by the commits that introduced
 // versions 1 through 5. Keep them beside their stored fixtures: a migration
@@ -284,26 +284,48 @@ export const persistedStateV8Schema = z
 // in Settings (#276). Each value is `null` while the pane follows the default,
 // so an absent key means the same thing and defaults to it; `wrap`, a boolean
 // until version 8, becomes one of the four.
-const currentPaneSchema = historicalPaneV4Schema.extend({
+const paneV9Schema = historicalPaneV4Schema.extend({
 	wrap: z.boolean().nullable().default(null),
 	spaceIndicators: z.enum(SPACE_INDICATOR_VALUES).nullable().default(null),
 	tabIndicators: z.boolean().nullable().default(null),
 	emptyValueIndicators: z.boolean().nullable().default(null),
 });
 
-const currentWorkspaceSchema = persistedWorkspaceV8Schema.extend({
-	panes: z.array(currentPaneSchema).min(1).max(4),
+const workspaceV9Schema = persistedWorkspaceV8Schema.extend({
+	panes: z.array(paneV9Schema).min(1).max(4),
 });
 
 export const persistedStateV9Schema = z
 	.object({
 		version: z.literal(9),
 		...persistedStateV8Shape,
-		workspace: currentWorkspaceSchema,
+		workspace: workspaceV9Schema,
 	})
 	.superRefine((state, context) => {
 		refineCurrentRelationships(state, context);
 	});
+
+export const persistedStateV10Schema = z
+	.object({
+		version: z.literal(10),
+		name: tableNameSchema,
+		document: currentDocumentSchema,
+		draft: currentDraftSchema.nullable(),
+		workspace: workspaceV9Schema,
+	})
+	.superRefine((state, context) => {
+		refineCurrentRelationships(state, context);
+	});
+
+// Version 11 adds the line-break mark to what a pane may override (owner,
+// 2026-09-19). Like the four before it, `null` follows the default.
+const currentPaneSchema = paneV9Schema.extend({
+	lineBreakIndicators: z.boolean().nullable().default(null),
+});
+
+const currentWorkspaceSchema = persistedWorkspaceV8Schema.extend({
+	panes: z.array(currentPaneSchema).min(1).max(4),
+});
 
 export const persistedStateSchema = z
 	.object({

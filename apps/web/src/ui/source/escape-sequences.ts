@@ -286,6 +286,7 @@ class EscapeWidget extends WidgetType {
 function buildDecorations(
 	view: EditorView,
 	syntax: EscapeSyntax,
+	lineBreaks: boolean,
 ): DecorationSet {
 	const ranges: Range<Decoration>[] = [];
 
@@ -294,7 +295,11 @@ function buildDecorations(
 		const lastLine = view.state.doc.lineAt(to).number;
 		for (let number = firstLine; number <= lastLine; number += 1) {
 			const line = view.state.doc.line(number);
-			const escapes = scanEscapes(line.text, syntax);
+			// With the line-break mark switched off, a break's sequence shows as
+			// written; every other glyph is always drawn.
+			const escapes = scanEscapes(line.text, syntax).filter(
+				({ match }) => lineBreaks || !encodesLineBreak(match),
+			);
 			for (const { offset, match } of escapes) {
 				const at = line.from + offset;
 				ranges.push(
@@ -339,18 +344,21 @@ export function escapeAt(
 	return null;
 }
 
-export function escapeSequenceGlyphs(syntax: EscapeSyntax) {
+export function escapeSequenceGlyphs(
+	syntax: EscapeSyntax,
+	lineBreaks: boolean,
+) {
 	const plugin = ViewPlugin.fromClass(
 		class {
 			decorations: DecorationSet;
 
 			constructor(view: EditorView) {
-				this.decorations = buildDecorations(view, syntax);
+				this.decorations = buildDecorations(view, syntax, lineBreaks);
 			}
 
 			update(update: ViewUpdate) {
 				if (update.docChanged || update.viewportChanged) {
-					this.decorations = buildDecorations(update.view, syntax);
+					this.decorations = buildDecorations(update.view, syntax, lineBreaks);
 				}
 			}
 		},

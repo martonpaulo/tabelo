@@ -414,17 +414,18 @@ height". The diagram is supplemental; the words carry the destination for
 assistive technology. Choosing one swaps the two pane positions without
 changing the preset or pane count.
 
-Settings is the other deliberate exception. It holds the four global source
-display defaults (#55, #276), and each one applies as it changes: a read-only preview at
+Settings is the other deliberate exception. It holds the five global source
+display defaults (#55, #276, and the line-break mark, owner, 2026-09-19), and each one applies as it changes: a read-only preview at
 the top of the dialog is a real source editor built from the same indicator
 extensions every text view uses, so the effect is visible before the dialog
-closes and no Apply step is left to confirm. Its title carries no icon, like
+closes and no Apply step is left to confirm. Its sample holds a value with a
+line break, so the line-break mark has something to show. Its title carries no icon, like
 every other dialog's. The footer is the shared action row, `Reset to defaults`
 as the ordinary alternative and `Done` last, stacking at full width on a phone
 (owner, 2026-09-19). Each option block's glyph sits in one fixed slot as wide
 as the widest mark, so every row's label starts on the same line, and the
 preview keeps a trailing gap so a clipped line never touches its box. Wrap
-lines, empty values, and tabs are option blocks whose icon is the mark they
+lines, empty values, tabs, and line breaks are option blocks whose icon is the mark they
 draw, wrapping's being the pane menu's own icon because it draws no mark, and
 whose control is a `Switch`; spaces is one option block holding a
 `SegmentedControl` of its four modes, with the chosen mode's description above
@@ -435,7 +436,7 @@ this on 2026-09-18. There is no theme choice, because there is one palette
 pane menu.
 
 A source pane's `Display…` is Settings' counterpart for one pane (#276, option
-C, owner, 2026-09-19), and it qualifies for the same reason: four settings with
+C, owner, 2026-09-19), and it qualifies for the same reason: five settings with
 up to five states each are a form, not a command, and a submenu per setting
 would put a choice among states outside the submenu class above. It reuses
 Settings' layout, width, glyph slots, order, and footer, and applies each change

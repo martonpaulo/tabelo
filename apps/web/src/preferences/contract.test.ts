@@ -14,6 +14,7 @@ describe("preferences contract", () => {
 			spaceIndicators: "boundary",
 			tabIndicators: false,
 			emptyValueIndicators: true,
+			lineBreakIndicators: false,
 		} as const;
 
 		expect(readStoredPreferences(serializePreferences(preferences))).toEqual({
@@ -22,14 +23,35 @@ describe("preferences contract", () => {
 		});
 	});
 
-	// #276: a source pane draws nothing and wraps nothing until the reader asks.
-	it("ships every source display default off", () => {
+	// #276: a source pane draws nothing and wraps nothing until the reader asks,
+	// except the line-break mark, which ships on (owner, 2026-09-19).
+	it("ships every source display default off but the line-break mark", () => {
 		expect(DEFAULT_PREFERENCES).toEqual({
 			version: PREFERENCES_VERSION,
 			wrap: false,
 			spaceIndicators: "none",
 			tabIndicators: false,
 			emptyValueIndicators: false,
+			lineBreakIndicators: true,
+		});
+	});
+
+	// Version 5 adds the line-break mark and carries every earlier choice.
+	it("carries a version 4 payload forward with the line-break mark on", () => {
+		const stored = {
+			version: 4,
+			wrap: true,
+			spaceIndicators: "boundary",
+			tabIndicators: true,
+			emptyValueIndicators: false,
+		};
+		expect(readStoredPreferences(JSON.stringify(stored))).toEqual({
+			status: "ok",
+			preferences: {
+				...stored,
+				version: PREFERENCES_VERSION,
+				lineBreakIndicators: true,
+			},
 		});
 	});
 
@@ -149,6 +171,23 @@ describe("preferences contract", () => {
 			"an invalid version 3",
 			JSON.stringify({ version: 3, spaceIndicators: "all", wrap: true }),
 			"migration-failed",
+		],
+		[
+			"an invalid version 4",
+			JSON.stringify({ version: 4, spaceIndicators: "all", wrap: true }),
+			"migration-failed",
+		],
+		// The line-break mark has no schema default either.
+		[
+			"a current payload without the line-break mark",
+			JSON.stringify({
+				version: PREFERENCES_VERSION,
+				wrap: false,
+				spaceIndicators: "none",
+				tabIndicators: false,
+				emptyValueIndicators: false,
+			}),
+			"current-schema-invalid",
 		],
 		[
 			"a version that never shipped",

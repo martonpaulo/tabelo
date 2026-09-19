@@ -487,6 +487,7 @@ export function applyLayout(
 			spaceIndicators: existing?.spaceIndicators ?? null,
 			tabIndicators: existing?.tabIndicators ?? null,
 			emptyValueIndicators: existing?.emptyValueIndicators ?? null,
+			lineBreakIndicators: existing?.lineBreakIndicators ?? null,
 		};
 	});
 }

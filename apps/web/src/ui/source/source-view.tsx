@@ -43,8 +43,13 @@ export default function SourceView({
 	// The global default and this pane's overrides, resolved by the one rule
 	// that owns the answer (#276). Neither is copied here, so a change to the
 	// default reaches every pane that follows it at once.
-	const { wrap, spaceIndicators, tabIndicators, emptyValueIndicators } =
-		resolveSourceDisplay(usePreferences(), overrides);
+	const {
+		wrap,
+		spaceIndicators,
+		tabIndicators,
+		emptyValueIndicators,
+		lineBreakIndicators,
+	} = resolveSourceDisplay(usePreferences(), overrides);
 
 	// The projection recomputes only when the document changes, not when some
 	// other pane is being typed into.
@@ -139,6 +144,7 @@ export default function SourceView({
 				spaceIndicators={spaceIndicators}
 				tabIndicators={tabIndicators}
 				emptyValueIndicators={emptyValueIndicators}
+				lineBreakIndicators={lineBreakIndicators}
 				fieldSeparator={view.codec?.fieldSeparator}
 				lineBreakFields={
 					view.codec?.literalLineBreaks ? view.codec.sourceFields : undefined

@@ -490,7 +490,10 @@ the end of the visual line where the break occurs, because to the reader it is
 the same fact about the cell: a codec declares `literalLineBreaks` when its
 cells hold their breaks that way, and its own `sourceFields` decide which
 newlines are inside a cell, so a newline that ends a row is never marked. One
-constant owns the character. Every escape glyph is always on: a reader who cannot tell
+constant owns the character for the editor, the settings preview, and the
+setting's icon. The **Line breaks** display setting decides whether the mark is
+drawn at all; with it off, an escaped break shows as written and a quoted one
+unmarked. Every other escape glyph is always on: a reader who cannot tell
 notation from content has no question a preference would answer.
 
 **The file carries the room, so the file decides the layout.** Markdown pads its
@@ -506,21 +509,25 @@ cell whether or not anyone will see a placeholder in it. Where a syntax writes
 no padding at all, as `a,,b` does, the placeholder takes the width of the word
 itself.
 
-**Three choices, because they answer three questions.** Tabs are a delimiter, so
+**Four choices, because they answer four questions.** Tabs are a delimiter, so
 seeing them is structural; the placeholder reports a value rather than a
-character; and spaces are the one a reader has an opinion about. Tabs and the
-placeholder are each on or off. Spaces take the modes VS Code's
+character; a line break inside a cell is the one character that cannot be
+shown on its own line; and spaces are the one a reader has an opinion about.
+Tabs, the placeholder, and line breaks are each on or off. Spaces take the modes VS Code's
 `editor.renderWhitespace` settled on, under its names, so a reader who knows
 that setting does not learn a second vocabulary: `none`, `boundary` (runs of
 spaces and the spaces at a line's edges), `trailing`, and `all`. Its
 `selection` is deliberately absent, because it answers nothing until the reader
-has already selected the text they were trying to inspect. Every one ships
-off: a source pane draws nothing until the reader asks, in Settings or in that
-pane. This reverses the default #55 set, `trailing` with tabs and the
-placeholder on (#276).
+has already selected the text they were trying to inspect. Every one but the
+line-break mark ships off: a source pane draws nothing until the reader asks,
+in Settings or in that pane. This reverses the default #55 set, `trailing`
+with tabs and the placeholder on (#276). The line-break mark ships on (owner,
+2026-09-19), because without it an escaped break reads as notation and a quoted
+one as a new row, which misreads the table rather than leaving a preference
+unasked.
 
-**A global default, and a pane that may disagree** (#276). The three
-indicators and source wrapping are the four source display settings. Each has
+**A global default, and a pane that may disagree** (#276). The four
+indicators and source wrapping are the five source display settings. Each has
 a global default, set in Settings and kept in the versioned
 `tabelo.preferences` payload, and each source pane may override each one,
 because a display setting answers a question about one pane's syntax while a

@@ -133,7 +133,7 @@ export function SettingsDialog({
 						</Suspense>
 					</div>
 
-					{/* The four global defaults a source pane follows until it makes
+					{/* The five global defaults a source pane follows until it makes
 					    its own choice (#276). */}
 					<section className="grid gap-1.5" aria-labelledby={displayLabelId}>
 						<h3 id={displayLabelId} className="mb-1 font-medium text-sm">
@@ -158,6 +158,14 @@ export function SettingsDialog({
 							{...copy.settings.tabIndicators}
 							checked={preferences.tabIndicators}
 							onCheckedChange={(checked) => update({ tabIndicators: checked })}
+						/>
+						<SwitchOption
+							setting="lineBreakIndicators"
+							{...copy.settings.lineBreakIndicators}
+							checked={preferences.lineBreakIndicators}
+							onCheckedChange={(checked) =>
+								update({ lineBreakIndicators: checked })
+							}
 						/>
 						<div className={cn(optionBlockStyles, "grid gap-3")}>
 							<div className="flex items-center gap-3">

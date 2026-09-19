@@ -191,6 +191,7 @@ export interface IndicatorOptions {
 	readonly spaces: SpaceIndicators;
 	readonly tabs: boolean;
 	readonly emptyValues: boolean;
+	readonly lineBreaks: boolean;
 	readonly language: HighlightLanguage;
 	readonly fieldSeparator: string | undefined;
 	// The fields of a format that writes a cell's line break as a real newline,
@@ -205,6 +206,7 @@ export function indicatorExtensions({
 	spaces,
 	tabs,
 	emptyValues,
+	lineBreaks,
 	language,
 	fieldSeparator,
 	lineBreakFields,
@@ -223,8 +225,10 @@ export function indicatorExtensions({
 		marksWhitespace ? highlightWhitespace() : [],
 		spaceScope(spaces),
 		syntax ? emptyValueMarkers(syntax) : [],
-		escapes ? escapeSequenceGlyphs(escapes) : [],
-		lineBreakFields ? literalLineBreakMarkers(lineBreakFields) : [],
+		escapes ? escapeSequenceGlyphs(escapes, lineBreaks) : [],
+		lineBreaks && lineBreakFields
+			? literalLineBreakMarkers(lineBreakFields)
+			: [],
 		classes ? EditorView.editorAttributes.of({ class: classes }) : [],
 	];
 }
@@ -396,13 +400,14 @@ interface SourceEditorProps {
 	// Called when text arrives from outside the editor, replacing the buffer the
 	// user was editing: synchronization, a document undo, a view change.
 	readonly onBufferReplaced: () => void;
-	// The three global display preferences from #93, and the separator this
+	// The global display preferences from #93, and the separator this
 	// view's format writes, which is what tells the empty-value marker where a
 	// field ends. All of them are read here rather than stored: no pane owns
 	// any of them.
 	readonly spaceIndicators: SpaceIndicators;
 	readonly tabIndicators: boolean;
 	readonly emptyValueIndicators: boolean;
+	readonly lineBreakIndicators: boolean;
 	readonly fieldSeparator?: string;
 	// The fields a literal line break is marked inside, for the formats that
 	// write a cell's break as a real newline (`literalLineBreaks`).
@@ -456,6 +461,7 @@ export function SourceEditor({
 	spaceIndicators,
 	tabIndicators,
 	emptyValueIndicators,
+	lineBreakIndicators,
 	fieldSeparator,
 	lineBreakFields,
 	diagnostics,
@@ -598,6 +604,7 @@ export function SourceEditor({
 							spaces: spaceIndicators,
 							tabs: tabIndicators,
 							emptyValues: emptyValueIndicators,
+							lineBreaks: lineBreakIndicators,
 							language,
 							fieldSeparator,
 							lineBreakFields,
@@ -625,6 +632,7 @@ export function SourceEditor({
 								spaces: spaceIndicators,
 								tabs: tabIndicators,
 								emptyValues: emptyValueIndicators,
+								lineBreaks: lineBreakIndicators,
 								language,
 								fieldSeparator,
 								lineBreakFields,
@@ -917,6 +925,7 @@ export function SourceEditor({
 					spaces: spaceIndicators,
 					tabs: tabIndicators,
 					emptyValues: emptyValueIndicators,
+					lineBreaks: lineBreakIndicators,
 					language,
 					fieldSeparator,
 					lineBreakFields,
@@ -927,6 +936,7 @@ export function SourceEditor({
 		spaceIndicators,
 		tabIndicators,
 		emptyValueIndicators,
+		lineBreakIndicators,
 		language,
 		fieldSeparator,
 		lineBreakFields,
@@ -948,6 +958,7 @@ export function SourceEditor({
 						spaces: spaceIndicators,
 						tabs: tabIndicators,
 						emptyValues: emptyValueIndicators,
+						lineBreaks: lineBreakIndicators,
 						language,
 						fieldSeparator,
 						lineBreakFields,
@@ -962,6 +973,7 @@ export function SourceEditor({
 		spaceIndicators,
 		tabIndicators,
 		emptyValueIndicators,
+		lineBreakIndicators,
 		fieldSeparator,
 		lineBreakFields,
 	]);

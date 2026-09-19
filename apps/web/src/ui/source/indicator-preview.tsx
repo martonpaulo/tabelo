@@ -1,6 +1,7 @@
 import { EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { useEffect, useRef } from "react";
+import { documentFromMatrix } from "@/core/document";
 import { samplePerson } from "@/core/sample-data";
 import { tsvCodec } from "@/formats";
 import type { Preferences } from "@/preferences/contract";
@@ -8,15 +9,21 @@ import { syntaxTheme } from "./editor-theme";
 import { indicatorExtensions, languageFor } from "./source-editor";
 
 // A few synthetic TSV lines that exercise every setting the dialog switches:
-// tabs between values, an empty field, a run of spaces inside a value, and
-// spaces left at the end of a line.
+// tabs between values, an empty field, a run of spaces inside a value, spaces
+// left at the end of a line, and a value holding a line break, written the way
+// the TSV codec writes one.
 const first = samplePerson(0);
 const second = samplePerson(1);
-const PREVIEW_TEXT = [
-	["name", "city", "role"].join("\t"),
-	[first.name, first.city, `${first.role}  `].join("\t"),
-	[second.name, "", `Lead  ${second.role}`].join("\t"),
-].join("\n");
+const PREVIEW_TEXT = tsvCodec.serialize(
+	documentFromMatrix(
+		[
+			["name", "city", "role"],
+			[first.name, `${first.city}\n${second.city}`, `${first.role}  `],
+			[second.name, "", `Lead  ${second.role}`],
+		],
+		{ headerRow: true },
+	),
+);
 
 // The settings preview is a real source editor, read-only, built from the same
 // extensions every text view uses, so what it shows cannot drift from what the
@@ -29,8 +36,13 @@ export default function IndicatorPreview({
 	readonly label: string;
 }) {
 	const hostRef = useRef<HTMLDivElement>(null);
-	const { wrap, spaceIndicators, tabIndicators, emptyValueIndicators } =
-		preferences;
+	const {
+		wrap,
+		spaceIndicators,
+		tabIndicators,
+		emptyValueIndicators,
+		lineBreakIndicators,
+	} = preferences;
 
 	useEffect(() => {
 		const host = hostRef.current;
@@ -48,6 +60,7 @@ export default function IndicatorPreview({
 						spaces: spaceIndicators,
 						tabs: tabIndicators,
 						emptyValues: emptyValueIndicators,
+						lineBreaks: lineBreakIndicators,
 						language: "delimited",
 						fieldSeparator: tsvCodec.fieldSeparator,
 						lineBreakFields: tsvCodec.sourceFields,
@@ -59,7 +72,14 @@ export default function IndicatorPreview({
 			}),
 		});
 		return () => view.destroy();
-	}, [wrap, spaceIndicators, tabIndicators, emptyValueIndicators, label]);
+	}, [
+		wrap,
+		spaceIndicators,
+		tabIndicators,
+		emptyValueIndicators,
+		lineBreakIndicators,
+		label,
+	]);
 
 	return (
 		<div

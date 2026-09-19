@@ -9,6 +9,7 @@ import v6 from "./fixtures/v6.json";
 import v7 from "./fixtures/v7.json";
 import v8 from "./fixtures/v8.json";
 import v9 from "./fixtures/v9.json";
+import v10 from "./fixtures/v10.json";
 import {
 	type MigrationRegistry,
 	migrationRegistry,
@@ -263,21 +264,39 @@ describe("adjacent persistence migrations", () => {
 		});
 	});
 
+	// The line-break mark becomes something a pane may override, and every pane
+	// starts by following the default. Nothing else in the payload moves.
+	it("adds a following line-break override to every v10 pane", () => {
+		const result = runMigrationChain(v10, 10, 11, migrationRegistry);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		const migrated = result.value as typeof v10 & { version: number };
+		expect(migrated.version).toBe(11);
+		expect(migrated.document).toEqual(v10.document);
+		expect(migrated.workspace.panes).toEqual(
+			v10.workspace.panes.map((pane) => ({
+				...pane,
+				lineBreakIndicators: null,
+			})),
+		);
+	});
+
 	it("runs the oldest fixture through the complete chain", () => {
-		const result = runMigrationChain(v1, 1, 10, migrationRegistry);
+		const result = runMigrationChain(v1, 1, 11, migrationRegistry);
 
 		expect(result).toMatchObject({
 			ok: true,
 			value: {
-				version: 10,
+				version: 11,
 				name: "Untitled table",
 				draft: null,
 				workspace: {
 					pinFirstDataRow: false,
 					pinFirstDataColumn: false,
 					panes: [
-						{ wrap: null, spaceIndicators: null },
-						{ wrap: null, spaceIndicators: null },
+						{ wrap: null, spaceIndicators: null, lineBreakIndicators: null },
+						{ wrap: null, spaceIndicators: null, lineBreakIndicators: null },
 					],
 				},
 			},

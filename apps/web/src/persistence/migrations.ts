@@ -14,6 +14,7 @@ import {
 	persistedStateV7Schema,
 	persistedStateV8Schema,
 	persistedStateV9Schema,
+	persistedStateV10Schema,
 } from "./versions";
 
 export interface MigrationStep {
@@ -205,6 +206,24 @@ function migrateV9ToV10(input: unknown): unknown {
 	return { ...source, version: 10 };
 }
 
+// Version 11 lets a pane override the line-break mark (owner, 2026-09-19).
+// Every pane starts by following the default, as a pane did for the four
+// settings version 9 introduced; nothing else changes.
+function migrateV10ToV11(input: unknown): unknown {
+	const source = input as z.infer<typeof persistedStateV10Schema>;
+	return {
+		...source,
+		version: 11,
+		workspace: {
+			...source.workspace,
+			panes: source.workspace.panes.map((pane) => ({
+				...pane,
+				lineBreakIndicators: null,
+			})),
+		},
+	};
+}
+
 export const migrationRegistry: MigrationRegistry = {
 	1: {
 		source: persistedStateV1Schema,
@@ -248,8 +267,13 @@ export const migrationRegistry: MigrationRegistry = {
 	},
 	9: {
 		source: persistedStateV9Schema,
-		target: persistedStateSchema,
+		target: persistedStateV10Schema,
 		migrate: migrateV9ToV10,
+	},
+	10: {
+		source: persistedStateV10Schema,
+		target: persistedStateSchema,
+		migrate: migrateV10ToV11,
 	},
 };
 

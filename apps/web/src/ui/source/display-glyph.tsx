@@ -1,7 +1,11 @@
 import { IconTextWrap } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
-import { SPACE_GLYPH, TAB_GLYPH } from "@/ui/source/indicator-glyphs";
+import {
+	LINE_BREAK_GLYPH,
+	SPACE_GLYPH,
+	TAB_GLYPH,
+} from "@/ui/source/indicator-glyphs";
 import type { SourceDisplayKey } from "@/workspace/source-display";
 
 // The mark a display setting draws, shown as its icon, so a settings row and
@@ -29,4 +33,5 @@ const glyphs: Record<SourceDisplayKey, ReactNode> = {
 	spaceIndicators: SPACE_GLYPH,
 	tabIndicators: TAB_GLYPH,
 	emptyValueIndicators: EMPTY_VALUE_PLACEHOLDER,
+	lineBreakIndicators: LINE_BREAK_GLYPH,
 };

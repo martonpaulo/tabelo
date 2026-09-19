@@ -159,6 +159,7 @@ describe("preferences store", () => {
 			spaceIndicators: "none",
 			tabIndicators: false,
 			emptyValueIndicators: false,
+			lineBreakIndicators: true,
 		} as const;
 		const storage = {
 			getItem: vi.fn((key: string) =>
@@ -185,6 +186,7 @@ describe("preferences store", () => {
 			spaceIndicators: "all",
 			tabIndicators: true,
 			emptyValueIndicators: false,
+			lineBreakIndicators: false,
 		} as const;
 
 		expect(store.commit(next)).toEqual({ status: "saved" });

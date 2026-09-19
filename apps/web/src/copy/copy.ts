@@ -351,6 +351,10 @@ export const copy = {
 			label: "Empty values",
 			description: "A word where a field holds nothing",
 		},
+		lineBreakIndicators: {
+			label: "Line breaks",
+			description: "A mark where a value continues on a new line",
+		},
 		saveError:
 			"Settings couldn't be saved. Allow browser storage or free some space, then try again.",
 		// Shown while the stored settings are unreadable: a change applies, but

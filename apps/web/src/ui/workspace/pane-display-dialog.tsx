@@ -43,6 +43,7 @@ const ROWS: readonly SourceDisplayKey[] = [
 	"wrap",
 	"emptyValueIndicators",
 	"tabIndicators",
+	"lineBreakIndicators",
 	"spaceIndicators",
 ];
 

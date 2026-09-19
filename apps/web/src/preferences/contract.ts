@@ -5,7 +5,7 @@ export const PREFERENCES_STORAGE_KEY = "tabelo.preferences";
 // Where an unreadable payload is copied before the user replaces it, beside
 // the table's own recovery key and for the same reason.
 export const PREFERENCES_RECOVERY_KEY = "tabelo.preferences.recovery";
-export const PREFERENCES_VERSION = 4;
+export const PREFERENCES_VERSION = 5;
 
 // Which spaces a source view marks. These are the modes VS Code's
 // `editor.renderWhitespace` offers, kept by their names, because they are a
@@ -28,16 +28,19 @@ export const THEME_COLOR = "#1c1c1b";
 
 export type SpaceIndicators = (typeof SPACE_INDICATOR_VALUES)[number];
 
-// How a source view is displayed. Four independent choices: wrapping decides
-// how a long line is laid out, and the three indicators answer three different
+// How a source view is displayed. Five independent choices: wrapping decides
+// how a long line is laid out, and the four indicators answer four different
 // questions. Tabs are a delimiter in TSV, so seeing them is a structural need;
-// the empty placeholder reports a value rather than a character; and spaces are
-// the one the reader has an opinion about, which is why they get four modes.
+// the empty placeholder reports a value rather than a character; a line break
+// inside a cell is the one character that cannot be shown on its line; and
+// spaces are the one the reader has an opinion about, which is why they get
+// four modes.
 export interface SourceDisplay {
 	readonly wrap: boolean;
 	readonly spaceIndicators: SpaceIndicators;
 	readonly tabIndicators: boolean;
 	readonly emptyValueIndicators: boolean;
+	readonly lineBreakIndicators: boolean;
 }
 
 // The global default for every source pane's display. A pane may override each
@@ -47,16 +50,19 @@ export interface Preferences extends SourceDisplay {
 	readonly version: typeof PREFERENCES_VERSION;
 }
 
-// Every default is off: a source pane draws nothing and wraps nothing until the
-// reader asks, in Settings or in that pane. This supersedes the decision on
-// #55, which showed trailing spaces, tabs, and empty values without being
-// asked (#276).
+// Every default but one is off: a source pane draws nothing and wraps nothing
+// until the reader asks, in Settings or in that pane. This supersedes the
+// decision on #55, which showed trailing spaces, tabs, and empty values without
+// being asked (#276). The line-break mark is the exception and ships on (owner,
+// 2026-09-19): without it an escaped break reads as notation and a quoted one
+// as a new row, which is misreading the table rather than a matter of taste.
 export const DEFAULT_PREFERENCES: Preferences = {
 	version: PREFERENCES_VERSION,
 	wrap: false,
 	spaceIndicators: "none",
 	tabIndicators: false,
 	emptyValueIndicators: false,
+	lineBreakIndicators: true,
 };
 
 const indicatorShape = {
@@ -70,6 +76,7 @@ const preferencesSchema = z
 		version: z.literal(PREFERENCES_VERSION),
 		wrap: z.boolean(),
 		...indicatorShape,
+		lineBreakIndicators: z.boolean(),
 	})
 	.strict();
 
@@ -103,9 +110,15 @@ const version3Schema = z
 	.object({ version: z.literal(3), ...indicatorShape })
 	.strict();
 
+// Version 4 made the indicators the global default and added wrapping.
+const version4Schema = z
+	.object({ version: z.literal(4), wrap: z.boolean(), ...indicatorShape })
+	.strict();
+
 type Version1 = z.infer<typeof version1Schema>;
 type Version2 = z.infer<typeof version2Schema>;
 type Version3 = z.infer<typeof version3Schema>;
+type Version4 = z.infer<typeof version4Schema>;
 
 // The single marker choice, split the way version 2 shipped it: a reader who
 // had markers on received that version's space default, `trailing`.
@@ -130,8 +143,25 @@ function migrateVersion2({ theme: _discarded, ...value }: Version2): Version3 {
 // the product showed markers without being asked, and keeping them would keep
 // that superseded decision alive for every reader who never touched it. The
 // cost is deliberate: a reader who had chosen markers chooses them once more.
-function migrateVersion3(_value: Version3): Preferences {
-	return DEFAULT_PREFERENCES;
+function migrateVersion3(_value: Version3): Version4 {
+	return {
+		version: 4,
+		wrap: false,
+		spaceIndicators: "none",
+		tabIndicators: false,
+		emptyValueIndicators: false,
+	};
+}
+
+// Version 5 adds the line-break mark (owner, 2026-09-19). Every choice the
+// reader made is carried as it was, and the new setting starts at its
+// default, on.
+function migrateVersion4(value: Version4): Preferences {
+	return {
+		...value,
+		version: PREFERENCES_VERSION,
+		lineBreakIndicators: DEFAULT_PREFERENCES.lineBreakIndicators,
+	};
 }
 
 interface PreferencesMigration {
@@ -144,6 +174,7 @@ const migrations: Readonly<Partial<Record<number, PreferencesMigration>>> = {
 	1: { schema: version1Schema, step: migrateVersion1 },
 	2: { schema: version2Schema, step: migrateVersion2 },
 	3: { schema: version3Schema, step: migrateVersion3 },
+	4: { schema: version4Schema, step: migrateVersion4 },
 };
 
 function storedVersion(value: unknown): unknown {

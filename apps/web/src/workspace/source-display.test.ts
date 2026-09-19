@@ -14,6 +14,7 @@ const everythingOn: SourceDisplay = {
 	spaceIndicators: "all",
 	tabIndicators: true,
 	emptyValueIndicators: true,
+	lineBreakIndicators: true,
 };
 
 describe("resolving a pane's source display", () => {
@@ -25,6 +26,7 @@ describe("resolving a pane's source display", () => {
 			spaceIndicators: "none",
 			tabIndicators: false,
 			emptyValueIndicators: false,
+			lineBreakIndicators: true,
 		});
 		expect(resolveSourceDisplay(everythingOn, INHERIT_SOURCE_DISPLAY)).toEqual(
 			everythingOn,
@@ -43,6 +45,7 @@ describe("resolving a pane's source display", () => {
 			spaceIndicators: "trailing",
 			tabIndicators: true,
 			emptyValueIndicators: true,
+			lineBreakIndicators: true,
 		});
 	});
 
