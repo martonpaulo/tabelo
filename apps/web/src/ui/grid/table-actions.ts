@@ -512,21 +512,18 @@ export function buildTableActions(
 		{
 			id: "move",
 			label: copy.actions.move,
-			labelId: "table-actions-move-label",
 			submenu: { icon: IconArrowsMove },
 			actions: move,
 		},
 		{
 			id: "fill",
 			label: copy.actions.fill,
-			labelId: "table-actions-fill-label",
 			submenu: { icon: IconBucketDroplet },
 			actions: fill,
 		},
 		{
 			id: "focus",
 			label: copy.actions.moveFocus,
-			labelId: "table-actions-focus-label",
 			submenu: { icon: IconFocusCentered },
 			actions: focus,
 		},

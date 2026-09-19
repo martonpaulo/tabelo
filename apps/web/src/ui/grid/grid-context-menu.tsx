@@ -61,6 +61,7 @@ import {
 } from "./cell-type-change-dialog";
 import { cellTypeOptions, expectedTypeOptions } from "./cell-type-options";
 import { measureColumnFitWidth } from "./column-fit";
+import { menuSections } from "./menu-sections";
 import { targetAxisForMenu, targetCellForMenu } from "./menu-target";
 import { revealGridCell } from "./reveal-cell";
 import {
@@ -682,38 +683,51 @@ export function GridContextMenu({
 							<ContextMenuSeparator />
 						</>
 					) : null}
-					{buildTableActions({ axis, openedOnCell }).map((group, index) => (
-						<Fragment key={group.id}>
-							{index > 0 ? <ContextMenuSeparator /> : null}
-							{group.submenu && group.label ? (
-								<ContextMenuGroup>
-									<ContextMenuSub>
-										<ContextMenuSubTrigger>
-											<group.submenu.icon aria-hidden />
-											{group.label}
-										</ContextMenuSubTrigger>
-										<ContextMenuSubContent
-											aria-label={group.label}
-											// A command chosen here closes the whole menu, so it
-											// hands focus back the way a first-level one does.
-											finalFocus={finalFocus}
+					{menuSections(buildTableActions({ axis, openedOnCell })).map(
+						(section, index) => (
+							<Fragment key={section.map((group) => group.id).join("+")}>
+								{index > 0 ? <ContextMenuSeparator /> : null}
+								{section[0]?.submenu ? (
+									// Move, Fill, and Move focus: one untitled group of
+									// submenu triggers, each named by its own label.
+									<ContextMenuGroup>
+										{section.map((group) =>
+											group.submenu && group.label ? (
+												<ContextMenuSub key={group.id}>
+													<ContextMenuSubTrigger>
+														<group.submenu.icon aria-hidden />
+														{group.label}
+													</ContextMenuSubTrigger>
+													<ContextMenuSubContent
+														aria-label={group.label}
+														// A command chosen here closes the whole menu, so it
+														// hands focus back the way a first-level one does.
+														finalFocus={finalFocus}
+													>
+														{group.actions.map(item)}
+													</ContextMenuSubContent>
+												</ContextMenuSub>
+											) : null,
+										)}
+									</ContextMenuGroup>
+								) : (
+									section.map((group) => (
+										<ContextMenuGroup
+											key={group.id}
+											aria-labelledby={group.labelId}
 										>
+											{group.label && group.labelId ? (
+												<ContextMenuLabel id={group.labelId}>
+													{group.label}
+												</ContextMenuLabel>
+											) : null}
 											{group.actions.map(item)}
-										</ContextMenuSubContent>
-									</ContextMenuSub>
-								</ContextMenuGroup>
-							) : (
-								<ContextMenuGroup aria-labelledby={group.labelId}>
-									{group.label && group.labelId ? (
-										<ContextMenuLabel id={group.labelId}>
-											{group.label}
-										</ContextMenuLabel>
-									) : null}
-									{group.actions.map(item)}
-								</ContextMenuGroup>
-							)}
-						</Fragment>
-					))}
+										</ContextMenuGroup>
+									))
+								)}
+							</Fragment>
+						),
+					)}
 				</ContextMenuContent>
 			</ContextMenu>
 			<CellTypeChangeDialog
