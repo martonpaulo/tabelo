@@ -51,6 +51,8 @@
 	--spacing-grid-col-min: var(--grid-col-w-min);
 	--spacing-pane-stack: var(--pane-stack-h);
 	--spacing-fab: var(--fab-size);
+	--spacing-fab-inset: var(--fab-inset);
+	--spacing-fab-safe: var(--fab-safe-area);
 	--radius-interactive: var(--control-radius);
 	--radius-indicator: var(--indicator-radius);
 	--radius-surface: var(--surface-radius);
@@ -147,6 +149,14 @@
 	   work in, accepting that reaching the next pane means scrolling. */
 	--pane-stack-h: 60vh;
 	--fab-size: 3rem;
+	/* How far the floating action button rests from the viewport's edges. */
+	--fab-inset: 0.75rem;
+	/* The corner the button covers, measured from the viewport edge: what the
+	   pane beneath it keeps clear so no control or text sits under it. */
+	--fab-safe-area: calc(var(--fab-size) + var(--fab-inset));
+	/* What a pane's scrollers add below their content. Zero everywhere except
+	   the pane under the floating action button (see [data-under-fab]). */
+	--fab-clearance: 0rem;
 	/* The width of the selection edge: the focus outline every control draws. */
 	--selection-edge-w: 0.125rem;
 
@@ -235,6 +245,15 @@ body {
    publishes each one's measured extent here while it is pinned and removes it
    again when it is not. Absent means unpinned, which is why the fallback is
    zero rather than a size. */
+/* The pane whose area reaches the workspace's bottom trailing corner sits
+   under the floating action button. The button stays flush with the canvas,
+   so the pane keeps the corner clear instead: every scroller in it adds this
+   much room below its content, and the grid's find bar pads its trailing edge
+   by the same amount (owner, 2026-09-19). */
+[data-under-fab] {
+	--fab-clearance: var(--fab-safe-area);
+}
+
 .tabelo-grid-scroller {
 	scroll-padding-top: calc(
 		var(--grid-strip-h) +

@@ -112,6 +112,15 @@ export function gridAreaOf(slots: readonly SlotId[]): GridArea {
 	};
 }
 
+// Whether a pane's area reaches the workspace's bottom trailing corner, the
+// one the floating action button rests over. Derived from the slot geometry,
+// never from which view the pane shows.
+export function reachesBottomTrailingCorner(slots: readonly SlotId[]): boolean {
+	const area = gridAreaOf(slots);
+	const corner = gridAreaOf(SLOT_ORDER);
+	return area.rowEnd === corner.rowEnd && area.columnEnd === corner.columnEnd;
+}
+
 export function gridAreaStyle(slots: readonly SlotId[]): string {
 	const area = gridAreaOf(slots);
 	return `${area.rowStart} / ${area.columnStart} / ${area.rowEnd} / ${area.columnEnd}`;

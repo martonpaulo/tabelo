@@ -45,7 +45,7 @@ export default function HtmlPreview() {
 			// make an overflowing scroller a tab stop in the workspace ring.
 			data-pane-entry
 			tabIndex={-1}
-			className="tabelo-scroll-boundary h-full select-text overflow-auto p-4"
+			className="tabelo-scroll-boundary h-full select-text overflow-auto p-4 group-data-[under-fab]/pane:pb-fab-safe"
 		>
 			{/* A table with nothing in it has nothing to read, so it shows the
 			    empty state rather than a grid of blank cells (#357). */}

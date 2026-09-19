@@ -1396,7 +1396,12 @@ per keystroke.
 - There is no app header. One floating action button is the document-level
   command surface at every viewport width. It rests flush with the workspace, with no surface, border, or shadow of its
   own, and takes the floating surface and shadow only on hover (2ba36ed,
-  d9f4322). Its menu contains the Tabelo identity and description, the current
+  d9f4322). Because it stays flush, the pane beneath it keeps its corner clear instead
+  (owner, 2026-09-19): the pane whose area reaches the workspace's bottom
+  trailing corner, decided from the layout and never from its view (the last
+  pane when stacked), adds `--fab-safe-area` below the content of each of its
+  scrollers, and the grid's find bar pads its trailing edge by the same token,
+  so no control, row, or line has to stay under the button. Its menu contains the Tabelo identity and description, the current
   table name with a Rename command, Undo, Redo, New table, Import, the
   `Copy as` submenu (#149), Download, Add view, Layout, Settings, and a link to
   the GitHub repository. The trigger has a stable accessible name

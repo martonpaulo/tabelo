@@ -8,6 +8,7 @@ import {
 	layoutColumnSplitExtent,
 	layoutRowSplitExtent,
 	paneCapacity,
+	reachesBottomTrailingCorner,
 	type SplitExtent,
 	type SplitOption,
 	splitOptions,
@@ -289,7 +290,7 @@ export function Workspace({
 						}
 			}
 		>
-			{workspace.panes.map((pane) => {
+			{workspace.panes.map((pane, index) => {
 				const area = gridAreaOf(pane.slots);
 				// Stacked panes have the whole width, so nothing needs shortening.
 				const compact = !stacked && area.columnEnd - area.columnStart === 1;
@@ -302,6 +303,11 @@ export function Workspace({
 						showActiveIndicator={workspace.panes.length > 1}
 						compact={compact}
 						stacked={stacked}
+						underFab={
+							stacked
+								? index === workspace.panes.length - 1
+								: reachesBottomTrailingCorner(pane.slots)
+						}
 						splitBottom={
 							splits.find((option) => option.edge === "bottom")?.layout
 						}

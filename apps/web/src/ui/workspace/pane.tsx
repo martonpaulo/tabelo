@@ -40,6 +40,9 @@ interface PaneProps {
 	// a slot: an inline grid area pointing at column two would conjure that
 	// column back into existence.
 	readonly stacked: boolean;
+	// Whether the floating action button rests over this pane's bottom trailing
+	// corner, decided by the workspace from the layout, never from the view.
+	readonly underFab: boolean;
 	// The layout each of this pane's splits would reach, one per edge it can be
 	// cut along. Both absent means this pane cannot be cut in half, which is
 	// what makes the control disappear at four panes; both present is the
@@ -70,6 +73,7 @@ export const Pane = memo(function Pane({
 	showActiveIndicator,
 	compact,
 	stacked,
+	underFab,
 	splitBottom,
 	splitRight,
 	onSplit,
@@ -130,6 +134,7 @@ export const Pane = memo(function Pane({
 				aria-description={entered ? undefined : copy.a11y.paneInteractHint}
 				style={stacked ? undefined : { gridArea: gridAreaStyle(pane.slots) }}
 				data-pane-active={active && showActiveIndicator ? "true" : undefined}
+				data-under-fab={underFab ? "" : undefined}
 				className={cn(
 					"group/pane min-w-0",
 					// The active edge replaces the resting border rather than being

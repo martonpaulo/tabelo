@@ -180,7 +180,7 @@ export function GridFindBar() {
 		<section
 			aria-label={copy.find.title}
 			data-slot="find-bar"
-			className="sticky bottom-0 left-0 z-40 mt-auto flex w-full shrink-0 flex-col gap-1.5 border-line-subtle border-t bg-surface-header px-2 py-1.5"
+			className="sticky bottom-0 left-0 z-40 mt-auto flex w-full shrink-0 flex-col gap-1.5 border-line-subtle border-t bg-surface-header px-2 py-1.5 group-data-[under-fab]/pane:pr-fab-safe"
 			onKeyDown={onKeyDown}
 		>
 			<div className="flex items-start gap-1.5">
