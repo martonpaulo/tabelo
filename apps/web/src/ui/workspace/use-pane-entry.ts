@@ -9,7 +9,7 @@ export const PaneEntryContext = createContext(false);
 // chrome and sit in the workspace ring beside the pane frame. Counting them as
 // entry is what used to open every per-row and per-column control in the grid
 // into that same ring the moment Tab reached "Change view", which is the defect
-// the two-level model exists to remove. See docs/design-system.md §9.
+// the two-level model exists to remove. See docs/design-system/9-accessibility.md.
 export function usePaneEntry(ref: React.RefObject<HTMLElement | null>) {
 	const [entered, setEntered] = useState(false);
 

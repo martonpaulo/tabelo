@@ -369,7 +369,7 @@ export function AppMenu({
 //
 // A submenu rather than a dialog because every row performs its command the
 // moment it is chosen and needs nothing stated beforehand, which is the whole
-// of the class docs/design-system.md §3 allows one for.
+// of the class docs/design-system/3-components.md allows one for.
 function CopyAsSubmenu({
 	runAfterClose,
 }: {

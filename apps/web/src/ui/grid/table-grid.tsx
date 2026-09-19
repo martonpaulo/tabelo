@@ -204,7 +204,7 @@ function CellMarks({
 					// the mark, and which of them own an edge of it. There is no ARIA
 					// state for "the clipboard came from here", and inventing one on a
 					// gridcell would replace the cell's name with it. See
-					// docs/design-system.md §9.
+					// docs/design-system/9-accessibility.md.
 					data-clipboard-source={
 						[
 							copied.top && "top",
@@ -240,7 +240,7 @@ const NO_MARK = 0;
 // unbroken value: nothing is inserted, replaced, or hidden. Presentation only,
 // and deliberately not a `<mark>`: its implicit semantics would announce a
 // highlight, and which occurrence this is belongs to the written count in the
-// find bar rather than to the cell. See docs/design-system.md §9.
+// find bar rather than to the cell. See docs/design-system/9-accessibility.md.
 function markedValue(value: string, start: number, end: number) {
 	if (start >= end) return value;
 	return (
@@ -1274,7 +1274,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				    presentational did not help, because ARIA's conflict resolution
 				    discards a presentational role precisely when the element holds
 				    controls, and it then re-parented them into the grid. See
-				    docs/design-system.md §9. */}
+				    docs/design-system/9-accessibility.md. */}
 				<div
 					ref={stripRef}
 					data-column-strip
@@ -1330,7 +1330,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					// widget with its own keyboard model, so assistive technology should
 					// treat it that way. `<table role="grid">` is the ARIA Authoring
 					// Practices pattern for exactly this; the lint rule is a heuristic that
-					// does not model it. See docs/design-system.md §9.
+					// does not model it. See docs/design-system/9-accessibility.md.
 					// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above
 					role="grid"
 					aria-label={copy.a11y.grid}
@@ -1738,7 +1738,7 @@ const DataRow = memo(function DataRow({
 						// The one native tooltip the product keeps. A cell shows
 						// a clipped value, and the browser's own tooltip reveals
 						// the rest without mounting a floating layer per cell
-						// across a 200-row table. See docs/design-system.md §3.
+						// across a 200-row table. See docs/design-system/3-components.md.
 						title={value || undefined}
 						className={cn(
 							"border-line-subtle border-b px-2 align-top",

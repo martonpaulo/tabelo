@@ -34,7 +34,7 @@ import { PaneOccurrencesContext } from "./use-pane-occurrences";
 
 // One pane frame for every view. The header carries only what belongs to this
 // pane: which view it shows and the state of that view. Document-level
-// actions live in the floating app menu: see docs/design-system.md §5.
+// actions live in the floating app menu: see docs/design-system/5-layout.md.
 
 interface PaneProps {
 	readonly pane: WorkspacePane;
@@ -193,7 +193,7 @@ export const Pane = memo(function Pane({
 					    and nothing to press. It grows leftward into the spacer, so the
 					    actions trigger never moves, and tabular figures keep the count
 					    from resizing as it climbs. Secondary status detail, which is
-					    what text-xs is reserved for: see docs/design-system.md §2. */}
+					    what text-xs is reserved for: see docs/design-system/2-tokens.md. */}
 					{occurrences ? (
 						<span
 							data-slot="pane-occurrences"

@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import type { NoticeSeverity } from "@/state/notice-queue";
 
 // One shape for "here is something you should know, and here is what you can
-// do about it". See docs/design-system.md §5. The download chooser reuses it
+// do about it". See docs/design-system/5-layout.md. The download chooser reuses it
 // so a warning reads the same wherever it appears, inline inside a dialog or
 // floating over the workspace.
 //

@@ -67,7 +67,7 @@ function paneZoomStep(event: KeyboardEvent): -1 | 0 | 1 | null {
 // pane frame the workspace made active, which is where a pane the workspace
 // itself created also puts it: the frame is a labelled region that says which
 // pane arrived, and entering its content stays a deliberate keystroke.
-// See docs/design-system.md sections 9 and 3.
+// See docs/design-system/9-accessibility.md and 3-components.md.
 function focusActivePane(): void {
 	requestAnimationFrame(() => {
 		const { activePaneId } = useTabeloStore.getState().workspace;

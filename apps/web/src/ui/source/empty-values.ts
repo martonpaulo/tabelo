@@ -32,7 +32,7 @@ import { htmlCells } from "./html-language";
 // byte-identical with the placeholder on and off. This is emphatically not a
 // parser: it never produces cells, it never decides what a document contains,
 // and where a line's structure is ambiguous it draws nothing rather than
-// guessing. See docs/design-system.md, "Syntax and table structure".
+// guessing. See docs/design-system/2-tokens.md, "Syntax and table structure".
 
 // Which syntax a source view's empty fields follow, derived from registry data
 // rather than from a view's identity: see docs/adr/0005.

@@ -13,7 +13,7 @@ import {
 // The current occurrence is painted with the CSS Custom Highlight API: a
 // `Range` over the text node, registered under a name the stylesheet styles
 // with `::highlight()`. Nothing in the preview's DOM changes, which is the only
-// way to keep the neutral-document treatment docs/design-system.md §3 commits
+// way to keep the neutral-document treatment docs/design-system/3-components.md commits
 // it to, and to leave the accessible text and every copy path holding one
 // unbroken value. Chromium is the only supported browser and has the API, so
 // this is the platform's answer rather than a wrapper element or a dependency.

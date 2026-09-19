@@ -1003,7 +1003,7 @@ export const copy = {
 		// The four insert actions form one symmetric family: the modifier picks
 		// the axis, Mod for rows and Alt for columns, and Shift chooses the
 		// preceding side. Every one stays inside the three-key limit that
-		// docs/design-system.md section 9 sets for the whole product.
+		// docs/design-system/9-accessibility.md sets for the whole product.
 		addRowBelow: "Mod+Enter",
 		addRowAbove: "Mod+Shift+Enter",
 		addColumnRight: "Alt+Enter",

@@ -45,7 +45,7 @@ import type {
 //   switch that turns upstream's highlighting on, and nothing is drawn in it.
 // - Upstream announces each step through the editor's own live region. The
 //   bar already speaks the position through the app's one polite channel
-//   (docs/design-system.md §9), so those announcements are dropped rather than
+//   (docs/design-system/9-accessibility.md), so those announcements are dropped rather than
 //   read twice.
 //
 // https://codemirror.net/docs/ref/#search

@@ -12,7 +12,7 @@ Clarify only the ambiguity required by the current issue. Tabelo has one product
 - `CONTEXT.md` owns canonical vocabulary.
 - `AGENTS.md` owns current normative product and process rules.
 - ADRs explain accepted structural tradeoffs.
-- `docs/design-system.md` owns visual and interaction contracts.
+- `docs/design-system.md` and the parts it lists under `docs/design-system/` own visual and interaction contracts.
 - Source and tests prove current behavior.
 - An accepted issue or direct instruction may define desired behavior that deliberately replaces a current contract.
 

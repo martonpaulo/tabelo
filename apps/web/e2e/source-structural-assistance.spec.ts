@@ -13,7 +13,7 @@ import {
 // Markdown row opened with its delimiter on Enter (#391), and the
 // pane's switch that turns that assistance off for the current buffer. See
 // "Source text is free; structural assistance is narrow" in AGENTS.md and
-// docs/design-system.md, "Structural assistance can always be switched off".
+// docs/design-system/2-tokens.md, "Structural assistance can always be switched off".
 
 // Already consistent, so seeding it leaves every byte as written.
 const TABLE = [

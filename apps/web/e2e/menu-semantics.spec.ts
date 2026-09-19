@@ -130,7 +130,7 @@ test("disabled view choices distinguish in-use and unavailable states", async ({
 });
 
 // A disabled reason that only hover can reach is a reason keyboard users never
-// get. See docs/design-system.md §9.
+// get. See docs/design-system/9-accessibility.md.
 test("a disabled menu item explains itself on keyboard highlight", async ({
 	page,
 	tabelo,
@@ -459,7 +459,7 @@ test("dialog radio choices support the keyboard and Cancel restores focus", asyn
 	await expect(trigger).toBeFocused();
 });
 
-// The only submenu class docs/design-system.md §3 allows: a flat list of
+// The only submenu class docs/design-system/3-components.md allows: a flat list of
 // immediate commands. It is also the first place in this product where focus
 // could be trapped, so the whole open-and-leave path is walked by keyboard.
 test("the Copy as submenu opens, navigates, and closes without trapping focus", async ({

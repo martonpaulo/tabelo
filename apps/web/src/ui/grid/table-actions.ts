@@ -189,7 +189,7 @@ export function buildTableActions(
 	const removableRowCount = rowCount + (coversHeader ? 1 : 0);
 	// Inserting, moving, and pasting each need one place to act, and several
 	// separate areas name several. Disabled with the reason written out, never
-	// hidden: see docs/design-system.md §4.
+	// hidden: see docs/design-system/4-interaction-states.md.
 	const severalAreas = !isContiguous(selection);
 	const deletionGuard = structureDeletionGuard(selection, rows, columns);
 	const moveUpRefusal = selectionMoveRefusal(

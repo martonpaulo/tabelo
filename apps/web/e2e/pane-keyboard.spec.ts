@@ -3,7 +3,7 @@ import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
 
 // The workspace is a two-level ring: Tab walks between panes, Enter goes into
-// one, and Escape comes back out. See docs/design-system.md §9.
+// one, and Escape comes back out. See docs/design-system/9-accessibility.md.
 //
 // The point of the model is that a pane costs a fixed number of tab stops no
 // matter what it holds. Before it, reaching the second pane from inside a

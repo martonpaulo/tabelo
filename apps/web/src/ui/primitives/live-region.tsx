@@ -9,7 +9,7 @@ import type { NoticeUrgency } from "@/state/notice-queue";
 // They are the only announcement channel for notices. The visible notice bar
 // carries no live semantics of its own, which is what keeps dismissing one
 // notice from reading the remaining ones out again.
-// See docs/design-system.md §4.
+// See docs/design-system/4-interaction-states.md.
 
 export interface Announcement {
 	readonly id: string;

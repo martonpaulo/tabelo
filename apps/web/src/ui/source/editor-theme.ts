@@ -244,7 +244,7 @@ export const editorTheme = EditorView.theme({
 	".cm-selectionMatch": { backgroundColor: "var(--text-selection-fill)" },
 	// Find in a source pane (#280) marks what the grid's bar marks: the current
 	// occurrence alone, in the solid accent with its paired foreground, and no
-	// second highlight on the others (docs/design-system.md §9). Upstream paints
+	// second highlight on the others (docs/design-system/9-accessibility.md). Upstream paints
 	// every match, so its plain match class is cleared and only the selected one
 	// is drawn. `!important` for the reason given above: the base theme's
 	// scheme-specific selector is more specific than this one.

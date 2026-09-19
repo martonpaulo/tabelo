@@ -17,7 +17,7 @@ import { visibleShape } from "./visible-shape";
 // The reading model is a neutral document table, decided on #77: no card, no
 // striping, thin uniform rules including the header, square outer corners. The
 // preview answers "what will this look like once it leaves Tabelo", so it must
-// not acquire a treatment of its own. See `docs/design-system.md` section 3.
+// not acquire a treatment of its own. See `docs/design-system/3-components.md`.
 
 const alignClass: Record<Alignment, string> = {
 	default: "text-left",

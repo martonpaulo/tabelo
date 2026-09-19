@@ -60,7 +60,7 @@ export interface SourceRowMoveCommands {
 // open it. Shift+right-click goes to the browser's own menu instead, because a
 // text surface has things there worth keeping: spelling suggestions, look up,
 // the browser's text actions. The grid takes the gesture outright because a
-// cell offers the browser nothing of the kind. See docs/design-system.md §9.
+// cell offers the browser nothing of the kind. See docs/design-system/9-accessibility.md.
 
 interface MenuState {
 	readonly editable: boolean;

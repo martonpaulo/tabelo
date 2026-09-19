@@ -14,7 +14,7 @@
 // The stroke itself is painted by the `tabelo-hairline` utility rather than by
 // the border colour, because a hairline border loses roughly half its colour
 // along a curve on a one-device-pixel display. The utility takes the surface
-// and the boundary as two custom properties. See docs/design-system.md §2.
+// and the boundary as two custom properties. See docs/design-system/2-tokens.md.
 
 export const hairlineStyles = "tabelo-hairline border";
 

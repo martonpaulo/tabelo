@@ -205,7 +205,7 @@ export function PaneMenu({
 							</ControlTooltip>
 							{/* Beside the refused command, never in place of it: the copy
 							    item stays disabled and this is a second, ordinary command.
-							    See docs/design-system.md §4. */}
+							    See docs/design-system/4-interaction-states.md. */}
 							{recovery ? (
 								<RecoveryMenuItem
 									recovery={recovery}
@@ -372,7 +372,7 @@ export function PaneMenu({
 							</DropdownMenuCheckboxItem>
 							{/* Switching it off makes the buffer plain text until the
 							    buffer is gone; it changes no text and adds no history step.
-							    See docs/design-system.md, "Structural assistance can
+							    See docs/design-system/2-tokens.md, "Structural assistance can
 							    always be switched off". */}
 							{offersAssistance ? (
 								<DropdownMenuCheckboxItem

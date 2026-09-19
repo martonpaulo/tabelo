@@ -12,7 +12,7 @@ import type { SourceTabBehaviour } from "@/views/types";
 // Tab inside a source editor, by the behaviour the view registry declares
 // (#54). The editor asks for this extension by behaviour and never by view,
 // and the fields come from the codec's own grammar, so nothing here knows a
-// format. See docs/design-system.md, "The source-editor keyboard model".
+// format. See docs/design-system/9-accessibility.md, "The source-editor keyboard model".
 
 // The field a Tab press lands on, as an offset, or null when the text has no
 // fields at all. The caret belongs to the last field starting at or before it,

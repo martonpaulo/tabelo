@@ -17,9 +17,9 @@ import { Notice } from "@/ui/primitives/notice";
 // Notices float over the workspace in their own layer. Standing in the layout
 // was the interruption: an idle notice area renders nothing, so the first
 // notice inserted a band and pushed every pane down, which is the reflow
-// docs/design-system.md §5 forbids. Floating is still not a dialog: nothing is
+// docs/design-system/5-layout.md forbids. Floating is still not a dialog: nothing is
 // trapped, and only the notices themselves take pointer events, so the work
-// underneath stays reachable. See docs/design-system.md §5.
+// underneath stays reachable. See docs/design-system/5-layout.md.
 //
 // Every notice the app has to give is rendered. Ranking them and showing only
 // the winner is what used to swallow a refused clipboard write whenever

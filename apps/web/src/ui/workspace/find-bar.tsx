@@ -23,7 +23,7 @@ import type { FindSummary, FindTarget } from "./use-pane-find";
 // pane shows and above nothing. It belongs to the pane the way the header does,
 // so it covers no content and the query field can take whatever width the pane
 // has. Every pane has its own (#280), each searching what that pane shows. See
-// docs/design-system.md §3.
+// docs/design-system/3-components.md.
 //
 // One row by default, because finding is the errand and replacing is not.
 // Asking for replace adds the second row and its own controls, and the

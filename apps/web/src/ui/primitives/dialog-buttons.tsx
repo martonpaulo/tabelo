@@ -4,7 +4,7 @@ import { cn } from "@tabelo/ui/lib/utils";
 import type * as React from "react";
 import { ControlTooltip } from "./control-tooltip";
 
-// docs/design-system.md §3 "Button hierarchy": Confirm is the filled default,
+// docs/design-system/3-components.md "Button hierarchy": Confirm is the filled default,
 // destructive Confirm is `destructive`, Cancel is the borderless `ghost`.
 // These wrappers exist so a dialog footer cannot drift from that rule.
 

@@ -615,9 +615,11 @@ implemented, and to direct work carrying no issue at all.
 
 ## Product interface and accessibility
 
-**`docs/design-system.md` is normative for anything visual.** Read it before
-writing or changing UI. It owns the token catalogue, the component layers, the
-interaction states, and the copy rules. Two of its rules matter enough to repeat
+**`docs/design-system.md` is normative for anything visual.** It is the entry
+point: the larger sections live in parts under `docs/design-system/`, and the
+entry point lists them. Read it before writing or changing UI. Together they
+own the token catalogue, the component layers, the interaction states, and the
+copy rules. Two of its rules matter enough to repeat
 here:
 
 - Commit to the existing design line. There is always a prettier alternative;
@@ -642,7 +644,7 @@ here:
   and use progressive disclosure for less common actions.
 - Avoid unexpected layout changes and interruptions. A dialog is allowed only
   as the direct result of a command the user issued, and only for a choice a
-  menu cannot hold: see `docs/design-system.md` §3.
+  menu cannot hold: see `docs/design-system/3-components.md`.
 - Keep visible copy centralized and consistent.
 - Author interface geometry, spacing, radii, typography, and breakpoints in
   `rem`, using the shared tokens whenever one exists. Treat pixel-valued browser

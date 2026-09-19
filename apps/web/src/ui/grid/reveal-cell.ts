@@ -9,7 +9,7 @@ import { type CellPosition, HEADER_ROW } from "@/core/selection";
 // Chrome honours only part of `scroll-padding-left` here, delivering roughly
 // half of it, so the clearance the grid gets shrinks as the gutter grows. That
 // left the cell under the sticky gutter and put the contract at the mercy of a
-// few pixels of slack. See docs/design-system.md §9.
+// few pixels of slack. See docs/design-system/9-accessibility.md.
 //
 // The chrome is measured from the elements that draw it rather than recomputed
 // from tokens. A sticky cell's own rectangle already is its stuck position, so

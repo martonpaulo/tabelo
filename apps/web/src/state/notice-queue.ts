@@ -13,7 +13,7 @@ export type NoticeSeverity = "info" | "warning" | "error";
 
 // Which live region carries the announcement. Assertive interrupts whatever
 // assistive technology is currently saying, so it is reserved for the cases
-// that put the user's table at risk. See docs/design-system.md §4.
+// that put the user's table at risk. See docs/design-system/4-interaction-states.md.
 export type NoticeUrgency = "polite" | "assertive";
 
 export interface TransientNotice {

@@ -51,7 +51,7 @@ export const menuShortcutKeyStyles =
 // The two menu indicators wear the product's own checkbox and radio anatomy:
 // the same 1rem box, the same control radius, the same unfilled outline, and
 // the same primary fill once chosen. A menu is not the place to invent a third
-// way of drawing a choice. See docs/design-system.md §3.
+// way of drawing a choice. See docs/design-system/3-components.md.
 // A menu's on/off item wears the shared Switch's anatomy at menu size: an
 // outlined track with the thumb at the start, the solid primary with the thumb
 // at the end once on. Settings and menus then draw one kind of on/off choice.

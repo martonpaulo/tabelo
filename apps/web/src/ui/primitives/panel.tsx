@@ -5,7 +5,7 @@ import { forwardRef, type ReactNode } from "react";
 // The two working surfaces share one frame so they read as siblings rather
 // than as two apps stitched together. Compound by design: the header's
 // contents are slotted, not configured through props.
-// See docs/design-system.md §3.
+// See docs/design-system/3-components.md.
 
 // What entering a pane lands on: the grid's focused cell, a source editor, or a
 // view that names its own entry target. Failing all three, the body: a preview

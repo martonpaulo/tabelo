@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 // Below this width the 2x2 tiling stops being readable: a pane sharing the
-// width of a phone is a sliver, not a table. See docs/design-system.md §5.
+// width of a phone is a sliver, not a table. See docs/design-system/5-layout.md.
 export const STACK_BELOW_REM = 56.25;
 
 const QUERY = `(max-width: ${STACK_BELOW_REM - 0.0625}rem)`;

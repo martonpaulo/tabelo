@@ -6,7 +6,7 @@ import type { TabeloPage } from "./helpers";
 // Where a notice is shown, as opposed to what it says. The notice area used to
 // stand in the layout and render nothing while idle, so the first notice
 // inserted a band and pushed the whole workspace down: the reflow
-// docs/design-system.md §5 forbids. It now floats in its own layer.
+// docs/design-system/5-layout.md forbids. It now floats in its own layer.
 
 const TILED = { width: 1280, height: 720 };
 const STACKED = { width: 390, height: 700 };

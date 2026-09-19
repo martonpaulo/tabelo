@@ -68,7 +68,7 @@
 @theme inline {
 	--spacing-hairline: var(--hairline-w);
 	/* Figtree, self-hosted by the app, with the platform face while it loads
-	   (docs/design-system.md, Typography; owner decision 2026-09-18). */
+	   (docs/design-system/2-tokens.md, Typography; owner decision 2026-09-18). */
 	--font-sans:
 		"Figtree Variable", -apple-system, BlinkMacSystemFont, "Segoe UI",
 		sans-serif;
@@ -182,7 +182,7 @@
    Consumers set the two colours. `--hairline-fill` is the surface, and may be
    translucent; `--hairline-color` is the boundary. Radius and border width
    stay the consumer's, so this composes with any rounded surface.
-   See docs/design-system.md section 2. */
+   See docs/design-system/2-tokens.md. */
 @utility tabelo-hairline {
 	border-color: transparent;
 	background-image:

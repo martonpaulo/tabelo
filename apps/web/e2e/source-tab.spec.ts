@@ -8,7 +8,7 @@ import { renderedSource, type TabeloPage } from "./helpers";
 // them Tab stays inside the editor, and Escape is the way out. The views are
 // read from the registry by the behaviour they declare, so a view added later
 // is covered by what it declares rather than by being named here. See
-// docs/design-system.md, "The source-editor keyboard model".
+// docs/design-system/9-accessibility.md, "The source-editor keyboard model".
 
 const TABLE = ["| Name | City |", "| --- | --- |", "| Ingrid | Rio |"].join(
 	"\n",

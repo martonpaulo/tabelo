@@ -158,7 +158,7 @@ export default function SourceView({
 				onOccurrencesChange={reportOccurrences}
 				onOccurrenceAdded={({ selected, total }) =>
 					// The app's one polite region, shared rather than added to: see
-					// docs/design-system.md §4. The header carries the same sentence
+					// docs/design-system/4-interaction-states.md. The header carries the same sentence
 					// visibly, so this is the spoken half of one piece of feedback.
 					useTabeloStore
 						.getState()

@@ -6,7 +6,7 @@ import { createContext, useContext } from "react";
 //
 // The pane owns the switch because its menu shows it; the editor only reads it.
 // It is transient on purpose: never workspace state, never persisted, and gone
-// with the buffer it was set for. See docs/design-system.md, "Structural
+// with the buffer it was set for. See docs/design-system/2-tokens.md, "Structural
 // assistance can always be switched off".
 export interface PaneAssistance {
 	readonly enabled: boolean;

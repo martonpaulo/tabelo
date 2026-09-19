@@ -19,7 +19,7 @@ import { SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";
 // space the format cannot write directly. Read as text it is unreadable, and it
 // takes the room of the sequence rather than of the value. This draws one glyph
 // over each sequence, at exactly the width the serializer measured, so a
-// Markdown column stays aligned around it. See docs/design-system.md, "Syntax
+// Markdown column stays aligned around it. See docs/design-system/2-tokens.md, "Syntax
 // and table structure".
 //
 // It is a decoration and nothing else. The text, the caret offsets, the

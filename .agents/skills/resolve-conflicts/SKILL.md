@@ -11,7 +11,7 @@ Tabelo works on a branch per task by default; conflicts most often surface when 
 
 1. Inspect `git status`, operation metadata, current branch, conflicted paths, staged state, and unrelated worktree changes.
 2. Identify the exact issue or commit intent on both sides. Read nearby code, tests, issue text, canonical documents, and relevant commits.
-3. Give special attention to shared contract files such as `AGENTS.md`, `CONTEXT.md`, `docs/design-system.md`, ADRs, registries, store state, and Playwright configuration. Preserve the latest compatible decisions rather than concatenating text mechanically.
+3. Give special attention to shared contract files such as `AGENTS.md`, `CONTEXT.md`, `docs/design-system.md` and its parts under `docs/design-system/`, ADRs, registries, store state, and Playwright configuration. Preserve the latest compatible decisions rather than concatenating text mechanically.
 4. Resolve one coherent unit at a time. Never choose `ours` or `theirs` blindly.
 5. When intentions conflict, distinguish current behavior, current contract, and desired issue behavior. Stop only when the product choice cannot be reconstructed safely.
 6. Inspect the resolved diff, search for conflict markers, and ensure the index contains only intended resolutions.

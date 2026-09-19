@@ -5,7 +5,7 @@ description: Implement or review a Tabelo UI, UX, accessibility, interaction, re
 
 # UI Contract
 
-Treat `docs/design-system.md` as normative and read it before editing UI. An accepted issue may deliberately revise it, but the new decision and code must land together.
+Treat `docs/design-system.md`, the entry point, and the parts it lists under `docs/design-system/` as normative, and read them before editing UI. An accepted issue may deliberately revise it, but the new decision and code must land together.
 
 ## Workflow
 

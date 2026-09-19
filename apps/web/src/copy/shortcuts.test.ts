@@ -5,7 +5,7 @@ import { copy } from "./copy";
 // The three-key limit is a product rule, so it is checked over the product's
 // own shortcut metadata rather than inside the renderer. A renderer that
 // silently dropped a key would still draw a legal-looking legend for an
-// illegal chord: see docs/design-system.md section 9.
+// illegal chord: see docs/design-system/9-accessibility.md.
 const MAXIMUM_KEYS = 3;
 
 describe("shortcut tokenization", () => {

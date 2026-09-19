@@ -102,7 +102,7 @@ const columnMarkersCompartment = new Compartment();
 
 // Everything the editor draws at the pane's scale, the text, the gutter width,
 // and the caret, reads `--pane-zoom` from the cascade, and the pane body is the
-// only thing that sets it: see docs/design-system.md, "Per-pane content scale".
+// only thing that sets it: see docs/design-system/2-tokens.md, "Per-pane content scale".
 // So a zoom step never touches the editor's own configuration, and CodeMirror
 // has no way to know that the line heights and character width it caches, and
 // positions the line numbers and the caret from, have just changed underneath
@@ -588,7 +588,7 @@ export function SourceEditor({
 								// next. A read-only view has no claim on it, so it returns
 								// false and the browser keeps its own Mod+D there. Escape
 								// leaves the pane, which is how the bookmark shortcut stays
-								// reachable. See docs/design-system.md §9.
+								// reachable. See docs/design-system/9-accessibility.md.
 								key: "Mod-d",
 								run: (target) => {
 									if (!target.state.facet(EditorView.editable)) return false;
@@ -640,7 +640,7 @@ export function SourceEditor({
 						// source view's exit is Escape, and a Tab that left the pane
 						// mid-typing is the one thing a table editor must not do. A view
 						// whose behaviour did not take the key still keeps it here.
-						// See docs/design-system.md, "The source-editor keyboard model".
+						// See docs/design-system/9-accessibility.md, "The source-editor keyboard model".
 						{ key: "Tab", run: () => true, shift: () => true },
 					]),
 
