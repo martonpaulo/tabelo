@@ -468,16 +468,17 @@ export const editorTheme = EditorView.theme({
 
 export const highlightStyle = HighlightStyle.define([
 	// Table structure: the brackets, pipes, dividers, and markup markers that
-	// give the source its shape. Dimmed so the data reads first. `punctuation`
+	// give the source its shape. In the punctuation tone, the quietest in the
+	// palette, so the data reads first. `punctuation`
 	// is the parent of every bracket tag, so JSON's braces and square brackets
 	// and HTML's angle brackets are all covered by that one entry.
-	{ tag: tags.punctuation, color: "var(--muted-foreground)" },
-	{ tag: tags.separator, color: "var(--muted-foreground)" },
+	{ tag: tags.punctuation, color: "var(--syntax-punctuation)" },
+	{ tag: tags.separator, color: "var(--syntax-punctuation)" },
 	// Markdown's own markers: the pipes of a table row, the alignment divider
 	// under the header, and the `#`, `*`, `>`, and `-` that open a construct.
 	// The divider is structure like any other delimiter and recedes with them.
-	{ tag: tags.processingInstruction, color: "var(--muted-foreground)" },
-	{ tag: tags.contentSeparator, color: "var(--muted-foreground)" },
+	{ tag: tags.processingInstruction, color: "var(--syntax-punctuation)" },
+	{ tag: tags.contentSeparator, color: "var(--syntax-punctuation)" },
 	// Header cells, wherever the format puts them: one line in Markdown, CSV,
 	// TSV, Jira, and Records; a repeated key inside every JSON object; a `<th>`
 	// element in HTML.

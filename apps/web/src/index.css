@@ -123,12 +123,19 @@
 	--selection-edge: #4da6ff;
 	--focus-ring: var(--selection-edge);
 
-	--value-string: #a6da95;
-	--value-number: #8bd5ca;
-	--value-boolean: #d0b2ff;
-	--value-null: #9dbdff;
-	--syntax-notation: #b7bdf8;
-	--syntax-link: #91d7e3;
+	/* The source views' syntax palette, "A · Quente" (owner, 2026-09-19):
+	   warm value hues that each clear 4.5:1 on --surface-code (string 9.3,
+	   number 8.5, boolean 7.3, null 7.6, notation 6.2, link 9.0). The grid's
+	   typed values read the same four value tokens. Punctuation is structure
+	   drawn as decoration, deliberately quieter at 3.2:1, and never carries
+	   meaning alone: the text between it does. */
+	--value-string: #b9c98a;
+	--value-number: #e8b06f;
+	--value-boolean: #d49bc0;
+	--value-null: #8fb3d9;
+	--syntax-punctuation: #6f6d66;
+	--syntax-notation: #e0876a;
+	--syntax-link: #8cc4ff;
 
 	--status-warning: #fbbf24;
 

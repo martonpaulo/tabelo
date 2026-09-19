@@ -173,10 +173,21 @@ number `1`, in accordance with ADR 0008.
 | `--value-boolean` | `text-value-boolean` | JSON booleans and carried boolean cells | Upright; 600 weight in sources only, the grid cell at the string weight like a number (owner, 2026-09-19) |
 | `--value-null` | `text-value-null` | JSON null and carried null cells | Literal shape in sources; grid type presentation also uses italics |
 | `--syntax-notation` | `text-syntax-notation` | Element names, escapes, entities, and other notation | Token shape and grammar position |
+| `--syntax-punctuation` | (source views only) | Brackets, pipes, separators, the Markdown alignment divider, and markup markers | Grammar position; quieter than every value tone by design |
 | `--syntax-link` | `text-syntax-link` | Links, URLs, and autolinks | Underline on the link text and the address shape |
 
-Every tone reaches WCAG AA contrast against both `--surface-panel` and the
-selected-cell composite. Close hues also differ by weight, underline,
+The palette is "A · Quente" (owner, 2026-09-19): string `#b9c98a`, number
+`#e8b06f`, boolean `#d49bc0`, null `#8fb3d9`, notation `#e0876a`, link
+`#8cc4ff`, and punctuation `#6f6d66`, each written once as a token in the
+global stylesheet. Every value, notation, and link tone reaches WCAG AA
+contrast (4.5:1) against `--surface-code`, `--surface-panel`, and the
+selected-cell composite; on `--surface-code` the lowest is notation at 6.2:1.
+Punctuation is the one exception, at 3.2:1: it is structure drawn as
+decoration, and the text between the delimiters, never the delimiter's tone,
+carries the content. Forced colours replaces every one of these tones with the
+system text colour, so each keeps a second channel that survives there: weight
+for the header and for numbers and booleans in sources, the underline for
+links, and the glyph shape for notation. Close hues also differ by weight, underline,
 numeric spacing, or literal shape, so hue is never their only distinction.
 These colours describe content, not interaction or status: selection keeps its
 blue fill and edge, while the warm warning and destructive band stays reserved
@@ -363,8 +374,9 @@ views** (#269). Syntax highlighting always keeps tokens upright. Italics are res
 for content the user explicitly marked as emphasis; types, comments, element
 names, escapes, entities, annotations, and other grammar indicators never add
 italics of their own.
-Brackets, pipes, the Markdown alignment divider, markup markers, and HTML
-attribute names are all `--muted-foreground`. Strings, numbers, booleans, and
+Brackets, pipes, the Markdown alignment divider, and markup markers are all
+`--syntax-punctuation`; HTML attribute names and comments stay
+`--muted-foreground`. Strings, numbers, booleans, and
 null use their cross-view value tokens; element names, escapes, entities, and
 links use the notation and link tokens above. These treatments are presentation
 only: they do not change grammar, parsing, cell values, or source text. A status

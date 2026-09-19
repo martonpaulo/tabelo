@@ -122,7 +122,7 @@ describe("the shared highlight style", () => {
 	});
 
 	test("maps scalar values and notation to their semantic treatments", () => {
-		expect(rulesFor(tags.punctuation)).toContain("--muted-foreground");
+		expect(rulesFor(tags.punctuation)).toContain("--syntax-punctuation");
 		expect(rulesFor(tags.propertyName)).toContain("font-weight: 600");
 		expect(rulesFor(tags.string)).toContain("--value-string");
 		expect(rulesFor(tags.number)).toContain("--value-number");
