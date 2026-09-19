@@ -163,6 +163,12 @@
 	   dialog, which own 50. Named here so the value is a decision rather than
 	   another number picked in a component. */
 	--z-notice: 45;
+	/* The grid's optional pinned layers slot between ordinary body cells and
+	   the row gutter (`z-10`), so a pinned row or column covers the table
+	   without covering its chrome. The one cell in both layers renders their
+	   intersection once, a step above each. */
+	--z-grid-pinned: 5;
+	--z-grid-pinned-corner: 6;
 
 	--control-radius: 0.5rem;
 	--surface-radius: 0.75rem;

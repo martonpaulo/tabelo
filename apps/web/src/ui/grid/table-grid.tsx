@@ -1758,8 +1758,8 @@ const DataRow = memo(function DataRow({
 							pinnedRow && "top-(--grid-pin-top)",
 							pinnedCell && "left-grid-gutter",
 							pinnedRow && pinnedCell
-								? "z-[6]"
-								: (pinnedRow || pinnedCell) && "z-[5]",
+								? "z-(--z-grid-pinned-corner)"
+								: (pinnedRow || pinnedCell) && "z-(--z-grid-pinned)",
 							// The edge that says a layer is pinned without using colour:
 							// the strong line the grid already draws around chrome,
 							// against the subtle one every interior boundary carries.

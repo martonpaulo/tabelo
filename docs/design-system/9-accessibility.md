@@ -710,8 +710,9 @@ without a boundary to place, a control to place it with, or a number to explain.
   timeline, and neither is per-pane: each view appears at most once, so there is
   one grid to pin.
 - They **slot between the existing layers** rather than beside them. A pinned
-  cell takes `z-index: 5`, above ordinary cells and below the row gutter; the one
-  cell belonging to both layers renders their intersection once, at `6`. The rule
+  cell takes `--z-grid-pinned` (5), above ordinary cells and below the row
+  gutter; the one cell belonging to both layers renders their intersection once,
+  at `--z-grid-pinned-corner` (6). Both are named in `index.css`. The rule
   against pairing `sticky` with `relative` applies here too, so a pinned cell
   drops the `relative` its clipboard mark would otherwise resolve against and
   uses the sticky containing block instead.
