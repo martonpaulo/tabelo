@@ -36,6 +36,10 @@ const COLUMN_ACTIONS = "Column actions";
 const SELECT_ROW = "Select row";
 const SELECT_COLUMN = "Select column";
 
+// One name for source wrapping wherever it is chosen: the global default in
+// Settings and a pane's own choice in its menu.
+const WRAP_LINES = "Wrap lines";
+
 // A file ending as a reader sees it, with its leading dot.
 function fileExtension(extension: string): string {
 	return `.${extension}`;
@@ -261,13 +265,17 @@ export const copy = {
 	settings: {
 		title: "Settings",
 		description:
-			"Mark invisible characters in source views. Your table doesn't change.",
+			"Choose how every source view shows your table. Your table doesn't change.",
 		done: "Done",
 		reset: "Reset to defaults",
 		previewLabel: "Preview",
-		preview: "Preview of a source view with the chosen marks",
-		indicators: {
-			label: "Show in source views",
+		preview: "Preview of a source view with the chosen settings",
+		display: {
+			label: "Source views",
+		},
+		wrap: {
+			label: WRAP_LINES,
+			description: "Long lines continue below instead of scrolling sideways",
 		},
 		spaceIndicators: {
 			label: "Spaces",
@@ -330,7 +338,7 @@ export const copy = {
 		zoomOut: "Zoom out",
 		zoomIn: "Zoom in",
 		resetZoom: "Reset zoom",
-		wrapSource: "Wrap lines",
+		wrapSource: WRAP_LINES,
 		wrapAllColumns: "Wrap all columns",
 		// The checked escape mode for a format's structural assistance (#297),
 		// called smart editing wherever a person reads it (CONTEXT.md).

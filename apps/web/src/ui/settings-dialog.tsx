@@ -12,7 +12,8 @@ import {
 } from "@tabelo/ui/components/segmented-control";
 import { Switch } from "@tabelo/ui/components/switch";
 import { cn } from "@tabelo/ui/lib/utils";
-import { lazy, Suspense, useId, useState } from "react";
+import { IconTextWrap } from "@tabler/icons-react";
+import { lazy, type ReactNode, Suspense, useId, useState } from "react";
 import { copy } from "@/copy/copy";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import {
@@ -37,8 +38,9 @@ const IndicatorPreview = lazy(() => import("@/ui/source/indicator-preview"));
 
 // The mark a setting draws, shown as its icon, so the row and what the preview
 // draws can be matched by eye. One fixed slot, as wide as the widest mark,
-// so every row's label starts on the same line (owner, 2026-09-19).
-function Glyph({ children }: { readonly children: string }) {
+// so every row's label starts on the same line (owner, 2026-09-19). Wrapping
+// draws no mark, so its slot holds the icon the pane menu gives it.
+function Glyph({ children }: { readonly children: ReactNode }) {
 	return (
 		<span
 			aria-hidden
@@ -56,7 +58,7 @@ function SwitchOption({
 	checked,
 	onCheckedChange,
 }: {
-	readonly glyph: string;
+	readonly glyph: ReactNode;
 	readonly label: string;
 	readonly description: string;
 	readonly checked: boolean;
@@ -87,7 +89,7 @@ export function SettingsDialog({
 	const [saveError, setSaveError] = useState(false);
 	const titleId = useId();
 	const descriptionId = useId();
-	const indicatorsLabelId = useId();
+	const displayLabelId = useId();
 	const spaceLabelId = useId();
 	const spaceDescriptionId = useId();
 
@@ -139,10 +141,18 @@ export function SettingsDialog({
 						</Suspense>
 					</div>
 
-					<section className="grid gap-1.5" aria-labelledby={indicatorsLabelId}>
-						<h3 id={indicatorsLabelId} className="mb-1 font-medium text-sm">
-							{copy.settings.indicators.label}
+					{/* The four global defaults a source pane follows until it makes
+					    its own choice (#276). */}
+					<section className="grid gap-1.5" aria-labelledby={displayLabelId}>
+						<h3 id={displayLabelId} className="mb-1 font-medium text-sm">
+							{copy.settings.display.label}
 						</h3>
+						<SwitchOption
+							glyph={<IconTextWrap aria-hidden className="size-4" />}
+							{...copy.settings.wrap}
+							checked={preferences.wrap}
+							onCheckedChange={(checked) => update({ wrap: checked })}
+						/>
 						<SwitchOption
 							glyph={EMPTY_VALUE_PLACEHOLDER}
 							{...copy.settings.emptyValueIndicators}

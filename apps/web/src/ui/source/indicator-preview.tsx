@@ -6,7 +6,7 @@ import type { Preferences } from "@/preferences/contract";
 import { syntaxTheme } from "./editor-theme";
 import { indicatorExtensions, languageFor } from "./source-editor";
 
-// A few synthetic TSV lines that exercise every indicator the settings switch:
+// A few synthetic TSV lines that exercise every setting the dialog switches:
 // tabs between values, an empty field, a run of spaces inside a value, and
 // spaces left at the end of a line.
 const first = samplePerson(0);
@@ -28,7 +28,8 @@ export default function IndicatorPreview({
 	readonly label: string;
 }) {
 	const hostRef = useRef<HTMLDivElement>(null);
-	const { spaceIndicators, tabIndicators, emptyValueIndicators } = preferences;
+	const { wrap, spaceIndicators, tabIndicators, emptyValueIndicators } =
+		preferences;
 
 	useEffect(() => {
 		const host = hostRef.current;
@@ -41,6 +42,7 @@ export default function IndicatorPreview({
 					syntaxTheme,
 					lineNumbers(),
 					languageFor("delimited"),
+					wrap ? EditorView.lineWrapping : [],
 					indicatorExtensions(
 						spaceIndicators,
 						tabIndicators,
@@ -55,7 +57,7 @@ export default function IndicatorPreview({
 			}),
 		});
 		return () => view.destroy();
-	}, [spaceIndicators, tabIndicators, emptyValueIndicators, label]);
+	}, [wrap, spaceIndicators, tabIndicators, emptyValueIndicators, label]);
 
 	return (
 		<div
