@@ -120,10 +120,12 @@ function axisLabelCursor(movable: boolean): string {
 }
 
 // A row number fills its gutter cell, so the whole cell is the target and the
-// gutter needs no width beyond the digits and one gap on each side (#288).
+// gutter needs no width beyond the digits and the gaps around them (#288). The
+// trailing gap and the cell's own leading padding add up to the index gap a
+// source view keeps between a line number and its text.
 function axisNumberClass(movable: boolean): string {
 	return cn(
-		"flex h-content-line-box w-full items-center justify-end rounded-interactive px-1 text-right hover:text-foreground",
+		"flex h-content-line-box w-full items-center justify-end rounded-interactive pr-grid-gutter-trailing pl-1 text-right hover:text-foreground",
 		axisLabelCursor(movable),
 	);
 }

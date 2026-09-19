@@ -161,7 +161,9 @@ export const editorTheme = EditorView.theme({
 		// set flush right, so the numbers read as a column of their own inside
 		// the code box rather than as part of the first character (owner,
 		// 2026-09-19).
-		padding: "0 calc(var(--spacing) * 4) 0 calc(var(--spacing) * 5)",
+		// The trailing gap is the index gap every view keeps between a row's
+		// number and its text, which the grid's row numbers keep too.
+		padding: "0 var(--index-text-gap) 0 calc(var(--spacing) * 5)",
 		textAlign: "right",
 	},
 	// The current line is marked only in the editor that has focus (owner,

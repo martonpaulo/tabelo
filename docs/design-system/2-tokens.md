@@ -229,7 +229,9 @@ what used to be two passes over every visual change is now one.
 | `--control-h-md` | `h-control-md` | 2rem: default compact control height: menu rows, icon buttons |
 | `--control-h-lg` | `h-control-lg` | 2.25rem: the default labelled button, a text field, and a textarea's starting height (owner, 2026-09-19) |
 | `--panel-header-h` | `h-panel-header` | 2.75rem: every pane header |
-| `--grid-gutter-w` | `w-grid-gutter` | 2.25rem: the row number and one small gap each side, nothing else (#288) |
+| `--index-text-gap` | (none) | 1rem: the gap between a row's number and its text, in a source view's line numbers and the grid's row numbers alike (owner, 2026-09-19) |
+| `--grid-gutter-w` | `w-grid-gutter` | 2.5rem: the row number, a small leading gap, and its share of `--index-text-gap`, nothing else (#288) |
+| `--grid-gutter-trailing` | `pr-grid-gutter-trailing` | `--index-text-gap` less a cell's `px-2`: what a grid row number keeps after its digits |
 | `--grid-row-h` | `min-h-grid-row` | calc(var(--pane-zoom, 1) * 2rem): minimum table row height |
 | `--grid-col-w` | `w-grid-col` | 10.5rem: default column width |
 | `--control-radius` | `rounded-interactive` | 0.5rem: buttons, fields, menu items, option blocks, badges |

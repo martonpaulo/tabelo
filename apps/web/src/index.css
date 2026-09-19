@@ -43,6 +43,7 @@
 	--spacing-control-lg: var(--control-h-lg);
 	--spacing-panel-header: var(--panel-header-h);
 	--spacing-grid-gutter: var(--grid-gutter-w);
+	--spacing-grid-gutter-trailing: var(--grid-gutter-trailing);
 	--spacing-grid-strip: var(--grid-strip-h);
 	--spacing-grid-row: var(--grid-row-h);
 	--spacing-grid-col: var(--grid-col-w);
@@ -137,9 +138,17 @@
 	   because a labelled action or a field someone types into earns the room. */
 	--control-h-lg: 2.25rem;
 	--panel-header-h: 2.75rem;
-	/* The row number and one small gap on each side, nothing else (#288): three
-	   digits of the 0.75rem index face fit with room for a wider fallback. */
-	--grid-gutter-w: 2.25rem;
+	/* The gap between a row's number and the start of that row's text, the
+	   same in every view that numbers its rows: a source view's line numbers
+	   and the grid's row numbers alike (owner, 2026-09-19). */
+	--index-text-gap: 1rem;
+	/* What the grid's row number keeps after its digits: the index gap less the
+	   leading padding every cell already has (`px-2`). */
+	--grid-gutter-trailing: calc(var(--index-text-gap) - var(--spacing) * 2);
+	/* The row number, a small leading gap, and its share of the index gap,
+	   nothing else (#288): three digits of the 0.75rem index face fit with
+	   room for a wider fallback. */
+	--grid-gutter-w: 2.5rem;
 	/* The column index strip is chrome, but it keeps the same baseline height as
 	   a table row so the table starts on one coherent vertical rhythm. */
 	--grid-strip-h: 2rem;
