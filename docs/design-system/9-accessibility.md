@@ -762,6 +762,11 @@ without a boundary to place, a control to place it with, or a number to explain.
   against pairing `sticky` with `relative` applies here too, so a pinned cell
   drops the `relative` its clipboard mark would otherwise resolve against and
   uses the sticky containing block instead.
+- The **fill handle belongs to its cell's layer.** It takes the stacking level
+  of the cell it sits on and follows the table, so it paints over that cell and
+  its neighbours but passes under a pinned row or column, the header row, and
+  the gutter exactly as the cell does, rather than floating over the layer that
+  hides the cell.
 - A pinned cell **paints an opaque fill**, for the reason the header row already
   does: live rows and columns pass underneath it, and a translucent selection
   tint would let their text read through. The unselected fill is the pane
