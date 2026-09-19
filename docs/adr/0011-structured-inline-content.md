@@ -198,6 +198,27 @@ wraps. Formatting is a document command built from the range operations:
   document timeline; the commit is one document step, as a textarea's was.
 - A commit compares text with its formatting, so removing every mark is a
   change, and formatted text is written as text whatever the column expects.
+- *The cell editor's clipboard keeps formatting* (owner, 2026-09-19). A copy
+  or cut of a selected fragment writes three flavours: the fragment's
+  projection as plain text, its semantic markup through the HTML writer (with
+  no table around it, since it is part of one cell), and the private payload,
+  unchanged at version 2, holding the fragment as a matrix of one cell. A
+  paste inserts one cell's worth of content in place of the selection as one
+  local undo step, keeping its marks, links, and images exactly rather than
+  taking the marks around the caret. That content comes from Tabelo's payload
+  when the markup beside it reads as the same text, else from the HTML read
+  under the codec's own rules: declined formatting keeps its text and raises
+  the paste warning notice, and markup the codec refuses pastes the plain
+  text instead. Markup with no table from another application is believed
+  only when it reads as the plain text beside it (an image may read as its
+  alternative text or as nothing), because blocks and whitespace a renderer
+  folds are not cell syntax; otherwise the plain text wins. A clipboard
+  holding more than one cell pastes its plain flavour, as it always did: the
+  cells joined by tabs and the rows by line breaks, since a matrix has no
+  single place in one cell's text. Plain text alone pastes as typed text does,
+  and nothing reads formatting from how it looks. The same fragment pasted on
+  a grid cell rather than into an editor is read from the payload, so it
+  round trips there too.
 
 **Disclosure.** CSV, TSV, JSON, and Records keep declaring `"unexpressed"`.
 While the document holds structure and one of their views is open for
@@ -260,12 +281,11 @@ warning notice, which a source draft already did in its pane. Browser
 coverage takes one table holding every feature through the structured and
 plain views, their drafts, the clipboard both ways, Copy as, download, import,
 a reload, forced colours, and the keyboard; `docs/performance.md` records the
-target scale measured with formatted content. The rich cell editor stays
-narrower than the rest in two ways, each current behaviour rather than an
-accident: paste into it and copy out of it carry plain text only, since the
-same-app clipboard flavour belongs to the grid selection; and once the
-editor's own undo is exhausted, `Mod`+`Z` does nothing until the edit is
-committed or cancelled, as with the textarea it replaced.
+target scale measured with formatted content. The rich cell editor's paste
+and copy first carried plain text only; the owner reversed that on
+2026-09-19, and both now keep formatting as *Editing* describes. Once the
+editor's own undo is exhausted, `Mod`+`Z` still does nothing until the edit
+is committed or cancelled, as with the textarea it replaced.
 
 ADR 0008 is amended by this one: a textual cell may now carry structure, and
 that structure is carried exactly as a type is, never derived from how text

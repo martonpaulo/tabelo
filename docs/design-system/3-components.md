@@ -301,7 +301,13 @@ keeps the grid a grid:
   rows below while it is taller than the cell, and it draws marks, links, and
   images with the elements the cell shows after the commit. A typed value
   keeps the plain editor, which has nothing to format.
-- **Formatting left behind is reported.** An import or a paste whose HTML
+- **The cell editor's clipboard keeps formatting** (owner, 2026-09-19). A
+  paste inserts one cell's worth of formatted text at the caret or over the
+  selection, as one local undo step; a copy or cut writes the selected
+  fragment's text, its semantic HTML, and Tabelo's own exact structure. The
+  rules are ADR 0011's; nothing on screen changes but the pasted formatting.
+- **Formatting left behind is reported.** An import or a paste, into the grid
+  or into the cell editor, whose HTML
   holds formatting the product declines keeps the text and raises one
   dismissible warning notice naming each reason once; it never expires on its
   own, because the user has something to check.
