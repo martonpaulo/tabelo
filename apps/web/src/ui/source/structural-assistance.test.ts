@@ -102,6 +102,24 @@ describe("structural assistance in the source editor", () => {
 		);
 	});
 
+	it("re-pads a growing column in the same step, with the caret where the user typed", () => {
+		const rows = "| name   | city |\n| ------ | ---- |\n| Ingrid | Rio  |";
+		const at = rows.indexOf("Rio") + "Rio".length;
+		const tr = editorState(true, rows).update({
+			changes: { from: at, insert: "s!" },
+			selection: EditorSelection.cursor(at + 2),
+			userEvent: "input.type",
+		});
+		expect(tr.newDoc.toString()).toBe(
+			"| name   | city  |\n| ------ | ----- |\n| Ingrid | Rios! |",
+		);
+		expect(tr.newDoc.sliceString(0, tr.newSelection.main.head)).toMatch(
+			/Rios!$/,
+		);
+		expect(undoDepth(tr.state)).toBe(1);
+		expect(run(tr.state, undo).state.doc.toString()).toBe(rows);
+	});
+
 	it("starts a new row after Enter with the caret after its delimiter, undone as one step", () => {
 		const rows = `${table}\n| Ingrid | Rio  |`;
 		const tr = editorState(true, rows).update({

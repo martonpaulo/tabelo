@@ -117,11 +117,17 @@ export interface AssistanceEdit extends SourceEdit {
 	readonly caretAfter?: boolean;
 }
 
+// A codec's structural assistance: given the draft before and after one user
+// edit and the ranges that edit changed in `after`, the further edits to land
+// with it, or null for none. The edits are written against `after`, never
+// overlap, and come in document order, so one feature can adjust several
+// lines while leaving the text between them, and any caret there, alone
+// (#401).
 export type StructuralAssistance = (
 	before: string,
 	after: string,
 	changed: readonly SourceRowRange[],
-) => AssistanceEdit | null;
+) => readonly AssistanceEdit[] | null;
 
 // A successful parse can still carry warnings: a ragged row is recoverable by
 // padding, and saying so is better than silently reshaping the user's table.

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { documentFromMatrix } from "@/core/document";
+import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import { samplePeopleMatrix } from "@/core/sample-data";
+import { applyEdits } from "@/testing/assistance";
 import { markdownCodec } from "./markdown";
 import { markdownDividerAssistance } from "./markdown-assistance";
 import { minimalChange } from "./minimal-change";
@@ -13,11 +15,7 @@ function edit(before: string, after: string): string {
 	const changed = change
 		? [{ from: change.from, to: change.from + change.insert.length }]
 		: [];
-	const assisted = markdownDividerAssistance(before, after, changed);
-	if (!assisted) return after;
-	return (
-		after.slice(0, assisted.from) + assisted.insert + after.slice(assisted.to)
-	);
+	return applyEdits(after, markdownDividerAssistance(before, after, changed));
 }
 
 const table = ["| name | city |", "| ---- | ---- |", "| Ingrid | Rio |"].join(
@@ -167,6 +165,162 @@ describe("markdown divider assistance", () => {
 		const assisted = markdownDividerAssistance(before, after, [
 			{ from: change.from, to: change.from + change.insert.length },
 		]);
-		expect(assisted).toEqual({ from: 30, to: 30, insert: "-" });
+		expect(assisted).toEqual([{ from: 30, to: 30, insert: "-" }]);
+	});
+});
+
+// Replaces `from`..`to` of `before` with `insert` the way one keystroke or one
+// edit does, and applies Markdown's whole declared assistance on top.
+function typed(before: string, from: number, to: number, insert: string) {
+	const after = before.slice(0, from) + insert + before.slice(to);
+	const assist = markdownCodec.structuralAssistance;
+	if (!assist) throw new Error("Markdown declares no structural assistance.");
+	return applyEdits(
+		after,
+		assist(before, after, [{ from, to: from + insert.length }]),
+	);
+}
+
+// Types `insert` just after the first occurrence of `anchor`.
+function typeAfter(text: string, anchor: string, insert: string): string {
+	const at = text.indexOf(anchor) + anchor.length;
+	return typed(text, at, at, insert);
+}
+
+// Replaces the first occurrence of `target` with `insert`, as one edit.
+function replace(text: string, target: string, insert: string): string {
+	const at = text.indexOf(target);
+	return typed(text, at, at + target.length, insert);
+}
+
+const people = [
+	"| name   | city   |",
+	"| ------ | ------ |",
+	"| Ingrid | Rio    |",
+	"| Paulo  | Madrid |",
+].join("\n");
+
+describe("markdown column padding assistance", () => {
+	it("re-pads every row and the divider when a cell grows past its column", () => {
+		expect(typeAfter(people, "Rio", " Grande")).toBe(
+			[
+				"| name   | city       |",
+				"| ------ | ---------- |",
+				"| Ingrid | Rio Grande |",
+				"| Paulo  | Madrid     |",
+			].join("\n"),
+		);
+	});
+
+	it("keeps the column's width while a narrower cell is typed in", () => {
+		expect(typeAfter(people, "Rio", "s")).toBe(
+			people.replace("| Rio    |", "| Rios   |"),
+		);
+		expect(typeAfter(people, "Rio", " ")).toBe(people);
+	});
+
+	it("shrinks the column with its widest cell", () => {
+		const grown = typeAfter(people, "Rio", " Grande");
+		expect(replace(grown, " Grande", "")).toBe(people);
+		expect(replace(people, "Madrid", "Mad")).toBe(
+			[
+				"| name   | city |",
+				"| ------ | ---- |",
+				"| Ingrid | Rio  |",
+				"| Paulo  | Mad  |",
+			].join("\n"),
+		);
+	});
+
+	it("matches what the serializer writes for the column", () => {
+		const text = typeAfter(people, "Paulo", " de Madrid");
+		const parsed = markdownCodec.parse(text);
+		if (!parsed.ok) throw new Error("The padded table does not parse.");
+		expect(markdownCodec.serialize(parsed.document)).toBe(text);
+	});
+
+	it("measures wide characters by their display width", () => {
+		expect(replace(people, "Rio", "東京東京")).toBe(
+			[
+				"| name   | city     |",
+				"| ------ | -------- |",
+				"| Ingrid | 東京東京 |",
+				"| Paulo  | Madrid   |",
+			].join("\n"),
+		);
+	});
+
+	it("measures escapes as written and leaves them untouched", () => {
+		expect(replace(people, "Rio", "a\\|b<br>c")).toBe(
+			[
+				"| name   | city      |",
+				"| ------ | --------- |",
+				"| Ingrid | a\\|b<br>c |",
+				"| Paulo  | Madrid    |",
+			].join("\n"),
+		);
+	});
+
+	it("keeps the alignment markers of an aligned column", () => {
+		const aligned = people.replace(
+			"| ------ | ------ |",
+			"| :----- | -----: |",
+		);
+		expect(typeAfter(aligned, "Rio", " Grande").split("\n")[1]).toBe(
+			"| :----- | ---------: |",
+		);
+	});
+
+	it("pads every row that has the column and skips one that does not", () => {
+		const ragged = [
+			"| name   | city   |",
+			"| ------ | ------ |",
+			"| Ingrid |",
+			"|Paulo|Madrid|extra|",
+		].join("\n");
+		expect(typeAfter(ragged, "| name   | city", "s")).toBe(
+			[
+				"| name   | citys  |",
+				"| ------ | ------ |",
+				"| Ingrid |",
+				"|Paulo| Madrid |extra|",
+			].join("\n"),
+		);
+	});
+
+	it("touches no other column", () => {
+		const loose = people.replace("| Paulo  |", "|Paulo|");
+		expect(typeAfter(loose, "Rio", " Grande").split("\n")[3]).toBe(
+			"|Paulo| Madrid     |",
+		);
+	});
+
+	it("gives an emptied cell the room its placeholder takes", () => {
+		const narrow = ["| a | b |", "| --- | --- |", "| x | y |"].join("\n");
+		const room = EMPTY_VALUE_PLACEHOLDER.length;
+		expect(replace(narrow, "x", "")).toBe(
+			[
+				`| a${" ".repeat(room - 1)} | b |`,
+				`| ${"-".repeat(room)} | --- |`,
+				`| ${" ".repeat(room)} | y |`,
+			].join("\n"),
+		);
+	});
+
+	it("leaves a draft that does not parse exactly as typed", () => {
+		const invalid = people.replace("| ------ | ------ |", "| ------ | xx |");
+		expect(typeAfter(invalid, "Rio", " Grande")).toBe(
+			invalid.replace("Rio", "Rio Grande"),
+		);
+		const short = people.replace("| ------ | ------ |", "| ------ |");
+		expect(typeAfter(short, "Rio", " Grande")).toBe(
+			short.replace("Rio", "Rio Grande"),
+		);
+	});
+
+	it("leaves a new pipe or an edit off the table as typed", () => {
+		expect(typeAfter(people, "Rio", " |")).toBe(people.replace("Rio", "Rio |"));
+		const notes = `${people}\n\nnotes`;
+		expect(typeAfter(notes, "notes", " and more")).toBe(`${notes} and more`);
 	});
 });

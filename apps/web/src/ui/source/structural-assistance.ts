@@ -1,5 +1,6 @@
 import {
 	ChangeSet,
+	EditorSelection,
 	EditorState,
 	type Extension,
 	Transaction,
@@ -49,24 +50,32 @@ function assistedTransaction(
 	tr.changes.iterChangedRanges((_fromA, _toA, from, to) => {
 		changed.push({ from, to });
 	});
-	const edit = assist(
+	const edits = assist(
 		tr.startState.doc.toString(),
 		tr.newDoc.toString(),
 		changed,
 	);
-	if (!edit) return tr;
+	if (!edits || edits.length === 0) return tr;
 	// Sequential, so the adjustment is written against the text after the
 	// user's edit. CodeMirror merges the two into one transaction: one update,
 	// one change notification with the final text, one local history event, and
 	// every selection range mapped through both changes. A caret sitting where
 	// the adjustment inserts text stays in front of it, unless the feature asks
-	// for it to land after, where the user's typing continues (#391).
+	// for it to land after, where the user's typing continues (#391). Several
+	// edits are one change set, so a caret between them only moves by what was
+	// inserted or removed in front of it (#401).
 	// https://codemirror.net/docs/ref/#state.EditorState^transactionFilter
-	const changes = { from: edit.from, to: edit.to, insert: edit.insert };
-	if (!edit.caretAfter) return [tr, { changes, sequential: true }];
-	const selection = tr.newSelection.map(
-		ChangeSet.of(changes, tr.newDoc.length),
-		1,
+	const changes = edits.map(({ from, to, insert }) => ({ from, to, insert }));
+	const landAfter = new Set(
+		edits.filter((edit) => edit.caretAfter).map((edit) => edit.from),
+	);
+	if (landAfter.size === 0) return [tr, { changes, sequential: true }];
+	const set = ChangeSet.of(changes, tr.newDoc.length);
+	const selection = EditorSelection.create(
+		tr.newSelection.ranges.map((range) =>
+			range.map(set, landAfter.has(range.head) ? 1 : -1),
+		),
+		tr.newSelection.mainIndex,
 	);
 	return [tr, { changes, selection, sequential: true }];
 }

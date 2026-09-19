@@ -53,12 +53,14 @@ function rowStartAssistance(terms: RowStartTerms): StructuralAssistance {
 		}
 		if (!lines[lineIndex]?.trimStart().startsWith("|")) return null;
 
-		return {
-			from: at + 1,
-			to: at + 1,
-			insert: terms.opening,
-			caretAfter: true,
-		};
+		return [
+			{
+				from: at + 1,
+				to: at + 1,
+				insert: terms.opening,
+				caretAfter: true,
+			},
+		];
 	};
 }
 

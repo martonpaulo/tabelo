@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { applyEdits } from "@/testing/assistance";
 import { jiraCodec } from "./jira";
 import { markdownCodec } from "./markdown";
 import { markdownRowStartAssistance } from "./row-start-assistance";
@@ -14,9 +15,10 @@ function markdownAssistance(): StructuralAssistance {
 // Markdown's assistance returns on top. Returns the final text.
 function enter(before: string, at: number): string {
 	const after = plain(before, at);
-	const edit = markdownAssistance()(before, after, [{ from: at, to: at + 1 }]);
-	if (!edit) return after;
-	return after.slice(0, edit.from) + edit.insert + after.slice(edit.to);
+	return applyEdits(
+		after,
+		markdownAssistance()(before, after, [{ from: at, to: at + 1 }]),
+	);
 }
 
 // A plain line break at `at`, with nothing added.
@@ -44,12 +46,14 @@ describe("markdown row-start assistance", () => {
 			markdownAssistance()(table, after, [
 				{ from: table.length, to: after.length },
 			]),
-		).toEqual({
-			from: after.length,
-			to: after.length,
-			insert: "| ",
-			caretAfter: true,
-		});
+		).toEqual([
+			{
+				from: after.length,
+				to: after.length,
+				insert: "| ",
+				caretAfter: true,
+			},
+		]);
 	});
 
 	it("leaves the line after the header for its divider", () => {
@@ -97,9 +101,7 @@ describe("jira row-start assistance", () => {
 		const assist = jiraCodec.structuralAssistance;
 		if (!assist) throw new Error("Jira declares no structural assistance.");
 		const after = plain(before, at);
-		const edit = assist(before, after, [{ from: at, to: at + 1 }]);
-		if (!edit) return after;
-		return after.slice(0, edit.from) + edit.insert + after.slice(edit.to);
+		return applyEdits(after, assist(before, after, [{ from: at, to: at + 1 }]));
 	}
 
 	const jira = ["||name||city||", "|Ingrid|Rio|"].join("\n");

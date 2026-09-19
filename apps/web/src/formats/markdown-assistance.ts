@@ -12,7 +12,12 @@ import {
 import { minimalChange } from "./minimal-change";
 import { firstLineBlock, lineSpans, pipeCellSpans } from "./parse";
 import { markdownRowStartAssistance } from "./row-start-assistance";
-import type { SourceRowRange, StructuralAssistance } from "./types";
+import type {
+	AssistanceEdit,
+	SourceEdit,
+	SourceRowRange,
+	StructuralAssistance,
+} from "./types";
 
 // Markdown's divider assistance (#297): keeping the alignment
 // divider in step with the table above and below it while the user edits the
@@ -264,21 +269,136 @@ export const markdownDividerAssistance: StructuralAssistance = (
 		rewriteDivider(dividerLine, markers),
 	);
 	if (!change) return null;
-	return {
-		from: dividerSpan.from + change.from,
-		to: dividerSpan.from + change.to,
-		insert: change.insert,
+	return [shifted(change, dividerSpan.from)];
+};
+
+function shifted(edit: SourceEdit, by: number): SourceEdit {
+	return { from: edit.from + by, to: edit.to + by, insert: edit.insert };
+}
+
+// The whitespace edits that pad one cell the way the serializer writes it: one
+// space after its opening pipe, then the content, then enough spaces to fill
+// the column, then one before its closing pipe. Only the blank runs between
+// the content and the pipes are ever rewritten, and each run only where it
+// differs, at its end, so a caret inside it stays put. A side with no pipe has
+// nothing to line up against and is left as it is.
+function cellPadding(
+	line: string,
+	cell: SourceRowRange,
+	width: number,
+): SourceEdit[] {
+	const text = line.slice(cell.from, cell.to);
+	const content = text.trim();
+	const opened = line[cell.from - 1] === "|";
+	const closed = line[cell.to] === "|";
+	const edits: SourceEdit[] = [];
+	const pad = (from: number, current: string, next: string) => {
+		const change = minimalChange(current, next);
+		if (change) edits.push(shifted(change, from));
 	};
+	if (content === "") {
+		// An empty cell holds the room the serializer reserves for it.
+		if (opened && closed) pad(cell.from, text, " ".repeat(width + 2));
+		return edits;
+	}
+	const lead = text.length - text.trimStart().length;
+	const trail = text.length - text.trimEnd().length;
+	if (opened) pad(cell.from, text.slice(0, lead), " ");
+	if (closed) {
+		const fill = Math.max(0, width - displayWidth(content));
+		pad(cell.to - trail, text.slice(text.length - trail), " ".repeat(fill + 1));
+	}
+	return edits;
+}
+
+// Column padding assistance (#401): the column being typed in keeps every row
+// padded to its widest cell, in the text itself, so the source stays aligned
+// the way the serializer writes it. A named structural-assistance feature
+// under "Source text is free; structural assistance is narrow" in AGENTS.md:
+//
+// - Syntax: a cell of the header or of a body row of a table block whose
+//   alignment divider is valid and has one cell per header cell, which is a
+//   draft that parses.
+// - Trigger: one edit that stays inside one cell of such a line, adding or
+//   removing no line and no delimiter.
+// - Change: the padding of that column's cell in every row, measured the way
+//   the serializer measures it (`columnWidths`), wide characters by display
+//   width and escapes as written. Content, escapes, alignment markers, and
+//   every other column are untouched, and the divider follows through the
+//   divider assistance (#297). A row too short to have the column is skipped.
+//
+// Anything else, including several carets, a pasted block, a new pipe, or a
+// draft that does not parse, stays exactly as typed.
+export const markdownColumnPaddingAssistance: StructuralAssistance = (
+	before,
+	after,
+	changed,
+) => {
+	const [edit, ...others] = changed;
+	if (!edit || others.length > 0) return null;
+	const table = tableBlock(after);
+	if (!table) return null;
+	const header = splitRow(lineAt(table, table.start));
+	const divider = splitRow(lineAt(table, table.start + 1));
+	if (!isDelimiterRow(divider) || divider.length !== header.length) {
+		return null;
+	}
+
+	// The edit stays on one line, which is the same line before and after it.
+	const beforeLines = before.split(/\r?\n/);
+	if (beforeLines.length !== table.lines.length) return null;
+	const lineIndex = table.spans.findIndex(
+		({ from, to }) => from <= edit.from && edit.to <= to,
+	);
+	if (
+		lineIndex < table.start ||
+		lineIndex >= table.end ||
+		lineIndex === table.start + 1
+	) {
+		return null;
+	}
+	const cells = pipeCellSpans(lineAt(table, lineIndex));
+	if (cells.length !== pipeCellSpans(beforeLines[lineIndex] ?? "").length) {
+		return null;
+	}
+	const lineFrom = spanAt(table, lineIndex).from;
+	const column = cells.findIndex(
+		({ from, to }) => lineFrom + from <= edit.from && edit.to <= lineFrom + to,
+	);
+	if (column === -1 || column >= header.length) return null;
+
+	const width = columnWidths(table, header.length)[column] ?? MIN_DIVIDER_WIDTH;
+	const edits: SourceEdit[] = [];
+	for (let index = table.start; index < table.end; index += 1) {
+		if (index === table.start + 1) continue;
+		const line = lineAt(table, index);
+		const cell = pipeCellSpans(line)[column];
+		if (!cell) continue;
+		const from = spanAt(table, index).from;
+		for (const change of cellPadding(line, cell, width)) {
+			edits.push(shifted(change, from));
+		}
+	}
+	return edits.length > 0 ? edits : null;
 };
 
 // Markdown's structural assistance: a new row's opening delimiter on Enter
-// (#391), otherwise the divider (#297). The row-start feature acts only on a
-// line break at the end of a row below the divider, an edit that never calls
-// for a divider change, so the two never compete for one edit.
+// (#391), otherwise the column's padding (#401) together with the divider
+// (#297). The row-start feature acts only on a line break at the end of a row
+// below the divider, an edit that never calls for padding or a divider
+// change, so it never competes with the other two. Those two can act on the
+// same edit, and never on the same line: padding skips the divider, which is
+// the only line the divider feature rewrites.
 export const markdownAssistance: StructuralAssistance = (
 	before,
 	after,
 	changed,
-) =>
-	markdownRowStartAssistance(before, after, changed) ??
-	markdownDividerAssistance(before, after, changed);
+) => {
+	const opened = markdownRowStartAssistance(before, after, changed);
+	if (opened) return opened;
+	const edits: AssistanceEdit[] = [
+		...(markdownColumnPaddingAssistance(before, after, changed) ?? []),
+		...(markdownDividerAssistance(before, after, changed) ?? []),
+	].sort((a, b) => a.from - b.from);
+	return edits.length > 0 ? edits : null;
+};
