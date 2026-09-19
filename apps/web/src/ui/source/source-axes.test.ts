@@ -6,8 +6,8 @@ import { csvCodec } from "@/formats/csv";
 import { jiraCodec } from "@/formats/jira";
 import { markdownCodec } from "@/formats/markdown";
 import type { TableCodec } from "@/formats/types";
+import { occurrenceSummary } from "./occurrence-selection";
 import {
-	axisActiveCell,
 	axisBandLines,
 	axisSelection,
 	rowAtLine,
@@ -215,18 +215,18 @@ describe("source axis bands", () => {
 		).toEqual([1]);
 	});
 
-	it("marks the header cell of a column and the first cell of a row", () => {
-		const state = mapped(markdownCodec, MARKDOWN);
-		const rows = state.field(sourceRowsField) ?? [];
-		const text = (cell: { from: number; to: number } | null) =>
-			cell ? state.sliceDoc(cell.from, cell.to) : null;
-		expect(text(axisActiveCell(rows, { axis: "column", index: 1 }))).toBe(
-			" City ",
-		);
-		expect(text(axisActiveCell(rows, { axis: "row", index: 2 }))).toBe(
-			` ${paulo.name} `,
-		);
-		expect(axisActiveCell(rows, { axis: "row", index: 9 })).toBeNull();
+	it("counts no matches for a selected column whose cells read alike", () => {
+		const text = [
+			`${ingrid.city},Name`,
+			`${ingrid.city},${ingrid.name}`,
+			`${ingrid.city},${paulo.name}`,
+		].join("\n");
+		const state = mapped(csvCodec, text);
+		const selection = axisSelection(state, { axis: "column", index: 0 });
+		if (!selection) throw new Error("the letter selects its column");
+		const selected = state.update({ selection }).state;
+		expect(selected.selection.ranges).toHaveLength(3);
+		expect(occurrenceSummary(selected)).toBeNull();
 	});
 
 	it("gives an empty Jira table one band per row in the column", () => {

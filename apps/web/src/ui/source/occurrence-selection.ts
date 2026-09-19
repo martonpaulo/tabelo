@@ -1,6 +1,7 @@
 import { SearchCursor, selectNextOccurrence } from "@codemirror/search";
 import { EditorSelection, type EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { selectedSourceAxis } from "./source-axes";
 
 // Incremental occurrence selection, the code-editor Mod+D. CodeMirror owns the
 // matching and the multiple ranges; everything here is the product guard around
@@ -78,12 +79,15 @@ function countOccurrences(
 // disagree with the real selection would be worse than no count at all.
 //
 // Two ranges is the floor. One selected occurrence is an ordinary selection and
-// says nothing the user does not already see.
+// says nothing the user does not already see. A selected row or column is not
+// a search either, even when its cells happen to hold the same text: it counts
+// nothing, as the grid's selected column counts nothing (owner, 2026-09-19).
 export function occurrenceSummary(
 	state: EditorState,
 ): OccurrenceSummary | null {
 	const selected = state.selection.ranges.length;
 	if (selected < 2) return null;
+	if (selectedSourceAxis(state) !== null) return null;
 	const text = equalSelectionText(state);
 	if (text === null) return null;
 	return {

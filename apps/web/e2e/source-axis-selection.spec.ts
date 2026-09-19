@@ -43,7 +43,7 @@ interface Box {
 interface Drawn {
 	readonly bands: Box[];
 	readonly textBands: number;
-	readonly active: Box[];
+	readonly marks: number;
 	readonly currentLines: number;
 	// Where each word sits, by its glyphs.
 	readonly words: Record<string, Box | null>;
@@ -93,10 +93,11 @@ function drawn(pane: Locator, words: readonly string[]): Promise<Drawn> {
 			textBands: scroller.querySelectorAll(
 				".cm-tabeloSelectionLayer .cm-selectionBackground",
 			).length,
-			active: Array.from(
-				scroller.querySelectorAll(".cm-tabeloActiveCell"),
-				box,
-			),
+			// Anything drawn above the text other than the carets, the product's
+			// and CodeMirror's own hidden one.
+			marks: scroller.querySelectorAll(
+				".cm-layer-above:not(.cm-tabeloCaretLayer):not(.cm-cursorLayer) > *",
+			).length,
 			currentLines: scroller.querySelectorAll(".cm-activeLine").length,
 			words: Object.fromEntries(wanted.map((word) => [word, find(word)])),
 		};
@@ -156,15 +157,14 @@ for (const view of mappedViews) {
 			).toBe(false);
 		}
 
-		// The grid's focus mark on the header cell, and one current line.
-		expect(state.active).toHaveLength(1);
-		const header = state.words.City;
-		const mark = state.active[0];
-		if (header && mark) expect(inside(header, mark)).toBe(true);
+		// Nothing over the band, one current line, and no match count: a
+		// selected column is not a search.
+		expect(state.marks).toBe(0);
 		expect(state.currentLines).toBe(1);
+		await expect(pane.locator('[data-slot="pane-occurrences"]')).toHaveCount(0);
 	});
 
-	test(`${view.id}: a selected row is a band across its cells, with its first cell marked`, async ({
+	test(`${view.id}: a selected row is a band across its cells`, async ({
 		tabelo,
 	}) => {
 		const pane = await seed(tabelo, view.id);
@@ -189,13 +189,7 @@ for (const view of mappedViews) {
 		expect(inside(paulo, band)).toBe(true);
 		expect(inside(madrid, band)).toBe(true);
 		expect(inside(ingrid, band)).toBe(false);
-
-		expect(state.active).toHaveLength(1);
-		const mark = state.active[0];
-		if (mark) {
-			expect(inside(paulo, mark)).toBe(true);
-			expect(overlapsHorizontally(mark, madrid)).toBe(false);
-		}
+		expect(state.marks).toBe(0);
 	});
 }
 
@@ -226,10 +220,48 @@ test("a fresh empty table's Jira pane marks three empty cells per row, and a col
 	// The header and every body row, three empty cells each.
 	await expect.poll(perLine).toEqual([3, 3, 3, 3]);
 
+	// Aligned on screen, and the letters over their own columns: each letter
+	// stands over the placeholder of its column on every line.
+	const placement = await pane.evaluate((element) => {
+		const scroller = element.querySelector(
+			".cm-scroller:not(.cm-tabeloPinnedHeader *)",
+		);
+		const lines = Array.from(
+			scroller?.querySelectorAll(".cm-content .cm-line") ?? [],
+			(line) =>
+				Array.from(line.querySelectorAll(".cm-tabeloEmptyValue"), (marker) => {
+					const box = marker.getBoundingClientRect();
+					return { left: box.left, right: box.right };
+				}),
+		);
+		const letters = Array.from(
+			element.querySelectorAll(".cm-tabeloColumnMarker"),
+			(letter) => {
+				const box = letter.getBoundingClientRect();
+				return { left: box.left, right: box.right };
+			},
+		);
+		return { lines, letters };
+	});
+	expect(placement.letters).toHaveLength(3);
+	for (const [column, letter] of placement.letters.entries()) {
+		expect(letter.right).toBeGreaterThan(letter.left);
+		for (const markers of placement.lines) {
+			const marker = markers[column];
+			expect(marker).toBeDefined();
+			if (!marker) continue;
+			expect(letter.left < marker.right && marker.left < letter.right).toBe(
+				true,
+			);
+		}
+	}
+
 	await pane.locator('.cm-tabeloColumnMarker[data-column="1"]').click();
 	const state = await drawn(pane, []);
 	expect(state.bands).toHaveLength(4);
 	expectContiguous(state.bands);
 	// One caret per row: the column's cell on every line.
 	await expect(scroller.locator(".cm-tabeloCaret")).toHaveCount(4);
+	// Every cell reads alike, and still nothing was searched for.
+	await expect(pane.locator('[data-slot="pane-occurrences"]')).toHaveCount(0);
 });

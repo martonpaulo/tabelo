@@ -536,10 +536,13 @@ same position mapping, never by counting text lines:
   (a CSV record's quoted line break) carry the band on, so it has no gap. A
   row is one band per text line of the row, from its first cell's opening
   delimiter to its last cell's closing one, never the text selection's ragged
-  shape. The active cell wears the grid's focus mark, the two-hairline
-  `--selection-edge` line inside the cell: the header cell for a column, the
-  row's first cell for a row. The text band does not draw these selections a
-  second time, and the carets stay, one per cell, where typing lands.
+  shape. Nothing is drawn over the band: the grid marks one focused cell
+  because a grid cell is where editing goes, while here typing goes to every
+  selected cell at once through its carets, one per cell, so a focus mark on
+  one of them named a target that is not there (owner, 2026-09-19). The text
+  band does not draw these selections a second time, and a selected row or
+  column is not a search: the pane header shows no match count for it, even
+  when its cells read alike.
 - **One current line.** The active-line fill and its number's lift follow the
   main selection alone, as the grid has one focused cell however many are
   selected; a column no longer tints every row it crosses. Every other line a
