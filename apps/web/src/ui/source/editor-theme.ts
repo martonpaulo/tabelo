@@ -363,7 +363,7 @@ export const editorTheme = EditorView.theme({
 		borderRadius: "var(--control-radius)",
 		backgroundColor: "var(--popover)",
 		color: "var(--popover-foreground)",
-		boxShadow: "0 1.25rem 1.5625rem -0.3125rem rgb(0 0 0 / 10%)",
+		boxShadow: "var(--shadow-floating)",
 	},
 	// CodeMirror draws its pointer as two stacked triangles, one for the
 	// boundary and one for the surface. The product pointer is the same shape

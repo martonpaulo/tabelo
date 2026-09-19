@@ -3,6 +3,7 @@ import {
 	optionBlockStyles,
 } from "@tabelo/ui/components/menu-styles";
 import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
+import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { modShortcut } from "@tabelo/ui/lib/platform";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
@@ -94,7 +95,10 @@ export function EmptyState({
 						onStartEmpty();
 					}
 				}}
-				className="w-[min(26rem,calc(100vw-2rem))] rounded-surface bg-popover p-6 text-popover-foreground shadow-md outline-none ring-1 ring-line-strong"
+				className={cn(
+					"w-[min(26rem,calc(100vw-2rem))] rounded-surface p-6 text-popover-foreground outline-none",
+					floatingSurfaceStyles,
+				)}
 			>
 				<h2
 					id="empty-state-title"

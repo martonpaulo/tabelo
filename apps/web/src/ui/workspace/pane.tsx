@@ -1,5 +1,8 @@
 import { disclosureTransitionStyles } from "@tabelo/ui/components/motion-styles";
-import { activePanelSurfaceStyles } from "@tabelo/ui/components/surface-styles";
+import {
+	activePanelSurfaceStyles,
+	floatingSurfaceStyles,
+} from "@tabelo/ui/components/surface-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import { IconPlus } from "@tabler/icons-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -282,7 +285,8 @@ function SplitControl({
 					onClick={onSplit}
 					className={cn(
 						"absolute inline-flex size-8 items-center justify-center rounded-interactive",
-						"cursor-pointer bg-surface-floating text-muted-foreground ring-1 ring-line-subtle",
+						"cursor-pointer text-muted-foreground",
+						floatingSurfaceStyles,
 						"opacity-0 hover:text-foreground",
 						disclosureTransitionStyles,
 						// Plain focus, not focus-visible: a control that has the focus while

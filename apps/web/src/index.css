@@ -161,6 +161,12 @@
 	/* What a pane's scrollers add below their content. Zero everywhere except
 	   the pane under the floating action button (see [data-under-fab]). */
 	--fab-clearance: 0rem;
+	/* The one shadow every floating layer casts: menus and their submenus,
+	   tooltips, dialogs, notices, the start card, the pane-edge control, and
+	   the floating action button on hover (owner, 2026-09-19). Deep, in two
+	   layers, so a layer reads as above the panes rather than beside them. */
+	--shadow-floating:
+		0 0.75rem 2rem rgb(0 0 0 / 0.55), 0 0.125rem 0.375rem rgb(0 0 0 / 0.4);
 	/* The width of the selection edge: the focus outline every control draws. */
 	--selection-edge-w: 0.125rem;
 

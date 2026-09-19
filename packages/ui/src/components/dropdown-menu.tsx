@@ -167,7 +167,7 @@ function DropdownMenuSubContent({
 		<DropdownMenuContent
 			data-slot="dropdown-menu-sub-content"
 			className={cn(
-				"cn-menu-target cn-menu-translucent w-auto min-w-24 shadow-lg",
+				"cn-menu-target cn-menu-translucent w-auto min-w-24",
 				className,
 			)}
 			align={align}

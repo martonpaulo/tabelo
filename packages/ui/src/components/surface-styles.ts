@@ -18,10 +18,11 @@
 
 export const hairlineStyles = "tabelo-hairline border";
 
-// Menus, tooltips, dialogs, and notices: a soft boundary over the floating
-// surface, set apart from what it covers by a deep two-layer shadow
-// (owner, 2026-09-19).
-export const floatingSurfaceStyles = `${hairlineStyles} [--hairline-color:var(--line-floating)] [--hairline-fill:var(--popover)] shadow-[0_0.75rem_2rem_rgb(0_0_0/0.55),0_0.125rem_0.375rem_rgb(0_0_0/0.4)]`;
+// Menus, submenus, tooltips, dialogs, notices, the start card, and the
+// pane-edge control: a soft boundary over the floating surface, set apart
+// from what it covers by the one `--shadow-floating` token (owner,
+// 2026-09-19). No floating layer adds a shadow of its own.
+export const floatingSurfaceStyles = `${hairlineStyles} [--hairline-color:var(--line-floating)] [--hairline-fill:var(--popover)] shadow-(--shadow-floating)`;
 
 // The same treatment for a surface that sits in the layout rather than over
 // it: the subtle boundary and no shadow.

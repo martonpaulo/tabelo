@@ -151,7 +151,12 @@ Order matters: app is furthest back, gutter and interface chrome sit above the
 panel. Neighbouring surfaces are close in tone on purpose and are not held to a
 contrast ratio: they group content, they do not identify a component. A
 floating layer is set apart by its own surface and a deep shadow, with a soft
-`--line-floating` edge (owner, 2026-09-19). The table-header surface is a quiet accent tint, so headers remain
+`--line-floating` edge (owner, 2026-09-19). That shadow is one token,
+`--shadow-floating`, cast through `floatingSurfaceStyles` by every floating
+layer: menus and their submenus, tooltips, dialogs, notices, the start card,
+the pane-edge Add view control, the source editor's diagnostic tooltip, and
+the floating action button on hover. A layer that writes its own `shadow-lg`,
+`shadow-md`, or ring is a pattern break (owner, 2026-09-19). The table-header surface is a quiet accent tint, so headers remain
 recognizable as mutable table data instead of reading as disabled chrome. Use
 tones to group related content before adding a line. Every pane's content, editable
 or read-only, sits in one `--surface-code` box (owner, 2026-09-19); a read-only
