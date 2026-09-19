@@ -1,19 +1,71 @@
-import { lazy, Suspense } from "react";
+import { type ComponentType, lazy, Suspense, useState } from "react";
 import { copy } from "@/copy/copy";
 import { canSerialize } from "@/formats";
 import { useTabeloStore } from "@/state/store";
 import { TableGrid } from "@/ui/grid/table-grid";
 import { BlockedState } from "@/ui/source/blocked-state";
-import type { ViewDefinition } from "@/views/types";
+import type { ViewDefinition, ViewKind } from "@/views/types";
 import type { SourceDisplayOverrides } from "@/workspace/source-display";
 
-// CodeMirror and the preview are the two heavy things in the bundle, and a
-// workspace showing only the grid should not pay for either. Both load on
-// first use and stay loaded. Which views are lazy is declared per view in
+// A code-split view that can be loaded ahead of its first render. React.lazy
+// suspends the first render of every lazy component, even one whose module has
+// already arrived, and React then holds the loading state on screen for at
+// least 300 ms before revealing the content (its fallback throttle). So a
+// module that is already here is rendered directly instead, and the loading
+// state is left for a module that genuinely is not. Which path a mounted pane
+// takes is fixed when it mounts: switching from the lazy wrapper to the direct
+// component later would be a different element type, and React would remount
+// the view, taking CodeMirror's caret and local history with it.
+function preloadableView<Props extends object>(
+	load: () => Promise<{ readonly default: ComponentType<Props> }>,
+) {
+	let loaded: ComponentType<Props> | null = null;
+	let pending: Promise<{ readonly default: ComponentType<Props> }> | null =
+		null;
+	const preload = () => {
+		pending ??= load().then((module) => {
+			loaded = module.default;
+			return module;
+		});
+		return pending;
+	};
+	const Suspending = lazy(preload);
+	function View(props: Props) {
+		const [Direct] = useState(() => loaded);
+		return Direct ? <Direct {...props} /> : <Suspending {...props} />;
+	}
+	return { View, preload };
+}
+
+// CodeMirror and the preview are the two heavy things in the bundle, so neither
+// is in the initial one, and a workspace showing only the grid paints without
+// waiting for either. Which views are lazy is declared per view in
 // `views/registry.ts` (`loading`); this file never singles out a view by id
 // or kind to decide how it loads.
-const SourceView = lazy(() => import("@/ui/source/source-view"));
-const HtmlPreview = lazy(() => import("@/ui/preview/html-preview"));
+const sourceView = preloadableView(() => import("@/ui/source/source-view"));
+const htmlPreview = preloadableView(() => import("@/ui/preview/html-preview"));
+const SourceView = sourceView.View;
+const HtmlPreview = htmlPreview.View;
+
+const preloadByKind: Readonly<
+	Record<ViewKind, (() => Promise<unknown>) | null>
+> = {
+	grid: null,
+	preview: htmlPreview.preload,
+	source: sourceView.preload,
+};
+
+// Loads the code of every lazy view in the list and settles when all of it is
+// here. A failed load settles too: the pane's own lazy path then meets the same
+// failure it always did.
+export function preloadPaneContent(
+	views: readonly ViewDefinition[],
+): Promise<void> {
+	const loads = views
+		.filter((view) => view.loading === "lazy")
+		.map((view) => preloadByKind[view.kind]?.());
+	return Promise.allSettled(loads).then(() => undefined);
+}
 
 function PaneLoading() {
 	return (

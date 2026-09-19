@@ -20,7 +20,9 @@ import { NoticeBar } from "@/ui/notice-bar";
 import { RenameTableDialog } from "@/ui/rename-table-dialog";
 import { SettingsDialog } from "@/ui/settings-dialog";
 import { LayoutDialog } from "@/ui/workspace/layout-dialog";
+import { preloadPaneContent } from "@/ui/workspace/pane-content";
 import { Workspace } from "@/ui/workspace/workspace";
+import { getView, listViews } from "@/views/registry";
 import { DEFAULT_PANE_ZOOM, stepPaneZoom } from "@/workspace/zoom";
 
 type RootDialog =
@@ -77,19 +79,39 @@ function focusActivePane(): void {
 	});
 }
 
+// The welcome surface opens only when hydration found no table content and no
+// pending source draft.
+function opensOnWelcome(): boolean {
+	const state = useTabeloStore.getState();
+	return isDocumentBlank(state.document) && !hasSessionWork(state);
+}
+
+// Restores the saved session and loads the code of the views it shows, before
+// the first render. Hydrating first makes the first render the saved
+// workspace, so saved content never flashes the welcome surface and nothing
+// renders twice. Loading the shown views first lets their panes paint with the
+// rest of the workspace instead of behind a loading state. A session that opens
+// on the welcome surface waits for nothing, since the surface covers the panes.
+export function prepareTabeloApp(): Promise<void> {
+	useTabeloStore.getState().hydrate();
+	if (opensOnWelcome()) return Promise.resolve();
+	return preloadPaneContent(
+		useTabeloStore.getState().workspace.panes.map((pane) => getView(pane.view)),
+	);
+}
+
 export function TabeloApp() {
 	const pwaUpdate = usePwaUpdate();
 	const [rootDialog, setRootDialog] = useState<RootDialog>(null);
 	const dialogOpenerRef = useRef<HTMLElement | null>(null);
 	const appMenuTriggerRef = useRef<HTMLButtonElement>(null);
-	const [hydrated, setHydrated] = useState(false);
-	const [welcomeOpen, setWelcomeOpen] = useState(false);
+	const [welcomeOpen, setWelcomeOpen] = useState(opensOnWelcome);
 	const [addViewRequest, setAddViewRequest] = useState(0);
 	const tableName = useTabeloStore((state) => state.name);
 	const importQuestionOpen = useTabeloStore(
 		(state) => state.pendingImport !== null,
 	);
-	const showWelcome = hydrated && welcomeOpen;
+	const showWelcome = welcomeOpen;
 	const showWelcomeSurface = showWelcome && !importQuestionOpen;
 
 	// Every way content can arrive while the welcome surface is open ends here:
@@ -132,22 +154,18 @@ export function TabeloApp() {
 		openRootDialog("new-table");
 	};
 
-	// Hydrate before the first paint so saved content never flashes the empty
-	// welcome surface. The surface is shown only when hydration confirms that
-	// there is no table content and no pending source draft.
-	useLayoutEffect(() => {
-		useTabeloStore.getState().hydrate();
-		const state = useTabeloStore.getState();
-		setWelcomeOpen(isDocumentBlank(state.document) && !hasSessionWork(state));
-		const stopAutosave = startAutosave();
-		setHydrated(true);
-		return stopAutosave;
+	useLayoutEffect(() => startAutosave(), []);
+
+	// Once the workspace is on screen, the code of every other lazy view loads
+	// too, so a pane switched to one later renders at once rather than behind a
+	// loading state. After the first paint, so it never delays that paint.
+	useEffect(() => {
+		void preloadPaneContent(listViews());
 	}, []);
 
 	useEffect(() => {
-		if (!hydrated) return;
 		document.title = tableDocumentTitle(tableName);
-	}, [hydrated, tableName]);
+	}, [tableName]);
 
 	// A trusted paste event carries the clipboard payload even when the browser
 	// denies the async clipboard API. While the first-visit surface is open, it
