@@ -113,7 +113,8 @@ without keeping its disposable driver:
   Then, in order: paste a synthetic roster table of 200 or 480 rows by 8
   columns into the grid and answer the header question with a real click;
   type five characters into a grid cell and press Enter; click line 5 of the
-  source view and type five characters; wheel the view's scroller to the end
+  source view, go to its end and two characters left, so the caret is inside
+  a cell rather than after a closing pipe, and type five characters; wheel the view's scroller to the end
   and back; click the view and then a grid cell, twice.
 - **Instruments.** `PerformanceObserver` for `longtask` entries and for Event
   Timing `event` entries at a 16 ms threshold, reduced to the slowest
@@ -368,6 +369,35 @@ beside it.
 | suspicion | measured | verdict |
 | --- | --- | --- |
 | Moving focus between two panes is slow when one holds a long grid | 60 to 100 ms long tasks on each pane change, growing with rows, in every view. The trace: about 30 ms of `UpdateLayoutTree` per change at 200 rows, forced by the fill handle's `getBoundingClientRect`. Invalidation tracking names one change, the active pane's class, which sets `--hairline-color` for its edge. A custom property inherits, so every element in the pane, all 1,600 cells, had its style recomputed | **Confirmed, and fixed in #364.** Registering `--hairline-color` and `--hairline-fill` with `inherits: false` confines the change to the pane's own box; nothing inside reads either. Focus long tasks, `csv`: 185 to 0 at 200 rows, 273 to 0 at 480; focus INP 96 to 64 and 128 to 64. `html-preview`: 295 to 0 and 495 to 0; INP 120 to 48 and 168 to 64. Paste, typing, and scrolling unchanged. |
+| Typing in Markdown or Jira re-renders the whole grid | 52 to 79 ms long task and 104 to 144 ms INP on the first keystroke, only in those two views. A render count showed all 200 grid rows and the columns array replaced on that keystroke, then one row per keystroke after it | **Disproved: the scenario's own edit.** The driver typed after a row's closing pipe, which adds a column, and a new column is a new cell in every row. Typing inside a cell (the method now steps two characters left of the line end) costs 64 to 80 ms INP and no long task, the same as every other source view. |
+| The paste commit is slow in every view | one long task of 88 to 118 ms at 200 rows and 164 to 247 ms at 480, INP 136 to 184 and 232 to 336, the same order in every view and highest beside the rendered preview, which lays out a second full table. The trace at 200 rows beside Markdown: about 31 ms of script (React render and commit, CodeMirror), 27 ms of style, 15 ms of layout, and 6 ms of pre-paint, the style and layout forced early by the fill handle's measurement | **Confirmed, not fixable inside the scale rules.** It is the first style and layout of about 1,600 freshly created cells plus the pane beside them. Forcing it early moves it and does not add to it. Removing it means rendering less of the table at once, a design decision the target-scale rule reserves for the owner. |
+
+The whole matrix again after the fix, same method and machine, typing inside a
+cell:
+
+| view | rows | paste: long task | paste: INP | grid edit: INP | typing: INP | typing: long task | scroll: worst frame | focus: long tasks | focus: INP |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `grid` | 200 | 88 | 136 | 56 | n/a | n/a | 19 | n/a | n/a |
+| `markdown` | 200 | 105 | 168 | 72 | 72 | 0 | 33 | 0 | 64 |
+| `csv` | 200 | 95 | 152 | 72 | 56 | 0 | 33 | 0 | 64 |
+| `tsv` | 200 | 101 | 168 | 72 | 64 | 0 | 33 | 0 | 64 |
+| `html` | 200 | 96 | 152 | 64 | 72 | 0 | 33 | 0 | 64 |
+| `jira` | 200 | 99 | 152 | 72 | 64 | 0 | 33 | 0 | 64 |
+| `json` | 200 | 103 | 168 | 80 | 56 | 0 | 33 | 0 | 64 |
+| `records` | 200 | 110 | 168 | 56 | 64 | 0 | 33 | 0 | 48 |
+| `html-preview` | 200 | 118 | 184 | 56 | n/a | n/a | 19 | 0 | 48 |
+| `grid` | 480 | 164 | 232 | 72 | n/a | n/a | 33 | n/a | n/a |
+| `markdown` | 480 | 186 | 272 | 88 | 80 | 0 | 50 | 0 | 64 |
+| `csv` | 480 | 176 | 256 | 80 | 64 | 0 | 33 | 0 | 64 |
+| `tsv` | 480 | 175 | 256 | 80 | 64 | 0 | 33 | 0 | 64 |
+| `html` | 480 | 187 | 272 | 80 | 104 | 56 | 33 | 0 | 64 |
+| `jira` | 480 | 177 | 272 | 72 | 64 | 0 | 33 | 0 | 64 |
+| `json` | 480 | 191 | 288 | 88 | 56 | 0 | 33 | 0 | 64 |
+| `records` | 480 | 191 | 272 | 72 | 64 | 0 | 33 | 0 | 64 |
+| `html-preview` | 480 | 247 | 336 | 80 | n/a | n/a | 19 | 0 | 64 |
+
+Nothing but the paste commit is above 100 ms at the target scale. The one
+figure above it past the target, typing in HTML at 480 rows, was not traced.
 
 ### Adding an entry
 
