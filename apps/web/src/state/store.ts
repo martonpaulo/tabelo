@@ -250,6 +250,19 @@ export interface HistoryEntry {
 // announcement from claiming rows moved when none did.
 export type SortOutcome = "sorted" | "unchanged" | "unavailable";
 
+// One structural edit at a named position, as a source pane's context menu
+// asks for it (#255). Rows count data rows only, and -1 names the header row.
+export type StructureEdit =
+	| { readonly kind: "insert-row"; readonly at: number }
+	| { readonly kind: "remove-row"; readonly row: number }
+	| { readonly kind: "insert-column"; readonly at: number }
+	| { readonly kind: "remove-column"; readonly column: number }
+	| {
+			readonly kind: "move-column";
+			readonly column: number;
+			readonly offset: number;
+	  };
+
 export interface PendingImport {
 	readonly prepared: PreparedImport;
 	// Whether the request was made from an untouched session, which is what
@@ -467,6 +480,10 @@ export interface TabeloState {
 	// One data row named by index rather than by the grid selection, for a
 	// source pane's row commands (#255). The grid selection is left alone.
 	moveRowAt: (row: number, offset: number) => SelectionMoveRefusal | null;
+	// The rest of a source pane's structural commands (#255), each named by
+	// index and applied as one history step with the grid selection left alone.
+	// The caller has already refused what the grid would refuse.
+	editStructureAt: (edit: StructureEdit) => void;
 
 	addColumnLeft: () => void;
 	addColumnRight: () => void;
@@ -1836,6 +1853,36 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			moveRows(state.document, { from: row, count: 1 }, offset),
 		);
 		return null;
+	},
+
+	// Removing the header row promotes the first data row into it in the same
+	// step, exactly as the grid's removal does (AGENTS.md, one header row).
+	editStructureAt: (edit) => {
+		const state = get();
+		const { document } = state;
+		switch (edit.kind) {
+			case "insert-row":
+				state.applyDocument(insertRows(document, edit.at));
+				return;
+			case "remove-row":
+				state.applyDocument(
+					edit.row < 0
+						? promoteFirstRowToHeader(document)
+						: deleteRows(document, [edit.row]),
+				);
+				return;
+			case "insert-column":
+				state.applyDocument(insertColumns(document, edit.at));
+				return;
+			case "remove-column":
+				state.applyDocument(deleteColumns(document, [edit.column]));
+				return;
+			case "move-column":
+				state.applyDocument(
+					moveColumns(document, { from: edit.column, count: 1 }, edit.offset),
+				);
+				return;
+		}
 	},
 
 	addColumnLeft: () => {

@@ -144,6 +144,7 @@ reversible implementation choice does not belong here.
 | Markdown row-start assistance | Enter at the end of a table row below the divider opens the new line with `\| ` and the caret after it, in the same undo step; a break anywhere else, after the header, or with Smart editing off stays plain | ADR 0005 | #391 |
 | Jira row-start assistance | Enter at the end of the header or a table row opens the new line with a bare `\|` (a space would be cell content) and the caret after it, in the same undo step; a break anywhere else, in a draft without a Jira header, or with Smart editing off stays plain | ADR 0005 | #391 |
 | Source row move | `Alt`+`ArrowUp`/`ArrowDown` in a pane whose codec maps rows moves the table row under the caret as one document step, also offered in the pane's context menu; a draft that does not parse is refused with its reason; HTML, JSON, and Records keep the text line move | design system §9 | #255 |
+| Source structural commands | A source pane that maps rows also offers move column, insert row or column, sort by the caret's column, and delete row or column in its context menu only, with no keyboard binding; each is one document step with the grid's refusals, and deleting the header row promotes the first data row | design system §3, §9 | #255 |
 
 ### Documents, formats, and persistence
 

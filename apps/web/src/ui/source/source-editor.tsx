@@ -71,9 +71,11 @@ import { pinnedHeader, pinnedHeaderSetup } from "./pinned-header";
 import { recordsLanguage } from "./records-language";
 import {
 	caretOffset,
+	resolveSourceCommand,
 	resolveSourceRowMove,
 	type SourceCaretTarget,
 	type SourceRowTarget,
+	type SourceStructureCommand,
 	sourceRowRefusalMessage,
 } from "./row-commands";
 import { SourceContextMenu } from "./source-context-menu";
@@ -493,6 +495,29 @@ export function SourceEditor({
 			clearLocalHistory(view);
 		}
 		return true;
+	};
+
+	// The menu-only structural commands (#255), on the same terms as a row move:
+	// one document step, the pane's keystroke history cleared with it, and the
+	// caret carried into the cell the command leaves it in. The caret target is
+	// known only once the command has run (a sort decides where the row goes),
+	// which is still before React renders the regenerated text that spends it.
+	const runStructure = (view: EditorView, command: SourceStructureCommand) => {
+		const target = handlers.current.rowTarget;
+		if (!target) return;
+		const store = useTabeloStore.getState();
+		const plan = resolveSourceCommand(view.state, target, command);
+		if (!plan.ok) {
+			store.pushNotice({
+				severity: "warning",
+				message: sourceRowRefusalMessage[plan.refusal],
+			});
+			return;
+		}
+		const caret = plan.run();
+		if (!caret) return;
+		pendingCaret.current = caret;
+		clearLocalHistory(view);
 	};
 
 	// The editor is created once and lives for the panel's lifetime. Re-running
@@ -915,10 +940,10 @@ export function SourceEditor({
 			onOccurrenceAdded={(summary) =>
 				handlers.current.onOccurrenceAdded(summary)
 			}
-			rowMove={
+			table={
 				rowTarget
 					? {
-							refusal: (offset) => {
+							moveRefusal: (offset) => {
 								const view = viewRef.current;
 								if (!view) return "unparsed";
 								const move = resolveSourceRowMove(
@@ -928,9 +953,23 @@ export function SourceEditor({
 								);
 								return move.ok ? null : move.refusal;
 							},
-							run: (offset) => {
+							moveRow: (offset) => {
 								const view = viewRef.current;
 								if (view) moveRow(view, offset);
+							},
+							refusal: (command) => {
+								const view = viewRef.current;
+								if (!view) return "unparsed";
+								const plan = resolveSourceCommand(
+									view.state,
+									rowTarget,
+									command,
+								);
+								return plan.ok ? null : plan.refusal;
+							},
+							run: (command) => {
+								const view = viewRef.current;
+								if (view) runStructure(view, command);
 							},
 						}
 					: null

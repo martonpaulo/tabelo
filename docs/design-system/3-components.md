@@ -489,7 +489,11 @@ Actions are described once and rendered many times. `ui/grid/table-actions.ts`
 is the single list of table operations; the grid context menu and the pane
 menu are renderers over it. A source view's context menu is the text counterpart and
 lists only commands the editor's keymap binds, so it never gains an action the
-keyboard lacks. Never write an action inline in a
+keyboard lacks, with one carved-out group: in a pane whose codec maps rows, the
+grid's structural operations on the caret's row or column (move a column,
+insert a row or column, sort, delete a row or column) are menu-only items with
+no binding of their own, because they are table commands reached from the
+text rather than text commands (Decided on #255). Never write an action inline in a
 menu. That is how a menu and a toolbar drift apart.
 
 A component in `primitives/` must not import from the store. If it needs

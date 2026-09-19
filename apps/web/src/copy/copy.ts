@@ -477,6 +477,7 @@ export const copy = {
 		// caret, so text the table has not read back names no row (#255).
 		sourceRowUnparsed: "Fix the text so it reads as a table first.",
 		sourceRowOutside: "Put the caret in a table row first.",
+		sourceCellOutside: "Put the caret in a table cell first.",
 		fitWrappedColumn: "Turn off Wrap text to fit this column.",
 		columnAlreadyFitted: "This column already fits its content.",
 		columnFitUnavailable: "This column can't be measured right now.",
@@ -657,6 +658,12 @@ export const copy = {
 		// the row (#255).
 		moveRowUp: "Move row up",
 		moveRowDown: "Move row down",
+		moveColumnLeft: "Move column left",
+		moveColumnRight: "Move column right",
+		// A source pane's sort acts on the column under the caret, and its menu
+		// has no column header to say which one.
+		sortColumnAscending: "Sort by this column, ascending",
+		sortColumnDescending: "Sort by this column, descending",
 		fill: "Fill",
 		// The menu path that replaces the removed four-key focus chord. Named
 		// for what it preserves, because that is the whole reason to reach for

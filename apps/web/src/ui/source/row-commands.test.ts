@@ -9,8 +9,10 @@ import { markdownCodec } from "@/formats/markdown";
 import { textForView, useTabeloStore } from "@/state/store";
 import {
 	caretOffset,
+	resolveSourceCommand,
 	resolveSourceRowMove,
 	type SourceRowTarget,
+	type SourceStructureCommand,
 } from "./row-commands";
 
 const initialState = useTabeloStore.getInitialState();
@@ -159,5 +161,121 @@ describe("source row commands", () => {
 				-1,
 			),
 		).toEqual({ ok: false, refusal: "unparsed" });
+	});
+});
+
+function headers(): string[] {
+	return useTabeloStore
+		.getState()
+		.document.columns.map((column) => cellText(column.header));
+}
+
+// Runs one structural command with the caret just inside `marker`, and returns
+// the text of the cell the caret lands in once the text is regenerated.
+function command(marker: string, name: SourceStructureCommand): string {
+	const plan = resolveSourceCommand(
+		editorAt(projection(), marker),
+		markdownTarget(),
+		name,
+	);
+	if (!plan.ok) throw new Error(`refused: ${plan.refusal}`);
+	const caret = plan.run();
+	if (!caret) throw new Error("the command changed nothing");
+	const text = projection();
+	const parsed = markdownCodec.parse(text);
+	if (!parsed.ok) throw new Error("the projection parses");
+	const rows = parsed.rows ?? [];
+	const offset = caretOffset(rows, caret);
+	const row = rows[caret.row];
+	const cell = caret.column === null ? row : row?.cells[caret.column];
+	if (offset === null || !cell) throw new Error("the caret has no cell");
+	expect(offset).toBeGreaterThanOrEqual(cell.from);
+	expect(offset).toBeLessThanOrEqual(cell.to);
+	return text.slice(cell.from, cell.to).trim();
+}
+
+function refusal(marker: string, name: SourceStructureCommand) {
+	const plan = resolveSourceCommand(
+		editorAt(projection(), marker),
+		markdownTarget(),
+		name,
+	);
+	return plan.ok ? null : plan.refusal;
+}
+
+describe("source structural commands", () => {
+	const ingrid = samplePerson(0);
+	const paulo = samplePerson(1);
+	const mabel = samplePerson(2);
+
+	it("moves a column as one history step, the caret staying in its cell", () => {
+		const before = useTabeloStore.getState().past.length;
+		expect(command(ingrid.city, "move-column-right")).toBe(ingrid.city);
+		expect(headers()).toEqual(["name", "role", "city", "age"]);
+		expect(useTabeloStore.getState().past).toHaveLength(before + 1);
+		useTabeloStore.getState().undo();
+		expect(headers()).toEqual(["name", "city", "role", "age"]);
+		expect(refusal("name", "move-column-left")).toBe("first-column");
+		expect(refusal("age", "move-column-right")).toBe("last-column");
+	});
+
+	it("inserts rows and columns beside the caret and lands in the new cell", () => {
+		expect(command(paulo.name, "insert-row-above")).toBe("");
+		expect(names()).toEqual(["name", ingrid.name, "", paulo.name, mabel.name]);
+		expect(command("name", "insert-row-below")).toBe("");
+		expect(names()[1]).toBe("");
+		expect(command(ingrid.city, "insert-column-left")).toBe("");
+		expect(headers()).toEqual(["name", "", "city", "role", "age"]);
+		expect(command(ingrid.city, "insert-column-right")).toBe("");
+		expect(headers()).toEqual(["name", "", "city", "", "role", "age"]);
+	});
+
+	it("keeps exactly one header row", () => {
+		expect(refusal("name", "insert-row-above")).toBe("header-row");
+		// Deleting the header promotes the first data row into it, one step.
+		expect(command("city", "delete-row")).toBe(ingrid.city);
+		expect(headers()).toEqual([
+			ingrid.name,
+			ingrid.city,
+			ingrid.role,
+			String(ingrid.age),
+		]);
+		expect(names()).toEqual([ingrid.name, paulo.name, mabel.name]);
+		useTabeloStore.getState().undo();
+		expect(headers()).toEqual(["name", "city", "role", "age"]);
+	});
+
+	it("deletes the row or column under the caret, landing in the one that takes its place", () => {
+		expect(command(paulo.name, "delete-row")).toBe(mabel.name);
+		expect(names()).toEqual(["name", ingrid.name, mabel.name]);
+		expect(command(mabel.name, "delete-row")).toBe(ingrid.name);
+		expect(refusal(ingrid.name, "delete-row")).toBe("last-remaining-row");
+		expect(command("age", "delete-column")).toBe("role");
+		expect(headers()).toEqual(["name", "city", "role"]);
+	});
+
+	it("sorts by the caret's column, the caret following its row", () => {
+		expect(command(paulo.name, "sort-descending")).toBe(paulo.name);
+		expect(names()).toEqual(["name", paulo.name, mabel.name, ingrid.name]);
+		expect(command(paulo.name, "sort-ascending")).toBe(paulo.name);
+		expect(names()).toEqual(["name", ingrid.name, mabel.name, paulo.name]);
+		// Already in that order: nothing changes, and no caret is spent.
+		const plan = resolveSourceCommand(
+			editorAt(projection(), paulo.name),
+			markdownTarget(),
+			"sort-ascending",
+		);
+		expect(plan.ok && plan.run()).toBeNull();
+	});
+
+	it("refuses a column command off a cell, and what the grid refuses", () => {
+		expect(refusal("---", "sort-ascending")).toBe("outside-cell");
+		useTabeloStore
+			.getState()
+			.applyDocument(
+				documentFromMatrix([["name"], [ingrid.name]], { headerRow: true }),
+			);
+		expect(refusal(ingrid.name, "sort-ascending")).toBe("sort-single-row");
+		expect(refusal(ingrid.name, "delete-column")).toBe("last-remaining-column");
 	});
 });

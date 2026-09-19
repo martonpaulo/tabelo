@@ -8,7 +8,8 @@ import { renderedSource, type TabeloPage } from "./helpers";
 // to a table row, Alt+ArrowUp and Alt+ArrowDown move that row as the grid does,
 // and the context menu offers the same two commands. Where it cannot, the menu
 // has none. Views are read from the registry by what their codec declares, so
-// a view added later is covered by its declaration rather than by name.
+// a view added later is covered by its declaration rather than by name. The
+// menu also carries the grid's other structural commands, without keys.
 
 const TABLE = [
 	"| Name | City |",
@@ -156,5 +157,124 @@ for (const view of unmappedViews) {
 		await expect(
 			menu.getByRole("menuitem", { name: copy.actions.moveRowUp }),
 		).toHaveCount(0);
+		await expect(
+			menu.getByRole("menuitem", { name: copy.actions.moveColumnRight }),
+		).toHaveCount(0);
 	});
 }
+
+// The rest of the grid's structure, menu-only (#255): no key of their own, the
+// same refusals as the grid, one undo step each, and the caret left in the
+// cell the command acted on.
+async function runMenuCommand(page: Page, name: string): Promise<void> {
+	await page.keyboard.press("ContextMenu");
+	const menu = page.getByRole("menu");
+	await menu.getByRole("menuitem", { name }).click();
+	await expect(menu).toBeHidden();
+}
+
+for (const view of mappedViews) {
+	test(`${view.id}: the context menu moves the caret's column, and the caret stays in its cell`, async ({
+		page,
+		tabelo,
+	}) => {
+		await seed(tabelo);
+		if (view.id !== "markdown")
+			await tabelo.choosePaneView("markdown", view.id);
+		const editor = tabelo.source(view.id);
+		await caretInFirstRow(page, editor);
+
+		await runMenuCommand(page, copy.actions.moveColumnRight);
+		await expect(tabelo.header(1)).toHaveText("City");
+		await expect(tabelo.cell(1, 2)).toHaveText("Ingrid");
+		await expect(editor).toBeFocused();
+		await page.keyboard.type("X");
+		await expect(tabelo.cell(1, 2)).toHaveText("XIngrid");
+	});
+}
+
+test("inserted rows and columns take the caret, and one undo removes each", async ({
+	page,
+	tabelo,
+}) => {
+	await seed(tabelo);
+	const editor = tabelo.source("markdown");
+	await caretInFirstRow(page, editor);
+
+	await runMenuCommand(page, copy.actions.insertRowsBelow(1));
+	await expect(tabelo.cell(3, 1)).toHaveText("Paulo");
+	await page.keyboard.type("Mabel");
+	await expectOrder(tabelo, ["Ingrid", "Mabel", "Paulo"]);
+
+	await caretInFirstRow(page, editor);
+	await runMenuCommand(page, copy.actions.insertColumnsLeft(1));
+	await expect(tabelo.header(2)).toHaveText("Name");
+	await expect(tabelo.cell(1, 2)).toHaveText("Ingrid");
+	await page.keyboard.press("ControlOrMeta+Z");
+	await expect(tabelo.header(1)).toHaveText("Name");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+});
+
+test("sorting by the caret's column reorders the table and the caret follows its row", async ({
+	page,
+	tabelo,
+}) => {
+	await seed(tabelo);
+	const editor = tabelo.source("markdown");
+	await caretInFirstRow(page, editor);
+
+	await runMenuCommand(page, copy.actions.sortColumnDescending);
+	await expectOrder(tabelo, ["Paulo", "Ingrid"]);
+	await page.keyboard.type("X");
+	await expect(tabelo.cell(2, 1)).toHaveText("XIngrid");
+});
+
+test("deleting the header row promotes the first data row, and a refused command says why", async ({
+	page,
+	tabelo,
+}) => {
+	await seed(tabelo);
+	const editor = tabelo.source("markdown");
+	await editor.click();
+	await editor.press("ControlOrMeta+Home");
+	await page.keyboard.press("ArrowRight");
+	await page.keyboard.press("ArrowRight");
+
+	await page.keyboard.press("ContextMenu");
+	const menu = page.getByRole("menu");
+	const above = menu.getByRole("menuitem", {
+		name: copy.actions.insertRowsAbove(1),
+	});
+	await expect(above).toHaveAttribute("aria-disabled", "true");
+	await expect(above).toHaveAccessibleDescription(/\S/);
+	await menu
+		.getByRole("menuitem", { name: copy.actions.deleteRows(1) })
+		.click();
+	await expect(menu).toBeHidden();
+	await expect(tabelo.header(1)).toHaveText("Ingrid");
+	await expectOrder(tabelo, ["Paulo"]);
+});
+
+test("a draft that does not parse disables every structural command", async ({
+	page,
+	tabelo,
+}) => {
+	await seed(tabelo);
+	const editor = tabelo.source("markdown");
+	await editor.fill(TABLE.replace("| --- | --- |", "| not a divider |"));
+	await caretInFirstRow(page, editor);
+
+	await page.keyboard.press("ContextMenu");
+	const menu = page.getByRole("menu");
+	for (const name of [
+		copy.actions.moveColumnRight,
+		copy.actions.insertRowsBelow(1),
+		copy.actions.sortColumnAscending,
+		copy.actions.deleteColumns(1),
+	]) {
+		await expect(menu.getByRole("menuitem", { name })).toHaveAttribute(
+			"aria-disabled",
+			"true",
+		);
+	}
+});

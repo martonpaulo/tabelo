@@ -11,14 +11,23 @@ import {
 } from "@tabelo/ui/components/context-menu";
 import {
 	IconArrowBackUp,
+	IconArrowBarToDown,
+	IconArrowBarToLeft,
+	IconArrowBarToRight,
+	IconArrowBarToUp,
 	IconArrowForwardUp,
 	IconArrowNarrowDown,
+	IconArrowNarrowLeft,
+	IconArrowNarrowRight,
 	IconArrowNarrowUp,
 	IconClipboard,
 	IconCopy,
 	IconCursorText,
 	IconScissors,
 	IconSelectAll,
+	IconSortAscending,
+	IconSortDescending,
+	IconTrash,
 } from "@tabler/icons-react";
 import {
 	Fragment,
@@ -42,19 +51,47 @@ import {
 	occurrenceSummary,
 	selectNextOccurrenceAsPrimary,
 } from "./occurrence-selection";
-import { type SourceRowRefusal, sourceRowRefusalMessage } from "./row-commands";
+import {
+	type SourceRowRefusal,
+	type SourceStructureCommand,
+	sourceRowRefusalMessage,
+} from "./row-commands";
 
-// The row commands of a pane whose codec maps rows (#255): why a move is
-// unavailable, read as the menu opens, and the move itself, the same one
-// Alt+ArrowUp and Alt+ArrowDown run.
-export interface SourceRowMoveCommands {
-	readonly refusal: (offset: number) => SourceRowRefusal | null;
-	readonly run: (offset: number) => void;
+// The table commands of a pane whose codec maps rows (#255): why each is
+// unavailable, read as the menu opens, and the command itself. The row moves
+// are the same ones Alt+ArrowUp and Alt+ArrowDown run; the structural
+// commands are menu-only.
+export interface SourceTableCommands {
+	readonly moveRefusal: (offset: number) => SourceRowRefusal | null;
+	readonly moveRow: (offset: number) => void;
+	readonly refusal: (
+		command: SourceStructureCommand,
+	) => SourceRowRefusal | null;
+	readonly run: (command: SourceStructureCommand) => void;
 }
 
-// A source pane's own context menu (#234). Every item is a second path to a
-// command the editor's keymap already binds, carrying that shortcut, so the
-// menu adds reach and never behaviour the keyboard lacks.
+const structureCommands: readonly SourceStructureCommand[] = [
+	"move-column-left",
+	"move-column-right",
+	"insert-row-above",
+	"insert-row-below",
+	"insert-column-left",
+	"insert-column-right",
+	"sort-ascending",
+	"sort-descending",
+	"delete-row",
+	"delete-column",
+];
+
+type StructureRefusals = Readonly<
+	Record<SourceStructureCommand, SourceRowRefusal | null>
+>;
+
+// A source pane's own context menu (#234). Its text commands are each a second
+// path to a command the editor's keymap already binds, carrying that shortcut,
+// so they add reach and never behaviour the keyboard lacks. The table's
+// structural commands are the one carved-out group without a binding of their
+// own (#255): they are the grid's operations, reached from the text.
 //
 // Right-click and the keyboard's context-menu gesture (the Menu key, Shift+F10)
 // open it. Shift+right-click goes to the browser's own menu instead, because a
@@ -70,6 +107,7 @@ interface MenuState {
 	readonly canRedo: boolean;
 	readonly moveUp: SourceRowRefusal | null;
 	readonly moveDown: SourceRowRefusal | null;
+	readonly structure: StructureRefusals | null;
 }
 
 const closed: MenuState = {
@@ -80,6 +118,7 @@ const closed: MenuState = {
 	canRedo: false,
 	moveUp: null,
 	moveDown: null,
+	structure: null,
 };
 
 // What the selection holds, as the clipboard would receive it: CodeMirror's
@@ -96,15 +135,15 @@ export function SourceContextMenu({
 	paneId,
 	viewRef,
 	onOccurrenceAdded,
-	rowMove,
+	table,
 	children,
 }: {
 	readonly paneId: string;
 	readonly viewRef: RefObject<EditorView | null>;
 	readonly onOccurrenceAdded: (summary: OccurrenceSummary) => void;
 	// Absent where the pane's codec cannot name a row, which leaves the menu
-	// without row commands rather than with disabled ones that never apply.
-	readonly rowMove: SourceRowMoveCommands | null;
+	// without table commands rather than with disabled ones that never apply.
+	readonly table: SourceTableCommands | null;
 	// The element the editor mounts into. It becomes the menu's trigger, so the
 	// whole editor body opens the menu and nothing outside it does.
 	readonly children: ReactElement<{ ref?: RefObject<HTMLDivElement | null> }>;
@@ -144,8 +183,16 @@ export function SourceContextMenu({
 			canOccurrence: occurrenceSelectionApplies(editor.state),
 			canUndo: canRunHistory(paneId, "undo", store.past.length > 0),
 			canRedo: canRunHistory(paneId, "redo", store.future.length > 0),
-			moveUp: rowMove?.refusal(-1) ?? null,
-			moveDown: rowMove?.refusal(1) ?? null,
+			moveUp: table?.moveRefusal(-1) ?? null,
+			moveDown: table?.moveRefusal(1) ?? null,
+			structure: table
+				? (Object.fromEntries(
+						structureCommands.map((command) => [
+							command,
+							table.refusal(command),
+						]),
+					) as StructureRefusals)
+				: null,
 		};
 	};
 
@@ -197,9 +244,106 @@ export function SourceContextMenu({
 		readonly id: string;
 		readonly label: string;
 		readonly icon: typeof IconCopy;
-		readonly shortcut: string;
+		// Absent only for the structural commands, which have no binding.
+		readonly shortcut?: string;
+		readonly danger?: boolean;
 		readonly reason?: string;
 		readonly run: () => void;
+	};
+
+	const refused = (refusal: SourceRowRefusal | null | undefined) =>
+		readOnly ?? (refusal ? sourceRowRefusalMessage[refusal] : undefined);
+
+	// Row moves first, as the keyboard offers them, then the grid's other
+	// structural operations in the grid menu's order: move, insert, sort,
+	// delete.
+	const tableGroups = (commands: SourceTableCommands): Item[][] => {
+		const structural = (
+			command: SourceStructureCommand,
+			label: string,
+			icon: typeof IconCopy,
+			danger = false,
+		): Item => ({
+			id: command,
+			label,
+			icon,
+			danger,
+			reason: refused(state.structure?.[command]),
+			run: () => commands.run(command),
+		});
+		return [
+			[
+				{
+					id: "move-row-up",
+					label: copy.actions.moveRowUp,
+					icon: IconArrowNarrowUp,
+					shortcut: copy.shortcuts.moveUp,
+					reason: refused(state.moveUp),
+					run: () => commands.moveRow(-1),
+				},
+				{
+					id: "move-row-down",
+					label: copy.actions.moveRowDown,
+					icon: IconArrowNarrowDown,
+					shortcut: copy.shortcuts.moveDown,
+					reason: refused(state.moveDown),
+					run: () => commands.moveRow(1),
+				},
+				structural(
+					"move-column-left",
+					copy.actions.moveColumnLeft,
+					IconArrowNarrowLeft,
+				),
+				structural(
+					"move-column-right",
+					copy.actions.moveColumnRight,
+					IconArrowNarrowRight,
+				),
+			],
+			[
+				structural(
+					"insert-row-above",
+					copy.actions.insertRowsAbove(1),
+					IconArrowBarToUp,
+				),
+				structural(
+					"insert-row-below",
+					copy.actions.insertRowsBelow(1),
+					IconArrowBarToDown,
+				),
+				structural(
+					"insert-column-left",
+					copy.actions.insertColumnsLeft(1),
+					IconArrowBarToLeft,
+				),
+				structural(
+					"insert-column-right",
+					copy.actions.insertColumnsRight(1),
+					IconArrowBarToRight,
+				),
+			],
+			[
+				structural(
+					"sort-ascending",
+					copy.actions.sortColumnAscending,
+					IconSortAscending,
+				),
+				structural(
+					"sort-descending",
+					copy.actions.sortColumnDescending,
+					IconSortDescending,
+				),
+			],
+			[
+				structural("delete-row", copy.actions.deleteRows(1), IconTrash, true),
+				structural(
+					"delete-column",
+					copy.actions.deleteColumns(1),
+					IconTrash,
+					true,
+				),
+			],
+		];
 	};
 	const groups: readonly (readonly Item[])[] = [
 		[
@@ -270,36 +414,7 @@ export function SourceContextMenu({
 				run: nextOccurrence,
 			},
 		],
-		...(rowMove
-			? [
-					[
-						{
-							id: "move-row-up",
-							label: copy.actions.moveRowUp,
-							icon: IconArrowNarrowUp,
-							shortcut: copy.shortcuts.moveUp,
-							reason:
-								readOnly ??
-								(state.moveUp
-									? sourceRowRefusalMessage[state.moveUp]
-									: undefined),
-							run: () => rowMove.run(-1),
-						},
-						{
-							id: "move-row-down",
-							label: copy.actions.moveRowDown,
-							icon: IconArrowNarrowDown,
-							shortcut: copy.shortcuts.moveDown,
-							reason:
-								readOnly ??
-								(state.moveDown
-									? sourceRowRefusalMessage[state.moveDown]
-									: undefined),
-							run: () => rowMove.run(1),
-						},
-					],
-				]
-			: []),
+		...(table ? tableGroups(table) : []),
 	];
 
 	return (
@@ -323,11 +438,14 @@ export function SourceContextMenu({
 								<ControlTooltip key={item.id} reason={item.reason}>
 									<ContextMenuItem
 										disabled={item.reason !== undefined}
+										variant={item.danger ? "destructive" : "default"}
 										onClick={item.run}
 									>
 										<item.icon aria-hidden />
 										{item.label}
-										<ContextMenuShortcut>{item.shortcut}</ContextMenuShortcut>
+										{item.shortcut ? (
+											<ContextMenuShortcut>{item.shortcut}</ContextMenuShortcut>
+										) : null}
 									</ContextMenuItem>
 								</ControlTooltip>
 							))}

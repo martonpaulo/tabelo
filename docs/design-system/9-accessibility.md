@@ -67,9 +67,11 @@ container, so the arrow keys still work.
 **The context-menu gesture opens Tabelo's menu in both editing views** (#234).
 Right-click, the Menu key, and `Shift`+`F10` are one request, so the grid and
 every source view answer all three with their own menu, and a keyboard user
-reaches it exactly as a pointer user does. The source view's menu offers only
-commands its keymap already binds, each with that shortcut: Cut, Copy, Paste,
-Undo, Redo, Select all, and Select next match. `Shift`+right-click in a
+reaches it exactly as a pointer user does. The source view's text commands are
+only ones its keymap already binds, each with that shortcut: Cut, Copy, Paste,
+Undo, Redo, Select all, and Select next match. Its table commands, where the
+format maps rows, are the one exception: see the row move below (#255).
+`Shift`+right-click in a
 source view is left to the browser, because inside a text surface the browser's
 menu holds things worth keeping: spelling suggestions, look up, its text
 actions. The grid takes the gesture outright, since a cell offers the browser
@@ -467,6 +469,23 @@ context menu offers the same two commands as Move row up and Move row down,
 disabled with that reason. HTML, JSON, and Records cannot map a row, so there
 the chord keeps CodeMirror's text line move and the menu has no row commands.
 Decided on #255.
+
+**The rest of the grid's structure is in the same menu, with no key of its
+own** (owner, 2026-09-19, option A on #255). Beside the two row moves, a pane
+that maps rows offers Move column left and right, Insert row above and below,
+Insert column left and right, Sort by this column ascending and descending,
+and Delete row and column, each acting on the row or column under the caret
+as one document step with the pane's keystroke history cleared, like the row
+move. They are menu-only: a new chord would compete with the editor's own
+text bindings for commands used far less often. The refusals are the grid's
+and the row move's, each written out on the disabled item: a draft that does
+not parse, a caret outside the table, or, for a column command, outside any
+cell; nothing inserted above the header row; the last row or column kept;
+sorting needs two rows. Deleting the header row promotes the first data row
+into it in the same step. The caret then lands where the user would look: in
+the new row or column after an insert, in the row or column that took the
+removed one's place after a delete, and in the same cell, wherever it went,
+after a column move or a sort.
 
 | Key | Field views | Indent views |
 | :--- | :--- | :--- |
