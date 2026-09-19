@@ -270,7 +270,9 @@ test("a segmented choice is reachable and chosen from the keyboard", async ({
 	page,
 	tabelo,
 }) => {
-	// Opened from the keyboard on the letter, which is where focus returns.
+	// Opened from the keyboard on the letter. Opening the menu selects the
+	// column, and a selection made from the strip hands focus to the table, so
+	// focus comes back to the column's header cell, where the grid's keys work.
 	const letter = tabelo.columnIndex(1).getByRole("button");
 	await letter.focus();
 	await page.keyboard.press("Shift+F10");
@@ -284,7 +286,7 @@ test("a segmented choice is reachable and chosen from the keyboard", async ({
 	await expect(right).toBeFocused();
 	await page.keyboard.press("Enter");
 	await expect(group).toBeHidden();
-	await expect(letter).toBeFocused();
+	await expect(tabelo.header(1)).toBeFocused();
 	await expect(
 		(await tabelo.openAlignmentGroup(1)).getByRole("menuitemradio", {
 			name: copy.actions.alignRight,
@@ -329,7 +331,7 @@ test("table menus preserve named groups and fold directional ones into submenus"
 
 	await page.keyboard.press("Escape");
 	await page.keyboard.press("Escape");
-	await expect(letter).toBeFocused();
+	await expect(tabelo.header(1)).toBeFocused();
 	await tabelo.cell(1, 1).click({ button: "right" });
 	const context = page.locator('[data-slot="context-menu-content"]');
 	await expect(context).toBeVisible();
@@ -386,7 +388,7 @@ test("column menu labels stay out of traversal and the menu scrolls when narrow"
 	expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(568);
 
 	await page.keyboard.press("Escape");
-	await expect(letter).toBeFocused();
+	await expect(tabelo.header(1)).toBeFocused();
 });
 
 test("destructive menu actions keep one color across label and icon", async ({
