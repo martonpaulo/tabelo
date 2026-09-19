@@ -74,8 +74,11 @@ and the pane menu offers the switch that turns it off for the current buffer
 only when a view's codec declares one. Markdown declares the first two:
 keeping its alignment divider in step with the table (Decided on #297), and
 opening a new row with `| ` on Enter at the end of a row below the divider
-(Decided on #391). No other codec declares one, and adding one is a codec
-change, not an editor change.
+(Decided on #391). Jira declares the same row-start feature on its own terms:
+a bare `|`, because a space after the pipe is part of the cell value in Jira,
+and after the header line as well, because Jira has no divider (Decided on
+#391). No other codec declares one, and adding one is a codec change, not an
+editor change.
 
 A codec may declare `mapsSourceRows`: its successful parse then also returns
 where each table row sits in the source, header first, and where each cell of

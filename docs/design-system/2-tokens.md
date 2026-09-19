@@ -532,7 +532,8 @@ a decision under [§0](../design-system.md#0-pattern-break-protocol-read-this-fi
 **Structural assistance can always be switched off** (#294). A source view
 whose format has a structural-assistance feature (Markdown has two: the
 alignment divider, #297, and a new row's opening `| ` on Enter at the end of a
-row below the divider, with the caret after it, #391) shows one checked
+row below the divider, with the caret after it, #391; Jira has one, a new
+row's bare `|` on Enter at the end of the header or a row, #391) shows one checked
 `Smart editing` item in its pane actions menu, beside `Wrap lines`. The one
 item covers every feature its format declares. Turning it off reconfigures the live
 editor through its own compartment: the text, caret, selection, and history

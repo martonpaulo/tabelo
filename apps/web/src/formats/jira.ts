@@ -7,6 +7,7 @@ import {
 	pipeCellSpans,
 	toDocumentParseResult,
 } from "./parse";
+import { jiraRowStartAssistance } from "./row-start-assistance";
 import type {
 	MatrixParseResult,
 	ParseIssue,
@@ -198,6 +199,9 @@ export const jiraCodec: TableCodec = {
 	mimeType: "text/plain",
 	mapsSourceRows: true,
 	sourceFields: jiraFields,
+	// Enter at the end of a row or of the header starts the next row with a
+	// bare `|` (#391).
+	structuralAssistance: jiraRowStartAssistance(isJiraHeaderLine),
 	parseMatrix: parseJiraMatrix,
 	parse: (text) => toDocumentParseResult(parseJiraMatrix(text)),
 	serialize: serializeJira,

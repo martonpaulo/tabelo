@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { jiraCodec } from "./jira";
 import { markdownCodec } from "./markdown";
 import { markdownRowStartAssistance } from "./row-start-assistance";
 import type { StructuralAssistance } from "./types";
@@ -88,5 +89,40 @@ describe("markdown row-start assistance", () => {
 		).toBe(null);
 		const typed = `${table}x`;
 		expect(assist(table, typed, [{ from: end, to: end + 1 }])).toBe(null);
+	});
+});
+
+describe("jira row-start assistance", () => {
+	function jiraEnter(before: string, at: number): string {
+		const assist = jiraCodec.structuralAssistance;
+		if (!assist) throw new Error("Jira declares no structural assistance.");
+		const after = plain(before, at);
+		const edit = assist(before, after, [{ from: at, to: at + 1 }]);
+		if (!edit) return after;
+		return after.slice(0, edit.from) + edit.insert + after.slice(edit.to);
+	}
+
+	const jira = ["||name||city||", "|Ingrid|Rio|"].join("\n");
+
+	it("opens a new row with a bare pipe after a body row and after the header", () => {
+		expect(jiraEnter(jira, jira.length)).toBe(`${jira}\n|`);
+		const headerEnd = jira.indexOf("\n");
+		expect(jiraEnter(jira, headerEnd)).toBe("||name||city||\n|\n|Ingrid|Rio|");
+	});
+
+	it("keeps the new row's first cell free of padding", () => {
+		const typed = `${jiraEnter(jira, jira.length)}Paulo|Madrid|`;
+		const parsed = jiraCodec.parse(typed);
+		if (!parsed.ok) throw new Error("The typed row does not parse.");
+		expect(parsed.document.rows).toHaveLength(2);
+		expect(jiraCodec.serialize(parsed.document)).toBe(typed);
+	});
+
+	it("inserts a plain break inside a row, off the table, or in a draft without a header", () => {
+		expect(jiraEnter(jira, 3)).toBe(plain(jira, 3));
+		const trailing = `${jira}\n\n|note|`;
+		expect(jiraEnter(trailing, trailing.length)).toBe(`${trailing}\n`);
+		const headerless = "|name|city|\n|Ingrid|Rio|";
+		expect(jiraEnter(headerless, headerless.length)).toBe(`${headerless}\n`);
 	});
 });

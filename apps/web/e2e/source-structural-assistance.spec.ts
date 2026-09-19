@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
+import type { ViewId } from "@/views/types";
 import { expect, test } from "./fixtures";
 import {
 	lastCopied,
@@ -10,7 +11,7 @@ import {
 } from "./helpers";
 
 // The Markdown alignment divider kept in step with its table (#297), a new
-// Markdown row opened with its delimiter on Enter (#391), and the
+// Markdown or Jira row opened with its delimiter on Enter (#391), and the
 // pane's switch that turns that assistance off for the current buffer. See
 // "Source text is free; structural assistance is narrow" in AGENTS.md and
 // docs/design-system/2-tokens.md, "Structural assistance can always be switched off".
@@ -57,8 +58,9 @@ function assistanceItem(menu: Locator): Locator {
 async function setAssistance(
 	tabelo: TabeloPage,
 	enabled: boolean,
+	view: ViewId = "markdown",
 ): Promise<void> {
-	const menu = await tabelo.openPaneMenu("markdown");
+	const menu = await tabelo.openPaneMenu(view);
 	const item = assistanceItem(menu);
 	if ((await item.getAttribute("aria-checked")) !== String(enabled)) {
 		await item.click();
@@ -300,5 +302,71 @@ test.describe("markdown row-start assistance", () => {
 		await expect
 			.poll(async () => (await markdownLines(tabelo)).at(-1))
 			.toBe("x");
+	});
+});
+
+const JIRA_TABLE = ["||name||city||", "|Ingrid|Rio|"].join("\n");
+
+async function seedJira(tabelo: TabeloPage): Promise<Locator> {
+	await tabelo.choosePaneView("markdown", "jira");
+	const editor = tabelo.source("jira");
+	await editor.fill(JIRA_TABLE);
+	await expect(tabelo.cell(1, 2)).toHaveText("Rio");
+	return editor;
+}
+
+function jiraLines(tabelo: TabeloPage): Promise<string[]> {
+	return renderedSource(tabelo.pane("jira")).then((text) => text.split("\n"));
+}
+
+// Jira keeps a cell's surrounding space as content, so its row opens with a
+// bare pipe, and with no divider the header line opens a row too (#391).
+test.describe("jira row-start assistance", () => {
+	test("Enter at the end of a row opens the next one with a bare pipe, undone as one step", async ({
+		page,
+		tabelo,
+	}) => {
+		const editor = await seedJira(tabelo);
+		await caretAtEnd(page, editor);
+		await page.keyboard.press("Enter");
+		await expect(tabelo.cell(2, 1)).toBeVisible();
+
+		await page.keyboard.press("ControlOrMeta+z");
+		await expect
+			.poll(() => renderedSource(tabelo.pane("jira")))
+			.toBe(JIRA_TABLE);
+		await expect(tabelo.cell(2, 1)).toHaveCount(0);
+
+		await page.keyboard.press("Enter");
+		await page.keyboard.type("Paulo|Madrid|");
+		await expect
+			.poll(async () => (await jiraLines(tabelo))[2])
+			.toBe("|Paulo|Madrid|");
+		// No padding reached the first cell.
+		await expect(tabelo.cell(2, 1)).toHaveText("Paulo");
+		await expect(tabelo.cell(2, 2)).toHaveText("Madrid");
+	});
+
+	test("Enter after the header opens a row; switched off it is a plain break", async ({
+		page,
+		tabelo,
+	}) => {
+		const editor = await seedJira(tabelo);
+		await editor.click();
+		await page.keyboard.press("ControlOrMeta+Home");
+		await page.keyboard.press("End");
+		await page.keyboard.press("Enter");
+		await page.keyboard.type("Paulo|Madrid|");
+		await expect
+			.poll(async () => (await jiraLines(tabelo))[1])
+			.toBe("|Paulo|Madrid|");
+		await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
+
+		await editor.fill(JIRA_TABLE);
+		await setAssistance(tabelo, false, "jira");
+		await caretAtEnd(page, editor);
+		await page.keyboard.press("Enter");
+		await page.keyboard.type("x");
+		await expect.poll(async () => (await jiraLines(tabelo)).at(-1)).toBe("x");
 	});
 });
