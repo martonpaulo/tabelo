@@ -30,7 +30,10 @@ async function seed(tabelo: TabeloPage): Promise<void> {
 }
 
 // The caret just before the first data row's first value, reached with the
-// arrow keys the way a user would, whatever the format spells around it.
+// arrow keys the way a user would, whatever the format spells around it. The
+// arrows keep the caret in the first column from the text's start, so it is
+// counted from there: `Home` would stop at an indented line's indentation, as
+// HTML's and JSON's are (#402).
 async function caretInFirstRow(page: Page, editor: Locator): Promise<void> {
 	const lines = (await renderedSource(editor)).split("\n");
 	const line = lines.findIndex((text) => text.includes("Ingrid"));
@@ -41,7 +44,6 @@ async function caretInFirstRow(page: Page, editor: Locator): Promise<void> {
 	for (let step = 0; step < line; step += 1) {
 		await page.keyboard.press("ArrowDown");
 	}
-	await page.keyboard.press("Home");
 	for (let step = 0; step < column; step += 1) {
 		await page.keyboard.press("ArrowRight");
 	}
