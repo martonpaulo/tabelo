@@ -1,9 +1,11 @@
 import {
+	IconArrowBackUp,
 	IconArrowBarToDown,
 	IconArrowBarToLeft,
 	IconArrowBarToRight,
 	IconArrowBarToUp,
 	IconArrowDown,
+	IconArrowForwardUp,
 	IconArrowLeft,
 	IconArrowNarrowDown,
 	IconArrowNarrowLeft,
@@ -11,6 +13,7 @@ import {
 	IconArrowNarrowUp,
 	IconArrowRight,
 	IconArrowsMove,
+	IconArrowsSort,
 	IconArrowUp,
 	IconBucketDroplet,
 	IconClipboard,
@@ -18,6 +21,8 @@ import {
 	IconEraser,
 	IconFocusCentered,
 	IconScissors,
+	IconSortAscending,
+	IconSortDescending,
 	IconSquareArrowDown,
 	IconSquareArrowLeft,
 	IconSquareArrowRight,
@@ -27,6 +32,7 @@ import {
 } from "@tabler/icons-react";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
+import type { SortDirection } from "@/core/operations";
 import {
 	activeRange,
 	type FillDirection,
@@ -44,24 +50,33 @@ import {
 } from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
 import { copyToClipboard, pasteFromClipboard } from "@/ui/clipboard-actions";
+import {
+	type MenuCommandId,
+	type MenuGroupId,
+	orderMenuGroups,
+} from "./menu-order";
 
 // One description of every table action, consumed by the toolbar and by the
 // context menus alike. Two renderers over one list is what stops the menu and
 // the toolbar drifting apart as actions are added.
 
 export interface TableAction {
-	readonly id: string;
+	readonly id: MenuCommandId;
 	readonly label: string;
 	readonly icon: TablerIcon;
 	readonly shortcut?: string;
 	readonly disabled?: boolean;
 	readonly disabledReason?: string;
 	readonly danger?: boolean;
+	// A command that never moves the focused cell, whose menu hands focus back
+	// to where it was opened from, as a dismissal does: a column's Sort returns
+	// to the column letter.
+	readonly keepsFocus?: boolean;
 	readonly run: () => void;
 }
 
 export interface TableActionGroup {
-	readonly id: string;
+	readonly id: MenuGroupId;
 	readonly label?: string;
 	readonly labelId?: string;
 	// A named group of directional commands shown as one submenu, so the menu's
@@ -155,6 +170,8 @@ export interface TableActionContext {
 	// still belongs there: it is the only keyboard path from one selected
 	// column to the next, so it follows the cell, not the axis.
 	readonly openedOnCell?: boolean;
+	// The column a column menu acts on, which is what its Sort reorders by.
+	readonly column?: number;
 }
 
 // Built from live store state on each call, so disabled states are always
@@ -270,7 +287,7 @@ export function buildTableActions(
 		const insertCount = Math.max(1, rowCount);
 		insert.push(
 			{
-				id: "row-above",
+				id: "insert-row-above",
 				shortcut: copy.shortcuts.addRowAbove,
 				label: copy.actions.insertRowsAbove(insertCount),
 				icon: IconArrowBarToUp,
@@ -279,7 +296,7 @@ export function buildTableActions(
 				run: () => store.addRowAbove(),
 			},
 			{
-				id: "row-below",
+				id: "insert-row-below",
 				shortcut: copy.shortcuts.addRowBelow,
 				label: copy.actions.insertRowsBelow(insertCount),
 				icon: IconArrowBarToDown,
@@ -292,7 +309,7 @@ export function buildTableActions(
 	if (showColumns) {
 		insert.push(
 			{
-				id: "column-left",
+				id: "insert-column-left",
 				shortcut: copy.shortcuts.addColumnLeft,
 				label: copy.actions.insertColumnsLeft(columnCount),
 				icon: IconArrowBarToLeft,
@@ -301,7 +318,7 @@ export function buildTableActions(
 				run: () => store.addColumnLeft(),
 			},
 			{
-				id: "column-right",
+				id: "insert-column-right",
 				shortcut: copy.shortcuts.addColumnRight,
 				label: copy.actions.insertColumnsRight(columnCount),
 				icon: IconArrowBarToRight,
@@ -314,13 +331,6 @@ export function buildTableActions(
 
 	const clipboard: TableAction[] = [
 		{
-			id: "copy",
-			label: copy.actions.copy,
-			icon: IconCopy,
-			shortcut: copy.shortcuts.copy,
-			run: () => void copySelectionToClipboard("copy"),
-		},
-		{
 			id: "cut",
 			label: copy.actions.cut,
 			icon: IconScissors,
@@ -332,6 +342,13 @@ export function buildTableActions(
 			},
 		},
 		{
+			id: "copy",
+			label: copy.actions.copy,
+			icon: IconCopy,
+			shortcut: copy.shortcuts.copy,
+			run: () => void copySelectionToClipboard("copy"),
+		},
+		{
 			id: "paste",
 			label: copy.actions.paste,
 			icon: IconClipboard,
@@ -339,6 +356,29 @@ export function buildTableActions(
 			disabled: severalAreas,
 			disabledReason: copy.disabled.singleAreaRequired,
 			run: () => void pasteFromClipboard(),
+		},
+	];
+
+	// The document timeline, as Mod+Z and Mod+Shift+Z walk it from the grid,
+	// which keeps no history of its own.
+	const history: TableAction[] = [
+		{
+			id: "undo",
+			label: copy.actions.undo,
+			icon: IconArrowBackUp,
+			shortcut: copy.shortcuts.undo,
+			disabled: store.past.length === 0,
+			disabledReason: copy.disabled.undo,
+			run: () => useTabeloStore.getState().undo(),
+		},
+		{
+			id: "redo",
+			label: copy.actions.redo,
+			icon: IconArrowForwardUp,
+			shortcut: copy.shortcuts.redo,
+			disabled: store.future.length === 0,
+			disabledReason: copy.disabled.redo,
+			run: () => useTabeloStore.getState().redo(),
 		},
 	];
 
@@ -473,6 +513,49 @@ export function buildTableActions(
 		);
 	}
 
+	// Sorting reorders the document once by the column whose menu is open, so
+	// there is nothing for a checked state to read back afterwards.
+	const sortColumn = context.axis === "column" ? context.column : undefined;
+	const sortReason =
+		sortColumn === undefined ||
+		document.columns[sortColumn] === undefined ||
+		rows < 2
+			? copy.disabled.sortSingleRow
+			: undefined;
+	const sortBy = (direction: SortDirection) => {
+		if (sortColumn === undefined) return;
+		const outcome = store.sortRowsByColumn(sortColumn, direction);
+		if (outcome === "unavailable") return;
+		store.announceStatus(
+			outcome === "sorted"
+				? copy.status.rowsSorted(useTabeloStore.getState().document.rows.length)
+				: copy.status.rowsAlreadySorted,
+		);
+	};
+	const sort: TableAction[] =
+		sortColumn === undefined
+			? []
+			: [
+					{
+						id: "sort-ascending",
+						label: copy.actions.sortAscending,
+						icon: IconSortAscending,
+						disabled: sortReason !== undefined,
+						disabledReason: sortReason,
+						keepsFocus: true,
+						run: () => sortBy("ascending"),
+					},
+					{
+						id: "sort-descending",
+						label: copy.actions.sortDescending,
+						icon: IconSortDescending,
+						disabled: sortReason !== undefined,
+						disabledReason: sortReason,
+						keepsFocus: true,
+						run: () => sortBy("descending"),
+					},
+				];
+
 	const remove: TableAction[] = [];
 	if (showRows) {
 		remove.push({
@@ -500,8 +583,9 @@ export function buildTableActions(
 		});
 	}
 
-	return [
+	return orderMenuGroups<TableActionGroup>([
 		{ id: "clipboard", actions: clipboard },
+		{ id: "history", actions: history },
 		{ id: "insert", actions: insert },
 		{
 			id: "edit",
@@ -516,6 +600,12 @@ export function buildTableActions(
 			actions: move,
 		},
 		{
+			id: "sort",
+			label: copy.actions.sort,
+			submenu: { icon: IconArrowsSort },
+			actions: sort,
+		},
+		{
 			id: "fill",
 			label: copy.actions.fill,
 			submenu: { icon: IconBucketDroplet },
@@ -528,5 +618,5 @@ export function buildTableActions(
 			actions: focus,
 		},
 		{ id: "remove", actions: remove },
-	].filter((group) => group.actions.length > 0);
+	]);
 }

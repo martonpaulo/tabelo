@@ -24,8 +24,6 @@ import {
 	IconArrowsHorizontal,
 	IconPin,
 	IconRuler,
-	IconSortAscending,
-	IconSortDescending,
 	IconTextWrap,
 } from "@tabler/icons-react";
 import {
@@ -38,7 +36,6 @@ import {
 } from "react";
 import { copy } from "@/copy/copy";
 import { cellText, cellValueType, readCell } from "@/core/cell-value";
-import type { SortDirection } from "@/core/operations";
 import {
 	activeRange,
 	type CellPosition,
@@ -179,7 +176,7 @@ function PinAxisItem({ axis }: { readonly axis: PinnedGridAxis }) {
 }
 
 // The column-only part of the menu: expected type, alignment, width, wrap,
-// pin, and sort. Only ever rendered while the menu is open on a column, and
+// and pin. Its Sort is a table action, in the order every menu shares. Only ever rendered while the menu is open on a column, and
 // keyed by that column, so the fit width is measured once per opening.
 //
 // None of these moves the focused cell, so closing the menu after one hands
@@ -277,57 +274,7 @@ function ColumnMenuGroups({
 				{index === FIRST_DATA_INDEX ? <PinAxisItem axis="column" /> : null}
 			</ContextMenuGroup>
 			<ContextMenuSeparator />
-
-			<ColumnSortGroup index={index} />
-			<ContextMenuSeparator />
 		</>
-	);
-}
-
-// Two immediate commands rather than a submenu or a stored choice: sorting
-// reorders the document once, so there is no state for a radio group to read
-// back and nothing stays applied afterwards. They sit beside alignment because
-// both are column-shaped, and both act on the column whose menu is open.
-function ColumnSortGroup({ index }: { readonly index: number }) {
-	const rowCount = useTabeloStore((state) => state.document.rows.length);
-	const missing = useTabeloStore(
-		(state) => state.document.columns[index] === undefined,
-	);
-	const reason =
-		missing || rowCount < 2 ? copy.disabled.sortSingleRow : undefined;
-
-	const sort = (direction: SortDirection) => {
-		const store = useTabeloStore.getState();
-		const outcome = store.sortRowsByColumn(index, direction);
-		if (outcome === "unavailable") return;
-		store.announceStatus(
-			outcome === "sorted"
-				? copy.status.rowsSorted(useTabeloStore.getState().document.rows.length)
-				: copy.status.rowsAlreadySorted,
-		);
-	};
-
-	return (
-		<ContextMenuGroup>
-			<ControlTooltip reason={reason}>
-				<ContextMenuItem
-					disabled={reason !== undefined}
-					onClick={() => sort("ascending")}
-				>
-					<IconSortAscending aria-hidden />
-					{copy.actions.sortAscending}
-				</ContextMenuItem>
-			</ControlTooltip>
-			<ControlTooltip reason={reason}>
-				<ContextMenuItem
-					disabled={reason !== undefined}
-					onClick={() => sort("descending")}
-				>
-					<IconSortDescending aria-hidden />
-					{copy.actions.sortDescending}
-				</ContextMenuItem>
-			</ControlTooltip>
-		</ContextMenuGroup>
 	);
 }
 
@@ -644,7 +591,7 @@ export function GridContextMenu({
 				disabled={action.disabled}
 				variant={action.danger ? "destructive" : "default"}
 				onClick={() => {
-					markCommand();
+					if (!action.keepsFocus) markCommand();
 					action.run();
 				}}
 			>
@@ -805,51 +752,55 @@ export function GridContextMenu({
 							<ContextMenuSeparator />
 						</>
 					) : null}
-					{menuSections(buildTableActions({ axis, openedOnCell })).map(
-						(section, index) => (
-							<Fragment key={section.map((group) => group.id).join("+")}>
-								{index > 0 ? <ContextMenuSeparator /> : null}
-								{section[0]?.submenu ? (
-									// Move, Fill, and Move focus: one untitled group of
-									// submenu triggers, each named by its own label.
-									<ContextMenuGroup>
-										{section.map((group) =>
-											group.submenu && group.label ? (
-												<ContextMenuSub key={group.id}>
-													<ContextMenuSubTrigger>
-														<group.submenu.icon aria-hidden />
-														{group.label}
-													</ContextMenuSubTrigger>
-													<ContextMenuSubContent
-														aria-label={group.label}
-														// A command chosen here closes the whole menu, so it
-														// hands focus back the way a first-level one does.
-														finalFocus={finalFocus}
-													>
-														{group.actions.map(item)}
-													</ContextMenuSubContent>
-												</ContextMenuSub>
-											) : null,
-										)}
-									</ContextMenuGroup>
-								) : (
-									section.map((group) => (
-										<ContextMenuGroup
-											key={group.id}
-											aria-labelledby={group.labelId}
-										>
-											{group.label && group.labelId ? (
-												<ContextMenuLabel id={group.labelId}>
+					{menuSections(
+						buildTableActions({
+							axis,
+							openedOnCell,
+							column: axis === "column" ? target.index : undefined,
+						}),
+					).map((section, index) => (
+						<Fragment key={section.map((group) => group.id).join("+")}>
+							{index > 0 ? <ContextMenuSeparator /> : null}
+							{section[0]?.submenu ? (
+								// Move, Sort, Fill, and Move focus: one untitled group of
+								// submenu triggers, each named by its own label.
+								<ContextMenuGroup>
+									{section.map((group) =>
+										group.submenu && group.label ? (
+											<ContextMenuSub key={group.id}>
+												<ContextMenuSubTrigger>
+													<group.submenu.icon aria-hidden />
 													{group.label}
-												</ContextMenuLabel>
-											) : null}
-											{group.actions.map(item)}
-										</ContextMenuGroup>
-									))
-								)}
-							</Fragment>
-						),
-					)}
+												</ContextMenuSubTrigger>
+												<ContextMenuSubContent
+													aria-label={group.label}
+													// A command chosen here closes the whole menu, so it
+													// hands focus back the way a first-level one does.
+													finalFocus={finalFocus}
+												>
+													{group.actions.map(item)}
+												</ContextMenuSubContent>
+											</ContextMenuSub>
+										) : null,
+									)}
+								</ContextMenuGroup>
+							) : (
+								section.map((group) => (
+									<ContextMenuGroup
+										key={group.id}
+										aria-labelledby={group.labelId}
+									>
+										{group.label && group.labelId ? (
+											<ContextMenuLabel id={group.labelId}>
+												{group.label}
+											</ContextMenuLabel>
+										) : null}
+										{group.actions.map(item)}
+									</ContextMenuGroup>
+								))
+							)}
+						</Fragment>
+					))}
 				</ContextMenuContent>
 			</ContextMenu>
 			<CellTypeChangeDialog

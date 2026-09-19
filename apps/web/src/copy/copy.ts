@@ -706,16 +706,6 @@ export const copy = {
 		moveDown: "Move down",
 		moveLeft: "Move left",
 		moveRight: "Move right",
-		// A source pane's menu also holds text commands, so its row move names
-		// the row (#255).
-		moveRowUp: "Move row up",
-		moveRowDown: "Move row down",
-		moveColumnLeft: "Move column left",
-		moveColumnRight: "Move column right",
-		// A source pane's sort acts on the column under the caret, and its menu
-		// has no column header to say which one.
-		sortColumnAscending: "Sort by this column, ascending",
-		sortColumnDescending: "Sort by this column, descending",
 		fill: "Fill",
 		// The menu path that replaces the removed four-key focus chord. Named
 		// for what it preserves, because that is the whole reason to reach for
@@ -738,6 +728,9 @@ export const copy = {
 		// say what the rows do and never suggest a sort that stays applied.
 		sortAscending: "Sort ascending",
 		sortDescending: "Sort descending",
+		// The submenu holding both, in the grid's column menu and in a source
+		// pane's, where it sorts by the column under the caret.
+		sort: "Sort",
 		expectedType: "Expected type",
 		cellType: "Cell type",
 		edit: "Edit",

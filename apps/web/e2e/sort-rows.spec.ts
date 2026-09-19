@@ -1,7 +1,7 @@
 import { copy } from "@/copy/copy";
 import { samplePeopleCsv } from "@/core/sample-data";
 import { expect, test } from "./fixtures";
-import type { TabeloPage } from "./helpers";
+import { openSubmenu, type TabeloPage } from "./helpers";
 
 // Sorting is a document operation rather than a view state, so the browser
 // contract is what a unit test cannot reach: the grid, the Markdown pane, and
@@ -31,7 +31,8 @@ async function sortColumn(
 	label: string,
 ): Promise<void> {
 	const menu = await tabelo.openColumnMenu(column);
-	await menu.getByRole("menuitem", { name: label }).click();
+	const sort = await openSubmenu(tabelo.page, menu, copy.actions.sort);
+	await sort.getByRole("menuitem", { name: label }).click();
 	await menu.waitFor({ state: "hidden" });
 }
 
@@ -95,9 +96,12 @@ test("sorting is reachable and announced from the keyboard", async ({
 		name: new RegExp(`^${copy.actions.columnActions}:`),
 	});
 	await menu.waitFor({ state: "visible" });
-	const item = menu.getByRole("menuitem", {
-		name: copy.actions.sortDescending,
-	});
+	const item = (await openSubmenu(page, menu, copy.actions.sort)).getByRole(
+		"menuitem",
+		{
+			name: copy.actions.sortDescending,
+		},
+	);
 	await item.focus();
 	await page.keyboard.press("Enter");
 	await menu.waitFor({ state: "hidden" });
@@ -134,7 +138,9 @@ test("a one-row table says why it cannot be sorted", async ({ tabelo }) => {
 	await tabelo.dismissNotices();
 
 	const menu = await tabelo.openColumnMenu(1);
-	const item = menu.getByRole("menuitem", { name: copy.actions.sortAscending });
+	const item = (
+		await openSubmenu(tabelo.page, menu, copy.actions.sort)
+	).getByRole("menuitem", { name: copy.actions.sortAscending });
 	// Unavailable through the accessibility tree, so the reason stays reachable
 	// rather than the item dropping out of the menu's keyboard order.
 	await expect(item).toBeDisabled();

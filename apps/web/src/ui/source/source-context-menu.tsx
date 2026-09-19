@@ -25,6 +25,7 @@ import {
 	IconArrowNarrowRight,
 	IconArrowNarrowUp,
 	IconArrowsMove,
+	IconArrowsSort,
 	IconClipboard,
 	IconCopy,
 	IconCursorText,
@@ -62,6 +63,12 @@ import {
 	ColumnAlignmentGroup,
 	ColumnExpectedTypeGroup,
 } from "@/ui/grid/grid-context-menu";
+import {
+	type MenuCommandId,
+	type MenuGroupId,
+	orderMenuGroups,
+} from "@/ui/grid/menu-order";
+import { menuSections } from "@/ui/grid/menu-sections";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import {
@@ -87,8 +94,8 @@ import { sourceRowsField } from "./source-rows";
 
 // The table commands of a pane whose codec maps rows (#255): why each is
 // unavailable, read as the menu opens, and the command itself. The row moves
-// are the same ones Alt+ArrowUp and Alt+ArrowDown run; the structural
-// commands are menu-only. Each names its row or column by an offset in the
+// are the same ones Alt+ArrowUp and Alt+ArrowDown run; the rest are
+// menu-only. Each names its row or column by an offset in the
 // text: the caret's when `at` is absent, or the one a column letter or a line
 // number stands for (#395).
 export interface SourceTableCommands {
@@ -129,6 +136,15 @@ const structureCommands: readonly SourceStructureCommand[] = [
 	"delete-column",
 ];
 
+// Which of a table's axes a menu's commands act on.
+interface Axes {
+	readonly rows: boolean;
+	readonly columns: boolean;
+}
+const bothAxes: Axes = { rows: true, columns: true };
+const rowAxis: Axes = { rows: true, columns: false };
+const columnAxis: Axes = { rows: false, columns: true };
+
 type StructureRefusals = Readonly<
 	Record<SourceStructureCommand, SourceRowRefusal | null>
 >;
@@ -136,8 +152,10 @@ type StructureRefusals = Readonly<
 // A source pane's own context menu (#234). Its text commands are each a second
 // path to a command the editor's keymap already binds, carrying that shortcut,
 // so they add reach and never behaviour the keyboard lacks. The table's
-// structural commands are the one carved-out group without a binding of their
-// own (#255): they are the grid's operations, reached from the text.
+// structural commands are the one carved-out group (#255): they are the
+// grid's operations, reached from the text, and only the row moves have a
+// key. Every menu lists its commands in the order the grid's
+// share (menu-order.ts).
 //
 // Right-click and the keyboard's context-menu gesture (the Menu key, Shift+F10)
 // open it. Shift+right-click goes to the browser's own menu instead, because a
@@ -219,7 +237,7 @@ function caretAxis(view: EditorView, axis: SourceAxis): number | null {
 }
 
 type Item = {
-	readonly id: string;
+	readonly id: MenuCommandId;
 	readonly label: string;
 	readonly icon: typeof IconCopy;
 	// Absent for the commands without a binding of their own.
@@ -229,13 +247,13 @@ type Item = {
 	readonly run: () => void;
 };
 
-// A named group of directional commands shown as one submenu, as the grid's
-// Move is (#369).
+// A group of the order every table menu shares (menu-order.ts). A named group
+// of directional commands is shown as one submenu, as the grid's are (#369).
 type Group = {
-	readonly id: string;
+	readonly id: MenuGroupId;
 	readonly label?: string;
 	readonly submenu?: typeof IconCopy;
-	readonly items: readonly Item[];
+	readonly actions: readonly Item[];
 };
 
 function MenuItem({ item }: { readonly item: Item }) {
@@ -256,6 +274,8 @@ function MenuItem({ item }: { readonly item: Item }) {
 	);
 }
 
+// Drawn as the grid draws its own: the shared order, a separator between
+// sections, and adjacent submenus in one untitled group.
 function MenuGroups({
 	groups,
 	finalFocus,
@@ -263,35 +283,41 @@ function MenuGroups({
 	readonly groups: readonly Group[];
 	readonly finalFocus: () => HTMLElement | null;
 }) {
-	return groups.map((group, index) => (
-		<Fragment key={group.id}>
+	return menuSections(orderMenuGroups(groups)).map((section, index) => (
+		<Fragment key={section.map((group) => group.id).join("+")}>
 			{index > 0 ? <ContextMenuSeparator /> : null}
-			{group.submenu && group.label ? (
+			{section[0]?.submenu ? (
 				<ContextMenuGroup>
-					<ContextMenuSub>
-						<ContextMenuSubTrigger>
-							<group.submenu aria-hidden />
-							{group.label}
-						</ContextMenuSubTrigger>
-						<ContextMenuSubContent
-							aria-label={group.label}
-							finalFocus={finalFocus}
-						>
-							{group.items.map((item) => (
-								<MenuItem key={item.id} item={item} />
-							))}
-						</ContextMenuSubContent>
-					</ContextMenuSub>
+					{section.map((group) =>
+						group.submenu && group.label ? (
+							<ContextMenuSub key={group.id}>
+								<ContextMenuSubTrigger>
+									<group.submenu aria-hidden />
+									{group.label}
+								</ContextMenuSubTrigger>
+								<ContextMenuSubContent
+									aria-label={group.label}
+									finalFocus={finalFocus}
+								>
+									{group.actions.map((item) => (
+										<MenuItem key={item.id} item={item} />
+									))}
+								</ContextMenuSubContent>
+							</ContextMenuSub>
+						) : null,
+					)}
 				</ContextMenuGroup>
 			) : (
-				<ContextMenuGroup aria-label={group.label}>
-					{group.label ? (
-						<ContextMenuLabel>{group.label}</ContextMenuLabel>
-					) : null}
-					{group.items.map((item) => (
-						<MenuItem key={item.id} item={item} />
-					))}
-				</ContextMenuGroup>
+				section.map((group) => (
+					<ContextMenuGroup key={group.id} aria-label={group.label}>
+						{group.label ? (
+							<ContextMenuLabel>{group.label}</ContextMenuLabel>
+						) : null}
+						{group.actions.map((item) => (
+							<MenuItem key={item.id} item={item} />
+						))}
+					</ContextMenuGroup>
+				))
 			)}
 		</Fragment>
 	));
@@ -530,14 +556,17 @@ export function SourceContextMenu({
 
 	const structural = (
 		commands: SourceTableCommands,
+		id: MenuCommandId,
 		command: SourceStructureCommand,
 		label: string,
 		icon: typeof IconCopy,
+		shortcut?: string,
 		danger = false,
 	): Item => ({
-		id: command,
+		id,
 		label,
 		icon,
+		shortcut,
 		danger,
 		reason: refused(state.structure?.[command]),
 		run: () =>
@@ -547,14 +576,196 @@ export function SourceContextMenu({
 			),
 	});
 
-	// Row moves first, as the keyboard offers them, then the grid's other
-	// structural operations in the grid menu's order: move, insert, sort,
-	// delete. Select row and Select column lead, as the keyboard's way to a
-	// row's or a column's own menu.
-	const tableGroups = (commands: SourceTableCommands): Group[] => [
+	// The table commands. Each menu draws only those its target can take: the
+	// text menu all of them, on the caret's row and column; a line number's
+	// menu its row's; a letter's menu its column's. Where they sit is the
+	// shared order's business, not this list's. `at` names the row a line
+	// number opened the menu on, and is absent for the caret.
+	const insertItems = (commands: SourceTableCommands, axes: Axes): Item[] => [
+		...(axes.rows
+			? [
+					structural(
+						commands,
+						"insert-row-above",
+						"insert-row-above",
+						copy.actions.insertRowsAbove(1),
+						IconArrowBarToUp,
+					),
+					structural(
+						commands,
+						"insert-row-below",
+						"insert-row-below",
+						copy.actions.insertRowsBelow(1),
+						IconArrowBarToDown,
+					),
+				]
+			: []),
+		...(axes.columns
+			? [
+					structural(
+						commands,
+						"insert-column-left",
+						"insert-column-left",
+						copy.actions.insertColumnsLeft(1),
+						IconArrowBarToLeft,
+					),
+					structural(
+						commands,
+						"insert-column-right",
+						"insert-column-right",
+						copy.actions.insertColumnsRight(1),
+						IconArrowBarToRight,
+					),
+				]
+			: []),
+	];
+
+	// Alt+ArrowUp and Alt+ArrowDown move the row in every pane that maps rows,
+	// so both carry the grid's legend. A column move has no key in a source
+	// view, because Alt+ArrowLeft and Alt+ArrowRight are the editor's word
+	// motion on macOS, so those two show none.
+	const moveRowItems = (commands: SourceTableCommands, at?: number): Item[] => [
 		{
-			id: "select-axis",
-			items: [
+			id: "move-up",
+			label: copy.actions.moveUp,
+			icon: IconArrowNarrowUp,
+			shortcut: copy.shortcuts.moveUp,
+			reason: refused(state.moveUp),
+			run: () => commands.moveRow(-1, at),
+		},
+		{
+			id: "move-down",
+			label: copy.actions.moveDown,
+			icon: IconArrowNarrowDown,
+			shortcut: copy.shortcuts.moveDown,
+			reason: refused(state.moveDown),
+			run: () => commands.moveRow(1, at),
+		},
+	];
+	const moveColumnItems = (commands: SourceTableCommands): Item[] => [
+		structural(
+			commands,
+			"move-left",
+			"move-column-left",
+			copy.actions.moveLeft,
+			IconArrowNarrowLeft,
+		),
+		structural(
+			commands,
+			"move-right",
+			"move-column-right",
+			copy.actions.moveRight,
+			IconArrowNarrowRight,
+		),
+	];
+
+	const moveGroup = (actions: readonly Item[]): Group => ({
+		id: "move",
+		label: copy.actions.move,
+		submenu: IconArrowsMove,
+		actions,
+	});
+
+	const sortGroup = (commands: SourceTableCommands): Group => ({
+		id: "sort",
+		label: copy.actions.sort,
+		submenu: IconArrowsSort,
+		actions: [
+			structural(
+				commands,
+				"sort-ascending",
+				"sort-ascending",
+				copy.actions.sortAscending,
+				IconSortAscending,
+			),
+			structural(
+				commands,
+				"sort-descending",
+				"sort-descending",
+				copy.actions.sortDescending,
+				IconSortDescending,
+			),
+		],
+	});
+
+	const duplicateGroup = (commands: SourceTableCommands): Group => ({
+		id: "edit",
+		label: copy.actions.edit,
+		actions: [
+			structural(
+				commands,
+				"duplicate",
+				"duplicate-row",
+				copy.actions.duplicateRows(1),
+				IconCopy,
+			),
+		],
+	});
+
+	const removeGroup = (commands: SourceTableCommands, axes: Axes): Group => ({
+		id: "remove",
+		actions: [
+			...(axes.rows
+				? [
+						structural(
+							commands,
+							"delete-rows",
+							"delete-row",
+							copy.actions.deleteRows(1),
+							IconTrash,
+							undefined,
+							true,
+						),
+					]
+				: []),
+			...(axes.columns
+				? [
+						structural(
+							commands,
+							"delete-columns",
+							"delete-column",
+							copy.actions.deleteColumns(1),
+							IconTrash,
+							undefined,
+							true,
+						),
+					]
+				: []),
+		],
+	});
+
+	// The caret's row and column: every table command, beside the text ones.
+	const tableGroups = (commands: SourceTableCommands): Group[] => [
+		{ id: "insert", actions: insertItems(commands, bothAxes) },
+		duplicateGroup(commands),
+		moveGroup([...moveRowItems(commands), ...moveColumnItems(commands)]),
+		sortGroup(commands),
+		removeGroup(commands, bothAxes),
+	];
+
+	// A line number's menu: the grid's row menu, less what text cannot hold
+	// (the clipboard, which the text menu already has, clearing, filling, and
+	// pinning).
+	const rowGroups = (commands: SourceTableCommands, at: number): Group[] => [
+		{ id: "insert", actions: insertItems(commands, rowAxis) },
+		duplicateGroup(commands),
+		moveGroup(moveRowItems(commands, at)),
+		removeGroup(commands, rowAxis),
+	];
+
+	// A letter's menu: the grid's column menu, less its grid-only preferences
+	// (width, wrapping, pinning) and what the text menu already has.
+	const columnGroups = (commands: SourceTableCommands): Group[] => [
+		{ id: "insert", actions: insertItems(commands, columnAxis) },
+		moveGroup(moveColumnItems(commands)),
+		sortGroup(commands),
+		removeGroup(commands, columnAxis),
+	];
+
+	// Select row and Select column are the keyboard's way to a row's or a
+	// column's own menu, so they exist only where the pane has those menus.
+	const selectAxisItems: Item[] = table
+		? [
 				{
 					id: "select-row",
 					label: copy.actions.selectRow,
@@ -569,250 +780,13 @@ export function SourceContextMenu({
 					reason: refused(state.selectColumn),
 					run: () => selectCaretAxis("column"),
 				},
-			],
-		},
-		{
-			id: "table-move",
-			items: [
-				{
-					id: "move-row-up",
-					label: copy.actions.moveRowUp,
-					icon: IconArrowNarrowUp,
-					shortcut: copy.shortcuts.moveUp,
-					reason: refused(state.moveUp),
-					run: () => commands.moveRow(-1),
-				},
-				{
-					id: "move-row-down",
-					label: copy.actions.moveRowDown,
-					icon: IconArrowNarrowDown,
-					shortcut: copy.shortcuts.moveDown,
-					reason: refused(state.moveDown),
-					run: () => commands.moveRow(1),
-				},
-				structural(
-					commands,
-					"move-column-left",
-					copy.actions.moveColumnLeft,
-					IconArrowNarrowLeft,
-				),
-				structural(
-					commands,
-					"move-column-right",
-					copy.actions.moveColumnRight,
-					IconArrowNarrowRight,
-				),
-			],
-		},
-		{
-			id: "table-insert",
-			items: [
-				structural(
-					commands,
-					"insert-row-above",
-					copy.actions.insertRowsAbove(1),
-					IconArrowBarToUp,
-				),
-				structural(
-					commands,
-					"insert-row-below",
-					copy.actions.insertRowsBelow(1),
-					IconArrowBarToDown,
-				),
-				structural(
-					commands,
-					"insert-column-left",
-					copy.actions.insertColumnsLeft(1),
-					IconArrowBarToLeft,
-				),
-				structural(
-					commands,
-					"insert-column-right",
-					copy.actions.insertColumnsRight(1),
-					IconArrowBarToRight,
-				),
-			],
-		},
-		{
-			id: "table-sort",
-			items: [
-				structural(
-					commands,
-					"sort-ascending",
-					copy.actions.sortColumnAscending,
-					IconSortAscending,
-				),
-				structural(
-					commands,
-					"sort-descending",
-					copy.actions.sortColumnDescending,
-					IconSortDescending,
-				),
-			],
-		},
-		{
-			id: "table-delete",
-			items: [
-				structural(
-					commands,
-					"delete-row",
-					copy.actions.deleteRows(1),
-					IconTrash,
-					true,
-				),
-				structural(
-					commands,
-					"delete-column",
-					copy.actions.deleteColumns(1),
-					IconTrash,
-					true,
-				),
-			],
-		},
-	];
-
-	// A line number's menu: the grid's row menu, less what text cannot hold
-	// (the clipboard, which the text menu already has, clearing, filling, and
-	// pinning), in the grid's order.
-	const rowGroups = (commands: SourceTableCommands, at: number): Group[] => [
-		{
-			id: "row-insert",
-			items: [
-				structural(
-					commands,
-					"insert-row-above",
-					copy.actions.insertRowsAbove(1),
-					IconArrowBarToUp,
-				),
-				structural(
-					commands,
-					"insert-row-below",
-					copy.actions.insertRowsBelow(1),
-					IconArrowBarToDown,
-				),
-			],
-		},
-		{
-			id: "row-edit",
-			label: copy.actions.edit,
-			items: [
-				structural(
-					commands,
-					"duplicate-row",
-					copy.actions.duplicateRows(1),
-					IconCopy,
-				),
-			],
-		},
-		{
-			id: "row-move",
-			label: copy.actions.move,
-			submenu: IconArrowsMove,
-			items: [
-				{
-					id: "move-up",
-					label: copy.actions.moveUp,
-					icon: IconArrowNarrowUp,
-					reason: refused(state.moveUp),
-					run: () => commands.moveRow(-1, at),
-				},
-				{
-					id: "move-down",
-					label: copy.actions.moveDown,
-					icon: IconArrowNarrowDown,
-					reason: refused(state.moveDown),
-					run: () => commands.moveRow(1, at),
-				},
-			],
-		},
-		{
-			id: "row-delete",
-			items: [
-				structural(
-					commands,
-					"delete-row",
-					copy.actions.deleteRows(1),
-					IconTrash,
-					true,
-				),
-			],
-		},
-	];
-
-	// A letter's menu: the grid's column menu, less its grid-only preferences
-	// (width, wrapping, pinning) and what the text menu already has.
-	const columnGroups = (commands: SourceTableCommands): Group[] => [
-		{
-			id: "column-sort",
-			items: [
-				structural(
-					commands,
-					"sort-ascending",
-					copy.actions.sortAscending,
-					IconSortAscending,
-				),
-				structural(
-					commands,
-					"sort-descending",
-					copy.actions.sortDescending,
-					IconSortDescending,
-				),
-			],
-		},
-		{
-			id: "column-insert",
-			items: [
-				structural(
-					commands,
-					"insert-column-left",
-					copy.actions.insertColumnsLeft(1),
-					IconArrowBarToLeft,
-				),
-				structural(
-					commands,
-					"insert-column-right",
-					copy.actions.insertColumnsRight(1),
-					IconArrowBarToRight,
-				),
-			],
-		},
-		{
-			id: "column-move",
-			label: copy.actions.move,
-			submenu: IconArrowsMove,
-			items: [
-				structural(
-					commands,
-					"move-column-left",
-					copy.actions.moveLeft,
-					IconArrowNarrowLeft,
-				),
-				structural(
-					commands,
-					"move-column-right",
-					copy.actions.moveRight,
-					IconArrowNarrowRight,
-				),
-			],
-		},
-		{
-			id: "column-delete",
-			items: [
-				structural(
-					commands,
-					"delete-column",
-					copy.actions.deleteColumns(1),
-					IconTrash,
-					true,
-				),
-			],
-		},
-	];
+			]
+		: [];
 
 	const textGroups: readonly Group[] = [
 		{
 			id: "clipboard",
-			items: [
+			actions: [
 				{
 					id: "cut",
 					label: copy.actions.cut,
@@ -841,7 +815,7 @@ export function SourceContextMenu({
 		},
 		{
 			id: "history",
-			items: [
+			actions: [
 				{
 					id: "undo",
 					label: copy.actions.undo,
@@ -861,8 +835,8 @@ export function SourceContextMenu({
 			],
 		},
 		{
-			id: "selection",
-			items: [
+			id: "select",
+			actions: [
 				{
 					id: "select-all",
 					label: copy.actions.selectAllText,
@@ -873,8 +847,9 @@ export function SourceContextMenu({
 						if (editor) selectAll(editor);
 					},
 				},
+				...selectAxisItems,
 				{
-					id: "next-occurrence",
+					id: "select-next-match",
 					label: copy.actions.selectNextOccurrence,
 					icon: IconCursorText,
 					shortcut: copy.shortcuts.selectNextOccurrence,

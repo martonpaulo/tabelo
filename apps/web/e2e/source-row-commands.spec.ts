@@ -2,14 +2,14 @@ import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { listViews } from "@/views/registry";
 import { expect, test } from "./fixtures";
-import { renderedSource, type TabeloPage } from "./helpers";
+import { openSubmenu, renderedSource, type TabeloPage } from "./helpers";
 
 // Row commands in a source pane (#255). Where the view's codec maps the caret
 // to a table row, Alt+ArrowUp and Alt+ArrowDown move that row as the grid does,
 // and the context menu offers the same two commands. Where it cannot, the menu
 // has none. Views are read from the registry by what their codec declares, so
 // a view added later is covered by its declaration rather than by name. The
-// menu also carries the grid's other structural commands, without keys.
+// menu also carries the grid's other structural commands.
 
 const TABLE = [
 	"| Name | City |",
@@ -109,11 +109,12 @@ test("the context menu moves the row and says why a move is unavailable", async 
 	const menu = page.getByRole("menu");
 
 	await page.keyboard.press("ContextMenu");
-	const up = menu.getByRole("menuitem", { name: copy.actions.moveRowUp });
+	const move = await openSubmenu(page, menu.first(), copy.actions.move);
+	const up = move.getByRole("menuitem", { name: copy.actions.moveUp });
 	await expect(up).toHaveAttribute("aria-disabled", "true");
 	await expect(up).toHaveAccessibleDescription(/\S/);
-	await menu.getByRole("menuitem", { name: copy.actions.moveRowDown }).click();
-	await expect(menu).toBeHidden();
+	await move.getByRole("menuitem", { name: copy.actions.moveDown }).click();
+	await expect(menu).toHaveCount(0);
 	await expectOrder(tabelo, ["Paulo", "Ingrid"]);
 	await expect(editor).toBeFocused();
 });
@@ -134,10 +135,13 @@ test("a draft that does not parse names no row, so the move is refused", async (
 	expect(await editor.textContent()).toBe(before);
 
 	await page.keyboard.press("ContextMenu");
+	const move = await openSubmenu(
+		page,
+		page.getByRole("menu").first(),
+		copy.actions.move,
+	);
 	await expect(
-		page
-			.getByRole("menu")
-			.getByRole("menuitem", { name: copy.actions.moveRowDown }),
+		move.getByRole("menuitem", { name: copy.actions.moveDown }),
 	).toHaveAttribute("aria-disabled", "true");
 });
 
@@ -153,26 +157,31 @@ for (const view of unmappedViews) {
 		await page.keyboard.press("ContextMenu");
 		const menu = page.getByRole("menu");
 		await expect(menu).toBeVisible();
-		await expect(
-			menu.getByRole("menuitem", { name: copy.actions.moveRowDown }),
-		).toHaveCount(0);
-		await expect(
-			menu.getByRole("menuitem", { name: copy.actions.moveRowUp }),
-		).toHaveCount(0);
-		await expect(
-			menu.getByRole("menuitem", { name: copy.actions.moveColumnRight }),
-		).toHaveCount(0);
+		for (const name of [
+			copy.actions.move,
+			copy.actions.sort,
+			copy.actions.insertRowsBelow(1),
+		]) {
+			await expect(menu.getByRole("menuitem", { name })).toHaveCount(0);
+		}
 	});
 }
 
-// The rest of the grid's structure, menu-only (#255): no key of their own, the
-// same refusals as the grid, one undo step each, and the caret left in the
-// cell the command acted on.
-async function runMenuCommand(page: Page, name: string): Promise<void> {
+// The rest of the grid's structure (#255): the same refusals as the grid, one
+// undo step each, and the caret left in the cell the command acted on. A
+// command inside one of the menu's submenus is reached through it.
+async function runMenuCommand(
+	page: Page,
+	name: string,
+	submenu?: string,
+): Promise<void> {
 	await page.keyboard.press("ContextMenu");
-	const menu = page.getByRole("menu");
-	await menu.getByRole("menuitem", { name }).click();
-	await expect(menu).toBeHidden();
+	const menus = page.getByRole("menu");
+	const scope = submenu
+		? await openSubmenu(page, menus.first(), submenu)
+		: menus.first();
+	await scope.getByRole("menuitem", { name }).click();
+	await expect(menus).toHaveCount(0);
 }
 
 for (const view of mappedViews) {
@@ -186,7 +195,7 @@ for (const view of mappedViews) {
 		const editor = tabelo.source(view.id);
 		await caretInFirstRow(page, editor);
 
-		await runMenuCommand(page, copy.actions.moveColumnRight);
+		await runMenuCommand(page, copy.actions.moveRight, copy.actions.move);
 		await expect(tabelo.header(1)).toHaveText("City");
 		await expect(tabelo.cell(1, 2)).toHaveText("Ingrid");
 		await expect(editor).toBeFocused();
@@ -225,7 +234,7 @@ test("sorting by the caret's column reorders the table and the caret follows its
 	const editor = tabelo.source("markdown");
 	await caretInFirstRow(page, editor);
 
-	await runMenuCommand(page, copy.actions.sortColumnDescending);
+	await runMenuCommand(page, copy.actions.sortDescending, copy.actions.sort);
 	await expectOrder(tabelo, ["Paulo", "Ingrid"]);
 	await page.keyboard.type("X");
 	await expect(tabelo.cell(2, 1)).toHaveText("XIngrid");
@@ -267,11 +276,9 @@ test("a draft that does not parse disables every structural command", async ({
 	await caretInFirstRow(page, editor);
 
 	await page.keyboard.press("ContextMenu");
-	const menu = page.getByRole("menu");
+	const menu = page.getByRole("menu").first();
 	for (const name of [
-		copy.actions.moveColumnRight,
 		copy.actions.insertRowsBelow(1),
-		copy.actions.sortColumnAscending,
 		copy.actions.deleteColumns(1),
 	]) {
 		await expect(menu.getByRole("menuitem", { name })).toHaveAttribute(
@@ -279,4 +286,13 @@ test("a draft that does not parse disables every structural command", async ({
 			"true",
 		);
 	}
+	const move = await openSubmenu(page, menu, copy.actions.move);
+	await expect(
+		move.getByRole("menuitem", { name: copy.actions.moveRight }),
+	).toHaveAttribute("aria-disabled", "true");
+	await page.keyboard.press("ArrowLeft");
+	const sort = await openSubmenu(page, menu, copy.actions.sort);
+	await expect(
+		sort.getByRole("menuitem", { name: copy.actions.sortAscending }),
+	).toHaveAttribute("aria-disabled", "true");
 });

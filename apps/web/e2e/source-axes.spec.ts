@@ -161,7 +161,7 @@ for (const view of columnViews) {
 		await closed(page);
 		await page.keyboard.press("ContextMenu");
 		await expect(menu).toHaveAccessibleName(/City/);
-		await menu
+		await (await openSubmenu(page, menu, copy.actions.sort))
 			.getByRole("menuitem", { name: copy.actions.sortAscending })
 			.click();
 		await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
