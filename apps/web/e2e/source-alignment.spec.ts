@@ -102,6 +102,9 @@ test("the text, a copy, and the stored table are the same with alignment on and 
 	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
 	await tabelo.paste(table);
+	// Autosave writes after its debounce, so wait until the pasted table is the
+	// stored one before capturing it (#400).
+	await expect.poll(() => storedDocument(page)).toContain(second.name);
 	for (const view of aligning) {
 		await tabelo.showInSourcePane(view);
 		const pane = tabelo.pane(view);
