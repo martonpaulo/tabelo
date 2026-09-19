@@ -567,14 +567,28 @@ placeholder are each on or off. Spaces take the modes VS Code's
 that setting does not learn a second vocabulary: `none`, `boundary` (runs of
 spaces and the spaces at a line's edges), `trailing`, and `all`. Its
 `selection` is deliberately absent, because it answers nothing until the reader
-has already selected the text they were trying to inspect. The default is
-`trailing`, with tabs and the placeholder on: a space at the end of a line is
-the one nobody meant to type, and dotting every space instead answers a
-question nobody asked.
+has already selected the text they were trying to inspect. Every one ships
+off: a source pane draws nothing until the reader asks, in Settings or in that
+pane. This reverses the default #55 set, `trailing` with tabs and the
+placeholder on (#276).
 
-All three live in the versioned `tabelo.preferences` payload and are global,
-never pane state. A schema change here gets a migration like
-any other, so a reader who had turned the markers off keeps them off.
+**A global default, and a pane that may disagree** (#276). The three
+indicators and source wrapping are the four source display settings. Each has
+a global default, set in Settings and kept in the versioned
+`tabelo.preferences` payload, and each source pane may override each one,
+because a display setting answers a question about one pane's syntax while a
+reader who always wants the same answer should say so once. The override is
+stored on the pane as a choice, empty while the pane follows the default, and
+never as the value it resolved to: changing a default then moves every pane
+that has not chosen, at once, and no pane that has, even one that chose the
+default's own value. One pure function in the workspace decides which of the
+two wins, and every consumer, the source view and the pane menu alike, reads
+through it. Non-source panes carry the overrides dormant, so changing a view
+back restores the pane as it was. A schema change here gets a migration like
+any other. The step that introduced the defaults overwrote the old indicator
+values rather than carrying them, because they were written under the
+superseded default; a pane that had wrapping on kept it as its own choice, and
+one that had it off follows the default.
 CodeMirror's own extensions carry as much of this as they can:
 `highlightWhitespace()` supplies the per-character span under every glyph, and
 `highlightTrailingWhitespace()` is the whole of the `trailing` mode. Only
@@ -587,12 +601,19 @@ through its own compartment, so switching any of them keeps each pane's caret,
 selection, draft, local undo history, and wrapping choice exactly as they were.
 
 Source panes scroll horizontally and vertically by default. Soft wrapping is
-an opt-in presentation preference owned and persisted by each pane, never by a
-format, the document, a draft, or the history timeline. The pane actions menu
-exposes one checked `Wrap lines` command for source views. Reconfigure the live
-CodeMirror instance through its wrapping compartment so the caret, selection,
-draft, and local undo history survive the change. A newly created pane starts
-unwrapped; changing or rearranging a view retains the preference of the pane.
+one of the four source display settings above, never owned by a format, the
+document, a draft, or the history timeline. The pane actions menu exposes one
+checked `Wrap lines` command for source views: it shows what the pane displays,
+and choosing it records the pane's own choice. Reconfigure the live CodeMirror
+instance through its wrapping compartment so the caret, selection, draft, and
+local undo history survive the change. A newly created pane follows every
+default; changing or rearranging a view keeps the pane's own choices.
+
+How the pane menu says that a pane is following a default, offers the three
+indicator overrides, and returns a pane to the default is **not yet decided**.
+The treatment proposed on #276, a submenu per setting whose first radio option
+names the inherited value, is outside the submenu class in §3, so it waits for
+a decision under §0 rather than being built.
 
 **Structural assistance can always be switched off** (#294). A source view
 whose format has a structural-assistance feature (Markdown has two: the
@@ -1031,8 +1052,8 @@ height". The diagram is supplemental; the words carry the destination for
 assistive technology. Choosing one swaps the two pane positions without
 changing the preset or pane count.
 
-Settings is the other deliberate exception. It holds the global source display
-preferences (#55), and each one applies as it changes: a read-only preview at
+Settings is the other deliberate exception. It holds the four global source
+display defaults (#55, #276), and each one applies as it changes: a read-only preview at
 the top of the dialog is a real source editor built from the same indicator
 extensions every text view uses, so the effect is visible before the dialog
 closes and no Apply step is left to confirm. Its title carries no icon, like
@@ -1040,14 +1061,16 @@ every other dialog's. The footer is the shared action row, `Reset to defaults`
 as the ordinary alternative and `Done` last, stacking at full width on a phone
 (owner, 2026-09-19). Each option block's glyph sits in one fixed slot as wide
 as the widest mark, so every row's label starts on the same line, and the
-preview keeps a trailing gap so a clipped line never touches its box. Empty values and tabs are option blocks whose icon is the mark they
-draw and whose control is a `Switch`; spaces is one option block holding a
+preview keeps a trailing gap so a clipped line never touches its box. Wrap
+lines, empty values, and tabs are option blocks whose icon is the mark they
+draw, wrapping's being the pane menu's own icon because it draws no mark, and
+whose control is a `Switch`; spaces is one option block holding a
 `SegmentedControl` of its four modes, with the chosen mode's description above
 it. A write the browser refuses is reported in place and the controls show what
 was actually saved. The owner replaced the earlier transactional draft with
 this on 2026-09-18. There is no theme choice, because there is one palette
-(#289). Per-pane preferences, including source wrapping and pane zoom, remain in
-the pane menu.
+(#289). A pane's own overrides of those defaults, and pane zoom, belong to the
+pane menu.
 
 `Switch` and `SegmentedControl` live in `packages/ui` and are the only way to
 draw their two kinds of choice. A `Switch` is an on/off setting that takes

@@ -39,8 +39,8 @@ The 2×2 arrangement of slots that holds one to four panes. Its shape comes from
 a named layout preset; free slot assignment does not exist. A registered view
 may appear in at most one pane at a time. It also owns persisted presentation
 preferences that never change the table document or its history, including
-pane scale and wrapping plus per-column wrapping and width keyed by stable
-column id.
+pane scale and each pane's source display overrides, plus per-column wrapping
+and width keyed by stable column id.
 
 Related to: Pane, Slot, Layout preset
 

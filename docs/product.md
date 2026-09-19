@@ -137,7 +137,8 @@ reversible implementation choice does not belong here.
 | Palette | One unconditional dark palette; no theme preference | ADR 0010 | #289 |
 | Page titles | `Tabelo · Table editor for Markdown, CSV, JSON and more` on the shell, `{table name} · Tabelo` once a table is open; no not-found title, because every deeper path is the app, normalized to `/` | `AGENTS.md` identity, `copy/product.ts` | #373 |
 | Grid wrapping | Per column, opt-in, off by default; one pane command wraps all columns | design system §9 | #41, #360 |
-| Source wrapping | Per pane, opt-in, off by default | design system §3 | #95 |
+| Source wrapping | Off by default; a global default in Settings that each pane may override | design system §2 | #95, #276 |
+| Source display defaults | Wrapping, spaces, tabs, and empty values each have a global default in Settings, all off; a pane's override wins where set and is stored as a choice, never as the resolved value | design system §2 | #55, #276 |
 | Automatic source rewriting | Only named structural-assistance features: smallest deterministic range, one undo step with the triggering edit, invalid drafts untouched, switchable off per buffer | `AGENTS.md` domain rules | #294 |
 | Markdown divider assistance | The alignment divider follows the header, rows, columns, and valid markers of the current draft, and is left alone whenever the draft is ambiguous; the first codec-declared structural-assistance feature | ADR 0005 | #297 |
 | Markdown row-start assistance | Enter at the end of a table row below the divider opens the new line with `\| ` and the caret after it, in the same undo step; a break anywhere else, after the header, or with Smart editing off stays plain | ADR 0005 | #391 |
