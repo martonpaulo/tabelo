@@ -81,6 +81,7 @@ import { recordsLanguage } from "./records-language";
 import {
 	caretOffset,
 	resolveSourceCell,
+	resolveSourceColumnMove,
 	resolveSourceCommand,
 	resolveSourceRowMove,
 	type SourceCaretTarget,
@@ -89,7 +90,13 @@ import {
 	type SourceStructureCommand,
 	sourceRowRefusalMessage,
 } from "./row-commands";
-import { sourceAxes, sourceAxisConfig } from "./source-axes";
+import {
+	axisSelection,
+	type SourceAxis,
+	type SourceAxisTarget,
+	sourceAxes,
+	sourceAxisConfig,
+} from "./source-axes";
 import { SourceContextMenu } from "./source-context-menu";
 import { sourceFind } from "./source-find";
 import { setSourceRows, sourceRowsField } from "./source-rows";
@@ -533,6 +540,9 @@ export function SourceEditor({
 	// Where the caret goes once a row command's result is back in the text. Set
 	// before the document changes, and spent by the first rows mapped after it.
 	const pendingCaret = useRef<SourceCaretTarget | null>(null);
+	// The row or column a drag has just moved, selected again once the text is
+	// regenerated, so it stays picked up for the next drag, as in the grid.
+	const pendingAxis = useRef<SourceAxisTarget | null>(null);
 
 	const refuse = (refusal: SourceRowRefusal) =>
 		useTabeloStore.getState().pushNotice({
@@ -581,6 +591,40 @@ export function SourceEditor({
 		const caret = plan.run();
 		if (!caret) return;
 		pendingCaret.current = caret;
+	};
+
+	// A drop on a line number's or a letter's gap (#395): the same one document
+	// step as the menu's move, by however far the drag went, after which the
+	// moved row or column is selected again where it landed.
+	const reorder = (
+		view: EditorView,
+		axis: SourceAxis,
+		at: number,
+		offset: number,
+	) => {
+		const target = handlers.current.rowTarget;
+		if (!target) return;
+		if (axis === "row") {
+			const move = resolveSourceRowMove(view.state, target, offset, at);
+			if (!move.ok) {
+				refuse(move.refusal);
+				return;
+			}
+			moveRow(view, offset, at);
+			if (pendingCaret.current) {
+				pendingAxis.current = { axis, index: move.caret.row };
+			}
+			return;
+		}
+		const plan = resolveSourceColumnMove(view.state, target, offset, at);
+		if (!plan.ok) {
+			refuse(plan.refusal);
+			return;
+		}
+		const caret = plan.run();
+		if (!caret || caret.column === null) return;
+		pendingCaret.current = caret;
+		pendingAxis.current = { axis, index: caret.column };
 	};
 
 	// A column letter's settings, which change the document and never the
@@ -658,6 +702,8 @@ export function SourceEditor({
 					// once still acts for the pane it serves now.
 					sourceAxisConfig.of({
 						fields: (text) => handlers.current.sourceFields?.(text) ?? [],
+						movable: () => handlers.current.rowTarget !== null,
+						reorder,
 					}),
 					pinnedHeaderCompartment.of(
 						pinnedHeaderExtension(
@@ -855,6 +901,8 @@ export function SourceEditor({
 		if (!view) return;
 		const pending = pendingCaret.current;
 		pendingCaret.current = null;
+		const axis = pendingAxis.current;
+		pendingAxis.current = null;
 		const caret = pending ? caretOffset(rows, pending) : null;
 		view.dispatch({
 			effects: setSourceRows.of({ rows, length: value.length }),
@@ -862,6 +910,9 @@ export function SourceEditor({
 				? {}
 				: { selection: { anchor: caret }, scrollIntoView: true }),
 		});
+		const reselected =
+			axis && caret !== null ? axisSelection(view.state, axis) : null;
+		if (reselected) view.dispatch({ selection: reselected });
 	}, [rows, value]);
 
 	// Marking the cached metrics stale in the commit that publishes the new scale

@@ -331,8 +331,9 @@ export function resolveSourceCommand(
 	}
 }
 
-// A column letter's own commands that are not structure (#395): the
-// column's expected type and alignment. Each is resolved against the cell the menu or the drag names, so an
+// A column letter's or a line number's own commands that are not structure
+// (#395): the column's expected type and alignment, and the reorder a drag
+// ends in. Each is resolved against the cell the menu or the drag names, so an
 // unparsed draft refuses it exactly as it refuses a structural command.
 export type SourceCellResolution =
 	| Refused
@@ -351,6 +352,34 @@ export function resolveSourceCell(
 	const found = resolveSourceCaret(state, target, at);
 	if (!found.ok) return found;
 	return { ok: true, row: found.cell.row, column: found.cell.column };
+}
+
+// A column moved by any distance, as a drag on its letter drops it (#395).
+// The grid's own guard refuses what it would refuse, and the caret lands in
+// the header cell of the column where it went.
+export function resolveSourceColumnMove(
+	state: EditorState,
+	target: SourceRowTarget,
+	offset: number,
+	at?: number,
+): SourceStructurePlan {
+	const found = resolveSourceCaret(state, target, at);
+	if (!found.ok) return found;
+	const { column } = found.cell;
+	if (column === null) return { ok: false, refusal: "outside-cell" };
+	const { document } = useTabeloStore.getState();
+	const refusal = selectionMoveRefusal(
+		createSelection({ row: -1, column }),
+		document.rows.length,
+		document.columns.length,
+		"column",
+		offset,
+	);
+	if (refusal) return { ok: false, refusal };
+	return editing(
+		{ kind: "move-column", column, offset },
+		caretAt(-1, column + offset),
+	);
 }
 
 // The offset a caret target names in freshly mapped rows, clamped to the cell

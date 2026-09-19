@@ -527,6 +527,12 @@ same position mapping, never by counting text lines:
   the column as one range each (inside a quoted field's quotes, past a
   Markdown cell's padding), with the header's first, so typing edits them all.
   Opening a label's menu selects it the same way.
+- **A drag** from a label whose row or column is already selected moves it,
+  with the grid's gesture: the threshold, the one line marking the gap it will
+  land in, one document step on drop, and `Escape`, a lost pointer, or a drop
+  where it already stands changing nothing. Moving the pointer past the
+  text's edge along the dragged axis scrolls the text. The moved row or
+  column stays selected. The header row only selects.
 - **From the keyboard**, the selection decides, as it does in the grid: with a
   selection that is exactly one row's text or one column's cells, `Shift`+`F10`
   or `ContextMenu` opens that row's or column's menu, and otherwise the text

@@ -29,6 +29,8 @@ function mapped(codec: TableCodec, text: string): EditorState {
 			EditorState.allowMultipleSelections.of(true),
 			sourceAxisConfig.of({
 				fields: codec.sourceFields,
+				movable: () => true,
+				reorder: () => {},
 			}),
 		],
 	});

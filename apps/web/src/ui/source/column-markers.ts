@@ -33,8 +33,8 @@ import { setSourceRows } from "./source-rows";
 // searched, or read out. It is hidden from assistive technology like the line
 // numbers, because the accessible source is the text itself. Each letter is
 // the grid's column label to a pointer (#395): a click selects the column's
-// cells (source-axes.ts), and a right-click opens the column's menu
-// (source-context-menu.tsx). The keyboard
+// cells, a press on a selected letter drags the column (source-axes.ts), and a
+// right-click opens the column's menu (source-context-menu.tsx). The keyboard
 // reaches the same menu from the selection, as the grid's does. It
 // floats over the scroller, whose text starts below it, so the scroller and its
 // scrollbar run the pane's full height (owner, 2026-09-19); it covers the
@@ -214,7 +214,7 @@ class ColumnStrip {
 	}
 
 	// The letter of the column the selection is, drawn as the grid draws its
-	// selected label.
+	// selected label, and taking the grab cursor: a press there picks it up.
 	private markSelected() {
 		const selected = selectedSourceAxis(this.view.state);
 		const column = selected?.axis === "column" ? selected.index : -1;

@@ -109,6 +109,7 @@ export const editorTheme = EditorView.theme({
 		backgroundColor: "var(--surface-code)",
 		color: "var(--foreground)",
 	},
+	".cm-tabeloColumnMarker[data-selected]": { cursor: "grab" },
 	".cm-scroller": {
 		// The column markers (#368) float over the top of the scroller, which
 		// runs the pane's full height, so the text starts below them: they
@@ -248,8 +249,9 @@ export const editorTheme = EditorView.theme({
 	},
 	".cm-tabeloColumnMarker::before": { content: "attr(data-letter)" },
 	// A letter is its column's label to a pointer (#395), over the whole span
-	// of its header cell, and reads like the grid's: the pointer cursor, and
-	// the foreground tone under the pointer and while its column is selected.
+	// of its header cell, and reads like the grid's: the pointer cursor at
+	// rest, the foreground tone under the pointer and while its column is
+	// selected, and the grab cursor then, because a press picks it up.
 	".cm-tabeloColumnMarker:hover, .cm-tabeloColumnMarker[data-selected]": {
 		color: "var(--foreground)",
 	},

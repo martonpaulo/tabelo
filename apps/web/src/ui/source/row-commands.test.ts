@@ -10,6 +10,7 @@ import { textForView, useTabeloStore } from "@/state/store";
 import {
 	caretOffset,
 	resolveSourceCell,
+	resolveSourceColumnMove,
 	resolveSourceCommand,
 	resolveSourceRowMove,
 	type SourceRowTarget,
@@ -282,7 +283,8 @@ describe("source structural commands", () => {
 });
 
 // A line number's or a column letter's own menu names its row or column by an
-// offset in the text rather than by the caret (#395).
+// offset in the text rather than by the caret (#395), and a drag moves by
+// however far it went.
 describe("commands named by a row's or a column's label", () => {
 	const ingrid = samplePerson(0);
 	const paulo = samplePerson(1);
@@ -332,6 +334,39 @@ describe("commands named by a row's or a column's label", () => {
 		]);
 		expect(useTabeloStore.getState().past).toHaveLength(before + 1);
 		expect(refusal("name", "duplicate-row")).toBe("header-row");
+	});
+
+	it("moves a column by the distance a drag went, as one step", () => {
+		const before = useTabeloStore.getState().past.length;
+		const { state, at } = atCell("name");
+		expect(resolveSourceColumnMove(state, markdownTarget(), -1, at)).toEqual({
+			ok: false,
+			refusal: "first-column",
+		});
+		const plan = resolveSourceColumnMove(state, markdownTarget(), 2, at);
+		if (!plan.ok) throw new Error(`refused: ${plan.refusal}`);
+		expect(plan.run()).toEqual({ row: 0, column: 2, distance: 0 });
+		expect(headers()).toEqual(["city", "role", "name", "age"]);
+		expect(useTabeloStore.getState().past).toHaveLength(before + 1);
+		// The text the drag began on no longer describes the table.
+		expect(resolveSourceColumnMove(state, markdownTarget(), 1, at)).toEqual({
+			ok: false,
+			refusal: "unparsed",
+		});
+	});
+
+	it("moves a row by the distance a drag went", () => {
+		const { state, at } = atCell(mabel.name);
+		const move = resolveSourceRowMove(state, markdownTarget(), -2, at);
+		expect(move).toEqual({
+			ok: true,
+			row: 2,
+			caret: { row: 1, column: 0, distance: expect.any(Number) },
+		});
+		expect(resolveSourceRowMove(state, markdownTarget(), -3, at)).toEqual({
+			ok: false,
+			refusal: "first-row",
+		});
 	});
 
 	it("names the cell a letter stands on, and refuses while the text is unparsed", () => {

@@ -12,8 +12,8 @@ import {
 
 // A source view's column letters and line numbers act like the grid's axes
 // (#395). Where the view's codec maps rows, a letter opens its column's menu
-// and a table row's line number its row's menu, and a click selects what the
-// label names. The
+// and a table row's line number its row's menu, a click selects what the
+// label names, and a press on a selected label drags it to a new gap. The
 // keyboard reaches the same menus from the selection, as in the grid. Views
 // are read from the registry by what their codec declares, so a view added
 // later is covered by its declaration rather than by name.
@@ -73,6 +73,19 @@ async function headers(tabelo: TabeloPage): Promise<string[]> {
 		(await tabelo.header(1).innerText()).trim(),
 		(await tabelo.header(2).innerText()).trim(),
 	];
+}
+
+// Presses on a label, crosses the reorder threshold, and releases over the
+// near half of the destination label, which names the gap before it.
+async function drag(page: Page, from: Locator, to: Locator): Promise<void> {
+	await from.hover();
+	await page.mouse.down();
+	const box = await to.boundingBox();
+	if (!box) throw new Error("The drop target is not rendered.");
+	await page.mouse.move(box.x + box.width * 0.25, box.y + box.height * 0.25, {
+		steps: 12,
+	});
+	await page.mouse.up();
 }
 
 for (const view of mappedViews) {
@@ -170,6 +183,33 @@ for (const view of mappedViews) {
 		await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
 		expect(await order(tabelo)).toEqual(["Paulo", "Ingrid"]);
 	});
+
+	test(`${view.id}: dragging a selected row's line number moves the row`, async ({
+		page,
+		tabelo,
+	}) => {
+		const pane = await seed(tabelo, view.id);
+		const paulo = await lineNumber(pane, "Paulo");
+		const ingrid = await lineNumber(pane, "Ingrid");
+		await paulo.click();
+		await drag(page, paulo, ingrid);
+		await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
+		expect(await order(tabelo)).toEqual(["Paulo", "Ingrid"]);
+		await page.keyboard.press("ControlOrMeta+Z");
+		await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	});
+
+	test(`${view.id}: dragging a selected letter moves the column`, async ({
+		page,
+		tabelo,
+	}) => {
+		const pane = await seed(tabelo, view.id);
+		await letter(pane, 2).click();
+		await drag(page, letter(pane, 2), letter(pane, 1));
+		await expect(tabelo.header(1)).toHaveText("City");
+		expect(await headers(tabelo)).toEqual(["City", "Name"]);
+		await expect(tabelo.cell(1, 1)).toHaveText("Rio");
+	});
 }
 
 test("a line that names no table row offers no menu", async ({
@@ -179,6 +219,28 @@ test("a line that names no table row offers no menu", async ({
 	const pane = await seed(tabelo, "markdown");
 	await (await lineNumber(pane, "---")).click({ button: "right" });
 	await expect(page.getByRole("menu")).toHaveCount(0);
+});
+
+test("Escape cancels a drag and leaves the table as it was", async ({
+	page,
+	tabelo,
+}) => {
+	const pane = await seed(tabelo, "markdown");
+	const paulo = await lineNumber(pane, "Paulo");
+	const ingrid = await lineNumber(pane, "Ingrid");
+	await paulo.click();
+	await paulo.hover();
+	await page.mouse.down();
+	const box = await ingrid.boundingBox();
+	if (!box) throw new Error("The drop target is not rendered.");
+	await page.mouse.move(box.x + box.width / 2, box.y + 1, { steps: 12 });
+	await expect(pane.locator("[data-drop-indicator]")).toHaveAttribute(
+		"data-drop-indicator",
+		"row",
+	);
+	await page.keyboard.press("Escape");
+	await page.mouse.up();
+	expect(await order(tabelo)).toEqual(["Ingrid", "Paulo"]);
 });
 
 for (const view of unmappedViews) {
