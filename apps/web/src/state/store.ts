@@ -251,7 +251,19 @@ export interface HistoryEntry {
 	// the transition through undo and redo, so both directions restore an exact
 	// selection rather than a clamped one.
 	readonly selectionRestore?: SelectionRestore;
+	// The column widths and wrapped columns as they were when this document was
+	// left. Both are keyed by column id and dropped once no column carries the
+	// id, so this is what lets undo and redo bring a returning column back at
+	// the width and wrapping it had, whichever operation removed it (#235).
+	// Transient like the selection pair: it shares the workspace's own objects
+	// and never reaches storage.
+	readonly columnPreferences: ColumnPreferences;
 }
+
+export type ColumnPreferences = Pick<
+	Workspace,
+	"columnWidths" | "wrappedColumns"
+>;
 
 // What sorting did. "unchanged" is a real answer rather than a failure: a table
 // already in that order is sorted, and saying so is what keeps the
@@ -563,7 +575,12 @@ function snapshotOf(state: TabeloState): HistoryEntry {
 		state.draft?.status === "invalid-grace"
 			? { ...state.draft, status: "invalid" as const }
 			: state.draft;
-	return { document: state.document, draft };
+	const { columnWidths, wrappedColumns } = state.workspace;
+	return {
+		document: state.document,
+		draft,
+		columnPreferences: { columnWidths, wrappedColumns },
+	};
 }
 
 // The match list after the document moved underneath it. Recomputing is the
@@ -712,6 +729,39 @@ function reconcileColumnPreferences(
 		: { ...workspace, wrappedColumns, columnWidths };
 }
 
+// The workspace after the timeline moves from `current` to `entry`. A column
+// the entry's document holds and the current one does not is coming back, so
+// it takes the preferences recorded with the entry. Every other column keeps
+// what it has now: a width set after the entry was left is newer than the one
+// the entry remembers. The single owner of that rule for every history move.
+function workspaceForEntry(
+	workspace: Workspace,
+	current: TableDocument,
+	entry: HistoryEntry,
+): Workspace {
+	const present = new Set(current.columns.map((column) => column.id));
+	const saved = entry.columnPreferences;
+	const columnWidths = { ...workspace.columnWidths };
+	const wrappedColumns = [...workspace.wrappedColumns];
+	let changed = false;
+	for (const { id } of entry.document.columns) {
+		if (present.has(id)) continue;
+		const width = saved.columnWidths[id];
+		if (width !== undefined && columnWidths[id] !== width) {
+			columnWidths[id] = width;
+			changed = true;
+		}
+		if (saved.wrappedColumns.includes(id) && !wrappedColumns.includes(id)) {
+			wrappedColumns.push(id);
+			changed = true;
+		}
+	}
+	return reconcileColumnPreferences(
+		changed ? { ...workspace, columnWidths, wrappedColumns } : workspace,
+		entry.document,
+	);
+}
+
 function widthsAfterDuplication(
 	previous: TableDocument,
 	next: TableDocument,
@@ -783,30 +833,39 @@ function walkTimeline(
 	state: TabeloState,
 	direction: HistoryDirection,
 	steps: number,
-): Pick<TabeloState, "past" | "future" | "document"> | null {
+): {
+	readonly timeline: Pick<TabeloState, "past" | "future" | "document">;
+	readonly target: HistoryEntry;
+} | null {
 	if (direction === "undo") {
 		const targetIndex = state.past.length - 1 - steps;
 		const target = state.past[targetIndex];
 		if (!target) return null;
 		return {
-			past: state.past.slice(0, targetIndex),
-			future: [
-				...state.past.slice(targetIndex + 1),
-				snapshotOf(state),
-				...state.future,
-			],
-			document: target.document,
+			timeline: {
+				past: state.past.slice(0, targetIndex),
+				future: [
+					...state.past.slice(targetIndex + 1),
+					snapshotOf(state),
+					...state.future,
+				],
+				document: target.document,
+			},
+			target,
 		};
 	}
 	const target = state.future[steps];
 	if (!target) return null;
 	return {
-		past: [snapshotOf(state), ...state.future.slice(0, steps)].reduce(
-			pushHistory,
-			state.past,
-		),
-		future: state.future.slice(steps + 1),
-		document: target.document,
+		timeline: {
+			past: [snapshotOf(state), ...state.future.slice(0, steps)].reduce(
+				pushHistory,
+				state.past,
+			),
+			future: state.future.slice(steps + 1),
+			document: target.document,
+		},
+		target,
 	};
 }
 
@@ -1186,8 +1245,10 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 						{ paneId, viewId },
 					)
 				: null;
+		const walk =
+			history && step !== null ? walkTimeline(state, history, step) : null;
 		const timeline =
-			(history && step !== null ? walkTimeline(state, history, step) : null) ??
+			walk?.timeline ??
 			(documentChanged || displacedInvalid
 				? {
 						past: pushHistory(state.past, snapshotOf(state)),
@@ -1200,7 +1261,9 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set((current) => ({
 			...timeline,
 			hasHeldContent: current.hasHeldContent || !isDocumentBlank(next),
-			workspace: reconcileColumnPreferences(current.workspace, next),
+			workspace: walk
+				? workspaceForEntry(current.workspace, current.document, walk.target)
+				: reconcileColumnPreferences(current.workspace, next),
 			draft: {
 				paneId,
 				viewId,
@@ -1545,7 +1608,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				document: entry.document,
 				hasHeldContent:
 					state.hasHeldContent || !isDocumentBlank(entry.document),
-				workspace: reconcileColumnPreferences(state.workspace, entry.document),
+				workspace: workspaceForEntry(state.workspace, state.document, entry),
 				draft: restoreDraft(entry.draft, state.workspace),
 				pendingImport: null,
 				inputError: null,
@@ -1579,7 +1642,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				document: entry.document,
 				hasHeldContent:
 					state.hasHeldContent || !isDocumentBlank(entry.document),
-				workspace: reconcileColumnPreferences(state.workspace, entry.document),
+				workspace: workspaceForEntry(state.workspace, state.document, entry),
 				draft: restoreDraft(entry.draft, state.workspace),
 				pendingImport: null,
 				inputError: null,

@@ -377,7 +377,9 @@ Related to: Table document, Import
   none of them lose it in Tabelo.
 - Column width belongs to the workspace, keyed by stable column id. It survives
   document undo, redo, parsing, reordering, and reload, but orphaned entries are
-  removed when their columns no longer exist. Duplicating a column seeds the
+  removed when their columns no longer exist. Each history entry remembers the
+  widths and wrapped columns it was left with, so a column that undo or redo
+  brings back returns with them, whatever removed it (#235). Duplicating a column seeds the
   new adjacent id with the source width without adding a history step.
 - Every codec-specific escape must be reversible: any cell value survives a
   round trip through Markdown or Jira byte-exact.

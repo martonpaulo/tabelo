@@ -1517,6 +1517,17 @@ describe("whole-table structure (#235)", () => {
 		const undone = useTabeloStore.getState();
 		expect(undone.document).toBe(document);
 		expect(undone.selection).toEqual(createSelection({ row: 0, column: 1 }));
+		// Undo brings the replaced column back with its width and wrapping.
+		expect(undone.workspace.columnWidths).toEqual({ [firstId]: 12 });
+		expect(undone.workspace.wrappedColumns).toEqual([firstId]);
+
+		// Redo returns to the transposed table, which had neither.
+		undone.redo();
+		expect(useTabeloStore.getState().workspace.columnWidths).toEqual({});
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().workspace.columnWidths).toEqual({
+			[firstId]: 12,
+		});
 	});
 
 	it("refuses a transpose whose result would exceed the column limit", () => {
@@ -1588,6 +1599,53 @@ describe("whole-table structure (#235)", () => {
 
 		state.undo();
 		expect(useTabeloStore.getState().document).toBe(document);
+	});
+
+	it("brings a deleted empty column's width and wrapping back on undo", () => {
+		const document = people();
+		const emptyId = document.columns[2]?.id ?? "";
+		const cityId = document.columns[1]?.id ?? "";
+		useTabeloStore.setState({
+			document,
+			workspace: {
+				...initialState.workspace,
+				columnWidths: { [emptyId]: 9, [cityId]: 14 },
+				wrappedColumns: [emptyId],
+			},
+		});
+
+		useTabeloStore.getState().deleteEmptyRowsAndColumns();
+		expect(useTabeloStore.getState().workspace.columnWidths).toEqual({
+			[cityId]: 14,
+		});
+		// A surviving column resized after the command keeps its newer width.
+		useTabeloStore.getState().resizeColumn(1, 20);
+
+		useTabeloStore.getState().undo();
+		const undone = useTabeloStore.getState().workspace;
+		expect(undone.columnWidths).toEqual({ [emptyId]: 9, [cityId]: 20 });
+		expect(undone.wrappedColumns).toEqual([emptyId]);
+	});
+
+	it("brings a deleted column's width back on undo", () => {
+		const document = people();
+		const cityId = document.columns[1]?.id ?? "";
+		useTabeloStore.setState({
+			document,
+			selection: createSelection({ row: 0, column: 1 }),
+			workspace: {
+				...initialState.workspace,
+				columnWidths: { [cityId]: 14 },
+			},
+		});
+
+		useTabeloStore.getState().removeSelectedColumns();
+		expect(useTabeloStore.getState().workspace.columnWidths).toEqual({});
+
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().workspace.columnWidths).toEqual({
+			[cityId]: 14,
+		});
 	});
 
 	it("records nothing when there is nothing empty to delete", () => {
