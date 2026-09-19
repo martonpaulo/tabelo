@@ -77,7 +77,9 @@ test("only hovering the pane edge reveals the overlay control", async ({
 	await edge.hover();
 	await expect(control).toHaveCSS("opacity", "1");
 
-	await expect(edge).toHaveCSS("position", "absolute");
+	// Placed against the pane rather than in its flow, so revealing it moves
+	// nothing, and outside the pane's clip, so it can straddle the edge.
+	await expect(edge).toHaveCSS("position", "fixed");
 	await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 

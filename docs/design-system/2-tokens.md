@@ -55,7 +55,7 @@ floating layer is set apart by its own surface and a deep shadow, with a soft
 `--line-floating` edge (owner, 2026-09-19). That shadow is one token,
 `--shadow-floating`, cast through `floatingSurfaceStyles` by every floating
 layer: menus and their submenus, tooltips, dialogs, notices, the start card,
-the pane-edge Add view control, the source editor's diagnostic tooltip, and
+the source editor's diagnostic tooltip, and
 the floating action button on hover. A layer that writes its own `shadow-lg`,
 `shadow-md`, or ring is a pattern break (owner, 2026-09-19).
 

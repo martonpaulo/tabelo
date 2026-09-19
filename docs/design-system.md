@@ -160,9 +160,21 @@ the number alone: three digits of the index face plus one small gap on each
 side (`--grid-gutter-w`, [§2 Geometry](design-system/2-tokens.md#geometry)). A column letter carries the
 cells' own inline padding, so it starts exactly where the text of its column
 starts.
-The pane-edge Add view control uses the full default control target and a larger
-plus than the grid's labels. It remains centred on the edge band and is
-revealed by edge hover or keyboard focus, never by hovering the pane body.
+The pane-edge Add view control is a full-length band along the outer edge
+the new pane would appear on (option B, owner, 2026-09-19): an accent tint of
+`--selection-fill`, a dashed `--selection-edge` border, and a plus with the
+words `Add view`, written down the band on the right edge and across it on the
+bottom edge. It is square, like every structural pane-edge affordance (§1).
+It straddles the edge, over the pane's frame margin and the
+workspace padding beyond it, so it never covers the content box or its
+scrollbar, and it keeps clear of the pane's rounded corners, so a pane that
+splits both ways never shows two bands meeting. Only outer edges carry one, so
+it never shares a hit area or a cursor with a resize separator. It is placed
+with CSS anchor positioning against the pane, fixed so the pane's clip does not
+cut it, while staying in the pane's focus order and accessible tree. It is
+revealed by the pointer reaching that edge or by keyboard focus, never by
+hovering the pane body, and revealing it changes only opacity. Its accessible
+name opens with its visible words and adds the direction and the pane.
 The floating trigger has a stable accessible name, and every command inside its
 menu keeps a visible label. It displays the project mark rather than a generic
 menu glyph. The mark is a small table grid whose blue header row and two active

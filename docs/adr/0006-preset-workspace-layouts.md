@@ -77,9 +77,11 @@ menu. **Adding** a view moved out of that menu and onto the pane edge it would
 split, because the edge is what decides where the new pane lands and a menu
 item cannot say which edge it means.
 
-A control appears at the centre of every pane edge whose split produces another
-valid preset. Pointer hover reveals it only inside that narrow edge band, never
-from hovering the pane content:
+A control appears along every pane edge whose split produces another valid
+preset: a full-length band straddling that outer edge, outside the pane's
+content box and its scrollbar (option B, owner, 2026-09-19, replacing the small
+plus at the centre of the edge). Pointer hover reveals it only when the pointer
+reaches that edge, never from hovering the pane content:
 
 | From | Split | To |
 | :--- | :--- | :--- |

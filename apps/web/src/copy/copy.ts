@@ -1134,11 +1134,12 @@ export const copy = {
 		enteredPane: "Entered pane. Press Escape to exit.",
 		paneAdded: (label: string) => `${label} pane added`,
 		// Which pane, and which way. Four controls all called "Add view" would
-		// name nothing: the direction is the whole content of the choice.
+		// name nothing: the direction is the whole content of the choice. It
+		// opens with the band's visible words, so the name contains the label.
 		addViewAt: (edge: SplitEdge, paneLabel: string) =>
 			edge === "bottom"
-				? `Add a view below the ${paneLabel}`
-				: `Add a view to the right of the ${paneLabel}`,
+				? `Add view below the ${paneLabel}`
+				: `Add view to the right of the ${paneLabel}`,
 		rowNumber: (index: number) => `Row ${index + 2}`,
 		selectHeaderRow: "Select header row",
 		selectRowNamed: (row: string) => `${SELECT_ROW}: ${row}`,

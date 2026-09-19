@@ -1,8 +1,5 @@
 import { disclosureTransitionStyles } from "@tabelo/ui/components/motion-styles";
-import {
-	activePanelSurfaceStyles,
-	floatingSurfaceStyles,
-} from "@tabelo/ui/components/surface-styles";
+import { activePanelSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import { IconPlus } from "@tabler/icons-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -165,7 +162,13 @@ export const Pane = memo(function Pane({
 				aria-current={active ? "true" : undefined}
 				aria-label={copy.workspace.pane(view.label)}
 				aria-description={entered ? undefined : copy.a11y.paneInteractHint}
-				style={stacked ? undefined : { gridArea: gridAreaStyle(pane.slots) }}
+				style={
+					{
+						// The anchor this pane's edge bands are placed against.
+						anchorName: paneAnchorName(pane.id),
+						...(stacked ? {} : { gridArea: gridAreaStyle(pane.slots) }),
+					} as React.CSSProperties
+				}
 				data-pane-active={active && showActiveIndicator ? "true" : undefined}
 				data-under-fab={underFab ? "" : undefined}
 				className={cn(
@@ -283,6 +286,7 @@ export const Pane = memo(function Pane({
 							onSplit({ paneId: pane.id, edge: "right", layout: splitRight })
 						}
 						view={view.label}
+						anchor={paneAnchorName(pane.id)}
 					/>
 				) : null}
 				{splitBottom ? (
@@ -292,6 +296,7 @@ export const Pane = memo(function Pane({
 							onSplit({ paneId: pane.id, edge: "bottom", layout: splitBottom })
 						}
 						view={view.label}
+						anchor={paneAnchorName(pane.id)}
 					/>
 				) : null}
 
@@ -323,60 +328,98 @@ function PaneContexts({
 	);
 }
 
-// The control that grows the workspace, sitting on the edge the new pane will
-// appear along. Because a pane is only ever cut across an axis it spans whole,
-// that edge is always an outer edge of the workspace: no control ever lands on
-// the divider between two panes, so which pane is splitting is never in doubt.
+// The name a pane publishes as a CSS anchor, so its edge bands can be placed
+// against it. A dashed ident allows only name characters, and a stored pane id
+// is any non-empty string, so every other character is spelled out.
+// https://developer.mozilla.org/en-US/docs/Web/CSS/anchor-name
+function paneAnchorName(paneId: string): string {
+	return `--tabelo-pane-${paneId.replace(/[^A-Za-z0-9_-]/g, (char) => `_${char.codePointAt(0)}_`)}`;
+}
+
+// How far the band reaches to each side of the pane's outer edge: across the
+// pane's own frame margin, which ends where the content box and its scrollbar
+// begin, and across the workspace's padding beyond the edge. Both are the
+// 0.5rem spacing step (`mx-2 mb-2` on the body, `p-2` on the workspace).
+const BAND_REACH = "0.5rem";
+// Kept clear at each end of the band, so the two bands of a pane that splits
+// both ways never meet in its corner, and the band never runs round the
+// pane's rounded corner.
+const BAND_END_INSET = "var(--surface-radius)";
+
+// Where a band sits: fixed, and placed with CSS anchor positioning against the
+// pane's own box. The pane clips its content (`overflow: hidden`), and a fixed
+// box escapes that clip while staying in the pane's DOM, its focus order, and
+// its accessible tree. Chromium is the one supported engine, and it positions
+// anchored fixed boxes as the page and the stacked workspace scroll.
+// https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_anchor_positioning
+function bandPlacement(edge: SplitEdge, anchor: string): React.CSSProperties {
+	const placement: Record<string, string> =
+		edge === "bottom"
+			? {
+					top: `calc(anchor(bottom) - ${BAND_REACH})`,
+					height: `calc(${BAND_REACH} * 2)`,
+					left: `calc(anchor(left) + ${BAND_END_INSET})`,
+					right: `calc(anchor(right) + ${BAND_END_INSET})`,
+				}
+			: {
+					left: `calc(anchor(right) - ${BAND_REACH})`,
+					width: `calc(${BAND_REACH} * 2)`,
+					top: `calc(anchor(top) + ${BAND_END_INSET})`,
+					bottom: `calc(anchor(bottom) + ${BAND_END_INSET})`,
+				};
+	return { positionAnchor: anchor, ...placement } as React.CSSProperties;
+}
+
+// The control that grows the workspace: a band along the edge the new pane will
+// appear on (option B, owner, 2026-09-19). Because a pane is only ever cut
+// across an axis it spans whole, that edge is always an outer edge of the
+// workspace: no band ever lands on the divider between two panes, so which pane
+// is splitting is never in doubt and a resize separator's hit area and cursor
+// are never shared with it.
 //
-// Absolutely positioned so that appearing and disappearing moves nothing
-// (§5, §7), and revealed only when the pointer reaches its narrow edge band.
-// Keyboard focus reveals the same button, since nothing may depend on hover
-// alone (§9). It stays outside the pane body, so reaching it is not entering
-// the pane: it belongs to the workspace ring beside the pane frame (§9).
+// The band straddles the outer edge, over the pane's frame margin and the
+// workspace padding beyond it, so it never covers the content box or its
+// scrollbar. At rest it is invisible and only catches the pointer; reaching
+// the edge, or keyboard focus, shows it whole: an accent tint, a dashed edge,
+// and a plus with the words, written down the band on the right edge. Showing
+// and hiding change only opacity, so nothing moves (§5, §7), and focus reveals
+// it because nothing may depend on hover alone (§9). It stays outside the pane
+// body, so reaching it is not entering the pane: it belongs to the workspace
+// ring beside the pane frame (§9).
 function SplitControl({
 	edge,
 	onSplit,
 	view,
+	anchor,
 }: {
 	readonly edge: SplitEdge;
 	readonly onSplit: () => void;
 	readonly view: string;
+	readonly anchor: string;
 }) {
 	return (
-		<div
-			data-split-control={edge}
-			className={cn(
-				"group/split-edge",
-				edge === "bottom"
-					? "absolute bottom-0 left-0 z-20 h-2 w-full"
-					: "absolute top-0 right-0 z-20 h-full w-2",
-			)}
-		>
-			<ControlTooltip
-				name={copy.a11y.addViewAt(edge, copy.workspace.pane(view))}
+		<ControlTooltip name={copy.a11y.addViewAt(edge, copy.workspace.pane(view))}>
+			<button
+				type="button"
+				data-split-control={edge}
+				onClick={onSplit}
+				style={bandPlacement(edge, anchor)}
+				className={cn(
+					"fixed z-20 inline-flex items-center justify-center gap-1 overflow-hidden",
+					"border border-selection-edge border-dashed bg-selection-fill bg-clip-padding",
+					"cursor-pointer whitespace-nowrap font-medium text-foreground text-xs",
+					"opacity-0 hover:opacity-100",
+					disclosureTransitionStyles,
+					// Plain focus, not focus-visible: a control that has the focus while
+					// staying invisible is the failure this reveal rule exists to
+					// prevent, and focus-visible would not match a programmatic focus.
+					"focus:opacity-100",
+					edge === "right" && "[writing-mode:vertical-rl]",
+				)}
 			>
-				<button
-					type="button"
-					onClick={onSplit}
-					className={cn(
-						"absolute inline-flex size-8 items-center justify-center rounded-interactive",
-						"cursor-pointer text-muted-foreground",
-						floatingSurfaceStyles,
-						"opacity-0 hover:text-foreground",
-						disclosureTransitionStyles,
-						// Plain focus, not focus-visible: a control that has the focus while
-						// staying invisible is the failure this reveal rule exists to
-						// prevent, and focus-visible would not match a programmatic focus.
-						"focus:opacity-100 group-hover/split-edge:opacity-100",
-						"focus-visible:outline-2 focus-visible:outline-selection-edge",
-						edge === "bottom"
-							? "bottom-1 left-1/2 -translate-x-1/2"
-							: "top-1/2 right-1 -translate-y-1/2",
-					)}
-				>
-					<IconPlus aria-hidden className="size-5" />
-				</button>
-			</ControlTooltip>
-		</div>
+				<IconPlus aria-hidden className="size-3.5 shrink-0" />
+				<span>{copy.workspace.addView}</span>
+			</button>
+		</ControlTooltip>
 	);
 }

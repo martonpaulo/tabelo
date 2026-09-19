@@ -18,8 +18,8 @@
 
 export const hairlineStyles = "tabelo-hairline border";
 
-// Menus, submenus, tooltips, dialogs, notices, the start card, and the
-// pane-edge control: a soft boundary over the floating surface, set apart
+// Menus, submenus, tooltips, dialogs, notices, and the start card: a soft
+// boundary over the floating surface, set apart
 // from what it covers by the one `--shadow-floating` token (owner,
 // 2026-09-19). No floating layer adds a shadow of its own.
 export const floatingSurfaceStyles = `${hairlineStyles} [--hairline-color:var(--line-floating)] [--hairline-fill:var(--popover)] shadow-(--shadow-floating)`;
