@@ -96,3 +96,32 @@ test("rename validates input and Escape restores trigger focus", async ({
 	await expect(trigger).toBeFocused();
 	await expect(page).toHaveTitle(tableDocumentTitle("Untitled table"));
 });
+
+// A form dialog opened from a menu owns focus on arrival: keystrokes, not a
+// programmatic fill, must land in its field, from the pointer and the keyboard.
+test("typing lands in the rename field as soon as the dialog opens", async ({
+	page,
+	tabelo,
+}) => {
+	await expect(tabelo.workspace).toBeVisible();
+
+	let dialog = await openRenameDialog(page);
+	let input = dialog.getByRole("textbox", { name: copy.tableName.label });
+	await expect(input).toBeFocused();
+	await page.keyboard.type("Pointer");
+	await expect(input).toHaveValue("Pointer");
+	await page.keyboard.press("Escape");
+	await expect(dialog).toBeHidden();
+
+	const trigger = page.getByRole("button", { name: copy.actions.openAppMenu });
+	await trigger.focus();
+	await page.keyboard.press("Enter");
+	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
+	await menu.getByRole("menuitem", { name: copy.actions.renameTable }).focus();
+	await page.keyboard.press("Enter");
+	dialog = page.getByRole("dialog", { name: copy.actions.renameTable });
+	input = dialog.getByRole("textbox", { name: copy.tableName.label });
+	await expect(input).toBeFocused();
+	await page.keyboard.type("Typed");
+	await expect(input).toHaveValue("Typed");
+});

@@ -8,7 +8,7 @@ import {
 import { Input } from "@tabelo/ui/components/input";
 import { Label } from "@tabelo/ui/components/label";
 import { cn } from "@tabelo/ui/lib/utils";
-import { type FormEvent, useEffect, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
 import {
@@ -59,6 +59,7 @@ export function ColumnWidthDialog({
 	const descriptionId = useId();
 	const inputId = useId();
 	const hintId = useId();
+	const inputRef = useRef<HTMLInputElement>(null);
 
 	// Each opening starts from the column's own width, not the last draft.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: see above
@@ -111,7 +112,9 @@ export function ColumnWidthDialog({
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
 				finalFocus={finalFocus}
-				className="sm:w-md"
+				// The field takes focus through the popup's focus manager, never
+				// React's `autoFocus`; see the rename dialog.
+				initialFocus={inputRef}
 			>
 				<form className="grid gap-4" onSubmit={submit}>
 					<DialogHeader>
@@ -130,8 +133,8 @@ export function ColumnWidthDialog({
 					<div className="grid gap-2">
 						<Label htmlFor={inputId}>{copy.columnWidth.label}</Label>
 						<Input
+							ref={inputRef}
 							id={inputId}
-							autoFocus
 							inputMode="decimal"
 							// Selected on arrival so a typed number replaces the current one.
 							onFocus={(event) => event.currentTarget.select()}

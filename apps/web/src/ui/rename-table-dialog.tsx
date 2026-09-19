@@ -7,7 +7,7 @@ import {
 } from "@tabelo/ui/components/dialog";
 import { Input } from "@tabelo/ui/components/input";
 import { Label } from "@tabelo/ui/components/label";
-import { type FormEvent, useEffect, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import { DEFAULT_TABLE_NAME, validateTableName } from "@/copy/product";
 import { useTabeloStore } from "@/state/store";
@@ -37,6 +37,7 @@ export function RenameTableDialog({
 	const descriptionId = useId();
 	const inputId = useId();
 	const errorId = useId();
+	const inputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
 		if (!open) return;
@@ -86,7 +87,11 @@ export function RenameTableDialog({
 			<DialogContent
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
-				className="sm:w-md"
+				// A form dialog hands focus to its first field through the popup's
+				// own focus manager, never React's `autoFocus`: that fires on mount,
+				// before the menu that opened the dialog returns focus to its
+				// trigger, and typing then lands outside the dialog.
+				initialFocus={inputRef}
 			>
 				<form className="grid gap-4" onSubmit={submit}>
 					<DialogHeader>
@@ -99,8 +104,8 @@ export function RenameTableDialog({
 					<div className="grid gap-2">
 						<Label htmlFor={inputId}>{copy.tableName.label}</Label>
 						<Input
+							ref={inputRef}
 							id={inputId}
-							autoFocus
 							value={draft}
 							placeholder={DEFAULT_TABLE_NAME}
 							aria-invalid={errorMessage ? true : undefined}

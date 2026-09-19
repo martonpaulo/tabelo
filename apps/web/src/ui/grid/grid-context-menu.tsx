@@ -52,6 +52,7 @@ import type {
 } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
+import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import { isSameColumnWidth } from "@/workspace/column-width";
 import type { PinnedGridAxis } from "@/workspace/layout";
 import {
@@ -470,9 +471,19 @@ export function GridContextMenu({
 	const [pendingChange, setPendingChange] =
 		useState<PendingCellTypeChange | null>(null);
 	const changedCell = useRef<CellPosition | null>(null);
+	// Both dialogs this menu launches wait for its close transition, so the
+	// menu's own focus return has finished before a dialog takes focus: opened
+	// any sooner, the returning focus lands on the cell under the modal and the
+	// first keystrokes go there (owner, 2026-09-19).
+	const menuDialog = useMenuDialogCommand();
 	const requestChange = (change: PendingCellTypeChange) => {
-		changedCell.current = change.position;
-		setPendingChange(change);
+		menuDialog.runAfterClose(() => {
+			changedCell.current = change.position;
+			setPendingChange(change);
+		});
+	};
+	const requestColumnWidth = (index: number) => {
+		menuDialog.runAfterClose(() => onSetColumnWidth(index));
 	};
 
 	// Whether this opening of the menu ended in one of its own commands. Only
@@ -539,9 +550,12 @@ export function GridContextMenu({
 	return (
 		<>
 			<ContextMenu
+				open={menuDialog.open}
 				onOpenChange={(open) => {
 					if (open) commandRan.current = false;
+					menuDialog.onOpenChange(open);
 				}}
+				onOpenChangeComplete={menuDialog.onOpenChangeComplete}
 			>
 				<ContextMenuTrigger
 					render={
@@ -655,7 +669,7 @@ export function GridContextMenu({
 							index={target.index}
 							tableRef={tableRef}
 							zoom={zoom}
-							onSetColumnWidth={onSetColumnWidth}
+							onSetColumnWidth={requestColumnWidth}
 						/>
 					) : null}
 					{axis === "row" && target.index === FIRST_DATA_INDEX ? (
