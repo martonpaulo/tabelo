@@ -11,6 +11,7 @@ describe("preferences store", () => {
 	it("loads valid preferences independently from table persistence", () => {
 		const saved = {
 			version: PREFERENCES_VERSION,
+			wrap: true,
 			spaceIndicators: "none",
 			tabIndicators: false,
 			emptyValueIndicators: false,
@@ -36,6 +37,7 @@ describe("preferences store", () => {
 		store.subscribe(listener);
 		const next = {
 			version: PREFERENCES_VERSION,
+			wrap: false,
 			spaceIndicators: "all",
 			tabIndicators: true,
 			emptyValueIndicators: false,

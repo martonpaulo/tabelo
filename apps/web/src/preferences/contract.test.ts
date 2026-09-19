@@ -10,6 +10,7 @@ describe("preferences contract", () => {
 	it("accepts and serializes the current complete schema", () => {
 		const preferences = {
 			version: PREFERENCES_VERSION,
+			wrap: true,
 			spaceIndicators: "boundary",
 			tabIndicators: false,
 			emptyValueIndicators: true,
@@ -20,56 +21,63 @@ describe("preferences contract", () => {
 		);
 	});
 
-	// Version 1 held one boolean for every marker at once. A reader who had
-	// turned them off has said something, and the migration has to keep saying
-	// it rather than resetting them to the shipped defaults.
+	// #276: a source pane draws nothing and wraps nothing until the reader asks.
+	it("ships every source display default off", () => {
+		expect(DEFAULT_PREFERENCES).toEqual({
+			version: PREFERENCES_VERSION,
+			wrap: false,
+			spaceIndicators: "none",
+			tabIndicators: false,
+			emptyValueIndicators: false,
+		});
+	});
+
+	// Version 4 made the three indicators the global default and shipped them
+	// off. What an older payload held was written under the superseded
+	// defaults, so every shipped version, whatever it said, reloads without
+	// error at the new defaults rather than carrying the old values forward.
 	it.each([
-		[true, DEFAULT_PREFERENCES.spaceIndicators, true],
-		[false, "none", false],
-	])(
-		"migrates a version 1 payload with showWhitespaceIndicators %s",
-		(shown, spaceIndicators, markers) => {
-			const migrated = parseStoredPreferences(
-				JSON.stringify({
-					version: 1,
-					theme: "light",
-					showWhitespaceIndicators: shown,
-				}),
-			);
-
-			expect(migrated).toEqual({
-				version: PREFERENCES_VERSION,
-				spaceIndicators,
-				tabIndicators: markers,
-				emptyValueIndicators: markers,
-			});
-		},
-	);
-
-	// Version 3 removed the theme. Every display preference the reader had set
-	// survives the step; only the discarded key differs between the versions,
-	// and what it said does not change the result.
-	it.each(["dark", "light", "system", "sepia", 7, null])(
-		"migrates a version 2 payload whose theme was %o",
-		(theme) => {
-			const migrated = parseStoredPreferences(
-				JSON.stringify({
-					version: 2,
-					theme,
-					spaceIndicators: "all",
-					tabIndicators: false,
-					emptyValueIndicators: false,
-				}),
-			);
-
-			expect(migrated).toEqual({
-				version: PREFERENCES_VERSION,
+		[
+			"version 1, markers on",
+			{ version: 1, theme: "light", showWhitespaceIndicators: true },
+		],
+		[
+			"version 1, markers off",
+			{ version: 1, theme: "dark", showWhitespaceIndicators: false },
+		],
+		[
+			"version 2 with a stale theme",
+			{
+				version: 2,
+				theme: "sepia",
 				spaceIndicators: "all",
-				tabIndicators: false,
-				emptyValueIndicators: false,
-			});
-		},
-	);
+				tabIndicators: true,
+				emptyValueIndicators: true,
+			},
+		],
+		[
+			"version 3 at its own defaults",
+			{
+				version: 3,
+				spaceIndicators: "trailing",
+				tabIndicators: true,
+				emptyValueIndicators: true,
+			},
+		],
+		[
+			"version 3 with every marker chosen",
+			{
+				version: 3,
+				spaceIndicators: "all",
+				tabIndicators: true,
+				emptyValueIndicators: true,
+			},
+		],
+	])("migrates a %s payload to the new defaults", (_name, stored) => {
+		expect(parseStoredPreferences(JSON.stringify(stored))).toEqual(
+			DEFAULT_PREFERENCES,
+		);
+	});
 
 	it.each([
 		null,
@@ -77,7 +85,16 @@ describe("preferences contract", () => {
 		JSON.stringify({ version: PREFERENCES_VERSION + 1 }),
 		JSON.stringify({
 			version: PREFERENCES_VERSION,
+			wrap: false,
 			spaceIndicators: "everywhere",
+			tabIndicators: true,
+			emptyValueIndicators: true,
+		}),
+		// Wrapping has no schema default: a current payload without it was not
+		// written by Tabelo.
+		JSON.stringify({
+			version: PREFERENCES_VERSION,
+			spaceIndicators: "trailing",
 			tabIndicators: true,
 			emptyValueIndicators: true,
 		}),
@@ -86,22 +103,24 @@ describe("preferences contract", () => {
 		JSON.stringify({
 			version: PREFERENCES_VERSION,
 			theme: "dark",
+			wrap: false,
 			spaceIndicators: "trailing",
 			tabIndicators: true,
 			emptyValueIndicators: true,
 		}),
 		JSON.stringify({
 			version: PREFERENCES_VERSION,
+			wrap: false,
 			spaceIndicators: "trailing",
 			tabIndicators: true,
 			emptyValueIndicators: true,
 			unknown: true,
 		}),
-		// A version 1 payload that was already invalid stays invalid: the
-		// migration reads the old schema, it does not repair it.
+		// An older payload that was already invalid stays invalid: a migration
+		// reads the old schema, it does not repair it.
 		JSON.stringify({ version: 1, theme: "light" }),
-		// The same for version 2, whose display preferences must all be present.
 		JSON.stringify({ version: 2, theme: "dark", spaceIndicators: "all" }),
+		JSON.stringify({ version: 3, spaceIndicators: "all", wrap: true }),
 	])("falls back to defaults for absent or unsupported storage", (raw) => {
 		expect(parseStoredPreferences(raw)).toEqual(DEFAULT_PREFERENCES);
 	});

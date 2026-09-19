@@ -13,7 +13,8 @@ import {
 
 // Whitespace and empty-value indicators are decorations and nothing else. What
 // these tests protect is that promise: the same bytes reach the document, the
-// clipboard, and storage whether the markers are drawn or not.
+// clipboard, and storage whether the markers are drawn or not. Every marker
+// ships off (#276), so a test that reads one turns it on in Settings first.
 
 const first = samplePerson(0);
 
@@ -85,9 +86,34 @@ async function setIndicators(page: Page, choice: IndicatorChoice) {
 	await expect(dialog).toBeHidden();
 }
 
-test("markers are drawn by default and describe the empty fields a codec reads", async ({
+test("nothing is marked until the reader asks", async ({ tabelo }) => {
+	await seed(
+		tabelo,
+		[
+			["Name", "City", "Role"].join("\t"),
+			[first.name, "", `${first.role} `].join("\t"),
+		].join("\n"),
+	);
+	await tabelo.choosePaneView("markdown", "tsv");
+	const pane = tabelo.pane("tsv");
+	await expect(tabelo.source("tsv")).toBeVisible();
+
+	await expect(pane.locator(marker)).toHaveCount(0);
+	expect(await paintedSpaces(pane)).toBe(0);
+	const arrows = await pane.evaluate(
+		(element) =>
+			Array.from(element.querySelectorAll(".cm-highlightTab")).filter(
+				(span) => getComputedStyle(span, "::before").content !== "none",
+			).length,
+	);
+	expect(arrows).toBe(0);
+});
+
+test("markers describe the empty fields a codec reads", async ({
 	tabelo,
+	page,
 }) => {
+	await setIndicators(page, { tabs: true, emptyValues: true });
 	// Two rows where the middle field is empty in every delimited syntax.
 	await seed(
 		tabelo,
@@ -129,7 +155,9 @@ test("markers are drawn by default and describe the empty fields a codec reads",
 // fields, so JSON marks the one empty string beside them and nothing else.
 test("JSON marks an empty string and never a typed literal", async ({
 	tabelo,
+	page,
 }) => {
+	await setIndicators(page, { emptyValues: true });
 	await tabelo.importFile(
 		"typed.json",
 		`[{"name":"${first.name}","city":"","age":0,"active":false,"note":null}]`,
@@ -156,6 +184,7 @@ for (const [view, typed] of [
 		tabelo,
 		page,
 	}) => {
+		await setIndicators(page, { emptyValues: true });
 		await seed(
 			tabelo,
 			[
@@ -215,6 +244,7 @@ test("a switch turns off exactly the marker it names", async ({
 	tabelo,
 	page,
 }) => {
+	await setIndicators(page, { tabs: true, emptyValues: true });
 	await seed(
 		tabelo,
 		[
@@ -253,6 +283,7 @@ test("the placeholder is drawn beside the source without joining it", async ({
 	tabelo,
 	page,
 }) => {
+	await setIndicators(page, { emptyValues: true });
 	await seed(
 		tabelo,
 		[["Name", "City"].join("\t"), [first.name, ""].join("\t")].join("\n"),
@@ -379,6 +410,7 @@ test("typing into an empty field replaces the placeholder with the value", async
 	tabelo,
 	page,
 }) => {
+	await setIndicators(page, { emptyValues: true });
 	await seed(
 		tabelo,
 		[
@@ -416,6 +448,7 @@ test("a double click on a placeholder places the caret", async ({
 	tabelo,
 	page,
 }) => {
+	await setIndicators(page, { emptyValues: true });
 	await seed(
 		tabelo,
 		[
@@ -459,6 +492,7 @@ test("an empty field gives the caret one stop, on the text line", async ({
 	tabelo,
 	page,
 }) => {
+	await setIndicators(page, { emptyValues: true });
 	await seed(
 		tabelo,
 		[["Name", "City", "Role"].join("\t"), [first.name, "", ""].join("\t")].join(
@@ -517,6 +551,7 @@ test("turning indicators off changes what is drawn and nothing else", async ({
 	await page.reload();
 	await tabelo.dismissWelcome();
 	await expect(tabelo.workspace).toBeVisible();
+	await setIndicators(page, { emptyValues: true });
 	await seed(
 		tabelo,
 		[
@@ -611,6 +646,7 @@ test("indicators leave the caret, the pane's wrapping, and editing alone", async
 	tabelo,
 	page,
 }) => {
+	await setIndicators(page, { emptyValues: true });
 	await seed(
 		tabelo,
 		[["Name", "City"].join("\t"), [first.name, ""].join("\t")].join("\n"),
