@@ -59,7 +59,9 @@ function TooltipContent({
 					{...props}
 				>
 					{children}
-					<TooltipPrimitive.Arrow className="relative z-50 block h-1.5 w-3 overflow-clip before:absolute before:bottom-0 before:left-1/2 before:size-2 before:-translate-x-1/2 before:translate-y-1/2 before:rotate-45 before:border before:border-line-floating before:bg-popover before:content-[''] data-[side=bottom]:-top-1.5 data-[side=left]:-right-[0.5625rem] data-[side=top]:-bottom-1.5 data-[side=right]:-left-[0.5625rem] data-[side=left]:rotate-90 data-[side=right]:-rotate-90 data-[side=top]:rotate-180" />
+					{/* One hairline taller than it shows, so its base overlaps the bubble's
+					    edge and the fill covers it: no line between arrow and bubble. */}
+					<TooltipPrimitive.Arrow className="relative z-50 block h-[calc(0.375rem+var(--hairline-w))] w-3 overflow-clip before:absolute before:bottom-0 before:left-1/2 before:size-2 before:-translate-x-1/2 before:translate-y-1/2 before:rotate-45 before:border before:border-line-floating before:bg-popover before:content-[''] data-[side=bottom]:-top-1.5 data-[side=left]:-right-[calc(0.5625rem-var(--hairline-w)/2)] data-[side=top]:-bottom-1.5 data-[side=right]:-left-[calc(0.5625rem-var(--hairline-w)/2)] data-[side=left]:rotate-90 data-[side=right]:-rotate-90 data-[side=top]:rotate-180" />
 				</TooltipPrimitive.Popup>
 			</TooltipPrimitive.Positioner>
 		</TooltipPrimitive.Portal>
