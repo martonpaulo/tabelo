@@ -1505,6 +1505,18 @@ icon uses the shared 1.5 stroke weight, applied once through the `.tabler-icon`
 rule in the global stylesheet, never per call site. Always `aria-hidden`,
 because the accessible name comes from the button.
 
+**View icons are one family** (owner, 2026-09-19). Every text format is a
+file, so every text view wears a Tabler file icon carrying that format's mark:
+`IconFileTypeCsv` for CSV, `IconFileSpreadsheet` for TSV, `IconFileTypeHtml`
+for HTML, `IconFileTypeTxt` for Jira, `IconFileCode2` (square brackets, the
+array a JSON table is) for JSON, `IconFileTypography` (formatted text) for
+Markdown, and
+`IconFileDescription` for Records. Tabler draws no Markdown or JSON file type,
+so those two take the closest file sibling rather than leaving the family. The
+two views that are not files keep their own shapes: `IconTable` for the visual
+table and `IconEye` for the preview. A brand mark or a bare format glyph
+outside a file shape is a pattern break. The registry owns the assignment.
+
 Directional glyphs are shared by three different table operations, so each one
 takes its own family and no two of them may collapse back onto the plain arrow:
 insert lands against a boundary line (`IconArrowBarToUp` and its three

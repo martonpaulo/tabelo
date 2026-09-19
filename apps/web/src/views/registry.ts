@@ -1,12 +1,12 @@
 import {
-	IconBrandJira,
-	IconCsv,
 	IconEye,
+	IconFileCode2,
+	IconFileDescription,
 	IconFileSpreadsheet,
-	IconHtml,
-	IconJson,
-	IconListDetails,
-	IconMarkdown,
+	IconFileTypeCsv,
+	IconFileTypeHtml,
+	IconFileTypeTxt,
+	IconFileTypography,
 	IconTable,
 } from "@tabler/icons-react";
 import { copy } from "@/copy/copy";
@@ -63,6 +63,9 @@ const readOnlySourceCapabilities = {
 	sourceTab: null,
 } as const;
 
+// One icon family (owner, 2026-09-19): every text view is a file, so it wears
+// a Tabler file icon with its format's mark; the grid and the preview, which
+// are not files, keep their own shapes. See docs/design-system.md section 6.
 const registry: Record<ViewId, ViewDefinition> = {
 	grid: {
 		id: "grid",
@@ -80,7 +83,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	markdown: {
 		id: "markdown",
 		...copy.views.markdown,
-		icon: IconMarkdown,
+		icon: IconFileTypography,
 		kind: "source",
 		codec: markdownCodec,
 		highlight: "markdown",
@@ -92,7 +95,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	csv: {
 		id: "csv",
 		...copy.views.csv,
-		icon: IconCsv,
+		icon: IconFileTypeCsv,
 		kind: "source",
 		codec: csvCodec,
 		highlight: "delimited",
@@ -114,7 +117,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	html: {
 		id: "html",
 		...copy.views.html,
-		icon: IconHtml,
+		icon: IconFileTypeHtml,
 		kind: "source",
 		codec: htmlCodec,
 		highlight: "html",
@@ -125,7 +128,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	jira: {
 		id: "jira",
 		...copy.views.jira,
-		icon: IconBrandJira,
+		icon: IconFileTypeTxt,
 		kind: "source",
 		codec: jiraCodec,
 		highlight: "jira",
@@ -136,7 +139,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	json: {
 		id: "json",
 		...copy.views.json,
-		icon: IconJson,
+		icon: IconFileCode2,
 		kind: "source",
 		codec: jsonCodec,
 		highlight: "json",
@@ -147,7 +150,7 @@ const registry: Record<ViewId, ViewDefinition> = {
 	records: {
 		id: "records",
 		...copy.views.records,
-		icon: IconListDetails,
+		icon: IconFileDescription,
 		kind: "source",
 		codec: recordsCodec,
 		highlight: "records",
