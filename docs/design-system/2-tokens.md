@@ -631,9 +631,7 @@ The trailing gap doubles as the source text's leading space, because the line
 itself cannot carry it without leaving a band the selection never paints.
 
 The visual table mirrors structure rather than source punctuation: its header
-row is set apart by weight and the strong line under it, with a subtle line
-above it that separates it from the column letters and, like every row line,
-starts at the first cell (owner, 2026-09-19), while body cells keep
+row is set apart by weight and the strong line under it, while body cells keep
 the normal content treatment. Header text position shows
 alignment without an extra icon inside the editable cell. A native source
 selection must paint over the header treatment just as it does over any other
