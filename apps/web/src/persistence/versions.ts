@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { MAX_TABLE_NAME_CODE_POINTS } from "@/copy/product";
 import { EXPECTED_COLUMN_TYPES } from "@/core/cell-value";
 import { isValidInlineContent } from "@/core/inline-content";
+import { MAX_TABLE_NAME_CODE_POINTS } from "@/core/table-name";
 import type { InlineContent } from "@/core/types";
 import { SPACE_INDICATOR_VALUES } from "@/preferences/contract";
 import { workspacePanesTileLayout } from "@/workspace/layout";

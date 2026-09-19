@@ -9,7 +9,8 @@ import { Input } from "@tabelo/ui/components/input";
 import { Label } from "@tabelo/ui/components/label";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
-import { DEFAULT_TABLE_NAME, validateTableName } from "@/copy/product";
+import { DEFAULT_TABLE_NAME } from "@/copy/product";
+import { validateTableName } from "@/core/table-name";
 import { useTabeloStore } from "@/state/store";
 import {
 	DialogActions,

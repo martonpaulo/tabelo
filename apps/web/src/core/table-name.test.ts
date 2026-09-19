@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateTableName } from "./product";
+import { validateTableName } from "./table-name";
 
 describe("table identity", () => {
 	it("trims a valid authored name", () => {

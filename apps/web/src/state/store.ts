@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { ClipboardPayload, ClipboardSource } from "@/clipboard/parse";
 import type { ClipboardSelection } from "@/clipboard/payload";
-import { DEFAULT_TABLE_NAME, validateTableName } from "@/copy/product";
+import { DEFAULT_TABLE_NAME } from "@/copy/product";
 import { readCell } from "@/core/cell-value";
 import {
 	createEmptyDocument,
@@ -77,6 +77,7 @@ import {
 	planFillSeries,
 	planOfferedSeries,
 } from "@/core/series";
+import { validateTableName } from "@/core/table-name";
 import type {
 	Alignment,
 	CellValue,
