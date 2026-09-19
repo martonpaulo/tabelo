@@ -190,6 +190,48 @@ test("the caret steps over a sequence rather than into it", async ({
 	await expect(tabelo.cell(1, 1)).toHaveText("aZ|b");
 });
 
+// CodeMirror measures a caret beside a widget from the widget's own box. The
+// glyph's box once took the whole line height, so a caret on either side of a
+// sequence was drawn from the top of the line, above the text it belongs to.
+// Asserted as containment in the line box and order along the line, never as
+// exact positions.
+test("a caret beside a sequence stays on the text line", async ({
+	tabelo,
+	page,
+}) => {
+	await tabelo.paste(["Note", "a|b"].join("\n"));
+	const pane = tabelo.pane("markdown");
+	const marker = pane.locator(escapeMarker);
+	await expect(marker).toHaveCount(1);
+	const box = await marker.boundingBox();
+	if (!box) throw new Error("not rendered");
+	const centre = box.x + box.width / 2;
+	const caret = pane.locator(".cm-tabeloCaret-primary");
+	const caretX = async () => (await caret.boundingBox())?.x ?? -1;
+
+	// The caret layer is redrawn after the selection changes, so each check
+	// polls for the state the click produces rather than reading once.
+	const caretOnTextLine = async () => {
+		const caretBox = await caret.boundingBox();
+		const lineBox = await pane.locator(".cm-activeLine").boundingBox();
+		if (!caretBox || !lineBox) return false;
+		return (
+			caretBox.y > lineBox.y &&
+			caretBox.y + caretBox.height < lineBox.y + lineBox.height
+		);
+	};
+
+	// Inside the glyph's left half the caret lands before the sequence...
+	await page.mouse.click(box.x + 1, box.y + box.height / 2);
+	await expect.poll(caretX).toBeLessThan(centre);
+	await expect.poll(caretOnTextLine).toBe(true);
+
+	// ...and inside its right half, after it.
+	await page.mouse.click(box.x + box.width - 1, box.y + box.height / 2);
+	await expect.poll(caretX).toBeGreaterThan(centre);
+	await expect.poll(caretOnTextLine).toBe(true);
+});
+
 test("hovering a glyph says what the sequence stands for", async ({
 	tabelo,
 	page,

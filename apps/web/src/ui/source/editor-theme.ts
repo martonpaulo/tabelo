@@ -76,6 +76,22 @@ const spaceDot = {
 // uses for the escape-sequence marker.
 const spaceGlyphProperty = { "--tabelo-space-glyph": `"${SPACE_GLYPH}"` };
 
+// The box of a widget drawn inside a source line: the empty-field placeholder
+// and an escape sequence's glyph. Inline-block so the width the widget carries
+// applies at all, which is what holds a Markdown column together around it.
+//
+// An inline-block's box is its line-height, which here is the whole 2rem line,
+// while a text run's box is only its font's content area. CodeMirror measures a
+// caret beside a widget from the widget's own box, so a line-tall box drew that
+// caret from the top of the line instead of on the text. The placeholder was
+// sized like text for that reason, and the escape glyph was not, so a caret
+// beside a `&#160;` still sat a quarter line high. Every such widget takes
+// this one box, so every caret in the line stays on the text.
+const inlineWidgetBox = {
+	display: "inline-block",
+	lineHeight: "normal",
+};
+
 export const editorTheme = EditorView.theme({
 	// The pane body draws the inset code box (panel.tsx); the editor fills it.
 	"&": {
@@ -350,14 +366,7 @@ export const editorTheme = EditorView.theme({
 		// alignment rather than centred inside that width, because Markdown
 		// writes every cell against the left of its column and pads to the right
 		// of it whatever the column declares.
-		display: "inline-block",
-		// An inline-block's box is its line-height, which here is the whole
-		// 2rem line, while a text run's box is only its font's content area.
-		// CodeMirror measures a caret beside the placeholder from the
-		// placeholder's box, so a line-tall box drew that caret from the top of
-		// the line instead of on the text. Sizing it like text keeps every caret
-		// in the line on one baseline.
-		lineHeight: "normal",
+		...inlineWidgetBox,
 		userSelect: "none",
 	},
 	// An escape sequence, drawn as the one character it stands for. It wears the
@@ -378,7 +387,7 @@ export const editorTheme = EditorView.theme({
 		// so anything narrower shifts every delimiter after it. Inline-block is
 		// what makes that width apply at all, and centring puts the one glyph in
 		// the middle of the room the notation took.
-		display: "inline-block",
+		...inlineWidgetBox,
 		textAlign: "center",
 		// No `overflow` here: anything but `visible` moves an inline-block's
 		// baseline to its bottom margin edge, which lifts the glyph off the line
