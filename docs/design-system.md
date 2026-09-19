@@ -993,8 +993,12 @@ Settings is the other deliberate exception. It holds the global source display
 preferences (#55), and each one applies as it changes: a read-only preview at
 the top of the dialog is a real source editor built from the same indicator
 extensions every text view uses, so the effect is visible before the dialog
-closes and no Apply step is left to confirm. The footer is `Reset to defaults`
-and `Done`. Empty values and tabs are option blocks whose icon is the mark they
+closes and no Apply step is left to confirm. Its title carries no icon, like
+every other dialog's. The footer is the shared action row, `Reset to defaults`
+as the ordinary alternative and `Done` last, stacking at full width on a phone
+(owner, 2026-09-19). Each option block's glyph sits in one fixed slot as wide
+as the widest mark, so every row's label starts on the same line, and the
+preview keeps a trailing gap so a clipped line never touches its box. Empty values and tabs are option blocks whose icon is the mark they
 draw and whose control is a `Switch`; spaces is one option block holding a
 `SegmentedControl` of its four modes, with the chosen mode's description above
 it. A write the browser refuses is reported in place and the controls show what
@@ -1008,7 +1012,9 @@ draw their two kinds of choice. A `Switch` is an on/off setting that takes
 effect at once; an on/off choice that waits for a confirm, such as a download
 option, stays a checkbox. A `SegmentedControl` is one value out of two to four
 short, mutually exclusive ones that fit side by side; longer or described
-choices stay option blocks. Both keep native semantics underneath (switch and
+choices stay option blocks. Below the `sm` breakpoint a four-segment control whose
+labels would wrap inside their segments forms two rows of two instead (owner,
+2026-09-19). Both keep native semantics underneath (switch and
 radio group).
 
 Rename table uses a transactional boundary for one persisted text value.

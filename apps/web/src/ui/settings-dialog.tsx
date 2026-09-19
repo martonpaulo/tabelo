@@ -1,4 +1,3 @@
-import { Button } from "@tabelo/ui/components/button";
 import {
 	Dialog,
 	DialogContent,
@@ -13,7 +12,6 @@ import {
 } from "@tabelo/ui/components/segmented-control";
 import { Switch } from "@tabelo/ui/components/switch";
 import { cn } from "@tabelo/ui/lib/utils";
-import { IconSettings } from "@tabler/icons-react";
 import { lazy, Suspense, useId, useState } from "react";
 import { copy } from "@/copy/copy";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
@@ -25,6 +23,11 @@ import {
 } from "@/preferences/contract";
 import { preferencesStore } from "@/preferences/store";
 import { usePreferences } from "@/preferences/use-preferences";
+import {
+	DialogActions,
+	DialogAlternative,
+	DialogConfirm,
+} from "@/ui/primitives/dialog-buttons";
 import { MenuOption } from "@/ui/primitives/menu-option";
 import { SPACE_GLYPH, TAB_GLYPH } from "@/ui/source/indicator-glyphs";
 
@@ -33,12 +36,13 @@ import { SPACE_GLYPH, TAB_GLYPH } from "@/ui/source/indicator-glyphs";
 const IndicatorPreview = lazy(() => import("@/ui/source/indicator-preview"));
 
 // The mark a setting draws, shown as its icon, so the row and what the preview
-// draws can be matched by eye.
+// draws can be matched by eye. One fixed slot, as wide as the widest mark,
+// so every row's label starts on the same line (owner, 2026-09-19).
 function Glyph({ children }: { readonly children: string }) {
 	return (
 		<span
 			aria-hidden
-			className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-indicator bg-surface-app px-1.5 font-source text-muted-foreground text-xs"
+			className="flex h-7 w-12 shrink-0 items-center justify-center rounded-indicator bg-surface-app font-source text-muted-foreground text-xs"
 		>
 			{children}
 		</span>
@@ -109,10 +113,7 @@ export function SettingsDialog({
 				className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto]"
 			>
 				<DialogHeader>
-					<DialogTitle id={titleId} className="flex items-center gap-2">
-						<IconSettings aria-hidden className="size-5 text-selection-edge" />
-						{copy.settings.title}
-					</DialogTitle>
+					<DialogTitle id={titleId}>{copy.settings.title}</DialogTitle>
 					<DialogDescription id={descriptionId}>
 						{copy.settings.description}
 					</DialogDescription>
@@ -176,6 +177,10 @@ export function SettingsDialog({
 								</span>
 							</div>
 							<SegmentedControl
+								// Four labels of two words do not fit one row below the
+								// small breakpoint, so they form two rows of two there
+								// rather than wrapping inside a segment.
+								className="max-sm:grid-flow-row max-sm:grid-cols-2"
 								aria-labelledby={spaceLabelId}
 								aria-describedby={spaceDescriptionId}
 								value={preferences.spaceIndicators}
@@ -199,18 +204,20 @@ export function SettingsDialog({
 					</p>
 				) : null}
 
-				<div className="flex items-center justify-between gap-2">
-					<Button
-						variant="ghost"
-						className="text-muted-foreground"
+				{/* The shared action row: an ordinary alternative, then the one
+				    decisive action last, stacking at full width on a phone like
+				    every other dialog's footer (owner, 2026-09-19). */}
+				<DialogActions>
+					<DialogAlternative
+						type="button"
 						onClick={() => commit(DEFAULT_PREFERENCES)}
 					>
 						{copy.settings.reset}
-					</Button>
-					<Button onClick={() => onOpenChange(false)}>
+					</DialogAlternative>
+					<DialogConfirm type="button" onClick={() => onOpenChange(false)}>
 						{copy.settings.done}
-					</Button>
-				</div>
+					</DialogConfirm>
+				</DialogActions>
 			</DialogContent>
 		</Dialog>
 	);

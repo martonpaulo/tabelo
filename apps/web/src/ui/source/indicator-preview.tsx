@@ -61,7 +61,10 @@ export default function IndicatorPreview({
 		<div
 			ref={hostRef}
 			data-slot="indicator-preview"
-			className="[&_.cm-content]:select-none! pointer-events-none select-none overflow-hidden rounded-interactive [&_.cm-editor]:m-0 [&_.cm-editor]:h-auto"
+			// The trailing padding keeps a clipped line off the box's edge on a
+			// narrow window: the preview never scrolls, so text that does not
+			// fit stops short of the edge instead of touching it.
+			className="[&_.cm-content]:select-none! pointer-events-none select-none overflow-hidden rounded-interactive bg-surface-code pr-3 [&_.cm-editor]:m-0 [&_.cm-editor]:h-auto"
 		/>
 	);
 }
