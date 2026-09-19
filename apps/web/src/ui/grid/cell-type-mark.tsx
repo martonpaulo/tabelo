@@ -25,8 +25,11 @@ export function CellTypeMark({ type, context, className }: CellTypeMarkProps) {
 				// 24-unit icon, a 0.75rem mark draws lines under one device pixel
 				// wide, which blur on a 1x display (owner, 2026-09-19).
 				"[--icon-stroke-width:2]",
+				// Sized by the font size the zoom-aware utility inlines: a bare
+				// var() reference to the theme token resolves at the root, where
+				// no pane zoom exists, so the symbol would ignore the pane's zoom.
 				context === "cell"
-					? "h-content-line-box [&_svg]:size-(--text-cell-type-mark)"
+					? "h-content-line-box text-cell-type-mark [&_svg]:size-[1em]"
 					: "[&_svg]:size-3.5",
 				className,
 			)}
