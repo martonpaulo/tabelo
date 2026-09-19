@@ -162,8 +162,13 @@ async function editorSnapshot(editor: Locator) {
 		const scroller = element
 			.closest(".cm-editor")
 			?.querySelector<HTMLElement>(".cm-scroller");
+		const line = selection.anchorNode.parentElement?.closest(".cm-line");
+		const prefix = element.ownerDocument.createRange();
+		if (line) prefix.selectNodeContents(line);
+		prefix.setEnd(selection.anchorNode, selection.anchorOffset);
 		return {
 			offset: range.toString().length,
+			linePrefix: line ? prefix.toString() : "",
 			scrollTop: scroller?.scrollTop ?? 0,
 		};
 	});
@@ -223,7 +228,10 @@ test("source cursor and local undo survive a 200-row synchronization", async ({
 	await expect(tabelo.cell(200, 1)).toHaveText("Value 199X");
 	await expect(editor).toBeFocused();
 	const afterInsert = await editorSnapshot(editor);
-	expect(afterInsert?.offset).toBe((beforeInsert?.offset ?? 0) + 1);
+	// The caret stays right after the typed character on its own line. Its
+	// document offset may move further: widening the column pads every line
+	// above it too (#401), which is the alignment working, not the caret lost.
+	expect(afterInsert?.linePrefix).toBe(`${beforeInsert?.linePrefix}X`);
 	expect(afterInsert?.scrollTop).toBe(beforeInsert?.scrollTop);
 
 	await editor.press("ControlOrMeta+z");

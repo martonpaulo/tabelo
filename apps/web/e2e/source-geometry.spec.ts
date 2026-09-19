@@ -85,7 +85,6 @@ const peopleTable = [
 
 interface ZoomSample {
 	readonly fontSize: number;
-	readonly gutterWidth: number;
 	readonly onTheirLines: boolean;
 }
 
@@ -146,7 +145,6 @@ test("a zoom step carries the line numbers and the caret onto the resized lines"
 					fontSize: content
 						? Number.parseFloat(getComputedStyle(content).fontSize)
 						: 0,
-					gutterWidth: numbers[0]?.getBoundingClientRect().width ?? 0,
 					// Enclosure rather than size: what is being checked is that measured
 					// placement and styled scale still describe the same rows.
 					onTheirLines:
@@ -189,10 +187,11 @@ test("a zoom step carries the line numbers and the caret onto the resized lines"
 		resized = await probe();
 	}
 
-	// Direction only: the step has to have actually reached the text and the
-	// gutter, or the placement check below proves nothing.
+	// Direction only: the step has to have actually reached the text, or the
+	// placement check below proves nothing. The numbers themselves keep the
+	// grid's fixed index size at every zoom, as the grid's own gutter does, so
+	// only their placement on the resized lines is checked.
 	expect(resized.fontSize).toBeGreaterThan(before.fontSize);
-	expect(resized.gutterWidth).toBeGreaterThan(before.gutterWidth);
 	expect(resized.onTheirLines).toBe(true);
 });
 
