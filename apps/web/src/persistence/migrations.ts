@@ -13,6 +13,7 @@ import {
 	persistedStateV6Schema,
 	persistedStateV7Schema,
 	persistedStateV8Schema,
+	persistedStateV9Schema,
 } from "./versions";
 
 export interface MigrationStep {
@@ -194,6 +195,16 @@ function migrateV8ToV9(input: unknown): unknown {
 	};
 }
 
+// Version 10 lets a header and a textual cell hold inline content (#306).
+// Plain text stays a plain string in the new model rather than gaining a
+// wrapper, so every value a version-9 release wrote is already a valid
+// version-10 value: the document is carried across untouched, byte for byte,
+// and nothing reads a value to decide what it might have meant.
+function migrateV9ToV10(input: unknown): unknown {
+	const source = input as z.infer<typeof persistedStateV9Schema>;
+	return { ...source, version: 10 };
+}
+
 export const migrationRegistry: MigrationRegistry = {
 	1: {
 		source: persistedStateV1Schema,
@@ -232,8 +243,13 @@ export const migrationRegistry: MigrationRegistry = {
 	},
 	8: {
 		source: persistedStateV8Schema,
-		target: persistedStateSchema,
+		target: persistedStateV9Schema,
 		migrate: migrateV8ToV9,
+	},
+	9: {
+		source: persistedStateV9Schema,
+		target: persistedStateSchema,
+		migrate: migrateV9ToV10,
 	},
 };
 

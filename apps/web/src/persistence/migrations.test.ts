@@ -8,6 +8,7 @@ import v5 from "./fixtures/v5.json";
 import v6 from "./fixtures/v6.json";
 import v7 from "./fixtures/v7.json";
 import v8 from "./fixtures/v8.json";
+import v9 from "./fixtures/v9.json";
 import {
 	type MigrationRegistry,
 	migrationRegistry,
@@ -223,13 +224,52 @@ describe("adjacent persistence migrations", () => {
 		});
 	});
 
+	// #306. Plain text stays a plain string in the inline content model, so the
+	// step carries the whole v9 payload across untouched: the same bytes, save
+	// the version, and no value read to guess at structure.
+	it("copies every v9 value into v10 byte for byte", () => {
+		const result = runMigrationChain(v9, 9, 10, migrationRegistry);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		const { version, ...rest } = result.value as {
+			version: number;
+			document: unknown;
+		};
+		const { version: _source, ...expected } = v9;
+		expect(version).toBe(10);
+		expect(rest).toEqual(expected);
+		expect(JSON.stringify(rest.document)).toBe(JSON.stringify(v9.document));
+	});
+
+	it("carries native scalars and empty values into v10 unchanged", () => {
+		const [first, second] = v9.document.rows;
+		const source = {
+			...v9,
+			document: {
+				...v9.document,
+				rows: [
+					{ ...first, cells: { "c-name": "", "c-role": 35 } },
+					{ ...second, cells: { "c-name": null, "c-role": false } },
+				],
+			},
+		};
+
+		const result = runMigrationChain(source, 9, 10, migrationRegistry);
+
+		expect(result).toMatchObject({
+			ok: true,
+			value: { version: 10, document: source.document },
+		});
+	});
+
 	it("runs the oldest fixture through the complete chain", () => {
-		const result = runMigrationChain(v1, 1, 9, migrationRegistry);
+		const result = runMigrationChain(v1, 1, 10, migrationRegistry);
 
 		expect(result).toMatchObject({
 			ok: true,
 			value: {
-				version: 9,
+				version: 10,
 				name: "Untitled table",
 				draft: null,
 				workspace: {

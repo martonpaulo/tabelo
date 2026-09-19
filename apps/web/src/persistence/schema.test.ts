@@ -9,6 +9,7 @@ import v6 from "./fixtures/v6.json";
 import v7 from "./fixtures/v7.json";
 import v8 from "./fixtures/v8.json";
 import v9 from "./fixtures/v9.json";
+import v10 from "./fixtures/v10.json";
 import { CURRENT_VERSION, validatePersistedState } from "./schema";
 
 const document = {
@@ -189,6 +190,7 @@ describe("loading a stored payload", () => {
 		["v7", v7],
 		["v8", v8],
 		["v9", v9],
+		["v10", v10],
 	] as const)(
 		"loads the stored %s fixture as current state",
 		(_name, fixture) => {
@@ -200,6 +202,94 @@ describe("loading a stored payload", () => {
 			expect(outcome.state.document.rows[0]?.cells["c-name"]).toBe("Ingrid");
 		},
 	);
+
+	// #306. Marks, a link with an email address, an image with Unicode
+	// alternative text, and a line break, in headers and cells alike, beside
+	// native scalars: all of it comes back exactly as it was stored.
+	it("carries every inline node of the stored v10 fixture", () => {
+		const outcome = validatePersistedState(v10);
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.document).toEqual(v10.document);
+	});
+
+	const inlineCell = (content: unknown) =>
+		payload({
+			document: {
+				columns: document.columns,
+				rows: [{ id: "r1", cells: { c1: content } }],
+			},
+		});
+	const run = (text: string, marks: string[] = []) => ({
+		kind: "text",
+		text,
+		marks,
+	});
+
+	it.each([
+		["a wrapper around plain text", { kind: "inline", nodes: [run("Rio")] }],
+		["an empty node list", { kind: "inline", nodes: [] }],
+		[
+			"adjacent runs with the same marks",
+			{ kind: "inline", nodes: [run("Ri", ["bold"]), run("o", ["bold"])] },
+		],
+		[
+			"marks out of canonical order",
+			{ kind: "inline", nodes: [run("Rio", ["italic", "bold"])] },
+		],
+		[
+			"a repeated mark",
+			{ kind: "inline", nodes: [run("Rio", ["bold", "bold"])] },
+		],
+		["an unknown mark", { kind: "inline", nodes: [run("Rio", ["shadow"])] }],
+		[
+			"code combined with another mark",
+			{ kind: "inline", nodes: [run("Rio", ["bold", "code"])] },
+		],
+		[
+			"code across a line break",
+			{ kind: "inline", nodes: [run("Rio\nMadrid", ["code"])] },
+		],
+		[
+			"an image without alternative text",
+			{
+				kind: "inline",
+				nodes: [{ kind: "image", url: "https://example.com/rio.png", alt: "" }],
+			},
+		],
+		[
+			"a link without a URL",
+			{
+				kind: "inline",
+				nodes: [{ kind: "link", url: "", children: [run("Rio")] }],
+			},
+		],
+		[
+			"a link holding an image",
+			{
+				kind: "inline",
+				nodes: [
+					{
+						kind: "link",
+						url: "https://example.com",
+						children: [
+							{ kind: "image", url: "https://example.com/rio.png", alt: "Rio" },
+						],
+					},
+				],
+			},
+		],
+		[
+			"a key Tabelo never writes",
+			{ kind: "inline", nodes: [run("Rio", ["bold"])], style: "color: red" },
+		],
+	])("refuses inline content holding %s", (_name, content) => {
+		expect(validatePersistedState(inlineCell(content))).toEqual({
+			status: "unreadable",
+			reason: "current-schema-invalid",
+		});
+	});
 
 	it("requires a trimmed non-empty name within 120 Unicode code points", () => {
 		expect(validatePersistedState(payload({ name: "" }))).toEqual({

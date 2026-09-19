@@ -1,11 +1,13 @@
 import { z } from "zod";
 import { MAX_TABLE_NAME_CODE_POINTS } from "@/copy/product";
 import { EXPECTED_COLUMN_TYPES } from "@/core/cell-value";
+import { isValidInlineContent } from "@/core/inline-content";
+import type { InlineContent } from "@/core/types";
 import { SPACE_INDICATOR_VALUES } from "@/preferences/contract";
 import { workspacePanesTileLayout } from "@/workspace/layout";
 import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
-export const PERSISTED_VERSION = 9 as const;
+export const PERSISTED_VERSION = 10 as const;
 
 // These schemas mirror the payloads shipped by the commits that introduced
 // versions 1 through 5. Keep them beside their stored fixtures: a migration
@@ -40,23 +42,45 @@ const persistedDocumentV5Schema = z.object({
 // writes `NaN` and `Infinity` as `null`, which would silently turn a number
 // into a different type on the next load. Refusing the payload sends it down
 // the recovery path with its bytes intact instead.
-const cellValueSchema = z.union([
+const scalarCellValueSchema = z.union([
 	z.string(),
 	z.number().finite(),
 	z.boolean(),
 	z.null(),
 ]);
 
-const currentColumnSchema = columnWithoutWidthSchema.extend({
+// The document versions 6 through 9 wrote: scalar cells and string headers.
+const typedColumnSchema = columnWithoutWidthSchema.extend({
 	expectedType: z.enum(EXPECTED_COLUMN_TYPES),
 });
-const currentRowSchema = z.object({
-	id: z.string().min(1),
-	cells: z.record(z.string(), cellValueSchema),
+const persistedDocumentV6Schema = z.object({
+	columns: z.array(typedColumnSchema).min(1),
+	rows: z.array(
+		z.object({
+			id: z.string().min(1),
+			cells: z.record(z.string(), scalarCellValueSchema),
+		}),
+	),
+});
+
+// Version 10 lets a header and a textual cell hold inline content (#306). It
+// is accepted only in the exact normalized form the core defines, so content
+// Tabelo would never write is reported and preserved rather than repaired.
+const inlineContentSchema = z.custom<InlineContent>(isValidInlineContent);
+const currentColumnSchema = typedColumnSchema.extend({
+	header: z.union([z.string(), inlineContentSchema]),
 });
 const currentDocumentSchema = z.object({
 	columns: z.array(currentColumnSchema).min(1),
-	rows: z.array(currentRowSchema),
+	rows: z.array(
+		z.object({
+			id: z.string().min(1),
+			cells: z.record(
+				z.string(),
+				z.union([scalarCellValueSchema, inlineContentSchema]),
+			),
+		}),
+	),
 });
 
 const historicalViewIdSchema = z.enum([
@@ -205,7 +229,7 @@ export const persistedStateV5Schema = z
 	.superRefine((state, context) => refineCurrentRelationships(state, context));
 
 const persistedStateV6Shape = {
-	document: currentDocumentSchema,
+	document: persistedDocumentV6Schema,
 	workspace: persistedWorkspaceV5Schema,
 	draft: currentDraftSchema.nullable(),
 };
@@ -242,7 +266,7 @@ const persistedWorkspaceV8Schema = persistedWorkspaceV5Schema.extend({
 
 const persistedStateV8Shape = {
 	name: tableNameSchema,
-	document: currentDocumentSchema,
+	document: persistedDocumentV6Schema,
 	draft: currentDraftSchema.nullable(),
 };
 
@@ -271,10 +295,22 @@ const currentWorkspaceSchema = persistedWorkspaceV8Schema.extend({
 	panes: z.array(currentPaneSchema).min(1).max(4),
 });
 
+export const persistedStateV9Schema = z
+	.object({
+		version: z.literal(9),
+		...persistedStateV8Shape,
+		workspace: currentWorkspaceSchema,
+	})
+	.superRefine((state, context) => {
+		refineCurrentRelationships(state, context);
+	});
+
 export const persistedStateSchema = z
 	.object({
 		version: z.literal(PERSISTED_VERSION),
-		...persistedStateV8Shape,
+		name: tableNameSchema,
+		document: currentDocumentSchema,
+		draft: currentDraftSchema.nullable(),
 		workspace: currentWorkspaceSchema,
 	})
 	.superRefine((state, context) => {

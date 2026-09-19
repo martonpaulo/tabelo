@@ -5,7 +5,7 @@ import { createEmptyDocument } from "@/core/document";
 import { createDefaultWorkspace } from "@/workspace/layout";
 import v2 from "./fixtures/v2.json";
 import v4 from "./fixtures/v4.json";
-import v9 from "./fixtures/v9.json";
+import v10 from "./fixtures/v10.json";
 import { CURRENT_VERSION, RECOVERY_KEY, STORAGE_KEY } from "./schema";
 import {
 	loadState,
@@ -52,7 +52,33 @@ describe("browser storage outcomes", () => {
 		],
 		[
 			"invalid current schema",
-			JSON.stringify({ ...v9, document: { columns: [] } }),
+			JSON.stringify({ ...v10, document: { columns: [] } }),
+			"current-schema-invalid",
+		],
+		// Formatting Tabelo would never write: two adjacent runs with the same
+		// marks. It is kept as it was stored, never normalized into shape.
+		[
+			"non-normalized inline content",
+			JSON.stringify({
+				...v10,
+				document: {
+					...v10.document,
+					rows: [
+						{
+							id: "r-ingrid",
+							cells: {
+								"c-name": {
+									kind: "inline",
+									nodes: [
+										{ kind: "text", text: "Ing", marks: ["bold"] },
+										{ kind: "text", text: "rid", marks: ["bold"] },
+									],
+								},
+							},
+						},
+					],
+				},
+			}),
 			"current-schema-invalid",
 		],
 		[
