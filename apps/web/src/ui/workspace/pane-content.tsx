@@ -67,9 +67,16 @@ export function preloadPaneContent(
 	return Promise.allSettled(loads).then(() => undefined);
 }
 
+// The loading state says nothing while its pane sits inert behind something
+// that covers it, such as the welcome surface on a first visit: there it only
+// flickered through the backdrop for the moment the editor took to arrive
+// (owner, 2026-09-19). The pane keeps its empty surface until then.
 function PaneLoading() {
 	return (
-		<div role="status" className="flex h-full items-center justify-center">
+		<div
+			role="status"
+			className="in-[[inert]]:invisible flex h-full items-center justify-center"
+		>
 			<span className="text-muted-foreground text-sm">
 				{copy.status.loading}
 			</span>
