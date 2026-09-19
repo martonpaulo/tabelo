@@ -57,7 +57,11 @@ import { csvLanguage } from "./csv-language";
 import { drawnSelection } from "./drawn-selection";
 import { editorFailures } from "./editor-failures";
 import { syntaxTheme } from "./editor-theme";
-import { emptyValueMarkers, emptyValueSyntax } from "./empty-values";
+import {
+	emptyFieldSpelling,
+	emptyValueMarkers,
+	emptyValueSyntax,
+} from "./empty-values";
 import { escapeSequenceGlyphs, escapeSyntax } from "./escape-sequences";
 import { sourceTabExtension } from "./field-navigation";
 import { htmlHeaderCells, htmlLanguage } from "./html-language";
@@ -242,7 +246,16 @@ export function indicatorExtensions({
 		lineBreaks && lineBreakFields
 			? literalLineBreakMarkers(lineBreakFields)
 			: [],
-		align ? columnAlignment({ emptyValues, lineBreaks, escapes }) : [],
+		align
+			? columnAlignment({
+					emptyValues,
+					emptyField: emptyFieldSpelling(
+						emptyValueSyntax(language, fieldSeparator),
+					),
+					lineBreaks,
+					escapes,
+				})
+			: [],
 		classes ? EditorView.editorAttributes.of({ class: classes }) : [],
 	];
 }

@@ -57,6 +57,9 @@ export interface AlignmentOptions {
 	// Whether the empty-value placeholder is drawn, which is what gives an empty
 	// field the width of its word.
 	readonly emptyValues: boolean;
+	// The text an empty field is written with, where the format spells one
+	// (Jira's one space): drawn as the placeholder too, so it takes that room.
+	readonly emptyField: string | null;
 	// Whether a line-break sequence is drawn as its one-character glyph.
 	readonly lineBreaks: boolean;
 	// The format's escape grammar, for the formats that have one.
@@ -202,6 +205,9 @@ export function drawnWidth(
 		if (from >= to)
 			return options.emptyValues ? EMPTY_VALUE_PLACEHOLDER.length : 0;
 		const run = text.slice(from, to);
+		if (options.emptyValues && run === options.emptyField) {
+			return Math.max(EMPTY_VALUE_PLACEHOLDER.length, run.length);
+		}
 		// A tab takes the room up to the next tab stop, which depends on where it
 		// is drawn rather than on the run. Every row draws the tab ending a field
 		// at the same aligned position, so counting it as nothing still lines the

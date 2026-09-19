@@ -14,7 +14,7 @@ import {
 	type ViewUpdate,
 	WidgetType,
 } from "@codemirror/view";
-import { isJiraHeaderLine } from "@/formats/jira";
+import { isJiraHeaderLine, JIRA_EMPTY_FIELD } from "@/formats/jira";
 import { headerValueBoundary } from "@/formats/records";
 import type { HighlightLanguage } from "@/views/types";
 import { htmlCells } from "./html-language";
@@ -70,6 +70,16 @@ export function emptyValueSyntax(
 		default:
 			return null;
 	}
+}
+
+// The text an empty field is written with where a syntax spells one rather
+// than writing nothing: Jira's one space, because `||` is its header delimiter
+// (formats/jira.ts). Column alignment reads it so that field takes the
+// placeholder's room, as a field with nothing in it does.
+export function emptyFieldSpelling(
+	syntax: EmptyValueSyntax | null,
+): string | null {
+	return syntax?.kind === "jira" ? JIRA_EMPTY_FIELD : null;
 }
 
 // The placeholder reads as text and sits where the cell's value would have
@@ -237,7 +247,10 @@ export function jiraEmptyFields(
 
 		const doubled = header && line[index + 1] === "|";
 		const field = line.slice(fieldStart, index);
-		if (previousDelimiterEnd !== null && (field === "" || field === " ")) {
+		if (
+			previousDelimiterEnd !== null &&
+			(field === "" || field === JIRA_EMPTY_FIELD)
+		) {
 			fields.push({ from: fieldStart, to: index });
 		}
 		index += doubled ? 2 : 1;

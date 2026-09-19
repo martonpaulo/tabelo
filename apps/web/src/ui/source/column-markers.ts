@@ -86,9 +86,12 @@ export function columnMarkerCells(
 // Where a column's text begins inside its cell: past the one space of padding
 // the serializer writes after a delimiter, so the letter starts where the
 // header name does, as the grid's letter starts where its column's text does.
+// A cell that is that one space and nothing else is Jira's empty cell
+// (formats/jira.ts), whose placeholder is drawn over the space: the letter
+// starts where the placeholder does, not after it.
 function columnStart(view: EditorView, cell: SourceRowRange): number {
 	const from = Math.min(cell.from, view.state.doc.length);
-	return cell.to > from && view.state.sliceDoc(from, from + 1) === " "
+	return cell.to > from + 1 && view.state.sliceDoc(from, from + 1) === " "
 		? from + 1
 		: from;
 }

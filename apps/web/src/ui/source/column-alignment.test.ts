@@ -1,6 +1,7 @@
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { describe, expect, it } from "vitest";
+import { documentFromMatrix } from "@/core/document";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import { samplePerson } from "@/core/sample-data";
 import { csvCodec, jiraCodec, tsvCodec } from "@/formats";
@@ -19,6 +20,7 @@ const second = samplePerson(1);
 
 const plain: AlignmentOptions = {
 	emptyValues: false,
+	emptyField: null,
 	lineBreaks: true,
 	escapes: null,
 };
@@ -137,6 +139,44 @@ describe("column alignment", () => {
 		expect(padsWith(false)).toEqual([
 			{ at: emptyField, columns: "city".length },
 		]);
+	});
+
+	it("counts Jira's one-space empty cell as its placeholder while it is drawn", () => {
+		const text = jiraCodec.serialize(
+			documentFromMatrix(
+				[
+					["", ""],
+					["", ""],
+				],
+				{ headerRow: true },
+			),
+		);
+		const rows = rowsOf(jiraCodec, text);
+		const options = { ...plain, emptyField: " " };
+		const width = (emptyValues: boolean) => {
+			const cell = rows[1]?.cells[0];
+			if (!cell) throw new Error("the row maps its cells");
+			return drawnWidth(text, { ...options, emptyValues })(cell.from, cell.to);
+		};
+		expect(width(true)).toBe(EMPTY_VALUE_PLACEHOLDER.length);
+		expect(width(false)).toBe(1);
+		// Every column then starts at one position on the header and the rows.
+		const pads = alignmentPadding(
+			text,
+			rows,
+			drawnWidth(text, { ...options, emptyValues: true }),
+		);
+		const lines = text.split("\n");
+		const [header, ...body] = lines.map((line, index) => {
+			const offset = lines.slice(0, index).join("\n").length + (index ? 1 : 0);
+			return pads
+				.filter(({ at }) => at >= offset && at <= offset + line.length)
+				.reduce((sum, { columns }) => sum + columns, 0);
+		});
+		// The header's doubled delimiters are one column wider each, so it is
+		// the body rows that take the room.
+		expect(header).toBe(0);
+		for (const padding of body) expect(padding).toBeGreaterThan(0);
 	});
 
 	it("counts a wide character as the two columns it is drawn in", () => {

@@ -79,7 +79,8 @@ function collapseHeaderPipes(line: string): {
 // space is written as its character reference, which the cell grammar already
 // decodes. Each spelling reads back as what wrote it, and a field of one space
 // is the only text read differently from its content.
-const EMPTY_FIELD = " ";
+export const JIRA_EMPTY_FIELD = " ";
+const EMPTY_FIELD = JIRA_EMPTY_FIELD;
 const ONE_SPACE_FIELD = "&#32;";
 
 function writeJiraField(value: TextContent): string {
