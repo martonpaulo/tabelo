@@ -130,7 +130,7 @@ describe("the shared highlight style", () => {
 		// The generic class highlighter calls this a keyword, but the JSON grammar
 		// exposes the narrower null tag to a semantic HighlightStyle.
 		expect(rulesFor(tags.null)).toContain("--value-null");
-		expect(rulesFor(tags.tagName)).toContain("--syntax-tag");
+		expect(rulesFor(tags.tagName)).toContain("--syntax-punctuation");
 		expect(rulesFor(tags.link)).toContain("--syntax-link");
 		expect(rulesFor(tags.invalid)).toContain("--destructive");
 	});

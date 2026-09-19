@@ -33,7 +33,6 @@
 	--color-value-null: var(--value-null);
 	--color-syntax-notation: var(--syntax-notation);
 	--color-syntax-link: var(--syntax-link);
-	--color-syntax-tag: var(--syntax-tag);
 
 	/* Synchronization state. Always paired with a text label, never colour alone. */
 	--color-status-warning: var(--status-warning);
@@ -126,7 +125,7 @@
 
 	/* The source views' syntax palette, "A · Quente" (owner, 2026-09-19):
 	   warm value hues that each clear 4.5:1 on --surface-code (string 9.3,
-	   number 8.5, boolean 7.3, null 7.6, notation 6.2, tag 6.4, link 9.0). The grid's
+	   number 8.5, boolean 7.3, null 7.6, notation 6.2, link 9.0). The grid's
 	   typed values read the same four value tokens. Punctuation is structure
 	   drawn as decoration, deliberately quieter at 3.2:1, and never carries
 	   meaning alone: the text between it does. */
@@ -136,7 +135,6 @@
 	--value-null: #8fb3d9;
 	--syntax-punctuation: #6f6d66;
 	--syntax-notation: #e0876a;
-	--syntax-tag: #a99bc4;
 	--syntax-link: #8cc4ff;
 
 	--status-warning: #fbbf24;

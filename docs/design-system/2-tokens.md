@@ -173,8 +173,7 @@ number `1`, in accordance with ADR 0008.
 | `--value-boolean` | `text-value-boolean` | JSON booleans and carried boolean cells | Upright; 600 weight in sources only, the grid cell at the string weight like a number (owner, 2026-09-19) |
 | `--value-null` | `text-value-null` | JSON null and carried null cells | Literal shape in sources; grid type presentation also uses italics |
 | `--syntax-notation` | `text-syntax-notation` | Escapes, entities, and other notation | Token shape and grammar position |
-| `--syntax-tag` | `text-syntax-tag` | HTML element names: a calm lilac of their own, so the notation tone marks only escapes in an HTML pane (owner, 2026-09-19) | Token shape and grammar position |
-| `--syntax-punctuation` | (source views only) | Brackets, pipes, separators, the Markdown alignment divider, and markup markers | Grammar position; quieter than every value tone by design |
+| `--syntax-punctuation` | (source views only) | Brackets, pipes, separators, the Markdown alignment divider, markup markers, and HTML element names (owner, 2026-09-19: an HTML pane lets the content lead) | Grammar position; quieter than every value tone by design |
 | `--syntax-link` | `text-syntax-link` | Links, URLs, and autolinks | Underline on the link text and the address shape |
 
 The palette is "A · Quente" (owner, 2026-09-19): string `#b9c98a`, number
