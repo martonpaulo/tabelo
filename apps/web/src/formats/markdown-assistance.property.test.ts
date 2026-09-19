@@ -101,11 +101,14 @@ describe("markdown column padding assistance properties", () => {
 			if (!span) return;
 			const at = lineFrom + span.from + (offset % (span.to - span.from + 1));
 			const after = before.slice(0, at) + insert + before.slice(at);
+			// An insertion right after a backslash can turn an escaped pipe into
+			// a delimiter, which is no longer an edit inside one cell: the
+			// divider then gains a column, and that is the divider's property.
+			const typedLine = after.split("\n")[lineIndex] ?? "";
+			if (pipeCellSpans(typedLine).length !== cells.length) return;
 			const edits = assist(before, after, [
 				{ from: at, to: at + insert.length },
 			]);
-			// An insertion right after a backslash can turn an escaped pipe into
-			// a delimiter, which is no longer an edit inside one cell.
 			if (!edits) return;
 
 			const divider = lineSpans(after)[1];
