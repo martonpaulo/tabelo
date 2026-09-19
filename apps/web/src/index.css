@@ -239,6 +239,16 @@ body {
 	user-select: none;
 }
 
+/* The static introduction in the shell (#362) is for crawlers and readers
+   without JavaScript. With scripting on, the application replaces it on its
+   first render, and painting it first flashed a page of text for the moment
+   before the workspace appeared. It stays in the HTML either way. */
+@media (scripting: enabled) {
+	#app > main {
+		visibility: hidden;
+	}
+}
+
 /* Every Tabler icon carries this class and sets its stroke as a presentation
    attribute, which any stylesheet rule outranks, so one rule owns the weight. */
 .tabler-icon {

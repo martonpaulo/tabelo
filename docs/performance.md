@@ -416,6 +416,7 @@ the editor is created and on the frames after it.
 | suspicion | measured | verdict |
 | --- | --- | --- |
 | A source pane's first frame draws its line numbers squashed | When the editor is created, the numbers sit 14 px apart at the top while the lines are already 32 px: worst offset 126 px over eight lines. CodeMirror corrects it in the measure it schedules for the next animation frame. Changing a grid pane to Markdown and adding a Markdown view both reported a `layout-shift` of the gutter elements (0.0156 and 0.004), so the uncorrected state was laid out; whether a frame paints it depends on where the commit falls in the frame | **Confirmed, and fixed.** Reading a line block right after creating the editor runs the pending measure inside the commit. Offset at creation 126 px to 0 in both flows, gutter layout shift gone in three runs of each; the long task of the commit unchanged (71 to 97 ms before, 74 to 79 ms after). |
+| Every load flashes a page of text before the application | The static introduction #362 put in the shell was painted as the first frame and replaced by the application on its first render: on screen from 131 to 293 ms on a first visit and from 78 to 168 ms on a cached reload of a saved table | **Confirmed, and fixed.** With scripting enabled the introduction is `visibility: hidden`; it stays in the HTML for crawlers and for readers without JavaScript, who still see it. After: no frame shows it, the first painted frame is the empty app background. |
 
 ### Adding an entry
 
