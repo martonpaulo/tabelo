@@ -314,7 +314,8 @@ what used to be two passes over every visual change is now one.
 | Token | Utility | Value |
 | :--- | :--- | :--- |
 | `--control-h-sm` | `h-control-sm` | 1.75rem: dense toolbars, menu triggers |
-| `--control-h-md` | `h-control-md` | 2rem: default control height |
+| `--control-h-md` | `h-control-md` | 2rem: default compact control height: menu rows, icon buttons |
+| `--control-h-lg` | `h-control-lg` | 2.25rem: the default labelled button, a text field, and a textarea's starting height (owner, 2026-09-19) |
 | `--panel-header-h` | `h-panel-header` | 2.75rem: every pane header |
 | `--grid-gutter-w` | `w-grid-gutter` | 2.25rem: the row number and one small gap each side, nothing else (#288) |
 | `--grid-row-h` | `min-h-grid-row` | calc(var(--pane-zoom, 1) * 2rem): minimum table row height |
@@ -323,6 +324,12 @@ what used to be two passes over every visual change is now one.
 | `--control-radius` | `rounded-interactive` | 0.5rem: buttons, fields, menu items, option blocks, badges |
 | `--indicator-radius` | `rounded-indicator` | 0.25rem: a checkbox's 1rem box |
 | `--surface-radius` | `rounded-surface` | 0.75rem: panes, menus, dialogs, notices, empty states |
+
+Every height in `packages/ui`'s Button, Input, and Textarea resolves to one of
+the three control heights; a primitive writing its own `h-9` or `size-8` is a
+pattern break (owner, 2026-09-19). The only exception is the 1.5rem `icon-xs`
+button, which sits inside a denser control and is no control height of its
+own.
 
 The two radii communicate hierarchy rather than decoration. Grid cells, row or
 column headers, resize tracks, and layout glyphs stay square because their

@@ -43,6 +43,7 @@
 	/* Control geometry. */
 	--spacing-control-sm: var(--control-h-sm);
 	--spacing-control-md: var(--control-h-md);
+	--spacing-control-lg: var(--control-h-lg);
 	--spacing-panel-header: var(--panel-header-h);
 	--spacing-grid-gutter: var(--grid-gutter-w);
 	--spacing-grid-strip: var(--grid-strip-h);
@@ -135,6 +136,9 @@
 
 	--control-h-sm: 1.75rem;
 	--control-h-md: 2rem;
+	/* The default button and text field: one step above the default control,
+	   because a labelled action or a field someone types into earns the room. */
+	--control-h-lg: 2.25rem;
 	--panel-header-h: 2.75rem;
 	/* The row number and one small gap on each side, nothing else (#288): three
 	   digits of the 0.75rem index face fit with room for a wider fallback. */
