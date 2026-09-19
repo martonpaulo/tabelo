@@ -282,8 +282,11 @@ Related to: Parser, Escaping
 The format-specific transformation that lets a cell value survive a format that
 cannot represent it literally: in Markdown a newline becomes `<br>`, in Jira it
 becomes `\\`, and both escape the pipe. Jira writes a literal backslash as
-`&#92;` and protects literal ampersands as `&amp;`. Each parser decodes only its
-emitted grammar in one non-recursive pass. Escaping is always reversible.
+`&#92;` and protects literal ampersands as `&amp;`. Jira reads two adjacent
+pipes as a header delimiter, so it writes an empty cell as one space, the
+spelling Jira renders as an empty cell, and a value of exactly one space as
+`&#32;` (owner report, 2026-09-19). Each parser decodes only its emitted
+grammar in one non-recursive pass. Escaping is always reversible.
 
 Related to: Serializer, Parser
 

@@ -15,7 +15,7 @@ import {
 	type EmptyValueSyntax,
 	emptyCells,
 	emptyValueSyntax,
-	jiraEmptyOffsets,
+	jiraEmptyFields,
 	recordsEmptyOffset,
 	scanDelimitedLine,
 	snapToEmptyCell,
@@ -114,9 +114,26 @@ describe("scanDelimitedLine", () => {
 	});
 });
 
-describe("jiraEmptyOffsets", () => {
+describe("jiraEmptyFields", () => {
+	const jiraEmptyOffsets = (line: string) =>
+		jiraEmptyFields(line).map(({ from }) => from);
+
 	it("marks an empty cell in a body row", () => {
 		expect(jiraEmptyOffsets("|x||z|")).toEqual([3]);
+	});
+
+	it("marks the one-space spelling the codec writes, space included", () => {
+		expect(jiraEmptyFields("| | | |")).toEqual([
+			{ from: 1, to: 2 },
+			{ from: 3, to: 4 },
+			{ from: 5, to: 6 },
+		]);
+		expect(jiraEmptyFields("|| || ||")).toEqual([
+			{ from: 2, to: 3 },
+			{ from: 5, to: 6 },
+		]);
+		// Two spaces are a value, not the empty spelling.
+		expect(jiraEmptyFields("|  |x|")).toEqual([]);
 	});
 
 	it("reads a header line's doubled pipes as one delimiter", () => {
@@ -126,6 +143,18 @@ describe("jiraEmptyOffsets", () => {
 
 	it("marks a header of only empty cells", () => {
 		expect(jiraEmptyOffsets("||||")).toEqual([2]);
+	});
+
+	it("marks every cell of a serialized empty table", () => {
+		const document = documentFromMatrix(
+			[
+				["", "", ""],
+				["", "", ""],
+			],
+			{ headerRow: true },
+		);
+		const lines = jiraCodec.serialize(document).split("\n");
+		for (const line of lines) expect(jiraEmptyFields(line)).toHaveLength(3);
 	});
 
 	it("does not read an escaped pipe as a delimiter", () => {

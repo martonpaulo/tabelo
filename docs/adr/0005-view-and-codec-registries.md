@@ -82,8 +82,12 @@ cell in every row, measured the way the serializer pads it, so the text stays
 what the serializer would write for that column (Decided on #401). Jira declares the same row-start feature on its own terms:
 a bare `|`, because a space after the pipe is part of the cell value in Jira,
 and after the header line as well, because Jira has no divider (Decided on
-#391). No other codec declares one, and adding one is a codec change, not an
-editor change.
+#391). Jira also declares empty-cell fill: its empty cell is written as one
+space, so text typed at either edge of a field holding exactly that space
+replaces it rather than keeping it as a stray leading or trailing space; a
+typed space, a line break, or any wider edit stays as typed (owner report,
+2026-09-19). No other codec declares one, and adding one is a codec change,
+not an editor change.
 
 A codec may declare `mapsSourceRows`: its successful parse then also returns
 where each table row sits in the source, header first, and where each cell of

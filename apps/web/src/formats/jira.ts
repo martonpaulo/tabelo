@@ -1,5 +1,5 @@
 import { cellTextContentAt } from "@/core/cell-value";
-import type { TableDocument } from "@/core/types";
+import type { TableDocument, TextContent } from "@/core/types";
 import { jiraConstructEnd, parseJiraCell, writeJiraCell } from "./jira-inline";
 import {
 	firstLineBlock,
@@ -13,6 +13,7 @@ import type {
 	ParseIssue,
 	SourceFieldRange,
 	SourceRowRange,
+	StructuralAssistance,
 	TableCodec,
 } from "./types";
 
@@ -68,6 +69,30 @@ function collapseHeaderPipes(line: string): {
 	return { text, offsets };
 }
 
+// How an empty cell is spelled in a row. Jira reads two adjacent pipes as a
+// header delimiter, not as a cell with nothing in it, so `|a||c|` is a header
+// cell `c` and a row of empty cells written `||||` is a header line holding
+// nothing. Atlassian records that a cell holding one space is what renders as
+// an empty cell: https://jira.atlassian.com/browse/JRASERVER-70048
+//
+// So an empty value is written as one space, and a value that is exactly one
+// space is written as its character reference, which the cell grammar already
+// decodes. Each spelling reads back as what wrote it, and a field of one space
+// is the only text read differently from its content.
+const EMPTY_FIELD = " ";
+const ONE_SPACE_FIELD = "&#32;";
+
+function writeJiraField(value: TextContent): string {
+	const written = writeJiraCell(value);
+	if (written === "") return EMPTY_FIELD;
+	if (written === EMPTY_FIELD) return ONE_SPACE_FIELD;
+	return written;
+}
+
+function readJiraField(raw: string): TextContent {
+	return raw === EMPTY_FIELD ? "" : parseJiraCell(raw);
+}
+
 const HEADER_LINE = /^\s*\|\|/;
 
 // A Jira header line opens with a doubled pipe, which is also what makes its
@@ -101,7 +126,7 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 
 	// Collapse the header's doubled pipes so one splitter handles both rows.
 	const headerCells = splitJiraRow(collapseHeaderPipes(headerLine).text).map(
-		parseJiraCell,
+		readJiraField,
 	);
 
 	const warnings: ParseIssue[] = [];
@@ -116,7 +141,7 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 				line: start + 2 + offset,
 			});
 		}
-		return cells.map(parseJiraCell);
+		return cells.map(readJiraField);
 	});
 
 	return {
@@ -173,13 +198,13 @@ function jiraFields(text: string): SourceFieldRange[] {
 
 function serializeJira(document: TableDocument): string {
 	const header = `||${document.columns
-		.map((column) => writeJiraCell(column.header))
+		.map((column) => writeJiraField(column.header))
 		.join("||")}||`;
 
 	const body = document.rows.map(
 		(row) =>
 			`|${document.columns
-				.map((column) => writeJiraCell(cellTextContentAt(row, column.id)))
+				.map((column) => writeJiraField(cellTextContentAt(row, column.id)))
 				.join("|")}|`,
 	);
 
@@ -187,6 +212,42 @@ function serializeJira(document: TableDocument): string {
 	// here. It stays on the document and returns intact in Markdown.
 	return [header, ...body].join("\n");
 }
+
+// Empty-cell fill: a named structural-assistance feature under "Source text is
+// free; structural assistance is narrow" in AGENTS.md, needed because an empty
+// cell is spelled with one space. Typing into that cell would otherwise keep
+// the space beside what was typed, and `|x |` is the value `x ` with a
+// trailing space nobody meant.
+//
+// - Syntax: a field of the table block, as `jiraFields` reads it, whose text is
+//   exactly the one space an empty cell is written with.
+// - Trigger: text with no line break and not only spaces, inserted at either
+//   edge of that field, and nothing else changed.
+// - Change: that one space removed. The caret stays after what was typed.
+//
+// Everything else, including a paste across a delimiter, a selection replaced
+// by text, several carets, or a space typed into the field, stays as typed.
+const jiraEmptyCellFill: StructuralAssistance = (before, after, changed) => {
+	const [edit, ...others] = changed;
+	if (!edit || others.length > 0) return null;
+	const at = edit.from;
+	const inserted = after.slice(at, edit.to);
+	if (inserted.trim() === "" || /[\r\n]/.test(inserted)) return null;
+	if (after.length !== before.length + inserted.length) return null;
+	if (!after.startsWith(before.slice(0, at))) return null;
+	if (!after.endsWith(before.slice(at))) return null;
+	const field = jiraFields(before).find(
+		({ from, to }) =>
+			before.slice(from, to) === EMPTY_FIELD && (at === from || at === to),
+	);
+	if (!field) return null;
+	// Typed before the space, the space now follows the typed text; typed after
+	// it, the space is where it was.
+	const space = at === field.from ? edit.to : field.from;
+	return [{ from: space, to: space + EMPTY_FIELD.length, insert: "" }];
+};
+
+const jiraRowStart = jiraRowStartAssistance(isJiraHeaderLine);
 
 export const jiraCodec: TableCodec = {
 	id: "jira",
@@ -200,8 +261,11 @@ export const jiraCodec: TableCodec = {
 	mapsSourceRows: true,
 	sourceFields: jiraFields,
 	// Enter at the end of a row or of the header starts the next row with a
-	// bare `|` (#391).
-	structuralAssistance: jiraRowStartAssistance(isJiraHeaderLine),
+	// bare `|` (#391). Typing into an empty cell replaces the space that spells
+	// it. The two never compete: one wants a line break, the other refuses one.
+	structuralAssistance: (before, after, changed) =>
+		jiraRowStart(before, after, changed) ??
+		jiraEmptyCellFill(before, after, changed),
 	parseMatrix: parseJiraMatrix,
 	parse: (text) => toDocumentParseResult(parseJiraMatrix(text)),
 	serialize: serializeJira,

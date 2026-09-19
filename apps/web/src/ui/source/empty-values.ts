@@ -209,10 +209,16 @@ export function scanDelimitedLine(
 // Jira splits a row on unescaped pipes, and a header line's doubled pipes are
 // one delimiter rather than two: the same rule formats/jira.ts parses by. Only
 // the fields between two delimiters are marked, so a malformed row missing its
-// outer pipes is left alone instead of being guessed at.
-export function jiraEmptyOffsets(line: string): readonly number[] {
+// outer pipes is left alone instead of being guessed at. A field is empty when
+// it holds nothing, as a hand-typed `|x||z|` does, or exactly one space, which
+// is how the codec writes an empty cell because Jira itself reads `||` as a
+// header delimiter (formats/jira.ts). Each empty field is returned as offsets
+// within the line, that one space included.
+export function jiraEmptyFields(
+	line: string,
+): readonly { readonly from: number; readonly to: number }[] {
 	const header = isJiraHeaderLine(line);
-	const offsets: number[] = [];
+	const fields: { from: number; to: number }[] = [];
 	let index = 0;
 	let previousDelimiterEnd: number | null = null;
 	let fieldStart = 0;
@@ -230,15 +236,16 @@ export function jiraEmptyOffsets(line: string): readonly number[] {
 		}
 
 		const doubled = header && line[index + 1] === "|";
-		if (previousDelimiterEnd !== null && fieldStart === index) {
-			offsets.push(index);
+		const field = line.slice(fieldStart, index);
+		if (previousDelimiterEnd !== null && (field === "" || field === " ")) {
+			fields.push({ from: fieldStart, to: index });
 		}
 		index += doubled ? 2 : 1;
 		previousDelimiterEnd = index;
 		fieldStart = index;
 	}
 
-	return offsets;
+	return fields;
 }
 
 // One empty field, in document offsets, from the start of its opening
@@ -417,9 +424,19 @@ export function emptyCells(
 			const line = state.doc.line(number);
 			// A header line's delimiter is a doubled pipe.
 			const delimiter = isJiraHeaderLine(line.text) ? 2 : 1;
-			for (const offset of jiraEmptyOffsets(line.text)) {
-				const at = line.from + offset;
-				cells.push(pointCell(at, delimiter, at + delimiter));
+			for (const field of jiraEmptyFields(line.text)) {
+				const from = line.from + field.from;
+				const to = line.from + field.to;
+				// The one space an empty cell is written with is drawn over, as
+				// Markdown's padding is, and the caret's one stop sits before it.
+				cells.push({
+					before: from - delimiter,
+					cellStart: from,
+					valueStart: from,
+					valueEnd: to,
+					cellEnd: to,
+					after: to + delimiter,
+				});
 			}
 		}
 		return cells;

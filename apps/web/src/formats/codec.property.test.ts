@@ -3,10 +3,15 @@
 import { fc, test } from "@fast-check/vitest";
 import { describe, expect } from "vitest";
 import { cellText, readCell } from "@/core/cell-value";
-import { documentToMatrix, reconcileDocument } from "@/core/document";
+import {
+	documentFromMatrix,
+	documentToMatrix,
+	reconcileDocument,
+} from "@/core/document";
 import { setCell } from "@/core/operations";
 import type { CellValue, TableDocument } from "@/core/types";
 import { canSerialize, csvCodec, listCodecs, type TableCodec } from "@/formats";
+import { jiraCodec } from "@/formats/jira";
 import { escapeJiraCell, unescapeJiraCell } from "@/formats/jira-inline";
 import { escapeCell, unescapeCell } from "@/formats/markdown-inline";
 import { cellAtPosition } from "@/formats/parse";
@@ -82,6 +87,46 @@ describe("codec escape properties", () => {
 			);
 		},
 	);
+});
+
+// Empty, whitespace-only, and pipe-holding cells in the header and body rows:
+// the one-space empty spelling and its reference-spelled twin read back
+// byte-exact, and a body row never carries the doubled pipe Jira reads as a
+// header delimiter.
+const jiraEdgeCellArbitrary = fc.oneof(
+	fc.constantFrom("", " ", "  ", "\t", "|", " | ", "||", "&#32;", "\\"),
+	cellStringArbitrary,
+);
+
+describe("jira empty and whitespace cells", () => {
+	test.prop(
+		{
+			header: fc.array(jiraEdgeCellArbitrary, { minLength: 1, maxLength: 4 }),
+			rows: fc.array(fc.array(jiraEdgeCellArbitrary, { maxLength: 4 }), {
+				minLength: 1,
+				maxLength: 4,
+			}),
+		},
+		{ numRuns: PROPERTY_RUNS },
+	)("round trip byte-exact", ({ header, rows }) => {
+		const width = header.length;
+		const matrix = [
+			header,
+			...rows.map((row) =>
+				Array.from({ length: width }, (_, index) => row[index] ?? ""),
+			),
+		];
+		const document = documentFromMatrix(matrix, { headerRow: true });
+		const text = jiraCodec.serialize(document);
+		for (const line of text.split("\n").slice(1)) {
+			expect(line.startsWith("||")).toBe(false);
+		}
+		const parsed = expectSuccessfulParse("jira", jiraCodec.parse(text));
+		expect(documentToMatrix(parsed)).toEqual(
+			matrix.map((row) => row.map(normalizedLineEndings)),
+		);
+		expect(jiraCodec.serialize(parsed)).toBe(text);
+	});
 });
 
 describe("registered codec properties", () => {
