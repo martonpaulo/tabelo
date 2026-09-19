@@ -80,3 +80,15 @@ document, never rewrites text outside the range its trigger names, and never
 touches a draft that does not parse, which stays byte-exact and recoverable
 while every other view holds the last valid parse. The table document remains
 the only owner of committed data.
+
+## Amendment: inline content is document data (#306)
+
+A textual cell or header may carry inline content (marks, links, images; see
+ADR 0011), and it lives in the table document like every other value. The
+Visual Table is the complete editor of that content, through table operations
+and a rich cell editor whose only model is the cell being edited; it keeps no
+store of its own. The text round trip above holds unchanged: a format that
+spells inline content (Markdown, HTML, Jira) parses into it and is believed, and
+a format that cannot spell it reports text, so reconciliation keeps the existing
+structure whenever a cell's `cellText` projection is unchanged and only an
+edited cell becomes the parsed text.

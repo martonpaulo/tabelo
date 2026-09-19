@@ -138,6 +138,12 @@ persistence and the private clipboard payload accept. Its cell text is its
 runs, link labels, and image alternative text in document order. A number, a
 boolean, or `null` is never formatted. See `docs/adr/0011`.
 
+The Visual Table is where inline content is made and changed: its **Format
+group** (the five marks, `Link…`, and `Image…`) and their shortcuts act on the
+selected cells, and the **rich cell editor** edits one cell's formatted text in
+place. Neither is a second store: the editor holds only the cell being edited
+until it commits, and the table document stays the one owner.
+
 Related to: Cell value, Cell text, Codec
 
 ### Cell text

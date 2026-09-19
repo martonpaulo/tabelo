@@ -238,6 +238,22 @@ matches and a URL never does. Replace keeps the formatting around a match, and
 leaves alone a match that touches an image, since replacing part of its
 alternative text would discard the image and its URL.
 
+Slice 4 integrates the whole product. An import or a paste that reads
+declined HTML formatting keeps its text and now says so in a dismissible
+warning notice, which a source draft already did in its pane. Browser
+coverage takes one table holding every feature through the structured and
+plain views, their drafts, the clipboard both ways, Copy as, download, import,
+a reload, forced colours, and the keyboard; `docs/performance.md` records the
+target scale measured with formatted content. The rich cell editor stays
+narrower than the rest in four ways, each current behaviour rather than an
+accident: paste into it and copy out of it carry plain text only, since the
+same-app clipboard flavour belongs to the grid selection; the cell menu
+commits the edit before its Format group runs, so from the menu a mark
+applies to the whole cell and an image goes after the text (#398); an image
+is edited by deleting and reinserting it (#399); and once the editor's own
+undo is exhausted, `Mod`+`Z` does nothing until the edit is committed or
+cancelled, as with the textarea it replaced.
+
 ADR 0008 is amended by this one: a textual cell may now carry structure, and
 that structure is carried exactly as a type is, never derived from how text
 looks.

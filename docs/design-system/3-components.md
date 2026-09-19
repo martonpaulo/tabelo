@@ -292,6 +292,10 @@ keeps the grid a grid:
   rows below while it is taller than the cell, and it draws marks, links, and
   images with the elements the cell shows after the commit. A typed value
   keeps the plain editor, which has nothing to format.
+- **Formatting left behind is reported.** An import or a paste whose HTML
+  holds formatting the product declines keeps the text and raises one
+  dismissible warning notice naming each reason once; it never expires on its
+  own, because the user has something to check.
 
 ### Empty workspace
 
