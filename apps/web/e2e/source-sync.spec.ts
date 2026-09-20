@@ -94,7 +94,10 @@ async function seedTypedSource(tabelo: TabeloPage): Promise<void> {
 		({ key, value }) => {
 			localStorage.setItem(key, JSON.stringify(value));
 		},
-		{ key: activeTableStorageKey(), value: typedSourceState },
+		{
+			key: await activeTableStorageKey(tabelo.page),
+			value: typedSourceState,
+		},
 	);
 	await tabelo.page.reload();
 	await tabelo.workspace.waitFor({ state: "visible" });
@@ -111,19 +114,22 @@ async function sourceText(editor: Locator): Promise<string> {
 
 async function expectTypedCellsPersisted(tabelo: TabeloPage): Promise<void> {
 	await expect
-		.poll(() =>
-			tabelo.page.evaluate((key) => {
-				const saved = JSON.parse(localStorage.getItem(key) ?? "null");
-				return {
-					values: saved?.document?.rows?.[0]?.cells,
-					expectedTypes: saved?.document?.columns?.map(
-						(column: { expectedType?: string }) => column.expectedType,
-					),
-					alignments: saved?.document?.columns?.map(
-						(column: { align?: string }) => column.align,
-					),
-				};
-			}, activeTableStorageKey()),
+		.poll(async () =>
+			tabelo.page.evaluate(
+				(key) => {
+					const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+					return {
+						values: saved?.document?.rows?.[0]?.cells,
+						expectedTypes: saved?.document?.columns?.map(
+							(column: { expectedType?: string }) => column.expectedType,
+						),
+						alignments: saved?.document?.columns?.map(
+							(column: { align?: string }) => column.align,
+						),
+					};
+				},
+				await activeTableStorageKey(tabelo.page),
+			),
 		)
 		.toEqual({
 			values: {

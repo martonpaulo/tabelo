@@ -60,11 +60,14 @@ test("the notice's Undo reverts a transpose and brings back a column's width", a
 	await tabelo.dismissNotices();
 	await tabelo.header(1).focus();
 	await page.keyboard.press("Alt+Shift+ArrowRight");
-	const savedWidths = () =>
-		page.evaluate((key) => {
-			const saved = JSON.parse(localStorage.getItem(key) ?? "null");
-			return saved?.workspace?.columnWidths ?? {};
-		}, activeTableStorageKey());
+	const savedWidths = async () =>
+		page.evaluate(
+			(key) => {
+				const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+				return saved?.workspace?.columnWidths ?? {};
+			},
+			await activeTableStorageKey(page),
+		);
 	await expect.poll(savedWidths).not.toEqual({});
 	const widened = await savedWidths();
 

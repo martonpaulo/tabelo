@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { HEADER_ROW } from "@/core/selection";
-import { tableKey } from "@/persistence/schema";
+import { LIBRARY_KEY, tableKey } from "@/persistence/schema";
 import type { NoticeSeverity } from "@/state/notice-queue";
 import { getView, listViews } from "@/views/registry";
 import type { ViewId } from "@/views/types";
@@ -213,20 +213,29 @@ export function renderedSource(scope: Locator): Promise<string> {
 
 // The document as it is actually stored, which is the only text that settles
 // whether a decoration reached it.
-export function storedDocument(page: Page): Promise<string> {
-	return page.evaluate((key) => {
-		const saved = JSON.parse(localStorage.getItem(key) ?? "null");
-		return JSON.stringify(saved?.document ?? null);
-	}, activeTableStorageKey());
+export async function storedDocument(page: Page): Promise<string> {
+	return page.evaluate(
+		(key) => {
+			const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+			return JSON.stringify(saved?.document ?? null);
+		},
+		await activeTableStorageKey(page),
+	);
 }
 
-// The library holds one key per table (#403), so a spec that seeds or reads
-// the stored table goes through these two rather than naming a key. Tests
-// seed one table, and the id below is the one they seed it under.
-export const SEEDED_TABLE_ID = "seeded";
-
-export function activeTableStorageKey(): string {
-	return tableKey(SEEDED_TABLE_ID);
+// The library holds one key per table and one index naming the active one
+// (#403), and the ids are minted at runtime. A spec that reads or seeds the
+// stored table therefore asks the page which key is the active table's,
+// rather than knowing a key of its own.
+export function activeTableStorageKey(page: Page): Promise<string> {
+	return page.evaluate(
+		({ libraryKey, prefix }) => {
+			const index = JSON.parse(localStorage.getItem(libraryKey) ?? "null");
+			const id = index?.activeId;
+			return typeof id === "string" ? `${prefix}${id}` : "";
+		},
+		{ libraryKey: LIBRARY_KEY, prefix: tableKey("") },
+	);
 }
 
 // Whether a notice is what the pointer would hit at the centre of a control.

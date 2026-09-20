@@ -384,11 +384,14 @@ test("keyboard resizing changes only the focused column and announces outcomes",
 
 	await expect.poll(() => width(first)).toBeGreaterThan(firstBefore);
 	await expect
-		.poll(() =>
-			page.evaluate((key) => {
-				const saved = JSON.parse(localStorage.getItem(key) ?? "null");
-				return Object.values(saved?.workspace?.columnWidths ?? {});
-			}, activeTableStorageKey()),
+		.poll(async () =>
+			page.evaluate(
+				(key) => {
+					const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+					return Object.values(saved?.workspace?.columnWidths ?? {});
+				},
+				await activeTableStorageKey(page),
+			),
 		)
 		.toEqual([12]);
 	await expect(first).toHaveText("First");
@@ -409,11 +412,14 @@ test("keyboard resizing changes only the focused column and announces outcomes",
 	expect(changedAnnouncement).not.toBe(widenedAnnouncement);
 	await page.keyboard.press("Alt+Shift+ArrowLeft");
 	await expect
-		.poll(() =>
-			page.evaluate((key) => {
-				const saved = JSON.parse(localStorage.getItem(key) ?? "null");
-				return Object.values(saved?.workspace?.columnWidths ?? {})[0];
-			}, activeTableStorageKey()),
+		.poll(async () =>
+			page.evaluate(
+				(key) => {
+					const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+					return Object.values(saved?.workspace?.columnWidths ?? {})[0];
+				},
+				await activeTableStorageKey(page),
+			),
 		)
 		.toBe(MIN_COLUMN_WIDTH);
 });
@@ -508,32 +514,38 @@ test("Fit stores the same normalized width at different pane zoom levels", async
 			.getByRole("menuitem", { name: copy.actions.fitColumnToContent })
 			.click();
 	};
-	const storedWidth = () =>
-		page.evaluate((key) => {
-			const saved = JSON.parse(localStorage.getItem(key) ?? "null");
-			return Object.values(saved?.workspace?.columnWidths ?? {})[0] as
-				| number
-				| undefined;
-		}, activeTableStorageKey());
+	const storedWidth = async () =>
+		page.evaluate(
+			(key) => {
+				const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+				return Object.values(saved?.workspace?.columnWidths ?? {})[0] as
+					| number
+					| undefined;
+			},
+			await activeTableStorageKey(page),
+		);
 
 	await fitColumn();
 	await expect.poll(storedWidth).not.toBeUndefined();
 	const atDefaultZoom = await storedWidth();
 
-	const zoomedPayload = await page.evaluate((key) => {
-		const saved = JSON.parse(localStorage.getItem(key) ?? "null");
-		saved.workspace.columnWidths = {};
-		const gridPane = saved.workspace.panes.find(
-			(pane: { view: string }) => pane.view === "grid",
-		);
-		gridPane.zoom = 2;
-		return saved;
-	}, activeTableStorageKey());
+	const zoomedPayload = await page.evaluate(
+		(key) => {
+			const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+			saved.workspace.columnWidths = {};
+			const gridPane = saved.workspace.panes.find(
+				(pane: { view: string }) => pane.view === "grid",
+			);
+			gridPane.zoom = 2;
+			return saved;
+		},
+		await activeTableStorageKey(page),
+	);
 	await page.addInitScript(
 		({ key, payload }) => {
 			localStorage.setItem(key, JSON.stringify(payload));
 		},
-		{ key: activeTableStorageKey(), payload: zoomedPayload },
+		{ key: await activeTableStorageKey(page), payload: zoomedPayload },
 	);
 	await page.reload();
 	await tabelo.workspace.waitFor({ state: "visible" });
@@ -573,12 +585,15 @@ test("column wrapping grows rows, persists, and keeps cell navigation", async ({
 	expect(await focusedCell(page)).toBe("1:0");
 
 	await expect
-		.poll(() =>
-			page.evaluate((key) => {
-				const raw = localStorage.getItem(key);
-				if (!raw) return [];
-				return JSON.parse(raw).workspace?.wrappedColumns ?? [];
-			}, activeTableStorageKey()),
+		.poll(async () =>
+			page.evaluate(
+				(key) => {
+					const raw = localStorage.getItem(key);
+					if (!raw) return [];
+					return JSON.parse(raw).workspace?.wrappedColumns ?? [];
+				},
+				await activeTableStorageKey(page),
+			),
 		)
 		.toHaveLength(1);
 	await page.reload();

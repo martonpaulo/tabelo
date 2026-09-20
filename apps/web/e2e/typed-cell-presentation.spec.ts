@@ -145,7 +145,7 @@ test("a mixed column distinguishes real type from its number expectation", async
 	await page.addInitScript(
 		({ key, state }) => localStorage.setItem(key, JSON.stringify(state)),
 		{
-			key: activeTableStorageKey(),
+			key: await activeTableStorageKey(page),
 			state: {
 				version: PERSISTED_VERSION,
 				name: "Typed values",
