@@ -184,17 +184,22 @@ function pushText(reading: CellReading, text: string, context: Context) {
 	}
 }
 
+// One rule for when two warnings are the same one, used both inside a cell's
+// reading and across the cells of a table: a cell issue carries its code and,
+// for the ones that name an element, that tag, and nothing else, so those are
+// what a reader would see repeated.
+function collectIssue(collected: CellIssue[], issue: CellIssue) {
+	const namedTag = (candidate: CellIssue) =>
+		"tag" in candidate ? candidate.tag : "";
+	const known = collected.some(
+		(existing) =>
+			existing.code === issue.code && namedTag(existing) === namedTag(issue),
+	);
+	if (!known) collected.push(issue);
+}
+
 function warn(reading: CellReading, issue: CellIssue) {
-	if (
-		!reading.warnings.some(
-			(existing) =>
-				existing.code === issue.code &&
-				("tag" in existing ? existing.tag : "") ===
-					("tag" in issue ? issue.tag : ""),
-		)
-	) {
-		reading.warnings.push(issue);
-	}
+	collectIssue(reading.warnings, issue);
 }
 
 function tagOf(element: Element): string {
@@ -331,22 +336,14 @@ export function readHtmlTable(html: string): HtmlTableReading | null {
 	const rows = [...table.querySelectorAll("tr")];
 	if (rows.length === 0) return null;
 
-	const warnings: ParseIssue[] = [];
+	const warnings: CellIssue[] = [];
 	const matrix: TextContent[][] = [];
 	for (const row of rows) {
 		const values: TextContent[] = [];
 		for (const cell of row.querySelectorAll("th, td")) {
 			const reading = readCell(cell);
 			if (reading.refusal) return { ok: false, issue: reading.refusal };
-			for (const warning of reading.warnings) {
-				if (
-					!warnings.some(
-						(existing) => JSON.stringify(existing) === JSON.stringify(warning),
-					)
-				) {
-					warnings.push(warning);
-				}
-			}
+			for (const warning of reading.warnings) collectIssue(warnings, warning);
 			values.push(normalizeInline(reading.nodes));
 		}
 		matrix.push(values);
