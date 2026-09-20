@@ -122,6 +122,20 @@ describe("csv parsing", () => {
 	it("reads its own view as comma-separated", () => {
 		expect(matrixOf("A;B\n1;2")).toEqual([["A;B"], ["1;2"]]);
 	});
+
+	// Detection compared the declared separator's widest row against each
+	// candidate's. It did so with `Math.max(0, ...widths)`, one argument per
+	// row, which throws a RangeError above roughly 125,000 rows: an import too
+	// large for the product has to be refused by the import limits with a
+	// message, not crash the parse that was measuring it. The fixture is tall
+	// rather than large, because the number of rows is what the call counted.
+	it("detects a separator over more rows than a call can take arguments", () => {
+		const result = csvCodec.parseMatrix("a\n".repeat(200_000));
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) throw new Error("expected a valid parse");
+		expect(result.table.matrix).toHaveLength(200_000);
+	});
 });
 
 describe("csv serialization", () => {

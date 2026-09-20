@@ -173,17 +173,27 @@ export function prepareImport(
 		table = parsed;
 	}
 
-	const matrix = normalizeMatrix(table.matrix);
-	const firstRow = matrix[0];
-	if (!firstRow || (matrix.length === 1 && firstRow.length === 0)) {
+	// The shape is read off the parsed matrix, before it is padded out to a
+	// rectangle. Normalizing first allocated every cell of a table the limits
+	// were about to refuse, which is the opposite of refusing oversized input
+	// before it can freeze the tab.
+	const parsed = table.matrix;
+	const firstParsedRow = parsed[0];
+	if (!firstParsedRow || (parsed.length === 1 && firstParsedRow.length === 0)) {
 		return { ok: false, error: { code: "empty" } };
 	}
 
-	const error = tableShapeLimitError({
-		rows: matrix.length,
-		columns: firstRow.length,
-	});
+	// The widest row is what the padding would make every row, so it is the
+	// column count the limits judge.
+	let width = 0;
+	for (const row of parsed) {
+		if (row.length > width) width = row.length;
+	}
+
+	const error = tableShapeLimitError({ rows: parsed.length, columns: width });
 	if (error) return { ok: false, error };
+
+	const matrix = normalizeMatrix(parsed);
 
 	return {
 		ok: true,

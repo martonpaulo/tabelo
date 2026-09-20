@@ -196,6 +196,21 @@ describe("supported import limits", () => {
 		expect(result).not.toHaveProperty("document");
 	});
 
+	// The shape is judged before the matrix is padded out to a rectangle, so
+	// the widest row decides the column count rather than the first one, and
+	// an oversized table is refused without the rectangle being built first.
+	it("judges the column limit by the widest row of a ragged source", () => {
+		const wide = Array.from(
+			{ length: IMPORT_LIMITS.columns + 1 },
+			() => "x",
+		).join("\t");
+		const result = prepareImport({ payload: { text: `a\n${wide}` } });
+
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.error.code).toBe("too-many-columns");
+	});
+
 	it("applies shape limits to a typed JSON result", () => {
 		const text = JSON.stringify(
 			Array.from({ length: IMPORT_LIMITS.rows + 1 }, (_, index) => ({

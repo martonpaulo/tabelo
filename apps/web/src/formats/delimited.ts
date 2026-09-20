@@ -84,29 +84,44 @@ function significantWidths(rows: string[][]): number[] {
 		.map((row) => row.length);
 }
 
+interface DelimiterChoice {
+	readonly delimiter: string;
+	// The run that chose it, so the caller does not parse the same text again
+	// with the same separator to get the same rows back.
+	readonly run: PapaRun;
+}
+
 // Papa Parse's own guess counts fields and can pick a separator that only
 // occurs inside cell data, which makes a delimited codec reject or corrupt its
 // own canonical output (#217). A separator that is genuinely structural splits
 // every row into the same number of fields, so only an alternative that is
 // both consistent and wider than the declared one may win.
-function chooseDelimiter(text: string, declared: string): string {
-	const declaredWidths = significantWidths(runPapa(text, declared).data);
-	const declaredWidth = Math.max(0, ...declaredWidths);
+function chooseDelimiter(text: string, declared: string): DelimiterChoice {
+	const declaredRun = runPapa(text, declared);
 
-	let chosen = declared;
-	let chosenWidth = declaredWidth;
+	// A loop rather than `Math.max(0, ...widths)`: the spread passes one
+	// argument per row, and above roughly 125,000 rows that throws a
+	// RangeError. A 1 MB import has to be refused with "too many rows", not
+	// crash the call that was measuring it.
+	let chosenWidth = 0;
+	for (const width of significantWidths(declaredRun.data)) {
+		if (width > chosenWidth) chosenWidth = width;
+	}
+
+	let chosen: DelimiterChoice = { delimiter: declared, run: declaredRun };
 
 	for (const candidate of SNIFF_CANDIDATES) {
 		if (candidate === declared) continue;
 		if (!text.includes(candidate)) continue;
 
-		const widths = significantWidths(runPapa(text, candidate).data);
+		const run = runPapa(text, candidate);
+		const widths = significantWidths(run.data);
 		if (widths.length === 0) continue;
 
 		const width = widths[0] ?? 0;
 		const consistent = widths.every((value) => value === width);
 		if (consistent && width > chosenWidth) {
-			chosen = candidate;
+			chosen = { delimiter: candidate, run };
 			chosenWidth = width;
 		}
 	}
@@ -120,11 +135,15 @@ export function parseDelimitedMatrix(
 	options: { readonly sniffDelimiter?: boolean } = {},
 ): DelimitedMatrix {
 	const declared = delimiter ?? ",";
-	const effective = options.sniffDelimiter
+	const choice = options.sniffDelimiter
 		? chooseDelimiter(text, declared)
-		: declared;
+		: null;
+	const effective = choice?.delimiter ?? declared;
 
-	const result = runPapa(text, effective);
+	// The chooser already ran the winning separator over the whole text, and a
+	// parse is deterministic, so running it again would only pay for the same
+	// rows twice.
+	const result = choice?.run ?? runPapa(text, effective);
 
 	const matrix = result.data.map((row) => row.map((cell) => cell ?? ""));
 	const rows = rowRanges(text, result.cursors);
