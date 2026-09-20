@@ -112,6 +112,17 @@ export function AppMenu({
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
 	const library = useTabeloStore((state) => state.library);
 	// The app always shows a table, so the only one left cannot be deleted.
+	// The open table leads the list, whatever its place in the library: it is
+	// the one the menu is describing, and reading it second made the section
+	// look unsorted (owner, 2026-09-20). Its colour still comes from its place
+	// in the library, so the mark does not change as tables are opened.
+	const listedTables = library.tables
+		.map((table, position) => ({ table, position }))
+		.sort((left, right) => {
+			if (left.table.id === library.activeId) return -1;
+			if (right.table.id === library.activeId) return 1;
+			return 0;
+		});
 	const deleteRefusal =
 		library.tables.length > 1 ? undefined : copy.disabled.deleteLastTable;
 	const columnCount = useTabeloStore((state) => state.document.columns.length);
@@ -174,7 +185,7 @@ export function AppMenu({
 				    only the list does: New table and the note below it stay where
 				    the reader left them (#403). */}
 				<div className="max-h-56 overflow-y-auto">
-					{library.tables.map((table, position) => (
+					{listedTables.map(({ table, position }) => (
 						<TableRow
 							key={table.id}
 							table={table}
