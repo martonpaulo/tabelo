@@ -71,13 +71,23 @@ export function isDocumentBlank(document: TableDocument): boolean {
 	return headersBlank && cellsBlank;
 }
 
+// A document instance is stable until the next edit replaces it, so the walk
+// over every header and cell runs once for each one. The condition is read
+// inside a store selector, which runs on every write including a selection
+// move, so without this the whole table is scanned as the caret travels.
+const inlineContentCache = new WeakMap<TableDocument, boolean>();
+
 // True when any header or cell carries inline structure, which is what a
 // format that cannot spell it would show only as text (docs/adr/0011).
 export function hasInlineContent(document: TableDocument): boolean {
-	return (
+	const known = inlineContentCache.get(document);
+	if (known !== undefined) return known;
+
+	const found =
 		document.columns.some((column) => isInlineContent(column.header)) ||
-		document.rows.some((row) => Object.values(row.cells).some(isInlineContent))
-	);
+		document.rows.some((row) => Object.values(row.cells).some(isInlineContent));
+	inlineContentCache.set(document, found);
+	return found;
 }
 
 // Pads every row to the widest row so the matrix is rectangular.

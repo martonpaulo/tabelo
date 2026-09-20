@@ -8,7 +8,7 @@ import {
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { Label } from "@tabelo/ui/components/label";
-import { type ReactNode, useId, useMemo, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { copy } from "@/copy/copy";
 import { hasInlineContent } from "@/core/document";
 import {
@@ -94,7 +94,7 @@ export function DownloadDialog({
 	// A file in a format that cannot spell inline structure holds only what
 	// the table reads as. Choosing the format is the user's authorization, so
 	// it is said before the download, beside the choice (#306).
-	const formatted = useMemo(() => hasInlineContent(document), [document]);
+	const formatted = hasInlineContent(document);
 	const flattens = formatted && flattensInlineContent(codec);
 
 	const confirm = () => {
