@@ -274,7 +274,9 @@ function jsonPrecondition(document: TableDocument): PreconditionFailure | null {
 
 	const positions = new Map<string, number[]>();
 	keys.forEach((header, index) => {
-		positions.set(header, [...(positions.get(header) ?? []), index]);
+		const seen = positions.get(header);
+		if (seen) seen.push(index);
+		else positions.set(header, [index]);
 	});
 	// Every position of a repeated header, not only the later ones, because the
 	// user has to see the pair to know which of the two to rename.

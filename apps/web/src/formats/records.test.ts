@@ -352,6 +352,30 @@ describe("records parsing", () => {
 		]);
 	});
 
+	// A label repeated inside the first record declares two columns of the same
+	// name, which `recordsPrecondition` refuses to write but a hand-edited
+	// source can still state. Every later record's bullet belongs to the first
+	// column carrying the label, and the second stays empty.
+	it("matches a repeated label to the first column carrying it", () => {
+		const result = recordsCodec.parse(
+			[
+				"Product: A",
+				"- Price: 20",
+				"- Price: 30",
+				"",
+				"Product: B",
+				"- Price: 40",
+			].join("\n"),
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(documentToMatrix(result.document)).toEqual([
+			["Product", "Price", "Price"],
+			["A", "20", "30"],
+			["B", "40", ""],
+		]);
+	});
+
 	it("reports an empty source", () => {
 		const result = recordsCodec.parse("");
 		expect(result.ok).toBe(false);
