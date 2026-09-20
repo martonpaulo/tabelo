@@ -147,6 +147,28 @@ export const persistedStateSchema = z
 			});
 		}
 
+		// A pane id is what the active pane, the draft owner, and the pane
+		// commands all name, so two panes sharing one is a workspace where those
+		// references mean two things at once.
+		const paneIds = state.workspace.panes.map((pane) => pane.id);
+		if (new Set(paneIds).size !== paneIds.length) {
+			context.addIssue({
+				code: "custom",
+				path: ["workspace", "panes"],
+				message: "A workspace cannot give two panes the same id.",
+			});
+		}
+
+		// The active pane has to be one of them: an id naming no pane leaves the
+		// workspace with no pane to focus, act on, or restore a draft into.
+		if (!paneIds.includes(state.workspace.activePaneId)) {
+			context.addIssue({
+				code: "custom",
+				path: ["workspace", "activePaneId"],
+				message: "The active pane is not present in the workspace.",
+			});
+		}
+
 		if (
 			state.draft &&
 			!state.workspace.panes.some(

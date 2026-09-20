@@ -307,6 +307,29 @@ describe("loading a stored payload", () => {
 		expect(outcome.status).toBe("unreadable");
 	});
 
+	it("refuses two panes sharing one id", () => {
+		const workspace = payload().workspace;
+		const outcome = validatePersistedState(
+			payload({
+				workspace: {
+					...workspace,
+					panes: workspace.panes.map((pane) => ({ ...pane, id: "ac" })),
+				},
+			}),
+		);
+
+		expect(outcome.status).toBe("unreadable");
+	});
+
+	it("refuses an active pane that names no pane", () => {
+		const workspace = payload().workspace;
+		const outcome = validatePersistedState(
+			payload({ workspace: { ...workspace, activePaneId: "missing" } }),
+		);
+
+		expect(outcome.status).toBe("unreadable");
+	});
+
 	it("refuses a draft whose pane owner is missing", () => {
 		const outcome = validatePersistedState(
 			payload({
