@@ -8,6 +8,7 @@ import {
 	removeTable,
 	renameEntry,
 	type TableLibrary,
+	withUniqueNames,
 } from "./table-library";
 
 const DEFAULT_NAME = "Untitled table";
@@ -86,5 +87,24 @@ describe("the library", () => {
 		const names = Array.from({ length: LARGE_LIBRARY_SIZE }, (_, i) => `T${i}`);
 		expect(isLargeLibrary(libraryOf(...names.slice(0, -1)))).toBe(false);
 		expect(isLargeLibrary(libraryOf(...names))).toBe(true);
+	});
+});
+
+describe("names already stored", () => {
+	it("numbers duplicates apart and leaves the first one alone", () => {
+		const library = withUniqueNames(
+			libraryOf("Untitled table", "Untitled table", "Roster", "Untitled table"),
+		);
+		expect(library.tables.map((table) => table.name)).toEqual([
+			"Untitled table",
+			"Untitled table 2",
+			"Roster",
+			"Untitled table 3",
+		]);
+	});
+
+	it("leaves names that are already unique untouched", () => {
+		const library = libraryOf("Roster", "Budget");
+		expect(withUniqueNames(library)).toEqual(library);
 	});
 });

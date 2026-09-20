@@ -90,6 +90,7 @@ import {
 	renameEntry,
 	type TableId,
 	type TableLibrary,
+	withUniqueNames,
 } from "@/core/table-library";
 import { validateTableName } from "@/core/table-name";
 import type {
@@ -804,9 +805,21 @@ function readLibrary(fallback: TableLibrary): TableLibrary {
 		return {
 			id,
 			name: outcome.status === "ok" ? outcome.state.name : DEFAULT_TABLE_NAME,
+			state: outcome.status === "ok" ? outcome.state : null,
 		};
 	});
-	return { tables, activeId: index.activeId };
+	const library = withUniqueNames({
+		tables: tables.map(({ id, name }) => ({ id, name })),
+		activeId: index.activeId,
+	});
+	// A name this read had to change belongs to that table, so it is written
+	// back rather than shown differently from what is stored.
+	for (const entry of library.tables) {
+		const source = tables.find((table) => table.id === entry.id);
+		if (!source?.state || source.name === entry.name) continue;
+		saveTable(entry.id, { ...source.state, name: entry.name });
+	}
+	return library;
 }
 
 function newLibrary(): TableLibrary {

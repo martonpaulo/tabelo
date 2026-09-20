@@ -52,6 +52,25 @@ export function nameForNewTable(
 	return { name: `${defaultName} ${index}`, renameFirst };
 }
 
+// Two tables that already share a name, from before the rule or from a
+// payload edited by hand, are numbered apart when the library is read. The
+// first keeps what it had; each later one takes the first free number.
+export function withUniqueNames(library: TableLibrary): TableLibrary {
+	const taken = new Set<string>();
+	const tables = library.tables.map((table) => {
+		if (!taken.has(table.name)) {
+			taken.add(table.name);
+			return table;
+		}
+		let index = 2;
+		while (taken.has(`${table.name} ${index}`)) index += 1;
+		const name = `${table.name} ${index}`;
+		taken.add(name);
+		return { ...table, name };
+	});
+	return { ...library, tables };
+}
+
 export function isNameTaken(
 	library: TableLibrary,
 	name: string,
