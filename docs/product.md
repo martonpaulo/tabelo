@@ -34,8 +34,10 @@ the exact text format the person came for.
 
 ## What it does
 
-- Keeps one table document and projects it into every open view at once, so
-  there is no copy-and-paste step between formats and no stale second copy.
+- Keeps a library of tables in the browser, one of them active, and projects
+  that active table into every open view at once, so there is no
+  copy-and-paste step between formats and no stale second copy. The app menu
+  lists the tables and switches between them (#403).
 - Treats data preservation as the first product requirement. Codec escapes are
   reversible, and any supported round trip that changes or drops a cell value
   is a defect.
@@ -67,7 +69,9 @@ Each of these is a decision, not a gap waiting to be filled.
   deliberate and it has a cost: see the success signals below.
 - **No spreadsheet computational model.** Tabelo may adopt an interaction
   people already know from a spreadsheet when it makes editing a text-backed
-  table faster or safer. It does not adopt formulas, multiple sheets, charts,
+  table faster or safer. Several independent tables are not sheets: nothing
+  references another table, and one of them is active at a time (#403). It
+  does not adopt formulas, sheets that see each other, charts,
   macros, aggregation, or hidden type inference. A cell may carry a native
   number, boolean, or null, but only because a typed source stated it or the
   user chose it; nothing reads text and decides what it must be. The one
@@ -127,7 +131,10 @@ reversible implementation choice does not belong here.
 
 | Decision | Current outcome | Recorded in | Decided on |
 | :--- | :--- | :--- | :--- |
-| Product scope | A single-table editor, permanently | this document | #92 |
+| Product scope | An editor for one table at a time, with a local library of tables to switch between | this document | #92, #403 |
+| Table library | Any number of local tables, one active; the app menu lists them and switches; names are unique and numbered from the second table on; a warning, never a refusal, once ten are kept | this document, AGENTS.md | #403, owner, 2026-09-20 |
+| Erase everything | One control in Settings clears every Tabelo key in this browser, after a confirmation | design system §3 | owner, 2026-09-20 |
+| Stored schema history | Every historical schema, migration step and fixture deleted while the product is unreleased; versions restart at 1 and forward-only migrations apply from here on | AGENTS.md | owner, 2026-09-20 |
 | Pane count | One through four panes; a fresh visit opens two; a stacked window grows to two | ADR 0006 | #91, #219 |
 | Layout set | Eight presets, filtered to the current pane count | ADR 0006 | #91, #72 |
 | Layout entry point | Global App-menu command opening the shared visual dialog | ADR 0006 | #72 |

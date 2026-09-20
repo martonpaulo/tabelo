@@ -7,12 +7,23 @@ UI copy. `AGENTS.md` holds the normative rules; this file defines the words.
 
 ### Table document
 
-The single canonical representation of the user's table: an ordered list of
-columns, an ordered list of rows, cell values, stable identifiers, alignment,
-and a schema version. It is plain data with no framework dependency, and it is
-the only source of truth.
+The canonical representation of one table: an ordered list of columns, an
+ordered list of rows, cell values, stable identifiers, alignment, and a schema
+version. It is plain data with no framework dependency, and the active table's
+document is the only source of truth the views project.
 
-Related to: Column, Row, Cell, View
+Related to: Column, Row, Cell, View, Table library
+
+### Table library
+
+The tables this browser holds and which one is active (#403). It carries
+identity, order, and the active table; each table's document, workspace, and
+draft live with that table, under its own storage key. One table is always
+active: it is the one every view, edit, draft, and history step reaches. The
+others are storage until one is opened, and no table can see another. Names
+are unique, so the list always says which table it offers.
+
+Related to: Table document, Workspace
 
 ### View
 

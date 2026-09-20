@@ -588,6 +588,13 @@ button is a soft tinted fill, never bare red text: `--destructive` at low alpha
 behind `--destructive` text, a step stronger on hover, so it carries the same
 weight as the filled primary it stands in for (owner, 2026-09-19).
 
+One destructive control lives inside Settings rather than in a menu: erasing
+everything Tabelo stored in this browser (owner, 2026-09-20). It sits in its
+own section under the settings, below a hairline, as a destructive button with
+one line saying what goes, and it asks through the shared confirm dialog
+before anything is removed. The same confirm dialog asks before a table is
+deleted (#403). Nothing else in Settings is destructive.
+
 Single-selection dialogs grow to show their complete option list. A dialog
 never grows past the window: every dialog caps its height at the viewport and
 scrolls vertically, as one contained scroll area, only when its content does

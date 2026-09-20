@@ -125,6 +125,12 @@ Do not trade a higher-priority item for a lower-priority item.
 These are normative and were resolved deliberately. See `CONTEXT.md` for
 vocabulary and `docs/adr/` for the reasoning.
 
+- **A browser holds a library of tables, one of them active** (#403). Every
+  rule below is about the active table: it is the one document the views
+  project, and the only one an edit, a draft, or the history can reach. The
+  others are storage until one is opened. There is no limit on how many a
+  browser keeps; the app says so once the list stops reading comfortably in
+  one menu, and the menu scrolls from there.
 - **Every table has exactly one header row.** There is no headerless mode and no
   `hasHeader` document state. Header presence is an **import-time** fact: formats
   that identify a header declare it, and CSV, TSV, or plain text asks whether row
@@ -285,16 +291,20 @@ parent-relative escape; they detect neither cycles nor orphan modules.
 - **History**: the document timeline and its interaction with the text editor's
   local history.
 - **Persistence**: one current, versioned `localStorage` schema per stored
-  key, the document and the preferences, each with its own explicit
-  forward-only migration chain from every version that has shipped.
-  Each step transforms only what changed, validates its result with Zod, and
-  carries a stored fixture of the payload it migrates. A payload that fails to
-  migrate or to validate is preserved raw and reported, never coerced into the
-  current shape, and a version newer than the current one stays unreadable
-  rather than being guessed at. Shipping a schema change without its migration
-  step is data loss caused by the product, which priority 1 forbids. This
-  current-schema policy does not narrow the valid syntax accepted by import
-  codecs.
+  payload: one key per table, one index naming the tables and the active one,
+  and one key for the preferences. A save writes the active table alone, so
+  its cost does not grow with the library (#403). A payload that fails to
+  validate is preserved raw and reported, never coerced into the current
+  shape, and a version newer than the current one stays unreadable rather
+  than being guessed at. This current-schema policy does not narrow the valid
+  syntax accepted by import codecs.
+  Every historical schema, its migration step and its fixture were deleted on
+  2026-09-20 by the owner's decision: the product is unreleased with one user,
+  so nothing existed to carry forward, and the versions restarted at 1. From
+  here on a change to a stored shape ships with the forward-only step that
+  reads the previous one, validates its result with Zod, and carries a stored
+  fixture of the payload it migrates. Shipping a schema change without it is
+  data loss caused by the product, which priority 1 forbids.
 - **Clipboard**: format sniffing for paste and payload construction for
   copy/cut, independent of both the grid and the text panel. It owns one
   private payload schema, versioned separately from persistence because the two
