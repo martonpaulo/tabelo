@@ -8,7 +8,7 @@ import {
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { Label } from "@tabelo/ui/components/label";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useId, useMemo, useState } from "react";
 import { copy } from "@/copy/copy";
 import { hasInlineContent } from "@/core/document";
 import {
@@ -54,17 +54,32 @@ interface DownloadDialogProps {
 	readonly open: boolean;
 	readonly onOpenChange: (open: boolean) => void;
 	readonly destination?: ExportDestination;
+	// Which table is being written out. Absent means the open one; another
+	// table is read from storage, so writing it out never opens it.
+	readonly tableId?: string;
 }
 
 export function DownloadDialog({
 	open,
 	onOpenChange,
 	destination = "download",
+	tableId,
 }: DownloadDialogProps) {
 	const codecs = listCodecs();
 	const [selected, setSelected] = useState<CodecId>(DEFAULT_CODEC_ID);
-	const document = useTabeloStore((state) => state.document);
-	const tableName = useTabeloStore((state) => state.name);
+	const openDocument = useTabeloStore((state) => state.document);
+	const openName = useTabeloStore((state) => state.name);
+	const library = useTabeloStore((state) => state.library);
+	const other =
+		tableId && tableId !== library.activeId
+			? (library.tables.find((table) => table.id === tableId) ?? null)
+			: null;
+	const stored = useMemo(
+		() => (other ? useTabeloStore.getState().documentForTable(other.id) : null),
+		[other],
+	);
+	const document = stored ?? openDocument;
+	const tableName = other?.name ?? openName;
 	const outputOptions = useTabeloStore((state) => state.outputOptions);
 	const titleId = useId();
 	const hintId = useId();

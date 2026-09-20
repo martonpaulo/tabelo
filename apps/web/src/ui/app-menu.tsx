@@ -70,8 +70,8 @@ import {
 } from "@/workspace/layout";
 
 interface AppMenuProps {
-	readonly onCopy: () => void;
-	readonly onDownload: () => void;
+	readonly onCopy: (tableId: string) => void;
+	readonly onDownload: (tableId: string) => void;
 	readonly onLayout: () => void;
 	readonly onSettings: () => void;
 	readonly onAddView: () => void;
@@ -182,29 +182,30 @@ export function AppMenu({
 							active={table.id === library.activeId}
 							size={copy.workspace.tableSize(columnCount, rowCount)}
 							deleteRefusal={deleteRefusal}
-							onOpen={() =>
-								menuDialog.runAfterClose(() =>
-									useTabeloStore.getState().switchTable(table.id),
-								)
-							}
+							// Switching leaves the menu open: the reader is choosing
+							// among tables, and closing the list they are comparing
+							// would end the task at its first step (owner,
+							// 2026-09-20).
+							onOpen={() => useTabeloStore.getState().switchTable(table.id)}
 							onRename={() =>
 								menuDialog.runAfterClose(() => onRename(table.id))
 							}
 							onDelete={() =>
 								menuDialog.runAfterClose(() => onDeleteTable(table.id))
 							}
-							onCopy={() => menuDialog.runAfterClose(onCopy)}
-							onDownload={() => menuDialog.runAfterClose(onDownload)}
+							onCopy={() => menuDialog.runAfterClose(() => onCopy(table.id))}
+							onDownload={() =>
+								menuDialog.runAfterClose(() => onDownload(table.id))
+							}
 							structure={
-								table.id === library.activeId ? (
-									<TableStructureCommands
-										onConfirmTranspose={(typedValues) =>
-											menuDialog.runAfterClose(() =>
-												setPendingTranspose(typedValues),
-											)
-										}
-									/>
-								) : null
+								<TableStructureCommands
+									tableId={table.id}
+									onConfirmTranspose={(typedValues) =>
+										menuDialog.runAfterClose(() =>
+											setPendingTranspose(typedValues),
+										)
+									}
+								/>
 							}
 						/>
 					))}
@@ -455,6 +456,7 @@ function TableRow({
 				// filled row, the check, and the state a screen reader reads.
 				aria-current={active ? "true" : undefined}
 				className={cn("min-w-0 flex-1", active && "bg-muted")}
+				closeOnClick={false}
 				onClick={onOpen}
 			>
 				{/* The colour is the table's, in every state: a hover or keyboard
@@ -503,22 +505,20 @@ function TableRow({
 						<IconPencil aria-hidden />
 						{copy.actions.renameTable}
 					</DropdownMenuItem>
-					{/* The commands below read the document, so the open table is
-					    the only one that can offer them (owner, 2026-09-20). */}
-					{active ? (
-						<>
-							<DropdownMenuSeparator />
-							{structure}
-							<DropdownMenuItem onClick={onCopy}>
-								<IconClipboardCopy aria-hidden />
-								{copy.actions.copyTable}
-							</DropdownMenuItem>
-							<DropdownMenuItem onClick={onDownload}>
-								<IconDownload aria-hidden />
-								{copy.actions.downloadTable}
-							</DropdownMenuItem>
-						</>
-					) : null}
+					{/* Every table offers the same commands. Writing one out reads
+					    its stored document, so it never has to be opened;
+					    reshaping one is an edit, so it opens that table first and
+					    the change lands in its own history (owner, 2026-09-20). */}
+					<DropdownMenuSeparator />
+					{structure}
+					<DropdownMenuItem onClick={onCopy}>
+						<IconClipboardCopy aria-hidden />
+						{copy.actions.copyTable}
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={onDownload}>
+						<IconDownload aria-hidden />
+						{copy.actions.downloadTable}
+					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<ControlTooltip reason={deleteRefusal}>
 						<DropdownMenuItem
@@ -562,11 +562,23 @@ function transposeTable(convertTypedValues = false): number | null {
 }
 
 function TableStructureCommands({
+	tableId,
 	onConfirmTranspose,
 }: {
+	readonly tableId: string;
 	readonly onConfirmTranspose: (typedValues: number) => void;
 }) {
-	const document = useTabeloStore((state) => state.document);
+	const activeId = useTabeloStore((state) => state.library.activeId);
+	const openDocument = useTabeloStore((state) => state.document);
+	// Reshaping a table is an edit, so it happens in that table's own history:
+	// a table that is not open is opened first, which the menu stays open for.
+	const open = () => {
+		if (tableId !== activeId) useTabeloStore.getState().switchTable(tableId);
+	};
+	const document =
+		tableId === activeId
+			? openDocument
+			: (useTabeloStore.getState().documentForTable(tableId) ?? openDocument);
 	const transposeRefusal = useMemo(() => {
 		const error = transposeLimitError(document);
 		return error ? copy.disabled.transposeLimit(error) : undefined;
@@ -580,10 +592,12 @@ function TableStructureCommands({
 	}, [document]);
 
 	const transpose = () => {
+		open();
 		const typedValues = transposeTable();
 		if (typedValues !== null) onConfirmTranspose(typedValues);
 	};
 	const deleteEmpty = () => {
+		open();
 		const store = useTabeloStore.getState();
 		const removed = store.deleteEmptyRowsAndColumns();
 		if (removed.rows === 0 && removed.columns === 0) return;

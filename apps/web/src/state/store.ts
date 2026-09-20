@@ -609,6 +609,10 @@ export interface TabeloState {
 	// The table library (#403). One table is always active; the others sit in
 	// storage under their own keys and are read when they become active.
 	createTable: () => void;
+	// The document of any table in the library: the open one from memory, and
+	// another from the key it is stored under. Read-only, for the commands
+	// that write a table out without opening it (owner, 2026-09-20).
+	documentForTable: (id: TableId) => TableDocument | null;
 	switchTable: (id: TableId) => void;
 	deleteTable: (id: TableId) => void;
 	dismissNotice: (id: string) => void;
@@ -2597,6 +2601,13 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		set({ library, ...blankTableState(entry.name) });
 		writeLibraryIndex(library);
 		flushPersistence();
+	},
+
+	documentForTable: (id) => {
+		const state = get();
+		if (id === state.library.activeId) return state.document;
+		const outcome = loadTable(id);
+		return outcome.status === "ok" ? outcome.state.document : null;
 	},
 
 	switchTable: (id) => {

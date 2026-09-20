@@ -106,6 +106,9 @@ export function TabeloApp() {
 	const pwaUpdate = usePwaUpdate();
 	const [rootDialog, setRootDialog] = useState<RootDialog>(null);
 	const [tableToDelete, setTableToDelete] = useState<string | null>(null);
+	// Which table the copy or download chooser is about: any table can be
+	// written out, and writing one out never opens it.
+	const [tableToWrite, setTableToWrite] = useState<string | null>(null);
 	const [newTableRetreat, setNewTableRetreat] = useState<{
 		readonly created: string;
 		readonly previous: string;
@@ -334,11 +337,17 @@ export function TabeloApp() {
 			</div>
 			{showWelcome ? null : (
 				<AppMenu
-					onDownload={() => openRootDialog("download")}
+					onDownload={(tableId) => {
+						setTableToWrite(tableId);
+						openRootDialog("download");
+					}}
 					onLayout={() => openRootDialog("layout")}
 					onSettings={() => openRootDialog("settings")}
 					onAddView={() => setAddViewRequest((request) => request + 1)}
-					onCopy={() => openRootDialog("copy-table")}
+					onCopy={(tableId) => {
+						setTableToWrite(tableId);
+						openRootDialog("copy-table");
+					}}
 					onNewTable={startNewTable}
 					onDeleteTable={(tableId) => {
 						setTableToDelete(tableId);
@@ -355,11 +364,13 @@ export function TabeloApp() {
 			<NoticeBar />
 			<DownloadDialog
 				open={rootDialog === "download"}
+				tableId={tableToWrite ?? undefined}
 				onOpenChange={closeRootDialog}
 			/>
 			<DownloadDialog
 				destination="clipboard"
 				open={rootDialog === "copy-table"}
+				tableId={tableToWrite ?? undefined}
 				onOpenChange={closeRootDialog}
 			/>
 			<LayoutDialog
