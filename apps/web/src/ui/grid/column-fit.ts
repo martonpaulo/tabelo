@@ -80,6 +80,19 @@ export function measureColumnFitWidth(
 	);
 }
 
+// What every column would need to show its content, for Fit columns to pane
+// width (#404). A column nothing can be measured in reports undefined, and
+// the caller falls back to the width that column already has.
+export function measureColumnFitWidths(
+	table: HTMLTableElement,
+	columnCount: number,
+	zoom: number,
+): readonly (number | undefined)[] {
+	return Array.from({ length: columnCount }, (_, index) =>
+		measureColumnFitWidth(table, index, zoom),
+	);
+}
+
 // The room a grid pane has for its columns, in rem, for Fit table to pane
 // width (#404). Only the DOM knows it: the pane's own scroller states the
 // width, the gutter keeps its token size at every zoom, and the trailing room

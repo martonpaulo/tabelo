@@ -81,6 +81,29 @@ export function isNameTaken(
 	);
 }
 
+// The colour a table's mark takes, by its place in the library (#403). The
+// cycle repeats, so the colour identifies a table only together with its
+// name, which every entry shows.
+// The `!` is deliberate: a menu item paints every descendant with the
+// highlight colour on hover and focus, and the mark must not change with the
+// pointer, since it says which table the row is (owner, 2026-09-20).
+const TABLE_MARK_CLASSES = [
+	"text-table-mark-1!",
+	"text-table-mark-2!",
+	"text-table-mark-3!",
+	"text-table-mark-4!",
+	"text-table-mark-5!",
+	"text-table-mark-6!",
+] as const;
+
+export function tableMarkClass(position: number): string {
+	const cycle = TABLE_MARK_CLASSES.length;
+	return (
+		TABLE_MARK_CLASSES[((position % cycle) + cycle) % cycle] ??
+		TABLE_MARK_CLASSES[0]
+	);
+}
+
 export function addTable(
 	library: TableLibrary,
 	entry: TableEntry,

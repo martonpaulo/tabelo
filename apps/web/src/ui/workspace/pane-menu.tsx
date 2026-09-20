@@ -40,7 +40,10 @@ import {
 	copyFormattedTableToClipboard,
 	copyToClipboard,
 } from "@/ui/clipboard-actions";
-import { measurePaneColumnRoom } from "@/ui/grid/column-fit";
+import {
+	measureColumnFitWidths,
+	measurePaneColumnRoom,
+} from "@/ui/grid/column-fit";
 import { preconditionRecovery } from "@/ui/precondition-recovery";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
@@ -99,19 +102,30 @@ export function PaneIdentity({ view }: PaneIdentityProps) {
 // The grid surface of one pane, and the room its columns have. Read when the
 // command runs rather than watched: nothing else needs the number.
 function fitColumnsToPane(paneId: string): void {
-	const surface = document.querySelector<HTMLElement>(
-		`[data-pane-id="${paneId}"] [data-grid-surface]`,
+	const pane = document.querySelector<HTMLElement>(
+		`[data-pane-id="${paneId}"]`,
 	);
+	const surface = pane?.querySelector<HTMLElement>("[data-grid-surface]");
+	const table = pane?.querySelector("table");
 	const store = useTabeloStore.getState();
 	const zoom =
-		store.workspace.panes.find((pane) => pane.id === paneId)?.zoom ??
+		store.workspace.panes.find((candidate) => candidate.id === paneId)?.zoom ??
 		DEFAULT_PANE_ZOOM;
 	const room = surface ? measurePaneColumnRoom(surface, zoom) : undefined;
-	if (room === undefined) {
+	if (room === undefined || !table) {
 		store.announceStatus(copy.status.fitColumnsUnavailable);
 		return;
 	}
-	if (!store.fitColumnsToPaneWidth(room)) {
+	// What each column needs for its own content is the proportion to spread,
+	// so a column of long values ends up wider than a column of short ones
+	// instead of every column inheriting whatever width it happens to have
+	// (owner, 2026-09-20).
+	const content = measureColumnFitWidths(
+		table,
+		store.document.columns.length,
+		zoom,
+	);
+	if (!store.fitColumnsToPaneWidth(room, content)) {
 		store.announceStatus(copy.status.fitColumnsUnchanged);
 	}
 }

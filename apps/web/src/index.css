@@ -25,6 +25,12 @@
 	/* Interaction accent: what the user has selected. */
 	--color-selection-fill: var(--selection-fill);
 	--color-selection-edge: var(--selection-edge);
+	--color-table-mark-1: var(--table-mark-1);
+	--color-table-mark-2: var(--table-mark-2);
+	--color-table-mark-3: var(--table-mark-3);
+	--color-table-mark-4: var(--table-mark-4);
+	--color-table-mark-5: var(--table-mark-5);
+	--color-table-mark-6: var(--table-mark-6);
 
 	/* Cross-view semantic values and source notation. */
 	--color-value-string: var(--value-string);
@@ -137,6 +143,19 @@
 	--syntax-notation: #e0876a;
 	--syntax-tag: #a99bc4;
 	--syntax-link: #8cc4ff;
+
+	/* The table library's colour cycle (#403, owner, 2026-09-20). A table's
+	   mark takes the next colour by its place in the list, so the first
+	   tables are told apart at a glance and the seventh starts the cycle
+	   again. These are the value hues above, reused rather than invented:
+	   each already clears 4.5:1 on the surfaces a menu and a header use, and
+	   colour is never the only cue, since every entry carries its name. */
+	--table-mark-1: var(--value-null);
+	--table-mark-2: var(--value-string);
+	--table-mark-3: var(--value-number);
+	--table-mark-4: var(--value-boolean);
+	--table-mark-5: var(--syntax-notation);
+	--table-mark-6: var(--syntax-tag);
 
 	--status-warning: #fbbf24;
 

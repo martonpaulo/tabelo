@@ -44,7 +44,7 @@ import { copy } from "@/copy/copy";
 import { product } from "@/copy/product";
 import { hasInlineContent } from "@/core/document";
 import { deleteEmptyRowsAndColumns } from "@/core/operations";
-import { isLargeLibrary } from "@/core/table-library";
+import { isLargeLibrary, tableMarkClass } from "@/core/table-library";
 import { canSerialize, listCodecs } from "@/formats";
 import {
 	canRunHistory,
@@ -78,7 +78,7 @@ interface AppMenuProps {
 	readonly onSettings: () => void;
 	readonly onAddView: () => void;
 	readonly onNewTable: () => void;
-	readonly onDeleteTable: () => void;
+	readonly onDeleteTable: (tableId: string) => void;
 	readonly onRename: () => void;
 	readonly pwaUpdate: PwaUpdate;
 	readonly triggerRef: RefObject<HTMLButtonElement | null>;
@@ -103,6 +103,12 @@ export function AppMenu({
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
 	const tableName = useTabeloStore((state) => state.name);
 	const library = useTabeloStore((state) => state.library);
+	const activeTablePosition = library.tables.findIndex(
+		(table) => table.id === library.activeId,
+	);
+	// The app always shows a table, so the only one left cannot be deleted.
+	const deleteRefusal =
+		library.tables.length > 1 ? undefined : copy.disabled.deleteLastTable;
 	const columnCount = useTabeloStore((state) => state.document.columns.length);
 	const rowCount = useTabeloStore((state) => state.document.rows.length);
 	const canRedoDocument = useTabeloStore((state) => state.future.length > 0);
@@ -168,14 +174,23 @@ export function AppMenu({
 				/>
 				{copy.app.name}
 			</div>
-			<DropdownMenuGroup>
+			{/* The active table, with its two quick controls beside it: rename
+			    and delete are one click from the name they act on, rather than
+			    commands further down that the reader has to connect to it
+			    (owner, 2026-09-20). Two menu items in a row, not a button inside
+			    one: a control nested in a menu item is neither reachable nor
+			    announced as its own thing. */}
+			<DropdownMenuGroup className="mx-1 mb-1 flex items-stretch gap-1">
 				<DropdownMenuItem
 					aria-label={copy.actions.renameTable}
 					aria-description={tableName}
 					onClick={() => menuDialog.runAfterClose(onRename)}
-					className="mx-1 mb-1 bg-muted"
+					className="min-w-0 flex-1 bg-muted"
 				>
-					<IconFileText aria-hidden />
+					<IconFileText
+						aria-hidden
+						className={tableMarkClass(activeTablePosition)}
+					/>
 					<MenuOption
 						truncateLabel
 						label={tableName}
@@ -183,44 +198,83 @@ export function AppMenu({
 					/>
 					<IconPencil aria-hidden className="text-muted-foreground" />
 				</DropdownMenuItem>
+				<ControlTooltip reason={deleteRefusal}>
+					<DropdownMenuItem
+						variant="destructive"
+						disabled={deleteRefusal !== undefined}
+						aria-label={copy.actions.deleteTableNamed(tableName)}
+						onClick={() =>
+							menuDialog.runAfterClose(() => onDeleteTable(library.activeId))
+						}
+						className="bg-muted px-2"
+					>
+						<IconTrash aria-hidden />
+					</DropdownMenuItem>
+				</ControlTooltip>
 			</DropdownMenuGroup>
-			{library.tables.length > 1 ? (
-				<DropdownMenuGroup
-					aria-label={copy.actions.switchTable}
-					// Past the size where one list reads comfortably it scrolls
-					// rather than pushing the rest of the menu off screen (#403).
-					className="max-h-56 overflow-y-auto"
-				>
-					{/* The active table is the item above, with its size and its
+			<DropdownMenuGroup
+				aria-label={copy.actions.switchTable}
+				// Past the size where one list reads comfortably it scrolls
+				// rather than pushing the rest of the menu off screen (#403).
+				className="max-h-56 overflow-y-auto"
+			>
+				{/* The active table is the item above, with its size and its
 					    rename control, so the list holds the others (owner,
 					    2026-09-20). */}
-					{library.tables
-						.filter((table) => table.id !== library.activeId)
-						.map((table) => (
+				{library.tables
+					.filter((table) => table.id !== library.activeId)
+					.map((table) => (
+						<div key={table.id} className="flex items-stretch gap-1">
 							<DropdownMenuItem
-								key={table.id}
+								className="min-w-0 flex-1"
 								onClick={() =>
 									menuDialog.runAfterClose(() =>
 										useTabeloStore.getState().switchTable(table.id),
 									)
 								}
 							>
-								<IconFileText aria-hidden className="text-muted-foreground" />
+								{/* The colour is the table's, in every state: a hover or
+									    keyboard highlight changes the item's background, never
+									    the mark, so the cue does not move as the pointer
+									    does. It is never the only cue, since the name is
+									    beside it. */}
+								<IconFileText
+									aria-hidden
+									className={tableMarkClass(
+										library.tables.findIndex(
+											(candidate) => candidate.id === table.id,
+										),
+									)}
+								/>
 								<span className="truncate">{table.name}</span>
 							</DropdownMenuItem>
-						))}
-					{isLargeLibrary(library) ? (
-						<p
-							className={cn(
-								"text-muted-foreground text-xs",
-								menuItemInsetStyles,
-							)}
-						>
-							{copy.status.largeLibrary}
-						</p>
-					) : null}
-				</DropdownMenuGroup>
-			) : null}
+							<DropdownMenuItem
+								variant="destructive"
+								aria-label={copy.actions.deleteTableNamed(table.name)}
+								onClick={() =>
+									menuDialog.runAfterClose(() => onDeleteTable(table.id))
+								}
+								className="px-2"
+							>
+								<IconTrash aria-hidden />
+							</DropdownMenuItem>
+						</div>
+					))}
+				{/* Adding a table belongs where the tables are, right after the
+					    last one, rather than in the group of file commands below
+					    (owner, 2026-09-20). */}
+				<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onNewTable)}>
+					<IconFilePlus aria-hidden />
+					{copy.actions.newTable}
+				</DropdownMenuItem>
+				{isLargeLibrary(library) ? (
+					<p
+						className={cn("text-muted-foreground text-xs", menuItemInsetStyles)}
+					>
+						{copy.status.largeLibrary}
+					</p>
+				) : null}
+			</DropdownMenuGroup>
 			{pwaUpdate.ready ? (
 				<>
 					<DropdownMenuSeparator />
@@ -282,28 +336,6 @@ export function AppMenu({
 
 			<DropdownMenuSeparator />
 			<DropdownMenuGroup>
-				{/* Creating a table no longer replaces anything, so it asks
-				    nothing and is not destructive (#403). */}
-				<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onNewTable)}>
-					<IconFilePlus aria-hidden />
-					{copy.actions.newTable}
-				</DropdownMenuItem>
-				<ControlTooltip
-					reason={
-						library.tables.length > 1
-							? undefined
-							: copy.disabled.deleteLastTable
-					}
-				>
-					<DropdownMenuItem
-						variant="destructive"
-						disabled={library.tables.length < 2}
-						onClick={() => menuDialog.runAfterClose(onDeleteTable)}
-					>
-						<IconTrash aria-hidden />
-						{copy.actions.deleteTable}
-					</DropdownMenuItem>
-				</ControlTooltip>
 				{/* Import runs on the click itself, not after the menu's close
 					    animation. The file picker is the browser's own layer, so it
 					    never stacks over the menu, and asking for it needs the user

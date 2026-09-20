@@ -773,6 +773,7 @@ export const copy = {
 		newTable: "New table",
 		switchTable: "Switch table",
 		deleteTable: "Delete table",
+		deleteTableNamed: (name: string) => `Delete ${name}`,
 		selectRow: SELECT_ROW,
 		selectColumn: SELECT_COLUMN,
 		fitColumnToContent: "Fit column to content",

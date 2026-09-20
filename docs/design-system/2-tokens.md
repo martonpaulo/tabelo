@@ -649,6 +649,15 @@ digits at any pane zoom without holding room for digits that are not there.
 The trailing gap doubles as the source text's leading space, because the line
 itself cannot carry it without leaving a band the selection never paints.
 
+**A table's mark takes a colour from a fixed cycle** (#403, owner,
+2026-09-20). The library's first table takes `--table-mark-1`, the second
+`--table-mark-2`, and so on through six before the cycle repeats. The six are
+the value hues the source views already use, reused rather than invented, so
+each one is already measured against the surfaces a menu and a header draw on.
+The colour is the table's in every state: a hover or keyboard highlight moves
+the item's background, never the mark. Colour is never the only cue, because
+the name sits beside it and the cycle repeats past the sixth table.
+
 The visual table mirrors structure rather than source punctuation: its header
 row is set apart by weight and the strong line under it, while body cells keep
 the normal content treatment. Header text position shows

@@ -104,6 +104,7 @@ export function prepareTabeloApp(): Promise<void> {
 export function TabeloApp() {
 	const pwaUpdate = usePwaUpdate();
 	const [rootDialog, setRootDialog] = useState<RootDialog>(null);
+	const [tableToDelete, setTableToDelete] = useState<string | null>(null);
 	const dialogOpenerRef = useRef<HTMLElement | null>(null);
 	const appMenuTriggerRef = useRef<HTMLButtonElement>(null);
 	const [welcomeOpen, setWelcomeOpen] = useState(opensOnWelcome);
@@ -153,9 +154,11 @@ export function TabeloApp() {
 		setWelcomeOpen(true);
 	};
 
-	const deleteActiveTable = () => {
-		const state = useTabeloStore.getState();
-		state.deleteTable(state.library.activeId);
+	// Which table the delete dialog is about: the menu asks for one by id, so
+	// deleting the table under the pointer never depends on it being active.
+	const deleteTable = () => {
+		if (tableToDelete) useTabeloStore.getState().deleteTable(tableToDelete);
+		setTableToDelete(null);
 		setRootDialog(null);
 	};
 
@@ -295,7 +298,10 @@ export function TabeloApp() {
 					onSettings={() => openRootDialog("settings")}
 					onAddView={() => setAddViewRequest((request) => request + 1)}
 					onNewTable={startNewTable}
-					onDeleteTable={() => openRootDialog("delete-table")}
+					onDeleteTable={(tableId) => {
+						setTableToDelete(tableId);
+						openRootDialog("delete-table");
+					}}
 					onRename={() => openRootDialog("rename-table")}
 					pwaUpdate={pwaUpdate}
 					triggerRef={appMenuTriggerRef}
@@ -321,7 +327,7 @@ export function TabeloApp() {
 			<ConfirmDialog
 				open={rootDialog === "delete-table"}
 				onOpenChange={closeRootDialog}
-				onConfirm={deleteActiveTable}
+				onConfirm={deleteTable}
 				title={copy.deleteTable.title}
 				description={copy.deleteTable.description}
 				confirmLabel={copy.deleteTable.confirm}
