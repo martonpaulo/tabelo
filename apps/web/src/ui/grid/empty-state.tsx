@@ -1,3 +1,4 @@
+import { Button } from "@tabelo/ui/components/button";
 import {
 	optionBlockStateStyles,
 	optionBlockStyles,
@@ -39,12 +40,16 @@ const importExtensions = [
 export function EmptyState({
 	suspended,
 	onStartEmpty,
+	onCancel,
 	onStarted,
 }: {
 	// True while a question the surface's own import raised is open over it:
 	// the card stays on screen, inert, and its shortcut waits for the answer.
 	readonly suspended: boolean;
 	readonly onStartEmpty: () => void;
+	// Absent unless this surface was opened by creating a table, which is the
+	// only case that has somewhere to go back to.
+	readonly onCancel?: () => void;
 	readonly onStarted: () => void;
 }) {
 	const sectionRef = useRef<HTMLElement>(null);
@@ -152,6 +157,19 @@ export function EmptyState({
 						onClick={startImport}
 					/>
 				</div>
+				{/* A way back out. Creating a table opens this surface on an empty
+				    table, and a reader who did not mean to create one needs the
+				    door they came through (owner, 2026-09-20): it deletes the
+				    table this surface belongs to and returns to the one before
+				    it. Absent when there is nothing to go back to. */}
+				{onCancel ? (
+					<div className="mt-4 flex justify-center">
+						<Button variant="ghost" size="sm" onClick={onCancel}>
+							{copy.empty.cancelNewTable}
+						</Button>
+					</div>
+				) : null}
+
 				{/* Each link is at least 1.5rem tall, the WCAG 2.5.8 target
 				    minimum, through vertical padding rather than larger text, so
 				    the two lines sit flush with no gap between them (owner,

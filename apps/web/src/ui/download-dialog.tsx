@@ -25,7 +25,7 @@ import type {
 } from "@/formats/types";
 import { downloadText, tableDownloadFilename } from "@/platform/files";
 import { useTabeloStore } from "@/state/store";
-import { copyToClipboard } from "@/ui/clipboard-actions";
+import { copyCodecToClipboard, copyToClipboard } from "@/ui/clipboard-actions";
 import { preconditionRecovery } from "@/ui/precondition-recovery";
 import {
 	DialogActions,
@@ -42,17 +42,25 @@ import { codecSpelling } from "@/ui/spelling";
 import { flattensInlineContent } from "@/views/projection-loss";
 import { getView } from "@/views/registry";
 
-// Downloading is a choice, not a click. The user chooses the format and, where
-// the format offers options, how the file should be written. Both the File menu and
-// the keyboard shortcut open this same chooser, so there is one format list
-// and one set of options rather than a parallel pair. See docs/adr/0005.
+// Writing the table out is a choice, not a click. The user chooses the format
+// and, where the format offers options, how it should be written. Downloading
+// a file and copying to the clipboard are the same choice with two
+// destinations, so they share one chooser rather than a menu of formats beside
+// a dialog of them (owner, 2026-09-20). See docs/adr/0005.
+
+export type ExportDestination = "download" | "clipboard";
 
 interface DownloadDialogProps {
 	readonly open: boolean;
 	readonly onOpenChange: (open: boolean) => void;
+	readonly destination?: ExportDestination;
 }
 
-export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
+export function DownloadDialog({
+	open,
+	onOpenChange,
+	destination = "download",
+}: DownloadDialogProps) {
 	const codecs = listCodecs();
 	const [selected, setSelected] = useState<CodecId>(DEFAULT_CODEC_ID);
 	const document = useTabeloStore((state) => state.document);
@@ -89,9 +97,14 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 	const formatted = useMemo(() => hasInlineContent(document), [document]);
 	const flattens = formatted && flattensInlineContent(codec);
 
-	const download = () => {
+	const confirm = () => {
 		const failure = canSerialize(codec, document);
 		if (failure) return;
+		if (destination === "clipboard") {
+			void copyCodecToClipboard(codec, document);
+			onOpenChange(false);
+			return;
+		}
 		downloadText(
 			tableDownloadFilename(tableName, codec.extension),
 			codec.mimeType,
@@ -114,11 +127,17 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 				className={singleSelectionDialogContentStyles}
 			>
 				<DialogHeader>
-					<DialogTitle id={titleId}>{copy.actions.downloadTable}</DialogTitle>
+					<DialogTitle id={titleId}>
+						{destination === "clipboard"
+							? copy.actions.copyTable
+							: copy.actions.downloadTable}
+					</DialogTitle>
 					<DialogDescription id={hintId} className="text-sm">
-						{copy.download.savesAs(
-							tableDownloadFilename(tableName, codec.extension),
-						)}
+						{destination === "clipboard"
+							? copy.download.copiesAs(getView(codec.id).label)
+							: copy.download.savesAs(
+									tableDownloadFilename(tableName, codec.extension),
+								)}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -184,10 +203,12 @@ export function DownloadDialog({ open, onOpenChange }: DownloadDialogProps) {
 
 				<DialogActions>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>
-					<DialogConfirm onClick={download}>
-						{copy.download.downloadAs(
-							codec.extension.split(".").at(-1) ?? codec.extension,
-						)}
+					<DialogConfirm onClick={confirm}>
+						{destination === "clipboard"
+							? copy.download.copyAsFormat(getView(codec.id).label)
+							: copy.download.downloadAs(
+									codec.extension.split(".").at(-1) ?? codec.extension,
+								)}
 					</DialogConfirm>
 				</DialogActions>
 			</DialogContent>

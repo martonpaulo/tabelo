@@ -61,6 +61,7 @@ import {
 	MAX_PANE_ZOOM,
 	MIN_PANE_ZOOM,
 	paneZoomPercent,
+	paneZoomToFit,
 	stepPaneZoom,
 } from "@/workspace/zoom";
 import { PaneDisplayDialog } from "./pane-display-dialog";
@@ -127,6 +128,37 @@ function fitColumnsToPane(paneId: string): void {
 	if (!store.fitColumnsToPaneWidth(room, content)) {
 		store.announceStatus(copy.status.fitColumnsUnchanged);
 	}
+}
+
+// The same command in a view whose columns are its text rather than stored
+// widths: nothing may pad the file to fill a pane, so the pane scales instead
+// until the widest line fits (owner, 2026-09-20). Presentation only, like
+// every other zoom step.
+function fitPaneZoomToWidth(paneId: string): void {
+	const pane = document.querySelector<HTMLElement>(paneSelector(paneId));
+	const store = useTabeloStore.getState();
+	const zoom =
+		store.workspace.panes.find((candidate) => candidate.id === paneId)?.zoom ??
+		DEFAULT_PANE_ZOOM;
+	const scroller = pane?.querySelector<HTMLElement>('[data-slot="panel-body"]');
+	// The editor's own scroller for a source view, the rendered table for the
+	// preview: in both the scroll width is what has to fit.
+	const content =
+		pane?.querySelector<HTMLElement>(".cm-scroller") ??
+		pane?.querySelector<HTMLElement>("table") ??
+		scroller;
+	if (!scroller || !content) {
+		store.announceStatus(copy.status.fitColumnsUnavailable);
+		return;
+	}
+	const room = scroller.clientWidth;
+	const widest = Math.max(content.scrollWidth, content.clientWidth);
+	const next = paneZoomToFit(widest, room, zoom);
+	if (next === zoom) {
+		store.announceStatus(copy.status.fitColumnsUnchanged);
+		return;
+	}
+	store.setPaneZoom(paneId, next);
 }
 
 export function PaneMenu({
@@ -345,6 +377,25 @@ export function PaneMenu({
 								</DropdownMenuItem>
 							</ControlTooltip>
 						</div>
+						{/* Fit to pane width, in whichever way the view can (#404).
+						    The visual table spreads its stored column widths across
+						    the room the pane has, keeping their proportions; a text
+						    view or the preview cannot pad a file to fill a pane, so
+						    the pane scales until the widest line fits. Either way the
+						    pane is measured when the command runs, so a resized window
+						    needs no bookkeeping in between. */}
+						<DropdownMenuItem
+							onClick={() =>
+								menuDialog.runAfterClose(() =>
+									view.kind === "grid"
+										? fitColumnsToPane(paneId)
+										: fitPaneZoomToWidth(paneId),
+								)
+							}
+						>
+							<IconArrowAutofitWidth aria-hidden />
+							{copy.workspace.fitToPaneWidth}
+						</DropdownMenuItem>
 					</DropdownMenuGroup>
 
 					{/* Find is keyboard-first, and this is the affordance that keeps it
@@ -391,18 +442,6 @@ export function PaneMenu({
 									<IconTextWrap aria-hidden />
 									{copy.workspace.wrapAllColumns}
 								</DropdownMenuCheckboxItem>
-								{/* Spreads the columns across the room the pane has, keeping
-							    their proportions (#404). The pane is measured at the
-							    moment it is chosen, so a resized window needs no
-							    bookkeeping in between. */}
-								<DropdownMenuItem
-									onClick={() =>
-										menuDialog.runAfterClose(() => fitColumnsToPane(paneId))
-									}
-								>
-									<IconArrowAutofitWidth aria-hidden />
-									{copy.workspace.fitColumnsToPane}
-								</DropdownMenuItem>
 							</DropdownMenuGroup>
 						</>
 					) : null}

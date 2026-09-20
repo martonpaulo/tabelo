@@ -36,6 +36,34 @@ export function stepPaneZoom(zoom: number, direction: 1 | -1): number {
 	return next;
 }
 
+// The rung that makes content of `contentPx` fit `availablePx`, for Fit to
+// pane width in a view whose width is its content's rather than a stored
+// column width (#404, owner, 2026-09-20). The largest rung that still fits,
+// or the smallest rung when nothing does: a pane never zooms past the ladder
+// to chase one very long line.
+export function paneZoomToFit(
+	contentPx: number,
+	availablePx: number,
+	currentZoom: number,
+): number {
+	if (
+		!Number.isFinite(contentPx) ||
+		!Number.isFinite(availablePx) ||
+		contentPx <= 0 ||
+		availablePx <= 0 ||
+		currentZoom <= 0
+	) {
+		return clampPaneZoom(currentZoom);
+	}
+	// The measurement comes from the pane as it is drawn now, so the width of
+	// the same content at zoom 1 is what the ladder is compared against.
+	const unzoomed = contentPx / currentZoom;
+	const fitting = PANE_ZOOM_LEVELS.filter(
+		(level) => unzoomed * level <= availablePx,
+	);
+	return fitting.at(-1) ?? MIN_PANE_ZOOM;
+}
+
 // The value assistive technology and the menu label both report.
 export function paneZoomPercent(zoom: number): number {
 	return Math.round(clampPaneZoom(zoom) * 100);

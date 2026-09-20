@@ -449,7 +449,7 @@ export const copy = {
 		resetZoom: "Reset zoom",
 		wrapSource: WRAP_LINES,
 		wrapAllColumns: "Wrap all columns",
-		fitColumnsToPane: "Fit columns to pane width",
+		fitToPaneWidth: "Fit to pane width",
 		// The checked escape mode for a format's structural assistance (#297),
 		// called smart editing wherever a person reads it (CONTEXT.md).
 		structuralAssistance: "Smart editing",
@@ -779,6 +779,7 @@ export const copy = {
 		copyAsTextOnly: (formats: readonly string[]) =>
 			`${joinedPositions(formats)} copy text only, without formatting.`,
 		downloadTable: "Download table",
+		copyTable: "Copy table",
 		download: "Download",
 		cancel: "Cancel",
 		renameTable: "Rename table",
@@ -952,6 +953,8 @@ export const copy = {
 
 	download: {
 		savesAs: (filename: string) => `Saves as ${filename}`,
+		copiesAs: (format: string) => `Copies the table as ${format}`,
+		copyAsFormat: (format: string) => `Copy as ${format}`,
 		fileExtension,
 		downloadAs: (extension: string) => `Download ${fileExtension(extension)}`,
 		format: "File format",
@@ -975,6 +978,7 @@ export const copy = {
 	},
 
 	empty: {
+		cancelNewTable: "Cancel and go back",
 		// The surface is named by the product, which is what it introduces.
 		title: product.name,
 		// Said once, on first sight: what the product is, who made it, and where

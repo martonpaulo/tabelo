@@ -28,6 +28,7 @@ import { DEFAULT_PANE_ZOOM, stepPaneZoom } from "@/workspace/zoom";
 
 type RootDialog =
 	| "download"
+	| "copy-table"
 	| "layout"
 	| "delete-table"
 	| "rename-table"
@@ -105,6 +106,10 @@ export function TabeloApp() {
 	const pwaUpdate = usePwaUpdate();
 	const [rootDialog, setRootDialog] = useState<RootDialog>(null);
 	const [tableToDelete, setTableToDelete] = useState<string | null>(null);
+	const [newTableRetreat, setNewTableRetreat] = useState<{
+		readonly created: string;
+		readonly previous: string;
+	} | null>(null);
 	const [tableToRename, setTableToRename] = useState<string | null>(null);
 	const dialogOpenerRef = useRef<HTMLElement | null>(null);
 	const appMenuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -150,9 +155,28 @@ export function TabeloApp() {
 	// it the way it does on an empty table.
 	const startNewTable = () => {
 		dialogOpenerRef.current = null;
+		const before = useTabeloStore.getState().library.activeId;
 		useTabeloStore.getState().createTable();
+		// What "go back" undoes, for as long as this welcome surface is the one
+		// the new table opened on.
+		setNewTableRetreat({
+			created: useTabeloStore.getState().library.activeId,
+			previous: before,
+		});
 		setRootDialog(null);
 		setWelcomeOpen(true);
+	};
+
+	// Leaves the table that was just created, deletes it, and returns to the
+	// one the user came from. Only ever offered on a table with nothing in it,
+	// so nothing can be lost by taking it.
+	const cancelNewTable = () => {
+		if (!newTableRetreat) return;
+		const store = useTabeloStore.getState();
+		store.switchTable(newTableRetreat.previous);
+		store.deleteTable(newTableRetreat.created);
+		setNewTableRetreat(null);
+		setWelcomeOpen(false);
 	};
 
 	// Which table the delete dialog is about: the menu asks for one by id, so
@@ -251,6 +275,19 @@ export function TabeloApp() {
 				return;
 			}
 
+			// Import left the menu (owner, 2026-09-20), so the chord is the way
+			// in once a table exists; the welcome surface keeps its own button.
+			// It runs on the keystroke itself, because the file picker needs the
+			// user activation this event carries.
+			if (key === "o" && !event.defaultPrevented) {
+				event.preventDefault();
+				if (rootDialog !== null || document.querySelector('[role="dialog"]')) {
+					return;
+				}
+				void importTableFile();
+				return;
+			}
+
 			const target = event.target as HTMLElement | null;
 			if (target?.closest(".cm-editor")) return;
 			if (key !== "z" && key !== "y") return;
@@ -286,18 +323,22 @@ export function TabeloApp() {
 				{showWelcome ? (
 					<EmptyState
 						suspended={importQuestionOpen}
-						onStartEmpty={() => setWelcomeOpen(false)}
+						onStartEmpty={() => {
+							setNewTableRetreat(null);
+							setWelcomeOpen(false);
+						}}
+						onCancel={newTableRetreat ? cancelNewTable : undefined}
 						onStarted={finishWelcomeImport}
 					/>
 				) : null}
 			</div>
 			{showWelcome ? null : (
 				<AppMenu
-					onImport={() => void importTableFile()}
 					onDownload={() => openRootDialog("download")}
 					onLayout={() => openRootDialog("layout")}
 					onSettings={() => openRootDialog("settings")}
 					onAddView={() => setAddViewRequest((request) => request + 1)}
+					onCopy={() => openRootDialog("copy-table")}
 					onNewTable={startNewTable}
 					onDeleteTable={(tableId) => {
 						setTableToDelete(tableId);
@@ -314,6 +355,11 @@ export function TabeloApp() {
 			<NoticeBar />
 			<DownloadDialog
 				open={rootDialog === "download"}
+				onOpenChange={closeRootDialog}
+			/>
+			<DownloadDialog
+				destination="clipboard"
+				open={rootDialog === "copy-table"}
 				onOpenChange={closeRootDialog}
 			/>
 			<LayoutDialog
