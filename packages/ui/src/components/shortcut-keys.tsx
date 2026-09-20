@@ -1,5 +1,4 @@
 import { menuShortcutKeyStyles } from "@tabelo/ui/components/menu-styles";
-import { isApplePlatform } from "@tabelo/ui/lib/platform";
 import {
 	type ShortcutKeyLabels,
 	shortcutKeys,
@@ -43,9 +42,16 @@ export function ShortcutKeys({ shortcut }: { readonly shortcut: string }) {
 	return (
 		<>
 			<span className="sr-only">{spokenShortcut(shortcut, labels)}</span>
-			<kbd aria-hidden className={menuShortcutKeyStyles}>
-				{keys.map((key) => key.display).join(isApplePlatform() ? "" : "+")}
-			</kbd>
+			{/* One rectangle per physical key, which is what the shortcut
+			    contract beside this file and the design system both state, and
+			    what the product's own guard counts. Joining them printed
+			    `Ctrl++` for zoom in on every platform that spells a chord with
+			    a separator. */}
+			{keys.map((key) => (
+				<kbd aria-hidden key={key.label} className={menuShortcutKeyStyles}>
+					{key.display}
+				</kbd>
+			))}
 		</>
 	);
 }
