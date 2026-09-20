@@ -7,9 +7,6 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
-	DropdownMenuSub,
-	DropdownMenuSubContent,
-	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
 import { menuItemInsetStyles } from "@tabelo/ui/components/menu-styles";
@@ -22,7 +19,6 @@ import {
 	IconBrandGithub,
 	IconCheck,
 	IconClipboardCopy,
-	IconDots,
 	IconDownload,
 	IconFilePlus,
 	IconFileText,
@@ -34,7 +30,6 @@ import {
 	IconTrash,
 } from "@tabler/icons-react";
 import {
-	type ReactNode,
 	type RefObject,
 	useId,
 	useMemo,
@@ -100,8 +95,10 @@ export function AppMenu({
 	const [pendingTranspose, setPendingTranspose] = useState<number | null>(null);
 	const tablesLabelId = useId();
 	const workspaceLabelId = useId();
+	const openTableLabelId = useId();
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
 	const library = useTabeloStore((state) => state.library);
+	const tableName = useTabeloStore((state) => state.name);
 	// The app always shows a table, so the only one left cannot be deleted.
 	// Library order, always: a table keeps its place when it is opened, so the
 	// list never rearranges under the pointer that just chose from it (owner,
@@ -191,17 +188,6 @@ export function AppMenu({
 							onDelete={() =>
 								menuDialog.runAfterClose(() => onDeleteTable(table.id))
 							}
-							onCopy={() => menuDialog.runAfterClose(onCopy)}
-							onDownload={() => menuDialog.runAfterClose(onDownload)}
-							structure={
-								<TableStructureCommands
-									onConfirmTranspose={(typedValues) =>
-										menuDialog.runAfterClose(() =>
-											setPendingTranspose(typedValues),
-										)
-									}
-								/>
-							}
 						/>
 					))}
 				</div>
@@ -243,7 +229,10 @@ export function AppMenu({
 			) : null}
 
 			<DropdownMenuSeparator />
-			<DropdownMenuGroup>
+			<DropdownMenuGroup aria-labelledby={openTableLabelId}>
+				<DropdownMenuLabel id={openTableLabelId} className="truncate">
+					{tableName}
+				</DropdownMenuLabel>
 				{/* Undo and redo side by side: two halves of one control. */}
 				<div className="mx-1 grid grid-cols-2 gap-1">
 					<ControlTooltip reason={canUndo ? undefined : copy.disabled.undo}>
@@ -273,6 +262,22 @@ export function AppMenu({
 						</DropdownMenuItem>
 					</ControlTooltip>
 				</div>
+				{/* The open table's own commands, under its name. Naming the
+				    section after the table is what says which table they act on,
+				    without a flyout per row (owner, 2026-09-20). */}
+				<TableStructureCommands
+					onConfirmTranspose={(typedValues) =>
+						menuDialog.runAfterClose(() => setPendingTranspose(typedValues))
+					}
+				/>
+				<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onCopy)}>
+					<IconClipboardCopy aria-hidden />
+					{copy.actions.copyTable}
+				</DropdownMenuItem>
+				<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onDownload)}>
+					<IconDownload aria-hidden />
+					{copy.actions.downloadTable}
+				</DropdownMenuItem>
 			</DropdownMenuGroup>
 
 			<DropdownMenuSeparator />
@@ -423,9 +428,6 @@ function TableRow({
 	onOpen,
 	onRename,
 	onDelete,
-	onCopy,
-	onDownload,
-	structure,
 }: {
 	readonly table: TableEntry;
 	readonly position: number;
@@ -435,11 +437,6 @@ function TableRow({
 	readonly onOpen: () => void;
 	readonly onRename: () => void;
 	readonly onDelete: () => void;
-	readonly onCopy: () => void;
-	readonly onDownload: () => void;
-	// The open table's structure commands, rendered by the menu so their
-	// refusals are computed once rather than per row.
-	readonly structure: ReactNode;
 }) {
 	return (
 		<div className="group/table-row flex items-stretch gap-1">
@@ -467,60 +464,36 @@ function TableRow({
 					</>
 				) : null}
 			</DropdownMenuItem>
-			{/* One control beside the name, holding everything that belongs to
-			    this table: renaming it, reshaping it, writing it out, deleting
-			    it (owner, 2026-09-20). They were a row of icons and a section
-			    of their own, where nothing said which table they acted on. */}
-			<DropdownMenuSub>
-				<DropdownMenuSubTrigger
-					aria-label={copy.actions.tableOptionsNamed(table.name)}
-					className={cn(revealedRowActionStyles, "text-muted-foreground")}
-				>
-					<IconDots aria-hidden />
-				</DropdownMenuSubTrigger>
-				<DropdownMenuSubContent
-					aria-label={copy.actions.tableOptionsNamed(table.name)}
-				>
-					{active ? null : (
-						<DropdownMenuItem onClick={onOpen}>
-							<IconFileText aria-hidden className={tableMarkClass(position)} />
-							{copy.actions.openTable}
-						</DropdownMenuItem>
+			{/* Two commands, on the row they act on, revealed by hovering it or
+			    reaching it from the keyboard. A submenu was tried here and
+			    dropped (owner, 2026-09-20): a flyout for two items costs a
+			    second hop of pointer travel and covers the list it came from.
+			    Everything else a table can do reads its document, so it belongs
+			    to the open table and is listed under its name below. */}
+			<DropdownMenuItem
+				aria-label={copy.actions.renameTableNamed(table.name)}
+				onClick={onRename}
+				className={cn(revealedRowActionStyles, "text-muted-foreground")}
+			>
+				<IconPencil aria-hidden />
+			</DropdownMenuItem>
+			<ControlTooltip reason={deleteRefusal}>
+				<DropdownMenuItem
+					// Quiet at rest like its neighbour, and destructive only once a
+					// pointer or the keyboard is on it: the colour warns about the
+					// command being reached, not about the row existing.
+					variant="destructive"
+					disabled={deleteRefusal !== undefined}
+					aria-label={copy.actions.deleteTableNamed(table.name)}
+					onClick={onDelete}
+					className={cn(
+						revealedRowActionStyles,
+						"not-data-disabled:not-hover:not-focus:text-muted-foreground",
 					)}
-					<DropdownMenuItem onClick={onRename}>
-						<IconPencil aria-hidden />
-						{copy.actions.renameTable}
-					</DropdownMenuItem>
-					{/* The commands below read the document, so they are the open
-					    table's. A table that is not open offers what can be done
-					    to it from the outside, and opening it is the first item. */}
-					{active ? (
-						<>
-							<DropdownMenuSeparator />
-							{structure}
-							<DropdownMenuItem onClick={onCopy}>
-								<IconClipboardCopy aria-hidden />
-								{copy.actions.copyTable}
-							</DropdownMenuItem>
-							<DropdownMenuItem onClick={onDownload}>
-								<IconDownload aria-hidden />
-								{copy.actions.downloadTable}
-							</DropdownMenuItem>
-						</>
-					) : null}
-					<DropdownMenuSeparator />
-					<ControlTooltip reason={deleteRefusal}>
-						<DropdownMenuItem
-							variant="destructive"
-							disabled={deleteRefusal !== undefined}
-							onClick={onDelete}
-						>
-							<IconTrash aria-hidden />
-							{copy.actions.deleteTableNamed(table.name)}
-						</DropdownMenuItem>
-					</ControlTooltip>
-				</DropdownMenuSubContent>
-			</DropdownMenuSub>
+				>
+					<IconTrash aria-hidden />
+				</DropdownMenuItem>
+			</ControlTooltip>
 		</div>
 	);
 }
