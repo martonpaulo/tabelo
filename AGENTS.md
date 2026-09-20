@@ -435,13 +435,11 @@ sleeps, no pixel snapshots, and storage isolated per test.
 - `AGENTS.md` is the source of truth. Every other entrypoint is a link to it,
   never a copy: a copy drifts, and two files claiming to be the policy is the
   failure this rule prevents.
-- Keep a root `CLAUDE.md` symbolic link pointing to `AGENTS.md`, and a root
-  `GEMINI.md` symbolic link beside it. Codex and Antigravity CLI read
-  `AGENTS.md` directly and need no bridge of their own.
-- `.gemini/rules/agents.md` is an older Gemini entrypoint that root `GEMINI.md`
-  replaces. It stays until an installed Gemini CLI can confirm the root file is
-  actually loaded, because removing the only working entrypoint on the strength
-  of an unverified replacement leaves that client with no policy at all.
+- Keep a root `CLAUDE.md` symbolic link pointing to `AGENTS.md`. Codex,
+  Antigravity CLI and Gemini CLI read `AGENTS.md` directly and need no bridge
+  of their own: the `GEMINI.md` link and the `.gemini/rules/` entrypoint this
+  section once required are gone, and the rule follows the repository rather
+  than describing files nobody kept (owner, 2026-09-20).
 - Add folder-specific `AGENTS.md` files only when a subtree genuinely requires
   different rules, each with a sibling `CLAUDE.md` symbolic link.
 - Do not duplicate the same rules across instruction files.

@@ -146,7 +146,18 @@
 			}
 		},
 		{
-			"includes": ["packages/ui/src/components/**"],
+			// The vendored shadcn primitives only. Tabelo's own components in
+			// this folder are excluded by name: the a11y rules below are
+			// load-bearing for them, and the exemption exists because a
+			// vendored primitive receives its wiring from the consumer.
+			"includes": [
+				"packages/ui/src/components/**",
+				"!packages/ui/src/components/shortcut-keys.tsx",
+				"!packages/ui/src/components/segmented-control.tsx",
+				"!packages/ui/src/components/menu-styles.ts",
+				"!packages/ui/src/components/motion-styles.ts",
+				"!packages/ui/src/components/surface-styles.ts"
+			],
 			"linter": {
 				"rules": {
 					"a11y": {

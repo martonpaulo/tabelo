@@ -1,10 +1,6 @@
 {
 	"name": "tabelo",
 	"private": true,
-	"workspaces": [
-		"apps/*",
-		"packages/*"
-	],
 	"type": "module",
 	"scripts": {
 		"dev": "pnpm -r dev",
