@@ -50,6 +50,48 @@ describe("nextMatchingCell", () => {
 		expect([last.selected, last.total]).toEqual([2, 2]);
 	});
 
+	it("wraps from the last cell in the table back to the header row", () => {
+		const wrapping = documentFromMatrix(
+			[
+				["City", "Note"],
+				["Rio", "Madrid"],
+				["Tokyo", "City"],
+			],
+			{ headerRow: true },
+		);
+		// The gesture starts on the bottom-right cell, so the only other "City"
+		// is the header cell the walk reaches by running off the table's end.
+		const step = nextMatchingCell(
+			wrapping,
+			createSelection({ row: 1, column: 1 }),
+		);
+		expect(step.selection?.ranges.at(-1)?.focus).toEqual({
+			row: HEADER_ROW,
+			column: 0,
+		});
+		expect([step.selected, step.total]).toEqual([2, 2]);
+	});
+
+	it("starts at the first cell when the focus is outside the table", () => {
+		const outside = documentFromMatrix(
+			[
+				["City", "Note"],
+				["", "Rio"],
+			],
+			{ headerRow: true },
+		);
+		// A focus no cell holds reads as an empty value and has no place in
+		// reading order, so the walk begins at the header row's first cell.
+		const step = nextMatchingCell(
+			outside,
+			createSelection({ row: 9, column: 0 }),
+		);
+		expect(step.selection?.ranges.at(-1)?.focus).toEqual({
+			row: 0,
+			column: 0,
+		});
+	});
+
 	it("reads the header row as cells, first in reading order", () => {
 		const headers = documentFromMatrix(
 			[

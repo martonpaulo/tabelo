@@ -25,27 +25,31 @@ export interface MatchingCellStep {
 	readonly total: number;
 }
 
-function valueAt(document: TableDocument, position: CellPosition): CellValue {
-	const column = document.columns[position.column];
+function valueAt(
+	document: TableDocument,
+	rowIndex: number,
+	columnIndex: number,
+): CellValue {
+	const column = document.columns[columnIndex];
 	if (!column) return "";
-	if (position.row === HEADER_ROW) return column.header;
-	const row = document.rows[position.row];
+	if (rowIndex === HEADER_ROW) return column.header;
+	const row = document.rows[rowIndex];
 	return row ? readCell(row, column.id) : "";
 }
 
-// Every cell in reading order: the header row first, then each data row, left
-// to right, which is the order the find bar walks too.
-function readingOrder(document: TableDocument): CellPosition[] {
-	const positions: CellPosition[] = [];
-	for (let row = HEADER_ROW; row < document.rows.length; row += 1) {
-		for (let column = 0; column < document.columns.length; column += 1) {
-			positions.push({ row, column });
-		}
+// Reading order: the header row first, then each data row, left to right, which
+// is the order the find bar walks too. It is an arithmetic order rather than a
+// materialized list, so a cell's place is computed from its coordinates and
+// back again. The header row is `HEADER_ROW`, which is -1, so every row sits
+// one place further down than its index.
+function orderIndex(document: TableDocument, position: CellPosition): number {
+	const columnCount = document.columns.length;
+	if (position.column < 0 || position.column >= columnCount) return -1;
+	if (position.row < HEADER_ROW || position.row >= document.rows.length) {
+		return -1;
 	}
-	return positions;
+	return (position.row - HEADER_ROW) * columnCount + position.column;
 }
-
-const key = (position: CellPosition) => `${position.row}:${position.column}`;
 
 export function nextMatchingCell(
 	document: TableDocument,
@@ -55,40 +59,52 @@ export function nextMatchingCell(
 	// presses search on from the newest area, so each press adds the next one.
 	const [first] = selection.ranges;
 	if (!first) return { selection: null, selected: 0, total: 0 };
-	const seed = valueAt(document, first.focus);
-	const order = readingOrder(document);
-	const matching = order.filter((position) =>
-		cellValuesEqual(valueAt(document, position), seed),
-	);
+	const seed = valueAt(document, first.focus.row, first.focus.column);
+	const columnCount = document.columns.length;
+	const cellCount = (document.rows.length + 1) * columnCount;
 
-	const selectedCells = new Set(
-		selection.ranges
-			.filter(
-				(range) =>
-					range.mode === "cell" &&
-					range.anchor.row === range.focus.row &&
-					range.anchor.column === range.focus.column,
-			)
-			.map((range) => key(range.focus)),
-	);
-	const alreadySelected = matching.filter((position) =>
-		selectedCells.has(key(position)),
-	).length;
+	// The single cells already selected, held by their place in reading order so
+	// the membership test is a number rather than a string built per test. A
+	// focus outside the table has no place, and nothing ever looks one up.
+	const selectedCells = new Set<number>();
+	for (const range of selection.ranges) {
+		if (range.mode !== "cell") continue;
+		if (range.anchor.row !== range.focus.row) continue;
+		if (range.anchor.column !== range.focus.column) continue;
+		const index = orderIndex(document, range.focus);
+		if (index !== -1) selectedCells.add(index);
+	}
 
-	const from = key(activeRange(selection).focus);
-	const start = order.findIndex((position) => key(position) === from);
-	for (let step = 1; step <= order.length; step += 1) {
-		const candidate = order[(start + step) % order.length];
-		if (!candidate || selectedCells.has(key(candidate))) continue;
-		if (!cellValuesEqual(valueAt(document, candidate), seed)) continue;
+	let total = 0;
+	let alreadySelected = 0;
+	let place = 0;
+	for (let row = HEADER_ROW; row < document.rows.length; row += 1) {
+		for (let column = 0; column < columnCount; column += 1) {
+			if (cellValuesEqual(valueAt(document, row, column), seed)) {
+				total += 1;
+				if (selectedCells.has(place)) alreadySelected += 1;
+			}
+			place += 1;
+		}
+	}
+
+	// A focus the table does not hold reports -1, so the walk starts at the
+	// first cell, which is where scanning a list for it left it too.
+	const start = orderIndex(document, activeRange(selection).focus);
+	for (let step = 1; step <= cellCount; step += 1) {
+		const index = (start + step) % cellCount;
+		if (selectedCells.has(index)) continue;
+		const row = Math.floor(index / columnCount) + HEADER_ROW;
+		const column = index % columnCount;
+		if (!cellValuesEqual(valueAt(document, row, column), seed)) continue;
 		return {
 			selection: {
-				ranges: [...selection.ranges, createRange(candidate, "cell")],
+				ranges: [...selection.ranges, createRange({ row, column }, "cell")],
 				activeIndex: selection.ranges.length,
 			},
 			selected: alreadySelected + 1,
-			total: matching.length,
+			total,
 		};
 	}
-	return { selection: null, selected: alreadySelected, total: matching.length };
+	return { selection: null, selected: alreadySelected, total };
 }
