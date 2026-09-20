@@ -5,14 +5,14 @@ import { fitColumnWidth } from "@/workspace/column-width";
 // place every value of the column is rendered, so it is passed in rather than
 // found, and no store or document knowledge is needed to measure it.
 
-function zoomNormalizedNaturalWidth(
-	element: HTMLElement,
+// What the measuring clone has to be told so its width is the text's own: no
+// box of its own to fit into, no wrapping, and the source element's exact type
+// at the product's base content size.
+function measuringStyle(
+	style: CSSStyleDeclaration,
 	zoom: number,
-): number {
-	const style = getComputedStyle(element);
-	const clone = element.cloneNode(true) as HTMLElement;
-	clone.removeAttribute("data-column-content");
-	Object.assign(clone.style, {
+): Partial<CSSStyleDeclaration> {
+	return {
 		position: "fixed",
 		top: "0",
 		left: "-10000px",
@@ -34,16 +34,38 @@ function zoomNormalizedNaturalWidth(
 		letterSpacing: style.letterSpacing,
 		wordSpacing: style.wordSpacing,
 		textTransform: style.textTransform,
+	};
+}
+
+// One column's cells measured together, in three phases: every computed style
+// while the document is still untouched, then every clone appended, then every
+// width read. Interleaving them made each `scrollWidth` follow a fresh append,
+// which forces one style-and-layout pass per cell rather than one for the
+// column. Each cell keeps its own computed style, because a header cell and a
+// data cell do not have to share one.
+function zoomNormalizedNaturalWidths(
+	elements: readonly HTMLElement[],
+	zoom: number,
+): number[] {
+	const sources = elements.map((element) => ({
+		element,
+		style: getComputedStyle(element),
+	}));
+	const clones = sources.map(({ element, style }) => {
+		const clone = element.cloneNode(true) as HTMLElement;
+		clone.removeAttribute("data-column-content");
+		Object.assign(clone.style, measuringStyle(style, zoom));
+		element.ownerDocument.body.append(clone);
+		return clone;
 	});
-	element.ownerDocument.body.append(clone);
 	try {
 		// Measure at the product's base content size, then express that value in
 		// the current zoomed coordinate space for fitColumnWidth to normalize.
 		// This avoids variable-font optical sizing changing stored widths when the
 		// same text is fitted in panes with different content scales.
-		return clone.scrollWidth * zoom;
+		return clones.map((clone) => clone.scrollWidth * zoom);
 	} finally {
-		clone.remove();
+		for (const clone of clones) clone.remove();
 	}
 }
 
@@ -71,9 +93,7 @@ export function measureColumnFitWidth(
 		getComputedStyle(table.ownerDocument.documentElement).fontSize,
 	);
 	return fitColumnWidth(
-		Math.max(
-			...content.map((element) => zoomNormalizedNaturalWidth(element, zoom)),
-		),
+		Math.max(...zoomNormalizedNaturalWidths(content, zoom)),
 		rootFontSize,
 		zoom,
 		decorationWidth,
