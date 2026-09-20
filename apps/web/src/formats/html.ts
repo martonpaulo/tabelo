@@ -322,6 +322,13 @@ export type HtmlTableReading =
 	| { readonly ok: true; readonly table: HtmlTable }
 	| { readonly ok: false; readonly issue: ParseIssue };
 
+// The cells of this row, and not of a row nested somewhere inside it.
+function ownCells(row: Element): Element[] {
+	return [...row.querySelectorAll("th, td")].filter(
+		(cell) => cell.closest("tr") === row,
+	);
+}
+
 // Extracts the first table from an HTML fragment. Shared by this codec and the
 // clipboard, which faces the same problem from a different direction. Null
 // when there is no table to read at all.
@@ -333,14 +340,28 @@ export function readHtmlTable(html: string): HtmlTableReading | null {
 	const table = parsed.querySelector("table");
 	if (!table) return null;
 
-	const rows = [...table.querySelectorAll("tr")];
+	// A table's own rows and a row's own cells: `querySelectorAll` matches
+	// descendants, so a table inside a cell, which Word, Excel, Confluence, and
+	// Gmail all emit, would add its rows to this table and its cells to the row
+	// that holds it. Read this way the inner table stays inside its cell, where
+	// `readCell` walks it like any other markup, and its text is flattened into
+	// that cell rather than dropped.
+	//
+	// The nearest enclosing table and row are what `HTMLTableElement.rows` and
+	// `HTMLTableRowElement.cells` mean, spelled out rather than read from those
+	// properties: happy-dom, the DOM this codec is unit tested against, matches
+	// descendants through them, which would leave the codec behaving one way
+	// under test and another in the browser.
+	const rows = [...table.querySelectorAll("tr")].filter(
+		(row) => row.closest("table") === table,
+	);
 	if (rows.length === 0) return null;
 
 	const warnings: CellIssue[] = [];
 	const matrix: TextContent[][] = [];
 	for (const row of rows) {
 		const values: TextContent[] = [];
-		for (const cell of row.querySelectorAll("th, td")) {
+		for (const cell of ownCells(row)) {
 			const reading = readCell(cell);
 			if (reading.refusal) return { ok: false, issue: reading.refusal };
 			for (const warning of reading.warnings) collectIssue(warnings, warning);
@@ -350,7 +371,7 @@ export function readHtmlTable(html: string): HtmlTableReading | null {
 	}
 	if (!matrix.some((row) => row.length > 0)) return null;
 
-	const headerCells = [...(rows[0]?.querySelectorAll("th, td") ?? [])];
+	const headerCells = rows[0] ? ownCells(rows[0]) : [];
 	// A row is the document header only when every cell is marked as one. A
 	// mixed row commonly uses <th> as a row label inside body data; treating it
 	// as the table header would drop that row from the imported data.

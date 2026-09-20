@@ -64,6 +64,41 @@ describe("html parsing", () => {
 	it("refuses markup with no table in it yet", () => {
 		expect(htmlCodec.parse("<div>not a table</div>").ok).toBe(false);
 	});
+
+	// Word, Excel, Confluence, and Gmail all paste a table inside a cell. Only
+	// the outer table's own rows and cells are the table; the inner one is
+	// content of the cell holding it, so its text is flattened into that cell,
+	// run after run with nothing added between them, and no row or column of
+	// the outer table is invented from it.
+	it("flattens a table nested in a cell into that cell", () => {
+		const result = htmlCodec.parse(
+			"<table><tr><th>Name</th><th>City</th></tr>" +
+				"<tr><td>Ingrid</td>" +
+				"<td><table><tr><td>Rio</td><td>Madrid</td></tr></table></td>" +
+				"</tr></table>",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(documentToMatrix(result.document)).toEqual([
+			["Name", "City"],
+			["Ingrid", "RioMadrid"],
+		]);
+	});
+
+	it("flattens a table nested in a header cell into that header", () => {
+		const result = htmlCodec.parse(
+			"<table><tr><th>Name</th>" +
+				"<th><table><tr><td>City</td></tr></table></th></tr>" +
+				"<tr><td>Ingrid</td><td>Rio</td></tr></table>",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		// Both cells of row one are still <th>, so the row is still the header.
+		expect(documentToMatrix(result.document)).toEqual([
+			["Name", "City"],
+			["Ingrid", "Rio"],
+		]);
+	});
 });
 
 describe("html serialization", () => {
