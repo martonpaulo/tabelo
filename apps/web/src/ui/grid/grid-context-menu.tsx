@@ -675,8 +675,11 @@ export function GridContextMenu({
 						// the caret (owner, 2026-09-20). The rich editor is the
 						// exception and brings its own menu, because formatting a
 						// selection is the command a right click there is for.
-						if (element?.closest("[data-cell-editor]")) {
-							event.stopPropagation();
+						const editor = element?.closest<HTMLElement>("[data-cell-editor]");
+						if (editor) {
+							// Capture must let the rich editor's own trigger receive the
+							// event. That trigger stops its bubble before it reaches us.
+							if (!editor.isContentEditable) event.stopPropagation();
 							return;
 						}
 
