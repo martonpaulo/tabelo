@@ -552,77 +552,81 @@ function TableRow({
 		// does (owner, 2026-09-20). Tabelo replaces the browser's menu only
 		// where it has one of its own to put there; everywhere else the
 		// browser's stays, because it holds things the app cannot offer.
-		<ContextMenu>
-			<ContextMenuTrigger
-				render={<div className="group/table-row flex items-stretch gap-1" />}
-			>
-				<DropdownMenuItem
-					// The one table the views are projecting, said three ways: the
-					// filled row, the check, and the state a screen reader reads.
-					aria-current={active ? "true" : undefined}
-					className={cn("min-w-0 flex-1", active && "bg-muted")}
-					closeOnClick={false}
-					onClick={onOpen}
-				>
-					{/* The colour is the table's, in every state: a hover or keyboard
+		<div className="group/table-row flex items-stretch gap-1">
+			{/* The right click belongs to the name, not to the whole row: the
+			    options control beside it is a submenu trigger of the menu above,
+			    and nesting it inside another menu's trigger stopped it opening
+			    (owner, 2026-09-20). */}
+			<ContextMenu>
+				<ContextMenuTrigger render={<div className="min-w-0 flex-1" />}>
+					<DropdownMenuItem
+						// The one table the views are projecting, said three ways: the
+						// filled row, the check, and the state a screen reader reads.
+						aria-current={active ? "true" : undefined}
+						className={cn("min-w-0 flex-1", active && "bg-muted")}
+						closeOnClick={false}
+						onClick={onOpen}
+					>
+						{/* The colour is the table's, in every state: a hover or keyboard
 				    highlight changes the item's background, never the mark, so the
 				    cue does not move as the pointer does. It is never the only
 				    cue, since the name is beside it. */}
-					<IconFileText aria-hidden className={tableMarkClass(position)} />
-					<MenuOption
-						truncateLabel
-						label={table.name}
-						description={active ? size : undefined}
-					/>
-					{active ? (
-						<>
-							<IconCheck aria-hidden className="text-muted-foreground" />
-							<span className="sr-only">{copy.status.openTable}</span>
-						</>
-					) : null}
-				</DropdownMenuItem>
-				{/* One control on the row, holding what can be done to that table
+						<IconFileText aria-hidden className={tableMarkClass(position)} />
+						<MenuOption
+							truncateLabel
+							label={table.name}
+							description={active ? size : undefined}
+						/>
+						{active ? (
+							<>
+								<IconCheck aria-hidden className="text-muted-foreground" />
+								<span className="sr-only">{copy.status.openTable}</span>
+							</>
+						) : null}
+					</DropdownMenuItem>
+				</ContextMenuTrigger>
+				<ContextMenuContent
+					aria-label={copy.actions.tableOptionsNamed(table.name)}
+				>
+					{commands}
+				</ContextMenuContent>
+			</ContextMenu>
+			{/* One control on the row, holding what can be done to that table
 			    (owner, 2026-09-20). Dots only: the chevron would be a second
 			    glyph on a control that already reads as "more", and the row has
 			    no label for it to follow. It is quiet until the row is hovered
 			    or reached from the keyboard. */}
-				<DropdownMenuSub>
-					<DropdownMenuSubTrigger
-						hideIndicator
-						aria-label={copy.actions.tableOptionsNamed(table.name)}
-						className={cn(
-							revealedRowActionStyles,
-							"min-h-0 self-center text-muted-foreground",
-						)}
-					>
-						<IconDots aria-hidden />
-					</DropdownMenuSubTrigger>
-					<DropdownMenuSubContent
-						aria-label={copy.actions.tableOptionsNamed(table.name)}
-					>
-						<TableCommands
-							Item={DropdownMenuItem}
-							Separator={DropdownMenuSeparator}
-							table={table}
-							position={position}
-							active={active}
-							deleteRefusal={deleteRefusal}
-							onOpen={onOpen}
-							onRename={onRename}
-							onDelete={onDelete}
-							onCopy={onCopy}
-							onDownload={onDownload}
-							structure={structure}
-						/>
-					</DropdownMenuSubContent>
-				</DropdownMenuSub>
-			</ContextMenuTrigger>
-			<ContextMenuContent
-				aria-label={copy.actions.tableOptionsNamed(table.name)}
-			>
-				{commands}
-			</ContextMenuContent>
-		</ContextMenu>
+			<DropdownMenuSub>
+				<DropdownMenuSubTrigger
+					hideIndicator
+					aria-label={copy.actions.tableOptionsNamed(table.name)}
+					className={cn(
+						revealedRowActionStyles,
+						"min-h-0 self-center text-muted-foreground",
+					)}
+				>
+					<IconDots aria-hidden />
+				</DropdownMenuSubTrigger>
+				<DropdownMenuSubContent
+					aria-label={copy.actions.tableOptionsNamed(table.name)}
+				>
+					<TableCommands
+						Item={DropdownMenuItem}
+						Separator={DropdownMenuSeparator}
+						table={table}
+						position={position}
+						active={active}
+						deleteRefusal={deleteRefusal}
+						onOpen={onOpen}
+						onRename={onRename}
+						onDelete={onDelete}
+						onCopy={onCopy}
+						onDownload={onDownload}
+						structure={structure}
+					/>
+				</DropdownMenuSubContent>
+			</DropdownMenuSub>
+		</div>
 	);
 }
 

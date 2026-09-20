@@ -708,7 +708,11 @@ export const copy = {
 		undo: "Undo",
 		redo: "Redo",
 		transposeTable: "Transpose table",
-		deleteEmptyRowsAndColumns: "Delete empty rows and columns",
+		// "Remove", not "Delete": the menu it sits in also deletes the table,
+		// and the two should not read alike (owner, 2026-09-20). "Blank" says
+		// what is removed better than "empty", which a reader can hear as the
+		// whole table.
+		deleteEmptyRowsAndColumns: "Remove blank rows and columns",
 		insertRowsAbove: (count: number) =>
 			`Insert ${count === 1 ? "row" : "rows"} above`,
 		insertRowsBelow: (count: number) =>

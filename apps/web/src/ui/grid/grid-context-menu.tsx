@@ -668,6 +668,18 @@ export function GridContextMenu({
 						const element = event.target as HTMLElement | null;
 						const fromKeyboard = openedByKeyboard.current;
 
+						// A cell being typed into keeps the browser's own menu: that
+						// is where spelling suggestions, the dictionary and the
+						// platform's clipboard entries live, and the grid's commands
+						// are about rows and columns rather than the sentence under
+						// the caret (owner, 2026-09-20). The rich editor is the
+						// exception and brings its own menu, because formatting a
+						// selection is the command a right click there is for.
+						if (element?.closest("[data-cell-editor]")) {
+							event.stopPropagation();
+							return;
+						}
+
 						// Right-clicking outside the current selection moves it there
 						// first, so the menu always acts on what was clicked.
 						const cell = element?.closest<HTMLElement>("[data-cell]");
