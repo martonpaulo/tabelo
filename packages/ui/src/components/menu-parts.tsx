@@ -156,9 +156,14 @@ export function createMenuComponents(options: MenuComponentOptions) {
 		className,
 		inset,
 		children,
+		hideIndicator,
 		...props
 	}: MenuPrimitive.SubmenuTrigger.Props & {
 		inset?: boolean;
+		// A trigger that is one icon on a row rather than a labelled command:
+		// the chevron would be a second glyph on a control that already reads
+		// as "more", and there is no label for it to sit after.
+		hideIndicator?: boolean;
 	}) {
 		return (
 			<MenuPrimitive.SubmenuTrigger
@@ -183,7 +188,9 @@ export function createMenuComponents(options: MenuComponentOptions) {
 				{...props}
 			>
 				{children}
-				<IconChevronRight className="cn-rtl-flip ml-auto" />
+				{hideIndicator ? null : (
+					<IconChevronRight className="cn-rtl-flip ml-auto" />
+				)}
 			</MenuPrimitive.SubmenuTrigger>
 		);
 	}

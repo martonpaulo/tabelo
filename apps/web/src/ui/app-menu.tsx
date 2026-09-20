@@ -7,6 +7,9 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@tabelo/ui/components/dropdown-menu";
 import { menuItemInsetStyles } from "@tabelo/ui/components/menu-styles";
@@ -19,6 +22,7 @@ import {
 	IconBrandGithub,
 	IconCheck,
 	IconClipboardCopy,
+	IconDots,
 	IconDownload,
 	IconFilePlus,
 	IconFileText,
@@ -464,36 +468,48 @@ function TableRow({
 					</>
 				) : null}
 			</DropdownMenuItem>
-			{/* Two commands, on the row they act on, revealed by hovering it or
-			    reaching it from the keyboard. A submenu was tried here and
-			    dropped (owner, 2026-09-20): a flyout for two items costs a
-			    second hop of pointer travel and covers the list it came from.
-			    Everything else a table can do reads its document, so it belongs
-			    to the open table and is listed under its name below. */}
-			<DropdownMenuItem
-				aria-label={copy.actions.renameTableNamed(table.name)}
-				onClick={onRename}
-				className={cn(revealedRowActionStyles, "text-muted-foreground")}
-			>
-				<IconPencil aria-hidden />
-			</DropdownMenuItem>
-			<ControlTooltip reason={deleteRefusal}>
-				<DropdownMenuItem
-					// Quiet at rest like its neighbour, and destructive only once a
-					// pointer or the keyboard is on it: the colour warns about the
-					// command being reached, not about the row existing.
-					variant="destructive"
-					disabled={deleteRefusal !== undefined}
-					aria-label={copy.actions.deleteTableNamed(table.name)}
-					onClick={onDelete}
+			{/* One control on the row, holding what can be done to that table
+			    (owner, 2026-09-20). Dots only: the chevron would be a second
+			    glyph on a control that already reads as "more", and the row has
+			    no label for it to follow. It is quiet until the row is hovered
+			    or reached from the keyboard. */}
+			<DropdownMenuSub>
+				<DropdownMenuSubTrigger
+					hideIndicator
+					aria-label={copy.actions.tableOptionsNamed(table.name)}
 					className={cn(
 						revealedRowActionStyles,
-						"not-data-disabled:not-hover:not-focus:text-muted-foreground",
+						"min-h-0 self-center text-muted-foreground",
 					)}
 				>
-					<IconTrash aria-hidden />
-				</DropdownMenuItem>
-			</ControlTooltip>
+					<IconDots aria-hidden />
+				</DropdownMenuSubTrigger>
+				<DropdownMenuSubContent
+					aria-label={copy.actions.tableOptionsNamed(table.name)}
+				>
+					{active ? null : (
+						<DropdownMenuItem onClick={onOpen}>
+							<IconFileText aria-hidden className={tableMarkClass(position)} />
+							{copy.actions.openTable}
+						</DropdownMenuItem>
+					)}
+					<DropdownMenuItem onClick={onRename}>
+						<IconPencil aria-hidden />
+						{copy.actions.renameTable}
+					</DropdownMenuItem>
+					<DropdownMenuSeparator />
+					<ControlTooltip reason={deleteRefusal}>
+						<DropdownMenuItem
+							variant="destructive"
+							disabled={deleteRefusal !== undefined}
+							onClick={onDelete}
+						>
+							<IconTrash aria-hidden />
+							{copy.actions.deleteTableNamed(table.name)}
+						</DropdownMenuItem>
+					</ControlTooltip>
+				</DropdownMenuSubContent>
+			</DropdownMenuSub>
 		</div>
 	);
 }
