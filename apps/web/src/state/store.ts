@@ -131,6 +131,7 @@ import {
 	prepareImport,
 	tableShapeLimitError,
 } from "@/import/prepare";
+import { storageErased } from "@/persistence/erase";
 import {
 	LIBRARY_VERSION,
 	type PersistenceFailureReason,
@@ -530,7 +531,10 @@ export interface TabeloState {
 	// Spreads the columns across the room the pane actually has (#404). The
 	// caller measures that room, since only the DOM knows it, and passes it in
 	// rem.
-	fitColumnsToPaneWidth: (availableRem: number) => boolean;
+	fitColumnsToPaneWidth: (
+		availableRem: number,
+		contentRem?: readonly (number | undefined)[],
+	) => boolean;
 
 	addRowAbove: () => void;
 	addRowBelow: () => void;
@@ -1029,10 +1033,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	outputOptions: { ...defaultOutputOptions },
 
 	hydrate: () => {
-		const library = readLibrary(get().library);
+		const session = get().library;
+		const library = readLibrary(session);
 		// A browser with no index gets one now, so the table this session is
 		// about to write is in the library rather than becoming an orphan key.
 		if (!loadLibraryIndex()) writeLibraryIndex(library);
+		// The table this session minted before reading storage belongs to no
+		// library once the stored one arrives. A save between the first render
+		// and this point would have left its key behind, unreachable from any
+		// list, so it goes with the state it belonged to.
+		if (!library.tables.some((table) => table.id === session.activeId)) {
+			removeStoredTable(session.activeId);
+		}
 		set({ library, name: entryName(library, library.activeId) });
 		const outcome = loadTable(library.activeId);
 		if (outcome.status === "ok") {
@@ -1756,11 +1768,17 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				: state;
 		}),
 
-	fitColumnsToPaneWidth: (availableRem) => {
+	fitColumnsToPaneWidth: (availableRem, contentRem) => {
 		const state = get();
 		const columns = state.document.columns;
+		// The proportions come from what each column's content needs, when the
+		// caller could measure it; a column it could not measure keeps the width
+		// it has as its share.
 		const next = distributeColumnWidths(
-			columns.map((column) => state.workspace.columnWidths[column.id]),
+			columns.map(
+				(column, index) =>
+					contentRem?.[index] ?? state.workspace.columnWidths[column.id],
+			),
 			availableRem,
 		);
 		if (!next) return false;
@@ -2696,6 +2714,9 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null;
 export type FlushOutcome = SaveOutcome | { readonly status: "blocked" };
 
 export function flushPersistence(): FlushOutcome {
+	// Nothing is written after the user erased everything: the reload that
+	// follows would otherwise carry the table back into storage.
+	if (storageErased()) return { status: "blocked" };
 	const current = useTabeloStore.getState();
 	if (current.storageIssue?.kind === "unreadable") {
 		return { status: "blocked" };

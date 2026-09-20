@@ -8,7 +8,17 @@
 // data the product does not own.
 const KEY_PREFIX = "tabelo.";
 
+// Erasing is the one moment a save must not happen: the reload that follows
+// fires `pagehide`, and the autosave listening for it would write the table
+// straight back into the key that was just removed.
+let erased = false;
+
+export function storageErased(): boolean {
+	return erased;
+}
+
 export function eraseStoredData(): boolean {
+	erased = true;
 	try {
 		const keys: string[] = [];
 		for (let index = 0; index < window.localStorage.length; index += 1) {
