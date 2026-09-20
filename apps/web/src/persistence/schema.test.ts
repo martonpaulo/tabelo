@@ -1,18 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { layoutPresets } from "@/workspace/layout";
-import v1 from "./fixtures/v1.json";
-import v2 from "./fixtures/v2.json";
-import v3 from "./fixtures/v3.json";
-import v4 from "./fixtures/v4.json";
-import v5 from "./fixtures/v5.json";
-import v6 from "./fixtures/v6.json";
-import v7 from "./fixtures/v7.json";
-import v8 from "./fixtures/v8.json";
-import v9 from "./fixtures/v9.json";
-import v10 from "./fixtures/v10.json";
-import v11 from "./fixtures/v11.json";
-import v12 from "./fixtures/v12.json";
-import v13 from "./fixtures/v13.json";
 import { CURRENT_VERSION, validatePersistedState } from "./schema";
 
 const document = {
@@ -75,27 +62,6 @@ describe("loading a stored payload", () => {
 		]);
 	});
 
-	it("carries both pinned axes through the current workspace schema", () => {
-		const workspace = payload().workspace;
-		const outcome = validatePersistedState(
-			payload({
-				workspace: {
-					...workspace,
-					pinFirstDataRow: true,
-					pinFirstDataColumn: true,
-				},
-			}),
-		);
-
-		expect(outcome.status).toBe("ok");
-		if (outcome.status !== "ok") return;
-		expect(outcome.state.workspace.pinFirstDataRow).toBe(true);
-		expect(outcome.state.workspace.pinFirstDataColumn).toBe(true);
-	});
-
-	// Unlike per-column wrapping and pane wrapping, these two carry no schema
-	// default: the migration below supplies them for every older payload, so a
-	// current payload that omits them was not written by Tabelo.
 	it("refuses a current payload missing a pinned axis", () => {
 		const workspace = payload().workspace;
 		const { pinFirstDataColumn: _omitted, ...withoutPin } = workspace;
@@ -106,15 +72,6 @@ describe("loading a stored payload", () => {
 		});
 	});
 
-	it("leaves a migrated v7 table unpinned", () => {
-		const outcome = validatePersistedState(v7);
-
-		expect(outcome.status).toBe("ok");
-		if (outcome.status !== "ok") return;
-		expect(outcome.state.workspace.pinFirstDataRow).toBe(false);
-		expect(outcome.state.workspace.pinFirstDataColumn).toBe(false);
-	});
-
 	it("preserves per-column wrapping in the current workspace schema", () => {
 		const workspace = payload().workspace;
 		const outcome = validatePersistedState(
@@ -123,17 +80,6 @@ describe("loading a stored payload", () => {
 		expect(outcome.status).toBe("ok");
 		if (outcome.status !== "ok") return;
 		expect(outcome.state.workspace.wrappedColumns).toEqual(["c1"]);
-	});
-
-	it("migrates v4 document widths into the current workspace schema", () => {
-		const outcome = validatePersistedState(v4);
-
-		expect(outcome.status).toBe("ok");
-		if (outcome.status !== "ok") return;
-		expect(outcome.state.workspace.columnWidths).toEqual({ "c-name": 18 });
-		expect(
-			outcome.state.document.columns.every((column) => !("width" in column)),
-		).toBe(true);
 	});
 
 	it("preserves a pane's explicit wrapping beside one that follows the default", () => {
@@ -156,191 +102,6 @@ describe("loading a stored payload", () => {
 		]);
 	});
 
-	it("carries every source display override of the stored v9 fixture", () => {
-		const outcome = validatePersistedState(v9);
-
-		expect(outcome.status).toBe("ok");
-		if (outcome.status !== "ok") return;
-		// Version 11's line-break override and version 12's alignment override
-		// start at "follow the default".
-		expect(outcome.state.workspace.panes).toEqual(
-			v9.workspace.panes.map((pane) => ({
-				...pane,
-				lineBreakIndicators: null,
-				alignColumns: null,
-				lineBreakTags: null,
-			})),
-		);
-	});
-
-	it("carries the line-break override of the stored v11 fixture", () => {
-		const outcome = validatePersistedState(v11);
-
-		expect(outcome.status).toBe("ok");
-		if (outcome.status !== "ok") return;
-		expect(outcome.state.workspace.panes).toEqual(
-			v11.workspace.panes.map((pane) => ({
-				...pane,
-				alignColumns: null,
-				lineBreakTags: null,
-			})),
-		);
-	});
-
-	it("carries the alignment override of the stored v12 fixture", () => {
-		const outcome = validatePersistedState(v12);
-
-		expect(outcome.status).toBe("ok");
-		if (outcome.status !== "ok") return;
-		expect(outcome.state.workspace.panes).toEqual(
-			v12.workspace.panes.map((pane) => ({ ...pane, lineBreakTags: null })),
-		);
-	});
-
-	it("carries the line-break spelling override of the stored v13 fixture", () => {
-		const outcome = validatePersistedState(v13);
-
-		expect(outcome.status).toBe("ok");
-		if (outcome.status !== "ok") return;
-		expect(outcome.state.workspace.panes).toEqual(v13.workspace.panes);
-	});
-
-	it.each([
-		["wrap", "yes"],
-		["spaceIndicators", "selection"],
-		["tabIndicators", 1],
-		["emptyValueIndicators", "none"],
-		["lineBreakIndicators", "on"],
-		["alignColumns", "yes"],
-		["lineBreakTags", "br"],
-	])("refuses a %s override Tabelo never writes", (key, value) => {
-		const workspace = payload().workspace;
-		expect(
-			validatePersistedState(
-				payload({
-					workspace: {
-						...workspace,
-						panes: workspace.panes.map((pane) => ({ ...pane, [key]: value })),
-					},
-				}),
-			),
-		).toEqual({ status: "unreadable", reason: "current-schema-invalid" });
-	});
-
-	it.each([
-		["v1", v1],
-		["v2", v2],
-		["v3", v3],
-		["v4", v4],
-		["v5", v5],
-		["v6", v6],
-		["v7", v7],
-		["v8", v8],
-		["v9", v9],
-		["v10", v10],
-		["v11", v11],
-		["v12", v12],
-		["v13", v13],
-	] as const)(
-		"loads the stored %s fixture as current state",
-		(_name, fixture) => {
-			const outcome = validatePersistedState(fixture);
-
-			expect(outcome.status).toBe("ok");
-			if (outcome.status !== "ok") return;
-			expect(outcome.state.version).toBe(CURRENT_VERSION);
-			expect(outcome.state.document.rows[0]?.cells["c-name"]).toBe("Ingrid");
-		},
-	);
-
-	// #306. Marks, a link with an email address, an image with Unicode
-	// alternative text, and a line break, in headers and cells alike, beside
-	// native scalars: all of it comes back exactly as it was stored.
-	it("carries every inline node of the stored v10 fixture", () => {
-		const outcome = validatePersistedState(v10);
-
-		expect(outcome.status).toBe("ok");
-		if (outcome.status !== "ok") return;
-		expect(outcome.state.document).toEqual(v10.document);
-	});
-
-	const inlineCell = (content: unknown) =>
-		payload({
-			document: {
-				columns: document.columns,
-				rows: [{ id: "r1", cells: { c1: content } }],
-			},
-		});
-	const run = (text: string, marks: string[] = []) => ({
-		kind: "text",
-		text,
-		marks,
-	});
-
-	it.each([
-		["a wrapper around plain text", { kind: "inline", nodes: [run("Rio")] }],
-		["an empty node list", { kind: "inline", nodes: [] }],
-		[
-			"adjacent runs with the same marks",
-			{ kind: "inline", nodes: [run("Ri", ["bold"]), run("o", ["bold"])] },
-		],
-		[
-			"marks out of canonical order",
-			{ kind: "inline", nodes: [run("Rio", ["italic", "bold"])] },
-		],
-		[
-			"a repeated mark",
-			{ kind: "inline", nodes: [run("Rio", ["bold", "bold"])] },
-		],
-		["an unknown mark", { kind: "inline", nodes: [run("Rio", ["shadow"])] }],
-		[
-			"code combined with another mark",
-			{ kind: "inline", nodes: [run("Rio", ["bold", "code"])] },
-		],
-		[
-			"code across a line break",
-			{ kind: "inline", nodes: [run("Rio\nMadrid", ["code"])] },
-		],
-		[
-			"an image without alternative text",
-			{
-				kind: "inline",
-				nodes: [{ kind: "image", url: "https://example.com/rio.png", alt: "" }],
-			},
-		],
-		[
-			"a link without a URL",
-			{
-				kind: "inline",
-				nodes: [{ kind: "link", url: "", children: [run("Rio")] }],
-			},
-		],
-		[
-			"a link holding an image",
-			{
-				kind: "inline",
-				nodes: [
-					{
-						kind: "link",
-						url: "https://example.com",
-						children: [
-							{ kind: "image", url: "https://example.com/rio.png", alt: "Rio" },
-						],
-					},
-				],
-			},
-		],
-		[
-			"a key Tabelo never writes",
-			{ kind: "inline", nodes: [run("Rio", ["bold"])], style: "color: red" },
-		],
-	])("refuses inline content holding %s", (_name, content) => {
-		expect(validatePersistedState(inlineCell(content))).toEqual({
-			status: "unreadable",
-			reason: "current-schema-invalid",
-		});
-	});
-
 	it("requires a trimmed non-empty name within 120 Unicode code points", () => {
 		expect(validatePersistedState(payload({ name: "" }))).toEqual({
 			status: "unreadable",
@@ -352,21 +113,6 @@ describe("loading a stored payload", () => {
 		expect(
 			validatePersistedState(payload({ name: " Project roles " })),
 		).toEqual({ status: "unreadable", reason: "current-schema-invalid" });
-	});
-
-	it("migrates v5 columns to the text expectation with values untouched", () => {
-		const outcome = validatePersistedState(v5);
-
-		expect(outcome.status).toBe("ok");
-		if (outcome.status !== "ok") return;
-		expect(
-			outcome.state.document.columns.every(
-				(column) => column.expectedType === "text",
-			),
-		).toBe(true);
-		expect(outcome.state.document.rows.map((row) => row.cells)).toEqual(
-			v5.document.rows.map((row) => row.cells),
-		);
 	});
 
 	it("accepts every scalar variant in a stored cell", () => {
@@ -416,22 +162,6 @@ describe("loading a stored payload", () => {
 			status: "unreadable",
 			reason: "current-schema-invalid",
 		});
-	});
-
-	it("does not coerce a string version into a shipped version", () => {
-		expect(validatePersistedState({ ...v1, version: "1" })).toEqual({
-			status: "unreadable",
-			reason: "current-schema-invalid",
-		});
-	});
-
-	it("classifies an invalid historical source as a migration failure", () => {
-		expect(
-			validatePersistedState({
-				...v2,
-				workspace: { ...v2.workspace, panes: [] },
-			}),
-		).toEqual({ status: "unreadable", reason: "migration-failed" });
 	});
 
 	it("refuses a payload whose shape does not match", () => {

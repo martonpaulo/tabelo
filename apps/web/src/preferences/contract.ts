@@ -5,7 +5,7 @@ export const PREFERENCES_STORAGE_KEY = "tabelo.preferences";
 // Where an unreadable payload is copied before the user replaces it, beside
 // the table's own recovery key and for the same reason.
 export const PREFERENCES_RECOVERY_KEY = "tabelo.preferences.recovery";
-export const PREFERENCES_VERSION = 7;
+export const PREFERENCES_VERSION = 1;
 
 // Which spaces a source view marks. These are the modes VS Code's
 // `editor.renderWhitespace` offers, kept by their names, because they are a
@@ -94,143 +94,9 @@ const preferencesSchema = z
 	})
 	.strict();
 
-// Every shipped version keeps its own schema and one forward-only step to the
-// next version. A payload is validated against the schema of the version it
-// claims and then carried one step at a time, so no version gains a second,
-// direct path to the current shape.
-
-// Versions 1 and 2 carried a `theme`, which version 3 removed: the product has
-// one palette and nothing to choose between (docs/adr/0010). The key is read
-// only to accept the payload's shape, so it is typed as `unknown` rather than
-// as the old enum: what it said no longer decides anything.
-const DISCARDED_THEME = z.unknown();
-
-// Version 1 carried one boolean for every marker at once.
-const version1Schema = z
-	.object({
-		version: z.literal(1),
-		theme: DISCARDED_THEME,
-		showWhitespaceIndicators: z.boolean(),
-	})
-	.strict();
-
-// Version 2 split that boolean into the three independent settings.
-const version2Schema = z
-	.object({ version: z.literal(2), theme: DISCARDED_THEME, ...indicatorShape })
-	.strict();
-
-// Version 3 differs from version 2 by the theme alone.
-const version3Schema = z
-	.object({ version: z.literal(3), ...indicatorShape })
-	.strict();
-
-// Version 4 made the indicators the global default and added wrapping.
-const version4Schema = z
-	.object({ version: z.literal(4), wrap: z.boolean(), ...indicatorShape })
-	.strict();
-
-type Version1 = z.infer<typeof version1Schema>;
-type Version2 = z.infer<typeof version2Schema>;
-type Version3 = z.infer<typeof version3Schema>;
-// Version 5 added the line-break mark.
-const version5Schema = z
-	.object({
-		version: z.literal(5),
-		wrap: z.boolean(),
-		...indicatorShape,
-		lineBreakIndicators: z.boolean(),
-	})
-	.strict();
-
-type Version4 = z.infer<typeof version4Schema>;
-// Version 6 added column alignment.
-const version6Schema = z
-	.object({
-		version: z.literal(6),
-		wrap: z.boolean(),
-		...indicatorShape,
-		lineBreakIndicators: z.boolean(),
-		alignColumns: z.boolean(),
-	})
-	.strict();
-
-type Version5 = z.infer<typeof version5Schema>;
-type Version6 = z.infer<typeof version6Schema>;
-
-// The single marker choice, split the way version 2 shipped it: a reader who
-// had markers on received that version's space default, `trailing`.
-function migrateVersion1(value: Version1): Version2 {
-	const shown = value.showWhitespaceIndicators;
-	return {
-		version: 2,
-		theme: value.theme,
-		spaceIndicators: shown ? "trailing" : "none",
-		tabIndicators: shown,
-		emptyValueIndicators: shown,
-	};
-}
-
-function migrateVersion2({ theme: _discarded, ...value }: Version2): Version3 {
-	return { ...value, version: 3 };
-}
-
-// Version 4 turns the three indicators from the setting into the global
-// default, adds wrapping beside them, and ships every default off (#276). The
-// stored values are overwritten rather than carried: they were written while
-// the product showed markers without being asked, and keeping them would keep
-// that superseded decision alive for every reader who never touched it. The
-// cost is deliberate: a reader who had chosen markers chooses them once more.
-function migrateVersion3(_value: Version3): Version4 {
-	return {
-		version: 4,
-		wrap: false,
-		spaceIndicators: "none",
-		tabIndicators: false,
-		emptyValueIndicators: false,
-	};
-}
-
-// Version 5 adds the line-break mark (owner, 2026-09-19). Every choice the
-// reader made is carried as it was, and the new setting starts at its
-// default, on.
-function migrateVersion4(value: Version4): Version5 {
-	return { ...value, version: 5, lineBreakIndicators: true };
-}
-
-// Version 6 adds column alignment (#396). Every choice is carried as it was,
-// and the new setting starts at its default, on.
-function migrateVersion5(value: Version5): Version6 {
-	return { ...value, version: 6, alignColumns: true };
-}
-
-// Version 7 adds Markdown's line-break spelling (#397). Every choice is
-// carried as it was, and the new setting starts at its default, `&#10;`.
-function migrateVersion6(value: Version6): Preferences {
-	return {
-		...value,
-		version: PREFERENCES_VERSION,
-		lineBreakTags: DEFAULT_PREFERENCES.lineBreakTags,
-	};
-}
-
-interface PreferencesMigration {
-	readonly schema: z.ZodType;
-	readonly step: (value: never) => unknown;
-}
-
-// Keyed by the version each step reads.
-const migrations: Readonly<Partial<Record<number, PreferencesMigration>>> = {
-	1: { schema: version1Schema, step: migrateVersion1 },
-	2: { schema: version2Schema, step: migrateVersion2 },
-	3: { schema: version3Schema, step: migrateVersion3 },
-	4: { schema: version4Schema, step: migrateVersion4 },
-	5: { schema: version5Schema, step: migrateVersion5 },
-	6: { schema: version6Schema, step: migrateVersion6 },
-};
-
 function storedVersion(value: unknown): unknown {
 	return typeof value === "object" && value !== null && "version" in value
-		? value.version
+		? (value as { version: unknown }).version
 		: undefined;
 }
 
@@ -241,11 +107,10 @@ export type PreferencesReadOutcome =
 			readonly reason: PersistenceFailureReason;
 	  };
 
-// The current payload, or the result of carrying an older one forward.
-// Anything else is unreadable, for the same reasons the table's own
-// persistence reports, and that includes a payload an older version wrote
-// invalidly: a migration reads the old schema, it does not repair it. A version
-// this build does not know is left alone rather than guessed at.
+// The current payload, and nothing else. Older shapes were dropped with the
+// table's own historical schemas (owner, 2026-09-20): an unreadable payload
+// is preserved raw and reported, as it always was. A version this build does
+// not know is left alone rather than guessed at.
 function readPreferences(value: unknown): PreferencesReadOutcome {
 	const version = storedVersion(value);
 	if (typeof version !== "number" || !Number.isInteger(version)) {
@@ -254,24 +119,10 @@ function readPreferences(value: unknown): PreferencesReadOutcome {
 	if (version > PREFERENCES_VERSION) {
 		return { status: "unreadable", reason: "future-version" };
 	}
-	const failure: PreferencesReadOutcome = {
-		status: "unreadable",
-		reason:
-			version < PREFERENCES_VERSION
-				? "migration-failed"
-				: "current-schema-invalid",
-	};
-	let candidate = value;
-	for (;;) {
-		const current = validatePreferences(candidate);
-		if (current) return { status: "ok", preferences: current };
-		const step = storedVersion(candidate);
-		const migration = typeof step === "number" ? migrations[step] : undefined;
-		if (!migration) return failure;
-		const parsed = migration.schema.safeParse(candidate);
-		if (!parsed.success) return failure;
-		candidate = migration.step(parsed.data as never);
-	}
+	const current = validatePreferences(value);
+	return current
+		? { status: "ok", preferences: current }
+		: { status: "unreadable", reason: "current-schema-invalid" };
 }
 
 export function validatePreferences(value: unknown): Preferences | null {

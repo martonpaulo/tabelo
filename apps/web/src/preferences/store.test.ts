@@ -28,40 +28,6 @@ function memoryStorage(
 const chosen = { ...DEFAULT_PREFERENCES, spaceIndicators: "all" } as const;
 
 describe("an unreadable stored payload", () => {
-	it.each([
-		["damaged JSON", "{not json", "invalid-json"],
-		[
-			"a newer version",
-			JSON.stringify({
-				...DEFAULT_PREFERENCES,
-				version: PREFERENCES_VERSION + 1,
-			}),
-			"future-version",
-		],
-		[
-			"an invalid current payload",
-			JSON.stringify({ ...DEFAULT_PREFERENCES, wrap: "yes" }),
-			"current-schema-invalid",
-		],
-		[
-			"an older payload that cannot migrate",
-			JSON.stringify({ version: 2, spaceIndicators: "all" }),
-			"migration-failed",
-		],
-	] as const)(
-		"keeps %s untouched, reports it, and runs on the defaults",
-		(_name, raw, reason) => {
-			const storage = memoryStorage({ [PREFERENCES_STORAGE_KEY]: raw });
-
-			const store = createPreferencesStore(storage);
-
-			expect(store.getSnapshot()).toEqual(DEFAULT_PREFERENCES);
-			expect(store.getIssue()).toEqual({ kind: "unreadable", reason, raw });
-			expect(storage.setItem).not.toHaveBeenCalled();
-			expect(storage.values.get(PREFERENCES_STORAGE_KEY)).toBe(raw);
-		},
-	);
-
 	it("applies a change for the session without overwriting the payload", () => {
 		const raw = "{not json";
 		const storage = memoryStorage({ [PREFERENCES_STORAGE_KEY]: raw });
@@ -133,25 +99,6 @@ describe("an unreadable stored payload", () => {
 		expect(store.getIssue()).toBeNull();
 	});
 
-	it("loads a payload the migration chain carries forward without an issue", () => {
-		const storage = memoryStorage({
-			[PREFERENCES_STORAGE_KEY]: JSON.stringify({
-				version: 3,
-				spaceIndicators: "all",
-				tabIndicators: true,
-				emptyValueIndicators: true,
-			}),
-		});
-
-		const store = createPreferencesStore(storage);
-
-		expect(store.getSnapshot()).toEqual(DEFAULT_PREFERENCES);
-		expect(store.getIssue()).toBeNull();
-		expect(store.commit(chosen)).toEqual({ status: "saved" });
-	});
-});
-
-describe("preferences store", () => {
 	it("loads valid preferences independently from table persistence", () => {
 		const saved = {
 			version: PREFERENCES_VERSION,

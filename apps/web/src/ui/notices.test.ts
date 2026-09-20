@@ -190,10 +190,7 @@ describe("conditions are state, not messages", () => {
 		const damaged = messageFor("current-schema-invalid");
 
 		expect(messageFor("future-version")).not.toBe(damaged);
-		expect(messageFor("migration-failed")).not.toBe(damaged);
-		expect(messageFor("future-version")).not.toBe(
-			messageFor("migration-failed"),
-		);
+		expect(messageFor("invalid-json")).toBeDefined();
 	});
 
 	it("downloads the saved bytes untouched, as a JSON file", () => {

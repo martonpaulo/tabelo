@@ -3,16 +3,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEmptyDocument } from "@/core/document";
 import { createDefaultWorkspace } from "@/workspace/layout";
-import v2 from "./fixtures/v2.json";
-import v4 from "./fixtures/v4.json";
-import v13 from "./fixtures/v13.json";
-import { CURRENT_VERSION, RECOVERY_KEY, STORAGE_KEY } from "./schema";
+import { CURRENT_VERSION, tableKey, tableRecoveryKey } from "./schema";
 import {
-	loadState,
+	loadTable,
 	preserveUnreadableAndSave,
 	type SavePayload,
-	saveState,
+	saveTable,
 } from "./storage";
+
+const TABLE_ID = "t1";
+const STORAGE_KEY = tableKey(TABLE_ID);
+const RECOVERY_KEY = tableRecoveryKey(TABLE_ID);
 
 const payload: SavePayload = {
 	name: "Untitled table",
@@ -20,6 +21,9 @@ const payload: SavePayload = {
 	workspace: createDefaultWorkspace(),
 	draft: null,
 };
+
+// A payload of the current shape, used to build the invalid variants below.
+const current = { ...payload, version: CURRENT_VERSION };
 
 beforeEach(() => {
 	window.localStorage.clear();
@@ -34,7 +38,7 @@ describe("browser storage outcomes", () => {
 		const raw = "{invalid json\nwith exact bytes";
 		window.localStorage.setItem(STORAGE_KEY, raw);
 
-		const outcome = loadState();
+		const outcome = loadTable(TABLE_ID);
 
 		expect(outcome).toEqual({
 			status: "unreadable",
@@ -47,12 +51,12 @@ describe("browser storage outcomes", () => {
 	it.each([
 		[
 			"future version",
-			JSON.stringify({ ...v4, version: CURRENT_VERSION + 1 }),
+			JSON.stringify({ ...current, version: CURRENT_VERSION + 1 }),
 			"future-version",
 		],
 		[
 			"invalid current schema",
-			JSON.stringify({ ...v13, document: { columns: [] } }),
+			JSON.stringify({ ...current, document: { columns: [] } }),
 			"current-schema-invalid",
 		],
 		// Formatting Tabelo would never write: two adjacent runs with the same
@@ -60,9 +64,9 @@ describe("browser storage outcomes", () => {
 		[
 			"non-normalized inline content",
 			JSON.stringify({
-				...v13,
+				...current,
 				document: {
-					...v13.document,
+					...current.document,
 					rows: [
 						{
 							id: "r-ingrid",
@@ -81,15 +85,10 @@ describe("browser storage outcomes", () => {
 			}),
 			"current-schema-invalid",
 		],
-		[
-			"invalid historical source",
-			JSON.stringify({ ...v2, workspace: { ...v2.workspace, panes: [] } }),
-			"migration-failed",
-		],
 	] as const)("keeps raw bytes after a %s failure", (_name, raw, reason) => {
 		window.localStorage.setItem(STORAGE_KEY, raw);
 
-		expect(loadState()).toEqual({ status: "unreadable", reason, raw });
+		expect(loadTable(TABLE_ID)).toEqual({ status: "unreadable", reason, raw });
 		expect(window.localStorage.getItem(STORAGE_KEY)).toBe(raw);
 	});
 
@@ -100,7 +99,7 @@ describe("browser storage outcomes", () => {
 				throw new DOMException("blocked", "SecurityError");
 			});
 
-		expect(loadState()).toEqual({ status: "unavailable" });
+		expect(loadTable(TABLE_ID)).toEqual({ status: "unavailable" });
 		read.mockRestore();
 	});
 
@@ -109,12 +108,12 @@ describe("browser storage outcomes", () => {
 		write.mockImplementationOnce(() => {
 			throw new DOMException("full", "QuotaExceededError");
 		});
-		expect(saveState(payload)).toEqual({ status: "quota" });
+		expect(saveTable(TABLE_ID, payload)).toEqual({ status: "quota" });
 
 		write.mockImplementationOnce(() => {
 			throw new DOMException("blocked", "SecurityError");
 		});
-		expect(saveState(payload)).toEqual({ status: "unavailable" });
+		expect(saveTable(TABLE_ID, payload)).toEqual({ status: "unavailable" });
 		write.mockRestore();
 	});
 
@@ -122,7 +121,7 @@ describe("browser storage outcomes", () => {
 		const raw = "\u0000original\nraw\tdata";
 		window.localStorage.setItem(STORAGE_KEY, raw);
 
-		const outcome = preserveUnreadableAndSave(raw, payload);
+		const outcome = preserveUnreadableAndSave(TABLE_ID, raw, payload);
 
 		expect(outcome).toEqual({
 			status: "saved",

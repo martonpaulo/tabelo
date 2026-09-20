@@ -295,10 +295,18 @@ export const copy = {
 		"bottom-right": "Bottom right",
 	} satisfies Record<PanePositionId, string>,
 
-	newTable: {
-		title: "Start a new table?",
-		description: "This clears the current table and any unfinished edits.",
-		confirm: "Start new table",
+	deleteTable: {
+		title: "Delete this table?",
+		description:
+			"The table and everything in it go. The other tables stay as they are.",
+		confirm: "Delete table",
+	},
+
+	eraseEverything: {
+		title: "Erase everything Tabelo stored?",
+		description:
+			"Every table, its layout, and your settings go, and Tabelo starts as it did the first time. Nothing can be recovered.",
+		confirm: "Erase everything",
 	},
 
 	headerImport: {
@@ -482,6 +490,7 @@ export const copy = {
 		viewAlreadyOpen: (label: string) =>
 			`${label} is already open in another pane.`,
 		chooseAvailableView: "Choose an available view first.",
+		deleteLastTable: "This is your only table. Delete it and you have none.",
 		layoutAlreadyApplied: "This layout is already applied.",
 		layoutOnlyArrangement:
 			"This number of views has only one arrangement. Add or close a view to change it.",
@@ -761,6 +770,8 @@ export const copy = {
 		renameTable: "Rename table",
 		importFile: "Import file",
 		newTable: "New table",
+		switchTable: "Switch table",
+		deleteTable: "Delete table",
 		selectRow: SELECT_ROW,
 		selectColumn: SELECT_COLUMN,
 		fitColumnToContent: "Fit column to content",
@@ -812,6 +823,7 @@ export const copy = {
 		empty: "Enter a table name.",
 		tooLong: "Use 120 characters or fewer.",
 		unchanged: "Enter a different table name.",
+		duplicate: "Another table already has this name.",
 		saveError: "The table name couldn't be saved. Try again.",
 	},
 
@@ -962,6 +974,12 @@ export const copy = {
 	status: {
 		// The state a choice carries beside its label when it can't be chosen.
 		inUse: "In use",
+		// Said once the library reaches the size where one menu stops being
+		// comfortable to read (#403). Nothing is refused: storage holds far more.
+		largeLibrary: "You have 10 tables or more. The list now scrolls.",
+		tableCreated: (name: string) => `${name} created.`,
+		tableOpened: (name: string) => `${name} opened.`,
+		tableDeleted: (name: string) => `${name} deleted.`,
 		unavailable: "Unavailable",
 		columnWidth: (column: string, rem: number) =>
 			`Column ${column} width ${Number.parseFloat(rem.toFixed(2))} rem.`,
@@ -1071,11 +1089,11 @@ export const copy = {
 		// "damaged" set opposite expectations: only the first means the data is
 		// probably intact. Each also says what the download is, since the file
 		// is the saved data as it was found and cannot be imported as a table.
+		// Three reasons rather than four since the historical schemas went
+		// (owner, 2026-09-20): nothing is carried forward any more.
 		savedTableUnreadable: {
 			"future-version":
 				"This table was saved by a newer version and can't be opened here. The saved data is untouched.",
-			"migration-failed":
-				"This table was saved by an older version and couldn't be updated. The saved data is untouched.",
 			"current-schema-invalid":
 				"The saved table is damaged and couldn't be opened. The saved data is untouched.",
 			"invalid-json":
@@ -1083,13 +1101,11 @@ export const copy = {
 		},
 		recoveryFileNote:
 			"Download original saves that data exactly as found, for recovery by hand. It isn't a table to import.",
-		// The same four reasons for the Settings payload. Nothing in the table is
+		// The same reasons for the Settings payload. Nothing in the table is
 		// at risk, so each says what is in use instead.
 		savedSettingsUnreadable: {
 			"future-version":
 				"Your settings were saved by a newer version and can't be read here. Defaults are in use, and the saved settings are untouched.",
-			"migration-failed":
-				"Your settings were saved by an older version and couldn't be updated. Defaults are in use, and the saved settings are untouched.",
 			"current-schema-invalid":
 				"The saved settings are damaged and couldn't be read. Defaults are in use, and the saved settings are untouched.",
 			"invalid-json":
