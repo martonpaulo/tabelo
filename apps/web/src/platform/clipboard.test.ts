@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-	readClipboardTable,
+	readClipboardPayload,
 	writeClipboardTable,
 	writeClipboardText,
 } from "./clipboard";
@@ -172,7 +172,7 @@ describe("reading the clipboard", () => {
 			readText: vi.fn(),
 		});
 
-		expect(await readClipboardTable()).toEqual({
+		expect(await readClipboardPayload()).toEqual({
 			ok: true,
 			payload: { text: "a\tb", html: "<table/>" },
 		});
@@ -182,7 +182,7 @@ describe("reading the clipboard", () => {
 		const readText = vi.fn().mockResolvedValue("a\tb");
 		stubClipboard({ readText });
 
-		expect(await readClipboardTable()).toEqual({
+		expect(await readClipboardPayload()).toEqual({
 			ok: false,
 			reason: "unavailable",
 		});
@@ -202,30 +202,36 @@ describe("reading the clipboard", () => {
 				readText,
 			});
 
-			expect(await readClipboardTable()).toEqual({ ok: false, reason });
+			expect(await readClipboardPayload()).toEqual({ ok: false, reason });
 			expect(readText).not.toHaveBeenCalled();
 		},
 	);
 
 	it("distinguishes an empty clipboard from a blocked one", async () => {
 		stubClipboard({ read: vi.fn().mockResolvedValue([]) });
-		expect(await readClipboardTable()).toEqual({ ok: false, reason: "empty" });
+		expect(await readClipboardPayload()).toEqual({
+			ok: false,
+			reason: "empty",
+		});
 
 		stubClipboard({
 			read: vi.fn().mockResolvedValue([clipboardItem({ "text/plain": "" })]),
 		});
-		expect(await readClipboardTable()).toEqual({ ok: false, reason: "empty" });
+		expect(await readClipboardPayload()).toEqual({
+			ok: false,
+			reason: "empty",
+		});
 	});
 
 	it("reports a missing API rather than throwing", async () => {
 		stubClipboard(undefined);
-		expect(await readClipboardTable()).toEqual({
+		expect(await readClipboardPayload()).toEqual({
 			ok: false,
 			reason: "unavailable",
 		});
 
 		stubClipboard({});
-		expect(await readClipboardTable()).toEqual({
+		expect(await readClipboardPayload()).toEqual({
 			ok: false,
 			reason: "unavailable",
 		});

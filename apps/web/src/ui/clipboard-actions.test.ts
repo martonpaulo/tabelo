@@ -15,13 +15,13 @@ const writeClipboardText =
 	vi.fn<(text: string) => Promise<ClipboardWriteOutcome>>();
 const writeClipboardTable =
 	vi.fn<(text: string, html: string) => Promise<ClipboardWriteOutcome>>();
-const readClipboardTable = vi.fn<() => Promise<ClipboardReadOutcome>>();
+const readClipboardPayload = vi.fn<() => Promise<ClipboardReadOutcome>>();
 
 vi.mock("@/platform/clipboard", () => ({
 	writeClipboardText: (text: string) => writeClipboardText(text),
 	writeClipboardTable: (text: string, html: string) =>
 		writeClipboardTable(text, html),
-	readClipboardTable: () => readClipboardTable(),
+	readClipboardPayload: () => readClipboardPayload(),
 }));
 
 const { documentFromMatrix, documentToMatrix } = await import(
@@ -179,7 +179,7 @@ describe("copying the document as a format", () => {
 
 describe("reading", () => {
 	it("returns the payload when the clipboard can be read", async () => {
-		readClipboardTable.mockResolvedValue({
+		readClipboardPayload.mockResolvedValue({
 			ok: true,
 			payload: { text: "a\tb" },
 		});
@@ -191,7 +191,7 @@ describe("reading", () => {
 	it.each(["blocked", "unavailable", "unknown"] as const)(
 		"explains a %s clipboard and points at the keyboard",
 		async (reason) => {
-			readClipboardTable.mockResolvedValue({ ok: false, reason });
+			readClipboardPayload.mockResolvedValue({ ok: false, reason });
 
 			expect(await readTableFromClipboard()).toBeNull();
 			expect(notice()).not.toBeNull();
@@ -200,7 +200,7 @@ describe("reading", () => {
 	);
 
 	it("says an empty clipboard is empty rather than blocked", async () => {
-		readClipboardTable.mockResolvedValue({ ok: false, reason: "empty" });
+		readClipboardPayload.mockResolvedValue({ ok: false, reason: "empty" });
 
 		expect(await readTableFromClipboard()).toBeNull();
 		expect(notice()).not.toBeNull();
@@ -212,7 +212,7 @@ describe("reading", () => {
 			document: documentFromMatrix([["Name"], ["Ingrid"]], { headerRow: true }),
 		});
 		const before = useTabeloStore.getState().document;
-		readClipboardTable.mockResolvedValue({ ok: false, reason: "blocked" });
+		readClipboardPayload.mockResolvedValue({ ok: false, reason: "blocked" });
 
 		await pasteFromClipboard();
 

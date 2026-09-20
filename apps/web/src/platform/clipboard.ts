@@ -96,7 +96,10 @@ export async function writeClipboardTable(
 	}
 }
 
-export async function readClipboardTable(): Promise<ClipboardReadOutcome> {
+// The clipboard's text and HTML flavours, as they are. Reading a table out of
+// them is the clipboard module's job, which is why this is not called after
+// one: it reports what the browser handed over, table or not.
+export async function readClipboardPayload(): Promise<ClipboardReadOutcome> {
 	// The object arrives whole or not at all: there is no second attempt to make
 	// when it is absent, because the same context that removes read() removes
 	// readText() beside it.

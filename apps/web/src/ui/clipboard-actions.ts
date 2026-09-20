@@ -7,7 +7,7 @@ import { htmlCodec } from "@/formats";
 import type { TableCodec } from "@/formats/types";
 import {
 	type ClipboardBlock,
-	readClipboardTable,
+	readClipboardPayload,
 	writeClipboardTable,
 	writeClipboardText,
 } from "@/platform/clipboard";
@@ -82,7 +82,7 @@ export async function copyToClipboard(
 // Resolves to the payload only when there is something to act on, so callers
 // stay a single line and never repeat the failure handling.
 export async function readTableFromClipboard(): Promise<ClipboardPayload | null> {
-	const outcome = await readClipboardTable();
+	const outcome = await readClipboardPayload();
 	if (outcome.ok) return outcome.payload;
 
 	useTabeloStore.getState().pushNotice(clipboardReadNotice(outcome.reason));
