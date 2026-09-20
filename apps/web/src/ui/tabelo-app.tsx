@@ -180,6 +180,9 @@ export function TabeloApp() {
 		store.deleteTable(newTableRetreat.created);
 		setNewTableRetreat(null);
 		setWelcomeOpen(false);
+		// The reader came from the menu and is still choosing, so the menu is
+		// where they are put back (owner, 2026-09-20).
+		requestAnimationFrame(() => appMenuTriggerRef.current?.click());
 	};
 
 	// Which table the delete dialog is about: the menu asks for one by id, so

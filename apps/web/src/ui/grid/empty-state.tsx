@@ -8,7 +8,6 @@ import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { modShortcut } from "@tabelo/ui/lib/platform";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
-	IconArrowLeft,
 	IconClipboard,
 	IconExternalLink,
 	IconFileUpload,
@@ -124,23 +123,13 @@ export function EmptyState({
 				)}
 			>
 				{onCancel ? (
-					// Adding a table beside the others: a step with a way back,
-					// titled by what it does rather than by the product, and
-					// without the introduction or the credits, which belong to the
-					// first sight of Tabelo (owner, 2026-09-20).
-					<div className="flex items-center gap-2">
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label={copy.empty.backFromNewTable}
-							onClick={onCancel}
-						>
-							<IconArrowLeft aria-hidden />
-						</Button>
-						<h2 id="empty-state-title" className="font-semibold text-lg">
-							{copy.empty.newTableTitle}
-						</h2>
-					</div>
+					// Adding a table beside the others: titled by what it does
+					// rather than by the product, and without the introduction or
+					// the credits, which belong to the first sight of Tabelo
+					// (owner, 2026-09-20).
+					<h2 id="empty-state-title" className="font-semibold text-lg">
+						{copy.empty.newTableTitle}
+					</h2>
 				) : (
 					<h2
 						id="empty-state-title"
@@ -190,6 +179,18 @@ export function EmptyState({
 						onClick={startImport}
 					/>
 				</div>
+				{/* This surface closes the way every dialog closes: one named
+				    action, not a corner icon (design system section 3). Escape
+				    does the same. Leaving discards the empty table it opened on
+				    and returns to the one before it (owner, 2026-09-20). */}
+				{onCancel ? (
+					<div className="mt-6 flex justify-end">
+						<Button variant="ghost" onClick={onCancel}>
+							{copy.actions.cancel}
+						</Button>
+					</div>
+				) : null}
+
 				{/* Each link is at least 1.5rem tall, the WCAG 2.5.8 target
 				    minimum, through vertical padding rather than larger text, so
 				    the two lines sit flush with no gap between them (owner,
