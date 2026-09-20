@@ -160,12 +160,16 @@ export function readClipboardTable(
 		if (table) return table;
 	}
 
-	// A multi-line paste with no delimiter is still a column of values.
+	// A multi-line paste with no delimiter is still a column of values. The
+	// line break that ends the last line reports one more, empty, line, which
+	// would write an empty value over the cell below the paste: the same
+	// phantom record the delimited codec drops, and for the same reason.
 	const lines = text.split(/\r?\n/);
+	if (lines.length > 1 && lines.at(-1) === "") lines.pop();
 	if (lines.length > 1)
 		return { matrix: lines.map((line) => [line]), source: "text" };
 
-	return { matrix: [[text]], source: "text" };
+	return { matrix: [[lines[0] ?? ""]], source: "text" };
 }
 
 // What a paste into the rich cell editor inserts at its caret (#306): the
