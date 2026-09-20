@@ -719,6 +719,7 @@ function TableStructureCommands({
 			<ControlTooltip reason={deleteEmptyRefusal}>
 				<DropdownMenuItem
 					disabled={deleteEmptyRefusal !== undefined}
+					aria-label={copy.actions.deleteEmptyRowsAndColumnsDescription}
 					onClick={deleteEmpty}
 				>
 					<IconTableMinus aria-hidden />

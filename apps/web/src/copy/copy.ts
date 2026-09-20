@@ -709,10 +709,12 @@ export const copy = {
 		redo: "Redo",
 		transposeTable: "Transpose table",
 		// "Remove", not "Delete": the menu it sits in also deletes the table,
-		// and the two should not read alike (owner, 2026-09-20). "Blank" says
-		// what is removed better than "empty", which a reader can hear as the
-		// whole table.
-		deleteEmptyRowsAndColumns: "Remove blank rows and columns",
+		// and the two should not read alike. Two words, like the commands
+		// around it, with the full wording kept as the accessible name below
+		// and the tooltip saying when there is nothing to remove (owner,
+		// 2026-09-20).
+		deleteEmptyRowsAndColumns: "Remove blanks",
+		deleteEmptyRowsAndColumnsDescription: "Remove blank rows and columns",
 		insertRowsAbove: (count: number) =>
 			`Insert ${count === 1 ? "row" : "rows"} above`,
 		insertRowsBelow: (count: number) =>

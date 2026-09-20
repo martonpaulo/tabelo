@@ -135,7 +135,10 @@ test("deleting empty rows and columns keeps the content, is one undo step, and t
 	await tabelo.dismissNotices();
 	await expect(tabelo.cell(3, 1)).toHaveText("Paulo");
 
-	await runStructureCommand(tabelo, copy.actions.deleteEmptyRowsAndColumns);
+	await runStructureCommand(
+		tabelo,
+		copy.actions.deleteEmptyRowsAndColumnsDescription,
+	);
 
 	await expect(tabelo.header(2)).toHaveText("city");
 	await expect(tabelo.cell(1, 2)).toHaveText("Rio");
@@ -146,7 +149,7 @@ test("deleting empty rows and columns keeps the content, is one undo step, and t
 	// Nothing empty is left, so the command stays in place and explains why.
 	const menu = await tabelo.openAppMenu();
 	const item = menu.getByRole("menuitem", {
-		name: copy.actions.deleteEmptyRowsAndColumns,
+		name: copy.actions.deleteEmptyRowsAndColumnsDescription,
 	});
 	await expect(item).toBeDisabled();
 	await expect(item).toHaveAccessibleDescription(/\S/);
