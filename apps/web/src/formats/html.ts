@@ -41,12 +41,24 @@ const ALIGNMENTS: Record<string, Alignment> = {
 	right: "right",
 };
 
+// One pass over the four characters rather than four passes over the value.
+// The four classes are disjoint and no replacement introduces a character a
+// later one would have matched, so the single pass is provably what the chain
+// produced; html.test.ts holds the two together over the serializer's own
+// fixtures.
 export function escapeHtmlText(value: string): string {
-	return value
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;");
+	return value.replace(/[&<>"]/g, (character) => {
+		switch (character) {
+			case "&":
+				return "&amp;";
+			case "<":
+				return "&lt;";
+			case ">":
+				return "&gt;";
+			default:
+				return "&quot;";
+		}
+	});
 }
 
 // HTML carries one line break, and this codec spells it "\n" in both

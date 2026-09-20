@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { readCell } from "@/core/cell-value";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
 import type { InlineMark, InlineText } from "@/core/types";
-import { htmlCodec } from "./html";
+import { escapeHtmlText, htmlCodec } from "./html";
 
 describe("html parsing", () => {
 	it("reads a table with a header row", () => {
@@ -75,6 +75,35 @@ describe("html serialization", () => {
 		const out = htmlCodec.serialize(document);
 		expect(out).not.toContain("<script>");
 		expect(out).toContain("&lt;script&gt;");
+	});
+
+	// The escape was four chained replaces before it became one pass. The chain
+	// is kept here as the reference the pass has to reproduce byte for byte: no
+	// replacement introduces a character a later class would have matched, so
+	// the two can only agree.
+	it("escapes text exactly as four chained replaces did", () => {
+		const chained = (value: string) =>
+			value
+				.replace(/&/g, "&amp;")
+				.replace(/</g, "&lt;")
+				.replace(/>/g, "&gt;")
+				.replace(/"/g, "&quot;");
+
+		const fixtures = [
+			"",
+			"Ingrid",
+			"5 < 6 & 7 > 2",
+			"&amp; &lt; &gt; &quot;",
+			'<a href="x">&</a>',
+			'&&&<<<>>>"""',
+			"line one\nline two",
+			" Rio ",
+			"café \u{1f600}",
+		];
+
+		for (const fixture of fixtures) {
+			expect(escapeHtmlText(fixture)).toBe(chained(fixture));
+		}
 	});
 
 	it("emits alignment as an inline style", () => {
