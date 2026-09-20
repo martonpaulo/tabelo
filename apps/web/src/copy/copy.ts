@@ -436,6 +436,7 @@ export const copy = {
 		resetZoom: "Reset zoom",
 		wrapSource: WRAP_LINES,
 		wrapAllColumns: "Wrap all columns",
+		fitColumnsToPane: "Fit columns to pane width",
 		// The checked escape mode for a format's structural assistance (#297),
 		// called smart editing wherever a person reads it (CONTEXT.md).
 		structuralAssistance: "Smart editing",
@@ -974,6 +975,9 @@ export const copy = {
 	status: {
 		// The state a choice carries beside its label when it can't be chosen.
 		inUse: "In use",
+		// Fit columns to pane width (#404), which measures the pane as it runs.
+		fitColumnsUnavailable: "The pane could not be measured.",
+		fitColumnsUnchanged: "The columns already fit the pane.",
 		// Said once the library reaches the size where one menu stops being
 		// comfortable to read (#403). Nothing is refused: storage holds far more.
 		largeLibrary: "You have 10 tables or more. The list now scrolls.",

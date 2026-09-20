@@ -17,6 +17,7 @@ import {
 import { cn } from "@tabelo/ui/lib/utils";
 import {
 	IconAdjustmentsHorizontal,
+	IconArrowAutofitWidth,
 	IconArrowsMove,
 	IconChevronDown,
 	IconClipboardCopy,
@@ -39,6 +40,7 @@ import {
 	copyFormattedTableToClipboard,
 	copyToClipboard,
 } from "@/ui/clipboard-actions";
+import { measurePaneColumnRoom } from "@/ui/grid/column-fit";
 import { preconditionRecovery } from "@/ui/precondition-recovery";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
@@ -92,6 +94,26 @@ export function PaneIdentity({ view }: PaneIdentityProps) {
 			)}
 		</h2>
 	);
+}
+
+// The grid surface of one pane, and the room its columns have. Read when the
+// command runs rather than watched: nothing else needs the number.
+function fitColumnsToPane(paneId: string): void {
+	const surface = document.querySelector<HTMLElement>(
+		`[data-pane-id="${paneId}"] [data-grid-surface]`,
+	);
+	const store = useTabeloStore.getState();
+	const zoom =
+		store.workspace.panes.find((pane) => pane.id === paneId)?.zoom ??
+		DEFAULT_PANE_ZOOM;
+	const room = surface ? measurePaneColumnRoom(surface, zoom) : undefined;
+	if (room === undefined) {
+		store.announceStatus(copy.status.fitColumnsUnavailable);
+		return;
+	}
+	if (!store.fitColumnsToPaneWidth(room)) {
+		store.announceStatus(copy.status.fitColumnsUnchanged);
+	}
 }
 
 export function PaneMenu({
@@ -356,6 +378,18 @@ export function PaneMenu({
 									<IconTextWrap aria-hidden />
 									{copy.workspace.wrapAllColumns}
 								</DropdownMenuCheckboxItem>
+								{/* Spreads the columns across the room the pane has, keeping
+							    their proportions (#404). The pane is measured at the
+							    moment it is chosen, so a resized window needs no
+							    bookkeeping in between. */}
+								<DropdownMenuItem
+									onClick={() =>
+										menuDialog.runAfterClose(() => fitColumnsToPane(paneId))
+									}
+								>
+									<IconArrowAutofitWidth aria-hidden />
+									{copy.workspace.fitColumnsToPane}
+								</DropdownMenuItem>
 							</DropdownMenuGroup>
 						</>
 					) : null}

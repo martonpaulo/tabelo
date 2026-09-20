@@ -79,3 +79,32 @@ export function measureColumnFitWidth(
 		decorationWidth,
 	);
 }
+
+// The room a grid pane has for its columns, in rem, for Fit table to pane
+// width (#404). Only the DOM knows it: the pane's own scroller states the
+// width, the gutter keeps its token size at every zoom, and the trailing room
+// after the last column is part of the layout rather than of a column. The
+// content columns scale with the pane's zoom, so the answer is expressed in
+// the same unzoomed rem the widths are stored in.
+export function measurePaneColumnRoom(
+	surface: HTMLElement,
+	zoom: number,
+): number | undefined {
+	const scroller = surface.closest<HTMLElement>('[data-slot="panel-body"]');
+	if (!scroller || zoom <= 0) return undefined;
+	const width = scroller.clientWidth;
+	if (!Number.isFinite(width) || width <= 0) return undefined;
+	const rootFontSize = Number.parseFloat(
+		getComputedStyle(surface.ownerDocument.documentElement).fontSize,
+	);
+	if (!(rootFontSize > 0)) return undefined;
+	const surfaceStyle = getComputedStyle(surface);
+	const gutter = Number.parseFloat(
+		surfaceStyle.getPropertyValue("--grid-gutter-w"),
+	);
+	const trailing = Number.parseFloat(surfaceStyle.paddingRight) || 0;
+	const room =
+		width - (Number.isFinite(gutter) ? gutter * rootFontSize : 0) - trailing;
+	if (room <= 0) return undefined;
+	return room / (rootFontSize * zoom);
+}

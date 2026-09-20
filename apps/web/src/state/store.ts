@@ -167,7 +167,10 @@ import {
 } from "@/views/projection-loss";
 import { editableViewForCodec, getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
-import { clampColumnWidth } from "@/workspace/column-width";
+import {
+	clampColumnWidth,
+	distributeColumnWidths,
+} from "@/workspace/column-width";
 import {
 	applyLayout,
 	createDefaultWorkspace,
@@ -524,6 +527,10 @@ export interface TabeloState {
 		width: number | undefined,
 		scope?: "selection" | "column",
 	) => void;
+	// Spreads the columns across the room the pane actually has (#404). The
+	// caller measures that room, since only the DOM knows it, and passes it in
+	// rem.
+	fitColumnsToPaneWidth: (availableRem: number) => boolean;
 
 	addRowAbove: () => void;
 	addRowBelow: () => void;
@@ -1748,6 +1755,29 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 					}
 				: state;
 		}),
+
+	fitColumnsToPaneWidth: (availableRem) => {
+		const state = get();
+		const columns = state.document.columns;
+		const next = distributeColumnWidths(
+			columns.map((column) => state.workspace.columnWidths[column.id]),
+			availableRem,
+		);
+		if (!next) return false;
+		const columnWidths = { ...state.workspace.columnWidths };
+		let changed = false;
+		columns.forEach((column, index) => {
+			const width = next[index];
+			if (width === undefined || columnWidths[column.id] === width) return;
+			columnWidths[column.id] = width;
+			changed = true;
+		});
+		if (!changed) return false;
+		// Width is a workspace preference, like every other resize: it never
+		// reaches the document timeline.
+		set({ workspace: { ...state.workspace, columnWidths }, inputError: null });
+		return true;
+	},
 
 	// Every row operation below counts data rows only. A selection may cover the
 	// header row, and the header row is structurally required: it is never
