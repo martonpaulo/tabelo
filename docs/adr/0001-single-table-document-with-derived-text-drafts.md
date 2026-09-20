@@ -92,3 +92,14 @@ spells inline content (Markdown, HTML, Jira) parses into it and is believed, and
 a format that cannot spell it reports text, so reconciliation keeps the existing
 structure whenever a cell's `cellText` projection is unchanged and only an
 edited cell becomes the parsed text.
+
+## Amendment: local agent commands (#405)
+
+An external agent may submit commands through an optional paired local helper.
+It does not own a document replica or merge source buffers. The browser checks
+the paired table, session epoch, expected revisions, current input state, and
+the entire proposed batch before committing it through the existing operations.
+A stale request changes nothing and requires a fresh read. Unfinished input
+blocks an agent write instead of being superseded by it. The human remains free
+to edit while the agent prepares its request. This is one tab serializing
+operations, not a remote collaboration layer or cross-tab storage coordination.

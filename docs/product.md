@@ -52,7 +52,10 @@ the exact text format the person came for.
 - Accepts pasted and imported data, reading the header row from formats that
   declare it and asking before replacing the table when CSV, TSV, or plain text
   does not.
-- Runs entirely in the browser, offline, with no account and nothing uploaded.
+- Runs in the browser, offline and without an account. An optional local-agent
+  connection lets an external agent read and edit the active table after an
+  explicit pairing; that agent may send shared data to its model provider
+  (#405). Ordinary editing sends no table data anywhere.
 
 ## What it will never do
 
@@ -61,9 +64,14 @@ Each of these is a decision, not a gap waiting to be filled.
 - **No accounts, backend, or cloud sync.** Everything runs locally. There is
   nothing to sign into, and a server would add operating cost and a privacy
   surface the product does not need to do its job.
+  The optional Node.js companion in #405 is a loopback command transport, not
+  a hosted backend: it stores no tables and requires no provider registration.
 - **No collaboration or CRDT layer.** One person edits one table. The single
   document with derived drafts (ADR 0001) is what makes synchronization
   predictable; a collaboration layer would replace that model wholesale.
+  A paired agent in the same tab uses that tab's existing operations, guarded
+  by revisions. This is not multi-user or multi-tab document synchronization
+  (#405).
 - **No analytics or telemetry, of any kind.** The table content belongs to the
   user, and the product collects nothing, so there is nothing to leak. This is
   deliberate and it has a cost: see the success signals below.
@@ -111,8 +119,9 @@ baseline, and neither should be given an invented one.
 
 ## Constraints
 
-- Browser only, no runtime beyond the page. Persistence is `localStorage`;
-  offline capability is a service worker.
+- The editor needs only the browser. The optional external-agent connection
+  additionally needs its local Node.js helper (#405). Persistence remains
+  `localStorage`; offline capability is a service worker.
 - Published to GitHub Pages at `https://tabelo.martonpaulo.com/`, built from
   `apps/web` by CI. The application is its own landing page.
 - The product stores no secrets and holds no user account state.
@@ -132,6 +141,7 @@ reversible implementation choice does not belong here.
 | Decision | Current outcome | Recorded in | Decided on |
 | :--- | :--- | :--- | :--- |
 | Product scope | An editor for one table at a time, with a local library of tables to switch between | this document | #92, #403 |
+| External agent | Optional local MCP connection to one tab and active table; revision-checked commands, protected input, chronological document undo, and explicit external data sharing | `docs/agent-integration.md`, ADR 0001, ADR 0003 | #405 |
 | Table library | Any number of local tables, one active; the app menu lists them and switches; names are unique and numbered from the second table on; a warning, never a refusal, once ten are kept | this document, AGENTS.md | #403, owner, 2026-09-20 |
 | App menu shape | Three titled sections, Tables, This table, Workspace, with Settings below them; no brand row; every table one row shape with rename and delete revealed on hover or focus; Import file, Copy as and Download table behind one Export submenu; one footer line carrying the product, its copyright and the source link | design system §3 | owner, 2026-09-20 |
 | Erase everything | One control in Settings clears every Tabelo key in this browser, after a confirmation | design system §3 | owner, 2026-09-20 |

@@ -5,7 +5,8 @@ Research date: 2026-09-20. Source baseline: `750a9f8bf795989a30a4a6a44208f1965da
 Status: implementation proposal, not an implemented capability or a replacement
 for the current product policy. [Issue #405](https://github.com/martonpaulo/tabelo/issues/405)
 owns acceptance, tasks, and later decisions; this note owns the comparison and
-research evidence.
+research evidence. The implemented command-authoring contract is maintained in
+[`docs/agent-integration.md`](../agent-integration.md).
 
 ## Request and settled choices
 
@@ -248,3 +249,44 @@ change; repeat version checks before implementation.
 - [Unpacked Chrome extensions](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked) and [Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging): alternative installation and process requirements.
 - [MCP Apps overview](https://apps.extensions.modelcontextprotocol.io/api/documents/overview.html): host-embedded interface model.
 - [MCP tool annotations](https://blog.modelcontextprotocol.io/posts/2026-03-16-tool-annotations/): risk hints are descriptive, not an enforcement mechanism.
+
+## Read representation experiment during implementation
+
+The first adapter returned ID-keyed cell objects and workspace discovery on
+every page. A follow-up compared that shape with a compact typed matrix and
+explicit column selection, using the same AgentSession read boundary.
+
+The synthetic document had 200 rows and eight columns, drawn from the shared
+sample roster and explicit string, number, boolean and null values. Results
+were read in two pages of 100 rows. Byte counts are UTF-8 JSON bytes across
+both result envelopes, not estimated tokens or model quality scores.
+
+| Representation | Bytes | Identity and types |
+| --- | ---: | --- |
+| ID-keyed cells plus workspace on each page | 44,959 | Preserved |
+| Compact typed matrix, all eight columns | 19,901 | Preserved; column metadata fixes value order |
+| Compact typed matrix, Name and Age only | 9,373 | Preserved for the requested columns |
+| Existing Markdown codec, text alone | 17,169 | No stable target IDs; native scalar distinctions are not carried |
+
+The compact full-table response was 55.7% smaller than the earlier keyed
+response. The two-column request demonstrates deliberate scope reduction, not
+a comparison of identical content. Markdown is included to expose the tradeoff,
+not as an equivalent representation: making it actionable and type-preserving
+would require additional metadata. It did not replace the typed write contract.
+
+The fixture mixed strings such as `"35"` with numbers such as `35`, booleans,
+null, pipes and newlines. Behavioral tests additionally verify selected-column
+ordering and refuse unknown/duplicate column IDs. The temporary measurement
+script used the installed Jiti runtime to load the actual application modules
+and was removed after measurement. No model invocation or additional paid API
+was used; improved reasoning accuracy is unmeasured.
+
+Results now use one validated JSON text block for compatibility with text-only
+MCP hosts. No second full `structuredContent` copy is returned. A future choice
+to use structured output must verify the target host's consumption behavior
+before adding another representation.
+
+[Anthropic's tool-design guidance](https://www.anthropic.com/engineering/writing-tools-for-agents),
+checked 2026-09-20, supports returning relevant context and evaluating format
+choices against tasks and models. It is not a Tabelo benchmark and does not
+establish JSON, XML or Markdown as a universal winner.

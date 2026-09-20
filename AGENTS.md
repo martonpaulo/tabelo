@@ -21,8 +21,9 @@ describes the migration and its downstream effects.
 - Identifier name: `tabelo`
 - Description: edit one table visually or through synchronized text formats, entirely in your browser
 - Repository: `martonpaulo/tabelo` (public)
-- Public identifiers: workspace app `web`; internal packages `@tabelo/ui` and
-  `@tabelo/config`. All workspace packages are private and are
+- Public identifiers: workspace app `web`; optional local helper
+  `@tabelo/agent-bridge`; internal packages `@tabelo/ui`, `@tabelo/config`, and
+  `@tabelo/agent-protocol` (#405). All workspace packages are private and are
   never published to a registry
 - Landing page: the application itself, at
   `https://tabelo.martonpaulo.com/`, built from `apps/web` and published to
@@ -124,6 +125,14 @@ Do not trade a higher-priority item for a lower-priority item.
 
 These are normative and were resolved deliberately. See `CONTEXT.md` for
 vocabulary and `docs/adr/` for the reasoning.
+
+- **An external agent uses application commands, never a second document**
+  (#405). An explicitly paired local connection reaches one tab and its active
+  table. The browser validates every command against live revisions and input
+  state, applies each document batch atomically, and uses the normal timeline.
+  Unfinished input is never displaced by an agent; stale requests are refused.
+  User undo/redo pauses agent writes. Session credentials and receipts stay in
+  memory. Ordinary editing needs neither an agent nor the local helper.
 
 - **A browser holds a library of tables, one of them active** (#403). Every
   rule below is about the active table: it is the one document the views
@@ -238,6 +247,8 @@ Use the scaffolded versions unless a task explicitly requires an upgrade.
 Do not add without an explicit, demonstrated need:
 
 - a backend, server runtime, database, ORM, or authentication
+  (the optional, paired loopback MCP helper approved on #405 is the narrow
+  exception; it introduces no hosted backend, account, or table storage)
 - a second source-editor implementation such as Monaco
 - a grid, headless-table, or drag-and-drop library. It is not the current
   architecture. Reopen the decision only when a concrete backlog cluster shows
@@ -316,6 +327,13 @@ parent-relative escape; they detect neither cycles nor orphan modules.
   document itself. Its interaction model (selection coordinates, jump
   navigation, matching cells) is pure, so it lives with the core under the
   core's framework-free rule and is tested there.
+- **External-agent integration**: one shared wire/schema contract, a local
+  transport-only helper, and a browser command adapter. The helper does not
+  import application state or own table rules. UI and agent commands reuse
+  the same domain operations and view-availability rules. A public command
+  needs an explicit outcome; returning from a void UI callback is not evidence
+  that it changed anything. See `docs/agent-integration.md` for the canonical
+  command-authoring procedure, schema ownership, and verification requirements.
 - **Source and preview views**: the lazily loaded source editor, its language
   and structural-assistance adapters, and the rendered preview. They read the
   view registry and the codecs and never own format syntax; every editor
@@ -678,6 +696,19 @@ here:
   before investigating a suspicion, and add an entry after measuring one.
 
 ## Code, comments, and documentation
+
+When changing a capability the external agent can reach, follow the command
+contract in `docs/agent-integration.md` in the same change. Classify whether the
+capability is exposed or intentionally internal; never expose every function
+automatically. The schema generates the MCP specification and validates input.
+Keep operation descriptions, explicit outcomes, domain validation, and behavioral
+tests aligned. Put each rule at its existing owner and reuse it from both UI
+and agent entrypoints, rather than creating a second agent implementation.
+Do not introduce a generic command framework merely to remove similar syntax.
+Agent reads must offer relevant, compact context with exact identity and value
+semantics. Follow the same guide's read contract: request workspace details
+only when needed, derive projections from the document, and compare candidate
+formats rather than assuming Markdown or JSON improves model reasoning.
 
 - Follow the existing formatter, linter, naming, and architectural conventions.
 - Prefer clear types, explicit ownership, and simple control flow over

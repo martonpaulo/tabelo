@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { readCell } from "@/core/cell-value";
 import { HEADER_ROW } from "@/core/selection";
+import { viewChoiceRefusal } from "@/views/availability";
+import { listViews } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import { paneCount, splitOptions } from "@/workspace/layout";
 import { INHERIT_SOURCE_DISPLAY } from "@/workspace/source-display";
@@ -53,11 +55,23 @@ function markdownPaneId(): string {
 // The first split the current workspace offers. Which one it is does not matter
 // to these tests; that it applies the preset and the chosen view in one update
 // does.
-function addFirstSplit(view: ViewId = "csv"): void {
+function addFirstSplit(view?: ViewId): void {
 	const store = useTabeloStore.getState();
 	const option = splitOptions(store.workspace)[0];
 	if (!option) return;
-	store.addPaneBySplit(option, view);
+	const available =
+		view ??
+		required(
+			listViews().find(
+				(candidate) =>
+					!viewChoiceRefusal({
+						view: candidate,
+						panes: store.workspace.panes,
+						document: store.document,
+					}),
+			),
+		).id;
+	store.addPaneBySplit(option, available);
 }
 
 // Closing is the only way down to one pane: Layout rearranges the panes that
@@ -77,6 +91,12 @@ function addedPaneId(before: readonly { id: string }[]): string {
 }
 
 describe("adding a view", () => {
+	it("refuses a duplicate even when a caller bypasses the chooser", () => {
+		const state = useTabeloStore.getState();
+		const option = required(splitOptions(state.workspace)[0]);
+		state.addPaneBySplit(option, required(state.workspace.panes[0]).view);
+		expect(workspace()).toBe(state.workspace);
+	});
 	it("appends a pane showing the chosen view and makes it active", () => {
 		const before = workspace();
 

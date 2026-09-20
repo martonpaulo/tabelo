@@ -104,3 +104,14 @@ move (#255) is a case of this rule rather than a separate one. The view change
 reset in the decision above stays its own trigger, because a view change alters
 what the text means without changing the document; the source editor clears
 its history for both through one mechanism.
+
+## Amendment: agent edits use chronological undo (#405)
+
+Owner decision, 2026-09-20: an applied agent document batch is one ordinary
+timeline step. Human and agent edits are undone in chronological order; there
+is no selective agent-only undo. The existing external-change rule clears the
+source panes' local histories when the agent changes their document. An agent
+never supersedes unfinished input. Human undo or redo pauses further agent
+writes until the owner resumes the connection, preventing immediate reapplication.
+Workspace commands retain their existing history semantics rather than becoming
+document timeline entries merely because the agent issued them.

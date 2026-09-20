@@ -1,8 +1,8 @@
 import { copy } from "@/copy/copy";
 import type { TableDocument } from "@/core/types";
-import { canSerialize } from "@/formats";
 import type { PreconditionFailure } from "@/formats/types";
 import type { SelectionOptionAvailability } from "@/ui/primitives/selection-option";
+import { viewChoiceRefusal } from "@/views/availability";
 import type { ViewDefinition, ViewId } from "@/views/types";
 import type { WorkspacePane } from "@/workspace/layout";
 
@@ -31,9 +31,14 @@ export function availabilityForView({
 	readonly currentPaneId?: string;
 	readonly currentViewId?: ViewId;
 }): ViewAvailability | undefined {
-	if (
-		panes.some((pane) => pane.id !== currentPaneId && pane.view === view.id)
-	) {
+	const refusal = viewChoiceRefusal({
+		view,
+		panes,
+		document,
+		currentPaneId,
+		currentViewId,
+	});
+	if (refusal?.code === "duplicate_view") {
 		return {
 			availability: {
 				kind: "in-use",
@@ -43,8 +48,8 @@ export function availabilityForView({
 		};
 	}
 
-	if (view.id === currentViewId || !view.codec) return undefined;
-	const failure = canSerialize(view.codec, document);
+	const failure =
+		refusal?.code === "view_precondition" ? refusal.failure : null;
 	return failure
 		? {
 				availability: {

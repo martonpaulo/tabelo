@@ -162,6 +162,7 @@ import {
 	revealInvalid,
 	startInvalidGrace,
 } from "@/sync/draft";
+import { viewChoiceRefusal } from "@/views/availability";
 import {
 	plainEditableViews,
 	plainViewsSignature,
@@ -347,6 +348,10 @@ export type StorageIssue =
 	  };
 
 export interface TabeloState {
+	// Session-only signals for consumers that must invalidate work across a
+	// replacement or distinguish user history navigation from a new edit.
+	documentEpoch: number;
+	historyNavigation: number;
 	name: string;
 	library: TableLibrary;
 	document: TableDocument;
@@ -436,6 +441,7 @@ export interface TabeloState {
 		next: TableDocument,
 		selectionRestore?: SelectionRestore,
 	) => void;
+	replaceDocument: (next: TableDocument) => void;
 
 	// `history` names a text change the editor's own undo or redo produced, as
 	// opposed to one the user typed: see `findTimelineStep`.
@@ -1015,6 +1021,8 @@ function importedWorkspaceState(
 }
 
 export const useTabeloStore = create<TabeloState>((set, get) => ({
+	documentEpoch: 0,
+	historyNavigation: 0,
 	name: DEFAULT_TABLE_NAME,
 	// One table exists from the first render, before hydration replaces it
 	// with what storage holds: a save must always have a key to write to.
@@ -1161,7 +1169,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		}));
 	},
 
+	replaceDocument: (next) => {
+		set((state) => ({ documentEpoch: state.documentEpoch + 1 }));
+		get().applyDocument(next);
+	},
+
 	setDraft: (paneId, viewId, text, history) => {
+		if (history)
+			set((state) => ({ historyNavigation: state.historyNavigation + 1 }));
 		const state = get();
 		const owner = { paneId, viewId };
 		const read = readDraft(
@@ -1254,17 +1269,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	setPaneView: (paneId, view) => {
 		const state = get();
-		const codec = getView(view).codec;
 		const pane = state.workspace.panes.find(
 			(candidate) => candidate.id === paneId,
 		);
 		if (
 			!pane ||
 			pane.view === view ||
-			state.workspace.panes.some(
-				(candidate) => candidate.id !== paneId && candidate.view === view,
-			) ||
-			(codec !== undefined && canSerialize(codec, state.document) !== null)
+			viewChoiceRefusal({
+				view: getView(view),
+				panes: state.workspace.panes,
+				document: state.document,
+				currentPaneId: paneId,
+			})
 		)
 			return;
 
@@ -1311,7 +1327,15 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				candidate.paneId === option.paneId &&
 				candidate.layout === option.layout,
 		);
-		if (stale) return;
+		if (
+			stale ||
+			viewChoiceRefusal({
+				view: getView(viewId),
+				panes: state.workspace.panes,
+				document: state.document,
+			})
+		)
+			return;
 
 		const panes = applyLayout(option.layout, previous, state.draft?.paneId);
 		const existing = new Set(previous.map((pane) => pane.id));
@@ -1376,16 +1400,13 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			return;
 		}
 		if (
-			get().workspace.panes.some(
-				(candidate) =>
-					candidate.id !== pending.paneId && candidate.view === pending.view,
-			)
+			viewChoiceRefusal({
+				view: getView(pending.view),
+				panes: get().workspace.panes,
+				document: get().document,
+				currentPaneId: pending.paneId,
+			})
 		) {
-			set({ pendingPaneAction: null });
-			return;
-		}
-		const targetCodec = getView(pending.view).codec;
-		if (targetCodec && canSerialize(targetCodec, get().document) !== null) {
 			set({ pendingPaneAction: null });
 			return;
 		}
@@ -1405,9 +1426,14 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	},
 
 	setActivePane: (paneId) =>
-		set((state) => ({
-			workspace: { ...state.workspace, activePaneId: paneId },
-		})),
+		set((state) =>
+			state.workspace.activePaneId === paneId ||
+			!state.workspace.panes.some((pane) => pane.id === paneId)
+				? state
+				: {
+						workspace: { ...state.workspace, activePaneId: paneId },
+					},
+		),
 
 	setOutputOption: (id, value) =>
 		set((state) => ({
@@ -1542,6 +1568,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		})),
 
 	undo: () => {
+		set((state) => ({ historyNavigation: state.historyNavigation + 1 }));
 		cancelInvalidGrace();
 		set((state) => {
 			const step = stepTimeline(state, "undo");
@@ -1571,6 +1598,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	},
 
 	redo: () => {
+		set((state) => ({ historyNavigation: state.historyNavigation + 1 }));
 		cancelInvalidGrace();
 		set((state) => {
 			const step = stepTimeline(state, "redo");
@@ -2458,7 +2486,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				prepared.value,
 				prepared.value.headerRow,
 			);
-			state.applyDocument(document);
+			state.replaceDocument(document);
 			// Read after the document is applied, so the arrangement builds on the
 			// workspace whose column preferences reconciliation has just updated.
 			set((current) => ({
@@ -2529,7 +2557,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			prepared.value,
 			prepared.value.headerRow,
 		);
-		state.applyDocument(document);
+		state.replaceDocument(document);
 		set((current) => ({
 			...importedWorkspaceState(
 				current.workspace,
@@ -2553,7 +2581,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		// untouched. Asked of the state before the document lands, because
 		// applying it is what sets the held-content flag.
 		const initialSession = pending.initialSession && isInitialSession(state);
-		state.applyDocument(createImportedDocument(pending.prepared, headerRow));
+		state.replaceDocument(createImportedDocument(pending.prepared, headerRow));
 		set((current) => ({
 			...importedWorkspaceState(
 				current.workspace,
@@ -2567,7 +2595,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	cancelPendingImport: () => set({ pendingImport: null }),
 
 	resetDocument: () => {
-		get().applyDocument(createEmptyDocument());
+		get().replaceDocument(createEmptyDocument());
 		set({
 			name: DEFAULT_TABLE_NAME,
 			hasHeldContent: false,

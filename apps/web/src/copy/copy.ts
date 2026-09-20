@@ -251,6 +251,48 @@ function preconditionMessage(failure: PreconditionFailure): string {
 }
 
 export const copy = {
+	agent: {
+		connect: "Connect agent (MCP)",
+		connected: "Agent connected",
+		paused: "Agent paused",
+		connecting: "Connecting…",
+		pause: "Pause edits",
+		resume: "Resume edits",
+		disconnect: "Disconnect",
+		descriptor: "Connection code",
+		description:
+			"Add Tabelo’s local MCP connector to your agent, then ask it to connect and paste the connection code here.",
+		setupTitle: "1. Set up once in Codex",
+		setupRequirements:
+			"Requires Git, Node.js 24+ and pnpm 11+. Run these commands in a terminal, from a folder where you want to keep Tabelo.",
+		setupExisting:
+			"Already have a Tabelo checkout? Open its folder and run only the last two commands.",
+		setupCommands: `git clone ${product.repositoryUrl}.git\ncd tabelo\npnpm install\ncodex mcp add tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"`,
+		copyCommands: "Copy commands",
+		commandsCopied: "Commands copied",
+		copyCommandsFailed:
+			"Couldn’t copy. Select the commands and copy them manually.",
+		pairTitle: "2. Ask your agent to connect",
+		pairInstructions:
+			"Start a new conversation in your agent so it loads the MCP connection. Ask it to connect to Tabelo, then paste the code it gives you below.",
+		disclosure:
+			"The agent can read and edit this table, delete rows and columns, and manage its views. Table data may be sent to the agent’s model provider. Other tables and unfinished source text are not shared.",
+		connectedDescription:
+			"This tab is connected. You can keep editing. Conflicting requests are refused, and undo pauses agent edits until you resume.",
+		invalidDescriptor:
+			"Paste the complete connection code from your agent, including the port and colon.",
+		connectionFailed:
+			"Couldn’t connect. Check that the local connector is running, request a fresh code, and allow local network access in your browser.",
+		invalidResponse:
+			"The connector sent an unsupported message. Disconnect and check that Tabelo and the connector are up to date.",
+		sessionEnded:
+			"The agent connection ended. Connect again to share the current table.",
+		uncertain:
+			"The connection ended before the result could be confirmed. Check the table before repeating the request.",
+		tableUpdated: "The agent updated the table.",
+		workspaceUpdated: "The agent updated the views.",
+		conflict: "Your edits were kept. The agent needs to read the table again.",
+	},
 	app: product,
 
 	views,

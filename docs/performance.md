@@ -537,3 +537,30 @@ An entry belongs here when a suspicion has been measured, whatever the answer.
 Name the suspicion, the measurement, the verdict, and the issue. A disproved
 suspicion is the more valuable kind, because it is the one somebody will
 otherwise propose again.
+
+## Local agent command path (#405)
+
+Measured on Reference machine A, arm64, Node 24 and Vitest 4.1.11, using the
+shared 200-row plain fixture, 20 warm-ups and 200 samples. Command:
+
+```sh
+pnpm --filter web exec vitest bench --run --project=unit src/agent/session.bench.ts
+```
+
+| Operation | Before, minimum ms | After, minimum ms |
+| --- | ---: | ---: |
+| Read 100 typed rows | 1.6196 | 0.0939 |
+| Prepare 200 cell writes (unchanged implementation) | 0.4647 | 0.4043 |
+
+The read previously re-encoded every accumulated row on each iteration to
+check the byte limit. It now counts each encoded row once and reserves metadata
+space, retaining the same UTF-8 limit and refusing an indivisible oversized
+value. The unchanged write result illustrates run noise, not an optimization.
+Its cost did not justify a separate mutation engine or persistent index.
+
+These are in-process microbenchmarks in happy-dom: no real model, transport,
+DOM rendering, or persistence timing. They do not predict chat latency. Tool
+payload-size comparisons and their limitations are recorded in
+[the connection research](research/local-agent-connection.md). The operational
+rules for idle work, batching, and bounded memory are in
+[the agent integration contract](agent-integration.md#performance-contract).

@@ -5,12 +5,14 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { disconnectAgent } from "@/agent/connection";
 import { copy } from "@/copy/copy";
 import { product, tableDocumentTitle } from "@/copy/product";
 import { isDocumentBlank } from "@/core/document";
 import { runHistory } from "@/history/coordinator";
 import { usePwaUpdate } from "@/pwa/use-pwa-update";
 import { hasSessionWork, startAutosave, useTabeloStore } from "@/state/store";
+import { AgentDialog } from "@/ui/agent-dialog";
 import { AppMenu } from "@/ui/app-menu";
 import { ConfirmDialog } from "@/ui/confirm-dialog";
 import { DownloadDialog } from "@/ui/download-dialog";
@@ -33,6 +35,7 @@ type RootDialog =
 	| "delete-table"
 	| "rename-table"
 	| "settings"
+	| "agent"
 	| null;
 
 // Which way the pane-zoom chord points: out, back to the default, or in.
@@ -103,6 +106,7 @@ export function prepareTabeloApp(): Promise<void> {
 }
 
 export function TabeloApp() {
+	useEffect(() => () => disconnectAgent(), []);
 	const pwaUpdate = usePwaUpdate();
 	const [rootDialog, setRootDialog] = useState<RootDialog>(null);
 	const [tableToDelete, setTableToDelete] = useState<string | null>(null);
@@ -346,6 +350,7 @@ export function TabeloApp() {
 					}}
 					onLayout={() => openRootDialog("layout")}
 					onSettings={() => openRootDialog("settings")}
+					onAgent={() => openRootDialog("agent")}
 					onAddView={() => setAddViewRequest((request) => request + 1)}
 					onCopy={(tableId) => {
 						setTableToWrite(tableId);
@@ -365,6 +370,10 @@ export function TabeloApp() {
 				/>
 			)}
 			<NoticeBar />
+			<AgentDialog
+				open={rootDialog === "agent"}
+				onOpenChange={closeRootDialog}
+			/>
 			<DownloadDialog
 				open={rootDialog === "download"}
 				tableId={tableToWrite ?? undefined}

@@ -671,3 +671,19 @@ document state, it belongs in a feature folder.
 Related controls use the shared radius and spacing to read as a family. Do not
 wrap an existing control group in another card or add a border merely to make
 the relationship visible.
+
+### Agent connection (#405)
+
+The app menu offers Connect agent (MCP) when disconnected and shows the connected or
+paused state in the same entry. The owner opens a standard dialog to paste the
+local connection code and read the data-sharing scope. First-time setup stays
+in the dialog: prerequisites, copyable Codex commands, an existing-checkout
+shortcut, and the instruction to request a connection code in a new agent
+conversation. The user does not have to open an external guide to connect. The connected dialog
+uses the existing action hierarchy for Pause/Resume and Disconnect; there is no
+chat panel, automatic permission dialog, or separate notification system.
+Operation results use existing notices. A document-edit notice may offer Undo
+only while its resulting document is current, through the normal notice owner.
+Background commands preserve the focus of surviving panes; closing the focused
+pane uses the existing focus fallback. The app never claims to know what an
+external model is doing between tool calls.

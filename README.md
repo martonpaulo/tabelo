@@ -45,6 +45,12 @@ side without serving each other's build.
 
 <br />
 
+## External agent
+
+An optional local MCP connection lets an agent edit the open table while you
+keep working. See [setup and command conventions](docs/agent-integration.md).
+No hosted backend or store registration is needed; the editor works without it.
+
 ## 🛠 Commands
 
 | Command                 | What it does                                   |

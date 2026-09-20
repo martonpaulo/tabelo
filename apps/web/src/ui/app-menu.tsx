@@ -36,6 +36,7 @@ import {
 	IconLayoutGrid,
 	IconLayoutSidebarRightExpand,
 	IconPencil,
+	IconPlug,
 	IconRefresh,
 	IconTableMinus,
 	IconTrash,
@@ -48,6 +49,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
+import { useAgentConnection } from "@/agent/connection";
 import { copy } from "@/copy/copy";
 import { product } from "@/copy/product";
 import { deleteEmptyRowsAndColumns } from "@/core/operations";
@@ -81,6 +83,7 @@ interface AppMenuProps {
 	readonly onDownload: (tableId: string) => void;
 	readonly onLayout: () => void;
 	readonly onSettings: () => void;
+	readonly onAgent: () => void;
 	readonly onAddView: () => void;
 	readonly onNewTable: () => void;
 	readonly onDeleteTable: (tableId: string) => void;
@@ -94,6 +97,7 @@ export function AppMenu({
 	onDownload,
 	onLayout,
 	onSettings,
+	onAgent,
 	onAddView,
 	onNewTable,
 	onDeleteTable,
@@ -101,6 +105,7 @@ export function AppMenu({
 	pwaUpdate,
 	triggerRef,
 }: AppMenuProps) {
+	const agentStatus = useAgentConnection((state) => state.status);
 	const menuDialog = useMenuDialogCommand();
 	// A transpose waiting for the user to agree that the first column's typed
 	// values become header text (#235): how many there are, or null.
@@ -323,6 +328,14 @@ export function AppMenu({
 				<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onSettings)}>
 					<IconAdjustmentsHorizontal aria-hidden />
 					{copy.settings.title}
+				</DropdownMenuItem>
+				<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onAgent)}>
+					<IconPlug aria-hidden />
+					{agentStatus === "paused"
+						? copy.agent.paused
+						: agentStatus === "connected"
+							? copy.agent.connected
+							: copy.agent.connect}
 				</DropdownMenuItem>
 			</DropdownMenuGroup>
 
