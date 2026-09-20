@@ -49,6 +49,9 @@ jobs:
       # are CI's own (classify-changes.sh), and a manual run always publishes.
       - name: Decide whether the site changed
         id: site
+        # See Validate: the classifier is piped into `tee`, so the step needs
+        # pipefail or a failure would publish nothing and report success.
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}

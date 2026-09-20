@@ -408,7 +408,8 @@ changes and unknown paths run the full Chromium suite; workflow, pipeline
 script, or Playwright configuration runs that same full suite. One script,
 `scripts/classify-changes.sh`, owns those rules for every event. A pull
 request is classified by its own files; a push to `main` by every file changed
-since the last commit on `main` whose CI passed, so a push that cancelled an
+since the last commit on `main` whose Validate run passed (only a pull request
+cancels a superseded run, so that base always exists), so a push that cancelled an
 unfinished run inherits that run's changes; a manual run, or a history the
 compare API cannot answer, selects everything. The Check job counts the
 selected tests and derives the shard matrix from the cap recorded in

@@ -33,11 +33,14 @@ env:
   GIT_CONFIG_VALUE_0: main
   TESTS_PER_SHARD: 250
 
-# Cancel superseded CI runs on the same ref so redundant lint and test work
-# stops as soon as a newer commit arrives.
+# Cancel superseded runs on a pull request, where only the latest commit
+# matters. A push to main is never cancelled: the base lookup below reads the
+# last successful run on main to decide what changed, and a cancelled run
+# leaves no such base, which is what made every later push classify as
+# unknown and run the whole suite (owner, 2026-09-20).
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # Classification is a shell script over the changed file list, so it shares
@@ -67,6 +70,11 @@ jobs:
       # compare, selects everything.
       - name: Classify changes
         id: classify
+        # `bash` rather than the default `bash -e {0}`: the classifier is piped
+        # into `tee`, and without pipefail the step would report `tee`'s zero
+        # and pass having selected nothing, skipping the browser suite
+        # (owner, 2026-09-20).
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -80,7 +88,7 @@ jobs:
                 > "$changed" || : > "$changed"
               ;;
             push)
-              base=$(gh run list --repo "$REPO" --workflow ci.yml --branch main \
+              base=$(gh run list --repo "$REPO" --workflow validate.yml --branch main \
                 --event push --status success --limit 1 --json headSha -q '.[0].headSha' || true)
               if [[ -n "$base" ]]; then
                 scripts/changed-files.sh "$REPO" "$base" "${{ github.sha }}" \
