@@ -433,10 +433,6 @@ test("copying two separated columns produces a well-formed two-column table", as
 	// columns rather than a ragged table.
 	await tabelo.runAppCommand("newTable");
 	await page
-		.getByRole("dialog", { name: copy.newTable.title })
-		.getByRole("button", { name: copy.newTable.confirm })
-		.click();
-	await page
 		.getByRole("region", { name: copy.empty.title })
 		.getByRole("button", { name: copy.empty.emptyAction })
 		.click();

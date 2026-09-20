@@ -1,9 +1,14 @@
 // @vitest-environment happy-dom
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { STORAGE_KEY } from "@/persistence/schema";
+import { tableKey } from "@/persistence/schema";
 import { flushPersistence, useTabeloStore } from "@/state/store";
 import { activateUpdateAfterSave } from "./update";
+
+// The active table owns the key a save writes to (#403).
+function activeTableKey(): string {
+	return tableKey(useTabeloStore.getState().library.activeId);
+}
 
 const initialState = useTabeloStore.getInitialState();
 const validMarkdown = "| Name |\n| --- |\n| Ingrid |";
@@ -33,7 +38,7 @@ describe("PWA update activation", () => {
 		expect(activated).toBe(true);
 		expect(activate).toHaveBeenCalledOnce();
 		const persisted = JSON.parse(
-			window.localStorage.getItem(STORAGE_KEY) ?? "null",
+			window.localStorage.getItem(activeTableKey()) ?? "null",
 		);
 		expect(persisted.draft).toEqual({
 			paneId: pane?.id,

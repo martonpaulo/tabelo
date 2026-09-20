@@ -1,8 +1,7 @@
 import { copy } from "@/copy/copy";
 import { samplePeopleCsv } from "@/core/sample-data";
-import { STORAGE_KEY } from "@/persistence/schema";
 import { expect, test } from "./fixtures";
-import type { TabeloPage } from "./helpers";
+import { activeTableStorageKey, type TabeloPage } from "./helpers";
 
 // Transpose and Delete empty rows and columns reshape the whole document from
 // the floating menu (#235). What a unit test cannot reach is the browser
@@ -65,7 +64,7 @@ test("the notice's Undo reverts a transpose and brings back a column's width", a
 		page.evaluate((key) => {
 			const saved = JSON.parse(localStorage.getItem(key) ?? "null");
 			return saved?.workspace?.columnWidths ?? {};
-		}, STORAGE_KEY);
+		}, activeTableStorageKey());
 	await expect.poll(savedWidths).not.toEqual({});
 	const widened = await savedWidths();
 

@@ -25,5 +25,10 @@ function createId(prefix: string): string {
 	return `${prefix}_${session}${sequence.toString(36)}`;
 }
 
+// A table id is the one identifier that outlives its document: it names the
+// storage key that holds the table (#403). Same uniqueness mechanism, so a
+// reload can never mint an id the library already uses.
+export const createTableId = (): string => createId("t");
+
 export const createColumnId = (): ColumnId => createId("c");
 export const createRowId = (): RowId => createId("r");

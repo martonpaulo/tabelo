@@ -2,11 +2,14 @@ import type { TableDocument } from "@/core/types";
 import type { Workspace } from "@/workspace/layout";
 import {
 	CURRENT_VERSION,
+	LIBRARY_KEY,
+	type LibraryIndex,
 	type PersistedDraft,
 	type PersistedState,
 	type PersistenceFailureReason,
-	RECOVERY_KEY,
-	STORAGE_KEY,
+	tableKey,
+	tableRecoveryKey,
+	validateLibraryIndex,
 	validatePersistedState,
 } from "./schema";
 
@@ -34,10 +37,10 @@ export type StorageLoadOutcome =
 			readonly raw: string;
 	  };
 
-export function loadState(): StorageLoadOutcome {
+export function loadTable(id: string): StorageLoadOutcome {
 	let raw: string | null;
 	try {
-		raw = window.localStorage.getItem(STORAGE_KEY);
+		raw = window.localStorage.getItem(tableKey(id));
 	} catch {
 		// Private browsing and blocked storage both throw here.
 		return { status: "unavailable" };
@@ -116,16 +119,43 @@ const browserStorage: WritableStorage = {
 	setItem: (key, value) => window.localStorage.setItem(key, value),
 };
 
-export function saveState(state: SavePayload): SaveOutcome {
+export function saveTable(id: string, state: SavePayload): SaveOutcome {
 	const payload = { ...state, version: CURRENT_VERSION };
-	return writeItem(browserStorage, STORAGE_KEY, JSON.stringify(payload));
+	return writeItem(browserStorage, tableKey(id), JSON.stringify(payload));
 }
 
 export function preserveUnreadableAndSave(
+	id: string,
 	raw: string,
 	state: SavePayload,
 ): ReplacementOutcome {
-	return preserveRawThenWrite(browserStorage, RECOVERY_KEY, raw, () =>
-		saveState(state),
+	return preserveRawThenWrite(browserStorage, tableRecoveryKey(id), raw, () =>
+		saveTable(id, state),
 	);
+}
+
+// The index is written on its own, so creating, renaming, reordering, or
+// deleting a table never rewrites a document.
+export function saveLibraryIndex(index: LibraryIndex): SaveOutcome {
+	return writeItem(browserStorage, LIBRARY_KEY, JSON.stringify(index));
+}
+
+export function loadLibraryIndex(): LibraryIndex | null {
+	try {
+		const raw = window.localStorage.getItem(LIBRARY_KEY);
+		return raw === null ? null : validateLibraryIndex(JSON.parse(raw));
+	} catch {
+		return null;
+	}
+}
+
+// A deleted table takes its recovery copy with it: keeping the bytes of a
+// table the user chose to delete would be a copy they cannot see.
+export function removeTable(id: string): void {
+	try {
+		window.localStorage.removeItem(tableKey(id));
+		window.localStorage.removeItem(tableRecoveryKey(id));
+	} catch {
+		// Blocked storage: the entry is gone from the index either way.
+	}
 }

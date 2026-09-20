@@ -16,6 +16,7 @@ import {
 	positionAfterReplacement,
 	replaceMatches,
 } from "@/core/find";
+import { createTableId } from "@/core/ids";
 import { nextMatchingCell } from "@/core/matching-cells";
 import {
 	type CellsWrite,
@@ -81,6 +82,15 @@ import {
 	planFillSeries,
 	planOfferedSeries,
 } from "@/core/series";
+import {
+	addTable,
+	isNameTaken,
+	nameForNewTable,
+	removeTable,
+	renameEntry,
+	type TableId,
+	type TableLibrary,
+} from "@/core/table-library";
 import { validateTableName } from "@/core/table-name";
 import type {
 	Alignment,
@@ -120,13 +130,19 @@ import {
 	prepareImport,
 	tableShapeLimitError,
 } from "@/import/prepare";
-import type { PersistenceFailureReason } from "@/persistence/schema";
 import {
-	loadState,
+	LIBRARY_VERSION,
+	type PersistenceFailureReason,
+} from "@/persistence/schema";
+import {
+	loadLibraryIndex,
+	loadTable,
 	preserveUnreadableAndSave,
+	removeTable as removeStoredTable,
 	type SaveOutcome,
 	type SavePayload,
-	saveState,
+	saveLibraryIndex,
+	saveTable,
 } from "@/persistence/storage";
 import {
 	conditionNoticeIds,
@@ -327,6 +343,7 @@ export type StorageIssue =
 
 export interface TabeloState {
 	name: string;
+	library: TableLibrary;
 	document: TableDocument;
 	workspace: Workspace;
 
@@ -435,7 +452,7 @@ export interface TabeloState {
 	setOutputOption: (id: OutputOptionId, value: boolean) => void;
 	renameTable: (
 		name: string,
-	) => SaveOutcome | { readonly status: "invalid" | "blocked" };
+	) => SaveOutcome | { readonly status: "invalid" | "blocked" | "duplicate" };
 	setPaneZoom: (paneId: string, zoom: number) => void;
 	// One of a source pane's display overrides; null returns it to the global
 	// default (#276).
@@ -573,6 +590,11 @@ export interface TabeloState {
 	answerPendingImport: (headerRow: boolean) => void;
 	cancelPendingImport: () => void;
 	resetDocument: () => void;
+	// The table library (#403). One table is always active; the others sit in
+	// storage under their own keys and are read when they become active.
+	createTable: () => void;
+	switchTable: (id: TableId) => void;
+	deleteTable: (id: TableId) => void;
 	dismissNotice: (id: string) => void;
 	pushNotice: (request: NoticeRequest) => void;
 	announceStatus: (message: string) => void;
@@ -768,6 +790,100 @@ function closedPaneState(
 	};
 }
 
+// Reading the library means reading each table's own payload for its name:
+// the index holds identity and order only, so the name a table shows is the
+// name that table stores, and the two can never disagree. An empty browser,
+// or an index nothing can be read from, starts with one table.
+function readLibrary(fallback: TableLibrary): TableLibrary {
+	const index = loadLibraryIndex();
+	// No index yet: the library this session started with is the library, so
+	// the table it already holds keeps the key a save would have written to.
+	if (!index) return fallback;
+	const tables = index.tables.map((id) => {
+		const outcome = loadTable(id);
+		return {
+			id,
+			name: outcome.status === "ok" ? outcome.state.name : DEFAULT_TABLE_NAME,
+		};
+	});
+	return { tables, activeId: index.activeId };
+}
+
+function newLibrary(): TableLibrary {
+	const id = createTableId();
+	return { tables: [{ id, name: DEFAULT_TABLE_NAME }], activeId: id };
+}
+
+function entryName(library: TableLibrary, id: TableId): string {
+	return (
+		library.tables.find((table) => table.id === id)?.name ?? DEFAULT_TABLE_NAME
+	);
+}
+
+function writeLibraryIndex(library: TableLibrary): SaveOutcome {
+	return saveLibraryIndex({
+		version: LIBRARY_VERSION,
+		tables: library.tables.map((table) => table.id),
+		activeId: library.activeId,
+	});
+}
+
+// The state a table starts from, and the state switching to an unreadable or
+// missing table falls back to. History belongs to the table being left, so it
+// never follows the user into another one.
+function blankTableState(name: string) {
+	return {
+		name,
+		document: createEmptyDocument(),
+		workspace: createDefaultWorkspace(),
+		draft: null,
+		hasHeldContent: false,
+		past: [],
+		future: [],
+		selection: createSelection({ row: 0, column: 0 }),
+		editing: null,
+		editingSeed: null,
+		editingHeader: null,
+		copiedRanges: NO_COPIED_RANGES,
+		insertedAxis: null,
+		fillSeriesOffer: null,
+		finds: NO_FINDS,
+		pendingImport: null,
+		pendingPaneAction: null,
+		inputError: null,
+	};
+}
+
+// Reads the library's active table into the store, or starts that table
+// blank when its payload is missing or unreadable. The index is the caller's
+// to write: switching and deleting both change it, and both land here.
+function openTable(library: TableLibrary): void {
+	const id = library.activeId;
+	const outcome = loadTable(id);
+	if (outcome.status !== "ok") {
+		useTabeloStore.setState({
+			library,
+			...blankTableState(entryName(library, id)),
+		});
+		return;
+	}
+	const workspace = reconcileColumnPreferences(
+		outcome.state.workspace,
+		outcome.state.document,
+	);
+	useTabeloStore.setState({
+		library: renameEntry(library, id, outcome.state.name),
+		...blankTableState(outcome.state.name),
+		document: outcome.state.document,
+		workspace,
+		draft: outcome.state.draft
+			? deriveDraft(outcome.state.draft, workspace)
+			: null,
+		hasHeldContent: !isDocumentBlank(outcome.state.document),
+		storageIssue: null,
+	});
+}
+
 function savePayload(state: TabeloState): SavePayload {
 	return {
 		name: state.name,
@@ -861,6 +977,9 @@ function importedWorkspaceState(
 
 export const useTabeloStore = create<TabeloState>((set, get) => ({
 	name: DEFAULT_TABLE_NAME,
+	// One table exists from the first render, before hydration replaces it
+	// with what storage holds: a save must always have a key to write to.
+	library: newLibrary(),
 	document: createEmptyDocument(),
 	workspace: createDefaultWorkspace(),
 
@@ -890,7 +1009,12 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	outputOptions: { ...defaultOutputOptions },
 
 	hydrate: () => {
-		const outcome = loadState();
+		const library = readLibrary(get().library);
+		// A browser with no index gets one now, so the table this session is
+		// about to write is in the library rather than becoming an orphan key.
+		if (!loadLibraryIndex()) writeLibraryIndex(library);
+		set({ library, name: entryName(library, library.activeId) });
+		const outcome = loadTable(library.activeId);
 		if (outcome.status === "ok") {
 			const workspace = reconcileColumnPreferences(
 				outcome.state.workspace,
@@ -935,6 +1059,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const state = get();
 		if (state.storageIssue?.kind !== "unreadable") return false;
 		const outcome = preserveUnreadableAndSave(
+			state.library.activeId,
 			state.storageIssue.raw,
 			savePayload(state),
 		);
@@ -1250,9 +1375,23 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			return { status: "blocked" };
 		}
 		if (validated.name === state.name) return { status: "saved" };
-		const outcome = saveState({ ...savePayload(state), name: validated.name });
+		if (isNameTaken(state.library, validated.name, state.library.activeId)) {
+			return { status: "duplicate" };
+		}
+		const outcome = saveTable(state.library.activeId, {
+			...savePayload(state),
+			name: validated.name,
+		});
 		if (outcome.status === "saved") {
-			set({ name: validated.name, storageIssue: null });
+			set({
+				name: validated.name,
+				library: renameEntry(
+					state.library,
+					state.library.activeId,
+					validated.name,
+				),
+				storageIssue: null,
+			});
 		} else {
 			set({ storageIssue: { kind: outcome.status } });
 		}
@@ -2357,6 +2496,62 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		});
 	},
 
+	createTable: () => {
+		const state = get();
+		if (state.storageIssue?.kind === "unreadable") return;
+		flushPersistence();
+		const { name, renameFirst } = nameForNewTable(
+			state.library,
+			DEFAULT_TABLE_NAME,
+		);
+		const entry = { id: createTableId(), name };
+		// Numbering the first table is a change to that table's own payload, so
+		// it is written before the library moves on to the new one.
+		if (renameFirst) {
+			saveTable(state.library.activeId, {
+				...savePayload(state),
+				name: renameFirst,
+			});
+		}
+		const library = addTable(
+			renameFirst
+				? renameEntry(state.library, state.library.activeId, renameFirst)
+				: state.library,
+			entry,
+		);
+		set({ library, ...blankTableState(entry.name) });
+		writeLibraryIndex(library);
+		flushPersistence();
+	},
+
+	switchTable: (id) => {
+		const state = get();
+		if (id === state.library.activeId) return;
+		if (!state.library.tables.some((table) => table.id === id)) return;
+		if (state.storageIssue?.kind === "unreadable") return;
+		// The table being left is written before the other one is read, so a
+		// switch can never be the step that loses an edit.
+		flushPersistence();
+		openTable({ ...state.library, activeId: id });
+	},
+
+	deleteTable: (id) => {
+		const state = get();
+		const library = removeTable(state.library, id);
+		// The last table is never deleted: the app always shows one. Emptying it
+		// is what "delete" means there, and that stays an undoable document edit.
+		if (!library) {
+			if (id === state.library.activeId) get().resetDocument();
+			return;
+		}
+		// Nothing is flushed here: the table being deleted must not be written
+		// back on its way out.
+		removeStoredTable(id);
+		if (id === state.library.activeId) openTable(library);
+		else set({ library });
+		writeLibraryIndex(library);
+	},
+
 	// One dismissal for every notice, whichever channel it came from. A queued
 	// message is removed; a projected condition is cleared at its source. The
 	// identifier is what makes that possible: without it, dismissal could only
@@ -2462,7 +2657,7 @@ export function flushPersistence(): FlushOutcome {
 	if (current.storageIssue?.kind === "unreadable") {
 		return { status: "blocked" };
 	}
-	const outcome = saveState(savePayload(current));
+	const outcome = saveTable(current.library.activeId, savePayload(current));
 	useTabeloStore.setState({
 		storageIssue: outcome.status === "saved" ? null : { kind: outcome.status },
 	});

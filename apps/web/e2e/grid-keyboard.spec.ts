@@ -1,6 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
-import { STORAGE_KEY } from "@/persistence/schema";
 import {
 	COLUMN_WIDTH_STEP,
 	DEFAULT_COLUMN_WIDTH,
@@ -8,6 +7,7 @@ import {
 	MIN_COLUMN_WIDTH,
 } from "@/workspace/column-width";
 import { expect, test } from "./fixtures";
+import { activeTableStorageKey } from "./helpers";
 
 // The grid is a hand-built widget, so every keyboard contract it advertises is
 // one it has to implement itself. The rule that shapes the rest: arrows are
@@ -388,7 +388,7 @@ test("keyboard resizing changes only the focused column and announces outcomes",
 			page.evaluate((key) => {
 				const saved = JSON.parse(localStorage.getItem(key) ?? "null");
 				return Object.values(saved?.workspace?.columnWidths ?? {});
-			}, STORAGE_KEY),
+			}, activeTableStorageKey()),
 		)
 		.toEqual([12]);
 	await expect(first).toHaveText("First");
@@ -413,7 +413,7 @@ test("keyboard resizing changes only the focused column and announces outcomes",
 			page.evaluate((key) => {
 				const saved = JSON.parse(localStorage.getItem(key) ?? "null");
 				return Object.values(saved?.workspace?.columnWidths ?? {})[0];
-			}, STORAGE_KEY),
+			}, activeTableStorageKey()),
 		)
 		.toBe(MIN_COLUMN_WIDTH);
 });
@@ -514,7 +514,7 @@ test("Fit stores the same normalized width at different pane zoom levels", async
 			return Object.values(saved?.workspace?.columnWidths ?? {})[0] as
 				| number
 				| undefined;
-		}, STORAGE_KEY);
+		}, activeTableStorageKey());
 
 	await fitColumn();
 	await expect.poll(storedWidth).not.toBeUndefined();
@@ -528,12 +528,12 @@ test("Fit stores the same normalized width at different pane zoom levels", async
 		);
 		gridPane.zoom = 2;
 		return saved;
-	}, STORAGE_KEY);
+	}, activeTableStorageKey());
 	await page.addInitScript(
 		({ key, payload }) => {
 			localStorage.setItem(key, JSON.stringify(payload));
 		},
-		{ key: STORAGE_KEY, payload: zoomedPayload },
+		{ key: activeTableStorageKey(), payload: zoomedPayload },
 	);
 	await page.reload();
 	await tabelo.workspace.waitFor({ state: "visible" });
@@ -578,7 +578,7 @@ test("column wrapping grows rows, persists, and keeps cell navigation", async ({
 				const raw = localStorage.getItem(key);
 				if (!raw) return [];
 				return JSON.parse(raw).workspace?.wrappedColumns ?? [];
-			}, STORAGE_KEY),
+			}, activeTableStorageKey()),
 		)
 		.toHaveLength(1);
 	await page.reload();

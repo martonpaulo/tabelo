@@ -1,8 +1,7 @@
 import { copy } from "@/copy/copy";
-import { STORAGE_KEY } from "@/persistence/schema";
-import { PERSISTED_VERSION } from "@/persistence/versions";
+import { PERSISTED_VERSION } from "@/persistence/state-schema";
 import { expect, test } from "./fixtures";
-import { TabeloPage } from "./helpers";
+import { activeTableStorageKey, TabeloPage } from "./helpers";
 
 async function importTypedRow(tabelo: TabeloPage) {
 	await tabelo.importFile(
@@ -146,7 +145,7 @@ test("a mixed column distinguishes real type from its number expectation", async
 	await page.addInitScript(
 		({ key, state }) => localStorage.setItem(key, JSON.stringify(state)),
 		{
-			key: STORAGE_KEY,
+			key: activeTableStorageKey(),
 			state: {
 				version: PERSISTED_VERSION,
 				name: "Typed values",

@@ -9,8 +9,13 @@ import {
 	it,
 	vi,
 } from "vitest";
-import { CURRENT_VERSION, STORAGE_KEY } from "@/persistence/schema";
+import { CURRENT_VERSION, tableKey } from "@/persistence/schema";
 import { flushPersistence, startAutosave, useTabeloStore } from "./store";
+
+// The active table owns the key a save writes to (#403).
+function activeTableKey(): string {
+	return tableKey(useTabeloStore.getState().library.activeId);
+}
 
 const initialState = useTabeloStore.getInitialState();
 const invalidMarkdown = "| Name |\n| not a divider |\n| Ingrid |";
@@ -73,7 +78,7 @@ describe("autosave lifecycle", () => {
 		["invalid-json", "{not json"],
 		["current-schema-invalid", JSON.stringify({ version: CURRENT_VERSION })],
 	] as const)("carries the %s reason into the storage issue", (reason, raw) => {
-		window.localStorage.setItem(STORAGE_KEY, raw);
+		window.localStorage.setItem(activeTableKey(), raw);
 		useTabeloStore.setState(initialState, true);
 		useTabeloStore.getState().hydrate();
 
@@ -82,7 +87,7 @@ describe("autosave lifecycle", () => {
 			reason,
 			raw,
 		});
-		expect(window.localStorage.getItem(STORAGE_KEY)).toBe(raw);
+		expect(window.localStorage.getItem(activeTableKey())).toBe(raw);
 	});
 
 	it("saves and reloads the table name outside document history", () => {
@@ -113,7 +118,7 @@ describe("autosave lifecycle", () => {
 
 	it("does not rename over unreadable saved bytes", () => {
 		const raw = "{keep me unchanged";
-		window.localStorage.setItem(STORAGE_KEY, raw);
+		window.localStorage.setItem(activeTableKey(), raw);
 		useTabeloStore.setState({
 			storageIssue: { kind: "unreadable", reason: "invalid-json", raw },
 		});
@@ -122,7 +127,7 @@ describe("autosave lifecycle", () => {
 			status: "blocked",
 		});
 		expect(useTabeloStore.getState().name).toBe("Untitled table");
-		expect(window.localStorage.getItem(STORAGE_KEY)).toBe(raw);
+		expect(window.localStorage.getItem(activeTableKey())).toBe(raw);
 	});
 
 	it("gives a new table the default name", () => {
@@ -157,10 +162,10 @@ describe("autosave lifecycle", () => {
 		expect(flushPersistence()).toEqual({ status: "saved" });
 
 		const saved = JSON.parse(
-			window.localStorage.getItem(STORAGE_KEY) ?? "null",
+			window.localStorage.getItem(activeTableKey()) ?? "null",
 		);
 		saved.workspace.columnWidths.orphan = 24;
-		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+		window.localStorage.setItem(activeTableKey(), JSON.stringify(saved));
 
 		useTabeloStore.setState(initialState, true);
 		useTabeloStore.getState().hydrate();
@@ -174,12 +179,12 @@ describe("autosave lifecycle", () => {
 		stopAutosave = startAutosave();
 		const paneId = markdownPaneId();
 		useTabeloStore.getState().setDraft(paneId, "markdown", invalidMarkdown);
-		expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+		expect(window.localStorage.getItem(activeTableKey())).toBeNull();
 
 		window.dispatchEvent(new PageTransitionEvent("pagehide"));
 
 		const saved = JSON.parse(
-			window.localStorage.getItem(STORAGE_KEY) ?? "null",
+			window.localStorage.getItem(activeTableKey()) ?? "null",
 		);
 		expect(saved).toMatchObject({
 			version: CURRENT_VERSION,
@@ -196,7 +201,7 @@ describe("autosave lifecycle", () => {
 
 		expect(flushPersistence()).toEqual({ status: "saved" });
 
-		const raw = window.localStorage.getItem(STORAGE_KEY) ?? "";
+		const raw = window.localStorage.getItem(activeTableKey()) ?? "";
 		expect(raw).not.toContain("copiedRanges");
 
 		useTabeloStore.setState(initialState, true);
@@ -213,7 +218,7 @@ describe("autosave lifecycle", () => {
 
 	it("does not overwrite unreadable browser data during autosave", () => {
 		const raw = "{keep me unchanged";
-		window.localStorage.setItem(STORAGE_KEY, raw);
+		window.localStorage.setItem(activeTableKey(), raw);
 		useTabeloStore.setState({
 			storageIssue: { kind: "unreadable", reason: "invalid-json", raw },
 		});
@@ -222,7 +227,7 @@ describe("autosave lifecycle", () => {
 		useTabeloStore.getState().editCell(0, 0, "Changed");
 		vi.advanceTimersByTime(500);
 
-		expect(window.localStorage.getItem(STORAGE_KEY)).toBe(raw);
+		expect(window.localStorage.getItem(activeTableKey())).toBe(raw);
 		expect(useTabeloStore.getState().storageIssue?.kind).toBe("unreadable");
 	});
 });

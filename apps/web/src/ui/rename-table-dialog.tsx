@@ -19,7 +19,7 @@ import {
 } from "@/ui/primitives/dialog-buttons";
 import { useContentWhileOpen } from "@/ui/primitives/use-content-while-open";
 
-type NameError = "empty" | "too-long" | "save" | null;
+type NameError = "empty" | "too-long" | "save" | "duplicate" | null;
 
 export function RenameTableDialog({
 	open,
@@ -64,6 +64,10 @@ export function RenameTableDialog({
 			return;
 		}
 		const outcome = useTabeloStore.getState().renameTable(validated.name);
+		if (outcome.status === "duplicate") {
+			setError("duplicate");
+			return;
+		}
 		if (outcome.status !== "saved") {
 			setError("save");
 			return;
@@ -80,9 +84,11 @@ export function RenameTableDialog({
 			? copy.tableName.empty
 			: error === "too-long"
 				? copy.tableName.tooLong
-				: error === "save"
-					? copy.tableName.saveError
-					: null;
+				: error === "duplicate"
+					? copy.tableName.duplicate
+					: error === "save"
+						? copy.tableName.saveError
+						: null;
 
 	const content = useContentWhileOpen(
 		open,

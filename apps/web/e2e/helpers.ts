@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { HEADER_ROW } from "@/core/selection";
-import { STORAGE_KEY } from "@/persistence/schema";
+import { tableKey } from "@/persistence/schema";
 import type { NoticeSeverity } from "@/state/notice-queue";
 import { getView, listViews } from "@/views/registry";
 import type { ViewId } from "@/views/types";
@@ -12,7 +12,12 @@ import {
 	paneCount,
 } from "@/workspace/layout";
 
-type AppCommand = "undo" | "redo" | "newTable" | "downloadTable";
+type AppCommand =
+	| "undo"
+	| "redo"
+	| "newTable"
+	| "deleteTable"
+	| "downloadTable";
 type PaneCommand =
 	| "closeView"
 	| "zoomOut"
@@ -25,6 +30,7 @@ const appCommandLabels: Record<AppCommand, string> = {
 	undo: copy.actions.undo,
 	redo: copy.actions.redo,
 	newTable: copy.actions.newTable,
+	deleteTable: copy.actions.deleteTable,
 	downloadTable: copy.actions.downloadTable,
 };
 
@@ -211,7 +217,16 @@ export function storedDocument(page: Page): Promise<string> {
 	return page.evaluate((key) => {
 		const saved = JSON.parse(localStorage.getItem(key) ?? "null");
 		return JSON.stringify(saved?.document ?? null);
-	}, STORAGE_KEY);
+	}, activeTableStorageKey());
+}
+
+// The library holds one key per table (#403), so a spec that seeds or reads
+// the stored table goes through these two rather than naming a key. Tests
+// seed one table, and the id below is the one they seed it under.
+export const SEEDED_TABLE_ID = "seeded";
+
+export function activeTableStorageKey(): string {
+	return tableKey(SEEDED_TABLE_ID);
 }
 
 // Whether a notice is what the pointer would hit at the centre of a control.

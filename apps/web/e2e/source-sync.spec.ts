@@ -1,12 +1,8 @@
 import type { Locator } from "@playwright/test";
-import {
-	CURRENT_VERSION,
-	type PersistedState,
-	STORAGE_KEY,
-} from "@/persistence/schema";
+import { CURRENT_VERSION, type PersistedState } from "@/persistence/schema";
 import { INHERIT_SOURCE_DISPLAY } from "@/workspace/source-display";
 import { expect, test } from "./fixtures";
-import type { TabeloPage } from "./helpers";
+import { activeTableStorageKey, type TabeloPage } from "./helpers";
 
 const invalidMarkdown =
 	"| Name | Role |\n| not a divider |\n| Ingrid | Designer |";
@@ -98,7 +94,7 @@ async function seedTypedSource(tabelo: TabeloPage): Promise<void> {
 		({ key, value }) => {
 			localStorage.setItem(key, JSON.stringify(value));
 		},
-		{ key: STORAGE_KEY, value: typedSourceState },
+		{ key: activeTableStorageKey(), value: typedSourceState },
 	);
 	await tabelo.page.reload();
 	await tabelo.workspace.waitFor({ state: "visible" });
@@ -127,7 +123,7 @@ async function expectTypedCellsPersisted(tabelo: TabeloPage): Promise<void> {
 						(column: { align?: string }) => column.align,
 					),
 				};
-			}, STORAGE_KEY),
+			}, activeTableStorageKey()),
 		)
 		.toEqual({
 			values: {

@@ -5,17 +5,18 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { copy } from "@/copy/copy";
 import { product, tableDocumentTitle } from "@/copy/product";
 import { isDocumentBlank } from "@/core/document";
 import { runHistory } from "@/history/coordinator";
 import { usePwaUpdate } from "@/pwa/use-pwa-update";
 import { hasSessionWork, startAutosave, useTabeloStore } from "@/state/store";
 import { AppMenu } from "@/ui/app-menu";
+import { ConfirmDialog } from "@/ui/confirm-dialog";
 import { DownloadDialog } from "@/ui/download-dialog";
 import { EmptyState } from "@/ui/grid/empty-state";
 import { HeaderRowDialog } from "@/ui/header-row-dialog";
 import { importTableFile } from "@/ui/import-actions";
-import { NewTableDialog } from "@/ui/new-table-dialog";
 import { NoticeBar } from "@/ui/notice-bar";
 import { RenameTableDialog } from "@/ui/rename-table-dialog";
 import { SettingsDialog } from "@/ui/settings-dialog";
@@ -28,7 +29,7 @@ import { DEFAULT_PANE_ZOOM, stepPaneZoom } from "@/workspace/zoom";
 type RootDialog =
 	| "download"
 	| "layout"
-	| "new-table"
+	| "delete-table"
 	| "rename-table"
 	| "settings"
 	| null;
@@ -142,22 +143,20 @@ export function TabeloApp() {
 		if (opener?.isConnected) requestAnimationFrame(() => opener.focus());
 	};
 
+	// A new table is added beside the others rather than replacing one, so
+	// nothing is lost and nothing is asked (#403). The welcome surface opens on
+	// it the way it does on an empty table.
 	const startNewTable = () => {
-		// The app-menu trigger disappears behind the welcome surface, so a confirmed
-		// dialog must not return focus to that now-inert opener as it closes.
 		dialogOpenerRef.current = null;
-		useTabeloStore.getState().resetDocument();
+		useTabeloStore.getState().createTable();
 		setRootDialog(null);
 		setWelcomeOpen(true);
 	};
 
-	const requestNewTable = () => {
+	const deleteActiveTable = () => {
 		const state = useTabeloStore.getState();
-		if (!hasSessionWork(state)) {
-			startNewTable();
-			return;
-		}
-		openRootDialog("new-table");
+		state.deleteTable(state.library.activeId);
+		setRootDialog(null);
 	};
 
 	useLayoutEffect(() => startAutosave(), []);
@@ -295,7 +294,8 @@ export function TabeloApp() {
 					onLayout={() => openRootDialog("layout")}
 					onSettings={() => openRootDialog("settings")}
 					onAddView={() => setAddViewRequest((request) => request + 1)}
-					onNewTable={requestNewTable}
+					onNewTable={startNewTable}
+					onDeleteTable={() => openRootDialog("delete-table")}
 					onRename={() => openRootDialog("rename-table")}
 					pwaUpdate={pwaUpdate}
 					triggerRef={appMenuTriggerRef}
@@ -318,10 +318,13 @@ export function TabeloApp() {
 				open={rootDialog === "rename-table"}
 				onOpenChange={closeRootDialog}
 			/>
-			<NewTableDialog
-				open={rootDialog === "new-table"}
+			<ConfirmDialog
+				open={rootDialog === "delete-table"}
 				onOpenChange={closeRootDialog}
-				onConfirm={startNewTable}
+				onConfirm={deleteActiveTable}
+				title={copy.deleteTable.title}
+				description={copy.deleteTable.description}
+				confirmLabel={copy.deleteTable.confirm}
 			/>
 			<HeaderRowDialog onImported={finishWelcomeImport} />
 		</div>

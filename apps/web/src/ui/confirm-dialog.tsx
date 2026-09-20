@@ -12,23 +12,32 @@ import {
 	DialogConfirm,
 } from "@/ui/primitives/dialog-buttons";
 
-interface NewTableDialogProps {
+// One destructive question, asked the same way wherever it is asked: delete
+// this table, erase everything Tabelo stored, and anything else that cannot
+// be undone. The copy comes from the caller so it stays in copy.ts.
+interface ConfirmDialogProps {
 	readonly open: boolean;
 	readonly onOpenChange: (open: boolean) => void;
 	readonly onConfirm: () => void;
+	readonly title: string;
+	readonly description: string;
+	readonly confirmLabel: string;
 }
 
-export function NewTableDialog({
+export function ConfirmDialog({
 	open,
 	onOpenChange,
 	onConfirm,
-}: NewTableDialogProps) {
+	title,
+	description,
+	confirmLabel,
+}: ConfirmDialogProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>{copy.newTable.title}</DialogTitle>
-					<DialogDescription>{copy.newTable.description}</DialogDescription>
+					<DialogTitle>{title}</DialogTitle>
+					<DialogDescription>{description}</DialogDescription>
 				</DialogHeader>
 				<DialogActions>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>
@@ -39,7 +48,7 @@ export function NewTableDialog({
 							onOpenChange(false);
 						}}
 					>
-						{copy.newTable.confirm}
+						{confirmLabel}
 					</DialogConfirm>
 				</DialogActions>
 			</DialogContent>

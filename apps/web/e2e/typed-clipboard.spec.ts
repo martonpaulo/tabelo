@@ -31,10 +31,6 @@ async function selectRange(
 async function startBlankTable(tabelo: TabeloPage): Promise<void> {
 	await tabelo.runAppCommand("newTable");
 	await tabelo.page
-		.getByRole("dialog", { name: copy.newTable.title })
-		.getByRole("button", { name: copy.newTable.confirm })
-		.click();
-	await tabelo.page
 		.getByRole("region", { name: copy.empty.title })
 		.getByRole("button", { name: copy.empty.emptyAction })
 		.click();
