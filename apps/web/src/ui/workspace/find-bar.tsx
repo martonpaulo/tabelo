@@ -16,6 +16,7 @@ import { useEffect, useRef } from "react";
 import { copy } from "@/copy/copy";
 import { gridFind, useTabeloStore } from "@/state/store";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
+import { paneSelector } from "@/ui/workspace/pane-selector";
 import type { ViewDefinition } from "@/views/types";
 import type { FindSummary, FindTarget } from "./use-pane-find";
 
@@ -248,7 +249,7 @@ export function PaneFindBar({
 		}
 		window.document
 			.querySelector<HTMLElement>(
-				`[data-pane-id="${paneId}"] [data-grid-active="true"]`,
+				paneSelector(paneId, '[data-grid-active="true"]'),
 			)
 			?.focus();
 	};

@@ -15,6 +15,7 @@ import {
 	DialogConfirm,
 } from "@/ui/primitives/dialog-buttons";
 import { paneEntryTarget } from "@/ui/primitives/panel";
+import { paneSelector } from "@/ui/workspace/pane-selector";
 
 export function HeaderRowDialog({
 	onImported,
@@ -54,7 +55,7 @@ export function HeaderRowDialog({
 		}
 		const { activePaneId } = useTabeloStore.getState().workspace;
 		const pane = document.querySelector<HTMLElement>(
-			`[data-pane-id="${activePaneId}"]`,
+			paneSelector(activePaneId),
 		);
 		return (pane && paneEntryTarget(pane)) ?? true;
 	};

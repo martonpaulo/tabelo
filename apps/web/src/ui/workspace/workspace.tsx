@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
 import { paneEntryTarget } from "@/ui/primitives/panel";
+import { paneSelector } from "@/ui/workspace/pane-selector";
 import {
 	layoutColumnSplitExtent,
 	layoutRowSplitExtent,
@@ -203,8 +204,12 @@ export function Workspace({
 	useEffect(() => {
 		if (!addedPaneId) return;
 		containerRef.current
-			?.querySelector<HTMLElement>(`[data-pane-id="${addedPaneId}"]`)
+			?.querySelector<HTMLElement>(paneSelector(addedPaneId))
 			?.focus();
+		// The pane has arrived and been announced, so it stops being the one
+		// that just arrived. Left set, it announced "added" on every later
+		// focus and no pane ever announced its own entry again.
+		setAddedPaneId(null);
 	}, [addedPaneId]);
 
 	// Which view each pane holds, as one comparable value. An import that opens
@@ -231,7 +236,7 @@ export function Workspace({
 		const active = window.document.activeElement;
 		if (active !== null && active !== window.document.body) return;
 		const pane = containerRef.current?.querySelector<HTMLElement>(
-			`[data-pane-id="${workspace.activePaneId}"]`,
+			paneSelector(workspace.activePaneId),
 		);
 		if (pane) (paneEntryTarget(pane) ?? pane).focus();
 	}, [paneViews, workspace.activePaneId]);

@@ -49,6 +49,7 @@ import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { RecoveryMenuItem } from "@/ui/primitives/recovery-command";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import { paneSpelling } from "@/ui/spelling";
+import { paneSelector } from "@/ui/workspace/pane-selector";
 import type { ViewDefinition } from "@/views/types";
 import { smallerLayout } from "@/workspace/layout";
 import {
@@ -102,9 +103,7 @@ export function PaneIdentity({ view }: PaneIdentityProps) {
 // The grid surface of one pane, and the room its columns have. Read when the
 // command runs rather than watched: nothing else needs the number.
 function fitColumnsToPane(paneId: string): void {
-	const pane = document.querySelector<HTMLElement>(
-		`[data-pane-id="${paneId}"]`,
-	);
+	const pane = document.querySelector<HTMLElement>(paneSelector(paneId));
 	const surface = pane?.querySelector<HTMLElement>("[data-grid-surface]");
 	const table = pane?.querySelector("table");
 	const store = useTabeloStore.getState();
