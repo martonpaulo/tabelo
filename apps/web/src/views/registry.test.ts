@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { listCodecs } from "@/formats";
-import { editableViewForCodec, listViews } from "./registry";
+import {
+	editableViewForCodec,
+	listViews,
+	registry,
+	viewOrder,
+} from "./registry";
+import type { ViewId } from "./types";
 import { canParse } from "./types";
 
 // Whether a view code-splits behind a lazy import is registry data, not a
@@ -72,5 +78,16 @@ describe("editable view for a format", () => {
 		// grammar, and Tabelo's own private clipboard payload.
 		expect(editableViewForCodec("text")).toBeNull();
 		expect(editableViewForCodec("tabelo")).toBeNull();
+	});
+});
+
+// The registry is exhaustive by its type; the presentation order beside it is
+// a plain list, so a view added to one and forgotten in the other would
+// compile and vanish from every chooser (#404 audit).
+describe("the presentation order", () => {
+	it("names every registered view exactly once", () => {
+		expect([...viewOrder].sort()).toEqual(
+			Object.keys(registry).sort() as ViewId[],
+		);
 	});
 });

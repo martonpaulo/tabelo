@@ -66,7 +66,9 @@ const readOnlySourceCapabilities = {
 // One icon family (owner, 2026-09-19): every text view is a file, so it wears
 // a Tabler file icon with its format's mark; the grid and the preview, which
 // are not files, keep their own shapes. See docs/design-system.md section 6.
-const registry: Record<ViewId, ViewDefinition> = {
+// Exported for the test that keeps `viewOrder` naming every entry: the type
+// makes this map exhaustive, and nothing else may enumerate views.
+export const registry: Record<ViewId, ViewDefinition> = {
 	grid: {
 		id: "grid",
 		...copy.views.grid,
