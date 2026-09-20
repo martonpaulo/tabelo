@@ -142,6 +142,19 @@ export function stepTimeline(
 	};
 }
 
+// What can be known about a match without building the reconciled document:
+// `reconcileDocument` returns its first argument unchanged only when both
+// counts agree, because that is what it starts its unchanged flags from and it
+// only ever clears them. An entry of a different size can therefore be skipped
+// with the same result, which is worth doing because the walk below would
+// otherwise reconcile a whole document for every entry it crosses.
+function sameShape(entry: TableDocument, document: TableDocument): boolean {
+	return (
+		entry.columns.length === document.columns.length &&
+		entry.rows.length === document.rows.length
+	);
+}
+
 // Where a source editor's own undo or redo lands in the document timeline.
 // Every committed parse is one timeline step, so the text a local undo restores
 // usually parses to a state the timeline already holds. Committing it as a new
@@ -163,8 +176,9 @@ export function findTimelineStep(
 	for (const [index, entry] of entries.entries()) {
 		if (entry.selectionRestore) return null;
 		if (
+			sameShape(entry.document, document) &&
 			reconcileDocument(entry.document, document, reconciliation) ===
-			entry.document
+				entry.document
 		) {
 			return index;
 		}
