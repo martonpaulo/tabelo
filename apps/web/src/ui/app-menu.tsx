@@ -107,10 +107,8 @@ export function AppMenu({
 	const [pendingTranspose, setPendingTranspose] = useState<number | null>(null);
 	const tablesLabelId = useId();
 	const workspaceLabelId = useId();
-	const openTableLabelId = useId();
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
 	const library = useTabeloStore((state) => state.library);
-	const tableName = useTabeloStore((state) => state.name);
 	// The app always shows a table, so the only one left cannot be deleted.
 	// Library order, always: a table keeps its place when it is opened, so the
 	// list never rearranges under the pointer that just chose from it (owner,
@@ -255,10 +253,9 @@ export function AppMenu({
 			) : null}
 
 			<DropdownMenuSeparator />
-			<DropdownMenuGroup aria-labelledby={openTableLabelId}>
-				<DropdownMenuLabel id={openTableLabelId} className="truncate">
-					{tableName}
-				</DropdownMenuLabel>
+			{/* No title: undo and redo walk the open table's history, and which
+			    table that is was just read two rows above (owner, 2026-09-20). */}
+			<DropdownMenuGroup>
 				{/* Undo and redo side by side: two halves of one control. */}
 				<div className="mx-1 grid grid-cols-2 gap-1">
 					<ControlTooltip reason={canUndo ? undefined : copy.disabled.undo}>
