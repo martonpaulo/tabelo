@@ -780,6 +780,8 @@ export const copy = {
 			`${joinedPositions(formats)} copy text only, without formatting.`,
 		downloadTable: "Download table",
 		copyTable: "Copy table",
+		openTable: "Open table",
+		tableOptionsNamed: (name: string) => `Options for ${name}`,
 		download: "Download",
 		cancel: "Cancel",
 		renameTable: "Rename table",

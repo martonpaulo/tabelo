@@ -22,8 +22,8 @@ import {
 	IconBrandGithub,
 	IconCheck,
 	IconClipboardCopy,
+	IconDots,
 	IconDownload,
-	IconFileExport,
 	IconFilePlus,
 	IconFileText,
 	IconLayoutGrid,
@@ -34,6 +34,7 @@ import {
 	IconTrash,
 } from "@tabler/icons-react";
 import {
+	type ReactNode,
 	type RefObject,
 	useId,
 	useMemo,
@@ -98,7 +99,6 @@ export function AppMenu({
 	// values become header text (#235): how many there are, or null.
 	const [pendingTranspose, setPendingTranspose] = useState<number | null>(null);
 	const tablesLabelId = useId();
-	const thisTableLabelId = useId();
 	const workspaceLabelId = useId();
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
 	const library = useTabeloStore((state) => state.library);
@@ -191,6 +191,17 @@ export function AppMenu({
 							onDelete={() =>
 								menuDialog.runAfterClose(() => onDeleteTable(table.id))
 							}
+							onCopy={() => menuDialog.runAfterClose(onCopy)}
+							onDownload={() => menuDialog.runAfterClose(onDownload)}
+							structure={
+								<TableStructureCommands
+									onConfirmTranspose={(typedValues) =>
+										menuDialog.runAfterClose(() =>
+											setPendingTranspose(typedValues),
+										)
+									}
+								/>
+							}
 						/>
 					))}
 				</div>
@@ -232,10 +243,7 @@ export function AppMenu({
 			) : null}
 
 			<DropdownMenuSeparator />
-			<DropdownMenuGroup aria-labelledby={thisTableLabelId}>
-				<DropdownMenuLabel id={thisTableLabelId}>
-					{copy.menuSections.thisTable}
-				</DropdownMenuLabel>
+			<DropdownMenuGroup>
 				{/* Undo and redo side by side: two halves of one control. */}
 				<div className="mx-1 grid grid-cols-2 gap-1">
 					<ControlTooltip reason={canUndo ? undefined : copy.disabled.undo}>
@@ -265,15 +273,6 @@ export function AppMenu({
 						</DropdownMenuItem>
 					</ControlTooltip>
 				</div>
-				<TableStructureCommands
-					onConfirmTranspose={(typedValues) =>
-						menuDialog.runAfterClose(() => setPendingTranspose(typedValues))
-					}
-				/>
-				<ExportSubmenu
-					onCopy={() => menuDialog.runAfterClose(onCopy)}
-					onDownload={() => menuDialog.runAfterClose(onDownload)}
-				/>
 			</DropdownMenuGroup>
 
 			<DropdownMenuSeparator />
@@ -424,6 +423,9 @@ function TableRow({
 	onOpen,
 	onRename,
 	onDelete,
+	onCopy,
+	onDownload,
+	structure,
 }: {
 	readonly table: TableEntry;
 	readonly position: number;
@@ -433,6 +435,11 @@ function TableRow({
 	readonly onOpen: () => void;
 	readonly onRename: () => void;
 	readonly onDelete: () => void;
+	readonly onCopy: () => void;
+	readonly onDownload: () => void;
+	// The open table's structure commands, rendered by the menu so their
+	// refusals are computed once rather than per row.
+	readonly structure: ReactNode;
 }) {
 	return (
 		<div className="group/table-row flex items-stretch gap-1">
@@ -460,65 +467,61 @@ function TableRow({
 					</>
 				) : null}
 			</DropdownMenuItem>
-			<DropdownMenuItem
-				aria-label={copy.actions.renameTableNamed(table.name)}
-				onClick={onRename}
-				className={cn(revealedRowActionStyles, "text-muted-foreground")}
-			>
-				<IconPencil aria-hidden />
-			</DropdownMenuItem>
-			<ControlTooltip reason={deleteRefusal}>
-				<DropdownMenuItem
-					// Quiet at rest like its neighbour, and destructive only once a
-					// pointer or the keyboard is on it: the colour warns about the
-					// command being reached, not about the row existing.
-					variant="destructive"
-					disabled={deleteRefusal !== undefined}
-					aria-label={copy.actions.deleteTableNamed(table.name)}
-					onClick={onDelete}
-					className={cn(
-						revealedRowActionStyles,
-						"not-data-disabled:not-hover:not-focus:text-muted-foreground",
-					)}
+			{/* One control beside the name, holding everything that belongs to
+			    this table: renaming it, reshaping it, writing it out, deleting
+			    it (owner, 2026-09-20). They were a row of icons and a section
+			    of their own, where nothing said which table they acted on. */}
+			<DropdownMenuSub>
+				<DropdownMenuSubTrigger
+					aria-label={copy.actions.tableOptionsNamed(table.name)}
+					className={cn(revealedRowActionStyles, "text-muted-foreground")}
 				>
-					<IconTrash aria-hidden />
-				</DropdownMenuItem>
-			</ControlTooltip>
+					<IconDots aria-hidden />
+				</DropdownMenuSubTrigger>
+				<DropdownMenuSubContent
+					aria-label={copy.actions.tableOptionsNamed(table.name)}
+				>
+					{active ? null : (
+						<DropdownMenuItem onClick={onOpen}>
+							<IconFileText aria-hidden className={tableMarkClass(position)} />
+							{copy.actions.openTable}
+						</DropdownMenuItem>
+					)}
+					<DropdownMenuItem onClick={onRename}>
+						<IconPencil aria-hidden />
+						{copy.actions.renameTable}
+					</DropdownMenuItem>
+					{/* The commands below read the document, so they are the open
+					    table's. A table that is not open offers what can be done
+					    to it from the outside, and opening it is the first item. */}
+					{active ? (
+						<>
+							<DropdownMenuSeparator />
+							{structure}
+							<DropdownMenuItem onClick={onCopy}>
+								<IconClipboardCopy aria-hidden />
+								{copy.actions.copyTable}
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={onDownload}>
+								<IconDownload aria-hidden />
+								{copy.actions.downloadTable}
+							</DropdownMenuItem>
+						</>
+					) : null}
+					<DropdownMenuSeparator />
+					<ControlTooltip reason={deleteRefusal}>
+						<DropdownMenuItem
+							variant="destructive"
+							disabled={deleteRefusal !== undefined}
+							onClick={onDelete}
+						>
+							<IconTrash aria-hidden />
+							{copy.actions.deleteTableNamed(table.name)}
+						</DropdownMenuItem>
+					</ControlTooltip>
+				</DropdownMenuSubContent>
+			</DropdownMenuSub>
 		</div>
-	);
-}
-
-// Everything that moves the table between Tabelo and a file or the clipboard,
-// behind one trigger (owner, 2026-09-20): three commands that were three rows
-// of the top level, where they competed with the commands that edit the table.
-// Writing the table out, in either direction: to a file or to the clipboard.
-// Both open the same format chooser, so the two destinations cannot drift
-// into different format lists (owner, 2026-09-20). Importing is not an
-// export and sits in the group above.
-function ExportSubmenu({
-	onCopy,
-	onDownload,
-}: {
-	readonly onCopy: () => void;
-	readonly onDownload: () => void;
-}) {
-	return (
-		<DropdownMenuSub>
-			<DropdownMenuSubTrigger>
-				<IconFileExport aria-hidden />
-				{copy.actions.exportTable}
-			</DropdownMenuSubTrigger>
-			<DropdownMenuSubContent aria-label={copy.actions.exportTable}>
-				<DropdownMenuItem onClick={onCopy}>
-					<IconClipboardCopy aria-hidden />
-					{copy.actions.copyTable}
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={onDownload}>
-					<IconDownload aria-hidden />
-					{copy.actions.downloadTable}
-				</DropdownMenuItem>
-			</DropdownMenuSubContent>
-		</DropdownMenuSub>
 	);
 }
 
