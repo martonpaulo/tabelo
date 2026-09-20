@@ -8,6 +8,7 @@ import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
 import { modShortcut } from "@tabelo/ui/lib/platform";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
+	IconArrowLeft,
 	IconClipboard,
 	IconExternalLink,
 	IconFileUpload,
@@ -105,6 +106,16 @@ export function EmptyState({
 					if (event.key === "Enter" && event.target === event.currentTarget) {
 						event.preventDefault();
 						onStartEmpty();
+						return;
+					}
+					// Escape is the way out of a surface that was opened on purpose
+					// and can be left: it does what the back control does (owner,
+					// 2026-09-20). With nothing to go back to there is nothing for
+					// it to do, because this surface is the app's own empty state.
+					if (event.key === "Escape" && onCancel) {
+						event.preventDefault();
+						event.stopPropagation();
+						onCancel();
 					}
 				}}
 				className={cn(
@@ -112,23 +123,45 @@ export function EmptyState({
 					floatingSurfaceStyles,
 				)}
 			>
-				<h2
-					id="empty-state-title"
-					className="flex items-center gap-2 font-semibold text-xl"
-				>
-					{/* The product's own mark, as the app menu shows it (owner,
+				{onCancel ? (
+					// Adding a table beside the others: a step with a way back,
+					// titled by what it does rather than by the product, and
+					// without the introduction or the credits, which belong to the
+					// first sight of Tabelo (owner, 2026-09-20).
+					<div className="flex items-center gap-2">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label={copy.empty.backFromNewTable}
+							onClick={onCancel}
+						>
+							<IconArrowLeft aria-hidden />
+						</Button>
+						<h2 id="empty-state-title" className="font-semibold text-lg">
+							{copy.empty.newTableTitle}
+						</h2>
+					</div>
+				) : (
+					<h2
+						id="empty-state-title"
+						className="flex items-center gap-2 font-semibold text-xl"
+					>
+						{/* The product's own mark, as the app menu shows it (owner,
 					    2026-09-19), rather than a generic table icon. */}
-					<img
-						aria-hidden
-						alt=""
-						src={`${import.meta.env.BASE_URL}logo.svg`}
-						className="size-6"
-					/>
-					{copy.empty.title}
-				</h2>
-				<p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-					{copy.empty.intro}
-				</p>
+						<img
+							aria-hidden
+							alt=""
+							src={`${import.meta.env.BASE_URL}logo.svg`}
+							className="size-6"
+						/>
+						{copy.empty.title}
+					</h2>
+				)}
+				{onCancel ? null : (
+					<p className="mt-2 text-muted-foreground text-sm leading-relaxed">
+						{copy.empty.intro}
+					</p>
+				)}
 				<div className="mt-6 flex flex-col gap-2">
 					<Option
 						primary
@@ -157,24 +190,14 @@ export function EmptyState({
 						onClick={startImport}
 					/>
 				</div>
-				{/* A way back out. Creating a table opens this surface on an empty
-				    table, and a reader who did not mean to create one needs the
-				    door they came through (owner, 2026-09-20): it deletes the
-				    table this surface belongs to and returns to the one before
-				    it. Absent when there is nothing to go back to. */}
-				{onCancel ? (
-					<div className="mt-4 flex justify-center">
-						<Button variant="ghost" size="sm" onClick={onCancel}>
-							{copy.empty.cancelNewTable}
-						</Button>
-					</div>
-				) : null}
-
 				{/* Each link is at least 1.5rem tall, the WCAG 2.5.8 target
 				    minimum, through vertical padding rather than larger text, so
 				    the two lines sit flush with no gap between them (owner,
 				    2026-09-19). */}
-				<div className="mt-6 flex flex-col items-center text-muted-foreground text-xs">
+				<div
+					hidden={Boolean(onCancel)}
+					className="mt-6 flex flex-col items-center text-muted-foreground text-xs"
+				>
 					<p>
 						{copy.empty.credit}{" "}
 						<ExternalLinkText href={product.author.url}>

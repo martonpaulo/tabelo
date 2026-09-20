@@ -980,7 +980,8 @@ export const copy = {
 	},
 
 	empty: {
-		cancelNewTable: "Cancel and go back",
+		newTableTitle: "New table",
+		backFromNewTable: "Go back and discard this table",
 		// The surface is named by the product, which is what it introduces.
 		title: product.name,
 		// Said once, on first sight: what the product is, who made it, and where

@@ -34,6 +34,7 @@ import {
 	IconTrash,
 } from "@tabler/icons-react";
 import {
+	type ReactNode,
 	type RefObject,
 	useId,
 	useMemo,
@@ -192,6 +193,19 @@ export function AppMenu({
 							onDelete={() =>
 								menuDialog.runAfterClose(() => onDeleteTable(table.id))
 							}
+							onCopy={() => menuDialog.runAfterClose(onCopy)}
+							onDownload={() => menuDialog.runAfterClose(onDownload)}
+							structure={
+								table.id === library.activeId ? (
+									<TableStructureCommands
+										onConfirmTranspose={(typedValues) =>
+											menuDialog.runAfterClose(() =>
+												setPendingTranspose(typedValues),
+											)
+										}
+									/>
+								) : null
+							}
 						/>
 					))}
 				</div>
@@ -266,22 +280,6 @@ export function AppMenu({
 						</DropdownMenuItem>
 					</ControlTooltip>
 				</div>
-				{/* The open table's own commands, under its name. Naming the
-				    section after the table is what says which table they act on,
-				    without a flyout per row (owner, 2026-09-20). */}
-				<TableStructureCommands
-					onConfirmTranspose={(typedValues) =>
-						menuDialog.runAfterClose(() => setPendingTranspose(typedValues))
-					}
-				/>
-				<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onCopy)}>
-					<IconClipboardCopy aria-hidden />
-					{copy.actions.copyTable}
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onDownload)}>
-					<IconDownload aria-hidden />
-					{copy.actions.downloadTable}
-				</DropdownMenuItem>
 			</DropdownMenuGroup>
 
 			<DropdownMenuSeparator />
@@ -432,6 +430,9 @@ function TableRow({
 	onOpen,
 	onRename,
 	onDelete,
+	onCopy,
+	onDownload,
+	structure,
 }: {
 	readonly table: TableEntry;
 	readonly position: number;
@@ -441,6 +442,11 @@ function TableRow({
 	readonly onOpen: () => void;
 	readonly onRename: () => void;
 	readonly onDelete: () => void;
+	readonly onCopy: () => void;
+	readonly onDownload: () => void;
+	// Rendered by the menu rather than per row, so the refusals behind them
+	// are computed once.
+	readonly structure: ReactNode;
 }) {
 	return (
 		<div className="group/table-row flex items-stretch gap-1">
@@ -497,6 +503,22 @@ function TableRow({
 						<IconPencil aria-hidden />
 						{copy.actions.renameTable}
 					</DropdownMenuItem>
+					{/* The commands below read the document, so the open table is
+					    the only one that can offer them (owner, 2026-09-20). */}
+					{active ? (
+						<>
+							<DropdownMenuSeparator />
+							{structure}
+							<DropdownMenuItem onClick={onCopy}>
+								<IconClipboardCopy aria-hidden />
+								{copy.actions.copyTable}
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={onDownload}>
+								<IconDownload aria-hidden />
+								{copy.actions.downloadTable}
+							</DropdownMenuItem>
+						</>
+					) : null}
 					<DropdownMenuSeparator />
 					<ControlTooltip reason={deleteRefusal}>
 						<DropdownMenuItem
