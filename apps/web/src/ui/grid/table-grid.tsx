@@ -1,5 +1,5 @@
 import { cn } from "@tabelo/ui/lib/utils";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import { cellText, cellValuesEqual, readCell } from "@/core/cell-value";
@@ -88,6 +88,7 @@ import {
 } from "./inline-dialogs";
 import { revealGridCell } from "./reveal-cell";
 import { RichCellEditor } from "./rich-cell-editor";
+import { coveredBySpans, decodeSpans, spansOf } from "./selection-spans";
 import {
 	fillRefusalMessage,
 	moveRefusalMessage,
@@ -413,26 +414,6 @@ function selectIntentOf(event: {
 	return event.metaKey || event.ctrlKey ? "toggle" : "replace";
 }
 
-// The selected column spans of one row, encoded so it can cross the memo
-// boundary below as a primitive. A row may sit inside several regions at once,
-// and an array of them would be a new object on every render of the grid.
-function spansOf(rects: readonly CellRect[], row: number): string {
-	return rects
-		.filter((rect) => row >= rect.top && row <= rect.bottom)
-		.map((rect) => `${rect.left}:${rect.right}`)
-		.join(",");
-}
-
-function coveredBySpans(spans: string, column: number): boolean {
-	if (spans === "") return false;
-	return spans.split(",").some((span) => {
-		const [left, right] = span.split(":").map(Number);
-		return left !== undefined && right !== undefined
-			? column >= left && column <= right
-			: false;
-	});
-}
-
 // Whether a rect list covers one cell. The header cells ask this directly; a
 // data row asks it of the three span strings it was given, because it cannot
 // see the rects from behind the memo boundary.
@@ -575,6 +556,14 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const wrappedColumns = useTabeloStore(
 		(state) => state.workspace.wrappedColumns,
 	);
+	// Every cell asks whether its column wraps, so the question is answered by
+	// membership. Memoized on the store's own array, so the set's identity is
+	// as stable as the array's and each row is still reconciled away at the
+	// memo boundary.
+	const wrappedColumnSet = useMemo(
+		() => new Set(wrappedColumns),
+		[wrappedColumns],
+	);
 	const columnWidths = useTabeloStore((state) => state.workspace.columnWidths);
 	const pinFirstDataRow = useTabeloStore(
 		(state) => state.workspace.pinFirstDataRow,
@@ -659,11 +648,15 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	const focus = activeRange(selection).focus;
 	// The rows and columns a press on their label would pick up and move, which
 	// is what their `grab` cursor says (#288).
-	const movableRows = movableAxis(
-		selection,
-		"row",
-		document.rows.length,
-		document.columns.length,
+	// Membership rather than a scan: every row asks whether it is in the block,
+	// and with the whole table selected that was one pass per row.
+	const movableRows = new Set(
+		movableAxis(
+			selection,
+			"row",
+			document.rows.length,
+			document.columns.length,
+		),
 	);
 	const movableColumns = movableAxis(
 		selection,
@@ -1794,7 +1787,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									header={cellText(column.header)}
 									content={column.header}
 									align={column.align}
-									wrapped={wrappedColumns.includes(column.id)}
+									wrapped={wrappedColumnSet.has(column.id)}
 									pinned={pinnedColumn && columnIndex === 0}
 									afterPinnedColumn={pinnedColumn && columnIndex === 1}
 									insertedFrom={insertionSide(insertedColumns, column.id)}
@@ -1852,7 +1845,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								row={row}
 								rowIndex={rowIndex}
 								columns={document.columns}
-								movable={movableRows.includes(rowIndex)}
+								movable={movableRows.has(rowIndex)}
 								focusColumn={focus.row === rowIndex ? focus.column : NO_COLUMN}
 								selectedSpans={spansOf(rects, rowIndex)}
 								// Narrowed for the same reason, and to primitives for the
@@ -1876,7 +1869,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 									editing?.row === rowIndex ? editing.column : NO_COLUMN
 								}
 								editingSeed={editing?.row === rowIndex ? editingSeed : null}
-								wrappedColumns={wrappedColumns}
+								wrappedColumns={wrappedColumnSet}
 								insertedFrom={insertionSide(insertedRows, row.id)}
 								insertedColumns={insertedColumns}
 								pinnedRow={pinnedRow && rowIndex === 0}
@@ -1989,7 +1982,7 @@ interface DataRowProps {
 	readonly editingColumn: number;
 	// The character that opened the editor, when typing is what opened it.
 	readonly editingSeed: string | null;
-	readonly wrappedColumns: readonly ColumnId[];
+	readonly wrappedColumns: ReadonlySet<ColumnId>;
 	// The side this row eases in from when an insert command just added it, and
 	// the columns of the same command, which every row draws. Both are null on
 	// every other change to the document, so an ordinary edit leaves each row's
@@ -2054,12 +2047,20 @@ const DataRow = memo(function DataRow({
 	// together when pane entry changes.
 	const entered = usePaneEntered();
 
+	// The four encoded span strings, decoded once for this row. Every cell of
+	// the row then asks about numbers rather than re-parsing the strings it
+	// was handed.
+	const selectedBounds = decodeSpans(selectedSpans);
+	const copiedBounds = decodeSpans(copiedSpans);
+	const copiedBoundsAbove = decodeSpans(copiedSpansAbove);
+	const copiedBoundsBelow = decodeSpans(copiedSpansBelow);
+
 	// The copied region as far as this row can see it, which is exactly as far
 	// as the edge rule ever asks: the cell itself and its four neighbours.
 	const copiedAt = (row: number, column: number) => {
-		if (row === rowIndex) return coveredBySpans(copiedSpans, column);
-		if (row === rowIndex - 1) return coveredBySpans(copiedSpansAbove, column);
-		if (row === rowIndex + 1) return coveredBySpans(copiedSpansBelow, column);
+		if (row === rowIndex) return coveredBySpans(copiedBounds, column);
+		if (row === rowIndex - 1) return coveredBySpans(copiedBoundsAbove, column);
+		if (row === rowIndex + 1) return coveredBySpans(copiedBoundsBelow, column);
 		return false;
 	};
 
@@ -2139,7 +2140,7 @@ const DataRow = memo(function DataRow({
 
 			{columns.map((column, columnIndex) => {
 				const isFocus = columnIndex === focusColumn;
-				const inSelection = coveredBySpans(selectedSpans, columnIndex);
+				const inSelection = coveredBySpans(selectedBounds, columnIndex);
 				const copiedEdges = clipboardEdgesAt(copiedAt, rowIndex, columnIndex);
 				const cellValue = readCell(row, column.id);
 				const value = cellText(cellValue);
@@ -2147,7 +2148,7 @@ const DataRow = memo(function DataRow({
 				const divergent = cellTypeDiverges(cellValue, column.expectedType);
 				const describesType = type !== "string" || divergent;
 				const isEditing = columnIndex === editingColumn;
-				const wrapped = wrappedColumns.includes(column.id);
+				const wrapped = wrappedColumns.has(column.id);
 				const pinnedCell = pinnedColumn && columnIndex === 0;
 				const columnInsertedFrom = insertionSide(insertedColumns, column.id);
 
