@@ -51,6 +51,18 @@ export async function expectNoAxeViolations(
 	testInfo: TestInfo,
 	state: string,
 ): Promise<void> {
+	// Scan settled colors, not a transient mixture while the popup fades in.
+	// Finite animation completion is observable; caret blinking is excluded.
+	await page.evaluate(async () => {
+		await Promise.all(
+			document
+				.getAnimations()
+				.filter((animation) =>
+					Number.isFinite(animation.effect?.getComputedTiming().endTime),
+				)
+				.map((animation) => animation.finished.catch(() => {})),
+		);
+	});
 	const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
 	const violations = results.violations as readonly AxeViolation[];
 

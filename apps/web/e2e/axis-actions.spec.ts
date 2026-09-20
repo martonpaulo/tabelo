@@ -357,7 +357,7 @@ test("both menu surfaces show the same insert legends", async ({
 	const apple = process.platform === "darwin";
 	// The expectation comes from the OS running the browser rather than from
 	// the app's own platform detection, so the two have to agree independently.
-	const columnKeys = apple ? "⌥↵" : "Alt+Enter";
+	const columnKeys = apple ? ["⌥", "↵"] : ["Alt", "Enter"];
 
 	const columnMenu = await tabelo.openColumnMenu(1);
 	const fromAxis = columnMenu.getByRole("menuitem", {

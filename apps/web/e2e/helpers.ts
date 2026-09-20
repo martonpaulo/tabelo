@@ -1,7 +1,13 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
+import { DEFAULT_TABLE_NAME } from "@/copy/product";
 import { HEADER_ROW } from "@/core/selection";
-import { LIBRARY_KEY, tableKey } from "@/persistence/schema";
+import {
+	LIBRARY_KEY,
+	LIBRARY_VERSION,
+	tableKey,
+	tableRecoveryKey,
+} from "@/persistence/schema";
 import type { NoticeSeverity } from "@/state/notice-queue";
 import { getView, listViews } from "@/views/registry";
 import type { ViewId } from "@/views/types";
@@ -241,28 +247,51 @@ export function activeTableStorageKey(page: Page): Promise<string> {
 	);
 }
 
-// The download chooser, from a page alone: Download table moved into the app
-// menu's Export submenu (owner, 2026-09-20), and several specs reach it
-// without the page object.
+// Reach the active table's command, so closing the chooser returns to its
+// menu opener. Shortcut behavior has its own tests.
 export async function openDownloadChooser(page: Page): Promise<void> {
-	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
-	await page.getByRole("menuitem", { name: copy.actions.exportTable }).click();
-	await page
-		.getByRole("menu", { name: copy.actions.exportTable })
-		.getByRole("menuitem", { name: copy.actions.downloadTable })
+	const menu = await new TabeloPage(page).openTableOptions();
+	await menu
+		.getByRole("menuitem", { name: copy.actions.downloadTable, exact: true })
 		.click();
 }
 
 // The name the active table is stored under. Names are user content minted at
 // runtime, so a spec asks the page rather than assuming one.
 export async function activeTableName(page: Page): Promise<string> {
-	return page.evaluate(
-		(key) => {
-			const saved = JSON.parse(localStorage.getItem(key) ?? "null");
-			return typeof saved?.name === "string" ? saved.name : "";
-		},
-		await activeTableStorageKey(page),
+	return (
+		(await page.evaluate(
+			(key) => {
+				const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+				return typeof saved?.name === "string" ? saved.name : null;
+			},
+			await activeTableStorageKey(page),
+		)) ?? DEFAULT_TABLE_NAME
 	);
+}
+
+// Seed a current library before navigation, including intentionally unreadable
+// table bytes. The fixture never needs to touch about:blank's unavailable storage.
+export async function seedTableStorage(
+	page: Page,
+	raw: string,
+): Promise<{ key: string; recoveryKey: string }> {
+	const id = "fixture-table";
+	const key = tableKey(id);
+	await page.addInitScript(
+		({ libraryKey, index, key, raw }) => {
+			if (localStorage.getItem(key) !== null) return;
+			localStorage.setItem(libraryKey, JSON.stringify(index));
+			localStorage.setItem(key, raw);
+		},
+		{
+			libraryKey: LIBRARY_KEY,
+			index: { version: LIBRARY_VERSION, tables: [id], activeId: id },
+			key,
+			raw,
+		},
+	);
+	return { key, recoveryKey: tableRecoveryKey(id) };
 }
 
 // Rename and delete sit on the row of the table they act on and are named
@@ -273,10 +302,14 @@ export async function activeTableMenuItem(
 	menu: Locator,
 	label: (name: string) => string,
 ): Promise<Locator> {
-	return menu.getByRole("menuitem", {
-		name: label(await activeTableName(page)),
-		exact: true,
-	});
+	const name = await activeTableName(page);
+	const target = menu.getByRole("menuitem", { name: label(name), exact: true });
+	if (await target.count()) return target;
+	const optionsName = copy.actions.tableOptionsNamed(name);
+	await menu.getByRole("menuitem", { name: optionsName, exact: true }).click();
+	return page
+		.getByRole("menu", { name: optionsName, exact: true })
+		.getByRole("menuitem", { name: label(name), exact: true });
 }
 
 // Whether a notice is what the pointer would hit at the centre of a control.
@@ -310,6 +343,7 @@ export async function openSubmenu(
 
 export class TabeloPage {
 	readonly workspace: Locator;
+	readonly welcome: Locator;
 	readonly notices: Locator;
 	// The two permanent announcement regions. They exist whether or not there
 	// is anything to say, which is the contract they are here to prove.
@@ -317,6 +351,12 @@ export class TabeloPage {
 	readonly alerts: Locator;
 
 	constructor(readonly page: Page) {
+		this.welcome = page.getByRole("region", { includeHidden: true }).filter({
+			has: page.getByRole("button", {
+				name: copy.empty.emptyAction,
+				includeHidden: true,
+			}),
+		});
 		this.workspace = page.getByRole("main", { name: copy.a11y.workspace });
 		this.notices = page.getByRole("region", { name: copy.a11y.notices });
 		this.announcements = page.locator("#global-announcements");
@@ -348,7 +388,7 @@ export class TabeloPage {
 		// a stalled first paint into "the welcome surface never appeared" instead
 		// of a click that spends the full timeout on a subtree React is still
 		// replacing.
-		const welcome = this.page.getByRole("region", { name: copy.empty.title });
+		const welcome = this.welcome;
 		await welcome.waitFor({ state: "visible" });
 		await welcome.getByRole("button", { name: copy.empty.emptyAction }).click();
 	}
@@ -530,6 +570,7 @@ export class TabeloPage {
 	}
 
 	async openAppMenu(): Promise<Locator> {
+		await expect(this.page.getByRole("dialog")).toHaveCount(0);
 		const menu = this.page.getByRole("menu", {
 			name: copy.actions.openAppMenu,
 		});
@@ -541,38 +582,38 @@ export class TabeloPage {
 		return menu;
 	}
 
-	// Import file, Copy as, and Download table share one Export submenu (owner,
-	// 2026-09-20). It is its own menu once open, so it is addressed by its own
-	// accessible name rather than through the parent it hangs off.
-	async openExportSubmenu(): Promise<Locator> {
+	async openTableOptions(): Promise<Locator> {
 		const parent = await this.openAppMenu();
-		const submenu = this.page.getByRole("menu", {
-			name: copy.actions.exportTable,
-		});
-		await parent
-			.getByRole("menuitem", { name: copy.actions.exportTable })
-			.click();
-		await submenu.waitFor({ state: "visible" });
-		return submenu;
+		const name = copy.actions.tableOptionsNamed(
+			await activeTableName(this.page),
+		);
+		await parent.getByRole("menuitem", { name, exact: true }).click();
+		const menu = this.page.getByRole("menu", { name, exact: true });
+		await menu.waitFor({ state: "visible" });
+		return menu;
 	}
 
-	async openCopyAsSubmenu(): Promise<Locator> {
-		const parent = await this.openExportSubmenu();
-		const submenu = this.page.getByRole("menu", {
-			name: copy.actions.copyAs,
-		});
-		await parent
-			.getByRole("menuitem", { name: copy.actions.copyAs })
-			.first()
+	async openCopyDialog(): Promise<Locator> {
+		const menu = await this.openTableOptions();
+		await menu
+			.getByRole("menuitem", { name: copy.actions.copyTable, exact: true })
 			.click();
-		await submenu.waitFor({ state: "visible" });
-		return submenu;
+		const dialog = this.page.getByRole("dialog", {
+			name: copy.actions.copyTable,
+			exact: true,
+		});
+		await dialog.waitFor({ state: "visible" });
+		return dialog;
 	}
 
 	async copyAs(view: ViewId): Promise<void> {
-		const submenu = await this.openCopyAsSubmenu();
-		await submenu
-			.getByRole("menuitem", { name: getView(view).label, exact: true })
+		const dialog = await this.openCopyDialog();
+		await dialog.getByRole("radio", { name: getView(view).label }).click();
+		await dialog
+			.getByRole("button", {
+				name: copy.download.copyAsFormat(getView(view).label),
+				exact: true,
+			})
 			.click();
 	}
 
@@ -603,7 +644,7 @@ export class TabeloPage {
 			return;
 		}
 		const parent = exportCommands.has(command)
-			? await this.openExportSubmenu()
+			? await this.openTableOptions()
 			: await this.openAppMenu();
 		await parent
 			.getByRole("menuitem", { name: appCommandLabels[command] })
@@ -935,11 +976,9 @@ export class TabeloPage {
 		text: string,
 		mimeType = "text/plain",
 	): Promise<void> {
+		await expect(this.page.getByRole("dialog")).toHaveCount(0);
 		const chooserPromise = this.page.waitForEvent("filechooser");
-		const submenu = await this.openExportSubmenu();
-		await submenu
-			.getByRole("menuitem", { name: copy.actions.importFile })
-			.click();
+		await this.page.keyboard.press("ControlOrMeta+o");
 		const chooser = await chooserPromise;
 		await chooser.setFiles({
 			name,
@@ -949,11 +988,9 @@ export class TabeloPage {
 	}
 
 	async cancelFileImport(): Promise<void> {
+		await expect(this.page.getByRole("dialog")).toHaveCount(0);
 		const chooserPromise = this.page.waitForEvent("filechooser");
-		const submenu = await this.openExportSubmenu();
-		await submenu
-			.getByRole("menuitem", { name: copy.actions.importFile })
-			.click();
+		await this.page.keyboard.press("ControlOrMeta+o");
 		const chooser = await chooserPromise;
 		await chooser.setFiles([]);
 	}

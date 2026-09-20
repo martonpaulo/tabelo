@@ -10,7 +10,7 @@ import type { TabeloPage } from "./helpers";
 
 async function createTable(tabelo: TabeloPage): Promise<void> {
 	await tabelo.runAppCommand("newTable");
-	const welcome = tabelo.page.getByRole("region", { name: copy.empty.title });
+	const welcome = tabelo.welcome;
 	await expect(welcome).toBeVisible();
 	await welcome.getByRole("button", { name: copy.empty.emptyAction }).click();
 }
@@ -25,14 +25,21 @@ test("a new table is added beside the current one and both keep their content", 
 	await tabelo.editCell(1, 1, "Second table");
 
 	const menu = await tabelo.openAppMenu();
-	const entries = menu.getByRole("menuitem", { name: DEFAULT_TABLE_NAME });
+	const entries = menu.getByRole("menuitem", {
+		name: new RegExp(`^${DEFAULT_TABLE_NAME}`),
+	});
 	await expect(entries).toHaveCount(2);
 	await entries.first().click();
+	await tabelo.page.keyboard.press("Escape");
 
 	await expect(tabelo.cell(1, 1)).toHaveText("First table");
 
 	const back = await tabelo.openAppMenu();
-	await back.getByRole("menuitem", { name: DEFAULT_TABLE_NAME }).last().click();
+	await back
+		.getByRole("menuitem", { name: new RegExp(`^${DEFAULT_TABLE_NAME}`) })
+		.last()
+		.click();
+	await tabelo.page.keyboard.press("Escape");
 	await expect(tabelo.cell(1, 1)).toHaveText("Second table");
 });
 
@@ -49,7 +56,7 @@ test("a table survives a reload with the table that was active", async ({
 
 	const menu = await tabelo.openAppMenu();
 	await expect(
-		menu.getByRole("menuitem", { name: DEFAULT_TABLE_NAME }),
+		menu.getByRole("menuitem", { name: new RegExp(`^${DEFAULT_TABLE_NAME}`) }),
 	).toHaveCount(2);
 });
 
@@ -77,6 +84,6 @@ test("deleting a table asks first and leaves the others alone", async ({
 	await expect(tabelo.cell(1, 1)).toHaveText("Keep me");
 	const menu = await tabelo.openAppMenu();
 	await expect(
-		menu.getByRole("menuitem", { name: DEFAULT_TABLE_NAME }),
-	).toHaveCount(0);
+		menu.getByRole("menuitem", { name: new RegExp(`^${DEFAULT_TABLE_NAME}`) }),
+	).toHaveCount(1);
 });

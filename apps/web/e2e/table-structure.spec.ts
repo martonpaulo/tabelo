@@ -13,7 +13,7 @@ async function runStructureCommand(
 	tabelo: TabeloPage,
 	label: string,
 ): Promise<void> {
-	const menu = await tabelo.openAppMenu();
+	const menu = await tabelo.openTableOptions();
 	await menu.getByRole("menuitem", { name: label }).click();
 	await menu.waitFor({ state: "hidden" });
 }
@@ -147,7 +147,7 @@ test("deleting empty rows and columns keeps the content, is one undo step, and t
 	await expect(tabelo.header(3)).toHaveCount(0);
 
 	// Nothing empty is left, so the command stays in place and explains why.
-	const menu = await tabelo.openAppMenu();
+	const menu = await tabelo.openTableOptions();
 	const item = menu.getByRole("menuitem", {
 		name: copy.actions.deleteEmptyRowsAndColumnsDescription,
 	});
@@ -156,6 +156,7 @@ test("deleting empty rows and columns keeps the content, is one undo step, and t
 	await tabelo.page.keyboard.press("Escape");
 	await menu.waitFor({ state: "hidden" });
 
+	await tabelo.page.keyboard.press("Escape");
 	await tabelo.runAppCommand("undo");
 	await expect(tabelo.header(3)).toHaveText("city");
 	await expect(tabelo.cell(3, 1)).toHaveText("Paulo");

@@ -373,10 +373,11 @@ test("only view content participates in native text selection", async ({
 	).toHaveCSS("user-select", "text");
 
 	const appMenu = await tabelo.openAppMenu();
-	await expect(appMenu.getByText(copy.app.name, { exact: true })).toHaveCSS(
-		"user-select",
-		"none",
-	);
+	await expect(
+		appMenu.getByText(`${copy.app.name} · ${copy.app.copyright}`, {
+			exact: true,
+		}),
+	).toHaveCSS("user-select", "none");
 	await tabelo.page.keyboard.press("Escape");
 
 	// A blank table shows the preview's empty state (#357), so give it a value.

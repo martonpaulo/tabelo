@@ -180,6 +180,7 @@ for (const view of mappedViews) {
 			.filter({ hasText: new RegExp(`^${index + 1}$`) })
 			.click();
 
+		await expect.poll(async () => (await drawn(pane, [])).bands.length).toBe(1);
 		const state = await drawn(pane, ["Paulo", "Madrid", "Ingrid"]);
 		expect(state.bands).toHaveLength(1);
 		expect(state.textBands).toBe(0);

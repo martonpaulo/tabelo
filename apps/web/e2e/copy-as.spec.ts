@@ -52,19 +52,19 @@ test("offers every registered format and nothing enumerated by hand", async ({
 	tabelo,
 }) => {
 	await loadFixture(tabelo);
-	const submenu = await tabelo.openCopyAsSubmenu();
+	const submenu = await tabelo.openCopyDialog();
 
 	// The count is the contract: a codec added to the registry has to appear
 	// here without an edit, and none may appear that the registry does not know.
-	await expect(submenu.getByRole("menuitem")).toHaveCount(listCodecs().length);
+	await expect(submenu.getByRole("radio")).toHaveCount(listCodecs().length);
 	for (const codec of listCodecs()) {
 		await expect(
-			submenu.getByRole("menuitem", { name: copy.views[codec.id].label }),
+			submenu.getByRole("radio", { name: copy.views[codec.id].label }),
 		).toBeVisible();
 	}
 });
 
-// While the table holds formatting, the submenu says up front which formats
+// While the table holds formatting, the dialog says up front which formats
 // copy text only, and says nothing when there is nothing to lose (#306). The
 // note describes the submenu rather than joining its items, so the rows stay
 // the registry's and nothing else.
@@ -73,8 +73,8 @@ test("names the text-only formats only while the table holds formatting", async 
 	page,
 }) => {
 	// The blank table the welcome surface starts holds no formatting.
-	let submenu = await tabelo.openCopyAsSubmenu();
-	await expect(submenu).not.toHaveAttribute("aria-describedby");
+	let submenu = await tabelo.openCopyDialog();
+	await expect(submenu.locator("[data-severity=warning]")).toHaveCount(0);
 	await page.keyboard.press("Escape");
 	await page.keyboard.press("Escape");
 	await expect(page.getByRole("menu")).toHaveCount(0);
@@ -85,9 +85,10 @@ test("names the text-only formats only while the table holds formatting", async 
 		"text/markdown",
 	);
 	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
-	submenu = await tabelo.openCopyAsSubmenu();
-	await expect(submenu).toHaveAccessibleDescription(/\S/);
-	await expect(submenu.getByRole("menuitem")).toHaveCount(listCodecs().length);
+	submenu = await tabelo.openCopyDialog();
+	await submenu.getByRole("radio", { name: copy.views.csv.label }).click();
+	await expect(submenu.locator("[data-severity=warning]")).toBeVisible();
+	await expect(submenu.getByRole("radio")).toHaveCount(listCodecs().length);
 });
 
 for (const codec of listCodecs()) {
@@ -139,17 +140,17 @@ test("refuses a format that cannot represent the table, in the same words", asyn
 	await tabelo.editHeader(2, "Name", "City");
 	await tabelo.dismissNotices();
 
-	const submenu = await tabelo.openCopyAsSubmenu();
-	const json = submenu.getByRole("menuitem", {
+	const submenu = await tabelo.openCopyDialog();
+	const json = submenu.getByRole("radio", {
 		name: copy.views.json.label,
-		exact: true,
 	});
 	await expect(json).toBeDisabled();
 
 	// The correction is a separate command beside the refused row, never the
 	// row answering to a click it reports itself unable to take.
-	const fix = submenu.getByRole("menuitem", {
+	const fix = submenu.getByRole("button", {
 		name: copy.a11y.goToCellFor(copy.views.json.label),
+		exact: true,
 	});
 	await expect(fix).toBeEnabled();
 

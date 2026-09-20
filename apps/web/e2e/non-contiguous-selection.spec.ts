@@ -403,7 +403,6 @@ test("deleting removes exactly the selected columns, gap and all", async ({
 });
 
 test("copying two separated columns produces a well-formed two-column table", async ({
-	page,
 	tabelo,
 }) => {
 	await seedRoster(tabelo);
@@ -432,8 +431,7 @@ test("copying two separated columns produces a well-formed two-column table", as
 	// The gap has closed, so pasting the result back builds exactly those two
 	// columns rather than a ragged table.
 	await tabelo.runAppCommand("newTable");
-	await page
-		.getByRole("region", { name: copy.empty.title })
+	await tabelo.welcome
 		.getByRole("button", { name: copy.empty.emptyAction })
 		.click();
 	await tabelo.paste(copied);

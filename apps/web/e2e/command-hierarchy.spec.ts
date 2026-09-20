@@ -15,12 +15,6 @@ test("document actions live in one compact floating menu", async ({
 	await expect(
 		menu.getByRole("menuitem", { name: copy.actions.newTable }),
 	).toBeVisible();
-	// Everything that moves the table in or out of Tabelo sits behind one
-	// Export trigger (owner, 2026-09-20), so the top level carries the trigger
-	// and not its three commands.
-	await expect(
-		menu.getByRole("menuitem", { name: copy.actions.exportTable }),
-	).toBeVisible();
 	await expect(
 		menu.getByRole("menuitem", { name: copy.actions.importFile }),
 	).toHaveCount(0);
@@ -33,29 +27,19 @@ test("document actions live in one compact floating menu", async ({
 	await expect(
 		menu.getByRole("menuitem", { name: copy.actions.github }),
 	).toBeVisible();
-	await expect(
-		menu.getByRole("menuitem", { name: copy.appUpdate.label }),
-	).toHaveCount(0);
-	await expect(
-		menu.getByRole("menuitem", { name: copy.views.markdown.label }),
-	).toHaveCount(0);
-
-	// Formats are chosen in the download chooser, not by making Export carry
-	// one item per format.
-	await menu.getByRole("menuitem", { name: copy.actions.exportTable }).click();
-	const exportMenu = page.getByRole("menu", { name: copy.actions.exportTable });
-	await expect(exportMenu).toBeVisible();
+	await page.keyboard.press("Escape");
+	const tableMenu = await tabelo.openTableOptions();
 	for (const label of [
-		copy.actions.importFile,
-		copy.actions.copyAs,
+		copy.actions.copyTable,
 		copy.actions.downloadTable,
+		copy.actions.renameTable,
 	]) {
 		await expect(
-			exportMenu.getByRole("menuitem", { name: label }),
+			tableMenu.getByRole("menuitem", { name: label, exact: true }),
 		).toBeVisible();
 	}
 	await expect(
-		exportMenu.getByRole("menuitem", { name: copy.views.markdown.label }),
+		tableMenu.getByRole("menuitem", { name: copy.actions.importFile }),
 	).toHaveCount(0);
 });
 
@@ -185,7 +169,7 @@ test("a dialog command fully replaces the app menu", async ({
 	tabelo,
 }) => {
 	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
-	const exportMenu = await tabelo.openExportSubmenu();
+	const exportMenu = await tabelo.openTableOptions();
 	await exportMenu
 		.getByRole("menuitem", { name: copy.actions.downloadTable })
 		.click();

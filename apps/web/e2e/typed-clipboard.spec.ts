@@ -30,8 +30,7 @@ async function selectRange(
 // path where a column's expectation is created rather than already set.
 async function startBlankTable(tabelo: TabeloPage): Promise<void> {
 	await tabelo.runAppCommand("newTable");
-	await tabelo.page
-		.getByRole("region", { name: copy.empty.title })
+	await tabelo.welcome
 		.getByRole("button", { name: copy.empty.emptyAction })
 		.click();
 }

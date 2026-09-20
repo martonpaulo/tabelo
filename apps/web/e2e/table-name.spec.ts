@@ -19,7 +19,7 @@ async function openRenameItem(page: Page) {
 	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
 	const menu = appMenu(page);
 	await menu.waitFor({ state: "visible" });
-	return activeTableMenuItem(page, menu, copy.actions.renameTableNamed);
+	return activeTableMenuItem(page, menu, () => copy.actions.renameTable);
 }
 
 async function openRenameDialog(page: Page) {
@@ -130,7 +130,7 @@ test("typing lands in the rename field as soon as the dialog opens", async ({
 	const item = await activeTableMenuItem(
 		page,
 		menu,
-		copy.actions.renameTableNamed,
+		() => copy.actions.renameTable,
 	);
 	await item.focus();
 	await page.keyboard.press("Enter");

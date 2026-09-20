@@ -426,6 +426,7 @@ test("deleting a table is destructive while New table and Close view stay neutra
 	);
 	await expect(deleteItem).toHaveAttribute("data-variant", "destructive");
 	await page.keyboard.press("Escape");
+	await page.keyboard.press("Escape");
 
 	const paneMenu = await tabelo.openPaneMenu("markdown");
 	await expect(
@@ -468,55 +469,18 @@ test("dialog radio choices support the keyboard and Cancel restores focus", asyn
 	await expect(trigger).toBeFocused();
 });
 
-// The only submenu class docs/design-system/3-components.md allows: a flat list of
-// immediate commands. Copy as now hangs off Export (owner, 2026-09-20), which
-// makes this the deepest place in the product where focus could be trapped, so
-// the whole open-and-leave path is walked by keyboard, layer by layer.
-test("the Copy as submenu opens, navigates, and closes without trapping focus", async ({
+// Copy table now opens the same format chooser as Download.
+test("the Copy table dialog is keyboard operable and returns focus to the app menu", async ({
 	page,
 	tabelo,
 }) => {
-	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
-	const exportMenu = await tabelo.openExportSubmenu();
-	const parentItem = exportMenu.getByRole("menuitem", {
-		name: copy.actions.copyAs,
-	});
-
-	// The trigger says it opens something and says whether it is open, so a
-	// screen reader announces the submenu before it is entered.
-	await expect(parentItem).toHaveAttribute("aria-haspopup", "menu");
-	await expect(parentItem).toHaveAttribute("aria-expanded", "false");
-
-	await parentItem.focus();
+	const trigger = page.getByRole("button", { name: copy.actions.openAppMenu });
+	const dialog = await tabelo.openCopyDialog();
+	const choices = dialog.getByRole("radio");
+	await choices.first().focus();
 	await page.keyboard.press("ArrowRight");
-	const submenu = page.getByRole("menu", { name: copy.actions.copyAs });
-	await expect(submenu).toBeVisible();
-	await expect(parentItem).toHaveAttribute("aria-expanded", "true");
-
-	// Arrow navigation reaches the rows rather than stopping at the first.
-	const rows = submenu.getByRole("menuitem");
-	await expect(rows.first()).toBeFocused();
-	await page.keyboard.press("ArrowDown");
-	await expect(rows.nth(1)).toBeFocused();
-
-	// Escape leaves one layer and nothing else, with focus back on the row that
-	// opened it.
+	await expect(choices.nth(1)).toBeFocused();
 	await page.keyboard.press("Escape");
-	await expect(submenu).toBeHidden();
-	await expect(exportMenu).toBeVisible();
-	await expect(parentItem).toBeFocused();
-
-	await page.keyboard.press("Escape");
-	await expect(exportMenu).toBeHidden();
-	await expect(menu).toBeVisible();
-	await expect(
-		menu.getByRole("menuitem", { name: copy.actions.exportTable }),
-	).toBeFocused();
-
-	// The last Escape closes the menu itself and returns focus to its trigger.
-	await page.keyboard.press("Escape");
-	await expect(menu).toBeHidden();
-	await expect(
-		page.getByRole("button", { name: copy.actions.openAppMenu }),
-	).toBeFocused();
+	await expect(dialog).toBeHidden();
+	await expect(trigger).toBeFocused();
 });

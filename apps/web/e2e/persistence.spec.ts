@@ -8,6 +8,7 @@ import {
 	PREFERENCES_VERSION,
 } from "@/preferences/contract";
 import { expect, test } from "./fixtures";
+import { seedTableStorage } from "./helpers";
 
 const validMarkdown = "| Name |\n| --- |\n| Ingrid |";
 const invalidMarkdown = "| Name |\n| not a divider |\n| Ingrid |";
@@ -45,16 +46,15 @@ test("unreadable storage stays byte-exact until explicit replacement", async ({
 	tabelo,
 }) => {
 	const raw = "{invalid json\nwith exact bytes\t\u0000";
-	await tabelo.page.addInitScript((value) => {
-		window.localStorage.setItem("tabelo.document", value);
-	}, raw);
+	const { key, recoveryKey } = await seedTableStorage(tabelo.page, raw);
 
 	await tabelo.page.reload();
 
 	await expect(tabelo.notice()).toBeVisible();
 	expect(
-		await tabelo.page.evaluate(() =>
-			window.localStorage.getItem("tabelo.document"),
+		await tabelo.page.evaluate(
+			(name) => window.localStorage.getItem(name),
+			key,
 		),
 	).toBe(raw);
 
@@ -64,13 +64,15 @@ test("unreadable storage stays byte-exact until explicit replacement", async ({
 
 	await expect(tabelo.notice()).toBeVisible();
 	expect(
-		await tabelo.page.evaluate(() =>
-			window.localStorage.getItem("tabelo.document.recovery"),
+		await tabelo.page.evaluate(
+			(name) => window.localStorage.getItem(name),
+			recoveryKey,
 		),
 	).toBe(raw);
 	expect(
-		await tabelo.page.evaluate(() =>
-			JSON.parse(window.localStorage.getItem("tabelo.document") ?? "null"),
+		await tabelo.page.evaluate(
+			(name) => JSON.parse(window.localStorage.getItem(name) ?? "null"),
+			key,
 		),
 	).toMatchObject({ version: CURRENT_VERSION, draft: null });
 });
@@ -81,9 +83,7 @@ test("a table from a newer version is named as such and downloads as found", asy
 	tabelo,
 }) => {
 	const raw = JSON.stringify({ version: CURRENT_VERSION + 1, future: "shape" });
-	await tabelo.page.addInitScript((value) => {
-		window.localStorage.setItem("tabelo.document", value);
-	}, raw);
+	const { key } = await seedTableStorage(tabelo.page, raw);
 	await tabelo.page.reload();
 	await expect(tabelo.notice()).toBeVisible();
 	const newer = await tabelo.notice().textContent();
@@ -98,9 +98,9 @@ test("a table from a newer version is named as such and downloads as found", asy
 	expect(readFileSync(path, "utf8")).toBe(raw);
 
 	// The same notice for damaged bytes reads differently.
-	await tabelo.page.addInitScript(() => {
-		window.localStorage.setItem("tabelo.document", "{damaged");
-	});
+	await tabelo.page.evaluate((name) => {
+		window.localStorage.setItem(name, "{damaged");
+	}, key);
 	await tabelo.page.reload();
 	await expect(tabelo.notice()).toBeVisible();
 	expect(await tabelo.notice().textContent()).not.toBe(newer);
@@ -118,7 +118,7 @@ test("quota notice clears after a later successful write", async ({
 			Storage.prototype.setItem = original;
 		};
 		Storage.prototype.setItem = function (key, value) {
-			if (key === "tabelo.document") {
+			if (key.startsWith("tabelo.table.")) {
 				throw new DOMException("full", "QuotaExceededError");
 			}
 			return original.call(this, key, value);

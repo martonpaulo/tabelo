@@ -207,7 +207,7 @@ test("a spreadsheet paste opens the TSV source and focuses the table", async ({
 }) => {
 	// A genuine first visit, where the welcome surface owns focus.
 	await tabelo.runAppCommand("newTable");
-	const welcome = page.getByRole("region", { name: copy.empty.title });
+	const welcome = tabelo.welcome;
 	await expect(welcome).toBeVisible();
 
 	await page.evaluate(() => {

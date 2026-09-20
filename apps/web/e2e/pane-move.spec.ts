@@ -1,6 +1,6 @@
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
-import { outsidePinnedHeader } from "./helpers";
+import { activeTableStorageKey, outsidePinnedHeader } from "./helpers";
 
 test("Move pane cancellation changes nothing and restores focus", async ({
 	tabelo,
@@ -108,22 +108,25 @@ test("Move pane carries an invalid draft and pane preferences through an asymmet
 	await expect(menu).toBeHidden();
 
 	await expect
-		.poll(() =>
-			page.evaluate((id) => {
-				const raw = localStorage.getItem("tabelo.document");
-				if (!raw) return null;
-				const stored = JSON.parse(raw) as {
-					workspace: { panes: { id: string; slots: string[] }[] };
-					draft: { paneId: string; text: string } | null;
-				};
-				return {
-					slots: stored.workspace.panes
-						.find((pane) => pane.id === id)
-						?.slots.join(""),
-					draftPaneId: stored.draft?.paneId,
-					draftText: stored.draft?.text,
-				};
-			}, paneId),
+		.poll(async () =>
+			page.evaluate(
+				({ id, key }) => {
+					const raw = localStorage.getItem(key);
+					if (!raw) return null;
+					const stored = JSON.parse(raw) as {
+						workspace: { panes: { id: string; slots: string[] }[] };
+						draft: { paneId: string; text: string } | null;
+					};
+					return {
+						slots: stored.workspace.panes
+							.find((pane) => pane.id === id)
+							?.slots.join(""),
+						draftPaneId: stored.draft?.paneId,
+						draftText: stored.draft?.text,
+					};
+				},
+				{ id: paneId, key: await activeTableStorageKey(page) },
+			),
 		)
 		.toEqual({ slots: "cd", draftPaneId: paneId, draftText: invalid });
 

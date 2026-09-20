@@ -1,7 +1,7 @@
 import { copy } from "@/copy/copy";
 import { PERSISTED_VERSION } from "@/persistence/state-schema";
 import { expect, test } from "./fixtures";
-import { activeTableStorageKey, TabeloPage } from "./helpers";
+import { seedTableStorage, TabeloPage } from "./helpers";
 
 async function importTypedRow(tabelo: TabeloPage) {
 	await tabelo.importFile(
@@ -142,49 +142,46 @@ test("the grid exposes real and expected types without replacing cell names", as
 test("a mixed column distinguishes real type from its number expectation", async ({
 	page,
 }) => {
-	await page.addInitScript(
-		({ key, state }) => localStorage.setItem(key, JSON.stringify(state)),
-		{
-			key: await activeTableStorageKey(page),
-			state: {
-				version: PERSISTED_VERSION,
-				name: "Typed values",
-				document: {
-					columns: [
-						{
-							id: "c-value",
-							header: "value",
-							align: "center",
-							expectedType: "number",
-						},
-					],
-					rows: [
-						{ id: "r-number", cells: { "c-value": 7 } },
-						{ id: "r-string", cells: { "c-value": "7" } },
-					],
-				},
-				workspace: {
-					layout: "single",
-					pinFirstDataRow: false,
-					pinFirstDataColumn: false,
-					panes: [
-						{
-							id: "abcd",
-							view: "grid",
-							slots: ["a", "b", "c", "d"],
-							zoom: 1,
-							wrap: false,
-						},
-					],
-					wrappedColumns: [],
-					columnWidths: {},
-					columnRatio: 0.5,
-					rowRatio: 0.5,
-					activePaneId: "abcd",
-				},
-				draft: null,
+	await seedTableStorage(
+		page,
+		JSON.stringify({
+			version: PERSISTED_VERSION,
+			name: "Typed values",
+			document: {
+				columns: [
+					{
+						id: "c-value",
+						header: "value",
+						align: "center",
+						expectedType: "number",
+					},
+				],
+				rows: [
+					{ id: "r-number", cells: { "c-value": 7 } },
+					{ id: "r-string", cells: { "c-value": "7" } },
+				],
 			},
-		},
+			workspace: {
+				layout: "single",
+				pinFirstDataRow: false,
+				pinFirstDataColumn: false,
+				panes: [
+					{
+						id: "abcd",
+						view: "grid",
+						slots: ["a", "b", "c", "d"],
+						zoom: 1,
+						wrap: false,
+					},
+				],
+				wrappedColumns: [],
+				columnWidths: {},
+				columnRatio: 0.5,
+				rowRatio: 0.5,
+				activePaneId: "abcd",
+			},
+			draft: null,
+		}),
 	);
 
 	const tabelo = new TabeloPage(page);

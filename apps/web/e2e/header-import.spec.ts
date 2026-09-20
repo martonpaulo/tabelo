@@ -73,6 +73,7 @@ test("cancelling a replacement import preserves content and focus", async ({
 	tabelo,
 }) => {
 	await tabelo.editCell(1, 1, "keep me");
+	await tabelo.cell(1, 1).click();
 	await tabelo.importFile(
 		"people.csv",
 		"Name,Role\nIngrid,Designer",
@@ -85,9 +86,7 @@ test("cancelling a replacement import preserves content and focus", async ({
 
 	await expect(dialog).toHaveCount(0);
 	await expect(tabelo.cell(1, 1)).toHaveText("keep me");
-	await expect(
-		page.getByRole("button", { name: copy.actions.openAppMenu }),
-	).toBeFocused();
+	await expect(tabelo.cell(1, 1)).toBeFocused();
 });
 
 test("TSV and plain text replacement files also ask", async ({
@@ -166,7 +165,7 @@ test("the trusted welcome paste keeps its payload through the question", async (
 	tabelo,
 }) => {
 	await tabelo.runAppCommand("newTable");
-	const welcome = page.getByRole("region", { name: copy.empty.title });
+	const welcome = tabelo.welcome;
 	await expect(welcome).toBeVisible();
 
 	await page.evaluate(() => {
@@ -197,7 +196,7 @@ test("cancelling the welcome paste question leaves the welcome card as it was", 
 	tabelo,
 }) => {
 	await tabelo.runAppCommand("newTable");
-	const welcome = page.getByRole("region", { name: copy.empty.title });
+	const welcome = tabelo.welcome;
 	await expect(welcome).toBeVisible();
 
 	await page.evaluate(() => {

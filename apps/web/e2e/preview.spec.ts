@@ -1,7 +1,9 @@
 import type { Locator } from "@playwright/test";
 import { copy } from "@/copy/copy";
+import { DEFAULT_TABLE_NAME } from "@/copy/product";
+import { CURRENT_VERSION } from "@/persistence/schema";
 import { expect, test } from "./fixtures";
-import { TabeloPage } from "./helpers";
+import { seedTableStorage, TabeloPage } from "./helpers";
 
 // The rendered preview is a neutral document table: the reader's view of what
 // leaves Tabelo, not a surface with a treatment of its own. These cover the
@@ -101,15 +103,28 @@ test("column alignment reaches the preview", async ({ tabelo }) => {
 // document with columns and no rows is only reachable through storage, which
 // the persisted schema accepts. Restoring one must not leave a bare header row.
 const rowlessDocument = JSON.stringify({
-	version: 4,
+	version: CURRENT_VERSION,
+	name: DEFAULT_TABLE_NAME,
 	document: {
 		columns: [
-			{ id: "column-name", header: "Name", align: "default" },
-			{ id: "column-city", header: "City", align: "default" },
+			{
+				id: "column-name",
+				header: "Name",
+				align: "default",
+				expectedType: "text",
+			},
+			{
+				id: "column-city",
+				header: "City",
+				align: "default",
+				expectedType: "text",
+			},
 		],
 		rows: [],
 	},
 	workspace: {
+		pinFirstDataRow: false,
+		pinFirstDataColumn: false,
 		layout: "single",
 		panes: [
 			{
@@ -132,9 +147,7 @@ const rowlessDocument = JSON.stringify({
 test("a document with no rows shows a written empty state", async ({
 	page,
 }) => {
-	await page.addInitScript((value) => {
-		window.localStorage.setItem("tabelo.document", value);
-	}, rowlessDocument);
+	await seedTableStorage(page, rowlessDocument);
 	const tabelo = new TabeloPage(page);
 	await page.goto("/");
 	await tabelo.workspace.waitFor({ state: "visible" });
@@ -162,11 +175,22 @@ test("a column with no value in any row is left out", async ({ tabelo }) => {
 // from one whose rows and columns are each individually empty: it keeps its
 // blank shape rather than collapsing to nothing.
 const valuelessDocument = JSON.stringify({
-	version: 4,
+	version: CURRENT_VERSION,
+	name: DEFAULT_TABLE_NAME,
 	document: {
 		columns: [
-			{ id: "column-name", header: "Name", align: "default" },
-			{ id: "column-city", header: "City", align: "default" },
+			{
+				id: "column-name",
+				header: "Name",
+				align: "default",
+				expectedType: "text",
+			},
+			{
+				id: "column-city",
+				header: "City",
+				align: "default",
+				expectedType: "text",
+			},
 		],
 		rows: [
 			{ id: "row-one", cells: { "column-name": "", "column-city": "" } },
@@ -174,6 +198,8 @@ const valuelessDocument = JSON.stringify({
 		],
 	},
 	workspace: {
+		pinFirstDataRow: false,
+		pinFirstDataColumn: false,
 		layout: "single",
 		panes: [
 			{
@@ -196,9 +222,7 @@ const valuelessDocument = JSON.stringify({
 test("a table with headers but no values keeps its blank shape", async ({
 	page,
 }) => {
-	await page.addInitScript((value) => {
-		window.localStorage.setItem("tabelo.document", value);
-	}, valuelessDocument);
+	await seedTableStorage(page, valuelessDocument);
 	const tabelo = new TabeloPage(page);
 	await page.goto("/");
 	await tabelo.workspace.waitFor({ state: "visible" });
