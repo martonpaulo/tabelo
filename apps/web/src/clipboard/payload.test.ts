@@ -85,6 +85,22 @@ describe("the private clipboard payload", () => {
 		expect(readTabeloPayload(html).selection).toEqual(typedSelection);
 	});
 
+	// The decoder fills a pre-sized buffer a byte at a time, so a value whose
+	// UTF-8 runs past one byte, and a payload long enough that a mistake in the
+	// loop bounds would show, both have to return exactly what went in.
+	it("round-trips multi-byte text and a long payload", () => {
+		const selection: ClipboardSelection = {
+			matrix: [
+				["Amora", "Tokyo", "café 東京 \u{1f600}"],
+				["Mabel", "Buenos Aires", "x".repeat(20_000)],
+			],
+			expectedTypes: ["text", "text", "text"],
+		};
+		const { html } = selectionClipboardPayload(selection);
+
+		expect(readTabeloPayload(html).selection).toEqual(selection);
+	});
+
 	it("is invisible to the public HTML table it travels with", () => {
 		const { html } = selectionClipboardPayload(typedSelection);
 
