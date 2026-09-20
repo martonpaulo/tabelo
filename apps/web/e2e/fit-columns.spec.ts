@@ -46,7 +46,7 @@ test("fitting a source pane scales it until its widest line fits", async ({
 		[
 			"| Name | Note |",
 			"| --- | --- |",
-			`| Ingrid | ${"long ".repeat(40)}|`,
+			`| Ingrid | ${"long ".repeat(20)}|`,
 		].join("\n"),
 	);
 
@@ -66,4 +66,26 @@ test("fitting a source pane scales it until its widest line fits", async ({
 			}),
 		)
 		.toBe(true);
+});
+
+test("fitting an oversized source stops at minimum zoom and preserves its text", async ({
+	tabelo,
+}) => {
+	const editor = tabelo.source("markdown");
+	const value = "long ".repeat(40).trim();
+	await editor.fill(`| Name | Note |\n| --- | --- |\n| Ingrid | ${value} |`);
+	await expect(tabelo.cell(1, 2)).toHaveText(value);
+	const menu = await tabelo.openPaneMenu("markdown");
+	await menu
+		.getByRole("menuitem", { name: copy.workspace.fitToPaneWidth })
+		.click();
+	await expect(menu).toBeHidden();
+	const reopened = await tabelo.openPaneMenu("markdown");
+	await expect(
+		reopened.getByRole("menuitem", {
+			name: copy.workspace.zoomOut,
+			exact: true,
+		}),
+	).toBeDisabled();
+	await expect(tabelo.cell(1, 2)).toHaveText(value);
 });

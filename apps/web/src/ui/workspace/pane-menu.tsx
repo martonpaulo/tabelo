@@ -143,17 +143,26 @@ function fitPaneZoomToWidth(paneId: string): void {
 	const scroller = pane?.querySelector<HTMLElement>('[data-slot="panel-body"]');
 	// The editor's own scroller for a source view, the rendered table for the
 	// preview: in both the scroll width is what has to fit.
+	const sourceScroller = pane?.querySelector<HTMLElement>(".cm-scroller");
 	const content =
-		pane?.querySelector<HTMLElement>(".cm-scroller") ??
-		pane?.querySelector<HTMLElement>("table") ??
-		scroller;
+		sourceScroller ?? pane?.querySelector<HTMLElement>("table") ?? scroller;
 	if (!scroller || !content) {
 		store.announceStatus(copy.status.fitColumnsUnavailable);
 		return;
 	}
 	const room = scroller.clientWidth;
 	const widest = Math.max(content.scrollWidth, content.clientWidth);
-	const next = paneZoomToFit(widest, room, zoom);
+	// Source text scales, but its gutter and trailing room keep their size.
+	// Scaling the entire scroll width overestimates the room available to text.
+	const line = sourceScroller?.querySelector<HTMLElement>(".cm-line");
+	const lineStyle = line ? getComputedStyle(line) : null;
+	const fixed = sourceScroller
+		? (sourceScroller.querySelector(".cm-gutters")?.getBoundingClientRect()
+				.width ?? 0) +
+			Number.parseFloat(lineStyle?.paddingLeft ?? "0") +
+			Number.parseFloat(lineStyle?.paddingRight ?? "0")
+		: 0;
+	const next = paneZoomToFit(widest - fixed, room - fixed, zoom);
 	if (next === zoom) {
 		store.announceStatus(copy.status.fitColumnsUnchanged);
 		return;
