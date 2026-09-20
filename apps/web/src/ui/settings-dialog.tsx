@@ -1,3 +1,4 @@
+import { Button } from "@tabelo/ui/components/button";
 import {
 	Dialog,
 	DialogContent,
@@ -12,8 +13,10 @@ import {
 } from "@tabelo/ui/components/segmented-control";
 import { Switch } from "@tabelo/ui/components/switch";
 import { cn } from "@tabelo/ui/lib/utils";
+import { IconTrash } from "@tabler/icons-react";
 import { lazy, Suspense, useId, useState } from "react";
 import { copy } from "@/copy/copy";
+import { eraseStoredData } from "@/persistence/erase";
 import {
 	DEFAULT_PREFERENCES,
 	type Preferences,
@@ -25,6 +28,7 @@ import {
 	usePreferences,
 	usePreferencesIssue,
 } from "@/preferences/use-preferences";
+import { ConfirmDialog } from "@/ui/confirm-dialog";
 import {
 	DialogActions,
 	DialogAlternative,
@@ -74,6 +78,7 @@ export function SettingsDialog({
 }) {
 	const preferences = usePreferences();
 	const [saveError, setSaveError] = useState(false);
+	const [eraseOpen, setEraseOpen] = useState(false);
 	const titleId = useId();
 	const descriptionId = useId();
 	const displayLabelId = useId();
@@ -226,6 +231,24 @@ export function SettingsDialog({
 					</p>
 				) : null}
 
+				{/* Everything this browser holds, in one place, so the way out
+				    is where the settings are rather than hidden in a menu
+				    (owner, 2026-09-20). It asks first, and it is the only
+				    destructive control here. */}
+				<section className="border-line-subtle border-t pt-4">
+					<Button
+						type="button"
+						variant="destructive"
+						onClick={() => setEraseOpen(true)}
+					>
+						<IconTrash aria-hidden />
+						{copy.eraseEverything.confirm}
+					</Button>
+					<p className="mt-2 text-muted-foreground text-sm">
+						{copy.eraseEverything.description}
+					</p>
+				</section>
+
 				{/* The shared action row: an ordinary alternative, then the one
 				    decisive action last, stacking at full width on a phone like
 				    every other dialog's footer (owner, 2026-09-19). */}
@@ -241,6 +264,19 @@ export function SettingsDialog({
 					</DialogConfirm>
 				</DialogActions>
 			</DialogContent>
+			<ConfirmDialog
+				open={eraseOpen}
+				onOpenChange={setEraseOpen}
+				onConfirm={() => {
+					eraseStoredData();
+					// A reload is what makes "as it did the first time" true: every
+					// store in memory is built at startup from what was just erased.
+					window.location.reload();
+				}}
+				title={copy.eraseEverything.title}
+				description={copy.eraseEverything.description}
+				confirmLabel={copy.eraseEverything.confirm}
+			/>
 		</Dialog>
 	);
 }
