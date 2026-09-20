@@ -652,6 +652,27 @@ export function rectContains(
 	);
 }
 
+// Whether several rects cover at least this many distinct cells. Most callers
+// only ever ask whether the selection is larger than one cell, and the exact
+// count makes them key every cell of a full table to answer it. This stops as
+// soon as the answer is settled.
+export function coversAtLeast(
+	rects: readonly CellRect[],
+	minimum: number,
+): boolean {
+	if (minimum <= 0) return true;
+	const covered = new Set<string>();
+	for (const rect of rects) {
+		for (let row = rect.top; row <= rect.bottom; row++) {
+			for (let column = rect.left; column <= rect.right; column++) {
+				covered.add(`${row}:${column}`);
+				if (covered.size >= minimum) return true;
+			}
+		}
+	}
+	return false;
+}
+
 // The cells several rects cover, each counted once however many cover it.
 export function coveredCellCount(rects: readonly CellRect[]): number {
 	const covered = new Set<string>();

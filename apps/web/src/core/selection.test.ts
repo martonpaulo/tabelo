@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
 	activeRange,
 	clampSelection,
+	coveredCellCount,
+	coversAtLeast,
 	createRange,
 	createSelection,
 	fillTargetInDirection,
@@ -801,5 +803,51 @@ describe("positions across whole-table operations", () => {
 		expect(
 			positionAfterRemoval({ row: HEADER_ROW, column: 0 }, [2], [1]),
 		).toEqual({ row: HEADER_ROW, column: 0 });
+	});
+});
+
+// Counting the covered cells and asking whether there are enough of them are
+// two questions with one rule: a cell two regions both name is one cell. The
+// threshold form stops as soon as it knows, so the two are held together here.
+describe("cells covered by several regions", () => {
+	const overlapping = [
+		{ top: 0, bottom: 2, left: 0, right: 2 },
+		{ top: 1, bottom: 3, left: 1, right: 3 },
+	];
+
+	it("counts a cell named by two regions once", () => {
+		expect(coveredCellCount(overlapping)).toBe(14);
+	});
+
+	it("agrees with the count at every threshold around it", () => {
+		for (const minimum of [0, 1, 2, 13, 14, 15]) {
+			expect(coversAtLeast(overlapping, minimum)).toBe(
+				coveredCellCount(overlapping) >= minimum,
+			);
+		}
+	});
+
+	it("refuses a threshold two overlapping single cells cannot reach", () => {
+		const sameCell = [
+			{ top: 1, bottom: 1, left: 1, right: 1 },
+			{ top: 1, bottom: 1, left: 1, right: 1 },
+		];
+
+		expect(coversAtLeast(sameCell, 2)).toBe(false);
+		expect(coversAtLeast(sameCell, 1)).toBe(true);
+	});
+
+	it("covers nothing when there are no regions", () => {
+		expect(coveredCellCount([])).toBe(0);
+		expect(coversAtLeast([], 1)).toBe(false);
+		expect(coversAtLeast([], 0)).toBe(true);
+	});
+
+	it("reads the header row as a row like any other", () => {
+		const header = [{ top: HEADER_ROW, bottom: 0, left: 0, right: 1 }];
+
+		expect(coveredCellCount(header)).toBe(4);
+		expect(coversAtLeast(header, 4)).toBe(true);
+		expect(coversAtLeast(header, 5)).toBe(false);
 	});
 });

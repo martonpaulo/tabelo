@@ -13,7 +13,7 @@ import {
 	activeRange,
 	type CellPosition,
 	type CellRect,
-	coveredCellCount,
+	coversAtLeast,
 	HEADER_ROW,
 	neighbourCell,
 	rectContains,
@@ -981,7 +981,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				document.rows.length,
 				document.columns.length,
 			);
-			if (coveredCellCount(rects) < 2) return false;
+			if (!coversAtLeast(rects, 2)) return false;
 
 			const close = () => {
 				if (origin.row === HEADER_ROW) store.setEditingHeader(null);
