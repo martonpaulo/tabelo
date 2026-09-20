@@ -255,6 +255,19 @@ export const copy = {
 
 	views,
 
+	// The app menu's three section titles, in the order the menu reads: the
+	// tables this browser holds, the one the workspace is showing, and the
+	// workspace around it (owner, 2026-09-20).
+	menuSections: {
+		tables: "Tables",
+		thisTable: "This table",
+		workspace: "Workspace",
+	},
+
+	// The app menu's footer line: what the product is and who owns it, on one
+	// line beside the link to its source (owner, 2026-09-20).
+	menuFooter: `${product.name} · ${product.copyright}`,
+
 	cellTypes: {
 		real: cellTypeLabels,
 		expected: expectedColumnTypeLabels,
@@ -769,10 +782,17 @@ export const copy = {
 		download: "Download",
 		cancel: "Cancel",
 		renameTable: "Rename table",
+		// Named for the table it acts on, because every row in the list carries
+		// this command and the name is what tells them apart (owner, 2026-09-20).
+		renameTableNamed: (name: string) => `Rename ${name}`,
+		// The one place a table leaves or enters Tabelo as a file or as text:
+		// Import file, Copy as, and Download table (owner, 2026-09-20).
+		exportTable: "Export",
 		importFile: "Import file",
 		newTable: "New table",
-		switchTable: "Switch table",
-		deleteTable: "Delete table",
+		// Every table's row carries rename and delete, so both are named after
+		// the table they act on and neither has a general form left to say
+		// (owner, 2026-09-20).
 		deleteTableNamed: (name: string) => `Delete ${name}`,
 		selectRow: SELECT_ROW,
 		selectColumn: SELECT_COLUMN,
@@ -982,6 +1002,9 @@ export const copy = {
 		// Said once the library reaches the size where one menu stops being
 		// comfortable to read (#403). Nothing is refused: storage holds far more.
 		largeLibrary: "You have 10 tables or more. The list now scrolls.",
+		// The mark on the table the workspace is showing, beside a check the
+		// colour is not the only cue for (owner, 2026-09-20).
+		openTable: "Open",
 		tableCreated: (name: string) => `${name} created.`,
 		tableOpened: (name: string) => `${name} opened.`,
 		tableDeleted: (name: string) => `${name} deleted.`,

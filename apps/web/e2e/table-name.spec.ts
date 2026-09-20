@@ -2,13 +2,30 @@ import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { tableDocumentTitle } from "@/copy/product";
 import { expect, test } from "./fixtures";
-import { downloadConfirm } from "./helpers";
+import {
+	activeTableMenuItem,
+	downloadConfirm,
+	openDownloadChooser,
+} from "./helpers";
+
+// Rename sits on the row of the table it acts on and is named after it (owner,
+// 2026-09-20), so reaching the active table's row is the first step of every
+// test here.
+function appMenu(page: Page) {
+	return page.getByRole("menu", { name: copy.actions.openAppMenu });
+}
+
+async function openRenameItem(page: Page) {
+	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
+	const menu = appMenu(page);
+	await menu.waitFor({ state: "visible" });
+	return activeTableMenuItem(page, menu, copy.actions.renameTableNamed);
+}
 
 async function openRenameDialog(page: Page) {
-	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
-	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
-	await menu.getByRole("menuitem", { name: copy.actions.renameTable }).click();
-	await menu.waitFor({ state: "hidden" });
+	const item = await openRenameItem(page);
+	await item.click();
+	await appMenu(page).waitFor({ state: "hidden" });
 	return page.getByRole("dialog", { name: copy.actions.renameTable });
 }
 
@@ -21,10 +38,7 @@ async function renameTable(page: Page, name: string): Promise<void> {
 
 async function savedFilename(page: Page, formatName: string): Promise<string> {
 	const waiting = page.waitForEvent("download");
-	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
-	await page
-		.getByRole("menuitem", { name: copy.actions.downloadTable })
-		.click();
+	await openDownloadChooser(page);
 	const dialog = page.getByRole("dialog", { name: copy.actions.downloadTable });
 	await dialog.getByRole("radio", { name: formatName }).click();
 	await downloadConfirm(page).click();
@@ -111,8 +125,14 @@ test("typing lands in the rename field as soon as the dialog opens", async ({
 	const trigger = page.getByRole("button", { name: copy.actions.openAppMenu });
 	await trigger.focus();
 	await page.keyboard.press("Enter");
-	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
-	await menu.getByRole("menuitem", { name: copy.actions.renameTable }).focus();
+	const menu = appMenu(page);
+	await menu.waitFor({ state: "visible" });
+	const item = await activeTableMenuItem(
+		page,
+		menu,
+		copy.actions.renameTableNamed,
+	);
+	await item.focus();
 	await page.keyboard.press("Enter");
 	dialog = page.getByRole("dialog", { name: copy.actions.renameTable });
 	input = dialog.getByRole("textbox", { name: copy.tableName.label });

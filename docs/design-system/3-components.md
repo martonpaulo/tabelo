@@ -156,7 +156,10 @@ marks it will type with.
 Every action collection uses the menu primitive's semantic Group, in dropdown
 and context menus alike (#75). A visible group title is reserved for the three
 inline segmented choices, Expected type, Alignment, and Cell type, and for
-Edit (owner, 2026-09-19), and for Format (#306). It is canonical copy rendered through GroupLabel, and
+Edit (owner, 2026-09-19), for Format (#306), and for the app menu's three
+sections, `Tables`, `This table`, and `Workspace` (owner, 2026-09-20): that
+menu reaches three different subjects, and a hairline alone never said which
+one a command acts on. It is canonical copy rendered through GroupLabel, and
 the Group is named with `aria-labelledby`. Clipboard, History, Select, Insert,
 Remove, and the self-explanatory width actions (Fit column to content, Set
 column width) remain untitled semantic groups, without an empty label. Move,
@@ -179,7 +182,34 @@ table menus, `Move`, `Fill`, and `Move focus, keep selection`, folded in on
 #369 because a flat grid context menu had grown taller than a laptop screen,
 with `Sort` and its two directions beside them (owner, 2026-09-19). Clipboard,
 History, Select, Insert, Edit, and Remove stay on the first level, one click
-away. Nothing else nests, and a submenu never contains a second submenu.
+away. The app menu's `Export` joined the class on 2026-09-20 (owner), holding
+`Import file`, `Copy as`, and `Download table`: everything that moves the table
+between Tabelo and a file or the clipboard, which the top level had been
+carrying beside the commands that edit the table. It is also the one place a
+submenu contains a second submenu, because `Copy as` is a member of this class
+in its own right and flattening its rows into `Export` would put one row per
+codec beside three unrelated commands. Nothing else nests, and no third level
+exists.
+
+**The app menu** is three sections in this order (owner, 2026-09-20). `Tables`
+lists the library, one row shape for every table: the table's colour mark, its
+name, and the two commands that act on it. The open table adds its size line,
+the muted resting fill, a check, and `aria-current`, and the list ends with
+`New table`. `This table` holds the undo and redo pair, then the commands that
+reshape the table, then `Export`. `Workspace` holds `Add view` and
+`Change layout`, with `Settings` below them under a separator, reaching past
+all three. The menu has no brand row: the trigger is the product's own mark.
+Its footer is one line, the product and its copyright in muted text beside the
+link to its source.
+
+A per-row command that repeats down a list rests at zero opacity and is
+revealed by a pointer over its row or by focus reaching any item in it
+(`group-hover` and `group-focus-within`). It keeps its place in the row, its
+accessible name says which row it belongs to, and it is never `hidden` or
+`display:none`, which would take it out of the tab order and leave the keyboard
+without the command. Destructive colour follows the same rule as everywhere
+else: the row's trash is muted at rest and turns destructive only under its own
+hover or focus.
 
 **Every table menu lists its commands in one order** (owner, 2026-09-19): the
 Visual Table's cell, row, and column menus and every source view's text, line

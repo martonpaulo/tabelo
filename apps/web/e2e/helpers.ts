@@ -26,13 +26,16 @@ type PaneCommand =
 	| "copySource"
 	| "copyFormattedTable";
 
-const appCommandLabels: Record<AppCommand, string> = {
+const appCommandLabels: Record<Exclude<AppCommand, "deleteTable">, string> = {
 	undo: copy.actions.undo,
 	redo: copy.actions.redo,
 	newTable: copy.actions.newTable,
-	deleteTable: copy.actions.deleteTable,
 	downloadTable: copy.actions.downloadTable,
 };
+
+// The app menu's commands that moved behind the Export submenu (owner,
+// 2026-09-20). A spec still names the command; the helper knows where it is.
+const exportCommands = new Set<AppCommand>(["downloadTable"]);
 
 const paneCommandLabels: Record<PaneCommand, string> = {
 	closeView: copy.workspace.closeView,
@@ -236,6 +239,44 @@ export function activeTableStorageKey(page: Page): Promise<string> {
 		},
 		{ libraryKey: LIBRARY_KEY, prefix: tableKey("") },
 	);
+}
+
+// The download chooser, from a page alone: Download table moved into the app
+// menu's Export submenu (owner, 2026-09-20), and several specs reach it
+// without the page object.
+export async function openDownloadChooser(page: Page): Promise<void> {
+	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
+	await page.getByRole("menuitem", { name: copy.actions.exportTable }).click();
+	await page
+		.getByRole("menu", { name: copy.actions.exportTable })
+		.getByRole("menuitem", { name: copy.actions.downloadTable })
+		.click();
+}
+
+// The name the active table is stored under. Names are user content minted at
+// runtime, so a spec asks the page rather than assuming one.
+export async function activeTableName(page: Page): Promise<string> {
+	return page.evaluate(
+		(key) => {
+			const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+			return typeof saved?.name === "string" ? saved.name : "";
+		},
+		await activeTableStorageKey(page),
+	);
+}
+
+// Rename and delete sit on the row of the table they act on and are named
+// after it (owner, 2026-09-20), so a spec that means the table on screen
+// resolves its name and then asks for that row's command.
+export async function activeTableMenuItem(
+	page: Page,
+	menu: Locator,
+	label: (name: string) => string,
+): Promise<Locator> {
+	return menu.getByRole("menuitem", {
+		name: label(await activeTableName(page)),
+		exact: true,
+	});
 }
 
 // Whether a notice is what the pointer would hit at the centre of a control.
@@ -500,10 +541,23 @@ export class TabeloPage {
 		return menu;
 	}
 
-	// The submenu is its own menu once open, so it is addressed by its own
+	// Import file, Copy as, and Download table share one Export submenu (owner,
+	// 2026-09-20). It is its own menu once open, so it is addressed by its own
 	// accessible name rather than through the parent it hangs off.
-	async openCopyAsSubmenu(): Promise<Locator> {
+	async openExportSubmenu(): Promise<Locator> {
 		const parent = await this.openAppMenu();
+		const submenu = this.page.getByRole("menu", {
+			name: copy.actions.exportTable,
+		});
+		await parent
+			.getByRole("menuitem", { name: copy.actions.exportTable })
+			.click();
+		await submenu.waitFor({ state: "visible" });
+		return submenu;
+	}
+
+	async openCopyAsSubmenu(): Promise<Locator> {
+		const parent = await this.openExportSubmenu();
 		const submenu = this.page.getByRole("menu", {
 			name: copy.actions.copyAs,
 		});
@@ -536,8 +590,22 @@ export class TabeloPage {
 	}
 
 	async runAppCommand(command: AppCommand): Promise<void> {
-		const menu = await this.openAppMenu();
-		await menu
+		// Delete now sits on the table's own row and is named after it, so the
+		// command that means "the table on screen" resolves that name first.
+		if (command === "deleteTable") {
+			const menu = await this.openAppMenu();
+			const item = await activeTableMenuItem(
+				this.page,
+				menu,
+				copy.actions.deleteTableNamed,
+			);
+			await item.click();
+			return;
+		}
+		const parent = exportCommands.has(command)
+			? await this.openExportSubmenu()
+			: await this.openAppMenu();
+		await parent
 			.getByRole("menuitem", { name: appCommandLabels[command] })
 			.click();
 	}
@@ -868,8 +936,8 @@ export class TabeloPage {
 		mimeType = "text/plain",
 	): Promise<void> {
 		const chooserPromise = this.page.waitForEvent("filechooser");
-		await this.openAppMenu();
-		await this.page
+		const submenu = await this.openExportSubmenu();
+		await submenu
 			.getByRole("menuitem", { name: copy.actions.importFile })
 			.click();
 		const chooser = await chooserPromise;
@@ -882,8 +950,8 @@ export class TabeloPage {
 
 	async cancelFileImport(): Promise<void> {
 		const chooserPromise = this.page.waitForEvent("filechooser");
-		await this.openAppMenu();
-		await this.page
+		const submenu = await this.openExportSubmenu();
+		await submenu
 			.getByRole("menuitem", { name: copy.actions.importFile })
 			.click();
 		const chooser = await chooserPromise;

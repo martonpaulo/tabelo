@@ -5,6 +5,7 @@ import { expect, test } from "./fixtures";
 import {
 	downloadConfirm,
 	lastCopied,
+	openDownloadChooser,
 	recordingClipboard,
 	renderedSource,
 	type TabeloPage,
@@ -50,10 +51,7 @@ async function setTags(page: Page, on: boolean): Promise<void> {
 
 async function downloadedMarkdown(page: Page): Promise<string> {
 	const waiting = page.waitForEvent("download");
-	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
-	await page
-		.getByRole("menuitem", { name: copy.actions.downloadTable })
-		.click();
+	await openDownloadChooser(page);
 	const dialog = page.getByRole("dialog");
 	await dialog.getByRole("radio", { name: copy.views.markdown.label }).click();
 	await downloadConfirm(page).click();

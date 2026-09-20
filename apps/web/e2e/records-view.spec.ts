@@ -1,6 +1,6 @@
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
-import type { TabeloPage } from "./helpers";
+import { openDownloadChooser, type TabeloPage } from "./helpers";
 
 // Records is the second format with a document precondition, and the first
 // whose precondition is about row values rather than headers alone. These
@@ -120,10 +120,7 @@ test("the download chooser's options never change what the pane shows", async ({
 	await tabelo.editCell(1, 2, "€20");
 	await tabelo.choosePaneView("markdown", "records");
 
-	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
-	await page
-		.getByRole("menuitem", { name: copy.actions.downloadTable })
-		.click();
+	await openDownloadChooser(page);
 	const dialog = page.getByRole("dialog");
 	await dialog.getByRole("radio", { name: copy.views.records.label }).click();
 

@@ -133,6 +133,7 @@ reversible implementation choice does not belong here.
 | :--- | :--- | :--- | :--- |
 | Product scope | An editor for one table at a time, with a local library of tables to switch between | this document | #92, #403 |
 | Table library | Any number of local tables, one active; the app menu lists them and switches; names are unique and numbered from the second table on; a warning, never a refusal, once ten are kept | this document, AGENTS.md | #403, owner, 2026-09-20 |
+| App menu shape | Three titled sections, Tables, This table, Workspace, with Settings below them; no brand row; every table one row shape with rename and delete revealed on hover or focus; Import file, Copy as and Download table behind one Export submenu; one footer line carrying the product, its copyright and the source link | design system §3 | owner, 2026-09-20 |
 | Erase everything | One control in Settings clears every Tabelo key in this browser, after a confirmation | design system §3 | owner, 2026-09-20 |
 | Stored schema history | Every historical schema, migration step and fixture deleted while the product is unreleased; versions restart at 1 and forward-only migrations apply from here on | AGENTS.md | owner, 2026-09-20 |
 | Pane count | One through four panes; a fresh visit opens two; a stacked window grows to two | ADR 0006 | #91, #219 |

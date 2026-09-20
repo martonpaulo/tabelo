@@ -455,8 +455,12 @@ export interface TabeloState {
 	confirmPaneAction: () => void;
 	setActivePane: (paneId: string) => void;
 	setOutputOption: (id: OutputOptionId, value: boolean) => void;
+	// Renames a table in the library. Without an id it is the active one; with
+	// one it can be any table, because the list offers the command on every row
+	// (owner, 2026-09-20).
 	renameTable: (
 		name: string,
+		id?: TableId,
 	) => SaveOutcome | { readonly status: "invalid" | "blocked" | "duplicate" };
 	setPaneZoom: (paneId: string, zoom: number) => void;
 	// One of a source pane's display overrides; null returns it to the global
@@ -906,6 +910,13 @@ function openTable(library: TableLibrary): void {
 		hasHeldContent: !isDocumentBlank(outcome.state.document),
 		storageIssue: null,
 	});
+}
+
+// What a stored table already holds, for a change that touches one field of a
+// table the store is not showing. Null when nothing readable is there.
+function storedPayload(id: TableId): SavePayload | null {
+	const outcome = loadTable(id);
+	return outcome.status === "ok" ? outcome.state : null;
 }
 
 function savePayload(state: TabeloState): SavePayload {
@@ -1399,29 +1410,32 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			outputOptions: { ...state.outputOptions, [id]: value },
 		})),
 
-	renameTable: (name) => {
+	renameTable: (name, id) => {
 		const validated = validateTableName(name);
 		if (!validated.ok) return { status: "invalid" };
 		const state = get();
-		if (state.storageIssue?.kind === "unreadable") {
+		const targetId = id ?? state.library.activeId;
+		const entry = state.library.tables.find((table) => table.id === targetId);
+		if (!entry) return { status: "blocked" };
+		const active = targetId === state.library.activeId;
+		if (active && state.storageIssue?.kind === "unreadable") {
 			return { status: "blocked" };
 		}
-		if (validated.name === state.name) return { status: "saved" };
-		if (isNameTaken(state.library, validated.name, state.library.activeId)) {
+		if (validated.name === entry.name) return { status: "saved" };
+		if (isNameTaken(state.library, validated.name, targetId)) {
 			return { status: "duplicate" };
 		}
-		const outcome = saveTable(state.library.activeId, {
-			...savePayload(state),
-			name: validated.name,
-		});
+		// A table's name lives in that table's own payload, so renaming one the
+		// workspace is not showing reads its payload and writes it back. A
+		// payload that is missing or unreadable is left alone: overwriting it
+		// here would lose the table to rename it.
+		const payload = active ? savePayload(state) : storedPayload(targetId);
+		if (!payload) return { status: "blocked" };
+		const outcome = saveTable(targetId, { ...payload, name: validated.name });
 		if (outcome.status === "saved") {
 			set({
-				name: validated.name,
-				library: renameEntry(
-					state.library,
-					state.library.activeId,
-					validated.name,
-				),
+				...(active ? { name: validated.name } : {}),
+				library: renameEntry(state.library, targetId, validated.name),
 				storageIssue: null,
 			});
 		} else {

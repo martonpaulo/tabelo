@@ -2,7 +2,11 @@ import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { conditionNoticeIds } from "@/state/notice-queue";
 import { expect, test } from "./fixtures";
-import { renderedSource, type TabeloPage } from "./helpers";
+import {
+	openDownloadChooser,
+	renderedSource,
+	type TabeloPage,
+} from "./helpers";
 
 // #306, delivery slice 2: the codecs that spell inline structure carry it
 // between views, the rendered preview shows it as semantic elements under the
@@ -156,10 +160,7 @@ test("downloading a plain format discloses the projection first", async ({
 	tabelo,
 }) => {
 	await loadFixture(tabelo);
-	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
-	await page
-		.getByRole("menuitem", { name: copy.actions.downloadTable })
-		.click();
+	await openDownloadChooser(page);
 	const dialog = page.getByRole("dialog");
 	await expect(dialog).toBeVisible();
 	const note = dialog.locator("[data-projection-disclosure]");

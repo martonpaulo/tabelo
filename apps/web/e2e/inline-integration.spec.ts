@@ -11,6 +11,7 @@ import { expect, test } from "./fixtures";
 import {
 	downloadConfirm,
 	lastCopied,
+	openDownloadChooser,
 	recordingClipboard,
 	renderedSource,
 	storedDocument,
@@ -359,10 +360,7 @@ for (const codec of listCodecs()) {
 		tabelo,
 	}) => {
 		await loadFixture(tabelo);
-		await tabelo.openAppMenu();
-		await page
-			.getByRole("menuitem", { name: copy.actions.downloadTable })
-			.click();
+		await openDownloadChooser(page);
 		const dialog = page.getByRole("dialog");
 		await expect(dialog).toBeVisible();
 		await dialog

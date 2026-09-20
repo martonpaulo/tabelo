@@ -105,6 +105,7 @@ export function TabeloApp() {
 	const pwaUpdate = usePwaUpdate();
 	const [rootDialog, setRootDialog] = useState<RootDialog>(null);
 	const [tableToDelete, setTableToDelete] = useState<string | null>(null);
+	const [tableToRename, setTableToRename] = useState<string | null>(null);
 	const dialogOpenerRef = useRef<HTMLElement | null>(null);
 	const appMenuTriggerRef = useRef<HTMLButtonElement>(null);
 	const [welcomeOpen, setWelcomeOpen] = useState(opensOnWelcome);
@@ -302,7 +303,10 @@ export function TabeloApp() {
 						setTableToDelete(tableId);
 						openRootDialog("delete-table");
 					}}
-					onRename={() => openRootDialog("rename-table")}
+					onRename={(tableId) => {
+						setTableToRename(tableId);
+						openRootDialog("rename-table");
+					}}
 					pwaUpdate={pwaUpdate}
 					triggerRef={appMenuTriggerRef}
 				/>
@@ -322,6 +326,10 @@ export function TabeloApp() {
 			/>
 			<RenameTableDialog
 				open={rootDialog === "rename-table"}
+				// Kept past the close: the dialog holds its content through the
+				// closing transition, and clearing the target now would make the
+				// field flip to another table's name on its way out.
+				tableId={tableToRename}
 				onOpenChange={closeRootDialog}
 			/>
 			<ConfirmDialog

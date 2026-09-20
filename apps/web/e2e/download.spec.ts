@@ -2,7 +2,11 @@ import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { getCodec, listCodecs } from "@/formats";
 import { expect, test } from "./fixtures";
-import { downloadConfirm, renderedSource } from "./helpers";
+import {
+	downloadConfirm,
+	openDownloadChooser,
+	renderedSource,
+} from "./helpers";
 
 // Downloading is a choice, so it is a chooser. The user chooses the format and,
 // only where the format declares an option, how the file should be written. The
@@ -27,10 +31,7 @@ async function savedFile(
 }
 
 async function openChooser(page: Page): Promise<void> {
-	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
-	await page
-		.getByRole("menuitem", { name: copy.actions.downloadTable })
-		.click();
+	await openDownloadChooser(page);
 	await expect(page.getByRole("dialog")).toBeVisible();
 }
 

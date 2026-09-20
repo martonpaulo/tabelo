@@ -1,6 +1,6 @@
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
-import type { TabeloPage } from "./helpers";
+import { openDownloadChooser, type TabeloPage } from "./helpers";
 
 // JSON is the only format that keys on the document's headers rather than
 // writing them positionally, so it is the only one that can refuse a perfectly
@@ -128,10 +128,7 @@ test("the download chooser offers JSON for a table with no headers", async ({
 	// so an unnamed table must reach every one of them.
 	await tabelo.editCell(1, 1, "Ingrid");
 
-	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
-	await page
-		.getByRole("menuitem", { name: copy.actions.downloadTable })
-		.click();
+	await openDownloadChooser(page);
 
 	await expect(
 		page
@@ -146,10 +143,7 @@ test("the download chooser refuses JSON while the headers conflict", async ({
 }) => {
 	await nameColumns(tabelo, "Name", "Role", "Name");
 
-	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
-	await page
-		.getByRole("menuitem", { name: copy.actions.downloadTable })
-		.click();
+	await openDownloadChooser(page);
 
 	const dialog = page.getByRole("dialog");
 	const json = dialog.getByRole("radio", { name: copy.views.json.label });

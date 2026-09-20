@@ -130,6 +130,72 @@ describe("autosave lifecycle", () => {
 		expect(window.localStorage.getItem(activeTableKey())).toBe(raw);
 	});
 
+	// Rename reaches any table in the library, not only the one on screen
+	// (owner, 2026-09-20). A table's name lives in that table's own payload, so
+	// the rename has to read that payload and write it back.
+	it("renames a table the workspace is not showing", () => {
+		useTabeloStore.getState().createTable();
+		const before = useTabeloStore.getState().library;
+		const other = before.tables.find((table) => table.id !== before.activeId);
+		assert(other);
+		const activeName = useTabeloStore.getState().name;
+
+		expect(
+			useTabeloStore.getState().renameTable("Project roles", other.id),
+		).toEqual({ status: "saved" });
+
+		const after = useTabeloStore.getState();
+		expect(after.library.activeId).toBe(before.activeId);
+		expect(after.name).toBe(activeName);
+		expect(
+			after.library.tables.find((table) => table.id === other.id)?.name,
+		).toBe("Project roles");
+		// What a reload would read, which is the only copy that outlives the tab.
+		const saved = JSON.parse(
+			window.localStorage.getItem(tableKey(other.id)) ?? "null",
+		);
+		expect(saved.name).toBe("Project roles");
+	});
+
+	it("refuses a name another table already carries", () => {
+		useTabeloStore.getState().createTable();
+		const library = useTabeloStore.getState().library;
+		const other = library.tables.find((table) => table.id !== library.activeId);
+		assert(other);
+
+		expect(
+			useTabeloStore
+				.getState()
+				.renameTable(useTabeloStore.getState().name, other.id),
+		).toEqual({ status: "duplicate" });
+		expect(
+			useTabeloStore
+				.getState()
+				.library.tables.find((table) => table.id === other.id)?.name,
+		).toBe(other.name);
+	});
+
+	// Writing a payload for a table whose own bytes cannot be read would lose
+	// the table to rename it, so the rename stops instead.
+	it("does not rename a table whose stored payload is unreadable", () => {
+		useTabeloStore.getState().createTable();
+		const library = useTabeloStore.getState().library;
+		const other = library.tables.find((table) => table.id !== library.activeId);
+		assert(other);
+		const raw = "{keep me unchanged";
+		window.localStorage.setItem(tableKey(other.id), raw);
+
+		expect(
+			useTabeloStore.getState().renameTable("Project roles", other.id),
+		).toEqual({ status: "blocked" });
+		expect(window.localStorage.getItem(tableKey(other.id))).toBe(raw);
+		expect(
+			useTabeloStore
+				.getState()
+				.library.tables.find((table) => table.id === other.id)?.name,
+		).toBe(other.name);
+	});
+
 	it("gives a new table the default name", () => {
 		expect(useTabeloStore.getState().renameTable("Project roles")).toEqual({
 			status: "saved",

@@ -23,12 +23,21 @@ type NameError = "empty" | "too-long" | "save" | "duplicate" | null;
 
 export function RenameTableDialog({
 	open,
+	tableId,
 	onOpenChange,
 }: {
 	readonly open: boolean;
+	// Which table is being renamed: the list offers the command on every row,
+	// so it is not always the active one (owner, 2026-09-20).
+	readonly tableId: string | null;
 	readonly onOpenChange: (open: boolean) => void;
 }) {
-	const currentName = useTabeloStore((state) => state.name);
+	const activeName = useTabeloStore((state) => state.name);
+	const entryName = useTabeloStore(
+		(state) =>
+			state.library.tables.find((table) => table.id === tableId)?.name ?? null,
+	);
+	const currentName = entryName ?? activeName;
 	// An unnamed table starts the field empty with the default name as its
 	// placeholder, and an empty field means that default (owner, 2026-09-19):
 	// the default is a name the product chose, not text to delete first.
@@ -63,7 +72,9 @@ export function RenameTableDialog({
 			setError(validated.reason);
 			return;
 		}
-		const outcome = useTabeloStore.getState().renameTable(validated.name);
+		const outcome = useTabeloStore
+			.getState()
+			.renameTable(validated.name, tableId ?? undefined);
 		if (outcome.status === "duplicate") {
 			setError("duplicate");
 			return;
