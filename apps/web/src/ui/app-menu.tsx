@@ -1,5 +1,12 @@
 import { Button } from "@tabelo/ui/components/button";
 import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger,
+} from "@tabelo/ui/components/context-menu";
+import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuGroup,
@@ -422,6 +429,80 @@ const revealedRowActionStyles =
 // and delete are menu items in their own right rather than buttons nested in
 // one, because a control inside a menu item is neither reachable nor
 // announced as its own thing.
+// The commands of one table, rendered by whichever menu asked for them: the
+// row's own options menu, and the context menu the same row opens on a right
+// click (owner, 2026-09-20). One list, so the two can never offer different
+// things.
+function TableCommands({
+	Item,
+	Separator,
+	table,
+	position,
+	active,
+	deleteRefusal,
+	onOpen,
+	onRename,
+	onDelete,
+	onCopy,
+	onDownload,
+	structure,
+}: {
+	readonly Item: typeof DropdownMenuItem;
+	readonly Separator: typeof DropdownMenuSeparator;
+	readonly table: TableEntry;
+	readonly position: number;
+	readonly active: boolean;
+	readonly deleteRefusal: string | undefined;
+	readonly onOpen: () => void;
+	readonly onRename: () => void;
+	readonly onDelete: () => void;
+	readonly onCopy: () => void;
+	readonly onDownload: () => void;
+	readonly structure: ReactNode;
+}) {
+	return (
+		<>
+			{active ? null : (
+				// Opening from here is the same command the row itself carries,
+				// so it leaves the menu open in the same way (owner, 2026-09-20).
+				<Item closeOnClick={false} onClick={onOpen}>
+					<IconFileText aria-hidden className={tableMarkClass(position)} />
+					{copy.actions.openTable}
+				</Item>
+			)}
+			<Item onClick={onRename}>
+				<IconPencil aria-hidden />
+				{copy.actions.renameTable}
+			</Item>
+			{/* Every table offers the same commands. Writing one out reads its
+			    stored document, so it never has to be opened; reshaping one is an
+			    edit, so it opens that table first and the change lands in its own
+			    history (owner, 2026-09-20). */}
+			<Separator />
+			{structure}
+			<Item onClick={onCopy}>
+				<IconClipboardCopy aria-hidden />
+				{copy.actions.copyTable}
+			</Item>
+			<Item onClick={onDownload}>
+				<IconDownload aria-hidden />
+				{copy.actions.downloadTable}
+			</Item>
+			<Separator />
+			<ControlTooltip reason={deleteRefusal}>
+				<Item
+					variant="destructive"
+					disabled={deleteRefusal !== undefined}
+					onClick={onDelete}
+				>
+					<IconTrash aria-hidden />
+					{copy.actions.deleteTableNamed(table.name)}
+				</Item>
+			</ControlTooltip>
+		</>
+	);
+}
+
 function TableRow({
 	table,
 	position,
@@ -449,90 +530,99 @@ function TableRow({
 	// are computed once.
 	readonly structure: ReactNode;
 }) {
+	const commands = (
+		<TableCommands
+			Item={ContextMenuItem}
+			Separator={ContextMenuSeparator}
+			table={table}
+			position={position}
+			active={active}
+			deleteRefusal={deleteRefusal}
+			onOpen={onOpen}
+			onRename={onRename}
+			onDelete={onDelete}
+			onCopy={onCopy}
+			onDownload={onDownload}
+			structure={structure}
+		/>
+	);
+
 	return (
-		<div className="group/table-row flex items-stretch gap-1">
-			<DropdownMenuItem
-				// The one table the views are projecting, said three ways: the
-				// filled row, the check, and the state a screen reader reads.
-				aria-current={active ? "true" : undefined}
-				className={cn("min-w-0 flex-1", active && "bg-muted")}
-				closeOnClick={false}
-				onClick={onOpen}
+		// A right click on a table offers the same commands its options control
+		// does (owner, 2026-09-20). Tabelo replaces the browser's menu only
+		// where it has one of its own to put there; everywhere else the
+		// browser's stays, because it holds things the app cannot offer.
+		<ContextMenu>
+			<ContextMenuTrigger
+				render={<div className="group/table-row flex items-stretch gap-1" />}
 			>
-				{/* The colour is the table's, in every state: a hover or keyboard
+				<DropdownMenuItem
+					// The one table the views are projecting, said three ways: the
+					// filled row, the check, and the state a screen reader reads.
+					aria-current={active ? "true" : undefined}
+					className={cn("min-w-0 flex-1", active && "bg-muted")}
+					closeOnClick={false}
+					onClick={onOpen}
+				>
+					{/* The colour is the table's, in every state: a hover or keyboard
 				    highlight changes the item's background, never the mark, so the
 				    cue does not move as the pointer does. It is never the only
 				    cue, since the name is beside it. */}
-				<IconFileText aria-hidden className={tableMarkClass(position)} />
-				<MenuOption
-					truncateLabel
-					label={table.name}
-					description={active ? size : undefined}
-				/>
-				{active ? (
-					<>
-						<IconCheck aria-hidden className="text-muted-foreground" />
-						<span className="sr-only">{copy.status.openTable}</span>
-					</>
-				) : null}
-			</DropdownMenuItem>
-			{/* One control on the row, holding what can be done to that table
+					<IconFileText aria-hidden className={tableMarkClass(position)} />
+					<MenuOption
+						truncateLabel
+						label={table.name}
+						description={active ? size : undefined}
+					/>
+					{active ? (
+						<>
+							<IconCheck aria-hidden className="text-muted-foreground" />
+							<span className="sr-only">{copy.status.openTable}</span>
+						</>
+					) : null}
+				</DropdownMenuItem>
+				{/* One control on the row, holding what can be done to that table
 			    (owner, 2026-09-20). Dots only: the chevron would be a second
 			    glyph on a control that already reads as "more", and the row has
 			    no label for it to follow. It is quiet until the row is hovered
 			    or reached from the keyboard. */}
-			<DropdownMenuSub>
-				<DropdownMenuSubTrigger
-					hideIndicator
-					aria-label={copy.actions.tableOptionsNamed(table.name)}
-					className={cn(
-						revealedRowActionStyles,
-						"min-h-0 self-center text-muted-foreground",
-					)}
-				>
-					<IconDots aria-hidden />
-				</DropdownMenuSubTrigger>
-				<DropdownMenuSubContent
-					aria-label={copy.actions.tableOptionsNamed(table.name)}
-				>
-					{active ? null : (
-						<DropdownMenuItem onClick={onOpen}>
-							<IconFileText aria-hidden className={tableMarkClass(position)} />
-							{copy.actions.openTable}
-						</DropdownMenuItem>
-					)}
-					<DropdownMenuItem onClick={onRename}>
-						<IconPencil aria-hidden />
-						{copy.actions.renameTable}
-					</DropdownMenuItem>
-					{/* Every table offers the same commands. Writing one out reads
-					    its stored document, so it never has to be opened;
-					    reshaping one is an edit, so it opens that table first and
-					    the change lands in its own history (owner, 2026-09-20). */}
-					<DropdownMenuSeparator />
-					{structure}
-					<DropdownMenuItem onClick={onCopy}>
-						<IconClipboardCopy aria-hidden />
-						{copy.actions.copyTable}
-					</DropdownMenuItem>
-					<DropdownMenuItem onClick={onDownload}>
-						<IconDownload aria-hidden />
-						{copy.actions.downloadTable}
-					</DropdownMenuItem>
-					<DropdownMenuSeparator />
-					<ControlTooltip reason={deleteRefusal}>
-						<DropdownMenuItem
-							variant="destructive"
-							disabled={deleteRefusal !== undefined}
-							onClick={onDelete}
-						>
-							<IconTrash aria-hidden />
-							{copy.actions.deleteTableNamed(table.name)}
-						</DropdownMenuItem>
-					</ControlTooltip>
-				</DropdownMenuSubContent>
-			</DropdownMenuSub>
-		</div>
+				<DropdownMenuSub>
+					<DropdownMenuSubTrigger
+						hideIndicator
+						aria-label={copy.actions.tableOptionsNamed(table.name)}
+						className={cn(
+							revealedRowActionStyles,
+							"min-h-0 self-center text-muted-foreground",
+						)}
+					>
+						<IconDots aria-hidden />
+					</DropdownMenuSubTrigger>
+					<DropdownMenuSubContent
+						aria-label={copy.actions.tableOptionsNamed(table.name)}
+					>
+						<TableCommands
+							Item={DropdownMenuItem}
+							Separator={DropdownMenuSeparator}
+							table={table}
+							position={position}
+							active={active}
+							deleteRefusal={deleteRefusal}
+							onOpen={onOpen}
+							onRename={onRename}
+							onDelete={onDelete}
+							onCopy={onCopy}
+							onDownload={onDownload}
+							structure={structure}
+						/>
+					</DropdownMenuSubContent>
+				</DropdownMenuSub>
+			</ContextMenuTrigger>
+			<ContextMenuContent
+				aria-label={copy.actions.tableOptionsNamed(table.name)}
+			>
+				{commands}
+			</ContextMenuContent>
+		</ContextMenu>
 	);
 }
 
