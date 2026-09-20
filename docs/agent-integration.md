@@ -214,6 +214,18 @@ connects through the product's pairing UI. No global browser profile or real
 user table is used. The repository's normal validation, build and browser gates
 remain required, with scope determined by `AGENTS.md`.
 
+The initial implementation at `e67d92d` passed
+[the full validation run](https://github.com/martonpaulo/tabelo/actions/runs/35542163611)
+(1,977 web tests, seven connector tests, and 740 Chromium tests) and
+[deployed successfully](https://github.com/martonpaulo/tabelo/actions/runs/35542530901).
+Nine SDK/browser scenarios subsequently passed on the actual production HTTPS
+origin in isolated contexts, including explicit local/loopback permission denial
+with ordinary editing still available. The temporary production harness was
+removed. This evidence does not exercise an installed agent's approval UI or a
+model conversation. Four existing unit skips and the non-blocking social-card
+CSS and Vite future-loader warnings remain; listener bind failure was inspected
+but not separately fault-injected.
+
 Client-specific permission prompts and model behavior are separate from SDK
 transport coverage. Report exactly which MCP clients and browser permission
 paths were exercised. Never call the feature verified in a host solely because
