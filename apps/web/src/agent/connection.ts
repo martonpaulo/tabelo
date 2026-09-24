@@ -8,7 +8,7 @@ import {
 } from "@tabelo/agent-protocol";
 import { create } from "zustand";
 import { copy } from "@/copy/copy";
-import { LIBRARY_KEY, tableKey } from "@/persistence/schema";
+import { LIBRARY_KEY } from "@/persistence/schema";
 import { useTabeloStore } from "@/state/store";
 import { AgentSession } from "./session";
 
@@ -127,7 +127,7 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 			session &&
 			(event.key === null ||
 				event.key === LIBRARY_KEY ||
-				event.key === tableKey(session.tableId))
+				event.key.startsWith("tabelo.table."))
 		)
 			stop(copy.agent.sessionEnded);
 	};
@@ -226,7 +226,8 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 			socket.send(JSON.stringify(response));
 			if (
 				request.call.tool === "tabelo_edit_table" ||
-				request.call.tool === "tabelo_edit_workspace"
+				request.call.tool === "tabelo_edit_workspace" ||
+				request.call.tool === "tabelo_manage_tables"
 			) {
 				useAgentConnection.setState({ lastOutcome: outcome.code });
 				if (outcome.ok && outcome.data?.applied) {
@@ -235,7 +236,9 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 						severity: "info",
 						message: table
 							? copy.agent.tableUpdated
-							: copy.agent.workspaceUpdated,
+							: request.call.tool === "tabelo_manage_tables"
+								? copy.agent.libraryUpdated
+								: copy.agent.workspaceUpdated,
 						...(table ? { undoFor: useTabeloStore.getState().document } : {}),
 					});
 				} else if (outcome.code === "revision_conflict") {

@@ -6,6 +6,8 @@ import {
 	encodedBytes,
 	failure,
 	fingerprint,
+	type LibraryEdit,
+	type LibraryList,
 	type ReadRequest,
 	ReceiptCache,
 	result,
@@ -22,11 +24,18 @@ import { prepareTable, preserveSelection } from "./table-commands";
 
 type Receipt = { fingerprint: string; result: AgentResult };
 
+function unsupportedAction(_action: never): AgentResult {
+	return failure("invalid_request");
+}
+
 export class AgentSession {
 	readonly id: string;
-	readonly tableId = useTabeloStore.getState().library.activeId;
+	get tableId(): string {
+		return useTabeloStore.getState().library.activeId;
+	}
 	private documentRevision = 0;
 	private workspaceRevision = 0;
+	private libraryRevision = 0;
 	private highWater = 0;
 	private ended = false;
 	private receipts = new ReceiptCache<Receipt>();
@@ -45,16 +54,14 @@ export class AgentSession {
 		this.busy = options.busy ?? (() => null);
 		this.onChange = options.onChange ?? (() => {});
 		this.unsubscribe = useTabeloStore.subscribe((state, previous) => {
-			if (
-				state.library.activeId !== this.tableId ||
-				state.documentEpoch !== previous.documentEpoch
-			) {
+			if (state.documentEpoch !== previous.documentEpoch) {
 				this.close();
 				options.onEnd?.();
 				return;
 			}
 			if (state.document !== previous.document) this.documentRevision++;
 			if (state.workspace !== previous.workspace) this.workspaceRevision++;
+			if (state.library !== previous.library) this.libraryRevision++;
 			if (state.historyNavigation !== previous.historyNavigation)
 				this.pause(true);
 		});
@@ -76,6 +83,7 @@ export class AgentSession {
 		return {
 			documentRevision: this.documentRevision,
 			workspaceRevision: this.workspaceRevision,
+			libraryRevision: this.libraryRevision,
 		};
 	}
 
@@ -86,6 +94,11 @@ export class AgentSession {
 			return "unfinished_source";
 		if (state.pendingImport || state.pendingPaneAction) return "pending_choice";
 		if (state.storageIssue?.kind === "unreadable") return "unreadable_storage";
+		if (
+			state.storageIssue?.kind === "unavailable" &&
+			state.storageIssue.readBlocked
+		)
+			return "unavailable_storage";
 		return this.busy();
 	}
 
@@ -102,6 +115,7 @@ export class AgentSession {
 				failure("outcome_unknown")
 			);
 		if (call.tool === "tabelo_read") return this.read(call.args);
+		if (call.tool === "tabelo_list_tables") return this.listTables(call.args);
 		const prior = this.receipts.get(call.args.requestId);
 		const signature = fingerprint(call);
 		if (prior)
@@ -121,6 +135,10 @@ export class AgentSession {
 	}
 
 	private read(args: ReadRequest): AgentResult {
+		const issue = useTabeloStore.getState().storageIssue;
+		if (issue?.kind === "unreadable") return failure("unreadable_storage");
+		if (issue?.kind === "unavailable" && issue.readBlocked)
+			return failure("unavailable_storage");
 		if (
 			args.expectedDocumentRevision !== undefined &&
 			args.expectedDocumentRevision !== this.documentRevision
@@ -206,10 +224,52 @@ export class AgentSession {
 		return result("read", data);
 	}
 
+	private listTables(args: LibraryList): AgentResult {
+		const state = useTabeloStore.getState();
+		if (
+			state.storageIssue?.kind === "unreadable" &&
+			state.storageIssue.scope === "library"
+		)
+			return failure("unreadable_storage");
+		if (
+			state.storageIssue?.kind === "unavailable" &&
+			state.storageIssue.readBlocked
+		)
+			return failure("unavailable_storage");
+		if (
+			args.expectedLibraryRevision !== undefined &&
+			args.expectedLibraryRevision !== this.libraryRevision
+		)
+			return failure("revision_conflict", this.revisions());
+		const offset = args.offset ?? 0;
+		if (
+			offset > state.library.tables.length ||
+			(offset > 0 && args.expectedLibraryRevision === undefined)
+		)
+			return failure("invalid_page");
+		const tables = state.library.tables.slice(
+			offset,
+			offset + (args.limit ?? 100),
+		);
+		const next = offset + tables.length;
+		return result("tables", {
+			activeTableId: this.tableId,
+			...this.revisions(),
+			tables,
+			totalTables: state.library.tables.length,
+			nextOffset: next < state.library.tables.length ? next : null,
+		});
+	}
+
 	private mutate(
 		call: Extract<
 			AgentCall,
-			{ tool: "tabelo_edit_table" | "tabelo_edit_workspace" }
+			{
+				tool:
+					| "tabelo_edit_table"
+					| "tabelo_edit_workspace"
+					| "tabelo_manage_tables";
+			}
 		>,
 	): AgentResult {
 		if (call.args.tableId !== this.tableId) return failure("session_changed");
@@ -219,9 +279,12 @@ export class AgentSession {
 		if (
 			call.args.expectedDocumentRevision !== this.documentRevision ||
 			(call.tool === "tabelo_edit_workspace" &&
-				call.args.expectedWorkspaceRevision !== this.workspaceRevision)
+				call.args.expectedWorkspaceRevision !== this.workspaceRevision) ||
+			(call.tool === "tabelo_manage_tables" &&
+				call.args.expectedLibraryRevision !== this.libraryRevision)
 		)
 			return failure("revision_conflict", this.revisions());
+		if (call.tool === "tabelo_manage_tables") return this.library(call.args);
 		const state = useTabeloStore.getState();
 		let changed = false;
 		let created: Record<string, string> = {};
@@ -250,6 +313,43 @@ export class AgentSession {
 			...this.revisions(),
 			created,
 			persistence,
+		});
+	}
+
+	private library(args: LibraryEdit): AgentResult {
+		const state = useTabeloStore.getState();
+		const action = args.action;
+		if (
+			action.kind !== "create" &&
+			action.kind !== "open" &&
+			action.kind !== "rename"
+		)
+			return unsupportedAction(action);
+		const outcome =
+			action.kind === "create"
+				? state.createTable(action.name)
+				: action.kind === "open"
+					? state.switchTable(action.targetTableId)
+					: state.renameTable(action.name, action.targetTableId);
+		if (outcome.status !== "saved" && outcome.status !== "unchanged")
+			return failure(`library_${outcome.status}`, {
+				applied: useTabeloStore.getState().library !== state.library,
+				...this.revisions(),
+			});
+		const current = useTabeloStore.getState();
+		const applied = current.library !== state.library;
+		const table =
+			action.kind === "rename" ? null : this.read({ sessionId: this.id });
+		return result(applied ? "applied" : "no_change", {
+			applied,
+			...this.revisions(),
+			tableId: this.tableId,
+			persistence: outcome.status === "saved" ? "saved" : "unchanged",
+			...(table
+				? table.ok
+					? { table: table.data }
+					: { tableError: table.code }
+				: {}),
 		});
 	}
 
@@ -296,14 +396,14 @@ export class AgentSession {
 			if (!workspace.panes.some((pane) => pane.id === action.destinationPaneId))
 				return failure("target_missing");
 			state.movePane(action.paneId, action.destinationPaneId);
-		} else {
+		} else if (action.kind === "set_layout") {
 			if (workspace.layout === action.layoutId) return result("workspace");
 			const layout = layoutsForPaneCount(workspace.panes.length).find(
 				(layout) => layout.id === action.layoutId,
 			);
 			if (!layout) return failure("invalid_layout");
 			state.setLayout(layout.id);
-		}
+		} else return unsupportedAction(action);
 		return result("workspace");
 	}
 }

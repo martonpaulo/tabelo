@@ -12,6 +12,7 @@ type Snapshot = {
 	tableId: string;
 	documentRevision: number;
 	workspaceRevision: number;
+	libraryRevision: number;
 	paused: boolean;
 	columns: { id: string; header: string }[];
 	rows: { id: string; values: unknown[] }[];
@@ -98,6 +99,108 @@ function tableArgs(state: Snapshot, operations: unknown[]) {
 		operations,
 	};
 }
+
+test("the paired library creates, renames and reopens tables without duplicate creation", async ({
+	tabelo,
+	agent,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	const original = await agent.read();
+	const args = {
+		sessionId: agent.sessionId,
+		tableId: original.tableId,
+		requestId: randomUUID(),
+		expectedDocumentRevision: original.documentRevision,
+		expectedLibraryRevision: original.libraryRevision,
+		action: { kind: "create", name: "Research" },
+	};
+	const created = await agent.call("tabelo_manage_tables", args);
+	expect(created).toMatchObject({
+		ok: true,
+		data: { applied: true, table: { name: "Research" } },
+	});
+	expect(await agent.call("tabelo_manage_tables", args)).toEqual(created);
+	const second = created.data?.table as Snapshot;
+	const edit = await agent.call(
+		"tabelo_edit_table",
+		tableArgs(second, [
+			{
+				kind: "set_cells",
+				cells: [
+					{
+						rowId: required(second.rows[0]).id,
+						columnId: required(second.columns[0]).id,
+						value: "Paulo",
+					},
+				],
+			},
+		]),
+	);
+	expect(edit.ok).toBe(true);
+	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
+	const mutate = async (action: unknown) => {
+		const state = await agent.read();
+		return agent.call("tabelo_manage_tables", {
+			sessionId: agent.sessionId,
+			tableId: state.tableId,
+			requestId: randomUUID(),
+			expectedDocumentRevision: state.documentRevision,
+			expectedLibraryRevision: state.libraryRevision,
+			action,
+		});
+	};
+	expect(
+		(
+			await mutate({
+				kind: "rename",
+				targetTableId: original.tableId,
+				name: "People",
+			})
+		).ok,
+	).toBe(true);
+	const listed = await agent.call("tabelo_list_tables", {
+		sessionId: agent.sessionId,
+	});
+	expect(listed.data?.tables).toEqual([
+		{ id: original.tableId, name: "People" },
+		{ id: second.tableId, name: "Research" },
+	]);
+	expect(
+		(await mutate({ kind: "open", targetTableId: original.tableId })).ok,
+	).toBe(true);
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	expect((await agent.read()).tableId).toBe(original.tableId);
+});
+
+test("MCP creation refuses storage failure and keeps the current editable table", async ({
+	page,
+	tabelo,
+	agent,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	const state = await agent.read();
+	await page.evaluate(() => {
+		Storage.prototype.setItem = () => {
+			throw new DOMException("Full", "QuotaExceededError");
+		};
+	});
+	const outcome = await agent.call("tabelo_manage_tables", {
+		sessionId: agent.sessionId,
+		tableId: state.tableId,
+		requestId: randomUUID(),
+		expectedDocumentRevision: state.documentRevision,
+		expectedLibraryRevision: state.libraryRevision,
+		action: { kind: "create", name: "Research" },
+	});
+	expect(outcome).toMatchObject({
+		ok: false,
+		code: "library_quota",
+		data: { applied: false },
+	});
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect(page.getByRole("alert")).toBeVisible();
+	expect((await agent.read()).tableId).toBe(state.tableId);
+});
 
 test("a real MCP client creates and fills one undoable column, then respects human edits", async ({
 	page,

@@ -237,7 +237,8 @@ export class LocalBridge {
 			return failure("payload_too_large");
 		const mutation =
 			call.tool === "tabelo_edit_table" ||
-			call.tool === "tabelo_edit_workspace";
+			call.tool === "tabelo_edit_workspace" ||
+			call.tool === "tabelo_manage_tables";
 		let receipt: Receipt | undefined;
 		if (mutation) {
 			receipt = this.receipts.get(call.args.requestId);

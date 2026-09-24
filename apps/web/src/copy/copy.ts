@@ -276,9 +276,9 @@ export const copy = {
 		pairInstructions:
 			"In ChatGPT Desktop, restart Tabelo under Settings → MCP servers, then start a new local conversation. Ask the agent to call tabelo_connect and paste its code below. Other desktop MCP clients can use the same connector.",
 		disclosure:
-			"The agent can read and edit this table, delete rows and columns, and manage its views. Table data may be sent to the agent’s model provider. Other tables and unfinished source text are not shared.",
+			"The agent can list, open, create and rename tables in this browser, and read and edit the active table and its views. It can delete rows and columns, but cannot delete tables. Table data may be sent to the agent’s model provider. Unfinished source text is not shared.",
 		connectedDescription:
-			"This tab is connected. You can keep editing. Conflicting requests are refused, and undo pauses agent edits until you resume.",
+			"This tab and its table library are connected. You can keep editing and switch tables. Conflicting requests are refused, and undo pauses agent edits until you resume.",
 		invalidDescriptor:
 			"Paste the complete connection code from your agent, including the port and colon.",
 		connectionFailed:
@@ -290,6 +290,7 @@ export const copy = {
 		uncertain:
 			"The connection ended before the result could be confirmed. Check the table before repeating the request.",
 		tableUpdated: "The agent updated the table.",
+		libraryUpdated: "The agent updated the table library.",
 		workspaceUpdated: "The agent updated the views.",
 		conflict: "Your edits were kept. The agent needs to read the table again.",
 	},

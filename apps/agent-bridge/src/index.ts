@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
 	callSchema,
 	resultSchema,
+	serverInstructions,
 	type ToolName,
 	toolDescriptions,
 	toolSchemas,
@@ -28,9 +29,15 @@ for (let index = 2; index < process.argv.length; index += 2) {
 
 const bridge = new LocalBridge({ origins });
 // This is an internal protocol identity, not a product release number.
-const server = new McpServer({ name: "tabelo", version: "0.0.0" });
+const server = new McpServer(
+	{ name: "tabelo", version: "0.0.0" },
+	{ instructions: serverInstructions },
+);
 for (const name of Object.keys(toolSchemas) as ToolName[]) {
-	const edit = name === "tabelo_edit_table" || name === "tabelo_edit_workspace";
+	const edit =
+		name === "tabelo_edit_table" ||
+		name === "tabelo_edit_workspace" ||
+		name === "tabelo_manage_tables";
 	server.registerTool(
 		name,
 		{
@@ -38,8 +45,11 @@ for (const name of Object.keys(toolSchemas) as ToolName[]) {
 			inputSchema: toolSchemas[name].shape,
 			annotations: {
 				readOnlyHint:
-					name === "tabelo_read" || name === "tabelo_operation_status",
+					name === "tabelo_read" ||
+					name === "tabelo_list_tables" ||
+					name === "tabelo_operation_status",
 				destructiveHint: edit,
+				idempotentHint: edit,
 				openWorldHint: false,
 			},
 		},

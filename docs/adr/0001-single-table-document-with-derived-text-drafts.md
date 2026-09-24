@@ -103,3 +103,14 @@ A stale request changes nothing and requires a fresh read. Unfinished input
 blocks an agent write instead of being superseded by it. The human remains free
 to edit while the agent prepares its request. This is one tab serializing
 operations, not a remote collaboration layer or cross-tab storage coordination.
+
+### Library scope (owner, 2026-09-24)
+
+Pairing authorizes the library reachable from that tab: listing, creating,
+opening and renaming tables, without table deletion or raw recovery access.
+Opening a table uses the application's persistence transition; it does not
+create a parallel document owner. Only the active canonical document can be
+edited, with no requirement that its grid be visible. Table switches keep
+pairing and advance session revisions; a stale active-table ID is refused.
+Failed saves prevent leaving the current table. Library commands retain their
+UI history semantics; each document batch is still one undo step.

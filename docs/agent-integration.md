@@ -46,8 +46,8 @@ button; this guide is a reference, not a prerequisite to use the feature.
    `tabelo_connect`. In the open online Tabelo table, choose
    **Connect agent (MCP)** from the app menu and paste the returned connection code.
 4. Allow the browser's local-network permission if prompted. Read the sharing
-   scope before connecting. The connection reaches this tab and table only.
-5. Ask for a table edit. Use **Agent connected** in the app menu to pause or
+   scope before connecting. The connection reaches this tab and its browser library.
+5. Ask for a table edit or library operation. Use **Agent connected** in the app menu to pause or
    disconnect. Undo/redo pauses agent writes; resume explicitly from that menu.
 
 The MCP host owns process startup. Starting the helper in an ordinary terminal
@@ -58,7 +58,7 @@ If Tabelo's tools are missing, run `codex mcp get tabelo` and verify that the
 configured Node executable and connector path still exist. Registration alone
 does not refresh a conversation's tool catalog: restart the server and use a
 new local conversation. Do not create a tunnel or pay for API access to repair
-missing local tools. The five tools listed below must be available before
+missing local tools. The seven tools listed below must be available before
 browser pairing can begin.
 
 For local development, append `--origin http://127.0.0.1:<port>` (or the exact
@@ -68,10 +68,15 @@ browser security, or bind the helper to a LAN interface. Use one editing tab;
 this feature does not synchronize documents across browser tabs.
 
 A connection code expires after two minutes and is consumed by pairing. A
-reload, table switch, document replacement, lost helper, or Disconnect requires
+reload, document replacement, lost helper, or Disconnect requires
 a new pairing. If the browser denied local access, allow it in the site's
 permissions and request a fresh code. The normal editor remains usable without
 that permission or without the helper.
+
+Switching tables keeps the authorized library connection. Document, workspace
+and library revisions remain monotonic across switches, and a command for a
+previous active table is refused. Protocol version 2 requires fresh pairing
+with the expanded library disclosure; an older helper/browser fails closed.
 
 ## Architecture and single owners
 
@@ -146,6 +151,8 @@ concerns such as pairing and expiry do not belong in pure document functions.
 | Tool | Purpose |
 | --- | --- |
 | `tabelo_connect` | Request pairing or inspect the paired session identity |
+| `tabelo_list_tables` | Page through table IDs and names without loading contents |
+| `tabelo_manage_tables` | Create, open or rename a table through the normal library operations |
 | `tabelo_read` | Read committed table data, revisions and available workspace choices |
 | `tabelo_edit_table` | Apply a typed, atomic document-operation batch |
 | `tabelo_edit_workspace` | Perform one legal view/layout operation |
@@ -190,10 +197,19 @@ allocates the actual IDs. Scalar values retain their JSON types; strings never
 implicitly become numbers, booleans or null. Replacing inline-rich content with
 plain text requires the explicit `replaceInline` parameter.
 
-Library management, whole-document replacement/import, source-buffer edits,
+Table deletion, whole-document replacement/import, source-buffer edits,
 clipboard, download, agent-issued undo, column-wide conversions and global
 settings remain outside this tool surface. The user can still perform their
 normal UI actions; session changes invalidate any obsolete authorization.
+
+Library mutations carry the current active table ID, document revision and
+library revision, plus a request ID. Creating or opening returns a compact
+snapshot in `data.table`, ready for the next edit without another read. If a
+table opens into recovery, `data.tableError` replaces that snapshot: the agent
+must not mistake an unreadable payload for empty content. Renaming can target
+an inactive table without opening it. Failed saves refuse creation/switching;
+unreadable bytes require the user's recovery flow. Listing returns names and
+IDs only, with a revision guard for continuation pages.
 
 ## Admission and recovery
 

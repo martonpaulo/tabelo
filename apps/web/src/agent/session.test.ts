@@ -1,6 +1,10 @@
 // @vitest-environment happy-dom
 
-import { AGENT_LIMITS, encodedBytes } from "@tabelo/agent-protocol";
+import {
+	AGENT_LIMITS,
+	encodedBytes,
+	type LibraryEdit,
+} from "@tabelo/agent-protocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { documentFromMatrix } from "@/core/document";
 import { useTabeloStore } from "@/state/store";
@@ -57,6 +61,248 @@ const execute = (value: unknown, sequence = 2) =>
 	session.execute(value, sequence, Date.now() + 1000);
 
 describe("agent command admission", () => {
+	it("guards library continuation pages and reports unreadable opened data without a fake empty snapshot", () => {
+		useTabeloStore.getState().createTable("Research");
+		const listed = execute({
+			tool: "tabelo_list_tables",
+			args: { sessionId: session.id, limit: 1 },
+		});
+		expect(listed.data?.nextOffset).toBe(1);
+		expect(
+			execute({
+				tool: "tabelo_list_tables",
+				args: { sessionId: session.id, offset: 1 },
+			}).code,
+		).toBe("invalid_page");
+		expect(
+			execute({
+				tool: "tabelo_list_tables",
+				args: {
+					sessionId: session.id,
+					offset: 1,
+					expectedLibraryRevision: listed.data?.libraryRevision,
+				},
+			}).data?.tables,
+		).toHaveLength(1);
+		useTabeloStore.setState({
+			storageIssue: {
+				kind: "unreadable",
+				reason: "future-version",
+				raw: "private raw data",
+			},
+		});
+		const refused = execute({
+			tool: "tabelo_read",
+			args: { sessionId: session.id },
+		});
+		expect(refused).toEqual({ ok: false, code: "unreadable_storage" });
+	});
+	it("creates, renames, and opens library tables without losing pairing or duplicating retries", () => {
+		const original = read();
+		const create = {
+			tool: "tabelo_manage_tables",
+			args: {
+				sessionId: session.id,
+				tableId: session.tableId,
+				requestId: "create",
+				expectedDocumentRevision: 0,
+				expectedLibraryRevision: 0,
+				action: { kind: "create", name: "Research" },
+			},
+		};
+		const created = execute(create);
+		expect(created).toMatchObject({
+			ok: true,
+			data: {
+				applied: true,
+				table: { name: "Research", rows: expect.any(Array) },
+			},
+		});
+		expect(execute(create)).toEqual(created);
+		expect(useTabeloStore.getState().library.tables).toHaveLength(2);
+		const listed = execute({
+			tool: "tabelo_list_tables",
+			args: { sessionId: session.id },
+		});
+		expect(listed.data?.tables).toHaveLength(2);
+		expect(listed.data).not.toHaveProperty("rows");
+		const mutate = (
+			action: LibraryEdit["action"],
+			requestId: string,
+			sequence: number,
+		) => {
+			const state = read();
+			return execute(
+				{
+					tool: "tabelo_manage_tables",
+					args: {
+						sessionId: session.id,
+						tableId: session.tableId,
+						requestId,
+						expectedDocumentRevision: state.documentRevision,
+						expectedLibraryRevision: state.libraryRevision,
+						action,
+					},
+				},
+				sequence,
+			);
+		};
+		expect(
+			mutate(
+				{
+					kind: "rename",
+					targetTableId: String(original.tableId),
+					name: "People",
+				},
+				"rename",
+				3,
+			).ok,
+		).toBe(true);
+		expect(
+			mutate({ kind: "create", name: "People" }, "duplicate", 4).code,
+		).toBe("library_duplicate");
+		expect(
+			mutate(
+				{ kind: "open", targetTableId: String(original.tableId) },
+				"open",
+				5,
+			),
+		).toMatchObject({
+			ok: true,
+			data: {
+				table: {
+					name: "People",
+					rows: [{ values: ["Ingrid"] }, { values: ["Paulo"] }],
+				},
+			},
+		});
+		expect(execute(create, 6)).toEqual(created);
+		expect(useTabeloStore.getState().library.activeId).toBe(original.tableId);
+		expect(
+			mutate(
+				{ kind: "rename", targetTableId: session.tableId, name: " " },
+				"blank",
+				7,
+			).code,
+		).toBe("library_invalid");
+	});
+
+	it("refuses stale library mutations, paginated lists, deletions, and writes during input", () => {
+		const args = {
+			sessionId: session.id,
+			tableId: session.tableId,
+			requestId: "new",
+			expectedDocumentRevision: 0,
+			expectedLibraryRevision: 0,
+			action: { kind: "create", name: "Research" },
+		};
+		useTabeloStore.getState().renameTable("People");
+		expect(execute({ tool: "tabelo_manage_tables", args }).code).toBe(
+			"revision_conflict",
+		);
+		expect(
+			execute({
+				tool: "tabelo_list_tables",
+				args: { sessionId: session.id, expectedLibraryRevision: 0 },
+			}).code,
+		).toBe("revision_conflict");
+		expect(
+			execute({
+				tool: "tabelo_manage_tables",
+				args: {
+					...args,
+					action: { kind: "delete", targetTableId: session.tableId },
+				},
+			}).code,
+		).toBe("invalid_request");
+		const pane = required(
+			useTabeloStore
+				.getState()
+				.workspace.panes.find((p) => p.view === "markdown"),
+		);
+		useTabeloStore.getState().setDraft(pane.id, "markdown", "unfinished");
+		expect(
+			execute(
+				{
+					tool: "tabelo_manage_tables",
+					args: {
+						...args,
+						requestId: "busy",
+						expectedLibraryRevision: read().libraryRevision,
+					},
+				},
+				3,
+			).code,
+		).toBe("user_busy");
+		expect(useTabeloStore.getState().draft?.text).toBe("unfinished");
+		expect(useTabeloStore.getState().library.tables).toHaveLength(1);
+	});
+
+	it("keeps session revisions monotonic across human table switches and refuses failed-save creation", () => {
+		const first = session.tableId;
+		useTabeloStore.getState().createTable("Research");
+		const second = session.tableId;
+		useTabeloStore.getState().switchTable(first);
+		expect(read().documentRevision).toBeGreaterThan(0);
+		const before = read();
+		vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+			throw new DOMException("Full", "QuotaExceededError");
+		});
+		const response = execute({
+			tool: "tabelo_manage_tables",
+			args: {
+				sessionId: session.id,
+				tableId: first,
+				requestId: "failed-create",
+				expectedDocumentRevision: before.documentRevision,
+				expectedLibraryRevision: before.libraryRevision,
+				action: { kind: "create", name: "Third" },
+			},
+		});
+		expect(response).toMatchObject({
+			ok: false,
+			code: "library_quota",
+			data: { applied: false },
+		});
+		expect(session.tableId).toBe(first);
+		expect(
+			useTabeloStore.getState().library.tables.map((table) => table.id),
+		).toEqual([first, second]);
+	});
+
+	it("edits the canonical table without a grid and preserves typed values and meaningful whitespace", () => {
+		const state = useTabeloStore.getState();
+		const grid = required(
+			state.workspace.panes.find((pane) => pane.view === "grid"),
+		);
+		state.closePane(grid.id);
+		const row = required(state.document.rows[0]);
+		const column = required(state.document.columns[0]);
+		const before = read();
+		const args = {
+			sessionId: session.id,
+			tableId: session.tableId,
+			requestId: "typed",
+			expectedDocumentRevision: before.documentRevision,
+			operations: [
+				{
+					kind: "set_cells",
+					cells: [{ rowId: row.id, columnId: column.id, value: "  0035  " }],
+				},
+			],
+		};
+		expect(execute({ tool: "tabelo_edit_table", args }).ok).toBe(true);
+		expect(read().rows).toMatchObject([
+			{ values: ["  0035  "] },
+			{ values: ["Paulo"] },
+		]);
+		expect(
+			useTabeloStore
+				.getState()
+				.workspace.panes.every((pane) => pane.view !== "grid"),
+		).toBe(true);
+	});
+
 	it("reports structural editing support for every mapped source without promising current admission", () => {
 		const views = read(true).views as {
 			id: string;

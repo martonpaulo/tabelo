@@ -127,8 +127,11 @@ These are normative and were resolved deliberately. See `CONTEXT.md` for
 vocabulary and `docs/adr/` for the reasoning.
 
 - **An external agent uses application commands, never a second document**
-  (#405). An explicitly paired local connection reaches one tab and its active
-  table. The browser validates every command against live revisions and input
+  (#405; library scope extended by the owner, 2026-09-24). An explicitly paired
+  local connection reaches one tab and its browser table library. It may list,
+  create, open and rename tables, never delete them; document edits reach only
+  the active canonical table, whether or not a grid is visible. Switching tables
+  preserves pairing but advances revisions. The browser validates every command against live revisions and input
   state, applies each document batch atomically, and uses the normal timeline.
   Unfinished input is never displaced by an agent; stale requests are refused.
   User undo/redo pauses agent writes. Session credentials and receipts stay in

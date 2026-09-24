@@ -231,3 +231,47 @@ test("receipt storage evicts old large payloads without forgetting the newest ou
 	receipts.clear();
 	assert.equal(receipts.get("request-5"), undefined);
 });
+
+test("a concurrent mutation is refused while the first result is outstanding", async () => {
+	const bridge = new LocalBridge();
+	try {
+		const { peer, welcome } = await pair(bridge);
+		const incoming = once(peer, "message");
+		const input = {
+			tool: "tabelo_manage_tables",
+			args: {
+				sessionId: welcome.sessionId,
+				tableId: "table",
+				requestId: "create",
+				expectedDocumentRevision: 0,
+				expectedLibraryRevision: 0,
+				action: { kind: "create", name: "Research" },
+			},
+		};
+		const first = bridge.call(input);
+		const [bytes] = await incoming;
+		const request = requestSchema.parse(JSON.parse(String(bytes)));
+		assert.equal(
+			(
+				await bridge.call({
+					...input,
+					args: { ...input.args, requestId: "second" },
+				})
+			).code,
+			"request_in_flight",
+		);
+		peer.send(
+			JSON.stringify({
+				version: WIRE_VERSION,
+				kind: "result",
+				credential: welcome.credential,
+				callId: request.callId,
+				result: { ok: true, code: "applied", data: { applied: true } },
+			}),
+		);
+		assert.equal((await first).code, "applied");
+		assert.equal((await bridge.call(input)).code, "applied");
+	} finally {
+		await bridge.close();
+	}
+});

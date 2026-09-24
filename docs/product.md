@@ -54,7 +54,8 @@ the exact text format the person came for.
   does not.
 - Runs in the browser, offline and without an account. An optional local-agent
   connection lets an external agent read and edit the active table after an
-  explicit pairing; that agent may send shared data to its model provider
+  explicit pairing. It may also list, create, open and rename browser tables,
+  but cannot delete them (owner, 2026-09-24); that agent may send shared data to its model provider
   (#405). Ordinary editing sends no table data anywhere.
 
 ## What it will never do
@@ -141,7 +142,7 @@ reversible implementation choice does not belong here.
 | Decision | Current outcome | Recorded in | Decided on |
 | :--- | :--- | :--- | :--- |
 | Product scope | An editor for one table at a time, with a local library of tables to switch between | this document | #92, #403 |
-| External agent | Optional local MCP connection to one tab and active table; revision-checked commands, protected input, chronological document undo, and explicit external data sharing | `docs/agent-integration.md`, ADR 0001, ADR 0003 | #405 |
+| External agent | Optional local MCP connection to one tab and its library; active-document edits plus listing, creating, opening and renaming tables; revision-checked commands, protected input and chronological undo; no table deletion | `docs/agent-integration.md`, ADR 0001, ADR 0003 | #405; owner, 2026-09-24 |
 | Table library | Any number of local tables, one active; the app menu lists them and switches; names are unique and numbered from the second table on; a warning, never a refusal, once ten are kept | this document, AGENTS.md | #403, owner, 2026-09-20 |
 | App menu shape | Three titled sections, Tables, This table, Workspace, with Settings below them; no brand row; every table one row shape with rename and delete revealed on hover or focus; Import file, Copy as and Download table behind one Export submenu; one footer line carrying the product, its copyright and the source link | design system §3 | owner, 2026-09-20 |
 | Erase everything | One control in Settings clears every Tabelo key in this browser, after a confirmation | design system §3 | owner, 2026-09-20 |

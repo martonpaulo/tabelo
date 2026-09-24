@@ -8,13 +8,16 @@ UI copy. `AGENTS.md` holds the normative rules; this file defines the words.
 ### Agent connection
 
 An optional, explicitly paired link between a local MCP helper and one Tabelo
-tab's active table (#405). The helper carries commands and results; the browser
+tab and its browser table library (#405; owner extension, 2026-09-24). The helper carries commands and results; the browser
 still owns the document. The external agent, including its model provider, is
 outside Tabelo's local-storage boundary. Pairing authorizes the documented read
-and edit surface, not access to the table library or raw recovery data.
+and edit surface, including listing, creating, opening and renaming tables.
+It never authorizes deleting tables or reading raw recovery data. Document
+commands target the active canonical table, independent of visible views.
 
-A **session** is that temporary authorization. Replacing the document, changing
-the active table, reloading, disconnecting, or losing the helper invalidates it.
+A **session** is that temporary authorization. Replacing the document,
+reloading, disconnecting, or losing the helper invalidates it. Switching tables
+keeps the session and advances its document, workspace and library revisions.
 A **revision** is a monotonic observation of changes, not a saved document
 version; undo advances it. A **batch** is one atomic document command and one
 chronological undo step. A **receipt** records a bounded, in-memory command
