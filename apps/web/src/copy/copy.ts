@@ -262,9 +262,9 @@ export const copy = {
 		descriptor: "Connection code",
 		description:
 			"Add Tabelo’s local MCP connector to your agent, then ask it to connect and paste the connection code here.",
-		setupTitle: "1. Set up once in Codex",
+		setupTitle: "1. Set up the desktop connector",
 		setupRequirements:
-			"Requires Git, Node.js 24+ and pnpm 11+. Run these commands in a terminal, from a folder where you want to keep Tabelo.",
+			"Requires Git, Node.js 24+, pnpm 11+ and the Codex CLI. Run these commands once to register the connector for ChatGPT Desktop and Codex. Only the connector runs locally; keep using Tabelo online.",
 		setupExisting:
 			"Already have a Tabelo checkout? Open its folder and run only the last two commands.",
 		setupCommands: `git clone ${product.repositoryUrl}.git\ncd tabelo\npnpm install\ncodex mcp add tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"`,
@@ -274,7 +274,7 @@ export const copy = {
 			"Couldn’t copy. Select the commands and copy them manually.",
 		pairTitle: "2. Ask your agent to connect",
 		pairInstructions:
-			"Start a new conversation in your agent so it loads the MCP connection. Ask it to connect to Tabelo, then paste the code it gives you below.",
+			"In ChatGPT Desktop, restart Tabelo under Settings → MCP servers, then start a new local conversation. Ask the agent to call tabelo_connect and paste its code below. Other desktop MCP clients can use the same connector.",
 		disclosure:
 			"The agent can read and edit this table, delete rows and columns, and manage its views. Table data may be sent to the agent’s model provider. Other tables and unfinished source text are not shared.",
 		connectedDescription:

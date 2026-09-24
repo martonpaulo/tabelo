@@ -12,11 +12,20 @@ hosted backend, table database, account, extension, or marketplace registration.
 The external agent may send tool results to its model provider.
 
 The supported scenario is Tabelo at its GitHub Pages address and an MCP-capable
-terminal/desktop agent on the same computer. Two ordinary tabs, ChatGPT Web and
-Tabelo, with no local process or additional hosted component are not supported.
-ChatGPT developer mode expects a remote MCP connection, and OpenAI's secure
-tunnel needs a local client; neither is a Pages-only substitute. No tunnel or
-cloud relay is part of this implementation. See the official
+terminal/desktop agent on the same computer. **The website stays online; only
+the MCP connector runs locally.** Do not run `pnpm dev` for this setup.
+
+The current [ChatGPT Desktop MCP settings](https://learn.chatgpt.com/docs/extend/mcp)
+support local stdio servers and share configuration with Codex CLI on the same
+host. Use a local conversation that loads that host's MCP tools. A hosted chat
+does not become a local MCP client merely because it appears in a desktop
+window. This local route needs neither an API key nor a tunnel.
+
+Two ordinary tabs, ChatGPT Web and Tabelo, with no local process or additional
+hosted component are not supported. Hosted ChatGPT developer-mode connections
+expect a remote MCP endpoint, and OpenAI's secure tunnel needs a local client;
+neither is a Pages-only substitute. No tunnel or cloud relay is part of this
+implementation. See the official
 [developer-mode](https://developers.openai.com/api/docs/guides/developer-mode)
 and [tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
 requirements before proposing a different deployment.
@@ -32,7 +41,9 @@ button; this guide is a reference, not a prerequisite to use the feature.
    codex mcp add tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"
    ```
 
-3. Ask the agent to call `tabelo_connect`. In the open Tabelo table, choose
+3. In ChatGPT Desktop, open **Settings → MCP servers**, find **tabelo**, and
+   select **Restart**. Start a new local conversation and ask it to call
+   `tabelo_connect`. In the open online Tabelo table, choose
    **Connect agent (MCP)** from the app menu and paste the returned connection code.
 4. Allow the browser's local-network permission if prompted. Read the sharing
    scope before connecting. The connection reaches this tab and table only.
@@ -42,6 +53,13 @@ button; this guide is a reference, not a prerequisite to use the feature.
 The MCP host owns process startup. Starting the helper in an ordinary terminal
 just waits for MCP on standard input; it is not a chat program. Keep stdout for
 MCP messages and stderr for sanitized diagnostics. The helper has no model key.
+
+If Tabelo's tools are missing, run `codex mcp get tabelo` and verify that the
+configured Node executable and connector path still exist. Registration alone
+does not refresh a conversation's tool catalog: restart the server and use a
+new local conversation. Do not create a tunnel or pay for API access to repair
+missing local tools. The five tools listed below must be available before
+browser pairing can begin.
 
 For local development, append `--origin http://127.0.0.1:<port>` (or the exact
 localhost origin) to the helper's arguments, using the app's actual worktree
@@ -147,6 +165,12 @@ exactly that column order. `columnIds` selects and orders the relevant columns.
 Unknown or duplicate column IDs are refused. `includeWorkspace: true` adds view
 choices, capabilities, layouts and split options only when that context is
 needed. Row pagination and its revision guard apply to either scope.
+
+`views[].capabilities.tableOperations` describes structural command support in
+that view: the grid supports it, editable source views derive it from their
+codec's row mapping, and the preview does not. It is not a guarantee that a
+particular caret, selection, draft or paused session currently admits an action,
+nor does it determine clipboard availability.
 
 This is a read projection, not a second document or a new write format. Values
 remain typed, including null and normalized inline content. Do not replace the
