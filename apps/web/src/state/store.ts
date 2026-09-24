@@ -134,15 +134,18 @@ import {
 import { storageErased } from "@/persistence/erase";
 import {
 	LIBRARY_VERSION,
+	type LibraryIndex,
 	type PersistenceFailureReason,
 } from "@/persistence/schema";
 import {
 	loadLibraryIndex,
 	loadTable,
 	preserveUnreadableAndSave,
+	preserveUnreadableLibraryAndSave,
 	removeTable as removeStoredTable,
 	type SaveOutcome,
 	type SavePayload,
+	type StorageLoadOutcome,
 	saveLibraryIndex,
 	saveTable,
 } from "@/persistence/storage";
@@ -336,7 +339,7 @@ export interface StatusAnnouncement {
 }
 
 export type StorageIssue =
-	| { readonly kind: "unavailable" }
+	| { readonly kind: "unavailable"; readonly readBlocked?: boolean }
 	| { readonly kind: "quota" }
 	| {
 			readonly kind: "unreadable";
@@ -344,8 +347,29 @@ export type StorageIssue =
 			// interface can say whether they are old or damaged. See #32.
 			readonly reason: PersistenceFailureReason;
 			readonly raw: string;
+			readonly scope?: "library";
 			readonly replacementFailure?: "unavailable" | "quota";
 	  };
+
+export type LibraryTransitionOutcome =
+	| { readonly status: "saved"; readonly tableId: TableId }
+	| {
+			readonly status:
+				| "unchanged"
+				| "blocked"
+				| "invalid"
+				| "duplicate"
+				| "missing"
+				| "quota"
+				| "unavailable";
+	  };
+
+function storageBlocksWrites(issue: StorageIssue | null): boolean {
+	return (
+		issue?.kind === "unreadable" ||
+		(issue?.kind === "unavailable" && issue.readBlocked === true)
+	);
+}
 
 export interface TabeloState {
 	// Session-only signals for consumers that must invalidate work across a
@@ -614,12 +638,12 @@ export interface TabeloState {
 	resetDocument: () => void;
 	// The table library (#403). One table is always active; the others sit in
 	// storage under their own keys and are read when they become active.
-	createTable: () => void;
+	createTable: (name?: string) => LibraryTransitionOutcome;
 	// The document of any table in the library: the open one from memory, and
 	// another from the key it is stored under. Read-only, for the commands
 	// that write a table out without opening it (owner, 2026-09-20).
 	documentForTable: (id: TableId) => TableDocument | null;
-	switchTable: (id: TableId) => void;
+	switchTable: (id: TableId) => LibraryTransitionOutcome;
 	deleteTable: (id: TableId) => void;
 	dismissNotice: (id: string) => void;
 	pushNotice: (request: NoticeRequest) => void;
@@ -820,8 +844,10 @@ function closedPaneState(
 // the index holds identity and order only, so the name a table shows is the
 // name that table stores, and the two can never disagree. An empty browser,
 // or an index nothing can be read from, starts with one table.
-function readLibrary(fallback: TableLibrary): TableLibrary {
-	const index = loadLibraryIndex();
+function readLibrary(
+	fallback: TableLibrary,
+	index: LibraryIndex | null,
+): TableLibrary {
 	// No index yet: the library this session started with is the library, so
 	// the table it already holds keeps the key a save would have written to.
 	if (!index) return fallback;
@@ -895,13 +921,21 @@ function blankTableState(name: string) {
 // Reads the library's active table into the store, or starts that table
 // blank when its payload is missing or unreadable. The index is the caller's
 // to write: switching and deleting both change it, and both land here.
-function openTable(library: TableLibrary): void {
+function openTable(
+	library: TableLibrary,
+	outcome: StorageLoadOutcome = loadTable(library.activeId),
+): void {
 	const id = library.activeId;
-	const outcome = loadTable(id);
 	if (outcome.status !== "ok") {
 		useTabeloStore.setState({
 			library,
 			...blankTableState(entryName(library, id)),
+			storageIssue:
+				outcome.status === "unreadable"
+					? { kind: "unreadable", reason: outcome.reason, raw: outcome.raw }
+					: outcome.status === "unavailable"
+						? { kind: "unavailable", readBlocked: true }
+						: null,
 		});
 		return;
 	}
@@ -1057,10 +1091,35 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	hydrate: () => {
 		const session = get().library;
-		const library = readLibrary(session);
+		const loadedIndex = loadLibraryIndex();
+		if (loadedIndex.status === "unreadable") {
+			set({
+				storageIssue: {
+					kind: "unreadable",
+					scope: "library",
+					reason: loadedIndex.reason,
+					raw: loadedIndex.raw,
+				},
+			});
+			return;
+		}
+		if (loadedIndex.status === "unavailable") {
+			set({ storageIssue: { kind: "unavailable", readBlocked: true } });
+			return;
+		}
+		const library = readLibrary(
+			session,
+			loadedIndex.status === "ok" ? loadedIndex.index : null,
+		);
 		// A browser with no index gets one now, so the table this session is
 		// about to write is in the library rather than becoming an orphan key.
-		if (!loadLibraryIndex()) writeLibraryIndex(library);
+		if (loadedIndex.status === "empty") {
+			const saved = writeLibraryIndex(library);
+			if (saved.status !== "saved") {
+				set({ storageIssue: { kind: saved.status } });
+				return;
+			}
+		}
 		// The table this session minted before reading storage belongs to no
 		// library once the stored one arrives. A save between the first render
 		// and this point would have left its key behind, unreachable from any
@@ -1095,7 +1154,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			return;
 		}
 		if (outcome.status === "unavailable") {
-			set({ storageIssue: { kind: "unavailable" } });
+			set({ storageIssue: { kind: "unavailable", readBlocked: true } });
 			return;
 		}
 		if (outcome.status === "unreadable") {
@@ -1107,22 +1166,31 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 					raw: outcome.raw,
 				},
 			});
+		} else {
+			set({ storageIssue: null });
 		}
 	},
 
 	replaceUnreadableStorage: () => {
 		const state = get();
 		if (state.storageIssue?.kind !== "unreadable") return false;
-		const outcome = preserveUnreadableAndSave(
-			state.library.activeId,
-			state.storageIssue.raw,
-			savePayload(state),
-		);
+		const outcome =
+			state.storageIssue.scope === "library"
+				? preserveUnreadableLibraryAndSave(state.storageIssue.raw, {
+						version: LIBRARY_VERSION,
+						tables: state.library.tables.map((table) => table.id),
+						activeId: state.library.activeId,
+					})
+				: preserveUnreadableAndSave(
+						state.library.activeId,
+						state.storageIssue.raw,
+						savePayload(state),
+					);
 		if (outcome.status === "saved") {
 			set({ storageIssue: null });
 			return true;
 		}
-		if (outcome.recoveryPreserved) {
+		if (outcome.recoveryPreserved && state.storageIssue.scope !== "library") {
 			set({ storageIssue: { kind: outcome.status } });
 			return false;
 		}
@@ -1448,7 +1516,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const entry = state.library.tables.find((table) => table.id === targetId);
 		if (!entry) return { status: "blocked" };
 		const active = targetId === state.library.activeId;
-		if (active && state.storageIssue?.kind === "unreadable") {
+		if (storageBlocksWrites(state.storageIssue)) {
 			return { status: "blocked" };
 		}
 		if (validated.name === entry.name) return { status: "saved" };
@@ -2603,21 +2671,41 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		});
 	},
 
-	createTable: () => {
+	createTable: (requestedName) => {
 		const state = get();
-		if (state.storageIssue?.kind === "unreadable") return;
-		flushPersistence();
-		const { name, renameFirst } = nameForNewTable(
-			state.library,
-			DEFAULT_TABLE_NAME,
-		);
+		if (storageBlocksWrites(state.storageIssue)) return { status: "blocked" };
+		const named =
+			requestedName === undefined ? null : validateTableName(requestedName);
+		if (named && !named.ok) return { status: "invalid" };
+		if (
+			named?.ok &&
+			state.library.tables.some((table) => table.name === named.name)
+		)
+			return { status: "duplicate" };
+		const flushed = flushPersistence();
+		if (flushed.status !== "saved") return flushed;
+		const { name, renameFirst } = named?.ok
+			? { name: named.name, renameFirst: null }
+			: nameForNewTable(state.library, DEFAULT_TABLE_NAME);
 		const entry = { id: createTableId(), name };
 		// Numbering the first table is a change to that table's own payload, so
 		// it is written before the library moves on to the new one.
 		if (renameFirst) {
-			saveTable(state.library.activeId, {
+			const renamed = saveTable(state.library.activeId, {
 				...savePayload(state),
 				name: renameFirst,
+			});
+			if (renamed.status !== "saved") {
+				set({ storageIssue: { kind: renamed.status } });
+				return renamed;
+			}
+			set({
+				name: renameFirst,
+				library: renameEntry(
+					state.library,
+					state.library.activeId,
+					renameFirst,
+				),
 			});
 		}
 		const library = addTable(
@@ -2626,9 +2714,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				: state.library,
 			entry,
 		);
-		set({ library, ...blankTableState(entry.name) });
-		writeLibraryIndex(library);
-		flushPersistence();
+		const blank = blankTableState(entry.name);
+		const saved = saveTable(entry.id, blank);
+		const indexed =
+			saved.status === "saved" ? writeLibraryIndex(library) : saved;
+		if (indexed.status !== "saved") {
+			// This key was allocated for this failed creation and contains no user edits.
+			if (saved.status === "saved") removeStoredTable(entry.id);
+			set({ storageIssue: { kind: indexed.status } });
+			return indexed;
+		}
+		set({ library, ...blank, storageIssue: null });
+		return { status: "saved", tableId: entry.id };
 	},
 
 	documentForTable: (id) => {
@@ -2640,13 +2737,27 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	switchTable: (id) => {
 		const state = get();
-		if (id === state.library.activeId) return;
-		if (!state.library.tables.some((table) => table.id === id)) return;
-		if (state.storageIssue?.kind === "unreadable") return;
+		if (id === state.library.activeId) return { status: "unchanged" };
+		if (!state.library.tables.some((table) => table.id === id))
+			return { status: "missing" };
+		if (storageBlocksWrites(state.storageIssue)) return { status: "blocked" };
 		// The table being left is written before the other one is read, so a
 		// switch can never be the step that loses an edit.
-		flushPersistence();
-		openTable({ ...state.library, activeId: id });
+		const flushed = flushPersistence();
+		if (flushed.status !== "saved") return flushed;
+		const loaded = loadTable(id);
+		if (loaded.status === "unavailable") {
+			set({ storageIssue: { kind: "unavailable" } });
+			return { status: "unavailable" };
+		}
+		const library = { ...state.library, activeId: id };
+		const indexed = writeLibraryIndex(library);
+		if (indexed.status !== "saved") {
+			set({ storageIssue: { kind: indexed.status } });
+			return indexed;
+		}
+		openTable(library, loaded);
+		return { status: "saved", tableId: id };
 	},
 
 	deleteTable: (id) => {
@@ -2771,7 +2882,7 @@ export function flushPersistence(): FlushOutcome {
 	// follows would otherwise carry the table back into storage.
 	if (storageErased()) return { status: "blocked" };
 	const current = useTabeloStore.getState();
-	if (current.storageIssue?.kind === "unreadable") {
+	if (storageBlocksWrites(current.storageIssue)) {
 		return { status: "blocked" };
 	}
 	const outcome = saveTable(current.library.activeId, savePayload(current));

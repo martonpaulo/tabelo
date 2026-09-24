@@ -163,7 +163,7 @@ export function TabeloApp() {
 	const startNewTable = () => {
 		dialogOpenerRef.current = null;
 		const before = useTabeloStore.getState().library.activeId;
-		useTabeloStore.getState().createTable();
+		if (useTabeloStore.getState().createTable().status !== "saved") return;
 		// What "go back" undoes, for as long as this welcome surface is the one
 		// the new table opened on.
 		setNewTableRetreat({

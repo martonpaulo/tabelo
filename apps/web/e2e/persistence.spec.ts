@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { copy } from "@/copy/copy";
-import { CURRENT_VERSION } from "@/persistence/schema";
+import {
+	CURRENT_VERSION,
+	LIBRARY_KEY,
+	LIBRARY_RECOVERY_KEY,
+} from "@/persistence/schema";
 import {
 	DEFAULT_PREFERENCES,
 	PREFERENCES_RECOVERY_KEY,
@@ -12,6 +16,49 @@ import { seedTableStorage } from "./helpers";
 
 const validMarkdown = "| Name |\n| --- |\n| Ingrid |";
 const invalidMarkdown = "| Name |\n| not a divider |\n| Ingrid |";
+
+test("an unreadable library index stays recoverable without replacing its table payloads", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.page.reload();
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	const raw = JSON.stringify({
+		version: 99,
+		tables: ["retained"],
+		activeId: "retained",
+	});
+	const original = await tabelo.page.evaluate(
+		({ key, raw }) => {
+			const index = JSON.parse(localStorage.getItem(key) ?? "{}");
+			const tableKey = `tabelo.table.${index.activeId}`;
+			const value = localStorage.getItem(tableKey);
+			localStorage.setItem(key, raw);
+			return { key: tableKey, value };
+		},
+		{ key: LIBRARY_KEY, raw },
+	);
+	await tabelo.page.reload();
+	await expect(tabelo.page.getByRole("alert")).toBeVisible();
+	expect(
+		await tabelo.page.evaluate((key) => localStorage.getItem(key), LIBRARY_KEY),
+	).toBe(raw);
+	await tabelo.page
+		.getByRole("button", { name: copy.notices.replaceSavedData })
+		.click();
+	expect(
+		await tabelo.page.evaluate(
+			(key) => localStorage.getItem(key),
+			LIBRARY_RECOVERY_KEY,
+		),
+	).toBe(raw);
+	expect(
+		await tabelo.page.evaluate(
+			(key) => localStorage.getItem(key),
+			original.key,
+		),
+	).toBe(original.value);
+});
 
 test("reload within debounce restores an invalid draft and its last valid table", async ({
 	tabelo,

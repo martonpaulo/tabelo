@@ -3,6 +3,7 @@ import type { Workspace } from "@/workspace/layout";
 import {
 	CURRENT_VERSION,
 	LIBRARY_KEY,
+	LIBRARY_RECOVERY_KEY,
 	type LibraryIndex,
 	type PersistedDraft,
 	type PersistedState,
@@ -140,13 +141,33 @@ export function saveLibraryIndex(index: LibraryIndex): SaveOutcome {
 	return writeItem(browserStorage, LIBRARY_KEY, JSON.stringify(index));
 }
 
-export function loadLibraryIndex(): LibraryIndex | null {
+export type LibraryLoadOutcome =
+	| Exclude<StorageLoadOutcome, { status: "ok" }>
+	| { readonly status: "ok"; readonly index: LibraryIndex };
+
+export function loadLibraryIndex(): LibraryLoadOutcome {
+	let raw: string | null;
 	try {
-		const raw = window.localStorage.getItem(LIBRARY_KEY);
-		return raw === null ? null : validateLibraryIndex(JSON.parse(raw));
+		raw = window.localStorage.getItem(LIBRARY_KEY);
 	} catch {
-		return null;
+		return { status: "unavailable" };
 	}
+	if (raw === null) return { status: "empty" };
+	try {
+		const outcome = validateLibraryIndex(JSON.parse(raw));
+		return outcome.status === "ok" ? outcome : { ...outcome, raw };
+	} catch {
+		return { status: "unreadable", reason: "invalid-json", raw };
+	}
+}
+
+export function preserveUnreadableLibraryAndSave(
+	raw: string,
+	index: LibraryIndex,
+): ReplacementOutcome {
+	return preserveRawThenWrite(browserStorage, LIBRARY_RECOVERY_KEY, raw, () =>
+		saveLibraryIndex(index),
+	);
 }
 
 // A deleted table takes its recovery copy with it: keeping the bytes of a

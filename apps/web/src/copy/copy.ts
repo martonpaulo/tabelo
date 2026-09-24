@@ -1181,6 +1181,14 @@ export const copy = {
 			"invalid-json":
 				"The saved table is damaged and couldn't be read. The saved data is untouched.",
 		},
+		savedLibraryUnreadable: {
+			"future-version":
+				"Your table library was saved by a newer version and cannot be opened here. The index and table data are untouched.",
+			"current-schema-invalid":
+				"The saved table library is damaged. The index and table data are untouched.",
+			"invalid-json":
+				"The saved table library could not be read. The index and table data are untouched.",
+		},
 		recoveryFileNote:
 			"Download original saves that data exactly as found, for recovery by hand. It isn't a table to import.",
 		// The same reasons for the Settings payload. Nothing in the table is

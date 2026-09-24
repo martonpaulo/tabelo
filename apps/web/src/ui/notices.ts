@@ -295,14 +295,20 @@ function storageNotice(issue: StorageIssue | null): AppNotice | null {
 	if (issue.kind === "unreadable") {
 		return {
 			...base,
-			message: copy.notices.savedTableUnreadable[issue.reason],
+			message:
+				issue.scope === "library"
+					? copy.notices.savedLibraryUnreadable[issue.reason]
+					: copy.notices.savedTableUnreadable[issue.reason],
 			detail:
 				recoveryFailure(issue.replacementFailure) ??
 				copy.notices.recoveryFileNote,
 			actions: unreadableActions({
 				downloadId: "download-original",
 				replaceId: "replace-saved-data",
-				filename: RECOVERY_FILENAME,
+				filename:
+					issue.scope === "library"
+						? "tabelo-library-recovery.json"
+						: RECOVERY_FILENAME,
 				raw: issue.raw,
 				replaceLabel: copy.notices.replaceSavedData,
 				replace: replaceSavedData,

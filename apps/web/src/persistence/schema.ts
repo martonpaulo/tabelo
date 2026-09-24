@@ -9,6 +9,7 @@ import {
 // table being edited rather than the whole library, so the cost of a
 // keystroke does not grow with the number of tables kept (#403).
 export const LIBRARY_KEY = "tabelo.library";
+export const LIBRARY_RECOVERY_KEY = `${LIBRARY_KEY}.recovery`;
 export const CURRENT_VERSION = PERSISTED_VERSION;
 
 export function tableKey(id: string): string {
@@ -32,10 +33,23 @@ const libraryIndexSchema = z.object({
 
 export type LibraryIndex = z.infer<typeof libraryIndexSchema>;
 
-export function validateLibraryIndex(raw: unknown): LibraryIndex | null {
+export function validateLibraryIndex(raw: unknown):
+	| { readonly status: "ok"; readonly index: LibraryIndex }
+	| {
+			readonly status: "unreadable";
+			readonly reason: Exclude<PersistenceFailureReason, "invalid-json">;
+	  } {
+	const version = persistedVersion(raw);
+	if (version !== null && version > LIBRARY_VERSION)
+		return { status: "unreadable", reason: "future-version" };
 	const parsed = libraryIndexSchema.safeParse(raw);
-	if (!parsed.success) return null;
-	return parsed.data.tables.includes(parsed.data.activeId) ? parsed.data : null;
+	if (
+		!parsed.success ||
+		!parsed.data.tables.includes(parsed.data.activeId) ||
+		new Set(parsed.data.tables).size !== parsed.data.tables.length
+	)
+		return { status: "unreadable", reason: "current-schema-invalid" };
+	return { status: "ok", index: parsed.data };
 }
 
 export type { PersistedDraft, PersistedState } from "./state-schema";
