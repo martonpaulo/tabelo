@@ -42,7 +42,7 @@ export function AgentDialog({
 	const descriptionId = useId();
 	const inputId = useId();
 	const errorId = useId();
-	const setupRef = useRef<HTMLButtonElement>(null);
+	const inputRef = useRef<HTMLInputElement>(null);
 	const paired = state.status === "connected" || state.status === "paused";
 	const title = paired
 		? state.status === "paused"
@@ -67,10 +67,9 @@ export function AgentDialog({
 	const content = useContentWhileOpen(
 		open,
 		<DialogContent
-			width="wide"
 			aria-labelledby={titleId}
 			aria-describedby={descriptionId}
-			initialFocus={paired ? undefined : setupRef}
+			initialFocus={paired ? undefined : inputRef}
 		>
 			<form className="grid gap-4" onSubmit={submit}>
 				<DialogHeader>
@@ -82,58 +81,9 @@ export function AgentDialog({
 				{paired ? null : (
 					<>
 						<div className="grid gap-2">
-							<h3 className="font-medium">{copy.agent.setupTitle}</h3>
-							<p className="text-muted-foreground text-sm">
-								{copy.agent.setupRequirements}
-							</p>
-							<Textarea
-								readOnly
-								rows={4}
-								wrap="off"
-								aria-label={copy.agent.setupTitle}
-								value={copy.agent.setupCommands}
-								className="font-mono text-xs"
-							/>
-							<Button
-								ref={setupRef}
-								type="button"
-								variant="outline"
-								className="justify-self-start"
-								onClick={async () => {
-									const outcome = await writeClipboardText(
-										copy.agent.setupCommands,
-									);
-									setCopied(outcome.ok);
-									setCopyError(!outcome.ok);
-									if (outcome.ok)
-										useTabeloStore
-											.getState()
-											.announceStatus(copy.agent.commandsCopied);
-								}}
-							>
-								{copied ? copy.agent.commandsCopied : copy.agent.copyCommands}
-							</Button>
-							{copyError ? (
-								<p role="alert" className="text-destructive text-sm">
-									{copy.agent.copyCommandsFailed}
-								</p>
-							) : null}
-							<p className="text-muted-foreground text-sm">
-								{copy.agent.setupExisting}
-							</p>
-						</div>
-						<div className="grid gap-2">
-							<h3 className="font-medium">{copy.agent.pairTitle}</h3>
-							<p className="text-muted-foreground text-sm">
-								{copy.agent.pairInstructions}
-							</p>
-						</div>
-						<p className="text-muted-foreground text-sm">
-							{copy.agent.disclosure}
-						</p>
-						<div className="grid gap-2">
 							<Label htmlFor={inputId}>{copy.agent.descriptor}</Label>
 							<Input
+								ref={inputRef}
 								id={inputId}
 								value={descriptor}
 								autoComplete="off"
@@ -143,6 +93,56 @@ export function AgentDialog({
 								onChange={(event) => setDescriptor(event.target.value)}
 							/>
 						</div>
+						<p className="text-muted-foreground text-sm">
+							{copy.agent.disclosure}
+						</p>
+						<details className="text-sm">
+							<summary className="cursor-pointer font-medium">
+								{copy.agent.setupTitle}
+							</summary>
+							<div className="mt-3 grid gap-3">
+								<p className="text-muted-foreground text-sm">
+									{copy.agent.setupRequirements}
+								</p>
+								<Textarea
+									readOnly
+									rows={4}
+									wrap="off"
+									aria-label={copy.agent.setupTitle}
+									value={copy.agent.setupCommands}
+									className="font-mono text-sm"
+								/>
+								<Button
+									type="button"
+									variant="outline"
+									className="justify-self-start"
+									onClick={async () => {
+										const outcome = await writeClipboardText(
+											copy.agent.setupCommands,
+										);
+										setCopied(outcome.ok);
+										setCopyError(!outcome.ok);
+										if (outcome.ok)
+											useTabeloStore
+												.getState()
+												.announceStatus(copy.agent.commandsCopied);
+									}}
+								>
+									{copied ? copy.agent.commandsCopied : copy.agent.copyCommands}
+								</Button>
+								{copyError ? (
+									<p role="alert" className="text-destructive text-sm">
+										{copy.agent.copyCommandsFailed}
+									</p>
+								) : null}
+								<p className="text-muted-foreground text-sm">
+									{copy.agent.setupExisting}
+								</p>
+								<p className="text-muted-foreground text-sm">
+									{copy.agent.pairInstructions}
+								</p>
+							</div>
+						</details>
 					</>
 				)}
 				{state.error ? (
@@ -188,7 +188,7 @@ export function AgentDialog({
 						>
 							{state.status === "connecting"
 								? copy.agent.connecting
-								: copy.agent.connect}
+								: copy.agent.connectAction}
 						</DialogConfirm>
 					)}
 				</DialogActions>

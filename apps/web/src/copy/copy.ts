@@ -252,33 +252,32 @@ function preconditionMessage(failure: PreconditionFailure): string {
 
 export const copy = {
 	agent: {
-		connect: "Connect agent (MCP)",
-		connected: "Agent connected",
-		paused: "Agent paused",
+		connect: "Connect AI",
+		connectAction: "Connect",
+		connected: "AI connected",
+		paused: "AI paused",
 		connecting: "Connecting…",
 		pause: "Pause edits",
 		resume: "Resume edits",
 		disconnect: "Disconnect",
 		descriptor: "Connection code",
-		description:
-			"Add Tabelo’s local MCP connector to your agent, then ask it to connect and paste the connection code here.",
-		setupTitle: "1. Set up the desktop connector",
+		description: "Ask your AI to connect to Tabelo, then paste its code.",
+		setupTitle: "First-time setup",
 		setupRequirements:
-			"Requires Git, Node.js 24+, pnpm 11+ and the Codex CLI. Run these commands once to register the connector for ChatGPT Desktop and Codex. Only the connector runs locally; keep using Tabelo online.",
+			"Run once in a terminal. Requires Git, Node.js 24+, pnpm and the Codex CLI. Tabelo stays online.",
 		setupExisting:
-			"Already have a Tabelo checkout? Open its folder and run only the last two commands.",
+			"Already installed? Run only the last command from your Tabelo folder.",
 		setupCommands: `git clone ${product.repositoryUrl}.git\ncd tabelo\npnpm install\ncodex mcp add tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"`,
 		copyCommands: "Copy commands",
 		commandsCopied: "Commands copied",
 		copyCommandsFailed:
 			"Couldn’t copy. Select the commands and copy them manually.",
-		pairTitle: "2. Ask your agent to connect",
 		pairInstructions:
-			"In ChatGPT Desktop, restart Tabelo under Settings → MCP servers, then start a new local conversation. Ask the agent to call tabelo_connect and paste its code below. Other desktop MCP clients can use the same connector.",
+			"In ChatGPT Desktop, restart Tabelo in Settings → MCP servers. In a new conversation, ask it to connect to Tabelo.",
 		disclosure:
-			"The agent can list, open, create and rename tables in this browser, and read and edit the active table and its views. It can delete rows and columns, but cannot delete tables. Table data may be sent to the agent’s model provider. Unfinished source text is not shared.",
+			"Your AI can read, edit, create and rename tables in this browser. Data may be shared with its provider.",
 		connectedDescription:
-			"This tab and its table library are connected. You can keep editing and switch tables. Conflicting requests are refused, and undo pauses agent edits until you resume.",
+			"Your AI is connected to this table library. Undo pauses its edits. You can disconnect at any time.",
 		invalidDescriptor:
 			"Paste the complete connection code from your agent, including the port and colon.",
 		connectionFailed:

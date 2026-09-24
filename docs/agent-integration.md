@@ -30,8 +30,9 @@ implementation. See the official
 and [tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
 requirements before proposing a different deployment.
 
-The connection dialog also contains these setup steps and a Copy commands
-button; this guide is a reference, not a prerequisite to use the feature.
+The connection dialog opens on the code field. **First-time setup** expands the
+installation steps and **Copy commands** button when needed; this guide is a
+reference, not a prerequisite to use the feature.
 
 1. Install this repository's dependencies with `pnpm install`.
 2. Configure a local MCP client to start `node` with the absolute path to
@@ -44,10 +45,10 @@ button; this guide is a reference, not a prerequisite to use the feature.
 3. In ChatGPT Desktop, open **Settings → MCP servers**, find **tabelo**, and
    select **Restart**. Start a new local conversation and ask it to call
    `tabelo_connect`. In the open online Tabelo table, choose
-   **Connect agent (MCP)** from the app menu and paste the returned connection code.
+   **Connect AI** from the app menu, paste the returned code and choose **Connect**.
 4. Allow the browser's local-network permission if prompted. Read the sharing
    scope before connecting. The connection reaches this tab and its browser library.
-5. Ask for a table edit or library operation. Use **Agent connected** in the app menu to pause or
+5. Ask for a table edit or library operation. Use **AI connected** in the app menu to pause or
    disconnect. Undo/redo pauses agent writes; resume explicitly from that menu.
 
 The MCP host owns process startup. Starting the helper in an ordinary terminal

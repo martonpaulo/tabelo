@@ -62,7 +62,7 @@ const test = base.extend<{ agent: Agent }>({
 				.getByRole("textbox", { name: copy.agent.descriptor })
 				.fill(String(pairing.data?.descriptor));
 			await dialog
-				.getByRole("button", { name: copy.agent.connect, exact: true })
+				.getByRole("button", { name: copy.agent.connectAction, exact: true })
 				.click();
 			await expect(dialog).toBeHidden();
 			const connected = await call("tabelo_connect");
@@ -523,6 +523,16 @@ test("first-time MCP setup stays in the dialog and its commands can be copied", 
 		.click();
 	const dialog = page.getByRole("dialog", { name: copy.agent.connect });
 	await expect(dialog.getByRole("link")).toHaveCount(0);
+	await expect(
+		dialog.getByRole("textbox", { name: copy.agent.descriptor }),
+	).toBeFocused();
+	await expect(
+		dialog.getByRole("textbox", { name: copy.agent.setupTitle }),
+	).toBeHidden();
+	await dialog.locator("summary").press("Enter");
+	await expect(
+		dialog.getByRole("textbox", { name: copy.agent.setupTitle }),
+	).toBeVisible();
 	const command = await dialog
 		.getByRole("textbox", { name: copy.agent.setupTitle })
 		.inputValue();
