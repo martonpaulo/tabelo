@@ -1176,11 +1176,15 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		if (state.storageIssue?.kind !== "unreadable") return false;
 		const outcome =
 			state.storageIssue.scope === "library"
-				? preserveUnreadableLibraryAndSave(state.storageIssue.raw, {
-						version: LIBRARY_VERSION,
-						tables: state.library.tables.map((table) => table.id),
-						activeId: state.library.activeId,
-					})
+				? preserveUnreadableLibraryAndSave(
+						state.storageIssue.raw,
+						{
+							version: LIBRARY_VERSION,
+							tables: state.library.tables.map((table) => table.id),
+							activeId: state.library.activeId,
+						},
+						savePayload(state),
+					)
 				: preserveUnreadableAndSave(
 						state.library.activeId,
 						state.storageIssue.raw,

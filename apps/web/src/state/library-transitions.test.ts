@@ -157,7 +157,17 @@ describe("library transitions preserve recoverable work", () => {
 		expect(flushPersistence().status).toBe("blocked");
 		useTabeloStore.getState().createTable();
 		expect(localStorage.getItem(LIBRARY_KEY)).toBe(raw);
+		useTabeloStore
+			.getState()
+			.applyDocument(
+				documentFromMatrix([["Name"], ["Ingrid"]], { headerRow: true }),
+			);
 		expect(useTabeloStore.getState().replaceUnreadableStorage()).toBe(true);
+		const recovered = useTabeloStore.getState();
+		const saved = JSON.parse(
+			localStorage.getItem(tableKey(recovered.library.activeId)) ?? "{}",
+		);
+		expect(saved.document).toEqual(recovered.document);
 		expect(localStorage.getItem(`${LIBRARY_KEY}.recovery`)).toBe(raw);
 		expect(localStorage.getItem(tableKey("original"))).toBe(
 			"original table bytes",

@@ -164,10 +164,12 @@ export function loadLibraryIndex(): LibraryLoadOutcome {
 export function preserveUnreadableLibraryAndSave(
 	raw: string,
 	index: LibraryIndex,
+	activeTable: SavePayload,
 ): ReplacementOutcome {
-	return preserveRawThenWrite(browserStorage, LIBRARY_RECOVERY_KEY, raw, () =>
-		saveLibraryIndex(index),
-	);
+	return preserveRawThenWrite(browserStorage, LIBRARY_RECOVERY_KEY, raw, () => {
+		const saved = saveTable(index.activeId, activeTable);
+		return saved.status === "saved" ? saveLibraryIndex(index) : saved;
+	});
 }
 
 // A deleted table takes its recovery copy with it: keeping the bytes of a
