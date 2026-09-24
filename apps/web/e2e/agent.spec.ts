@@ -321,6 +321,7 @@ test("pause, resume and disconnect remain under user control", async ({
 	tabelo,
 	agent,
 }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
 	const state = await agent.read();
 	await (await tabelo.openAppMenu())
 		.getByRole("menuitem", { name: copy.agent.connected, exact: true })
@@ -328,7 +329,7 @@ test("pause, resume and disconnect remain under user control", async ({
 	await page
 		.getByRole("dialog")
 		.getByRole("button", { name: copy.agent.pause, exact: true })
-		.click();
+		.press("Enter");
 	await expect(page.getByRole("dialog")).toBeHidden();
 	const operations = [
 		{
@@ -346,7 +347,7 @@ test("pause, resume and disconnect remain under user control", async ({
 	await page
 		.getByRole("dialog")
 		.getByRole("button", { name: copy.agent.resume, exact: true })
-		.click();
+		.press("Enter");
 	await expect(page.getByRole("dialog")).toHaveCount(0);
 	expect(
 		(
@@ -363,7 +364,7 @@ test("pause, resume and disconnect remain under user control", async ({
 	await page
 		.getByRole("dialog")
 		.getByRole("button", { name: copy.agent.disconnect, exact: true })
-		.click();
+		.press("Enter");
 	await expect
 		.poll(
 			async () =>

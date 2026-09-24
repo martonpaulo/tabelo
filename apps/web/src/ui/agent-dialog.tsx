@@ -21,6 +21,7 @@ import { writeClipboardText } from "@/platform/clipboard";
 import { useTabeloStore } from "@/state/store";
 import {
 	DialogActions,
+	DialogAlternative,
 	DialogCancel,
 	DialogConfirm,
 } from "@/ui/primitives/dialog-buttons";
@@ -153,16 +154,15 @@ export function AgentDialog({
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>
 					{paired ? (
 						<>
-							<Button
+							<DialogAlternative
 								type="button"
-								variant="outline"
 								onClick={() => {
 									disconnectAgent();
 									changeOpen(false);
 								}}
 							>
 								{copy.agent.disconnect}
-							</Button>
+							</DialogAlternative>
 							<DialogConfirm
 								type="button"
 								onClick={() => {
