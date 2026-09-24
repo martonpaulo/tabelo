@@ -23,6 +23,10 @@ import { tableShapeLimitError } from "@/import/prepare";
 
 class CommandRefusal extends Error {}
 
+function unsupportedOperation(_operation: never): never {
+	throw new CommandRefusal("invalid_request");
+}
+
 function required<T>(value: T | undefined): T {
 	if (value === undefined) throw new CommandRefusal("target_missing");
 	return value;
@@ -150,6 +154,8 @@ export function prepareTable(
 						operation.value,
 					);
 					break;
+				default:
+					unsupportedOperation(operation);
 			}
 		}
 		checkSize(document.rows.length, document.columns.length);

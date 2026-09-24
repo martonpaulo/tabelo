@@ -1,3 +1,4 @@
+import type { TableOperation } from "@tabelo/agent-protocol";
 import { describe, expect, it } from "vitest";
 import { readCell } from "@/core/cell-value";
 import { documentFromMatrix } from "@/core/document";
@@ -6,6 +7,22 @@ import type { TableDocument } from "@/core/types";
 import { prepareTable, preserveSelection } from "./table-commands";
 
 describe("agent table batches", () => {
+	it("refuses an unsupported operation without returning a partially prepared batch", () => {
+		const original = documentFromMatrix([["Name"], ["Ingrid"]], {
+			headerRow: true,
+		});
+		const outcome = prepareTable(original, [
+			{
+				kind: "set_header",
+				columnId: required(original.columns[0]).id,
+				value: "Changed",
+			},
+			{ kind: "unsupported" } as unknown as TableOperation,
+		]);
+		expect(outcome).toEqual({ ok: false, code: "invalid_request" });
+		expect(original.columns[0]?.header).toBe("Name");
+	});
+
 	it("moves by entity identity and keeps the selected surviving row", () => {
 		const original = documentFromMatrix(
 			[
