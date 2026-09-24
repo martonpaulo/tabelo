@@ -83,11 +83,48 @@ describe("agent table batches", () => {
 			prepareTable(original, [{ kind: "set_cells", cells: [write] }]),
 		).toEqual({ ok: false, code: "would_drop_inline_content" });
 		const replaced = prepareTable(original, [
-			{ kind: "set_cells", cells: [{ ...write, replaceInline: true }] },
+			{
+				kind: "set_cells",
+				cells: [{ ...write, value: "Interim", replaceInline: true }, write],
+			},
 		]);
 		expect(
 			replaced.ok && readCell(required(replaced.document.rows[0]), column.id),
 		).toBe("Paulo");
+	});
+
+	it("keeps scalar types, whitespace, and last-write order in a sparse batch", () => {
+		const original = documentFromMatrix(
+			[
+				["Name", "Value"],
+				["Ingrid", ""],
+				["Paulo", ""],
+			],
+			{ headerRow: true },
+		);
+		const row = required(original.rows[0]);
+		const column = required(original.columns[1]);
+		const outcome = prepareTable(original, [
+			{
+				kind: "set_cells",
+				cells: [
+					{ rowId: row.id, columnId: column.id, value: 35 },
+					{ rowId: row.id, columnId: column.id, value: " 0035 " },
+					{
+						rowId: required(original.rows[1]).id,
+						columnId: column.id,
+						value: null,
+					},
+				],
+			},
+		]);
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) return;
+		expect(readCell(required(outcome.document.rows[0]), column.id)).toBe(
+			" 0035 ",
+		);
+		expect(readCell(required(outcome.document.rows[1]), column.id)).toBeNull();
+		expect(readCell(row, column.id)).toBe("");
 	});
 
 	it("refuses oversized insertion and duplicate references before committing", () => {

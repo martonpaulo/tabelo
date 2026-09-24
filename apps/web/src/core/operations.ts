@@ -129,6 +129,47 @@ export function setCell(
 	return { ...document, rows };
 }
 
+// Sparse writes clone each changed row only once. The final write to one
+// coordinate wins, while an unchanged final value retains the original row.
+export function setCellValues(
+	document: TableDocument,
+	entries: readonly {
+		rowIndex: number;
+		columnIndex: number;
+		value: CellValue;
+	}[],
+): TableDocument {
+	if (entries.length === 1) {
+		const entry = entries[0];
+		if (!entry) return document;
+		return setCell(document, entry.rowIndex, entry.columnIndex, entry.value);
+	}
+	const writes = new Map<number, Map<ColumnId, CellValue>>();
+	for (const entry of entries) {
+		const column = document.columns[entry.columnIndex];
+		if (!column || !document.rows[entry.rowIndex]) continue;
+		let cells = writes.get(entry.rowIndex);
+		if (!cells) {
+			cells = new Map();
+			writes.set(entry.rowIndex, cells);
+		}
+		cells.set(column.id, entry.value);
+	}
+	let changed = false;
+	const rows = document.rows.map((row, index) => {
+		let cells: Record<ColumnId, CellValue> | null = null;
+		for (const [columnId, value] of writes.get(index) ?? []) {
+			if (cellValuesEqual(readCell(row, columnId), value)) continue;
+			cells ??= { ...row.cells };
+			cells[columnId] = value;
+		}
+		if (!cells) return row;
+		changed = true;
+		return { ...row, cells };
+	});
+	return changed ? { ...document, rows } : document;
+}
+
 export function setCellType(
 	document: TableDocument,
 	rowIndex: number,

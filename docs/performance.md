@@ -564,3 +564,23 @@ payload-size comparisons and their limitations are recorded in
 [the connection research](research/local-agent-connection.md). The operational
 rules for idle work, batching, and bounded memory are in
 [the agent integration contract](agent-integration.md#performance-contract).
+
+### Sparse batch writes, 2026-09-24
+
+On the same arm64 machine with Node 24.21.0 and Vitest 4.1.11, the command
+above measured 200 writes before and after switching the adapter to one
+short-lived ID lookup per batch and the core's sparse `setCellValues` operation.
+It copies each affected row once, preserves final-write ordering and typed
+values, and introduces no persistent cache or second document owner.
+
+| Operation | Before mean ms | After mean ms |
+| --- | ---: | ---: |
+| Prepare 200 cell writes | 0.4045 | 0.0724 |
+| Read 100 typed rows | 0.0748 | 0.0758 |
+
+There were 20 warm-ups and 200 samples per operation. Write relative error was
+8.75% before and 7.57% after: about 5.6 times faster for preparation in this
+run, not a claim about whole-chat latency. The baseline invocation also ran
+the property project; this comparison uses its unit-project result. Separate
+production HTTPS checks measured individual SDK read/edit round trips around
+2–9 ms, excluding model reasoning; they are spot checks, not latency percentiles.

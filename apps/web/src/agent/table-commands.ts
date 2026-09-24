@@ -9,7 +9,7 @@ import {
 	moveColumns,
 	moveRows,
 	setAlignment,
-	setCell,
+	setCellValues,
 	setHeader,
 } from "@/core/operations";
 import {
@@ -68,19 +68,34 @@ export function prepareTable(
 	try {
 		for (const operation of operations) {
 			switch (operation.kind) {
-				case "set_cells":
-					for (const cell of operation.cells) {
-						const row = indexOf(document.rows, cell.rowId);
-						const column = indexOf(document.columns, cell.columnId);
+				case "set_cells": {
+					const rows = new Map(
+						document.rows.map((row, index) => [row.id, index]),
+					);
+					const columns = new Map(
+						document.columns.map((column, index) => [column.id, index]),
+					);
+					const written = new Set<number>();
+					const entries = operation.cells.map((cell) => {
+						const row = required(rows.get(resolve(cell.rowId)));
+						const column = required(columns.get(resolve(cell.columnId)));
+						const key = row * document.columns.length + column;
 						const current = readCell(
 							required(document.rows[row]),
 							required(document.columns[column]).id,
 						);
-						if (isInlineContent(current) && !cell.replaceInline)
+						if (
+							isInlineContent(current) &&
+							!cell.replaceInline &&
+							!written.has(key)
+						)
 							throw new CommandRefusal("would_drop_inline_content");
-						document = setCell(document, row, column, cell.value);
-					}
+						written.add(key);
+						return { rowIndex: row, columnIndex: column, value: cell.value };
+					});
+					document = setCellValues(document, entries);
 					break;
+				}
 				case "set_header": {
 					const column = indexOf(document.columns, operation.columnId);
 					if (
