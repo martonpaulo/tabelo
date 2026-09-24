@@ -221,8 +221,7 @@ export function PaneMenu({
 		view.codec?.structuralAssistance !== undefined;
 	const canCopy =
 		view.capabilities.textClipboard ||
-		(view.capabilities.structuredClipboard &&
-			!view.capabilities.tableOperations);
+		(view.capabilities.structuredClipboard && !view.capabilities.editable);
 
 	const setZoom = (next: number) =>
 		useTabeloStore.getState().setPaneZoom(paneId, next);

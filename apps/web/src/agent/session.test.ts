@@ -57,6 +57,24 @@ const execute = (value: unknown, sequence = 2) =>
 	session.execute(value, sequence, Date.now() + 1000);
 
 describe("agent command admission", () => {
+	it("reports structural editing support for every mapped source without promising current admission", () => {
+		const views = read(true).views as {
+			id: string;
+			capabilities: { tableOperations: boolean };
+		}[];
+		for (const view of listViews()) {
+			const advertised = required(views.find((item) => item.id === view.id));
+			if (view.kind === "preview") {
+				expect(advertised.capabilities.tableOperations).toBe(false);
+			} else if (view.kind === "grid" || view.codec?.mapsSourceRows) {
+				expect(advertised.capabilities.tableOperations).toBe(true);
+			}
+		}
+		session.pause(true);
+		expect(read(true).views).toEqual(views);
+		expect(execute(command()).code).toBe("session_paused");
+	});
+
 	it("returns a compact typed matrix with explicit column order and optional workspace context", () => {
 		const document = documentFromMatrix(
 			[

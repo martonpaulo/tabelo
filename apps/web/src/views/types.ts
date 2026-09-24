@@ -37,7 +37,8 @@ export interface ViewCapabilities {
 	readonly structuredClipboard: boolean;
 	// Ordinary text-editor clipboard behaviour, left to the editor.
 	readonly textClipboard: boolean;
-	// Do row and column operations apply while this view has focus?
+	// Supports structural row/column commands. Current caret, draft, selection,
+	// and session state may still refuse a command; this is not admission.
 	readonly tableOperations: boolean;
 	// Tab inside this view's source editor. Null for a view with no source
 	// editor, whose Tab belongs to its own keyboard model.

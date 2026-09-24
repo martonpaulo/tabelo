@@ -99,14 +99,13 @@ export default function SourceView({
 	const editable = view.capabilities.editable;
 	const feedbackIds = sourceFeedbackIds(paneId);
 
-	// Row commands reach a pane only when its codec declares the position
-	// mapping and the view can be edited (#255): the declaration decides, never
-	// the view's name.
+	// The registry derives structural support from the editable codec mapping.
 	const codec = view.codec;
+	const tableOperations = view.capabilities.tableOperations;
 	const rowTarget = useMemo(
 		(): SourceRowTarget | null =>
-			editable && codec?.mapsSourceRows ? { paneId, viewId, codec } : null,
-		[editable, codec, paneId, viewId],
+			tableOperations && codec ? { paneId, viewId, codec } : null,
+		[tableOperations, codec, paneId, viewId],
 	);
 
 	// Leaving for the grid or the preview, and the pane closing, both unmount

@@ -19,7 +19,14 @@ import {
 	recordsCodec,
 	tsvCodec,
 } from "@/formats";
-import { canParse, type ViewDefinition, type ViewId } from "./types";
+import type { TableCodec } from "@/formats/types";
+import {
+	canParse,
+	type SourceTabBehaviour,
+	type ViewCapabilities,
+	type ViewDefinition,
+	type ViewId,
+} from "./types";
 
 // Every view the workspace can show, described by capability rather than by
 // name. Nothing outside this file enumerates formats: the workspace, the pane
@@ -47,15 +54,16 @@ const sourceCapabilities = {
 
 // Formats that are a grid of delimited fields move between fields on Tab, and
 // formats that nest indent. See SourceTabBehaviour.
-const fieldSourceCapabilities = {
-	...sourceCapabilities,
-	sourceTab: "next-field",
-} as const;
-
-const nestedSourceCapabilities = {
-	...sourceCapabilities,
-	sourceTab: "indent",
-} as const;
+function editableSourceCapabilities(
+	codec: TableCodec,
+	sourceTab: SourceTabBehaviour,
+): ViewCapabilities {
+	return {
+		...sourceCapabilities,
+		tableOperations: codec.mapsSourceRows === true,
+		sourceTab,
+	};
+}
 
 const readOnlySourceCapabilities = {
 	...sourceCapabilities,
@@ -89,7 +97,7 @@ export const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: markdownCodec,
 		highlight: "markdown",
-		capabilities: fieldSourceCapabilities,
+		capabilities: editableSourceCapabilities(markdownCodec, "next-field"),
 		// Every source view shares one lazily loaded CodeMirror bundle.
 		loading: "lazy",
 	},
@@ -101,7 +109,7 @@ export const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: csvCodec,
 		highlight: "delimited",
-		capabilities: fieldSourceCapabilities,
+		capabilities: editableSourceCapabilities(csvCodec, "next-field"),
 		loading: "lazy",
 	},
 
@@ -112,7 +120,7 @@ export const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: tsvCodec,
 		highlight: "delimited",
-		capabilities: fieldSourceCapabilities,
+		capabilities: editableSourceCapabilities(tsvCodec, "next-field"),
 		loading: "lazy",
 	},
 
@@ -123,7 +131,7 @@ export const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: htmlCodec,
 		highlight: "html",
-		capabilities: nestedSourceCapabilities,
+		capabilities: editableSourceCapabilities(htmlCodec, "indent"),
 		loading: "lazy",
 	},
 
@@ -134,7 +142,7 @@ export const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: jiraCodec,
 		highlight: "jira",
-		capabilities: fieldSourceCapabilities,
+		capabilities: editableSourceCapabilities(jiraCodec, "next-field"),
 		loading: "lazy",
 	},
 
@@ -145,7 +153,7 @@ export const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: jsonCodec,
 		highlight: "json",
-		capabilities: nestedSourceCapabilities,
+		capabilities: editableSourceCapabilities(jsonCodec, "indent"),
 		loading: "lazy",
 	},
 
@@ -156,7 +164,7 @@ export const registry: Record<ViewId, ViewDefinition> = {
 		kind: "source",
 		codec: recordsCodec,
 		highlight: "records",
-		capabilities: fieldSourceCapabilities,
+		capabilities: editableSourceCapabilities(recordsCodec, "next-field"),
 		loading: "lazy",
 	},
 
