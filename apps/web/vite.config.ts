@@ -2,6 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { precacheGlobPatterns } from "./pwa-precache";
 import { product } from "./src/copy/product";
 import { THEME_COLOR } from "./src/preferences/contract";
 import {
@@ -104,13 +105,7 @@ export default defineConfig({
 				scope: base,
 			},
 			workbox: {
-				// Workbox's default set plus the Latin Figtree face, so the installed
-				// app keeps its type offline. Other scripts fall back to the
-				// platform face, which the font stack already names.
-				globPatterns: [
-					"**/*.{js,wasm,css,html}",
-					"**/figtree-latin-wght-*.woff2",
-				],
+				globPatterns: precacheGlobPatterns,
 			},
 			pwaAssets: {
 				disabled: false,
