@@ -33,7 +33,9 @@ test("a typed JSON import preserves native scalars through an edit and projectio
 	await expect(tabelo.cell(1, 1).locator("[data-cell-value]")).toContainText(
 		"1",
 	);
-	await expect(tabelo.cell(1, 2).locator("[data-cell-value]")).toContainText(
+	// A boolean is drawn as a checked checkbox in the grid (#483).
+	await expect(tabelo.cell(1, 2).getByRole("checkbox")).toHaveAttribute(
+		"aria-checked",
 		"true",
 	);
 	await expect(tabelo.cell(1, 3)).toHaveAccessibleName(/null/i);
