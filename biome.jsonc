@@ -135,7 +135,7 @@
 										"message": "The view registry declares what the workspace can display, by capability: it cannot import CodeMirror or a UI component. Load the editor from the pane that renders the view."
 									},
 									{
-										"group": ["@/ui", "@/ui/**"],
+										"group": ["@/ui", "@/ui/**", "@tabelo/ui", "@tabelo/ui/**"],
 										"message": "The view registry declares what the workspace can display, by capability: it cannot import CodeMirror or a UI component. Load the editor from the pane that renders the view."
 									}
 								]
@@ -146,10 +146,37 @@
 			}
 		},
 		{
-			// The vendored shadcn primitives only. Tabelo's own components in
-			// this folder are excluded by name: the a11y rules below are
-			// load-bearing for them, and the exemption exists because a
-			// vendored primitive receives its wiring from the consumer.
+			// All of packages/ui, the vendored primitives and Tabelo's own
+			// components alike: the import boundary has nothing to do with the
+			// a11y exemption below, so it carries no exclusion of its own (#437).
+			"includes": ["packages/ui/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["@/**"],
+										"message": "Shared UI does not know the product: packages/ui cannot import application code from apps/web. Pass what the component needs in through its props."
+									},
+									{
+										"group": ["apps/**", "**/apps/web/**"],
+										"message": "Shared UI does not know the product: packages/ui cannot import application code from apps/web. Pass what the component needs in through its props."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			// The vendored shadcn primitives only, and only the a11y exemption.
+			// Tabelo's own components in this folder are excluded by name: the
+			// a11y rules below are load-bearing for them, and the exemption exists
+			// because a vendored primitive receives its wiring from the consumer.
 			"includes": [
 				"packages/ui/src/components/**",
 				"!packages/ui/src/components/shortcut-keys.tsx",
@@ -164,47 +191,6 @@
 						"noLabelWithoutControl": "off",
 						"useSemanticElements": "off",
 						"useKeyWithClickEvents": "off"
-					},
-					"style": {
-						"noRestrictedImports": {
-							"level": "error",
-							"options": {
-								"patterns": [
-									{
-										"group": ["@/**"],
-										"message": "Shared UI does not know the product: packages/ui cannot import application code from apps/web. Pass what the component needs in through its props."
-									},
-									{
-										"group": ["apps/**", "**/apps/web/**"],
-										"message": "Shared UI does not know the product: packages/ui cannot import application code from apps/web. Pass what the component needs in through its props."
-									}
-								]
-							}
-						}
-					}
-				}
-			}
-		},
-		{
-			"includes": ["packages/ui/**", "!packages/ui/src/components/**"],
-			"linter": {
-				"rules": {
-					"style": {
-						"noRestrictedImports": {
-							"level": "error",
-							"options": {
-								"patterns": [
-									{
-										"group": ["@/**"],
-										"message": "Shared UI does not know the product: packages/ui cannot import application code from apps/web. Pass what the component needs in through its props."
-									},
-									{
-										"group": ["apps/**", "**/apps/web/**"],
-										"message": "Shared UI does not know the product: packages/ui cannot import application code from apps/web. Pass what the component needs in through its props."
-									}
-								]
-							}
-						}
 					}
 				}
 			}
