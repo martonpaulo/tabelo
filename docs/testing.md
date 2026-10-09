@@ -222,8 +222,11 @@ Deploy publishes only when the built site can differ from the live one. It
 compares the commit of the last successful Pages deployment with the new head
 through the same script, so a change that touches only tests, specs, tooling,
 or documentation builds nothing and deploys nothing, and a deploy that was
-skipped or lost is carried by the next one that publishes. A manual Deploy run
-always publishes.
+skipped or lost is carried by the next one that publishes. A Deploy triggered
+by Validate also skips when `main` has already moved on to a commit that changes
+the site, because Pages records the deployment against `main`'s head rather
+than the commit it built; that newer commit's own Deploy publishes instead
+(#463). A manual Deploy run always publishes.
 
 A source-directory-to-spec map was rejected. Tabelo's format, state, and UI
 boundaries converge in synchronization, import, clipboard, persistence, and

@@ -56,10 +56,31 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          MAIN_SHA: ${{ github.sha }}
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "affects_site=true" | tee -a "$GITHUB_OUTPUT"
             exit 0
+          fi
+          # This run builds the validated commit, but deploy-pages records the
+          # deployment against GITHUB_SHA, main's head when Deploy was
+          # triggered. When main has already moved on to a commit whose site
+          # differs, publishing here would record that newer commit against
+          # this older build, and its own Deploy would then skip as already
+          # live (#463). Leave the publish to that Deploy. When the commits in
+          # between cannot change the site, both builds are the same and the
+          # record stays true, so this run carries on: a documentation-only
+          # commit starts no Validate run of its own to publish for it.
+          if [[ "$HEAD_SHA" != "$MAIN_SHA" ]]; then
+            ahead="$RUNNER_TEMP/superseded_by.txt"
+            scripts/changed-files.sh "$REPO" "$HEAD_SHA" "$MAIN_SHA" > "$ahead" || : > "$ahead"
+            superseded=$(scripts/classify-changes.sh < "$ahead" | grep '^affects_site=')
+            if [[ "$superseded" == "affects_site=true" ]]; then
+              echo "Main moved from $HEAD_SHA to $MAIN_SHA, which changes the site; that commit's Deploy publishes it."
+              echo "affects_site=false" | tee -a "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Main moved from $HEAD_SHA to $MAIN_SHA without changing the site."
           fi
           live=""
           for id in $(gh api "repos/$REPO/deployments?environment=github-pages&per_page=20" -q '.[].id'); do
