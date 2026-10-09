@@ -361,9 +361,10 @@ derived from text; that projection reads its visible text. See `docs/adr/0011`.
 ## Build and validate
 
 `pnpm validate` is the full gate before a commit: `pnpm check`,
-`pnpm check:dead-code`, `pnpm check-types` and `pnpm test`, in that order. Add
-`pnpm test:e2e` when the change crosses a UI boundary. While iterating, prefer
-the smallest relevant check.
+`pnpm check:dead-code`, `pnpm check-types` and `pnpm test`, in that order. A
+change is not done while `pnpm check`, `pnpm check-types`, or `pnpm test` fails
+on the exact current head. Add `pnpm test:e2e` when the change crosses a UI
+boundary. While iterating, prefer the smallest relevant check.
 
 - `pnpm dev`: run the app locally. The dev and preview ports are derived from
   the worktree path so parallel checkouts cannot serve or test each other's
@@ -383,7 +384,8 @@ the smallest relevant check.
   and every test file turns into a false positive. It is a required gate in
   the Check job, running straight after the frozen install: run it locally when
   removing code or changing a manifest, before CI does
-- `pnpm test`: the complete Vitest gate. `pnpm test:unit` runs ordinary unit
+- `pnpm test`: the complete unit gate, Vitest for the web app and Node's test
+  runner for the local helper. `pnpm test:unit` runs ordinary unit
   files with the default timeout, and `pnpm test:property` runs the generated
   invariant files with their explicit budget. `pnpm test:watch` re-runs on
   change. `docs/testing.md` owns the suite boundaries and measured baseline
@@ -398,62 +400,16 @@ the smallest relevant check.
   `pnpm test:e2e:serve` keeps a warm preview server across those rounds; each
   round rebuilds first when a build input changed since the last build and
   skips the build after a spec-only edit (#436)
-- Pass a focused spec path or Playwright option directly after the root script.
-  Never add a standalone `--` after `pnpm test:e2e`: it ends option parsing and
-  can turn a focused command into the configured project matrix. Before a new
-  focused selection, list its resolved scope and confirm the files, projects,
-  and test count match the intent:
+- Before a focused browser run, follow `docs/testing.md`
+  `## Running browser specs locally`: list the selection first, never add a
+  standalone `--` after `pnpm test:e2e`, interrupt a run that announces more
+  tests than intended, and keep `TABELO_E2E_WORKERS=1` while another checkout
+  runs its suite
 
-  ```sh
-  pnpm test:e2e e2e/import.spec.ts --list
-  ```
-
-  Then run the focused spec, or one named behavior explicitly:
-
-  ```sh
-  TABELO_E2E_WORKERS=1 pnpm test:e2e e2e/import.spec.ts
-  pnpm test:e2e e2e/import.spec.ts -g "<title>"
-  ```
-
-  If execution announces a materially larger test count than the intent,
-  interrupt it immediately and correct the command. Do not let a focused run
-  silently become a full gate
-- Several worktrees share one machine. Set `TABELO_E2E_WORKERS=1` when another
-  checkout is running its own suite. Before a full browser gate, check whether
-  another worktree is already running Playwright; wait or keep one worker rather
-  than creating resource contention and unrelated timeout failures
-
-On a push to `main`, CI and Pages deployment are skipped when every changed path
-matches the non-build path list owned by their workflows. **A pull request has
-no such filter**, and deliberately so: `Check` is a required status check, and
-GitHub does not report a path-filtered trigger as skipped. It leaves the check
-expected and waiting, which would make a documentation-only pull request
-unmergeable forever. Cost is controlled inside the job instead. The Check job
-therefore always runs on a pull request, and browser coverage is selected by the
-highest-risk changed path: documentation and agent guidance files need no
-browser run, and neither do unit tests, fixtures, or unit-test tooling; browser
-specs and their helpers run the full Chromium suite;
-product identity and interface copy run the Chromium smoke suite; the global
-stylesheet runs the smoke and visual-system suites; all other application
-changes and unknown paths run the full Chromium suite; workflow, pipeline
-script, or Playwright configuration runs that same full suite. One script,
-`scripts/classify-changes.sh`, owns those rules for every event. A pull
-request is classified by its own files; a push to `main` by every file changed
-since the last commit on `main` whose Validate run passed (only a pull request
-cancels a superseded run, so that base always exists), so a push that cancelled an
-unfinished run inherits that run's changes; a manual run, or a history the
-compare API cannot answer, selects everything. The Check job counts the
-selected tests and derives the shard matrix from the cap recorded in
-`docs/testing.md`, so every event uses one mechanism. Renames classify both the
-old and new path, so moving a file cannot reduce coverage. Mixed changes always
-use the highest applicable level.
-
-Deploy publishes only when the built site can differ from the live one. It
-compares the commit of the last successful Pages deployment with the new head
-through the same script, so a change that touches only tests, specs, tooling,
-or documentation builds nothing and deploys nothing, and a deploy that was
-skipped or lost is carried by the next one that publishes. A manual Deploy run
-always publishes.
+CI selects browser coverage from the changed paths, and Deploy publishes only
+when the built site can differ. Documentation and agent guidance need no
+browser run and deploy nothing. `docs/testing.md` `## CI selection` owns the
+rules for every event, and `scripts/classify-changes.sh` applies them.
 
 Never claim a check passed unless it ran successfully.
 
@@ -473,7 +429,20 @@ sleeps, no pixel snapshots, and storage isolated per test.
   than describing files nobody kept (owner, 2026-09-20).
 - Add folder-specific `AGENTS.md` files only when a subtree genuinely requires
   different rules, each with a sibling `CLAUDE.md` symbolic link.
-- Do not duplicate the same rules across instruction files.
+- Do not duplicate the same rules across instruction files. A scoped file holds
+  only what differs in its subtree and routes to the canonical owner for the
+  rest; long references live in `docs/` with a stated trigger to read them.
+- Scoped files: `apps/agent-bridge/AGENTS.md` (the local MCP helper) and
+  `packages/agent-protocol/AGENTS.md` (the shared wire contract). A session
+  started at the root does not necessarily load them, so read the applicable
+  one before editing under its path. This root file governs everything else,
+  including `apps/web`.
+- `AGENTS.md` is protected by section, not as a file. `## Project identity and
+  policy` is governance and never moves under an executor. Every other section
+  documents this code, so a change that makes a recorded rule untrue updates it
+  in the same change. `## Domain rules`, `## Frozen technical direction`, and
+  `## Architecture boundaries` are where this repository keeps the patterns a
+  change is most likely to break: establishing a new one stops and asks first.
 
 ## Skills
 
@@ -560,6 +529,8 @@ preference to exercise per task.
   blockers. Ask only when a material decision cannot be discovered safely.
 - Do not turn analysis, research, or a read-only audit into implementation
   without authorization.
+- When a needed decision is not written in the issue, comment exactly what is
+  missing, apply `status: needs-decision`, and stop cleanly instead of guessing.
 
 ## Long-running operations
 
@@ -577,7 +548,7 @@ Both are slow while working, which is what makes elapsed time a bad signal here.
 - Interrupt only when there is evidence of no useful progress, a deadline has
   expired, or the continued cost or risk is no longer justified. A focused run
   that announces a materially larger test count than intended is its own
-  interrupt condition: see `## Build and validate`.
+  interrupt condition: see `docs/testing.md`.
 - After an interruption, say what state or output was preserved, diagnose the
   likely cause, and choose a narrower retry, a different tool, a smaller unit
   of work, or an explicit blocker. Never rerun the same unchanged failure.
@@ -617,41 +588,13 @@ Both are slow while working, which is what makes elapsed time a bad signal here.
 
 ### All-view applicability audit
 
-Tabelo presents one synchronized document through a registry of views, so a
-request that happens to name a view is naming an example far more often than it
-is naming a boundary. Whenever a bug, feature, improvement, or direct fix names
-or changes one or more views, audit every registered view before scope is
-settled. This applies while an issue is captured, revised, planned, reviewed, or
-implemented, and to direct work carrying no issue at all.
-
-- **Enumerate from the registry, never from memory.** The current entries
-  returned by `listViews()`, with their `kind`, capabilities, and associated
-  codec or representation, are the list. Policy names the method so a view added
-  later is included without editing this file; do not write today's view ids into
-  any document as a second registry.
-- **Give every entry exactly one outcome, each with a short reason**:
-  applicable, unsupported by its capabilities or representation, explicitly out
-  of scope, or unaffected. A missing capability flag is not by itself proof that
-  a requested new capability is impossible: the reason comes from the
-  representation and the accepted product contract, and one of those must be
-  able to state it.
-- **The audit authorizes analysis, not implementation.** Auditing every view
-  never widens a direct request on its own. A capability reaches another view
-  only when the accepted request and the product contract support it, and a
-  material scope choice that the audit exposes goes to the user through the
-  existing decision process rather than being resolved by implementing it.
-- **Examples are not exclusions, and explicit limits bind.** Views named in a
-  report are evidence of where the problem was seen, not proof that the others
-  were considered and rejected. A user who explicitly limits implementation to
-  selected views has decided: record the remaining views and respect the limit.
-- **Keep the evidence proportional and put it where the work already reports.**
-  A compact per-view list, or grouped entries that visibly account for every
-  registered view, is enough. Record it in the canonical issue or in an
-  already-authorized implementation handoff when it changes or constrains scope,
-  and in the task's own report for direct work. No new artifact exists to hold
-  it, and no backlog rewrite is authorized by this rule. A view-scoped phase
-  cannot report complete while an applicability decision that materially affects
-  scope is missing.
+Whenever a bug, feature, improvement, or direct fix names or changes one or
+more views, audit every registered view before scope is settled: enumerate
+them from `listViews()`, never from memory, and give each one outcome with a
+reason. The audit authorizes analysis, not implementation, and an explicit
+limit from the user binds. `docs/view-applicability-audit.md` owns the full
+procedure and where its evidence goes; read it before capturing, planning,
+reviewing, or implementing such work.
 
 ## Data and destructive operations
 
@@ -711,17 +654,9 @@ here:
 ## Code, comments, and documentation
 
 When changing a capability the external agent can reach, follow the command
-contract in `docs/agent-integration.md` in the same change. Classify whether the
-capability is exposed or intentionally internal; never expose every function
-automatically. The schema generates the MCP specification and validates input.
-Keep operation descriptions, explicit outcomes, domain validation, and behavioral
-tests aligned. Put each rule at its existing owner and reuse it from both UI
-and agent entrypoints, rather than creating a second agent implementation.
-Do not introduce a generic command framework merely to remove similar syntax.
-Agent reads must offer relevant, compact context with exact identity and value
-semantics. Follow the same guide's read contract: request workspace details
-only when needed, derive projections from the document, and compare candidate
-formats rather than assuming Markdown or JSON improves model reasoning.
+and read contracts in `docs/agent-integration.md` in the same change: it owns
+exposure, the single schema, explicit outcomes, reuse of the existing rule
+owner from both UI and agent entrypoints, and compact reads.
 
 - Follow the existing formatter, linter, naming, and architectural conventions.
 - Prefer clear types, explicit ownership, and simple control flow over
@@ -782,185 +717,11 @@ Do not delay the requested result while waiting on it.
 
 When the user must notice and respond to a proposed follow-up, a material
 choice, a permission boundary, or a blocker, use exactly one of the four cards
-below. Never bury one inside a general summary or a vague "human review" note.
-
-The English labels name the semantic fields; they are not fixed user-facing
-copy. Render every visible heading, field label, option, recommendation, and
-reply token in the language already used with the user, and keep code,
-commands, paths, identifiers, and quoted source text in their required form.
-
-Surround every card with a standalone `---` before its heading and another
-after its final response line; consecutive cards may share one rule. The emoji
-supplements the heading and never replaces it. Use one card per requested
-decision, and end with an exact response format the user can copy.
-
-### Raise the card through the question tool
-
-A card written only as Markdown is a message, and a message ends the turn. The
-agent stops, the client shows the session as finished, and a genuinely blocking
-decision looks answered. The card is the record; it is not the asking.
-
-So whenever the client offers a native structured-question facility, put the
-question through it. The tool call is what holds the turn open and what puts
-the session in the *needs you* column. Map the card onto it directly: the heading becomes the question, each row of the options table
-becomes one option with its tradeoffs as the description, and the recommended
-option goes first, marked as recommended.
-
-Write the card too, in the same turn. The tool renders a compact chooser; the
-card carries the evidence and reasoning the chooser has no room for. The tool
-alone strips the argument, the card alone never asks.
-
-Fall back to the card alone only when the client has no such facility. A run
-that wrote only the card has not asked, however clearly it was worded.
-
-### Proposed issue
-
-Use this card when the work uncovers a distinct, evidence-backed, implementable
-improvement outside the accepted scope, valuable enough to preserve and not
-already tracked. A research note under `docs/research/` does not replace it. Do
-not propose issues for incidental observations, speculation, tracked work, or
-anything completed within the current task. The card proposes backlog capture;
-it never authorizes creating the issue.
-
-```markdown
----
-
-## 🆕 Proposed issue: <short title>
-
-**What I need from you:** Approve, reject, or revise this issue proposal.
-
-### Why this matters
-
-<Explain the user or project impact in plain language.>
-
-### Current situation
-
-<Explain what happens today and the evidence found.>
-
-### Proposed outcome
-
-<Explain what should become possible or improve after implementation.>
-
-### Why this is a separate issue
-
-<Explain why it is valuable but outside the current task.>
-
-### My recommendation
-
-<Explain briefly why opening the issue is worthwhile.>
-
-**Reply with:** `Approve issue`, `Reject issue`, or `Revise: ...`
-
----
-```
-
-### Decision needed
-
-Use this card when the user must choose among materially different outcomes.
-State why the choice cannot be made safely from existing evidence, show the
-meaningful options and tradeoffs, and recommend one. Do not stop at "human
-review needed."
-
-```markdown
----
-
-## 🧭 Decision needed: <question>
-
-**What I need from you:** Choose one of the options below.
-
-### Why this decision is needed
-
-<Explain what cannot be decided safely without the user's preference.>
-
-### Options
-
-| Option | What it means | Advantages | Disadvantages |
-| --- | --- | --- | --- |
-| A — <name> | <plain explanation> | <benefits> | <tradeoffs> |
-| B — <name> | <plain explanation> | <benefits> | <tradeoffs> |
-
-### My recommendation
-
-**Option <X>**, because <short evidence-based reason>.
-
-**Reply with:** `Option A`, `Option B`, or `Revise: ...`
-
----
-```
-
-### Approval needed
-
-Use this card when one exact action is already preferred but crossing a
-permission, publication, destructive-operation, cost, privacy, or
-external-mutation boundary requires approval. Name the exact target, expected
-change, risk, reversibility, and recovery path. Approval covers only the stated
-action.
-
-```markdown
----
-
-## 🔐 Approval needed: <exact action>
-
-**What I need from you:** Approve or decline this specific action.
-
-### Proposed action
-
-<Describe exactly what will be changed, published, deleted, or executed.>
-
-### Why it is needed
-
-<Explain the benefit and why the action cannot be avoided.>
-
-### Impact and safety
-
-- **Target:** <exact repository, file, branch, service, or data>
-- **Expected change:** <what will be different>
-- **Risk:** <what could go wrong>
-- **Reversible:** <yes or no, and how>
-- **Recovery:** <how the previous state can be restored>
-
-### My recommendation
-
-<Recommend approval or rejection, with a short reason.>
-
-**Reply with:** `Approve`, `Decline`, or `Revise: ...`
-
----
-```
-
-### Action needed
-
-Use this card when work is blocked by one specific external action from the
-user rather than by a choice or a permission decision. State what is blocked,
-why you cannot continue, the smallest unblocking action, and the observable
-condition for resumption.
-
-```markdown
----
-
-## ⛔ Action needed: <blocking condition>
-
-**What I need from you:** <one specific action>.
-
-### What is blocked
-
-<Explain which requested work cannot continue.>
-
-### Why I cannot continue
-
-<Explain the verified blocker in plain language.>
-
-### How to unblock it
-
-1. <First exact action>
-2. <Second action, only when necessary>
-
-### I can continue when
-
-<Describe the observable condition that confirms the blocker is resolved.>
-
----
-```
+(proposed issue, decision needed, approval needed, action needed) that
+`docs/agent-attention-cards.md` defines; read it before writing one. Never bury
+a card inside a general summary or a vague "human review" note. When the
+client offers a native structured-question tool, raise the card through it and
+write the card in the same turn: a card written only as Markdown does not ask.
 
 ## Configuration and repository hygiene
 
@@ -969,6 +730,7 @@ condition for resumption.
 - This project has no environment variables and therefore no `.env.example`. If
   one is ever introduced, document every supported name with a safe placeholder.
 - Do not add placeholder automation.
+- An executor does not touch `.github/workflows/` or `LICENSE`.
 
 ## Tests and validation
 
@@ -978,17 +740,15 @@ condition for resumption.
   highest-value test surface.
 - Test observable contracts at stable seams; avoid tests that only mirror
   implementation details or framework behavior.
-- Do not add tests that assert exact user-facing copy.
-- Do not compare rendered or generated interface text with the same canonical
-  copy or product constant used to produce it. That only proves that a value
-  equals itself. Canonical copy may locate a control when the test then asserts
-  behavior, semantics, or state; data-derived identifiers remain technical
-  contracts rather than editorial copy.
-- Copy changes, additions, and removals do not require new tests by themselves.
-- A pull request containing only copy changes may correctly contain no new or modified tests.
-- Tests should validate behavior, semantics, state, accessibility, or technical contracts, not editorial wording.
-- Do not add meaningless tests merely to claim that a pull request has test coverage.
-- When copy is used to locate an element in a test, prefer stable semantic queries or another appropriate selector rather than asserting the copy itself.
+- Test behavior, semantics, state, accessibility, or technical contracts, never
+  editorial wording. Do not assert exact user-facing copy, and do not compare
+  rendered or generated interface text with the canonical copy or product
+  constant that produced it: that only proves a value equals itself. Copy may
+  locate a control when the test then asserts behavior, semantics, or state,
+  though a stable semantic query is preferred; data-derived identifiers remain
+  technical contracts rather than editorial copy.
+- A change that only adds, edits, or removes copy needs no new or modified
+  tests, and no test is added merely to claim coverage.
 - Every test, fixture, example, and default or demo table holds synthetic data
   only. No real person's name, address, email, username, or account may appear,
   and least of all the maintainer's own: sample content is read, copied, and
@@ -1055,15 +815,16 @@ condition for resumption.
 
 ## Git
 
-- Follow the recorded commit, push, and merge policies above.
-- Name every new branch following the branch naming policy above.
+Branch naming, commit subjects, push, pull request titles, and the merge method
+are recorded in `## Project identity and policy`. Executing them also requires:
+
 - Check status and branch before editing and before the final report.
-- Use Conventional Commits in English. One commit per concern, and end the
-  subject with its issue number when the commit belongs to one.
-- Title the pull request by the pull request title rule in `## Project identity
-  and policy`.
-- Merge with `gh pr merge <number> --merge --delete-branch`, or leave it to
-  `skd merge`, which merges only with a cross-family review at the head.
+- Use Conventional Commits in English, one commit per concern. A commit that
+  resolves an issue says `Closes #<n>` in its body, so the push to `main`
+  closes it, and the body carries the problem, the implementation, and the
+  validation actually run.
+- A pull request may also be merged through `skd merge`, which merges only with
+  a cross-family review at the head.
 - Inspect the exact payload before publishing it: the staged diff before a
   commit, the outgoing commit range before a push, and the final text before an
   issue, pull request, comment, or review. Never commit secrets, caches,
@@ -1078,29 +839,6 @@ condition for resumption.
   unpublish it. Stop further spread, state the reach without repeating the
   value, and revoke or rotate it before any decision about rewriting history.
 - If commit or push fails, report the exact failure without claiming success.
-
-## Agent execution
-
-Rules for any executor working from a clone of this repository.
-
-- Run tests with `pnpm test`, types with `pnpm check-types`, and format and lint
-  with `pnpm check`. A change is not done while any of the three fails on the
-  exact current head. Run the affected browser specs with `pnpm test:e2e`,
-  per `## Build and validate`; CI runs the whole suite after the push.
-- Branch as `type/<issue numbers>-short-description` and commit with
-  Conventional Commits, the subject ending in `(#<issue number>)`.
-- Push to `main` directly. A commit that resolves an issue says
-  `Closes #<n>` in its body, so the push closes it; the commit body carries
-  the problem, the implementation, and the validation actually run.
-- Do not touch: `.github/workflows/`, `LICENSE`.
-- `AGENTS.md` is protected by section, not as a file. `## Project identity and
-  policy` is governance and never moves under an executor. Every other section
-  documents this code, so a change that makes a recorded rule untrue updates it
-  in the same pull request. `## Domain rules`, `## Frozen technical direction`,
-  and `## Architecture boundaries` are where this repository keeps the patterns
-  a change is most likely to break: establishing a new one stops and asks first.
-- When a needed decision is not written in the issue, comment exactly what is
-  missing, apply `status: needs-decision`, and stop cleanly instead of guessing.
 
 ## Completion report
 

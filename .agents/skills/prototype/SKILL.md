@@ -20,7 +20,7 @@ Use a prototype only when a narrow executable experiment will produce better evi
 
 ## Useful Tabelo experiments
 
-- DOM geometry and focus behavior across zoom levels or browser engines;
+- DOM geometry and focus behavior across zoom levels in Chromium, the only supported browser;
 - CodeMirror transaction, selection, gutter, or remount behavior;
 - parser and serializer edge cases that are not yet understood well enough for a production test;
 - React render and serialization timing at supported limits;

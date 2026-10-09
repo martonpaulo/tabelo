@@ -1,6 +1,6 @@
 ---
 name: ui-contract
-description: Implement or review a Tabelo UI, UX, accessibility, interaction, responsive-layout, design-token, or product-copy change. Use for work affecting panes, menus, dialogs, notices, the grid, source editors, preview, keyboard and focus behavior, screen-reader semantics, zoom, themes, or visible copy.
+description: Implement or review a Tabelo UI, UX, accessibility, interaction, responsive-layout, design-token, or product-copy change. Use for work affecting panes, menus, dialogs, notices, the grid, source editors, preview, keyboard and focus behavior, screen-reader semantics, zoom, forced colours, or visible copy.
 ---
 
 # UI Contract
@@ -13,10 +13,10 @@ Treat `docs/design-system.md`, the entry point, and the parts it lists under `do
 2. Inspect the rendered behavior when appearance, focus, keyboard interaction, accessibility semantics, responsive layout, or geometry determines correctness. Source alone is insufficient for those claims.
 3. Reuse in order: existing product component, browser or native element, `packages/ui` primitive, then an existing dependency. Do not create a local variant of an established pattern.
 4. If no pattern fits, follow the design-system pattern-break protocol. Do not invent or silently normalize a new visual pattern.
-5. Define the complete affected state set: rest, hover, focus, selected, disabled with reason, loading, empty, invalid, warning, destructive, narrow layout, system theme, pane zoom, and reduced motion as applicable.
+5. Define the complete affected state set: rest, hover, focus, selected, disabled with reason, loading, empty, invalid, warning, destructive, narrow layout, forced colours, pane zoom, and reduced motion as applicable. Dark is the only palette (ADR 0010): there is no light or system theme state to define.
 6. Preserve interaction ownership and keyboard equality. A pointer-only affordance needs a keyboard path. Focus must remain visible, escape routes must work, and screen-reader state must be perceivable without color.
 7. Use shared tokens and `rem` for authored geometry. Never test visual equality through narrow tolerances, ratios around one target, `toBeCloseTo`, or paired bounding-box equality. Own equality through one token or component, inspect it in the running app, and automate only meaningful thresholds or direction changes.
-8. Keep visible strings in `ui/copy.ts` or `product.ts` as required.
+8. Keep visible strings in `apps/web/src/copy/copy.ts`, or in `apps/web/src/copy/product.ts` for product identity, as required.
 9. Do not assert exact user-facing copy or compare output with the same canonical copy constant that produced it. Canonical copy may locate an element only when the test then validates behavior, semantics, state, accessibility, or another technical contract.
 10. Add behavior-focused Playwright coverage with accessible roles and labels, isolated storage, no arbitrary waits, and no pixel snapshots.
 
@@ -26,7 +26,7 @@ Treat `docs/design-system.md`, the entry point, and the parts it lists under `do
 - Pane changes preserve the user's view, draft, focus, zoom, and workspace context.
 - Grid cells use native table and ARIA-grid relationships; do not replace cell values with coordinate labels.
 - Source diagnostics remain written, keyboard-accessible, and non-color-only without changing pane height.
-- The interface works at supported narrow layouts, system themes, pane zoom extremes, and reduced motion.
+- The interface works at supported narrow layouts, in forced-colour mode, at pane zoom extremes, and with reduced motion.
 - A dialog is used only for a user-issued command whose choice cannot fit a menu, unless the controlling issue explicitly updates that contract.
 
 ## Completion

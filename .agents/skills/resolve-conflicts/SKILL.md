@@ -5,7 +5,7 @@ description: Resolve an in-progress Tabelo Git merge, rebase, cherry-pick, or re
 
 # Resolve Conflicts
 
-Tabelo works on a branch per task by default; conflicts most often surface when rebasing that branch onto `main`. Do not create, switch, or rebase a branch as part of conflict resolution beyond the operation already in progress, and never target a branch other than the one already conflicted.
+Tabelo delivers directly to `main`; concurrent work happens on short-lived worktree branches that are rebased onto `main` before pushing, as `AGENTS.md` `## Project identity and policy` records, so conflicts most often surface during that rebase. Do not create, switch, or rebase a branch as part of conflict resolution beyond the operation already in progress, and never target a branch other than the one already conflicted.
 
 ## Workflow
 

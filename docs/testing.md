@@ -147,25 +147,89 @@ Property checks that are cheap enough to live in an ordinary test file stay in
 the unit project. Move a file to the property project only when it represents a
 broad invariant and measurements justify the larger budget.
 
+## Running browser specs locally
+
+`AGENTS.md` lists the browser commands and when a change needs them. This
+section is the procedure for a focused run.
+
+Pass a focused spec path or Playwright option directly after the root script.
+Never add a standalone `--` after `pnpm test:e2e`: it ends option parsing and
+can turn a focused command into the configured project matrix. Before a new
+focused selection, list its resolved scope and confirm the files, projects,
+and test count match the intent:
+
+```sh
+pnpm test:e2e e2e/import.spec.ts --list
+```
+
+Then run the focused spec, or one named behavior explicitly:
+
+```sh
+TABELO_E2E_WORKERS=1 pnpm test:e2e e2e/import.spec.ts
+pnpm test:e2e e2e/import.spec.ts -g "<title>"
+```
+
+If execution announces a materially larger test count than the intent,
+interrupt it immediately and correct the command. Do not let a focused run
+silently become a full gate.
+
+Several worktrees share one machine. Set `TABELO_E2E_WORKERS=1` when another
+checkout is running its own suite. Before a full browser gate, check whether
+another worktree is already running Playwright; wait or keep one worker rather
+than creating resource contention and unrelated timeout failures.
+
 ## CI selection
 
-Selection is risk-based. It is not a source-domain shortcut:
+`scripts/classify-changes.sh` owns these rules for every event. CI uses it to
+select browser coverage and Deploy uses it to decide whether the built site can
+differ, so the two cannot disagree about a path.
 
-- Tests, fixtures, Vitest configuration, and non-shipping benchmark files stay
-  within the Check job and need no browser run.
+Selection is risk-based. It is not a source-domain shortcut, and the
+highest-risk changed path decides:
+
+- Documentation and agent guidance need no browser run.
+- Tests, fixtures, Vitest configuration, unit-test tooling, and non-shipping
+  benchmark files stay within the Check job and need no browser run.
+- Browser specs and their helpers run the full Chromium suite.
 - Product identity and interface copy use the smoke selection. The global
   stylesheet adds the visual-system selection.
-- Application changes, unknown paths, pushes to `main`, and manual runs use the
-  full browser suite.
-- Workflow and Playwright harness changes use that same full selection. The
-  dynamic cap determines their shard count like every other browser run.
+- All other application changes and unknown paths run the full suite.
+- Workflow, pipeline script, and Playwright configuration changes run that
+  same full suite. The dynamic cap determines their shard count like every
+  other browser run.
+
+Renames classify both the old and the new path, so moving a file cannot reduce
+coverage, and mixed changes always use the highest applicable level.
+
+Which files are classified depends on the event. A pull request is classified
+by its own files. A push to `main` is classified by every file changed since
+the last commit on `main` whose Validate run passed (only a pull request
+cancels a superseded run, so that base always exists), so a push that cancelled
+an unfinished run inherits that run's changes. A manual run, or a history the
+compare API cannot answer, selects everything. The Check job counts the
+selected tests and derives the shard matrix from the cap above, so every event
+uses one mechanism.
+
+On a push to `main`, CI and Pages deployment are skipped entirely when every
+changed path matches the non-build path list owned by their workflows. **A pull
+request has no such filter**, and deliberately so: `Check` is a required status
+check, and GitHub does not report a path-filtered trigger as skipped. It leaves
+the check expected and waiting, which would make a documentation-only pull
+request unmergeable forever. Cost is controlled inside the job instead, so the
+Check job always runs on a pull request.
+
+Deploy publishes only when the built site can differ from the live one. It
+compares the commit of the last successful Pages deployment with the new head
+through the same script, so a change that touches only tests, specs, tooling,
+or documentation builds nothing and deploys nothing, and a deploy that was
+skipped or lost is carried by the next one that publishes. A manual Deploy run
+always publishes.
 
 A source-directory-to-spec map was rejected. Tabelo's format, state, and UI
 boundaries converge in synchronization, import, clipboard, persistence, and
 workspace flows, so a directory name is not evidence that unrelated browser
 specs are safe to skip. Unmapped application work therefore continues to run
-the full suite. Renames and mixed changes retain the classification rules in
-`AGENTS.md`.
+the full suite.
 
 When the complete suite grows, improve its balance through the measured cap or
 remove duplicate tests at their real seam. Do not create a manual domain shard
