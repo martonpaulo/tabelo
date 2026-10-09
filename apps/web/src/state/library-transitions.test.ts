@@ -174,3 +174,76 @@ describe("library transitions preserve recoverable work", () => {
 		);
 	});
 });
+
+describe("a table keeps its session history while another is open", () => {
+	const base = documentFromMatrix([["Name"], ["Ingrid"]], { headerRow: true });
+	const edited = documentFromMatrix([["Name"], ["Paulo"]], { headerRow: true });
+
+	function cellText() {
+		const { document } = useTabeloStore.getState();
+		const row = document.rows[0];
+		return row?.cells[document.columns[0]?.id ?? ""];
+	}
+
+	it("returns to a table with its undo and redo steps", () => {
+		const first = useTabeloStore.getState().library.activeId;
+		useTabeloStore.getState().applyDocument(base);
+		useTabeloStore.getState().applyDocument(edited);
+		useTabeloStore.getState().createTable();
+		const second = useTabeloStore.getState().library.activeId;
+		expect(useTabeloStore.getState().past).toHaveLength(0);
+		useTabeloStore.getState().switchTable(first);
+		expect(cellText()).toBe("Paulo");
+		useTabeloStore.getState().undo();
+		expect(cellText()).toBe("Ingrid");
+		useTabeloStore.getState().switchTable(second);
+		useTabeloStore.getState().switchTable(first);
+		expect(cellText()).toBe("Ingrid");
+		useTabeloStore.getState().redo();
+		expect(cellText()).toBe("Paulo");
+	});
+
+	it("keeps a superseded invalid draft recoverable through undo", () => {
+		const first = useTabeloStore.getState().library.activeId;
+		useTabeloStore.getState().applyDocument(base);
+		const pane = useTabeloStore
+			.getState()
+			.workspace.panes.find((p) => p.view === "markdown");
+		if (!pane) throw new Error("Missing source pane");
+		const invalid = "| Name |\n| not a divider |\n| Ingrid |";
+		useTabeloStore.getState().setDraft(pane.id, "markdown", invalid);
+		useTabeloStore.getState().applyDocument(edited);
+		expect(useTabeloStore.getState().draft).toBeNull();
+		useTabeloStore.getState().createTable();
+		useTabeloStore.getState().switchTable(first);
+		useTabeloStore.getState().undo();
+		expect(useTabeloStore.getState().draft?.text).toBe(invalid);
+	});
+
+	it("drops only the deleted table's history", () => {
+		const first = useTabeloStore.getState().library.activeId;
+		useTabeloStore.getState().applyDocument(base);
+		useTabeloStore.getState().createTable();
+		const second = useTabeloStore.getState().library.activeId;
+		useTabeloStore.getState().applyDocument(edited);
+		useTabeloStore.getState().createTable();
+		const third = useTabeloStore.getState().library.activeId;
+		useTabeloStore.getState().deleteTable(first);
+		useTabeloStore.getState().switchTable(second);
+		expect(useTabeloStore.getState().past.length).toBeGreaterThan(0);
+		useTabeloStore.getState().switchTable(third);
+		expect(useTabeloStore.getState().library.tables).toHaveLength(2);
+	});
+
+	it("records the table switched to as the one a reload opens", () => {
+		const { first, second } = twoTables();
+		expect(JSON.parse(localStorage.getItem(LIBRARY_KEY) ?? "{}").activeId).toBe(
+			first,
+		);
+		useTabeloStore.setState(initial, true);
+		useTabeloStore.getState().hydrate();
+		expect(useTabeloStore.getState().library.activeId).toBe(first);
+		expect(useTabeloStore.getState().library.activeId).not.toBe(second);
+		expect(cellText()).toBe("Ingrid");
+	});
+});

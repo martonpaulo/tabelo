@@ -60,6 +60,30 @@ test("a table survives a reload with the table that was active", async ({
 	).toHaveCount(2);
 });
 
+test("switching back to a table keeps its undo history and survives a reload", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Before");
+	await tabelo.editCell(1, 1, "After");
+	await createTable(tabelo);
+	await tabelo.editCell(1, 1, "Other");
+
+	const menu = await tabelo.openAppMenu();
+	await menu
+		.getByRole("menuitem", { name: new RegExp(`^${DEFAULT_TABLE_NAME}`) })
+		.first()
+		.click();
+	await tabelo.page.keyboard.press("Escape");
+	await expect(tabelo.cell(1, 1)).toHaveText("After");
+
+	await tabelo.runAppCommand("undo");
+	await expect(tabelo.cell(1, 1)).toHaveText("Before");
+
+	await tabelo.page.reload();
+	await expect(tabelo.workspace).toBeVisible();
+	await expect(tabelo.cell(1, 1)).toHaveText("Before");
+});
+
 test("deleting a table asks first and leaves the others alone", async ({
 	tabelo,
 }) => {

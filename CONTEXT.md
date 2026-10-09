@@ -282,6 +282,9 @@ The single ordered history of table document states. Each committed parse and
 each table operation is one step. A source view's own keystroke history is a
 separate, shallower layer that falls through to this timeline when exhausted,
 and any document change that view did not make clears it (ADR 0003).
+Each table in the library keeps its own timeline in memory for the browser
+session, so returning to a table restores its undo and redo steps; it is never
+stored and never shared between tables (#403, ADR 0001).
 
 Related to: Commit, Table operation
 

@@ -928,6 +928,54 @@ function blankTableState(name: string) {
 	};
 }
 
+// The undo timeline of every table left during this browser session, so
+// returning to one restores its history. It stays in memory, like the active
+// table's own history, and is kept beside the document it was recorded
+// against: a table whose stored document no longer matches that one returns
+// without history rather than with steps that would rewrite other content.
+type RetainedSession = {
+	readonly document: TableDocument;
+	readonly past: readonly HistoryEntry[];
+	readonly future: readonly HistoryEntry[];
+	readonly hasHeldContent: boolean;
+};
+const retainedSessions = new Map<TableId, RetainedSession>();
+
+// Called while the store still shows the table being left, after it was
+// written, so the retained document is the one storage now holds.
+function retainActiveSession(state: TabeloState): void {
+	retainedSessions.set(state.library.activeId, {
+		document: state.document,
+		past: state.past,
+		future: state.future,
+		hasHeldContent: state.hasHeldContent,
+	});
+}
+
+function takeRetainedSession(
+	id: TableId,
+	document: TableDocument,
+): RetainedSession | null {
+	const retained = retainedSessions.get(id);
+	retainedSessions.delete(id);
+	if (!retained) return null;
+	return sameValue(retained.document, document) ? retained : null;
+}
+
+// Structural equality over the plain data a stored document parses into.
+function sameValue(a: unknown, b: unknown): boolean {
+	if (Object.is(a, b)) return true;
+	if (typeof a !== "object" || typeof b !== "object" || !a || !b) return false;
+	if (Array.isArray(a) !== Array.isArray(b)) return false;
+	const aKeys = Object.keys(a);
+	const bRecord = b as Record<string, unknown>;
+	if (aKeys.length !== Object.keys(b).length) return false;
+	const aRecord = a as Record<string, unknown>;
+	return aKeys.every(
+		(key) => key in bRecord && sameValue(aRecord[key], bRecord[key]),
+	);
+}
+
 // Reads the library's active table into the store, or starts that table
 // blank when its payload is missing or unreadable. The index is the caller's
 // to write: switching and deleting both change it, and both land here.
@@ -953,6 +1001,7 @@ function openTable(
 		outcome.state.workspace,
 		outcome.state.document,
 	);
+	const retained = takeRetainedSession(id, outcome.state.document);
 	useTabeloStore.setState({
 		library: renameEntry(library, id, outcome.state.name),
 		...blankTableState(outcome.state.name),
@@ -961,7 +1010,11 @@ function openTable(
 		draft: outcome.state.draft
 			? deriveDraft(outcome.state.draft, workspace)
 			: null,
-		hasHeldContent: !isDocumentBlank(outcome.state.document),
+		hasHeldContent:
+			(retained?.hasHeldContent ?? false) ||
+			!isDocumentBlank(outcome.state.document),
+		past: retained?.past ?? [],
+		future: retained?.future ?? [],
 		storageIssue: null,
 	});
 }
@@ -1100,6 +1153,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	outputOptions: { ...defaultOutputOptions },
 
 	hydrate: () => {
+		retainedSessions.clear();
 		const session = get().library;
 		const loadedIndex = loadLibraryIndex();
 		if (loadedIndex.status === "unreadable") {
@@ -2770,6 +2824,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			set({ storageIssue: { kind: indexed.status } });
 			return indexed;
 		}
+		retainActiveSession(get());
 		set({ library, ...blank, storageIssue: null });
 		return { status: "saved", tableId: entry.id };
 	},
@@ -2802,6 +2857,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			set({ storageIssue: { kind: indexed.status } });
 			return indexed;
 		}
+		retainActiveSession(get());
 		openTable(library, loaded);
 		return { status: "saved", tableId: id };
 	},
@@ -2818,6 +2874,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		// Nothing is flushed here: the table being deleted must not be written
 		// back on its way out.
 		removeStoredTable(id);
+		retainedSessions.delete(id);
 		if (id === state.library.activeId) openTable(library);
 		else set({ library });
 		writeLibraryIndex(library);

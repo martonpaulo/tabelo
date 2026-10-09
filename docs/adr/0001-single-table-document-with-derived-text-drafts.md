@@ -114,3 +114,17 @@ edited, with no requirement that its grid be visible. Table switches keep
 pairing and advance session revisions; a stale active-table ID is refused.
 Failed saves prevent leaving the current table. Library commands retain their
 UI history semantics; each document batch is still one undo step.
+
+## Amendment: the invariant scopes to the active table (#403)
+
+A browser now holds a library of tables. Everything this decision states about
+the one document, its single pending draft, and its timeline holds for the
+active table: it is the only document the views project and the only one an
+edit, a draft, or a history step can reach. The other tables are storage until
+one is opened, and none can see another. Each table keeps its own document
+timeline in memory for the browser session, so leaving a table and returning
+to it restores its undo and redo steps, including a superseded draft that only
+undo can recover. That history is never persisted and never mixed between
+tables; deleting a table discards its history alone, and a table whose stored
+document changed while it was not active returns without history rather than
+with steps recorded against other content.
