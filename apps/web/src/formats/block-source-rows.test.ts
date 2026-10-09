@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { documentFromMatrix } from "@/core/document";
 import { samplePerson } from "@/core/sample-data";
 import { htmlCodec } from "./html";
+import { htmlSourceCells, htmlSourceRows } from "./html-source";
 import { jsonCodec } from "./json";
 import { cellAtPosition } from "./parse";
 import { recordsCodec } from "./records";
@@ -284,6 +285,26 @@ describe("HTML source rows", () => {
 		]);
 	});
 
+	// The script case of the reproduction in #414, through the codec: the map
+	// names the table the parser read, not the one spelled inside the script.
+	it("maps the real table, not one spelled inside a script", () => {
+		const text = [
+			'<script type="application/json">"<table><tr><th>Fake</th></tr><tr><td>FakeData1</td></tr><tr><td>FakeData2</td></tr></table>"</script>',
+			`<table><tr><th>Name</th></tr><tr><td>${ingrid.name}</td></tr><tr><td>${paulo.name}</td></tr></table>`,
+		].join("\n");
+		const result = htmlCodec.parse(text);
+		expect(cellTexts(text, result)).toEqual([
+			["Name"],
+			[ingrid.name],
+			[paulo.name],
+		]);
+		expect(positionAt(text, "FakeData1", result)).toBeNull();
+		expect(positionAt(text, paulo.name, result)).toEqual({
+			row: 2,
+			column: 0,
+		});
+	});
+
 	it("maps nothing where the parser has to repair the markup", () => {
 		for (const text of [
 			// A cell the parser closes on its own.
@@ -297,5 +318,59 @@ describe("HTML source rows", () => {
 			expect(result.ok).toBe(true);
 			expect(result.ok && result.rows).toBeUndefined();
 		}
+	});
+});
+
+// The scan alone, for every place the HTML tokenizer reads a table's tags as
+// something other than markup (#414). Whether the platform parser agrees is
+// covered in Chromium by the browser suite, since happy-dom does not treat
+// every one of these elements as raw text.
+describe("HTML source scan", () => {
+	const fake =
+		"<table><tr><th>Fake</th></tr><tr><td>FakeData</td></tr></table>";
+	const real = `<table><tr><th>Name</th></tr><tr><td>${ingrid.name}</td></tr></table>`;
+	function scanned(text: string): string[][] | null {
+		const rows = htmlSourceRows(text);
+		return (
+			rows?.map((row) =>
+				row.cells.map((cell) => text.slice(cell.contentFrom, cell.contentTo)),
+			) ?? null
+		);
+	}
+
+	it.each([
+		["script", `<script type="application/json">"${fake}"</script>`],
+		[
+			"script with a near-miss end tag",
+			`<SCRIPT>s = "</scripts>${fake}";</Script >`,
+		],
+		["style", `<style>${fake}</style>`],
+		["textarea", `<textarea>${fake}</textarea>`],
+		["title", `<title>${fake}</title>`],
+		["xmp", `<xmp>${fake}</xmp>`],
+		["iframe", `<iframe>${fake}</iframe>`],
+		["noembed", `<noembed>${fake}</noembed>`],
+		["noframes", `<noframes>${fake}</noframes>`],
+		["nested templates", `<template><template></template>${fake}</template>`],
+		["a comment closed by --!>", `<!-- ${fake} --!>`],
+	])("skips a table inside %s", (_context, before) => {
+		const text = `${before}\n${real}`;
+		expect(scanned(text)).toEqual([["Name"], [ingrid.name]]);
+		expect(htmlSourceCells(text).map((cell) => cell.contentFrom)).toEqual(
+			htmlSourceRows(text)?.flatMap((row) =>
+				row.cells.map((cell) => cell.contentFrom),
+			),
+		);
+	});
+
+	it("ends an abrupt empty comment where the tokenizer ends it", () => {
+		expect(scanned(`<!-->${real}`)).toEqual([["Name"], [ingrid.name]]);
+		expect(scanned(`<!--->${real}`)).toEqual([["Name"], [ingrid.name]]);
+	});
+
+	it("finds no table after raw text or a comment the text never closes", () => {
+		expect(scanned(`<script>${real}`)).toBeNull();
+		expect(scanned(`<!-- ${real}`)).toBeNull();
+		expect(scanned(`<plaintext>${real}`)).toBeNull();
 	});
 });

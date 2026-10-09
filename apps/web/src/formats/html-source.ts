@@ -36,18 +36,63 @@ function isLetter(char: string): boolean {
 	return (char >= "a" && char <= "z") || (char >= "A" && char <= "Z");
 }
 
-// Every tag in reading order. A comment, a doctype, or a processing
-// instruction is skipped whole, a quoted attribute value may hold `>`, and a
-// `<` that starts no tag is text. A tag left open at the end of the text ends
-// the scan, since nothing after it is markup yet.
+// Elements whose content the tokenizer reads as text up to their own end tag,
+// so a table spelled inside one is not markup: the raw text and escapable raw
+// text elements of the HTML parsing algorithm. `noscript` is not among them
+// here, because DOMParser parses with scripting disabled, where its content is
+// ordinary markup (#414).
+// https://html.spec.whatwg.org/multipage/parsing.html#parsing-html-fragments
+const RAW_TEXT = new Set([
+	"script",
+	"style",
+	"textarea",
+	"title",
+	"xmp",
+	"iframe",
+	"noembed",
+	"noframes",
+]);
+
+// Where a comment starting at `at` ends, past its closing `>`, or -1 when it
+// runs to the end of the text. The tokenizer also ends one at `--!>`, and an
+// abrupt `<!-->` or `<!--->` is an empty comment.
+function commentEnd(text: string, at: number): number {
+	const body = at + 4;
+	if (text.startsWith(">", body)) return body + 1;
+	if (text.startsWith("->", body)) return body + 2;
+	const plain = text.indexOf("-->", body);
+	const bang = text.indexOf("--!>", body);
+	if (plain === -1 && bang === -1) return -1;
+	if (bang === -1 || (plain !== -1 && plain < bang)) return plain + 3;
+	return bang + 4;
+}
+
+// Where the raw text an element opened at `from` ends: the start of its own
+// end tag, matched without case as the tokenizer does, or -1 when the text
+// never closes it.
+function rawTextEnd(text: string, name: string, from: number): number {
+	const pattern = new RegExp(`</${name}(?=[\\s/>])`, "gi");
+	pattern.lastIndex = from;
+	return pattern.exec(text)?.index ?? -1;
+}
+
+// Every tag in reading order that reaches the document the parser builds. A
+// comment, a doctype, or a processing instruction is skipped whole, a quoted
+// attribute value may hold `>`, and a `<` that starts no tag is text. The
+// content of a raw text element is text, `plaintext` makes the rest of the
+// text text, and what a `<template>` holds goes to a fragment of its own that
+// the parser's table lookup never reaches, so none of them yields a tag
+// (#414). A tag or comment left open at the end of the text ends the scan,
+// since nothing after it is markup yet.
 function tags(text: string): Tag[] {
 	const found: Tag[] = [];
+	let template = 0;
 	let at = text.indexOf("<");
 	while (at !== -1 && at < text.length) {
 		if (text.startsWith("<!--", at)) {
-			const end = text.indexOf("-->", at + 4);
+			const end = commentEnd(text, at);
 			if (end === -1) break;
-			at = text.indexOf("<", end + 3);
+			at = text.indexOf("<", end);
 			continue;
 		}
 		const next = text.charAt(at + 1);
@@ -79,13 +124,26 @@ function tags(text: string): Tag[] {
 			else if (char === ">") break;
 		}
 		if (end >= text.length) break;
-		found.push({
-			name: text.slice(nameFrom, nameTo).toLowerCase(),
-			closing,
-			selfClosing: !closing && text.charAt(end - 1) === "/",
-			from: at,
-			to: end + 1,
-		});
+		const name = text.slice(nameFrom, nameTo).toLowerCase();
+		if (name === "template") {
+			if (!closing) template += 1;
+			else if (template > 0) template -= 1;
+		} else if (template === 0) {
+			found.push({
+				name,
+				closing,
+				selfClosing: !closing && text.charAt(end - 1) === "/",
+				from: at,
+				to: end + 1,
+			});
+		}
+		if (!closing && name === "plaintext") break;
+		if (!closing && RAW_TEXT.has(name)) {
+			const close = rawTextEnd(text, name, end + 1);
+			if (close === -1) break;
+			at = close;
+			continue;
+		}
 		at = text.indexOf("<", end + 1);
 	}
 	return found;

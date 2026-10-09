@@ -240,6 +240,72 @@ for (const [viewId, d] of [
 	});
 }
 
+// A table spelled where the HTML parser reads no markup is not the table,
+// so a command from a caret inside it changes nothing, while the real table
+// keeps its commands (#414). Chromium's own DOMParser decides each case here.
+// The last case keeps a fake table of the real one's shape visible to the scan
+// but not to the parser, so only a check of the mapped rows' content refuses it.
+const FAKE_TABLE =
+	"<table><tr><th>Fake</th></tr><tr><td>FakeData</td></tr><tr><td>FakeMore</td></tr></table>";
+for (const [context, before, mapped] of [
+	["script", `<script type="application/json">"${FAKE_TABLE}"</script>`, true],
+	["style", `<style>${FAKE_TABLE}</style>`, true],
+	["textarea", `<textarea>${FAKE_TABLE}</textarea>`, true],
+	["title", `<title>${FAKE_TABLE}</title>`, true],
+	["xmp", `<xmp>${FAKE_TABLE}</xmp>`, true],
+	["iframe", `<iframe>${FAKE_TABLE}</iframe>`, true],
+	["noembed", `<noembed>${FAKE_TABLE}</noembed>`, true],
+	["noframes", `<noframes>${FAKE_TABLE}</noframes>`, true],
+	["template", `<template>${FAKE_TABLE}</template>`, true],
+	["a comment", `<!-- ${FAKE_TABLE} --!>`, true],
+	["a bogus comment", `</ x ${FAKE_TABLE}`, false],
+] as const) {
+	test(`html: a table inside ${context} takes no row command`, async ({
+		page,
+		tabelo,
+	}) => {
+		await seed(tabelo);
+		await tabelo.choosePaneView("markdown", "html");
+		const editor = tabelo.source("html");
+		const text = `${before}\n<table><tr><th>Name</th></tr><tr><td>Ingrid</td></tr><tr><td>Paulo</td></tr></table>`;
+		await editor.fill(text);
+		await expect(tabelo.header(1)).toHaveText("Name");
+		await expectOrder(tabelo, ["Ingrid", "Paulo"]);
+
+		// Every character, line break included, is one step to the right, so
+		// the caret lands exactly whatever the pane wraps.
+		const caretAt = async (marker: string) => {
+			await editor.click();
+			await editor.press("ControlOrMeta+Home");
+			for (let step = 0; step < text.indexOf(marker); step += 1) {
+				await page.keyboard.press("ArrowRight");
+			}
+		};
+		const deleteRow = async () => {
+			await page.keyboard.press("ContextMenu");
+			return page
+				.getByRole("menu")
+				.first()
+				.getByRole("menuitem", { name: copy.actions.deleteRows(1) });
+		};
+
+		await caretAt("FakeData");
+		await expect(await deleteRow()).toHaveAttribute("aria-disabled", "true");
+		await page.keyboard.press("Escape");
+		await expectOrder(tabelo, ["Ingrid", "Paulo"]);
+
+		await caretAt("Ingrid");
+		const command = await deleteRow();
+		if (!mapped) {
+			await expect(command).toHaveAttribute("aria-disabled", "true");
+			return;
+		}
+		await command.click();
+		await expect(tabelo.header(1)).toHaveText("Name");
+		await expectOrder(tabelo, ["Paulo"]);
+	});
+}
+
 test("inserted rows and columns take the caret, and one undo removes each", async ({
 	page,
 	tabelo,

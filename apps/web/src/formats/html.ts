@@ -460,7 +460,8 @@ function parseHtmlMatrix(text: string): MatrixParseResult {
 // (html-source.ts) and are trusted only where they agree with the parser row
 // for row and cell for cell; markup the parser has to repair, such as a cell
 // it closes or a row it opens on its own, maps nothing rather than something
-// nearly right. A first row that is not all `<th>` is data, so the header
+// nearly right, and rows whose own reading differs from the parser's map
+// nothing either. A first row that is not all `<th>` is data, so the header
 // then has no text of its own.
 function htmlRows(
 	text: string,
@@ -471,6 +472,20 @@ function htmlRows(
 		!scanned ||
 		scanned.length !== table.cellCounts.length ||
 		scanned.some((row, index) => row.cells.length !== table.cellCounts[index])
+	) {
+		return undefined;
+	}
+	// Equal sizes do not make the scanned rows the parser's: a table spelled
+	// where the scan still sees markup could happen to have the same shape
+	// (#414). The rows are trusted only when reading their own text as a table
+	// gives back exactly what the parser read from the whole text.
+	const echo = readHtmlTable(
+		`<table>${scanned.map((row) => text.slice(row.from, row.to)).join("")}</table>`,
+	);
+	if (
+		!echo?.ok ||
+		echo.table.headerRow !== table.headerRow ||
+		JSON.stringify(echo.table.matrix) !== JSON.stringify(table.matrix)
 	) {
 		return undefined;
 	}
