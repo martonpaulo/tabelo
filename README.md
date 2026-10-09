@@ -90,7 +90,7 @@ supports. There is no second project to opt into and no cross-browser command to
 opening a pull request.
 
 > [!TIP]
-> Before you commit: `pnpm validate` — that is `pnpm check`, `pnpm check:dead-code`,
+> Before you commit: `pnpm validate`, that is `pnpm check`, `pnpm check:dead-code`,
 > `pnpm check-types` and `pnpm test`. Add `pnpm test:e2e` when the change crosses a UI boundary,
 > which is the coverage CI selects for you anyway.
 
