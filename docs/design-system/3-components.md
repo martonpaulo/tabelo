@@ -193,6 +193,14 @@ in its own right and flattening its rows into `Export` would put one row per
 codec beside three unrelated commands. Nothing else nests, and no third level
 exists.
 
+Focus has one owner as a submenu closes (#480). A submenu that closes on its
+own, with `ArrowLeft` or `Escape`, hands focus back to its trigger in the menu
+that is still open. A command chosen in a submenu closes the whole menu, and
+then the root menu alone decides where focus lands, as it does for a
+first-level command; the shared submenu part enforces this, so a menu never
+sets a submenu's final focus itself. A submenu whose every row is disabled
+takes no focus when it opens, so the keyboard carries on from its trigger.
+
 **The app menu** is three sections in this order (owner, 2026-09-20). `Tables`
 lists the library, one row shape for every table: the table's colour mark, its
 name, and the two commands that act on it. The open table adds its size line,

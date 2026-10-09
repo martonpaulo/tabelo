@@ -191,6 +191,44 @@ test("the menu hands focus back to the cell it moved to", async ({
 	expect(await columnSelected(tabelo, 1)).toBe(true);
 });
 
+test("a command chosen in the submenu hands focus once, to the cell it moved to", async ({
+	page,
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	await tabelo.cell(1, 1).click();
+	await page.mouse.move(0, 0);
+	await page.keyboard.press("ContextMenu");
+	const menu = page.locator('[data-slot="context-menu-content"]');
+	await expect(menu).toBeVisible();
+	const group = await openSubmenu(page, menu, copy.actions.moveFocus);
+	const right = group.getByRole("menuitem", {
+		name: copy.actions.moveFocusRight,
+	});
+	await right.focus();
+
+	// Every element focus enters once the command runs. The submenu used to
+	// hand focus back to its own trigger as well, racing the menu's return to
+	// the cell, and when the menu unmounted first it sent focus back to the
+	// cell the menu had opened on (#480).
+	await page.evaluate(() => {
+		const entered: string[] = [];
+		Object.assign(window, { entered });
+		document.addEventListener("focusin", (event) => {
+			const target = event.target as HTMLElement;
+			entered.push(target.dataset.cell ?? target.getAttribute("role") ?? "");
+		});
+	});
+	await right.press("Enter");
+	await expect(menu).toBeHidden();
+	await expect.poll(() => focusedCell(page)).toBe("0:1");
+	expect(
+		await page.evaluate(
+			() => (window as unknown as { entered: string[] }).entered,
+		),
+	).toEqual(["0:1"]);
+});
+
 test("the focus group carries no shortcut, stops at the edges, and cancels cleanly", async ({
 	page,
 	tabelo,

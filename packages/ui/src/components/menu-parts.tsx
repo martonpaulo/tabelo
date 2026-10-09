@@ -23,6 +23,7 @@ import { ShortcutKeys } from "@tabelo/ui/components/shortcut-keys";
 import { cn } from "@tabelo/ui/lib/utils";
 import { IconChevronRight } from "@tabler/icons-react";
 import type * as React from "react";
+import { createContext, useContext, useRef } from "react";
 
 // One implementation for both menus. Base UI builds its context menu out of
 // the menu's own parts: everything but the root, the trigger, and the
@@ -42,6 +43,24 @@ export interface MenuPlacement {
 	readonly alignOffset?: MenuPrimitive.Positioner.Props["alignOffset"];
 	readonly side?: MenuPrimitive.Positioner.Props["side"];
 	readonly sideOffset?: MenuPrimitive.Positioner.Props["sideOffset"];
+}
+
+// The trigger of the submenu around it, written by MenuSubTrigger and read by
+// MenuSubContent when it closes.
+const SubmenuTrigger = createContext<{ current: HTMLElement | null } | null>(
+	null,
+);
+
+// Where a submenu hands focus as it closes (#480). Closed on its own, with
+// ArrowLeft or Escape, its parent menu is still open, and focus goes back to
+// the submenu's trigger, Base UI's default. Closed together with its parent,
+// as a command chosen in it closes the whole menu, it leaves focus to the
+// root menu's own `finalFocus`. The default would race that one, and once the
+// root popup has unmounted the trigger is gone, so Base UI falls back to the
+// element focused before the menu opened and takes focus back from wherever
+// the root had put it. `data-open` is the popup's documented open state.
+function submenuFinalFocus(trigger: HTMLElement | null): boolean {
+	return trigger?.closest("[role='menu']")?.hasAttribute("data-open") ?? false;
 }
 
 export interface MenuComponentOptions {
@@ -149,7 +168,12 @@ export function createMenuComponents(options: MenuComponentOptions) {
 	}
 
 	function MenuSub({ ...props }: MenuPrimitive.SubmenuRoot.Props) {
-		return <MenuPrimitive.SubmenuRoot data-slot={`${slot}-sub`} {...props} />;
+		const trigger = useRef<HTMLElement | null>(null);
+		return (
+			<SubmenuTrigger.Provider value={trigger}>
+				<MenuPrimitive.SubmenuRoot data-slot={`${slot}-sub`} {...props} />
+			</SubmenuTrigger.Provider>
+		);
 	}
 
 	function MenuSubTrigger({
@@ -165,8 +189,10 @@ export function createMenuComponents(options: MenuComponentOptions) {
 		// as "more", and there is no label for it to sit after.
 		hideIndicator?: boolean;
 	}) {
+		const trigger = useContext(SubmenuTrigger);
 		return (
 			<MenuPrimitive.SubmenuTrigger
+				ref={trigger}
 				data-slot={`${slot}-sub-trigger`}
 				data-inset={inset}
 				className={cn(
@@ -199,8 +225,10 @@ export function createMenuComponents(options: MenuComponentOptions) {
 		className,
 		...props
 	}: React.ComponentProps<typeof MenuContent>) {
+		const trigger = useContext(SubmenuTrigger);
 		return (
 			<MenuContent
+				finalFocus={() => submenuFinalFocus(trigger?.current ?? null)}
 				data-slot={`${slot}-sub-content`}
 				className={cn(options.subContent.className, className)}
 				align={options.subContent.align}

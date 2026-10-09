@@ -396,7 +396,17 @@ test("a draft that does not parse disables every structural command", async ({
 	await expect(
 		move.getByRole("menuitem", { name: copy.actions.moveRight }),
 	).toHaveAttribute("aria-disabled", "true");
-	await page.keyboard.press("ArrowLeft");
+	// With nothing enabled inside, Base UI leaves focus on the Move row rather
+	// than on a disabled item, so the keyboard goes on from that row. ArrowLeft
+	// there would close the whole context menu, not the submenu (#480).
+	const moveRow = menu.getByRole("menuitem", {
+		name: copy.actions.move,
+		exact: true,
+	});
+	await expect(moveRow).toBeFocused();
+	await page.keyboard.press("ArrowDown");
+	await expect(move).toBeHidden();
+	await expect(menu).toBeVisible();
 	const sort = await openSubmenu(page, menu, copy.actions.sort);
 	await expect(
 		sort.getByRole("menuitem", { name: copy.actions.sortAscending }),
