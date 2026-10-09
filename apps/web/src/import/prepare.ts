@@ -5,6 +5,11 @@ import {
 } from "@/clipboard/parse";
 import { stripTabeloPayload } from "@/clipboard/payload";
 import { documentFromMatrix, normalizeMatrix } from "@/core/document";
+import {
+	matrixShapeLimitError,
+	TABLE_LIMITS,
+	type TableShapeLimitError,
+} from "@/core/table-limits";
 import type {
 	Alignment,
 	CellValue,
@@ -14,10 +19,10 @@ import type {
 import { getCodec } from "@/formats";
 import type { CodecId, ParseIssue } from "@/formats/types";
 
+// The table shape every input path shares, plus the byte budget that only an
+// import or a paste has to spend.
 export const IMPORT_LIMITS = {
-	rows: 500,
-	columns: 200,
-	cells: 50_000,
+	...TABLE_LIMITS,
 	payloadBytes: 1_048_576,
 } as const;
 
@@ -28,21 +33,7 @@ export type ImportError =
 			readonly issues: readonly ParseIssue[];
 	  }
 	| { readonly code: "empty" }
-	| {
-			readonly code: "too-many-rows";
-			readonly actual: number;
-			readonly limit: number;
-	  }
-	| {
-			readonly code: "too-many-columns";
-			readonly actual: number;
-			readonly limit: number;
-	  }
-	| {
-			readonly code: "too-many-cells";
-			readonly actual: number;
-			readonly limit: number;
-	  }
+	| TableShapeLimitError
 	| {
 			readonly code: "payload-too-large";
 			readonly actual: number;
@@ -92,37 +83,6 @@ function payloadBytes(payload: ClipboardPayload): number {
 	);
 }
 
-export interface TableShape {
-	readonly rows: number;
-	readonly columns: number;
-}
-
-export function tableShapeLimitError({
-	rows,
-	columns,
-}: TableShape): ImportError | null {
-	const cells = rows * columns;
-
-	if (rows > IMPORT_LIMITS.rows) {
-		return { code: "too-many-rows", actual: rows, limit: IMPORT_LIMITS.rows };
-	}
-	if (columns > IMPORT_LIMITS.columns) {
-		return {
-			code: "too-many-columns",
-			actual: columns,
-			limit: IMPORT_LIMITS.columns,
-		};
-	}
-	if (cells > IMPORT_LIMITS.cells) {
-		return {
-			code: "too-many-cells",
-			actual: cells,
-			limit: IMPORT_LIMITS.cells,
-		};
-	}
-	return null;
-}
-
 export function prepareImport(
 	request: PrepareImportRequest,
 ): PrepareImportResult {
@@ -140,7 +100,7 @@ export function prepareImport(
 
 	const namedCodec = request.format ? getCodec(request.format) : null;
 	let table: {
-		readonly matrix: CellValue[][];
+		readonly matrix: readonly (readonly CellValue[])[];
 		readonly source: ClipboardSource;
 		readonly headerRow?: boolean;
 		readonly alignments?: readonly Alignment[];
@@ -193,14 +153,7 @@ export function prepareImport(
 		return { ok: false, error: { code: "empty" } };
 	}
 
-	// The widest row is what the padding would make every row, so it is the
-	// column count the limits judge.
-	let width = 0;
-	for (const row of parsed) {
-		if (row.length > width) width = row.length;
-	}
-
-	const error = tableShapeLimitError({ rows: parsed.length, columns: width });
+	const error = matrixShapeLimitError(parsed, table.headerRow);
 	if (error) return { ok: false, error };
 
 	const matrix = normalizeMatrix(parsed);

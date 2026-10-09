@@ -174,6 +174,31 @@ test("repeated paste is rejected when the resulting table exceeds the limit", as
 	await expect(tabelo.cell(IMPORT_LIMITS.rows + 1, 1)).toHaveCount(0);
 });
 
+// Inserting is held to the same limit as importing (#418): at the row limit,
+// a row inserted from the grid is refused with a notice and the table keeps
+// its shape.
+test("inserting a row at the row limit is refused without changing the table", async ({
+	tabelo,
+}) => {
+	const atLimit = Array.from({ length: IMPORT_LIMITS.rows }, (_, index) =>
+		String(index),
+	).join("\n");
+	await tabelo.paste(atLimit, undefined, false);
+
+	// The row menu numbers the header row 1, so the last data row is one more
+	// than the limit.
+	const menu = await tabelo.openRowMenu(IMPORT_LIMITS.rows + 1);
+	await menu
+		.getByRole("menuitem", { name: copy.actions.insertRowsBelow(1) })
+		.click();
+
+	await expect(tabelo.notice("error")).toBeVisible();
+	await expect(tabelo.cell(IMPORT_LIMITS.rows, 1)).toHaveText(
+		String(IMPORT_LIMITS.rows - 1),
+	);
+	await expect(tabelo.cell(IMPORT_LIMITS.rows + 1, 1)).toHaveCount(0);
+});
+
 test("cancelling the file picker leaves the current table unchanged", async ({
 	tabelo,
 }) => {

@@ -61,6 +61,26 @@ describe("html parsing", () => {
 		expect(documentToMatrix(result.document)[1]).toEqual(["1", ""]);
 	});
 
+	// The matrix stays as the markup spelled it, so a limited parse and import
+	// judge its shape before anything pads it to a rectangle (#418).
+	it("reads a ragged table without padding it", () => {
+		const result = htmlCodec.parseMatrix(
+			"<table><tr><th>A</th><th>B</th></tr><tr><td>1</td></tr></table>",
+		);
+		expect(result.ok && result.table.matrix).toEqual([["A", "B"], ["1"]]);
+	});
+
+	it("refuses a ragged table past the column limit in a limited parse", () => {
+		const wide = Array.from({ length: 201 }, () => "<td>x</td>").join("");
+		const text = `<table><tr><th>A</th></tr><tr>${wide}</tr></table>`;
+
+		expect(htmlCodec.parse(text).ok).toBe(true);
+		const limited = htmlCodec.parse(text, { limited: true });
+		expect(limited.ok === false && limited.issues[0]?.code).toBe(
+			"table-too-large",
+		);
+	});
+
 	it("refuses markup with no table in it yet", () => {
 		expect(htmlCodec.parse("<div>not a table</div>").ok).toBe(false);
 	});

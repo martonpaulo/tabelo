@@ -1,5 +1,4 @@
 import { cellTextContentAt } from "@/core/cell-value";
-import { normalizeMatrix } from "@/core/document";
 import { normalizeInline } from "@/core/inline-content";
 import type {
 	Alignment,
@@ -309,13 +308,13 @@ function alignmentOf(cell: Element): Alignment {
 }
 
 export interface HtmlTable {
+	// One row per `<tr>`, holding exactly the cells the parser found in it:
+	// ragged when the markup is, which is what the source position mapping
+	// must agree with.
 	readonly matrix: TextContent[][];
 	readonly headerRow: boolean;
 	readonly alignments: readonly Alignment[];
 	readonly warnings: readonly ParseIssue[];
-	// How many cells the parser found in each `<tr>`, before the matrix is
-	// padded to a rectangle: what the source position mapping must agree with.
-	readonly cellCounts: readonly number[];
 }
 
 export type HtmlTableReading =
@@ -422,11 +421,13 @@ export function readHtmlTable(html: string): HtmlTableReading | null {
 	return {
 		ok: true,
 		table: {
-			matrix: normalizeMatrix(matrix) as TextContent[][],
+			// Left ragged. Padding to a rectangle is the reader's job once the
+			// shape has been admitted (#418): done here, it allocated every cell
+			// of a table the size limits were about to refuse.
+			matrix,
 			headerRow,
 			alignments,
 			warnings,
-			cellCounts: matrix.map((row) => row.length),
 		},
 	};
 }
@@ -509,8 +510,10 @@ function htmlRows(
 	const scanned = htmlSourceRows(text);
 	if (
 		!scanned ||
-		scanned.length !== table.cellCounts.length ||
-		scanned.some((row, index) => row.cells.length !== table.cellCounts[index])
+		scanned.length !== table.matrix.length ||
+		scanned.some(
+			(row, index) => row.cells.length !== table.matrix[index]?.length,
+		)
 	) {
 		return undefined;
 	}
@@ -674,6 +677,7 @@ export const htmlCodec: TableCodec = {
 	// Each `<tr>` from its own parse, as a block of lines (#402).
 	mapsSourceRows: true,
 	parseMatrix: parseHtmlMatrix,
-	parse: (text) => toDocumentParseResult(parseHtmlMatrix(text)),
+	parse: (text, options) =>
+		toDocumentParseResult(parseHtmlMatrix(text), options),
 	serialize: serializeHtml,
 };

@@ -292,7 +292,8 @@ export const markdownCodec: TableCodec = {
 	sourceFields: markdownFields,
 	structuralAssistance: markdownAssistance,
 	parseMatrix: parseMarkdownMatrix,
-	parse: (text) => toDocumentParseResult(parseMarkdownMatrix(text)),
+	parse: (text, options) =>
+		toDocumentParseResult(parseMarkdownMatrix(text), options),
 	serialize: serializeMarkdown,
 	spellings: ["lineBreakTags"],
 	sniffPriority: 20,

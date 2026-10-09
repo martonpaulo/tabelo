@@ -94,6 +94,7 @@ import {
 	type TableLibrary,
 	withUniqueNames,
 } from "@/core/table-library";
+import { tableShapeLimitError } from "@/core/table-limits";
 import { validateTableName } from "@/core/table-name";
 import type {
 	Alignment,
@@ -131,7 +132,6 @@ import {
 	type ImportError,
 	type PreparedImport,
 	prepareImport,
-	tableShapeLimitError,
 } from "@/import/prepare";
 import { storageErased } from "@/persistence/erase";
 import {
@@ -317,6 +317,20 @@ export function transposeLimitError(
 	return tableShapeLimitError({
 		rows: Math.max(1, document.columns.length - 1),
 		columns: document.rows.length + 1,
+	});
+}
+
+// Adding rows or columns is judged by the shape it would produce, before the
+// operation builds it (#418). A refusal is reported and changes nothing: no
+// document, no history step, no selection moved as if it had worked.
+function growthLimitError(
+	document: TableDocument,
+	addedRows: number,
+	addedColumns: number,
+): ImportError | null {
+	return tableShapeLimitError({
+		rows: document.rows.length + addedRows,
+		columns: document.columns.length + addedColumns,
 	});
 }
 
@@ -590,7 +604,9 @@ export interface TabeloState {
 	// The rest of a source pane's structural commands (#255), each named by
 	// index and applied as one history step with the grid selection left alone.
 	// The caller has already refused what the grid would refuse.
-	editStructureAt: (edit: StructureEdit) => void;
+	// Whether the edit ran: false when the size limits refused it, so a source
+	// command does not move its caret as if it had.
+	editStructureAt: (edit: StructureEdit) => boolean;
 
 	addColumnLeft: () => void;
 	addColumnRight: () => void;
@@ -2042,6 +2058,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const rect = currentRect(state);
 		const count = Math.max(1, rectDataRows(rect).length);
 		const at = Math.max(0, rect.top);
+		const error = growthLimitError(state.document, count, 0);
+		if (error) {
+			set({ inputError: error });
+			return;
+		}
 		state.applyDocument(insertRows(state.document, at, count));
 		set({
 			selection: createSelection({ row: at, column: rect.left }),
@@ -2055,6 +2076,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const rect = currentRect(state);
 		const count = Math.max(1, rectDataRows(rect).length);
 		const at = Math.max(0, rect.bottom + 1);
+		const error = growthLimitError(state.document, count, 0);
+		if (error) {
+			set({ inputError: error });
+			return;
+		}
 		state.applyDocument(insertRows(state.document, at, count));
 		set({
 			selection: createSelection({ row: at, column: rect.left }),
@@ -2092,10 +2118,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const state = get();
 		const rows = currentDataRows(state);
 		if (rows.length === 0) return;
-		const error = tableShapeLimitError({
-			rows: state.document.rows.length + rows.length,
-			columns: state.document.columns.length,
-		});
+		const error = growthLimitError(state.document, rows.length, 0);
 		if (error) {
 			set({ inputError: error });
 			return;
@@ -2148,6 +2171,16 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	editStructureAt: (edit) => {
 		const state = get();
 		const { document } = state;
+		const grows =
+			edit.kind === "insert-row" || edit.kind === "duplicate-row"
+				? growthLimitError(document, 1, 0)
+				: edit.kind === "insert-column"
+					? growthLimitError(document, 0, 1)
+					: null;
+		if (grows) {
+			set({ inputError: grows });
+			return false;
+		}
 		switch (edit.kind) {
 			case "insert-row":
 				state.applyDocument(insertRows(document, edit.at));
@@ -2160,26 +2193,17 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 						"before",
 					),
 				});
-				return;
+				return true;
 			case "remove-row":
 				state.applyDocument(
 					edit.row < 0
 						? promoteFirstRowToHeader(document)
 						: deleteRows(document, [edit.row]),
 				);
-				return;
-			case "duplicate-row": {
-				const error = tableShapeLimitError({
-					rows: document.rows.length + 1,
-					columns: document.columns.length,
-				});
-				if (error) {
-					set({ inputError: error });
-					return;
-				}
+				return true;
+			case "duplicate-row":
 				state.applyDocument(duplicateRows(document, [edit.row]));
-				return;
-			}
+				return true;
 			case "insert-column":
 				state.applyDocument(insertColumns(document, edit.at));
 				set({
@@ -2191,15 +2215,15 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 						"before",
 					),
 				});
-				return;
+				return true;
 			case "remove-column":
 				state.applyDocument(deleteColumns(document, [edit.column]));
-				return;
+				return true;
 			case "move-column":
 				state.applyDocument(
 					moveColumns(document, { from: edit.column, count: 1 }, edit.offset),
 				);
-				return;
+				return true;
 		}
 	},
 
@@ -2208,6 +2232,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		if (!isContiguous(state.selection)) return;
 		const rect = currentRect(state);
 		const leftCount = rect.right - rect.left + 1;
+		const error = growthLimitError(state.document, 0, leftCount);
+		if (error) {
+			set({ inputError: error });
+			return;
+		}
 		state.applyDocument(insertColumns(state.document, rect.left, leftCount));
 		set({
 			selection: createSelection({ row: rect.top, column: rect.left }),
@@ -2227,6 +2256,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const rect = currentRect(state);
 		const rightCount = rect.right - rect.left + 1;
 		const rightAt = rect.right + 1;
+		const error = growthLimitError(state.document, 0, rightCount);
+		if (error) {
+			set({ inputError: error });
+			return;
+		}
 		state.applyDocument(insertColumns(state.document, rightAt, rightCount));
 		set({
 			selection: createSelection({ row: rect.top, column: rightAt }),
@@ -2248,10 +2282,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	duplicateSelectedColumns: () => {
 		const state = get();
 		const columns = currentColumns(state);
-		const error = tableShapeLimitError({
-			rows: state.document.rows.length,
-			columns: state.document.columns.length + columns.length,
-		});
+		const error = growthLimitError(state.document, 0, columns.length);
 		if (error) {
 			set({ inputError: error });
 			return;

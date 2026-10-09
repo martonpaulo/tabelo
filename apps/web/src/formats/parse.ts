@@ -1,7 +1,9 @@
 import { documentFromMatrix } from "@/core/document";
+import { matrixShapeLimitError } from "@/core/table-limits";
 import type {
 	EscapeMatcher,
 	MatrixParseResult,
+	ParseOptions,
 	ParseResult,
 	SourceRowRange,
 	SourceTableRow,
@@ -23,13 +25,27 @@ export const matchBackslashLineBreak: EscapeMatcher = (value, index) => {
 		: null;
 };
 
-export function toDocumentParseResult(result: MatrixParseResult): ParseResult {
+// The one step from a parsed matrix to a document, shared by every codec's
+// `parse`. A limited parse judges the matrix here, while it is still ragged,
+// so a refused table is never padded out or given identifiers (#418).
+export function toDocumentParseResult(
+	result: MatrixParseResult,
+	options?: ParseOptions,
+): ParseResult {
 	if (!result.ok) return result;
+
+	const headerRow = result.table.headerRow ?? true;
+	const exceeded = options?.limited
+		? matrixShapeLimitError(result.table.matrix, headerRow)
+		: null;
+	if (exceeded) {
+		return { ok: false, issues: [{ code: "table-too-large", exceeded }] };
+	}
 
 	return {
 		ok: true,
 		document: documentFromMatrix(result.table.matrix, {
-			headerRow: result.table.headerRow ?? true,
+			headerRow,
 			alignments: result.table.alignments,
 		}),
 		warnings: result.warnings,

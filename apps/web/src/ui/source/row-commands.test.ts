@@ -280,6 +280,27 @@ describe("source structural commands", () => {
 		expect(refusal(ingrid.name, "sort-ascending")).toBe("sort-single-row");
 		expect(refusal(ingrid.name, "delete-column")).toBe("last-remaining-column");
 	});
+
+	// An insert past the size limits is refused by the store (#418): the
+	// document stays, the reason is reported, and no caret is spent as if a
+	// row had been added.
+	it("spends no caret when the size limits refuse an insert", () => {
+		const atLimit = documentFromMatrix(
+			[["name"], ...Array.from({ length: 500 }, (_, index) => [`${index}`])],
+			{ headerRow: true },
+		);
+		useTabeloStore.getState().applyDocument(atLimit);
+		const before = useTabeloStore.getState().document;
+		const plan = resolveSourceCommand(
+			editorAt(projection(), "| 7"),
+			markdownTarget(),
+			"insert-row-below",
+		);
+
+		expect(plan.ok && plan.run()).toBeNull();
+		expect(useTabeloStore.getState().document).toBe(before);
+		expect(useTabeloStore.getState().inputError?.code).toBe("too-many-rows");
+	});
 });
 
 // A line number's or a column letter's own menu names its row or column by an

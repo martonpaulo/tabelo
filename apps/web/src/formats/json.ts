@@ -348,7 +348,8 @@ export const jsonCodec: TableCodec = {
 	// Each record from its own parse, as a block under no header line (#402).
 	mapsSourceRows: true,
 	parseMatrix: parseJsonMatrix,
-	parse: (text) => toDocumentParseResult(parseJsonMatrix(text)),
+	parse: (text, options) =>
+		toDocumentParseResult(parseJsonMatrix(text), options),
 	serialize: serializeJson,
 	precondition: jsonPrecondition,
 	sniffPriority: 5,

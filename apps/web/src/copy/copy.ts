@@ -11,6 +11,7 @@ import { columnLetter } from "@/core/column-letter";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import { isTextContent } from "@/core/inline-content";
 import type { FillSeriesRefusal } from "@/core/series";
+import type { TableShapeLimitError } from "@/core/table-limits";
 import type {
 	CellValue,
 	CellValueType,
@@ -28,6 +29,24 @@ import type { PanePositionId, SplitEdge } from "@/workspace/layout";
 // Every user-visible string lives here. One place to keep the voice
 // consistent, and the seam a locale would plug into if Tabelo ever ships one.
 // Keep the tone plain and calm: say what happened, not how clever the app is.
+
+// A size-limit refusal (#418), said the same way by the import notice and a
+// source pane: the shape it would have made, then what to remove.
+function overLimit(error: TableShapeLimitError): string {
+	const unit =
+		error.code === "too-many-rows"
+			? "rows"
+			: error.code === "too-many-columns"
+				? "columns"
+				: "cells";
+	return `${error.actual} ${unit}, over the ${error.limit} limit.`;
+}
+
+const reduceTable: Record<TableShapeLimitError["code"], string> = {
+	"too-many-rows": "Remove rows",
+	"too-many-columns": "Remove columns",
+	"too-many-cells": "Reduce the table",
+};
 
 // Named once because it is both the visible label of the recovery command and
 // the opening of the accessible name that says which refusal it belongs to.
@@ -699,6 +718,9 @@ export const copy = {
 				case "html-merged-cells-unsupported":
 					message = `Row ${issue.row} has merged cells (rowspan or colspan), which a table here can't hold. Unmerge them, or repeat the value in each cell, and try again.`;
 					break;
+				case "table-too-large":
+					message = `${overLimit(issue.exceeded)} ${reduceTable[issue.exceeded.code]} to update the table.`;
+					break;
 				case "json-invalid":
 					message = "This isn't valid JSON yet.";
 					break;
@@ -1142,11 +1164,9 @@ export const copy = {
 					return first ? `${heading} ${copy.source.issue(first)}` : heading;
 				}
 				case "too-many-rows":
-					return `${error.actual} rows, over the ${error.limit} limit. Remove rows and try again.`;
 				case "too-many-columns":
-					return `${error.actual} columns, over the ${error.limit} limit. Remove columns and try again.`;
 				case "too-many-cells":
-					return `${error.actual} cells, over the ${error.limit} limit. Reduce the table and try again.`;
+					return `${overLimit(error)} ${reduceTable[error.code]} and try again.`;
 				case "payload-too-large":
 					return "Over the 1 MB limit. Use less data and try again.";
 				case "empty":

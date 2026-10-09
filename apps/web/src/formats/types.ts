@@ -1,4 +1,5 @@
 import type { ReconciliationSource } from "@/core/document";
+import type { TableShapeLimitError } from "@/core/table-limits";
 import type { Alignment, CellValue, TableDocument } from "@/core/types";
 
 export type CodecId =
@@ -79,7 +80,14 @@ export type ParseIssue =
 	| ({ readonly code: "records-title-required" } & LocatedParseIssue)
 	| ({ readonly code: "records-title-mismatch" } & LocatedParseIssue)
 	| ({ readonly code: "records-bullet-required" } & LocatedParseIssue)
-	| ({ readonly code: "records-unknown-column" } & LocatedParseIssue);
+	| ({ readonly code: "records-unknown-column" } & LocatedParseIssue)
+	// The text parses, but to a table past the shared size limits (#418). Only
+	// a limited parse reports it, and before the table is built: see
+	// ParseOptions.
+	| ({
+			readonly code: "table-too-large";
+			readonly exceeded: TableShapeLimitError;
+	  } & LocatedParseIssue);
 
 // Where one semantic table row sits in the source it was parsed from, as UTF-16
 // offsets: `from` is its first character and `to` is just after its last one,
@@ -172,6 +180,15 @@ export type ParseResult =
 	  }
 	| { readonly ok: false; readonly issues: readonly ParseIssue[] };
 
+// How a parse is asked for. `limited` judges the parsed shape against the
+// shared size limits before any document is built, and refuses with a
+// `table-too-large` issue past them (#418). A source pane parses user text
+// this way; a caller reading the codec's own output of a document it already
+// holds, a round trip, or a benchmark parses without it.
+export interface ParseOptions {
+	readonly limited?: boolean;
+}
+
 export interface ParsedTable {
 	readonly matrix: CellValue[][];
 	// Formats that encode row roles declare whether row 1 is a header. An
@@ -252,7 +269,7 @@ export interface TableCodec {
 	// Import and clipboard preparation validate this neutral matrix before any
 	// application document is constructed or rendered.
 	readonly parseMatrix: (text: string) => MatrixParseResult;
-	readonly parse: (text: string) => ParseResult;
+	readonly parse: (text: string, options?: ParseOptions) => ParseResult;
 	readonly serialize: (
 		document: TableDocument,
 		options?: OutputOptions & Spelling,

@@ -339,7 +339,8 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 		// A source view only ever reads back this codec's own output, where the
 		// separator is the one the format declares. Guessing there let cell data
 		// masquerade as structure and made canonical output unreadable (#217).
-		parse: (text) => toDocumentParseResult(readMatrix(text, false)),
+		parse: (text, options) =>
+			toDocumentParseResult(readMatrix(text, false), options),
 		serialize: (document) => serializeDelimited(document, config.delimiter),
 		sniffPriority: config.id === "tsv" ? 10 : 40,
 		canSniff: (text) =>

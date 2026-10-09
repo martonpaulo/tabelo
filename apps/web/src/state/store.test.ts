@@ -227,6 +227,92 @@ describe("transactional input", () => {
 		expect(useTabeloStore.getState().inputError?.code).toBe("too-many-columns");
 	});
 
+	// Inserting is judged by the shape it would make before it builds anything
+	// (#418): a refusal reports why and leaves the document, the selection,
+	// and the history exactly as they were.
+	it("refuses row and column insertion beyond the resulting limits", () => {
+		const rowLimited = documentFromMatrix(
+			[["value"], ...Array.from({ length: 500 }, (_, index) => [`${index}`])],
+			{ headerRow: true },
+		);
+		const selection = createSelection({ row: 499, column: 0 });
+		useTabeloStore.setState({ document: rowLimited, selection });
+		const past = useTabeloStore.getState().past;
+
+		for (const insert of ["addRowAbove", "addRowBelow"] as const) {
+			useTabeloStore.setState({ inputError: null });
+			useTabeloStore.getState()[insert]();
+			const after = useTabeloStore.getState();
+			expect(after.document).toBe(rowLimited);
+			expect(after.selection).toBe(selection);
+			expect(after.past).toBe(past);
+			expect(after.inputError?.code).toBe("too-many-rows");
+		}
+
+		useTabeloStore.setState({ inputError: null });
+		expect(
+			useTabeloStore.getState().editStructureAt({ kind: "insert-row", at: 0 }),
+		).toBe(false);
+		expect(useTabeloStore.getState().document).toBe(rowLimited);
+		expect(useTabeloStore.getState().inputError?.code).toBe("too-many-rows");
+
+		const columnLimited = documentFromMatrix(
+			[
+				Array.from({ length: 200 }, (_, index) => `column ${index}`),
+				Array.from({ length: 200 }, () => ""),
+			],
+			{ headerRow: true },
+		);
+		const cell = createSelection({ row: 0, column: 199 });
+		useTabeloStore.setState({ document: columnLimited, selection: cell });
+
+		for (const insert of ["addColumnLeft", "addColumnRight"] as const) {
+			useTabeloStore.setState({ inputError: null });
+			useTabeloStore.getState()[insert]();
+			const after = useTabeloStore.getState();
+			expect(after.document).toBe(columnLimited);
+			expect(after.selection).toBe(cell);
+			expect(after.inputError?.code).toBe("too-many-columns");
+		}
+
+		useTabeloStore.setState({ inputError: null });
+		expect(
+			useTabeloStore
+				.getState()
+				.editStructureAt({ kind: "insert-column", at: 0 }),
+		).toBe(false);
+		expect(useTabeloStore.getState().document).toBe(columnLimited);
+		expect(useTabeloStore.getState().inputError?.code).toBe("too-many-columns");
+	});
+
+	// The cell limit is the product of the two: a table under both axis limits
+	// can still be refused one row past 250 by 200.
+	it("refuses an insertion past the cell limit and accepts one at it", () => {
+		const document = documentFromMatrix(
+			[
+				Array.from({ length: 200 }, (_, index) => `column ${index}`),
+				...Array.from({ length: 249 }, () =>
+					Array.from({ length: 200 }, () => ""),
+				),
+			],
+			{ headerRow: true },
+		);
+		useTabeloStore.setState({
+			document,
+			selection: createSelection({ row: 248, column: 0 }),
+			inputError: null,
+		});
+
+		useTabeloStore.getState().addRowBelow();
+		expect(useTabeloStore.getState().document.rows).toHaveLength(250);
+		expect(useTabeloStore.getState().inputError).toBeNull();
+
+		const atLimit = useTabeloStore.getState().document;
+		useTabeloStore.getState().addRowBelow();
+		expect(useTabeloStore.getState().document).toBe(atLimit);
+		expect(useTabeloStore.getState().inputError?.code).toBe("too-many-cells");
+	});
+
 	it("keeps a successful import to one document-history operation", () => {
 		const before = documentToMatrix(useTabeloStore.getState().document);
 

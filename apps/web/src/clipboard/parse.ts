@@ -1,5 +1,6 @@
 import { cellText, headerContent } from "@/core/cell-value";
 import { normalizeMatrix } from "@/core/document";
+import { matrixShapeLimitError } from "@/core/table-limits";
 import type {
 	Alignment,
 	CellValue,
@@ -23,7 +24,9 @@ import { type ClipboardSelection, readTabeloPayload } from "./payload";
 export type ClipboardSource = CodecId | "text" | "tabelo";
 
 export interface ClipboardTable {
-	readonly matrix: CellValue[][];
+	// As the source spelled it, and so possibly ragged. Import judges its shape
+	// and only then pads it to a rectangle (#418).
+	readonly matrix: readonly (readonly CellValue[])[];
 	readonly source: ClipboardSource;
 	readonly headerRow?: boolean;
 	readonly alignments?: readonly Alignment[];
@@ -65,7 +68,7 @@ function tableViaCodec(
 	return {
 		ok: true,
 		table: {
-			matrix: normalizeMatrix(result.table.matrix),
+			matrix: result.table.matrix,
 			source: codec.id,
 			headerRow: result.table.headerRow,
 			alignments: result.table.alignments,
@@ -82,6 +85,11 @@ function describesPublicTable(
 	selection: ClipboardSelection,
 	table: HtmlTable,
 ): boolean {
+	// The payload is untrusted and may be ragged, so its shape is judged
+	// before it is padded: a payload past the size limits describes no table
+	// this paste could accept, and padding it first could allocate far more
+	// than its bytes suggest (#418).
+	if (matrixShapeLimitError(selection.matrix, table.headerRow)) return false;
 	// Compared on the terms HTML can spell. The flavour carries one line break
 	// and writes each run of formatted text on its own, so a value whose only
 	// difference is a carriage return still describes the table beside it;
@@ -182,7 +190,7 @@ function readTable(
 		return {
 			ok: true,
 			table: {
-				matrix: normalizeMatrix(typed ? typed.matrix : html.matrix),
+				matrix: typed ? typed.matrix : html.matrix,
 				source: typed ? "tabelo" : "html",
 				// The header decision and the alignments stay with the public table.
 				// The private payload supplements what HTML cannot spell; it does not

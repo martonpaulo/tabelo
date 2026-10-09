@@ -202,10 +202,8 @@ function editing(
 ): SourceStructurePlan {
 	return {
 		ok: true,
-		run: () => {
-			useTabeloStore.getState().editStructureAt(edit);
-			return caret;
-		},
+		// A refusal by the size limits changed nothing, so the caret stays.
+		run: () => (useTabeloStore.getState().editStructureAt(edit) ? caret : null),
 	};
 }
 

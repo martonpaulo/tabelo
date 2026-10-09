@@ -1,8 +1,11 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it } from "vitest";
-import { createEmptyDocument } from "@/core/document";
-import { createDefaultWorkspace } from "@/workspace/layout";
+import { createEmptyDocument, documentFromMatrix } from "@/core/document";
+import { TABLE_LIMITS } from "@/core/table-limits";
+import { listViews } from "@/views/registry";
+import { canParse } from "@/views/types";
+import { createDefaultWorkspace, type Workspace } from "@/workspace/layout";
 import { type Draft, deriveDraft, readDraft, revealInvalid } from "./draft";
 
 const workspace = createDefaultWorkspace();
@@ -94,5 +97,98 @@ describe("draft buffer", () => {
 		expect(
 			deriveDraft({ ...owner, paneId: "missing", text: "" }, workspace),
 		).toBeNull();
+	});
+});
+
+// Every source view parses its own pane's text through the same limited read,
+// so the size limits are judged once for all of them (#418). Driven from the
+// registry, so a format added later is covered because it was registered.
+describe("draft size limits", () => {
+	// A table of `rows` data rows and `columns` columns, header included, in
+	// the format the view writes. Values are positions, not people.
+	function sourceText(
+		codec: NonNullable<ReturnType<typeof listViews>[number]["codec"]>,
+		rows: number,
+		columns: number,
+	): string {
+		const header = Array.from({ length: columns }, (_, column) => `c${column}`);
+		const body = Array.from({ length: rows }, (_, row) =>
+			Array.from({ length: columns }, (_, column) => `${row}.${column}`),
+		);
+		return codec.serialize(
+			documentFromMatrix([header, ...body], { headerRow: true }),
+		);
+	}
+
+	function soleView(viewId: Workspace["panes"][number]["view"]): Workspace {
+		const [pane] = workspace.panes;
+		if (!pane) throw new Error("the default workspace has no pane");
+		return { ...workspace, panes: [{ ...pane, view: viewId }] };
+	}
+
+	const sources = listViews().filter(canParse);
+
+	it.each(sources.map((view) => [view.id, view] as const))(
+		"%s accepts the limits and holds a draft one step past them",
+		(_, view) => {
+			const codec = view.codec;
+			if (!codec) throw new Error(`${view.id} parses without a codec`);
+			const owner = { paneId: workspace.panes[0]?.id ?? "", viewId: view.id };
+			const space = soleView(view.id);
+			const read = (text: string) =>
+				readDraft(null, document, space, owner, text);
+
+			const atRows = read(sourceText(codec, TABLE_LIMITS.rows, 2));
+			expect(atRows?.ok && atRows.document.rows).toHaveLength(
+				TABLE_LIMITS.rows,
+			);
+
+			const pastRows = sourceText(codec, TABLE_LIMITS.rows + 1, 2);
+			const refused = read(pastRows);
+			expect(refused?.ok).toBe(false);
+			// The text stays the draft, so the user can edit it back under the
+			// limit, and the document every other pane shows is not replaced.
+			expect(refused?.draft.text).toBe(pastRows);
+			expect(refused?.draft.issues).toEqual([
+				{
+					code: "table-too-large",
+					exceeded: {
+						code: "too-many-rows",
+						actual: TABLE_LIMITS.rows + 1,
+						limit: TABLE_LIMITS.rows,
+					},
+				},
+			]);
+			expect(deriveDraft({ ...owner, text: pastRows }, space)?.status).toBe(
+				"invalid",
+			);
+
+			const pastColumns = read(sourceText(codec, 1, TABLE_LIMITS.columns + 1));
+			expect(pastColumns?.ok === false && pastColumns.draft.issues).toEqual([
+				{
+					code: "table-too-large",
+					exceeded: {
+						code: "too-many-columns",
+						actual: TABLE_LIMITS.columns + 1,
+						limit: TABLE_LIMITS.columns,
+					},
+				},
+			]);
+		},
+	);
+
+	// The widest row is the column count, read before any row is padded, so
+	// one long row in a short table is enough to refuse it.
+	it("judges a ragged draft by its widest row", () => {
+		const owner = markdownOwner();
+		const wide = Array.from(
+			{ length: TABLE_LIMITS.columns + 1 },
+			(_, column) => `${column}`,
+		).join(" | ");
+		const text = `| a |\n| --- |\n| ${wide} |`;
+		const result = readDraft(null, document, workspace, owner, text);
+		expect(result?.ok === false && result.draft.issues[0]?.code).toBe(
+			"table-too-large",
+		);
 	});
 });

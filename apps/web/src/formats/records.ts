@@ -502,7 +502,8 @@ export const recordsCodec: TableCodec = {
 	// Each record from its own parse, as a block under no header line (#402).
 	mapsSourceRows: true,
 	parseMatrix: parseRecordsMatrix,
-	parse: (text) => toDocumentParseResult(parseRecordsMatrix(text)),
+	parse: (text, options) =>
+		toDocumentParseResult(parseRecordsMatrix(text), options),
 	serialize: serializeRecords,
 	precondition: recordsPrecondition,
 	outputOptions: ["includeFirstColumnName", "includeEmptyValues"],

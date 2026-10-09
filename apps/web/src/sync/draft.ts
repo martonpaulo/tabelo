@@ -111,7 +111,10 @@ export function readDraft(
 	const sameOwner = previous?.paneId === paneId && previous.viewId === viewId;
 	const displacesInvalid =
 		previous !== null && !sameOwner && previous.status !== "clean";
-	const result = codec.parse(text);
+	// Limited: a draft past the shared size limits is an invalid draft like
+	// any other, its text kept and editable while every other pane keeps the
+	// accepted table, and it is refused before a document is built (#418).
+	const result = codec.parse(text, { limited: true });
 
 	if (!result.ok) {
 		const continuingVisibleError = sameOwner && previous.status === "invalid";
@@ -171,7 +174,7 @@ export function deriveDraft(
 
 	const parse = getView(draft.viewId).codec?.parse;
 	if (!parse) return null;
-	const result = parse(draft.text);
+	const result = parse(draft.text, { limited: true });
 	return result.ok
 		? {
 				...draft,

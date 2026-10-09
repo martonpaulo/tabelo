@@ -270,7 +270,8 @@ export const jiraCodec: TableCodec = {
 		jiraRowStart(before, after, changed) ??
 		jiraEmptyCellFill(before, after, changed),
 	parseMatrix: parseJiraMatrix,
-	parse: (text) => toDocumentParseResult(parseJiraMatrix(text)),
+	parse: (text, options) =>
+		toDocumentParseResult(parseJiraMatrix(text), options),
 	serialize: serializeJira,
 	sniffPriority: 30,
 	canSniff: (text) => isJiraHeaderLine(text),

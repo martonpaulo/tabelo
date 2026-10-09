@@ -3,12 +3,12 @@
 import { describe, expect, it } from "vitest";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { readCell } from "@/core/cell-value";
+import { tableShapeLimitError } from "@/core/table-limits";
 import type { CodecId } from "@/formats";
 import {
 	createImportedDocument,
 	IMPORT_LIMITS,
 	prepareImport,
-	tableShapeLimitError,
 } from "./prepare";
 
 function rows(count: number): string {
@@ -222,6 +222,39 @@ describe("supported import limits", () => {
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
 		expect(result.error.code).toBe("too-many-rows");
+	});
+});
+
+// The row limit counts the data rows the table would hold (#418), as every
+// other growth path does: a declared header is not charged, so a table at the
+// limit imports whole, and one data row more is refused.
+describe("declared header and the row limit", () => {
+	function markdownRows(count: number): string {
+		const body = Array.from({ length: count }, (_, index) => `| ${index} |`);
+		return ["| value |", "| --- |", ...body].join("\n");
+	}
+
+	it.each([
+		["markdown", markdownRows(IMPORT_LIMITS.rows), true],
+		["markdown", markdownRows(IMPORT_LIMITS.rows + 1), false],
+		[
+			"json",
+			JSON.stringify(
+				Array.from({ length: IMPORT_LIMITS.rows }, (_, value) => ({ value })),
+			),
+			true,
+		],
+	] as const)("reads %s at the boundary %#", (format, text, accepted) => {
+		const result = prepareImport({ payload: { text }, format });
+
+		expect(result.ok).toBe(accepted);
+		if (result.ok) {
+			expect(createImportedDocument(result.value, true).rows).toHaveLength(
+				IMPORT_LIMITS.rows,
+			);
+		} else {
+			expect(result.error.code).toBe("too-many-rows");
+		}
 	});
 });
 

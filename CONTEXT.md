@@ -349,7 +349,23 @@ Related to: Header row, Import
 Bringing external content in, from a file or the clipboard. Clipboard paste is a
 first-class import path, not a lesser one.
 
-Related to: Header decision, Format sniffing
+Related to: Header decision, Format sniffing, Size limit
+
+### Size limit
+
+The largest table any input may produce: 500 data rows, 200 columns, and
+50,000 data cells. Rows are counted as the table document holds them, so the
+header row is never charged; cells are data rows times columns. Every path
+that can grow the table (import, paste, a draft's parse, inserting or
+duplicating rows and columns, transposing, an agent batch) judges the shape it
+would produce before building it, reading a ragged source by its widest row.
+A source that declares its header is charged for its data rows only; one whose
+header is still to be decided is charged for every row, since answering "data"
+keeps them all. A refusal changes nothing: an import or a grid command reports
+why, and a draft past the limit is an invalid draft, its text kept (#418).
+Import also has a byte budget of its own.
+
+Related to: Import, Draft, Table operation
 
 ### Format sniffing
 

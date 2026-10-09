@@ -18,8 +18,8 @@ import {
 	type GridSelection,
 	HEADER_ROW,
 } from "@/core/selection";
+import { tableShapeLimitError } from "@/core/table-limits";
 import type { TableDocument } from "@/core/types";
-import { tableShapeLimitError } from "@/import/prepare";
 
 class CommandRefusal extends Error {}
 
