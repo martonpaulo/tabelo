@@ -59,6 +59,6 @@
 		"vitest": "^4.1.11",
 		"workbox-window": "^7.4.0",
 		"@tabelo/agent-bridge": "workspace:*",
-		"@modelcontextprotocol/sdk": "1.30.0"
+		"@modelcontextprotocol/sdk": "1.31.0"
 	}
 }
