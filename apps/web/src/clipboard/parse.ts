@@ -36,16 +36,41 @@ export interface ClipboardPayload {
 	readonly html?: string;
 }
 
-function tableViaCodec(codec: TableCodec, text: string): ClipboardTable | null {
+// A refusal that ends the read instead of letting the next format try. Each
+// one is raised only by content its format has already recognised, and the
+// formats after it would read the same content as something it is not: merged
+// cells as shifted rows (#415), a JSON number past the largest double as a
+// comma-separated line of text (#416).
+const CONCLUSIVE_REFUSALS: ReadonlySet<ParseIssue["code"]> = new Set([
+	"html-merged-cells-unsupported",
+	"json-number-not-finite",
+]);
+
+function conclusiveRefusal(
+	issues: readonly ParseIssue[],
+): ParseIssue | undefined {
+	return issues.find((issue) => CONCLUSIVE_REFUSALS.has(issue.code));
+}
+
+function tableViaCodec(
+	codec: TableCodec,
+	text: string,
+): ClipboardReading | null {
 	if (codec.canSniff && !codec.canSniff(text)) return null;
 	const result = codec.parseMatrix(text);
-	if (!result.ok) return null;
+	if (!result.ok) {
+		const issue = conclusiveRefusal(result.issues);
+		return issue ? { ok: false, format: codec.id, issue } : null;
+	}
 	return {
-		matrix: normalizeMatrix(result.table.matrix),
-		source: codec.id,
-		headerRow: result.table.headerRow,
-		alignments: result.table.alignments,
-		warnings: result.warnings,
+		ok: true,
+		table: {
+			matrix: normalizeMatrix(result.table.matrix),
+			source: codec.id,
+			headerRow: result.table.headerRow,
+			alignments: result.table.alignments,
+			warnings: result.warnings,
+		},
 	};
 }
 
@@ -115,7 +140,12 @@ export function readClipboardTable(
 
 export type ClipboardReading =
 	| { readonly ok: true; readonly table: ClipboardTable }
-	| { readonly ok: false; readonly issue: ParseIssue };
+	| {
+			readonly ok: false;
+			// The format that recognised the content and refused it.
+			readonly format: CodecId;
+			readonly issue: ParseIssue;
+	  };
 
 // `readClipboardTable`, saying why a paste is refused outright. Markup that
 // refuses to be read, such as an image with no alternative text, falls through
@@ -132,21 +162,17 @@ export function readClipboard(
 		: { html: "", selection: null };
 
 	const reading = split.html ? readHtmlTable(split.html) : null;
-	if (
-		reading?.ok === false &&
-		reading.issue.code === "html-merged-cells-unsupported"
-	) {
-		return { ok: false, issue: reading.issue };
-	}
-	const table = readTable(text, split, reading);
-	return table ? { ok: true, table } : null;
+	const refusal =
+		reading?.ok === false ? conclusiveRefusal([reading.issue]) : undefined;
+	if (refusal) return { ok: false, format: "html", issue: refusal };
+	return readTable(text, split, reading);
 }
 
 function readTable(
 	text: string,
 	split: ReturnType<typeof readTabeloPayload>,
 	reading: HtmlTableReading | null,
-): ClipboardTable | null {
+): ClipboardReading | null {
 	const html = reading?.ok ? reading.table : null;
 	if (html) {
 		const typed =
@@ -154,15 +180,19 @@ function readTable(
 				? split.selection
 				: null;
 		return {
-			matrix: normalizeMatrix(typed ? typed.matrix : html.matrix),
-			source: typed ? "tabelo" : "html",
-			// The header decision and the alignments stay with the public table.
-			// The private payload supplements what HTML cannot spell; it does not
-			// become a second answer to what HTML already says.
-			headerRow: html.headerRow,
-			alignments: html.alignments,
-			expectedTypes: typed?.expectedTypes,
-			warnings: typed || html.warnings.length === 0 ? undefined : html.warnings,
+			ok: true,
+			table: {
+				matrix: normalizeMatrix(typed ? typed.matrix : html.matrix),
+				source: typed ? "tabelo" : "html",
+				// The header decision and the alignments stay with the public table.
+				// The private payload supplements what HTML cannot spell; it does not
+				// become a second answer to what HTML already says.
+				headerRow: html.headerRow,
+				alignments: html.alignments,
+				expectedTypes: typed?.expectedTypes,
+				warnings:
+					typed || html.warnings.length === 0 ? undefined : html.warnings,
+			},
 		};
 	}
 
@@ -176,9 +206,12 @@ function readTable(
 			: null;
 		if (described) {
 			return {
-				matrix: [[described.value]],
-				source: "tabelo",
-				expectedTypes: split.selection.expectedTypes,
+				ok: true,
+				table: {
+					matrix: [[described.value]],
+					source: "tabelo",
+					expectedTypes: split.selection.expectedTypes,
+				},
 			};
 		}
 	}
@@ -186,8 +219,8 @@ function readTable(
 	if (!text.trim()) return null;
 
 	for (const codec of listSniffableCodecs()) {
-		const table = tableViaCodec(codec, text);
-		if (table) return table;
+		const read = tableViaCodec(codec, text);
+		if (read) return read;
 	}
 
 	// A multi-line paste with no delimiter is still a column of values. The
@@ -196,10 +229,10 @@ function readTable(
 	// phantom record the delimited codec drops, and for the same reason.
 	const lines = text.split(/\r?\n/);
 	if (lines.length > 1 && lines.at(-1) === "") lines.pop();
-	if (lines.length > 1)
-		return { matrix: lines.map((line) => [line]), source: "text" };
-
-	return { matrix: [[lines[0] ?? ""]], source: "text" };
+	return {
+		ok: true,
+		table: { matrix: lines.map((line) => [line]), source: "text" },
+	};
 }
 
 // What a paste into the rich cell editor inserts at its caret (#306): the

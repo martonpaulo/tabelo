@@ -63,6 +63,14 @@ export type ParseIssue =
 	| ({ readonly code: "json-row-object-required" } & LocatedParseIssue)
 	| ({ readonly code: "json-header-required" } & LocatedParseIssue)
 	| ({ readonly code: "json-scalar-cells-required" } & LocatedParseIssue)
+	// A number literal whose magnitude JSON.parse can only read as Infinity
+	// (#416). The read is refused rather than carried, because a non-finite
+	// value is not a cell value and would be written back as null. `key` is the
+	// member key the number was written under.
+	| ({
+			readonly code: "json-number-not-finite";
+			readonly key: string;
+	  } & LocatedParseIssue)
 	| ({ readonly code: "delimited-unclosed-quote" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-invalid-quote" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-delimiter-undetected" } & LocatedParseIssue)

@@ -92,6 +92,52 @@ describe("json parsing", () => {
 	});
 });
 
+// #416: JSON.parse reads a literal past the largest double as Infinity, which
+// JSON.stringify would then write back as null.
+describe("json numbers that cannot stay finite", () => {
+	it.each([
+		["positive", "1e400"],
+		["negative", "-1e400"],
+		["long integer", `1${"0".repeat(400)}`],
+	])("refuses %s overflow and says where it is", (_, literal) => {
+		const text = `[\n  {"name": "Ingrid", "age": 31},\n  {"name": "Paulo", "age": ${literal}}\n]`;
+		const result = jsonCodec.parseMatrix(text);
+		expect(result).toEqual({
+			ok: false,
+			issues: [{ code: "json-number-not-finite", key: "age", line: 3 }],
+		});
+		expect(jsonCodec.parse(text).ok).toBe(false);
+	});
+
+	it("locates a value under a key that only a later record introduces", () => {
+		const result = jsonCodec.parseMatrix(
+			'[{"name": "Ingrid"},\n{"age": 1e999, "name": "Paulo"}]',
+		);
+		expect(result).toEqual({
+			ok: false,
+			issues: [{ code: "json-number-not-finite", key: "age", line: 2 }],
+		});
+	});
+
+	it("keeps the largest finite numbers exactly, through a round trip", () => {
+		const text = `[\n  {"max": ${Number.MAX_VALUE}, "min": ${-Number.MAX_VALUE}, "tiny": ${Number.MIN_VALUE}}\n]`;
+		const result = jsonCodec.parse(text);
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(valuesOf(result.document)).toEqual([
+			[Number.MAX_VALUE, -Number.MAX_VALUE, Number.MIN_VALUE],
+		]);
+		expect(jsonCodec.serialize(result.document)).toBe(text);
+	});
+
+	it("reads underflow as the finite zero JSON.parse gives it", () => {
+		const result = jsonCodec.parse('[{"tiny": 1e-400}]');
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(valuesOf(result.document)).toEqual([[0]]);
+	});
+});
+
 describe("json serialization", () => {
 	it("round-trips empty strings, line breaks, quotes, and backslashes", () => {
 		const matrix = [

@@ -134,7 +134,11 @@ column the `text` expectation and copies every stored value through as the
 string it already was. No shipped table changes meaning. A non-finite number is
 not a valid cell value: `JSON.stringify` writes `NaN` and `Infinity` as `null`,
 which would turn a number into a different type on the next load, so the
-payload is refused and preserved rather than silently altered.
+payload is refused and preserved rather than silently altered. The JSON codec
+holds the same line on the way in (#416): a number literal past the
+largest double, which `JSON.parse` reads as `Infinity`, refuses the whole read,
+in the source view, a file import, and a paste alike, instead of being carried
+as a number that cannot be written back or coerced to text or `null`.
 
 ADR 0001 is amended: its "opaque strings throughout" sentence described the
 model this replaces. What survives from it, and matters more, is that Tabelo

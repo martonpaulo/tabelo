@@ -715,6 +715,9 @@ export const copy = {
 					message =
 						"Every JSON cell must be a string, number, boolean, or null.";
 					break;
+				case "json-number-not-finite":
+					message = `The number under "${issue.key}" is too large to keep. Put it in quotes to keep it as text, or write a smaller number.`;
+					break;
 				case "delimited-unclosed-quote":
 					message = "A quoted field isn't closed.";
 					break;

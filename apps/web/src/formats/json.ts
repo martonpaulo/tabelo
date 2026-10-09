@@ -165,6 +165,10 @@ function parseJsonMatrix(text: string): MatrixParseResult {
 		return { ok: false, issues: [{ code: "json-scalar-cells-required" }] };
 	}
 
+	const rows = jsonSourceRows(text, headers);
+	const overflow = nonFiniteNumber(records, headers, rows, text);
+	if (overflow) return { ok: false, issues: [overflow] };
+
 	const warnings: ParseIssue[] = [];
 	const matrix: CellValue[][] = [headers];
 	records.forEach((record, index) => {
@@ -190,8 +194,40 @@ function parseJsonMatrix(text: string): MatrixParseResult {
 		ok: true,
 		table: { matrix, headerRow: true },
 		warnings: warnings.length > 0 ? warnings : undefined,
-		rows: jsonSourceRows(text, headers),
+		rows,
 	};
+}
+
+// JSON's number grammar has no upper bound, but JSON.parse reads a literal
+// past the largest double as Infinity, and JSON.stringify then writes that as
+// null (#416). A non-finite number is not a cell value (docs/adr/0008), so the
+// first one refuses the whole read, located at the value's own spelling, or at
+// its record when the value sits past the columns that record maps. Underflow
+// is not this case: a literal too small to represent reads as a finite 0.
+// https://tc39.es/ecma262/#sec-json.parse
+function nonFiniteNumber(
+	records: readonly Record<string, unknown>[],
+	headers: readonly string[],
+	rows: readonly SourceTableRow[],
+	text: string,
+): ParseIssue | null {
+	for (const [index, record] of records.entries()) {
+		for (const [key, cell] of Object.entries(record)) {
+			if (typeof cell !== "number" || Number.isFinite(cell)) continue;
+			// Row 0 is the header, which has no text of its own.
+			const row = rows[index + 1];
+			const from = row?.cells[headers.indexOf(key)]?.from ?? row?.from;
+			return {
+				code: "json-number-not-finite",
+				key,
+				line:
+					from === undefined
+						? undefined
+						: text.slice(0, from).split(/\r?\n/).length,
+			};
+		}
+	}
+	return null;
 }
 
 // The key every column is written under. A named column keys on its header

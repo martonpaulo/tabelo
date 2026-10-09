@@ -275,3 +275,39 @@ describe("merged HTML cells", () => {
 		expect(result.error.code).toBe("invalid-format");
 	});
 });
+
+// #416: a JSON number past the largest double is refused on every path that
+// could otherwise replace the table with it, rather than read as Infinity or
+// misread as comma-separated text.
+describe("JSON numbers that cannot stay finite", () => {
+	const text = '[\n  {"name": "Ingrid", "age": 1e400}\n]';
+	const refusal = {
+		code: "invalid-format",
+		format: "json",
+		issues: [{ code: "json-number-not-finite", key: "age", line: 2 }],
+	};
+
+	it("refuses a paste instead of reading it as another format", () => {
+		const result = prepareImport({ payload: { text } });
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.error).toEqual(refusal);
+	});
+
+	it("refuses a JSON file import", () => {
+		const result = prepareImport({ payload: { text }, format: "json" });
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.error).toEqual(refusal);
+	});
+
+	it("still pastes the largest finite number as a number", () => {
+		const result = prepareImport({
+			payload: { text: `[{"age": ${Number.MAX_VALUE}}]` },
+		});
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.value.source).toBe("json");
+		expect(result.value.matrix).toEqual([["age"], [Number.MAX_VALUE]]);
+	});
+});

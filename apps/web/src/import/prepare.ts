@@ -175,7 +175,7 @@ export function prepareImport(
 				ok: false,
 				error: {
 					code: "invalid-format",
-					format: "html",
+					format: parsed.format,
 					issues: [parsed.issue],
 				},
 			};
