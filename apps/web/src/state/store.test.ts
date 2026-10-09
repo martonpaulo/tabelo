@@ -1854,3 +1854,77 @@ describe("fitting every column to its content (#467)", () => {
 		});
 	});
 });
+
+// Whitespace on the clipboard is content (#425). Into an existing selection it
+// is a matrix write like any other; into a blank document it creates the table
+// through the same header decision as any other tab-separated or plain text.
+describe("pasting whitespace and empty fields", () => {
+	function existingTable(): TableDocument {
+		return documentFromMatrix(
+			[
+				["Name", "City", "Role"],
+				["Ingrid", "Rio", "Designer"],
+				["Paulo", "Madrid", "Engineer"],
+			],
+			{ headerRow: true },
+		);
+	}
+
+	it("writes spaces into an existing cell exactly", () => {
+		useTabeloStore.setState({
+			document: existingTable(),
+			selection: createSelection({ row: 0, column: 1 }),
+		});
+
+		useTabeloStore.getState().pasteClipboard({ text: "  " });
+
+		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
+			["Name", "City", "Role"],
+			["Ingrid", "  ", "Designer"],
+			["Paulo", "Madrid", "Engineer"],
+		]);
+		expect(useTabeloStore.getState().pendingImport).toBeNull();
+	});
+
+	it("clears exactly the shape an empty tab-separated matrix represents", () => {
+		useTabeloStore.setState({
+			document: existingTable(),
+			selection: createSelection({ row: 0, column: 0 }),
+		});
+
+		useTabeloStore.getState().pasteClipboard({ text: "\t\n\t" });
+
+		expect(documentToMatrix(useTabeloStore.getState().document)).toEqual([
+			["Name", "City", "Role"],
+			["", "", "Designer"],
+			["", "", "Engineer"],
+		]);
+	});
+
+	it("still does nothing for an empty clipboard", () => {
+		useTabeloStore.setState({
+			document: existingTable(),
+			selection: createSelection({ row: 0, column: 0 }),
+		});
+		const before = useTabeloStore.getState();
+
+		before.pasteClipboard({ text: "" });
+
+		const after = useTabeloStore.getState();
+		expect(after.document).toBe(before.document);
+		expect(after.inputError).toBeNull();
+	});
+
+	it("asks for the header decision before an empty matrix creates a table", () => {
+		const before = useTabeloStore.getState();
+
+		before.pasteClipboard({ text: "\t\t\n\t\t" });
+
+		const pending = useTabeloStore.getState();
+		expect(pending.document).toBe(before.document);
+		expect(pending.pendingImport?.prepared.matrix).toEqual([
+			["", "", ""],
+			["", "", ""],
+		]);
+	});
+});

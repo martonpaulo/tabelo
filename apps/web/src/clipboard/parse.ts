@@ -224,7 +224,10 @@ function readTable(
 		}
 	}
 
-	if (!text.trim()) return null;
+	// Only a clipboard with no characters at all holds nothing. Spaces are a
+	// value and tabs are empty fields, so trimming here dropped both before any
+	// format could read them (#425).
+	if (text === "") return null;
 
 	for (const codec of listSniffableCodecs()) {
 		const read = tableViaCodec(codec, text);

@@ -373,6 +373,8 @@ Inspecting pasted content to decide how to parse it, in priority order: the
 private clipboard payload, HTML table, JSON matrix, TSV, Markdown table,
 Records, Jira table, CSV, then plain text. Records sorts after Markdown on
 purpose, so a paste that could be read either way is always read as Markdown.
+Only a clipboard with no characters at all holds nothing: spaces are a value
+and tabs are empty fields, so nothing is trimmed before sniffing (#425).
 
 Related to: Import, Parser, Private clipboard payload
 
