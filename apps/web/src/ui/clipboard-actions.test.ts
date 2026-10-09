@@ -3,6 +3,7 @@ import type {
 	ClipboardReadOutcome,
 	ClipboardWriteOutcome,
 } from "@/platform/clipboard";
+import type { PickTextFileResult } from "@/platform/files";
 import type { NoticeSeverity, TransientNotice } from "@/state/notice-queue";
 
 // A refused clipboard must never look like a click that did nothing, and a cut
@@ -24,6 +25,12 @@ vi.mock("@/platform/clipboard", () => ({
 	readClipboardPayload: () => readClipboardPayload(),
 }));
 
+const pickTextFile = vi.fn<() => Promise<PickTextFileResult | null>>();
+
+vi.mock("@/platform/files", () => ({
+	pickTextFile: () => pickTextFile(),
+}));
+
 const { documentFromMatrix, documentToMatrix } = await import(
 	"@/core/document"
 );
@@ -36,9 +43,12 @@ const {
 	copyCodecToClipboard,
 	copyToClipboard,
 	pasteFromClipboard,
-	readTableFromClipboard,
+	readClipboardPayloadOrNotify,
 } = await import("./clipboard-actions");
-const { buildTableActions } = await import("./grid/table-actions");
+const { buildTableActions, copySelectionToClipboard } = await import(
+	"./grid/table-actions"
+);
+const { importTableFile } = await import("./import-actions");
 
 const initialState = useTabeloStore.getInitialState();
 
@@ -184,7 +194,7 @@ describe("reading", () => {
 			payload: { text: "a\tb" },
 		});
 
-		expect(await readTableFromClipboard()).toEqual({ text: "a\tb" });
+		expect(await readClipboardPayloadOrNotify()).toEqual({ text: "a\tb" });
 		expect(notice()).toBeNull();
 	});
 
@@ -193,7 +203,7 @@ describe("reading", () => {
 		async (reason) => {
 			readClipboardPayload.mockResolvedValue({ ok: false, reason });
 
-			expect(await readTableFromClipboard()).toBeNull();
+			expect(await readClipboardPayloadOrNotify()).toBeNull();
 			expect(notice()).not.toBeNull();
 			expect(severity()).toBe("error");
 		},
@@ -202,7 +212,7 @@ describe("reading", () => {
 	it("says an empty clipboard is empty rather than blocked", async () => {
 		readClipboardPayload.mockResolvedValue({ ok: false, reason: "empty" });
 
-		expect(await readTableFromClipboard()).toBeNull();
+		expect(await readClipboardPayloadOrNotify()).toBeNull();
 		expect(notice()).not.toBeNull();
 		expect(severity()).toBe("info");
 	});
@@ -342,5 +352,168 @@ describe("the copied range", () => {
 		await copyToClipboard({ text: "| Name |" }, "source");
 
 		expect(useTabeloStore.getState().copiedRanges).toHaveLength(0);
+	});
+});
+
+// Every menu clipboard command and file import awaits the browser, and the
+// user can move on before it answers (#409). Each test holds the browser's
+// answer open, changes what the command was aimed at, then lets it resolve.
+describe("a command that resolves after its target moved", () => {
+	function deferred<T>() {
+		let resolve: (value: T) => void = () => {};
+		const promise = new Promise<T>((settle) => {
+			resolve = settle;
+		});
+		return { promise, resolve };
+	}
+
+	function cells() {
+		return documentToMatrix(useTabeloStore.getState().document);
+	}
+
+	beforeEach(() => {
+		useTabeloStore.setState({
+			document: documentFromMatrix(
+				[
+					["Name", "City"],
+					["Ingrid", "Rio"],
+				],
+				{ headerRow: true },
+			),
+			selection: createSelection({ row: 0, column: 0 }),
+		});
+	});
+
+	it("cuts only the cells it copied when the selection moved", async () => {
+		const write = deferred<ClipboardWriteOutcome>();
+		writeClipboardTable.mockReturnValue(write.promise);
+
+		const outcome = copySelectionToClipboard("cut");
+		useTabeloStore.getState().selectCell({ row: 0, column: 1 });
+		write.resolve(granted);
+
+		expect(await outcome).toBe("stale");
+		expect(writeClipboardTable.mock.calls[0]?.[0]).toContain("Ingrid");
+		expect(cells()[1]).toEqual(["Ingrid", "Rio"]);
+	});
+
+	it("deletes nothing when another table opened meanwhile", async () => {
+		const write = deferred<ClipboardWriteOutcome>();
+		writeClipboardTable.mockReturnValue(write.promise);
+		const other = documentFromMatrix(
+			[
+				["Name", "City"],
+				["Paulo", "Madrid"],
+			],
+			{ headerRow: true },
+		);
+
+		const outcome = copySelectionToClipboard("cut");
+		useTabeloStore.setState({
+			library: { tables: [], activeId: "another-table" },
+			document: other,
+		});
+		write.resolve(granted);
+
+		expect(await outcome).toBe("stale");
+		expect(useTabeloStore.getState().document).toBe(other);
+	});
+
+	it("deletes nothing when the table was edited meanwhile", async () => {
+		const write = deferred<ClipboardWriteOutcome>();
+		writeClipboardTable.mockReturnValue(write.promise);
+
+		const outcome = copySelectionToClipboard("cut");
+		useTabeloStore.getState().editCell(0, 1, "Madrid");
+		write.resolve(granted);
+
+		expect(await outcome).toBe("stale");
+		expect(cells()[1]).toEqual(["Ingrid", "Madrid"]);
+	});
+
+	it("cuts as one undoable step when nothing moved", async () => {
+		const outcome = copySelectionToClipboard("cut");
+
+		expect(await outcome).toBe("applied");
+		expect(cells()[1]).toEqual(["", "Rio"]);
+		useTabeloStore.getState().undo();
+		expect(cells()[1]).toEqual(["Ingrid", "Rio"]);
+	});
+
+	it("marks the cells a copy took, not where the selection went", async () => {
+		const write = deferred<ClipboardWriteOutcome>();
+		writeClipboardTable.mockReturnValue(write.promise);
+
+		const outcome = copySelectionToClipboard("copy");
+		useTabeloStore.getState().selectCell({ row: -1, column: 1 });
+		write.resolve(granted);
+
+		expect(await outcome).toBe("applied");
+		expect(useTabeloStore.getState().copiedRanges).toEqual([
+			{ top: 0, left: 0, bottom: 0, right: 0 },
+		]);
+	});
+
+	it("pastes nothing when another table opened meanwhile", async () => {
+		const read = deferred<ClipboardReadOutcome>();
+		readClipboardPayload.mockReturnValue(read.promise);
+		const other = documentFromMatrix([["Name"], ["Paulo"]], {
+			headerRow: true,
+		});
+
+		const pasted = pasteFromClipboard();
+		useTabeloStore.setState({
+			library: { tables: [], activeId: "another-table" },
+			document: other,
+		});
+		read.resolve({ ok: true, payload: { text: "Mabel" } });
+
+		expect(await pasted).toBe(false);
+		expect(useTabeloStore.getState().document).toBe(other);
+	});
+
+	it("pastes nothing when the selection moved meanwhile", async () => {
+		const read = deferred<ClipboardReadOutcome>();
+		readClipboardPayload.mockReturnValue(read.promise);
+
+		const pasted = pasteFromClipboard();
+		useTabeloStore.getState().selectCell({ row: 0, column: 1 });
+		read.resolve({ ok: true, payload: { text: "Mabel" } });
+
+		expect(await pasted).toBe(false);
+		expect(cells()[1]).toEqual(["Ingrid", "Rio"]);
+	});
+
+	it("imports into no table but the one it was started from", async () => {
+		const file = deferred<PickTextFileResult | null>();
+		pickTextFile.mockReturnValue(file.promise);
+		const other = documentFromMatrix([["Name"], ["Paulo"]], {
+			headerRow: true,
+		});
+
+		const imported = importTableFile();
+		useTabeloStore.setState({
+			library: { tables: [], activeId: "another-table" },
+			document: other,
+		});
+		file.resolve({
+			status: "selected",
+			name: "people.md",
+			text: "| Name |\n| --- |\n| Mabel |",
+		});
+
+		expect(await imported).toBe(false);
+		expect(useTabeloStore.getState().document).toBe(other);
+	});
+
+	it("still imports when nothing moved", async () => {
+		pickTextFile.mockResolvedValue({
+			status: "selected",
+			name: "people.md",
+			text: "| Name |\n| --- |\n| Mabel |",
+		});
+
+		expect(await importTableFile()).toBe(true);
+		expect(cells()).toEqual([["Name"], ["Mabel"]]);
 	});
 });

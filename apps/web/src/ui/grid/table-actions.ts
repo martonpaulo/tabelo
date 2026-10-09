@@ -46,10 +46,16 @@ import {
 	selectionDataRows,
 	selectionFillRefusal,
 	selectionMoveRefusal,
+	selectionRects,
 	structureDeletionGuard,
 } from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
 import { copyToClipboard, pasteFromClipboard } from "@/ui/clipboard-actions";
+import {
+	captureCommandTarget,
+	commandDocumentUnchanged,
+	commandTargetStatus,
+} from "@/ui/command-target";
 import {
 	type MenuCommandId,
 	type MenuGroupId,
@@ -141,23 +147,49 @@ export function runFillDirection(
 // The intent is passed rather than inferred, because copy and cut both send the
 // same payload under the same scope and only differ in what they leave behind.
 // Copy marks the range so the grid can keep showing where a paste would come
-// from; cut takes the cells away immediately, so it marks nothing and drops
-// whatever an earlier copy left. A refused write changes neither the clipboard
-// nor the table, so it leaves an existing mark alone.
+// from; cut takes the cells away, so it marks nothing and drops whatever an
+// earlier copy left. A refused write changes neither the clipboard nor the
+// table, so it leaves an existing mark alone.
+//
+// The write is asynchronous, so the cells are captured before it and only
+// those cells are marked or cleared afterwards (#409). A cut whose table,
+// document, or selection changed while the write was pending is `stale`: the
+// clipboard holds the copy, and nothing is deleted from a target the user
+// never cut. Data stays; a second Cut finishes the job.
+type SelectionClipboardOutcome = "applied" | "refused" | "stale";
+
 export async function copySelectionToClipboard(
 	intent: "copy" | "cut",
-): Promise<boolean> {
-	const selection = useTabeloStore.getState().clipboardSelection();
+): Promise<SelectionClipboardOutcome> {
+	const store = useTabeloStore.getState();
+	const target = captureCommandTarget();
+	const rects = selectionRects(
+		target.selection,
+		target.document.rows.length,
+		target.document.columns.length,
+	);
 	const ok = await copyToClipboard(
-		selectionClipboardPayload(selection),
+		selectionClipboardPayload(store.clipboardSelection()),
 		"selection",
 	);
-	if (!ok) return false;
+	if (!ok) return "refused";
 
-	const store = useTabeloStore.getState();
-	if (intent === "cut") store.clearCopiedRanges();
-	else store.markCopiedRanges();
-	return true;
+	const after = useTabeloStore.getState();
+	if (intent === "copy") {
+		// A mark records cells, so a moved cursor does not matter; an edited
+		// or switched document does, because the rects no longer name them.
+		if (!commandDocumentUnchanged(target)) {
+			after.clearCopiedRanges();
+			return "stale";
+		}
+		after.markCopiedRanges(rects);
+		return "applied";
+	}
+
+	after.clearCopiedRanges();
+	if (commandTargetStatus(target) !== "current") return "stale";
+	after.clearSelection(rects);
+	return "applied";
 }
 
 export interface TableActionContext {
@@ -335,11 +367,7 @@ export function buildTableActions(
 			label: copy.actions.cut,
 			icon: IconScissors,
 			shortcut: copy.shortcuts.cut,
-			run: () => {
-				void copySelectionToClipboard("cut").then((ok) => {
-					if (ok) useTabeloStore.getState().clearSelection();
-				});
-			},
+			run: () => void copySelectionToClipboard("cut"),
 		},
 		{
 			id: "copy",

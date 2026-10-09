@@ -13,6 +13,7 @@ import {
 } from "@/platform/clipboard";
 import type { NoticeRequest } from "@/state/notice-queue";
 import { useTabeloStore } from "@/state/store";
+import { captureCommandTarget, commandTargetStatus } from "@/ui/command-target";
 import { codecSpelling } from "@/ui/spelling";
 
 // Every clipboard action the user can click goes through here, so the grid and
@@ -79,9 +80,10 @@ export async function copyToClipboard(
 	return outcome.ok;
 }
 
-// Resolves to the payload only when there is something to act on, so callers
-// stay a single line and never repeat the failure handling.
-export async function readTableFromClipboard(): Promise<ClipboardPayload | null> {
+// Resolves to the raw payload, not a parsed table, and only when there is
+// something to act on, so callers stay a single line and never repeat the
+// failure handling.
+export async function readClipboardPayloadOrNotify(): Promise<ClipboardPayload | null> {
 	const outcome = await readClipboardPayload();
 	if (outcome.ok) return outcome.payload;
 
@@ -89,9 +91,13 @@ export async function readTableFromClipboard(): Promise<ClipboardPayload | null>
 	return null;
 }
 
+// The target is the table, document, and selection the user pasted into. A
+// read that resolves after any of them changed writes nothing, so a delayed
+// paste never lands in another table or over cells it was not aimed at (#409).
 export async function pasteFromClipboard(): Promise<boolean> {
-	const payload = await readTableFromClipboard();
-	if (!payload) return false;
+	const target = captureCommandTarget();
+	const payload = await readClipboardPayloadOrNotify();
+	if (!payload || commandTargetStatus(target) !== "current") return false;
 	const before = useTabeloStore.getState().document;
 	useTabeloStore.getState().pasteClipboard(payload);
 	return useTabeloStore.getState().document !== before;

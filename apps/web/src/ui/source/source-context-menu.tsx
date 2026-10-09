@@ -1,4 +1,5 @@
 import { selectAll } from "@codemirror/commands";
+import type { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
 	ContextMenu,
@@ -53,7 +54,7 @@ import { canRunHistory, runHistory } from "@/history/coordinator";
 import { useTabeloStore } from "@/state/store";
 import {
 	copyToClipboard,
-	readTableFromClipboard,
+	readClipboardPayloadOrNotify,
 } from "@/ui/clipboard-actions";
 import {
 	ColumnTypeChangeDialog,
@@ -489,13 +490,24 @@ export function SourceContextMenu({
 		};
 	};
 
+	// Both commands await the clipboard, and the editor can change or be
+	// replaced while they do (#409). What they act on is the editor, text, and
+	// selection the user saw when choosing the command, so they dispatch only
+	// while all three are still the ones captured; otherwise the copy stands and
+	// nothing in the buffer moves.
+	const unchangedSince = (editor: EditorView, before: EditorState) =>
+		view() === editor &&
+		editor.state.doc === before.doc &&
+		editor.state.selection.eq(before.selection);
+
 	const writeSelection = async (cut: boolean) => {
 		const editor = view();
 		if (!editor) return;
+		const before = editor.state;
 		const text = selectedText(editor);
 		if (!text) return;
 		const written = await copyToClipboard({ text }, "source");
-		if (cut && written) {
+		if (cut && written && unchangedSince(editor, before)) {
 			editor.dispatch(editor.state.replaceSelection(""), {
 				userEvent: "delete.cut",
 			});
@@ -503,9 +515,11 @@ export function SourceContextMenu({
 	};
 
 	const paste = async () => {
-		const payload = await readTableFromClipboard();
 		const editor = view();
-		if (!payload || !editor) return;
+		if (!editor) return;
+		const before = editor.state;
+		const payload = await readClipboardPayloadOrNotify();
+		if (!payload || !unchangedSince(editor, before)) return;
 		editor.dispatch(editor.state.replaceSelection(payload.text), {
 			userEvent: "input.paste",
 			scrollIntoView: true,

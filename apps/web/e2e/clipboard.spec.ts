@@ -340,3 +340,44 @@ test("copying a whole column marks its header cell", async ({ tabelo }) => {
 		tabelo.header(2).locator("[data-clipboard-source]"),
 	).toHaveAttribute("data-clipboard-source", "top right left");
 });
+
+// The menu's clipboard write is asynchronous, and the user can move on before
+// the browser answers (#409). The clipboard here holds every write open until
+// the test releases it, so the selection can change while a Cut is pending.
+test("a cut that lands after the selection moved deletes nothing it did not copy", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.editCell(1, 2, "Rio");
+	await page.evaluate(() => {
+		const pending: (() => void)[] = [];
+		Object.defineProperty(window, "__releaseClipboard", {
+			value: () => {
+				for (const release of pending.splice(0)) release();
+			},
+			configurable: true,
+		});
+		const held = () =>
+			new Promise<void>((resolve) => {
+				pending.push(resolve);
+			});
+		Object.defineProperty(navigator, "clipboard", {
+			value: { write: held, writeText: held },
+			configurable: true,
+		});
+	});
+
+	await tabelo.cell(1, 1).click({ button: "right" });
+	await page.getByRole("menuitem", { name: copy.actions.cut }).click();
+	await tabelo.cell(1, 2).click();
+	await page.evaluate(() =>
+		(
+			window as unknown as { __releaseClipboard: () => void }
+		).__releaseClipboard(),
+	);
+
+	await expect(tabelo.notice()).toBeVisible();
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect(tabelo.cell(1, 2)).toHaveText("Rio");
+});

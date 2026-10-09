@@ -524,7 +524,10 @@ export interface TabeloState {
 	moveFocusKeepingRegions: (position: CellPosition) => void;
 	setEditing: (position: CellPosition | null, seed?: string) => void;
 	setEditingHeader: (index: number | null, seed?: string) => void;
-	markCopiedRanges: () => void;
+	// Without rects, the live selection. An asynchronous command passes the
+	// rects it captured before its await, so a selection that moved meanwhile
+	// is never what gets marked or cleared (#409).
+	markCopiedRanges: (rects?: readonly CellRect[]) => void;
 	clearCopiedRanges: () => void;
 
 	editCell: (row: number, column: number, value: CellValue) => void;
@@ -626,7 +629,7 @@ export interface TabeloState {
 	// Replace every occurrence as one document change, and say how many.
 	replaceAllMatches: () => number;
 
-	clearSelection: () => void;
+	clearSelection: (rects?: readonly CellRect[]) => void;
 	// Typing over several selected cells (owner, 2026-09-19): one entry written
 	// into every selected cell as one history step. Returns how many cells the
 	// selection covers, which is what the interface announces.
@@ -1851,7 +1854,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	// Taken from the selection at the moment of the copy, because that is the
 	// only moment the two agree. Everything after it moves the selection away.
-	markCopiedRanges: () => set({ copiedRanges: currentRects(get()) }),
+	markCopiedRanges: (rects) =>
+		set({ copiedRanges: rects ?? currentRects(get()) }),
 
 	clearCopiedRanges: () => set({ copiedRanges: NO_COPIED_RANGES }),
 
@@ -2570,9 +2574,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		return count;
 	},
 
-	clearSelection: () => {
+	clearSelection: (rects) => {
 		const state = get();
-		state.applyDocument(clearCells(state.document, currentRects(state)));
+		state.applyDocument(
+			clearCells(state.document, rects ?? currentRects(state)),
+		);
 	},
 
 	writeSelectedCells: (write) => {
