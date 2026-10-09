@@ -787,12 +787,7 @@ export function GridContextMenu({
 													<group.submenu.icon aria-hidden />
 													{group.label}
 												</ContextMenuSubTrigger>
-												<ContextMenuSubContent
-													aria-label={group.label}
-													// A command chosen here closes the whole menu, so it
-													// hands focus back the way a first-level one does.
-													finalFocus={finalFocus}
-												>
+												<ContextMenuSubContent aria-label={group.label}>
 													{group.actions.map(item)}
 												</ContextMenuSubContent>
 											</ContextMenuSub>

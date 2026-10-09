@@ -277,13 +277,7 @@ function MenuItem({ item }: { readonly item: Item }) {
 
 // Drawn as the grid draws its own: the shared order, a separator between
 // sections, and adjacent submenus in one untitled group.
-function MenuGroups({
-	groups,
-	finalFocus,
-}: {
-	readonly groups: readonly Group[];
-	readonly finalFocus: () => HTMLElement | null;
-}) {
+function MenuGroups({ groups }: { readonly groups: readonly Group[] }) {
 	return menuSections(orderMenuGroups(groups)).map((section, index) => (
 		<Fragment key={section.map((group) => group.id).join("+")}>
 			{index > 0 ? <ContextMenuSeparator /> : null}
@@ -296,10 +290,7 @@ function MenuGroups({
 									<group.submenu aria-hidden />
 									{group.label}
 								</ContextMenuSubTrigger>
-								<ContextMenuSubContent
-									aria-label={group.label}
-									finalFocus={finalFocus}
-								>
+								<ContextMenuSubContent aria-label={group.label}>
 									{group.actions.map((item) => (
 										<MenuItem key={item.id} item={item} />
 									))}
@@ -942,7 +933,7 @@ export function SourceContextMenu({
 							<ContextMenuSeparator />
 						</>
 					) : null}
-					<MenuGroups groups={groups} finalFocus={finalFocus} />
+					<MenuGroups groups={groups} />
 				</ContextMenuContent>
 			</ContextMenu>
 			<ColumnTypeChangeDialog
