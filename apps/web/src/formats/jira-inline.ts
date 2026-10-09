@@ -295,10 +295,11 @@ function parseConstruct(
 		if (tokensText(label) === "") return null;
 		return { kind: "link", url, children: label };
 	}
-	const parameter = raw.indexOf(IMAGE_PARAMETER, index);
-	const url = unescapeJiraCell(raw.slice(index + 1, parameter));
+	// The reader's separator, never a fresh search: an escaped `\|alt=` inside
+	// the URL is URL text, and only the reader skips escapes (#482).
+	const url = unescapeJiraCell(raw.slice(index + 1, separator));
 	const alt = unescapeJiraCell(
-		raw.slice(parameter + IMAGE_PARAMETER.length, end - 1),
+		raw.slice(separator + IMAGE_PARAMETER.length, end - 1),
 	);
 	if (url === "" || alt === "") return null;
 	return { kind: "image", url, alt };

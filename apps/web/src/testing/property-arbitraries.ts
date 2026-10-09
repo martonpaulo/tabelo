@@ -141,6 +141,7 @@ const inlineUrlArbitrary = fc.constantFrom(
 	"javascript:alert(1)",
 	"relative/rio.png",
 	"https://example.com/<pipe|and>",
+	"https://example.com/rio?a|alt=b",
 );
 
 export const inlineNodesArbitrary: fc.Arbitrary<InlineNode[]> = fc.array(

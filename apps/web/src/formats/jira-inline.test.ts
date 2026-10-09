@@ -112,12 +112,33 @@ describe("Jira inline syntax", () => {
 			"with space",
 			"a]b!c[d",
 			"a\\b&c",
+			"a|alt=b",
+			"a\\|alt=b|alt=c",
 		]) {
 			expectRoundTrip(
 				content({ kind: "link", url, children: [run("Paulo", "italic")] }),
 			);
 			expectRoundTrip(content({ kind: "image", url, alt: "Madrid! | ok" }));
 		}
+	});
+
+	it("reads an image's own separator, not an escaped one in its URL", () => {
+		const image = content({ kind: "image", url: "a|alt=b", alt: "Rio" });
+		const document = documentFromMatrix(
+			[
+				["Name", "City"],
+				["Ingrid", image],
+			],
+			{ headerRow: true },
+		);
+		const text = jiraCodec.serialize(document);
+		const parsed = jiraCodec.parse(text);
+		if (!parsed.ok) throw new Error(text);
+		expect(parsed.document.columns).toHaveLength(2);
+		const [row] = parsed.document.rows;
+		const column = parsed.document.columns[1];
+		if (!row || !column) throw new Error(text);
+		expect(cellValuesEqual(readCell(row, column.id), image), text).toBe(true);
 	});
 
 	it("splits a row around a link and an image, never at their own pipes", () => {
