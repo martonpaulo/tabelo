@@ -247,10 +247,11 @@ export class AgentSession {
 			(offset > 0 && args.expectedLibraryRevision === undefined)
 		)
 			return failure("invalid_page");
-		const tables = state.library.tables.slice(
-			offset,
-			offset + (args.limit ?? 100),
-		);
+		// A table's mark colour is presentation, kept internal (#465): the
+		// agent sees identity and name only.
+		const tables = state.library.tables
+			.slice(offset, offset + (args.limit ?? 100))
+			.map(({ id, name }) => ({ id, name }));
 		const next = offset + tables.length;
 		return result("tables", {
 			activeTableId: this.tableId,
