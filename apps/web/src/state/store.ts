@@ -86,8 +86,10 @@ import {
 	addTable,
 	isNameTaken,
 	nameForNewTable,
+	nextTableMark,
 	removeTable,
 	renameEntry,
+	TABLE_MARKS,
 	type TableId,
 	type TableLibrary,
 	withUniqueNames,
@@ -845,7 +847,7 @@ function closedPaneState(
 }
 
 // Reading the library means reading each table's own payload for its name:
-// the index holds identity and order only, so the name a table shows is the
+// the index holds identity, order and mark only, so the name a table shows is the
 // name that table stores, and the two can never disagree. An empty browser,
 // or an index nothing can be read from, starts with one table.
 function readLibrary(
@@ -855,16 +857,17 @@ function readLibrary(
 	// No index yet: the library this session started with is the library, so
 	// the table it already holds keeps the key a save would have written to.
 	if (!index) return fallback;
-	const tables = index.tables.map((id) => {
+	const tables = index.tables.map(({ id, mark }) => {
 		const outcome = loadTable(id);
 		return {
 			id,
+			mark,
 			name: outcome.status === "ok" ? outcome.state.name : DEFAULT_TABLE_NAME,
 			state: outcome.status === "ok" ? outcome.state : null,
 		};
 	});
 	const library = withUniqueNames({
-		tables: tables.map(({ id, name }) => ({ id, name })),
+		tables: tables.map(({ id, name, mark }) => ({ id, name, mark })),
 		activeId: index.activeId,
 	});
 	// A name this read had to change belongs to that table, so it is written
@@ -879,7 +882,10 @@ function readLibrary(
 
 function newLibrary(): TableLibrary {
 	const id = createTableId();
-	return { tables: [{ id, name: DEFAULT_TABLE_NAME }], activeId: id };
+	return {
+		tables: [{ id, name: DEFAULT_TABLE_NAME, mark: TABLE_MARKS[0] }],
+		activeId: id,
+	};
 }
 
 function entryName(library: TableLibrary, id: TableId): string {
@@ -891,7 +897,7 @@ function entryName(library: TableLibrary, id: TableId): string {
 function writeLibraryIndex(library: TableLibrary): SaveOutcome {
 	return saveLibraryIndex({
 		version: LIBRARY_VERSION,
-		tables: library.tables.map((table) => table.id),
+		tables: library.tables.map(({ id, mark }) => ({ id, mark })),
 		activeId: library.activeId,
 	});
 }
@@ -1184,7 +1190,10 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 						state.storageIssue.raw,
 						{
 							version: LIBRARY_VERSION,
-							tables: state.library.tables.map((table) => table.id),
+							tables: state.library.tables.map(({ id, mark }) => ({
+								id,
+								mark,
+							})),
 							activeId: state.library.activeId,
 						},
 						savePayload(state),
@@ -2720,7 +2729,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const { name, renameFirst } = named?.ok
 			? { name: named.name, renameFirst: null }
 			: nameForNewTable(state.library, DEFAULT_TABLE_NAME);
-		const entry = { id: createTableId(), name };
+		const entry = {
+			id: createTableId(),
+			name,
+			mark: nextTableMark(state.library),
+		};
 		// Numbering the first table is a change to that table's own payload, so
 		// it is written before the library moves on to the new one.
 		if (renameFirst) {

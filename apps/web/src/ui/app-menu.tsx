@@ -115,13 +115,6 @@ export function AppMenu({
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
 	const library = useTabeloStore((state) => state.library);
 	// The app always shows a table, so the only one left cannot be deleted.
-	// Library order, always: a table keeps its place when it is opened, so the
-	// list never rearranges under the pointer that just chose from it (owner,
-	// 2026-09-20).
-	const listedTables = library.tables.map((table, position) => ({
-		table,
-		position,
-	}));
 	const deleteRefusal =
 		library.tables.length > 1 ? undefined : copy.disabled.deleteLastTable;
 	const columnCount = useTabeloStore((state) => state.document.columns.length);
@@ -182,13 +175,15 @@ export function AppMenu({
 				</DropdownMenuLabel>
 				{/* Past the size where one list reads comfortably it scrolls, and
 				    only the list does: New table and the note below it stay where
-				    the reader left them (#403). */}
+				    the reader left them (#403). Library order, always: a table
+				    keeps its place when it is opened, so the list never
+				    rearranges under the pointer that just chose from it (owner,
+				    2026-09-20). */}
 				<div className="max-h-56 overflow-y-auto">
-					{listedTables.map(({ table, position }) => (
+					{library.tables.map((table) => (
 						<TableRow
 							key={table.id}
 							table={table}
-							position={position}
 							active={table.id === library.activeId}
 							size={copy.workspace.tableSize(columnCount, rowCount)}
 							deleteRefusal={deleteRefusal}
@@ -447,7 +442,6 @@ function TableCommands({
 	Item,
 	Separator,
 	table,
-	position,
 	active,
 	deleteRefusal,
 	onOpen,
@@ -460,7 +454,6 @@ function TableCommands({
 	readonly Item: typeof DropdownMenuItem;
 	readonly Separator: typeof DropdownMenuSeparator;
 	readonly table: TableEntry;
-	readonly position: number;
 	readonly active: boolean;
 	readonly deleteRefusal: string | undefined;
 	readonly onOpen: () => void;
@@ -476,7 +469,7 @@ function TableCommands({
 				// Opening from here is the same command the row itself carries,
 				// so it leaves the menu open in the same way (owner, 2026-09-20).
 				<Item closeOnClick={false} onClick={onOpen}>
-					<IconFileText aria-hidden className={tableMarkClass(position)} />
+					<IconFileText aria-hidden className={tableMarkClass(table.mark)} />
 					{copy.actions.openTable}
 				</Item>
 			)}
@@ -515,7 +508,6 @@ function TableCommands({
 
 function TableRow({
 	table,
-	position,
 	active,
 	size,
 	deleteRefusal,
@@ -527,7 +519,6 @@ function TableRow({
 	structure,
 }: {
 	readonly table: TableEntry;
-	readonly position: number;
 	readonly active: boolean;
 	readonly size: string;
 	readonly deleteRefusal: string | undefined;
@@ -545,7 +536,6 @@ function TableRow({
 			Item={ContextMenuItem}
 			Separator={ContextMenuSeparator}
 			table={table}
-			position={position}
 			active={active}
 			deleteRefusal={deleteRefusal}
 			onOpen={onOpen}
@@ -581,7 +571,7 @@ function TableRow({
 				    highlight changes the item's background, never the mark, so the
 				    cue does not move as the pointer does. It is never the only
 				    cue, since the name is beside it. */}
-						<IconFileText aria-hidden className={tableMarkClass(position)} />
+						<IconFileText aria-hidden className={tableMarkClass(table.mark)} />
 						<MenuOption
 							truncateLabel
 							label={table.name}
@@ -624,7 +614,6 @@ function TableRow({
 						Item={DropdownMenuItem}
 						Separator={DropdownMenuSeparator}
 						table={table}
-						position={position}
 						active={active}
 						deleteRefusal={deleteRefusal}
 						onOpen={onOpen}

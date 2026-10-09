@@ -3,14 +3,21 @@
 // about its order or its size belongs to a component.
 //
 // A table's document, workspace, and draft stay with that table; the library
-// holds only identity and order. One table is always active, so the list is
+// holds identity, order, and the colour of each table's mark. One table is always active, so the list is
 // never empty while the app is running.
 
 export type TableId = string;
 
+// The colour of a table's mark, one of the six table mark tokens. It is
+// stored with the table rather than read off its place in the list, so adding
+// or deleting another table never repaints this one (#465).
+export const TABLE_MARKS = [1, 2, 3, 4, 5, 6] as const;
+export type TableMark = (typeof TABLE_MARKS)[number];
+
 export interface TableEntry {
 	readonly id: TableId;
 	readonly name: string;
+	readonly mark: TableMark;
 }
 
 export interface TableLibrary {
@@ -81,27 +88,43 @@ export function isNameTaken(
 	);
 }
 
-// The colour a table's mark takes, by its place in the library (#403). The
-// cycle repeats, so the colour identifies a table only together with its
-// name, which every entry shows.
 // The `!` is deliberate: a menu item paints every descendant with the
 // highlight colour on hover and focus, and the mark must not change with the
 // pointer, since it says which table the row is (owner, 2026-09-20).
-const TABLE_MARK_CLASSES = [
-	"text-table-mark-1!",
-	"text-table-mark-2!",
-	"text-table-mark-3!",
-	"text-table-mark-4!",
-	"text-table-mark-5!",
-	"text-table-mark-6!",
-] as const;
+const TABLE_MARK_CLASSES: Readonly<Record<TableMark, string>> = {
+	1: "text-table-mark-1!",
+	2: "text-table-mark-2!",
+	3: "text-table-mark-3!",
+	4: "text-table-mark-4!",
+	5: "text-table-mark-5!",
+	6: "text-table-mark-6!",
+};
 
-export function tableMarkClass(position: number): string {
-	const cycle = TABLE_MARK_CLASSES.length;
-	return (
-		TABLE_MARK_CLASSES[((position % cycle) + cycle) % cycle] ??
-		TABLE_MARK_CLASSES[0]
+export function tableMarkClass(mark: TableMark): string {
+	return TABLE_MARK_CLASSES[mark];
+}
+
+// The mark a table shows by its place in the list, the rule before #465. It
+// survives only as the migration that lets a saved table keep the colour it
+// already showed.
+export function markForPosition(position: number): TableMark {
+	const cycle = TABLE_MARKS.length;
+	return TABLE_MARKS[((position % cycle) + cycle) % cycle] ?? TABLE_MARKS[0];
+}
+
+// A new table takes the first mark no table uses. Once all six are taken the
+// colour repeats, so it identifies a table only together with its name: the
+// new one takes the mark the fewest tables share, the first such in order.
+export function nextTableMark(library: TableLibrary): TableMark {
+	const counts = new Map<TableMark, number>(
+		TABLE_MARKS.map((mark) => [mark, 0]),
 	);
+	for (const table of library.tables)
+		counts.set(table.mark, (counts.get(table.mark) ?? 0) + 1);
+	let best: TableMark = TABLE_MARKS[0];
+	for (const mark of TABLE_MARKS)
+		if ((counts.get(mark) ?? 0) < (counts.get(best) ?? 0)) best = mark;
+	return best;
 }
 
 export function addTable(

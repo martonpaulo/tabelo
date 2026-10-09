@@ -87,3 +87,53 @@ test("deleting a table asks first and leaves the others alone", async ({
 		menu.getByRole("menuitem", { name: new RegExp(`^${DEFAULT_TABLE_NAME}`) }),
 	).toHaveCount(1);
 });
+
+// A table's mark colour is stored with it (#465): deleting an earlier table
+// must not repaint the ones after it, and a reload shows the same colours.
+async function markClasses(tabelo: TabeloPage): Promise<string[]> {
+	const menu = await tabelo.openAppMenu();
+	const entries = menu.getByRole("menuitem", {
+		name: new RegExp(`^${DEFAULT_TABLE_NAME}`),
+	});
+	const classes = await entries.evaluateAll((items) =>
+		items.map(
+			(item) =>
+				[...(item.querySelector("svg")?.classList ?? [])].find((name) =>
+					name.startsWith("text-table-mark-"),
+				) ?? "",
+		),
+	);
+	await tabelo.page.keyboard.press("Escape");
+	return classes;
+}
+
+test("deleting an earlier table leaves every other table's mark colour as it was", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "First");
+	await createTable(tabelo);
+	await tabelo.editCell(1, 1, "Second");
+	await createTable(tabelo);
+	await tabelo.editCell(1, 1, "Third");
+	const before = await markClasses(tabelo);
+	expect(new Set(before).size).toBe(3);
+
+	const menu = await tabelo.openAppMenu();
+	await menu
+		.getByRole("menuitem", { name: new RegExp(`^${DEFAULT_TABLE_NAME}`) })
+		.first()
+		.click();
+	await tabelo.page.keyboard.press("Escape");
+	await expect(tabelo.cell(1, 1)).toHaveText("First");
+	await tabelo.runAppCommand("deleteTable");
+	await tabelo.page
+		.getByRole("dialog", { name: copy.deleteTable.title })
+		.getByRole("button", { name: copy.deleteTable.confirm })
+		.click();
+
+	expect(await markClasses(tabelo)).toEqual(before.slice(1));
+	await expect(tabelo.cell(1, 1)).toHaveText("Second");
+	await tabelo.page.reload();
+	await expect(tabelo.cell(1, 1)).toHaveText("Second");
+	expect(await markClasses(tabelo)).toEqual(before.slice(1));
+});

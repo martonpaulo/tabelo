@@ -286,7 +286,11 @@ export async function seedTableStorage(
 		},
 		{
 			libraryKey: LIBRARY_KEY,
-			index: { version: LIBRARY_VERSION, tables: [id], activeId: id },
+			index: {
+				version: LIBRARY_VERSION,
+				tables: [{ id, mark: 1 }],
+				activeId: id,
+			},
 			key,
 			raw,
 		},

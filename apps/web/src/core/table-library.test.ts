@@ -4,7 +4,9 @@ import {
 	isLargeLibrary,
 	isNameTaken,
 	LARGE_LIBRARY_SIZE,
+	markForPosition,
 	nameForNewTable,
+	nextTableMark,
 	removeTable,
 	renameEntry,
 	type TableLibrary,
@@ -14,7 +16,11 @@ import {
 const DEFAULT_NAME = "Untitled table";
 
 function libraryOf(...names: readonly string[]): TableLibrary {
-	const tables = names.map((name, index) => ({ id: `t${index}`, name }));
+	const tables = names.map((name, index) => ({
+		id: `t${index}`,
+		name,
+		mark: markForPosition(index),
+	}));
 	return { tables, activeId: tables[0]?.id ?? "" };
 }
 
@@ -51,7 +57,11 @@ describe("the library", () => {
 	});
 
 	it("makes a table it adds the active one", () => {
-		const library = addTable(libraryOf("Roster"), { id: "t9", name: "Budget" });
+		const library = addTable(libraryOf("Roster"), {
+			id: "t9",
+			name: "Budget",
+			mark: 2,
+		});
 		expect(library.activeId).toBe("t9");
 		expect(library.tables.map((table) => table.name)).toEqual([
 			"Roster",
@@ -106,5 +116,25 @@ describe("names already stored", () => {
 	it("leaves names that are already unique untouched", () => {
 		const library = libraryOf("Roster", "Budget");
 		expect(withUniqueNames(library)).toEqual(library);
+	});
+});
+
+describe("a table's mark", () => {
+	it("gives a new table the first mark no table uses", () => {
+		const library = libraryOf("Roster", "Budget", "Costs");
+		const gap = removeTable(library, "t1");
+		expect(gap && nextTableMark(gap)).toBe(2);
+		expect(nextTableMark(library)).toBe(4);
+	});
+
+	it("repeats the mark the fewest tables share once all are taken", () => {
+		const full = libraryOf("a", "b", "c", "d", "e", "f", "g");
+		expect(nextTableMark(full)).toBe(2);
+	});
+
+	it("keeps every other table's mark when one is removed", () => {
+		const library = libraryOf("Roster", "Budget", "Costs");
+		const after = removeTable(library, "t0");
+		expect(after?.tables.map((table) => table.mark)).toEqual([2, 3]);
 	});
 });

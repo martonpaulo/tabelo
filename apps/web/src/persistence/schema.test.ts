@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { layoutPresets } from "@/workspace/layout";
-import { CURRENT_VERSION, validatePersistedState } from "./schema";
+import libraryIndexV1 from "./fixtures/library-index-v1.json";
+import {
+	CURRENT_VERSION,
+	LIBRARY_VERSION,
+	validateLibraryIndex,
+	validatePersistedState,
+} from "./schema";
 
 const document = {
 	columns: [
@@ -338,5 +344,47 @@ describe("loading a stored payload", () => {
 		);
 
 		expect(outcome.status).toBe("unreadable");
+	});
+});
+
+describe("loading the library index", () => {
+	it("migrates a version 1 index so every table keeps the mark it showed", () => {
+		const outcome = validateLibraryIndex(libraryIndexV1);
+		expect(outcome).toEqual({
+			status: "ok",
+			index: {
+				version: LIBRARY_VERSION,
+				tables: [
+					{ id: "roster", mark: 1 },
+					{ id: "budget", mark: 2 },
+					{ id: "costs", mark: 3 },
+					{ id: "people", mark: 4 },
+					{ id: "cities", mark: 5 },
+					{ id: "roles", mark: 6 },
+					{ id: "ages", mark: 1 },
+				],
+				activeId: "budget",
+			},
+		});
+	});
+
+	it("refuses a mark outside the palette and a future index", () => {
+		expect(
+			validateLibraryIndex({
+				version: LIBRARY_VERSION,
+				tables: [{ id: "roster", mark: 7 }],
+				activeId: "roster",
+			}).status,
+		).toBe("unreadable");
+		expect(validateLibraryIndex({ ...libraryIndexV1, version: 3 })).toEqual({
+			status: "unreadable",
+			reason: "future-version",
+		});
+	});
+
+	it("reports an invalid version 1 index instead of repairing it", () => {
+		expect(
+			validateLibraryIndex({ ...libraryIndexV1, activeId: "missing" }).status,
+		).toBe("unreadable");
 	});
 });

@@ -1,5 +1,10 @@
 import { z } from "zod";
 import {
+	markForPosition,
+	TABLE_MARKS,
+	type TableMark,
+} from "@/core/table-library";
+import {
 	PERSISTED_VERSION,
 	type PersistedState,
 	persistedStateSchema,
@@ -20,18 +25,52 @@ export function tableRecoveryKey(id: string): string {
 	return `${tableKey(id)}.recovery`;
 }
 
-// The index. It carries identity and order only: a table's name, document,
-// workspace, and draft live in that table's own payload, so nothing here can
-// drift from what the table itself says.
-export const LIBRARY_VERSION = 1 as const;
+// The index. It carries identity, order, and each table's mark colour: a
+// table's name, document, workspace, and draft live in that table's own
+// payload, so nothing here can drift from what the table itself says. The
+// mark lives here because the list owns it, the way it owns order (#465).
+export const LIBRARY_VERSION = 2 as const;
+
+const tableMarkSchema = z.union(
+	TABLE_MARKS.map((mark) => z.literal(mark)) as [
+		z.ZodLiteral<TableMark>,
+		...z.ZodLiteral<TableMark>[],
+	],
+);
 
 const libraryIndexSchema = z.object({
 	version: z.literal(LIBRARY_VERSION),
+	tables: z
+		.array(z.object({ id: z.string().min(1), mark: tableMarkSchema }))
+		.min(1),
+	activeId: z.string().min(1),
+});
+
+// Version 1 listed ids alone and painted each table by its place in the list.
+const libraryIndexV1Schema = z.object({
+	version: z.literal(1),
 	tables: z.array(z.string().min(1)).min(1),
 	activeId: z.string().min(1),
 });
 
 export type LibraryIndex = z.infer<typeof libraryIndexSchema>;
+
+// The forward step from version 1: every table keeps the colour it showed,
+// which was the one its place gave it. Its result is validated like any
+// stored index, so a step that produced something invalid is reported rather
+// than trusted.
+function migrateLibraryIndexV1(raw: unknown): unknown {
+	const parsed = libraryIndexV1Schema.safeParse(raw);
+	if (!parsed.success) return raw;
+	return {
+		version: LIBRARY_VERSION,
+		tables: parsed.data.tables.map((id, position) => ({
+			id,
+			mark: markForPosition(position),
+		})),
+		activeId: parsed.data.activeId,
+	};
+}
 
 export function validateLibraryIndex(raw: unknown):
 	| { readonly status: "ok"; readonly index: LibraryIndex }
@@ -42,11 +81,14 @@ export function validateLibraryIndex(raw: unknown):
 	const version = persistedVersion(raw);
 	if (version !== null && version > LIBRARY_VERSION)
 		return { status: "unreadable", reason: "future-version" };
-	const parsed = libraryIndexSchema.safeParse(raw);
+	const parsed = libraryIndexSchema.safeParse(
+		version === 1 ? migrateLibraryIndexV1(raw) : raw,
+	);
+	const ids = parsed.success ? parsed.data.tables.map((table) => table.id) : [];
 	if (
 		!parsed.success ||
-		!parsed.data.tables.includes(parsed.data.activeId) ||
-		new Set(parsed.data.tables).size !== parsed.data.tables.length
+		!ids.includes(parsed.data.activeId) ||
+		new Set(ids).size !== ids.length
 	)
 		return { status: "unreadable", reason: "current-schema-invalid" };
 	return { status: "ok", index: parsed.data };
