@@ -52,6 +52,18 @@ describe("delimited fields", () => {
 		expect(fieldStarts(csvCodec, text)[3]).toBe(text.indexOf('"say') + 1);
 	});
 
+	it("skips accepted whitespace after a closing quote in CSV and TSV (#413)", () => {
+		expect(fieldTexts(csvCodec, 'A,B,C\n"x"  ,y,z')).toEqual([
+			"A",
+			"B",
+			"C",
+			"x",
+			"y",
+			"z",
+		]);
+		expect(fieldTexts(tsvCodec, 'A\tB\n"x" \ty')).toEqual(["A", "B", "x", "y"]);
+	});
+
 	it("stops at empty fields, including a trailing one", () => {
 		const text = "Name,City,Role\nIngrid,,\n";
 		expect(fieldTexts(csvCodec, text)).toEqual([

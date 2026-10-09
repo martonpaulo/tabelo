@@ -205,6 +205,41 @@ for (const view of mappedViews) {
 	});
 }
 
+// Papa Parse accepts whitespace between a closing quote and the delimiter, so
+// the column under the caret must be the field the parser read there, not one
+// counted from the decoded values (#413).
+for (const [viewId, d] of [
+	["csv", ","],
+	["tsv", "\t"],
+] as const) {
+	test(`${viewId}: deleting the caret's column after a padded quoted field removes that column`, async ({
+		page,
+		tabelo,
+	}) => {
+		await seed(tabelo);
+		await tabelo.choosePaneView("markdown", viewId);
+		const editor = tabelo.source(viewId);
+		const line = `"Ingrid"  ${d}Rio${d}Designer`;
+		await editor.fill(`Name${d}City${d}Role\n${line}`);
+		await expect(tabelo.header(3)).toHaveText("Role");
+		await expect(tabelo.cell(1, 2)).toHaveText("Rio");
+
+		await editor.click();
+		await editor.press("ControlOrMeta+Home");
+		await page.keyboard.press("ArrowDown");
+		// The caret ends the value, where a count from decoded lengths fell in
+		// the next column.
+		const caret = line.indexOf("Rio") + "Rio".length;
+		for (let step = 0; step < caret; step += 1) {
+			await page.keyboard.press("ArrowRight");
+		}
+		await runMenuCommand(page, copy.actions.deleteColumns(1));
+		await expect(tabelo.header(1)).toHaveText("Name");
+		await expect(tabelo.header(2)).toHaveText("Role");
+		await expect(tabelo.cell(1, 2)).toHaveText("Designer");
+	});
+}
+
 test("inserted rows and columns take the caret, and one undo removes each", async ({
 	page,
 	tabelo,

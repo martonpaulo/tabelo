@@ -62,10 +62,14 @@ function runPapa(text: string, delimiter: string): PapaRun {
 }
 
 // A row runs from where the previous one ended to its own end, less the line
-// break that closes it.
+// break that closes it. Papa Parse drops a leading byte order mark before it
+// counts, so its cursors sit one short of the text whenever one is present
+// (#413).
 function rowRanges(text: string, cursors: readonly number[]): SourceRowRange[] {
-	return cursors.map((cursor, index) => {
-		const from = index === 0 ? 0 : (cursors[index - 1] ?? 0);
+	const shift = text.startsWith("\uFEFF") ? 1 : 0;
+	const ends = cursors.map((cursor) => cursor + shift);
+	return ends.map((cursor, index) => {
+		const from = index === 0 ? shift : (ends[index - 1] ?? shift);
 		const ending = text.slice(Math.max(from, cursor - 2), cursor);
 		const breakLength = ending.endsWith("\r\n")
 			? 2
@@ -185,12 +189,15 @@ export function parseDelimitedMatrix(
 
 // Where each cell of one row sits, read off the same Papa Parse run that
 // produces the table rather than by searching for delimiters, so a delimiter or
-// a line break inside a quoted value is never a boundary (#54, #255). Papa Parse
-// reports each field's value and each row's extent; a field's width in the text
-// follows from its value, since an unquoted field is its value verbatim and a
-// quoted one adds its two quotes and doubles every quote inside. A malformed
-// quote can make a width disagree with the text, so every offset is clamped to
-// its row: a boundary can land imprecisely in a broken draft, never outside it.
+// a line break inside a quoted value is never a boundary (#54, #255). An
+// unquoted field is its value verbatim, so its width is the value's length. A
+// quoted field is scanned in the text to its closing quote, a doubled quote
+// being an escape, and the next field starts after the next delimiter: Papa
+// Parse accepts whitespace between a closing quote and the delimiter, and a
+// width derived from the value alone would shift every later cell (#413). A
+// malformed quote can still disagree with the text, so every offset is
+// clamped to its row: a boundary can land imprecisely in a broken draft,
+// never outside it, and commands refuse a draft that does not parse cleanly.
 function rowCells(
 	text: string,
 	values: readonly string[],
@@ -201,15 +208,30 @@ function rowCells(
 	let at = row.from;
 	for (const value of values) {
 		const start = Math.min(at, row.to);
-		const width =
+		const end =
 			text[start] === '"'
-				? value.length + value.split('"').length - 1 + 2
-				: value.length;
-		const end = Math.min(row.to, start + width);
+				? closingQuoteEnd(text, start, row.to)
+				: Math.min(row.to, start + value.length);
 		cells.push({ from: start, to: end });
-		at = end + delimiter.length;
+		const next = text.indexOf(delimiter, end);
+		at = next === -1 || next >= row.to ? row.to : next + delimiter.length;
 	}
 	return cells;
+}
+
+// The offset just past the quote that closes the field opened at `start`, or
+// `limit` when the field never closes.
+function closingQuoteEnd(text: string, start: number, limit: number): number {
+	let at = start + 1;
+	while (at < limit) {
+		if (text[at] === '"') {
+			if (text[at + 1] !== '"') return at + 1;
+			at += 2;
+		} else {
+			at += 1;
+		}
+	}
+	return limit;
 }
 
 // A field's content is its cell less the quotes around a quoted value. The

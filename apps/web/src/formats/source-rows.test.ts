@@ -152,6 +152,37 @@ describe("semantic source cells", () => {
 		]);
 	});
 
+	it.each([
+		["CSV", csvCodec, ","],
+		["TSV", tsvCodec, "\t"],
+	] as const)(
+		"maps a %s cell past accepted whitespace after its closing quote (#413)",
+		(_name, codec, d) => {
+			const text = `name${d}city${d}role\n"Ingrid"  ${d}Rio${d}"say ""hi"""\n"Paulo"${d}"two\nlines" ${d}Madrid`;
+			const result = codec.parse(text);
+			expect(cellTexts(text, result)).toEqual([
+				["name", "city", "role"],
+				['"Ingrid"', "Rio", '"say ""hi"""'],
+				['"Paulo"', '"two\nlines"', "Madrid"],
+			]);
+			expect(positionAt(text, "Rio", result)).toEqual({ row: 1, column: 1 });
+			expect(positionAt(text, "Madrid", result)).toEqual({
+				row: 2,
+				column: 2,
+			});
+		},
+	);
+
+	it("maps quoted CSV cells exactly behind a BOM and CRLF line breaks (#413)", () => {
+		const text = '\uFEFF"name" ,city\r\n"Ingrid" ,Rio\r\n';
+		const result = csvCodec.parse(text);
+		expect(cellTexts(text, result)).toEqual([
+			['"name"', "city"],
+			['"Ingrid"', "Rio"],
+		]);
+		expect(positionAt(text, "Rio", result)).toEqual({ row: 1, column: 1 });
+	});
+
 	it("keeps empty CSV and TSV cells apart", () => {
 		const csv = ",,\nIngrid,,";
 		expect(cellTexts(csv, csvCodec.parse(csv))).toEqual([
