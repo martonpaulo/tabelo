@@ -390,7 +390,9 @@ the smallest relevant check.
   runs the full Chromium suite on every push to `main`, and a local full run
   is reserved for a change whose reach a focused run cannot bound, such as
   the synchronization or history core (owner decision, 2026-09-18).
-  `pnpm test:e2e:serve` keeps a warm preview server across those rounds
+  `pnpm test:e2e:serve` keeps a warm preview server across those rounds; each
+  round rebuilds first when a build input changed since the last build and
+  skips the build after a spec-only edit (#436)
 - Pass a focused spec path or Playwright option directly after the root script.
   Never add a standalone `--` after `pnpm test:e2e`: it ends option parsing and
   can turn a focused command into the configured project matrix. Before a new

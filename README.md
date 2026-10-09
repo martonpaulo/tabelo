@@ -75,8 +75,9 @@ No hosted backend or store registration is needed; the editor works without it.
 | `pnpm check:dead-code`  | Knip, for unused files, exports and dependencies |
 
 `pnpm test:e2e` builds and serves the app itself. `test:e2e:serve` is worth starting first when a fix
-needs several `test:e2e:failed` rounds: the suite reuses that server and skips the build and boot
-each time.
+needs several `test:e2e:failed` rounds: the suite reuses that server and skips its boot. Each round
+rebuilds first when a product file changed since the last build, and skips the build when only the
+browser specs changed, so the warm server never tests an old build.
 
 Property tests run 100 generated cases per invariant. A failure reports its `seed`, `path`, and
 minimal counterexample. Replay it by temporarily passing the reported `{ seed, path }` beside

@@ -32,6 +32,9 @@ export default defineConfig({
 			use: { ...devices["Desktop Chrome"] },
 		},
 	],
+	// A reused preview server skips the build in `webServer.command`; this brings
+	// `dist` up to date after a product edit before any test runs (#436).
+	globalSetup: "./e2e-build.ts",
 	webServer: {
 		// The port lives in the Vite config, so the preview server binds the same
 		// value whether Playwright starts it or `pnpm test:e2e:serve` did.
