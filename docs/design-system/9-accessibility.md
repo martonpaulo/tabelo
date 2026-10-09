@@ -102,7 +102,7 @@ leaves the pane.
 | `Tab` / `Shift`+`Tab` | Move one cell in reading order, wrapping at row ends and grid edges. It never leaves the grid |
 | `Home` / `End` | First or last column of the row; with the modifier, the first or last cell of the table |
 | `Enter` / `F2` | Edit the focused cell. On a column header, rename it |
-| `Space` | On a column header, select the column: activating a button does what buttons do |
+| `Space` | On a column header, select the column: activating a button does what buttons do. On a boolean cell drawn as a checkbox, toggle its value as one history step (#483). On any other cell it types over the cell like any printable key |
 | `Ctrl`+`Space` | Add the focused cell's column to the selection, or take it away |
 | `Ctrl`+`Shift`+`Space` | The same for its row |
 | `Shift`+`F10` / `ContextMenu` | Open the grid menu where focus is. On a row number or column letter it is that axis's menu; on a cell the selection decides: whole rows get the row menu, whole columns the column menu, anything else the cell menu (#288). Opened on a cell, every one of them carries Move focus, keep selection |
@@ -653,6 +653,13 @@ expects (owner, 2026-09-19). A null cell therefore
 has a written accessible value even though its `cellText` projection is empty.
 Opening its editor retains the native-value typeface and includes the real type
 in the editor's accessible name. Neither treatment adds another focus target.
+
+A boolean cell drawn as a checkbox (#483) keeps that model. The cell stays
+unlabelled; its content is the checkbox, whose `aria-checked` is the value and
+whose name is the column header (its letter when the header is blank) and the
+row number, "Name, row 2", because a checkbox's own state says only checked or
+not. The checkbox is not focusable on its own, so it adds no tab stop, and the
+hidden type text stays beside it.
 
 Grid entry follows the column expectation without turning it into inference
 (#201).

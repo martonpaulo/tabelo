@@ -364,6 +364,31 @@ keeps the grid a grid:
   dismissible warning notice naming each reason once; it never expires on its
   own, because the user has something to check.
 
+### A boolean cell in the Visual Table
+
+A cell whose carried value is a boolean is drawn as the shared `packages/ui`
+checkbox, checked for `true`, in place of the text `true` or `false` (#483).
+Only a boolean is: the string `true`, a number, and `null` keep their text,
+since nothing reads a type off text.
+
+- **It toggles in place.** A click, or `Space` on the focused cell, writes the
+  other boolean through the set-cell operation as one history step, so one
+  Undo reverts it. It never opens the cell editor; `Enter` and `F2` still do.
+- **It is not a tab stop.** The checkbox sets `tabindex="-1"`, so the cell
+  keeps the grid's one roving stop and draws focus with the grid's own cell
+  marks; the checkbox never draws a focus ring of its own.
+- **It sits where a value sits**: inline, on the column's alignment, centred
+  on the first line box, with the type mark beside it when the column expects
+  another type.
+- **States are the primitive's**: the checked fill and the check glyph. Under
+  forced colours the border and the glyph take the system colours, so checked
+  and unchecked still read apart without colour; reduced motion stills its
+  state transition with every other one.
+- **One preference turns it off.** Settings > Visual Table holds one global
+  switch, on by default, that draws every boolean cell as its text instead. It
+  is a local preference, never document state, and there is no per-column
+  variant.
+
 ### Empty workspace
 
 After hydration, an initially empty document with no source draft presents the
@@ -494,7 +519,9 @@ changing the preset or pane count.
 
 Settings is the other deliberate exception. It holds the six global source
 display defaults (#55, #276, the line-break mark, owner, 2026-09-19, and
-column alignment, #396) and Markdown's line-break spelling (#397), and each one applies as it changes: a read-only preview at
+column alignment, #396) and Markdown's line-break spelling (#397), and, under
+its own Visual Table heading below them, the one switch that draws boolean
+cells as checkboxes (#483), whose icon is a checked box. Each one applies as it changes: a read-only preview at
 the top of the dialog is a real source editor built from the same indicator
 extensions every text view uses, so the effect is visible before the dialog
 closes and no Apply step is left to confirm. Its sample holds a value with a

@@ -109,6 +109,7 @@ describe("an unreadable stored payload", () => {
 			lineBreakIndicators: true,
 			alignColumns: true,
 			lineBreakTags: false,
+			booleanCheckboxes: true,
 		} as const;
 		const storage = {
 			getItem: vi.fn((key: string) =>
@@ -138,6 +139,7 @@ describe("an unreadable stored payload", () => {
 			lineBreakIndicators: false,
 			alignColumns: false,
 			lineBreakTags: true,
+			booleanCheckboxes: false,
 		} as const;
 
 		expect(store.commit(next)).toEqual({ status: "saved" });

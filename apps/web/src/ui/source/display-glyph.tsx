@@ -18,12 +18,18 @@ export function DisplayGlyph({
 }: {
 	readonly setting: SourceDisplayKey;
 }) {
+	return <GlyphSlot>{glyphs[setting]}</GlyphSlot>;
+}
+
+// The fixed slot itself, for a settings row whose mark is not a source
+// display setting's, so its label still starts on the same line.
+export function GlyphSlot({ children }: { readonly children: ReactNode }) {
 	return (
 		<span
 			aria-hidden
 			className="flex h-7 w-12 shrink-0 items-center justify-center rounded-indicator bg-surface-app font-source text-muted-foreground text-xs"
 		>
-			{glyphs[setting]}
+			{children}
 		</span>
 	);
 }

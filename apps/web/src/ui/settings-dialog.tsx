@@ -13,8 +13,8 @@ import {
 } from "@tabelo/ui/components/segmented-control";
 import { Switch } from "@tabelo/ui/components/switch";
 import { cn } from "@tabelo/ui/lib/utils";
-import { IconTrash } from "@tabler/icons-react";
-import { lazy, Suspense, useId, useState } from "react";
+import { IconSquareCheck, IconTrash } from "@tabler/icons-react";
+import { lazy, type ReactNode, Suspense, useId, useState } from "react";
 import { copy } from "@/copy/copy";
 import { eraseStoredData } from "@/persistence/erase";
 import {
@@ -35,21 +35,20 @@ import {
 	DialogConfirm,
 } from "@/ui/primitives/dialog-buttons";
 import { MenuOption } from "@/ui/primitives/menu-option";
-import { DisplayGlyph } from "@/ui/source/display-glyph";
-import type { SourceDisplayKey } from "@/workspace/source-display";
+import { DisplayGlyph, GlyphSlot } from "@/ui/source/display-glyph";
 
 // The preview is a real read-only source editor, so it waits for the editor
 // chunk the same way a text view does.
 const IndicatorPreview = lazy(() => import("@/ui/source/indicator-preview"));
 
 function SwitchOption({
-	setting,
+	glyph,
 	label,
 	description,
 	checked,
 	onCheckedChange,
 }: {
-	readonly setting: SourceDisplayKey;
+	readonly glyph: ReactNode;
 	readonly label: string;
 	readonly description: string;
 	readonly checked: boolean;
@@ -58,7 +57,7 @@ function SwitchOption({
 	const id = useId();
 	return (
 		<label htmlFor={id} className={cn(optionBlockStyles, "cursor-pointer")}>
-			<DisplayGlyph setting={setting} />
+			{glyph}
 			<MenuOption label={label} description={description} />
 			<Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
 		</label>
@@ -82,6 +81,7 @@ export function SettingsDialog({
 	const titleId = useId();
 	const descriptionId = useId();
 	const displayLabelId = useId();
+	const gridLabelId = useId();
 	const spaceLabelId = useId();
 	const spaceDescriptionId = useId();
 
@@ -145,19 +145,19 @@ export function SettingsDialog({
 							{copy.settings.display.label}
 						</h3>
 						<SwitchOption
-							setting="wrap"
+							glyph={<DisplayGlyph setting="wrap" />}
 							{...copy.settings.wrap}
 							checked={preferences.wrap}
 							onCheckedChange={(checked) => update({ wrap: checked })}
 						/>
 						<SwitchOption
-							setting="alignColumns"
+							glyph={<DisplayGlyph setting="alignColumns" />}
 							{...copy.settings.alignColumns}
 							checked={preferences.alignColumns}
 							onCheckedChange={(checked) => update({ alignColumns: checked })}
 						/>
 						<SwitchOption
-							setting="emptyValueIndicators"
+							glyph={<DisplayGlyph setting="emptyValueIndicators" />}
 							{...copy.settings.emptyValueIndicators}
 							checked={preferences.emptyValueIndicators}
 							onCheckedChange={(checked) =>
@@ -165,13 +165,13 @@ export function SettingsDialog({
 							}
 						/>
 						<SwitchOption
-							setting="tabIndicators"
+							glyph={<DisplayGlyph setting="tabIndicators" />}
 							{...copy.settings.tabIndicators}
 							checked={preferences.tabIndicators}
 							onCheckedChange={(checked) => update({ tabIndicators: checked })}
 						/>
 						<SwitchOption
-							setting="lineBreakIndicators"
+							glyph={<DisplayGlyph setting="lineBreakIndicators" />}
 							{...copy.settings.lineBreakIndicators}
 							checked={preferences.lineBreakIndicators}
 							onCheckedChange={(checked) =>
@@ -179,7 +179,7 @@ export function SettingsDialog({
 							}
 						/>
 						<SwitchOption
-							setting="lineBreakTags"
+							glyph={<DisplayGlyph setting="lineBreakTags" />}
 							{...copy.settings.lineBreakTags}
 							checked={preferences.lineBreakTags}
 							onCheckedChange={(checked) => update({ lineBreakTags: checked })}
@@ -217,6 +217,26 @@ export function SettingsDialog({
 								))}
 							</SegmentedControl>
 						</div>
+					</section>
+
+					{/* How the Visual Table draws a boolean cell (#483): one global
+					    switch, not a source display default. */}
+					<section className="grid gap-1.5" aria-labelledby={gridLabelId}>
+						<h3 id={gridLabelId} className="mb-1 font-medium text-sm">
+							{copy.settings.visualTable.label}
+						</h3>
+						<SwitchOption
+							glyph={
+								<GlyphSlot>
+									<IconSquareCheck aria-hidden className="size-4" />
+								</GlyphSlot>
+							}
+							{...copy.settings.booleanCheckboxes}
+							checked={preferences.booleanCheckboxes}
+							onCheckedChange={(checked) =>
+								update({ booleanCheckboxes: checked })
+							}
+						/>
 					</section>
 				</div>
 

@@ -5,6 +5,7 @@ import {
 	readStoredPreferences,
 	serializePreferences,
 } from "./contract";
+import preferencesV1 from "./fixtures/preferences-v1.json";
 
 describe("preferences contract", () => {
 	it("accepts and serializes the current complete schema", () => {
@@ -17,6 +18,7 @@ describe("preferences contract", () => {
 			lineBreakIndicators: false,
 			alignColumns: false,
 			lineBreakTags: true,
+			booleanCheckboxes: false,
 		} as const;
 
 		expect(readStoredPreferences(serializePreferences(preferences))).toEqual({
@@ -38,6 +40,42 @@ describe("preferences contract", () => {
 			lineBreakIndicators: true,
 			alignColumns: true,
 			lineBreakTags: false,
+			booleanCheckboxes: true,
 		});
+	});
+
+	// #483: a stored version 1 payload keeps every choice it made and gains the
+	// checkbox the Visual Table now draws by default.
+	it("migrates a version 1 payload forward", () => {
+		expect(readStoredPreferences(JSON.stringify(preferencesV1))).toEqual({
+			status: "ok",
+			preferences: {
+				...preferencesV1,
+				version: PREFERENCES_VERSION,
+				booleanCheckboxes: true,
+			},
+		});
+	});
+
+	it("keeps an invalid version 1 payload unreadable rather than coerced", () => {
+		expect(
+			readStoredPreferences(JSON.stringify({ ...preferencesV1, wrap: "yes" })),
+		).toEqual({ status: "unreadable", reason: "current-schema-invalid" });
+		expect(
+			readStoredPreferences(
+				JSON.stringify({ ...preferencesV1, booleanCheckboxes: false }),
+			),
+		).toEqual({ status: "unreadable", reason: "current-schema-invalid" });
+	});
+
+	it("leaves a version newer than this build alone", () => {
+		expect(
+			readStoredPreferences(
+				JSON.stringify({
+					...DEFAULT_PREFERENCES,
+					version: PREFERENCES_VERSION + 1,
+				}),
+			),
+		).toEqual({ status: "unreadable", reason: "future-version" });
 	});
 });

@@ -379,13 +379,20 @@ export const copy = {
 	settings: {
 		title: "Settings",
 		description:
-			"Choose how every source view shows your table. Your table doesn't change.",
+			"Choose how the Visual Table and every source view show your table. Your table doesn't change.",
 		done: "Done",
 		reset: "Reset to defaults",
 		previewLabel: "Preview",
 		preview: "Preview of a source view with the chosen settings",
 		display: {
 			label: "Source views",
+		},
+		visualTable: {
+			label: views.grid.label,
+		},
+		booleanCheckboxes: {
+			label: "Show true and false as checkboxes",
+			description: "Click or press Space to switch a value",
 		},
 		wrap: {
 			label: WRAP_LINES,
@@ -1291,6 +1298,11 @@ export const copy = {
 			`, type ${cellTypeLabels[type].toLowerCase()}`,
 		expectedColumnType: (type: ExpectedColumnType) =>
 			`Expected type ${expectedColumnTypeLabels[type].toLowerCase()}`,
+		// A boolean cell's checkbox (#483). Its state says only checked or
+		// not, so its name says which cell it stands in: the column as its
+		// header names it, then the row.
+		booleanCell: (header: string, column: number, row: number) =>
+			`${header.trim() === "" ? columnLetter(column) : header}, row ${row + 2}`,
 		// The editor that opens inside a cell is a control, not a cell, so it
 		// names itself by position rather than borrowing the cell's value.
 		// Columns go by the letters of the index strip, as everywhere else.

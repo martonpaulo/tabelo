@@ -34,8 +34,10 @@ import type {
 	ExpectedColumnType,
 	InlineContent,
 	Row,
+	TableDocument,
 	TextContent,
 } from "@/core/types";
+import { usePreferences } from "@/preferences/use-preferences";
 import {
 	currentMatch,
 	gridFind,
@@ -58,6 +60,7 @@ import {
 	stepColumnWidth,
 } from "@/workspace/column-width";
 import { AxisDropIndicator } from "./axis-drop-indicator";
+import { BooleanCellCheckbox } from "./boolean-cell";
 import { CellEditor, type EditorExit, wrappedLinesClass } from "./cell-editor";
 import {
 	cellTypeDiverges,
@@ -397,6 +400,19 @@ function isOnLink(target: EventTarget | null): boolean {
 	);
 }
 
+// The boolean a data cell holds, or null when it holds anything else or the
+// position is the header row. Read from the carried value, never from text.
+function booleanAt(
+	table: TableDocument,
+	position: CellPosition,
+): boolean | null {
+	const row = table.rows[position.row];
+	const column = table.columns[position.column];
+	if (!row || !column) return null;
+	const value = readCell(row, column.id);
+	return typeof value === "boolean" ? value : null;
+}
+
 // What a pointer gesture on a select handle or a cell means. "replace" is a
 // plain click, "extend" is Shift, and "toggle" is the platform modifier adding
 // a region to the selection or taking one away.
@@ -572,6 +588,8 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		(state) => state.workspace.pinFirstDataColumn,
 	);
 	const entered = usePaneEntered();
+	// Whether a boolean cell is a checkbox that toggles in place (#483).
+	const { booleanCheckboxes } = usePreferences();
 
 	// Pinning the only row or the only column holds it in place against nothing,
 	// so the layer is simply not drawn. The preference is kept either way: it
@@ -1409,7 +1427,21 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				event.preventDefault();
 				beginEditing(focus);
 				return;
-			case " ":
+			case " ": {
+				// A plain Space on a boolean cell drawn as a checkbox toggles it,
+				// as Space does on any checkbox (#483). The checkbox is no tab stop
+				// of its own, so the cell answers for it. Every other Space keeps
+				// its meaning: it types over any other cell, and the modifiers
+				// below still select.
+				const toggled =
+					!mod && !event.altKey && !event.shiftKey && booleanCheckboxes
+						? booleanAt(store.document, focus)
+						: null;
+				if (toggled !== null) {
+					event.preventDefault();
+					store.editCell(focus.row, focus.column, !toggled);
+					return;
+				}
 				// The keyboard equal of a modifier click: add the focused cell's
 				// column, or its row with Shift, to the selection, or take it away
 				// when it is already there. Ctrl rather than Cmd is what reaches the
@@ -1423,6 +1455,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				event.preventDefault();
 				store.toggleSelectionRegion(focus, event.shiftKey ? "row" : "column");
 				return;
+			}
 			case "Escape":
 				// Close the innermost thing first. The clipboard mark is the most
 				// transient thing on screen, so it goes before the selection
@@ -1872,6 +1905,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								wrappedColumns={wrappedColumnSet}
 								insertedFrom={insertionSide(insertedRows, row.id)}
 								insertedColumns={insertedColumns}
+								booleanCheckboxes={booleanCheckboxes}
 								pinnedRow={pinnedRow && rowIndex === 0}
 								pinnedColumn={pinnedColumn}
 								belowPinnedRow={pinnedRow && rowIndex === 1}
@@ -1989,6 +2023,8 @@ interface DataRowProps {
 	// props exactly as they were.
 	readonly insertedFrom: InsertedFrom;
 	readonly insertedColumns: InsertedAxis | null;
+	// Whether a boolean cell is drawn as a checkbox (#483).
+	readonly booleanCheckboxes: boolean;
 	// Whether this row is the pinned first data row, and whether the grid pins
 	// its first data column. Both arrive already narrowed to what actually
 	// renders, so an unpinned table passes the same two `false` values on every
@@ -2031,6 +2067,7 @@ const DataRow = memo(function DataRow({
 	wrappedColumns,
 	insertedFrom,
 	insertedColumns,
+	booleanCheckboxes,
 	pinnedRow,
 	pinnedColumn,
 	belowPinnedRow,
@@ -2341,16 +2378,32 @@ const DataRow = memo(function DataRow({
 										cellTypePresentationClass(type),
 									)}
 								>
-									{isTextContent(cellValue)
-										? markedValue(
-												cellValue,
-												columnIndex === markColumn ? markStart : NO_MARK,
-												columnIndex === markColumn ? markEnd : NO_MARK,
-												wrapped ? "grid-wrapped" : "grid",
-											)
-										: columnIndex === markColumn
-											? markedValue(value, markStart, markEnd, "grid")
-											: value}
+									{typeof cellValue === "boolean" && booleanCheckboxes ? (
+										<BooleanCellCheckbox
+											checked={cellValue}
+											label={copy.a11y.booleanCell(
+												cellText(column.header),
+												columnIndex,
+												rowIndex,
+											)}
+											onToggle={(next) =>
+												useTabeloStore
+													.getState()
+													.editCell(rowIndex, columnIndex, next)
+											}
+										/>
+									) : isTextContent(cellValue) ? (
+										markedValue(
+											cellValue,
+											columnIndex === markColumn ? markStart : NO_MARK,
+											columnIndex === markColumn ? markEnd : NO_MARK,
+											wrapped ? "grid-wrapped" : "grid",
+										)
+									) : columnIndex === markColumn ? (
+										markedValue(value, markStart, markEnd, "grid")
+									) : (
+										value
+									)}
 									{describesType ? (
 										<span className="sr-only">
 											{copy.a11y.cellTypeQualifier(type)}

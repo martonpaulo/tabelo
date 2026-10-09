@@ -5,7 +5,7 @@ export const PREFERENCES_STORAGE_KEY = "tabelo.preferences";
 // Where an unreadable payload is copied before the user replaces it, beside
 // the table's own recovery key and for the same reason.
 export const PREFERENCES_RECOVERY_KEY = "tabelo.preferences.recovery";
-export const PREFERENCES_VERSION = 1;
+export const PREFERENCES_VERSION = 2;
 
 // Which spaces a source view marks. These are the modes VS Code's
 // `editor.renderWhitespace` offers, kept by their names, because they are a
@@ -56,6 +56,11 @@ export interface SourceDisplay {
 // which of the two wins.
 export interface Preferences extends SourceDisplay {
 	readonly version: typeof PREFERENCES_VERSION;
+	// Whether the Visual Table draws a boolean cell as a checkbox that toggles
+	// in place, or as its text `true` or `false` (#483). One global switch, not
+	// a source display setting and never document state: the value is the same
+	// boolean either way.
+	readonly booleanCheckboxes: boolean;
 }
 
 // Every default but two is off: a source pane draws nothing and wraps nothing
@@ -75,6 +80,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
 	lineBreakIndicators: true,
 	alignColumns: true,
 	lineBreakTags: false,
+	booleanCheckboxes: true,
 };
 
 const indicatorShape = {
@@ -83,16 +89,40 @@ const indicatorShape = {
 	emptyValueIndicators: z.boolean(),
 };
 
+const sourceDisplayShape = {
+	wrap: z.boolean(),
+	...indicatorShape,
+	lineBreakIndicators: z.boolean(),
+	alignColumns: z.boolean(),
+	lineBreakTags: z.boolean(),
+};
+
 const preferencesSchema = z
 	.object({
 		version: z.literal(PREFERENCES_VERSION),
-		wrap: z.boolean(),
-		...indicatorShape,
-		lineBreakIndicators: z.boolean(),
-		alignColumns: z.boolean(),
-		lineBreakTags: z.boolean(),
+		...sourceDisplayShape,
+		booleanCheckboxes: z.boolean(),
 	})
 	.strict();
+
+// Version 1 held the source display defaults alone.
+const preferencesV1Schema = z
+	.object({ version: z.literal(1), ...sourceDisplayShape })
+	.strict();
+
+// The forward step from version 1: a boolean cell keeps the checkbox the
+// product now draws by default (#483). Its result is validated like any stored
+// payload, so a step that produced something invalid is reported rather than
+// trusted, and an invalid version 1 payload is left as it was.
+function migratePreferencesV1(raw: unknown): unknown {
+	const parsed = preferencesV1Schema.safeParse(raw);
+	if (!parsed.success) return raw;
+	return {
+		...parsed.data,
+		version: PREFERENCES_VERSION,
+		booleanCheckboxes: DEFAULT_PREFERENCES.booleanCheckboxes,
+	};
+}
 
 function storedVersion(value: unknown): unknown {
 	return typeof value === "object" && value !== null && "version" in value
@@ -107,10 +137,11 @@ export type PreferencesReadOutcome =
 			readonly reason: PersistenceFailureReason;
 	  };
 
-// The current payload, and nothing else. Older shapes were dropped with the
-// table's own historical schemas (owner, 2026-09-20): an unreadable payload
-// is preserved raw and reported, as it always was. A version this build does
-// not know is left alone rather than guessed at.
+// The current payload, or one an earlier version wrote, carried forward one
+// step at a time. Shapes from before the restart at version 1 were dropped
+// with the table's own historical schemas (owner, 2026-09-20): an unreadable
+// payload is preserved raw and reported, as it always was. A version this
+// build does not know is left alone rather than guessed at.
 function readPreferences(value: unknown): PreferencesReadOutcome {
 	const version = storedVersion(value);
 	if (typeof version !== "number" || !Number.isInteger(version)) {
@@ -119,7 +150,9 @@ function readPreferences(value: unknown): PreferencesReadOutcome {
 	if (version > PREFERENCES_VERSION) {
 		return { status: "unreadable", reason: "future-version" };
 	}
-	const current = validatePreferences(value);
+	const current = validatePreferences(
+		version === 1 ? migratePreferencesV1(value) : value,
+	);
 	return current
 		? { status: "ok", preferences: current }
 		: { status: "unreadable", reason: "current-schema-invalid" };
