@@ -353,7 +353,7 @@ export const copy = {
 	deleteTable: {
 		title: "Delete this table?",
 		description:
-			"The table and everything in it go. The other tables stay as they are.",
+			"The table and everything in it go. Any other tables stay as they are.",
 		confirm: "Delete table",
 	},
 
@@ -547,7 +547,6 @@ export const copy = {
 		viewAlreadyOpen: (label: string) =>
 			`${label} is already open in another pane.`,
 		chooseAvailableView: "Choose an available view first.",
-		deleteLastTable: "This is your only table. Delete it and you have none.",
 		layoutAlreadyApplied: "This layout is already applied.",
 		layoutOnlyArrangement:
 			"This number of views has only one arrangement. Add or close a view to change it.",

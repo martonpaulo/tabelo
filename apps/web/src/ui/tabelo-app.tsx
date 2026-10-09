@@ -126,7 +126,12 @@ export function TabeloApp() {
 	const importQuestionOpen = useTabeloStore(
 		(state) => state.pendingImport !== null,
 	);
-	const showWelcome = welcomeOpen;
+	// A library with no table has nothing to show but the welcome surface
+	// (#466), so it stays up until content or a new table arrives.
+	const noActiveTable = useTabeloStore(
+		(state) => state.library.activeId === null,
+	);
+	const showWelcome = welcomeOpen || noActiveTable;
 	// The welcome card stays up while a paste or an import asks whether row 1
 	// is the header, so the question sits over the card rather than over an
 	// empty table that is about to be replaced (owner, 2026-09-19). It only
@@ -138,6 +143,7 @@ export function TabeloApp() {
 	// Every way content can arrive while the welcome surface is open ends here:
 	// the surface goes, and focus follows the content into the workspace.
 	const finishWelcomeImport = useCallback(() => {
+		useTabeloStore.getState().ensureActiveTable();
 		setWelcomeOpen(false);
 		focusActivePane();
 	}, []);
@@ -163,13 +169,13 @@ export function TabeloApp() {
 	const startNewTable = () => {
 		dialogOpenerRef.current = null;
 		const before = useTabeloStore.getState().library.activeId;
-		if (useTabeloStore.getState().createTable().status !== "saved") return;
+		const created = useTabeloStore.getState().createTable();
+		if (created.status !== "saved") return;
 		// What "go back" undoes, for as long as this welcome surface is the one
 		// the new table opened on.
-		setNewTableRetreat({
-			created: useTabeloStore.getState().library.activeId,
-			previous: before,
-		});
+		setNewTableRetreat(
+			before === null ? null : { created: created.tableId, previous: before },
+		);
 		setRootDialog(null);
 		setWelcomeOpen(true);
 	};
@@ -193,6 +199,9 @@ export function TabeloApp() {
 	// deleting the table under the pointer never depends on it being active.
 	const deleteTable = () => {
 		if (tableToDelete) useTabeloStore.getState().deleteTable(tableToDelete);
+		// A deletion can remove a table the "go back" path names, and deleting
+		// the last one leaves a welcome surface with nothing to go back to (#466).
+		setNewTableRetreat(null);
 		setTableToDelete(null);
 		setRootDialog(null);
 	};
@@ -334,6 +343,9 @@ export function TabeloApp() {
 					<EmptyState
 						suspended={importQuestionOpen}
 						onStartEmpty={() => {
+							const started = useTabeloStore.getState().ensureActiveTable();
+							if (started.status !== "saved" && started.status !== "unchanged")
+								return;
 							setNewTableRetreat(null);
 							setWelcomeOpen(false);
 						}}

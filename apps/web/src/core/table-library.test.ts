@@ -79,18 +79,22 @@ describe("the library", () => {
 
 	it("moves to the next table when the active one is removed", () => {
 		const library = removeTable(libraryOf("A", "B", "C"), "t0");
-		expect(library?.activeId).toBe("t1");
-		expect(library?.tables.map((table) => table.name)).toEqual(["B", "C"]);
+		expect(library.activeId).toBe("t1");
+		expect(library.tables.map((table) => table.name)).toEqual(["B", "C"]);
 	});
 
 	it("keeps the active table when another one is removed", () => {
 		const library = removeTable(libraryOf("A", "B"), "t1");
-		expect(library?.activeId).toBe("t0");
+		expect(library.activeId).toBe("t0");
 	});
 
-	// The app always shows a table, so the caller empties the last one instead.
-	it("refuses to remove the only table", () => {
-		expect(removeTable(libraryOf("A"), "t0")).toBeNull();
+	// The library may be empty: nothing is active and the welcome surface
+	// shows (#466).
+	it("removes the only table and leaves nothing active", () => {
+		expect(removeTable(libraryOf("A"), "t0")).toEqual({
+			tables: [],
+			activeId: null,
+		});
 	});
 
 	it("calls the library large at the size the menu starts scrolling", () => {
@@ -123,7 +127,7 @@ describe("a table's mark", () => {
 	it("gives a new table the first mark no table uses", () => {
 		const library = libraryOf("Roster", "Budget", "Costs");
 		const gap = removeTable(library, "t1");
-		expect(gap && nextTableMark(gap)).toBe(2);
+		expect(nextTableMark(gap)).toBe(2);
 		expect(nextTableMark(library)).toBe(4);
 	});
 
@@ -135,6 +139,6 @@ describe("a table's mark", () => {
 	it("keeps every other table's mark when one is removed", () => {
 		const library = libraryOf("Roster", "Budget", "Costs");
 		const after = removeTable(library, "t0");
-		expect(after?.tables.map((table) => table.mark)).toEqual([2, 3]);
+		expect(after.tables.map((table) => table.mark)).toEqual([2, 3]);
 	});
 });

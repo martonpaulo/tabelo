@@ -30,7 +30,8 @@ function unsupportedAction(_action: never): AgentResult {
 
 export class AgentSession {
 	readonly id: string;
-	get tableId(): string {
+	// Null once the last table is deleted (#466).
+	get tableId(): string | null {
 		return useTabeloStore.getState().library.activeId;
 	}
 	private documentRevision = 0;
@@ -135,6 +136,8 @@ export class AgentSession {
 	}
 
 	private read(args: ReadRequest): AgentResult {
+		if (this.tableId === null)
+			return failure("no_active_table", this.revisions());
 		const issue = useTabeloStore.getState().storageIssue;
 		if (issue?.kind === "unreadable") return failure("unreadable_storage");
 		if (issue?.kind === "unavailable" && issue.readBlocked)
@@ -273,6 +276,10 @@ export class AgentSession {
 			}
 		>,
 	): AgentResult {
+		// With no table active there is no document to edit and no table a
+		// library command could name as current; the user starts one (#466).
+		if (this.tableId === null)
+			return failure("no_active_table", this.revisions());
 		if (call.args.tableId !== this.tableId) return failure("session_changed");
 		if (this.paused) return failure("session_paused");
 		const busy = this.busyReason();

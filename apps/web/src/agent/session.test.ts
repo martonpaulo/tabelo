@@ -30,6 +30,11 @@ afterEach(() => {
 	session.close();
 	vi.restoreAllMocks();
 });
+// The active table's id, for a test that has one open.
+function tableId(): string {
+	if (session.tableId === null) throw new Error("no active table");
+	return session.tableId;
+}
 function read(includeWorkspace = false) {
 	const outcome = session.execute(
 		{ tool: "tabelo_read", args: { sessionId: session.id, includeWorkspace } },
@@ -44,7 +49,7 @@ function command(requestId = "first") {
 		tool: "tabelo_edit_table" as const,
 		args: {
 			sessionId: session.id,
-			tableId: session.tableId,
+			tableId: tableId(),
 			requestId,
 			expectedDocumentRevision: Number(read().documentRevision),
 			operations: [
@@ -61,6 +66,67 @@ const execute = (value: unknown, sequence = 2) =>
 	session.execute(value, sequence, Date.now() + 1000);
 
 describe("agent command admission", () => {
+	// Deleting the last table leaves nothing to read or edit, and the agent is
+	// told so explicitly rather than handed a blank document (#466).
+	it("refuses document and library commands while no table is active", () => {
+		const id = tableId();
+		const revision = Number(read().documentRevision);
+		useTabeloStore.getState().deleteTable(id);
+		expect(session.tableId).toBeNull();
+		const reading = session.execute(
+			{ tool: "tabelo_read", args: { sessionId: session.id } },
+			2,
+			Date.now() + 1000,
+		);
+		expect(reading.code).toBe("no_active_table");
+		const listed = execute(
+			{ tool: "tabelo_list_tables", args: { sessionId: session.id } },
+			3,
+		);
+		expect(listed.data).toMatchObject({
+			activeTableId: null,
+			tables: [],
+			totalTables: 0,
+		});
+		const edit = execute(
+			{
+				tool: "tabelo_edit_table",
+				args: {
+					sessionId: session.id,
+					tableId: id,
+					requestId: "after-delete",
+					expectedDocumentRevision: revision,
+					operations: [
+						{
+							kind: "insert_columns",
+							anchor: { edge: "end" },
+							columns: [{ ref: "$new", header: "Category" }],
+						},
+					],
+				},
+			},
+			4,
+		);
+		expect(edit.ok).toBe(false);
+		expect(edit.code).toBe("no_active_table");
+		const create = execute(
+			{
+				tool: "tabelo_manage_tables",
+				args: {
+					sessionId: session.id,
+					tableId: id,
+					requestId: "create-after-delete",
+					expectedDocumentRevision: revision,
+					expectedLibraryRevision: 0,
+					action: { kind: "create" },
+				},
+			},
+			5,
+		);
+		expect(create.code).toBe("no_active_table");
+		expect(useTabeloStore.getState().library.tables).toHaveLength(0);
+	});
+
 	it("guards library continuation pages and reports unreadable opened data without a fake empty snapshot", () => {
 		useTabeloStore.getState().createTable("Research");
 		const listed = execute({
@@ -103,7 +169,7 @@ describe("agent command admission", () => {
 			tool: "tabelo_manage_tables",
 			args: {
 				sessionId: session.id,
-				tableId: session.tableId,
+				tableId: tableId(),
 				requestId: "create",
 				expectedDocumentRevision: 0,
 				expectedLibraryRevision: 0,
@@ -137,7 +203,7 @@ describe("agent command admission", () => {
 					tool: "tabelo_manage_tables",
 					args: {
 						sessionId: session.id,
-						tableId: session.tableId,
+						tableId: tableId(),
 						requestId,
 						expectedDocumentRevision: state.documentRevision,
 						expectedLibraryRevision: state.libraryRevision,
@@ -180,7 +246,7 @@ describe("agent command admission", () => {
 		expect(useTabeloStore.getState().library.activeId).toBe(original.tableId);
 		expect(
 			mutate(
-				{ kind: "rename", targetTableId: session.tableId, name: " " },
+				{ kind: "rename", targetTableId: tableId(), name: " " },
 				"blank",
 				7,
 			).code,
@@ -190,7 +256,7 @@ describe("agent command admission", () => {
 	it("refuses stale library mutations, paginated lists, deletions, and writes during input", () => {
 		const args = {
 			sessionId: session.id,
-			tableId: session.tableId,
+			tableId: tableId(),
 			requestId: "new",
 			expectedDocumentRevision: 0,
 			expectedLibraryRevision: 0,
@@ -239,7 +305,7 @@ describe("agent command admission", () => {
 	});
 
 	it("keeps session revisions monotonic across human table switches and refuses failed-save creation", () => {
-		const first = session.tableId;
+		const first = tableId();
 		useTabeloStore.getState().createTable("Research");
 		const second = session.tableId;
 		useTabeloStore.getState().switchTable(first);
@@ -281,7 +347,7 @@ describe("agent command admission", () => {
 		const before = read();
 		const args = {
 			sessionId: session.id,
-			tableId: session.tableId,
+			tableId: tableId(),
 			requestId: "typed",
 			expectedDocumentRevision: before.documentRevision,
 			operations: [
@@ -432,7 +498,7 @@ describe("agent command admission", () => {
 					tool: "tabelo_edit_workspace",
 					args: {
 						sessionId: session.id,
-						tableId: session.tableId,
+						tableId: tableId(),
 						requestId,
 						expectedDocumentRevision: 0,
 						expectedWorkspaceRevision: 0,
@@ -457,7 +523,7 @@ describe("agent command admission", () => {
 			tool: "tabelo_edit_workspace",
 			args: {
 				sessionId: session.id,
-				tableId: session.tableId,
+				tableId: tableId(),
 				requestId: "same",
 				expectedDocumentRevision: 0,
 				expectedWorkspaceRevision: 0,

@@ -167,7 +167,11 @@ export function preserveUnreadableLibraryAndSave(
 	activeTable: SavePayload,
 ): ReplacementOutcome {
 	return preserveRawThenWrite(browserStorage, LIBRARY_RECOVERY_KEY, raw, () => {
-		const saved = saveTable(index.activeId, activeTable);
+		// An empty library has no table to write, only the index (#466).
+		const saved =
+			index.activeId === null
+				? ({ status: "saved" } as const)
+				: saveTable(index.activeId, activeTable);
 		return saved.status === "saved" ? saveLibraryIndex(index) : saved;
 	});
 }

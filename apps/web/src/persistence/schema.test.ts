@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { layoutPresets } from "@/workspace/layout";
 import libraryIndexV1 from "./fixtures/library-index-v1.json";
+import libraryIndexV2 from "./fixtures/library-index-v2.json";
 import {
 	CURRENT_VERSION,
 	LIBRARY_VERSION,
@@ -376,10 +377,43 @@ describe("loading the library index", () => {
 				activeId: "roster",
 			}).status,
 		).toBe("unreadable");
-		expect(validateLibraryIndex({ ...libraryIndexV1, version: 3 })).toEqual({
+		expect(validateLibraryIndex({ ...libraryIndexV1, version: 4 })).toEqual({
 			status: "unreadable",
 			reason: "future-version",
 		});
+	});
+
+	it("migrates a version 2 index unchanged but for its version", () => {
+		expect(validateLibraryIndex(libraryIndexV2)).toEqual({
+			status: "ok",
+			index: { ...libraryIndexV2, version: LIBRARY_VERSION },
+		});
+	});
+
+	// Deleting the last table leaves an empty library (#466).
+	it("reads a library with no table and nothing active", () => {
+		const empty = { version: LIBRARY_VERSION, tables: [], activeId: null };
+		expect(validateLibraryIndex(empty)).toEqual({ status: "ok", index: empty });
+	});
+
+	it("refuses an active table and an empty list that disagree", () => {
+		expect(
+			validateLibraryIndex({
+				version: LIBRARY_VERSION,
+				tables: [{ id: "roster", mark: 1 }],
+				activeId: null,
+			}).status,
+		).toBe("unreadable");
+		expect(
+			validateLibraryIndex({
+				version: LIBRARY_VERSION,
+				tables: [],
+				activeId: "roster",
+			}).status,
+		).toBe("unreadable");
+		expect(
+			validateLibraryIndex({ version: 2, tables: [], activeId: null }).status,
+		).toBe("unreadable");
 	});
 
 	it("reports an invalid version 1 index instead of repairing it", () => {

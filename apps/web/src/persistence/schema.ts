@@ -29,7 +29,9 @@ export function tableRecoveryKey(id: string): string {
 // table's name, document, workspace, and draft live in that table's own
 // payload, so nothing here can drift from what the table itself says. The
 // mark lives here because the list owns it, the way it owns order (#465).
-export const LIBRARY_VERSION = 2 as const;
+// Version 3 lets the library hold no table: deleting the last one leaves an
+// empty list and nothing active (#466).
+export const LIBRARY_VERSION = 3 as const;
 
 const tableMarkSchema = z.union(
 	TABLE_MARKS.map((mark) => z.literal(mark)) as [
@@ -38,11 +40,21 @@ const tableMarkSchema = z.union(
 	],
 );
 
+const indexEntrySchema = z.object({
+	id: z.string().min(1),
+	mark: tableMarkSchema,
+});
+
 const libraryIndexSchema = z.object({
 	version: z.literal(LIBRARY_VERSION),
-	tables: z
-		.array(z.object({ id: z.string().min(1), mark: tableMarkSchema }))
-		.min(1),
+	tables: z.array(indexEntrySchema),
+	activeId: z.string().min(1).nullable(),
+});
+
+// Version 2 always held at least one table, one of them active.
+const libraryIndexV2Schema = z.object({
+	version: z.literal(2),
+	tables: z.array(indexEntrySchema).min(1),
 	activeId: z.string().min(1),
 });
 
@@ -55,15 +67,23 @@ const libraryIndexV1Schema = z.object({
 
 export type LibraryIndex = z.infer<typeof libraryIndexSchema>;
 
+// The forward step from version 2: every version 2 index is a valid version 3
+// index, so only the version changes.
+function migrateLibraryIndexV2(raw: unknown): unknown {
+	const parsed = libraryIndexV2Schema.safeParse(raw);
+	if (!parsed.success) return raw;
+	return { ...parsed.data, version: LIBRARY_VERSION };
+}
+
 // The forward step from version 1: every table keeps the colour it showed,
-// which was the one its place gave it. Its result is validated like any
-// stored index, so a step that produced something invalid is reported rather
-// than trusted.
+// which was the one its place gave it. It lands on version 2, and the next
+// step carries it on. Each result is validated like any stored index, so a
+// step that produced something invalid is reported rather than trusted.
 function migrateLibraryIndexV1(raw: unknown): unknown {
 	const parsed = libraryIndexV1Schema.safeParse(raw);
 	if (!parsed.success) return raw;
 	return {
-		version: LIBRARY_VERSION,
+		version: 2,
 		tables: parsed.data.tables.map((id, position) => ({
 			id,
 			mark: markForPosition(position),
@@ -81,13 +101,15 @@ export function validateLibraryIndex(raw: unknown):
 	const version = persistedVersion(raw);
 	if (version !== null && version > LIBRARY_VERSION)
 		return { status: "unreadable", reason: "future-version" };
+	const atV2 = version === 1 ? migrateLibraryIndexV1(raw) : raw;
 	const parsed = libraryIndexSchema.safeParse(
-		version === 1 ? migrateLibraryIndexV1(raw) : raw,
+		version === 1 || version === 2 ? migrateLibraryIndexV2(atV2) : raw,
 	);
 	const ids = parsed.success ? parsed.data.tables.map((table) => table.id) : [];
+	const activeId = parsed.success ? parsed.data.activeId : null;
 	if (
 		!parsed.success ||
-		!ids.includes(parsed.data.activeId) ||
+		(activeId === null ? ids.length > 0 : !ids.includes(activeId)) ||
 		new Set(ids).size !== ids.length
 	)
 		return { status: "unreadable", reason: "current-schema-invalid" };

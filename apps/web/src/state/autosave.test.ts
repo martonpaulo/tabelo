@@ -12,9 +12,16 @@ import {
 import { CURRENT_VERSION, tableKey } from "@/persistence/schema";
 import { flushPersistence, startAutosave, useTabeloStore } from "./store";
 
+// The active table's id, for a test that has one open.
+function activeId(): string {
+	const id = useTabeloStore.getState().library.activeId;
+	if (id === null) throw new Error("no active table");
+	return id;
+}
+
 // The active table owns the key a save writes to (#403).
 function activeTableKey(): string {
-	return tableKey(useTabeloStore.getState().library.activeId);
+	return tableKey(activeId());
 }
 
 const initialState = useTabeloStore.getInitialState();

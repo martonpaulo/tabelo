@@ -212,6 +212,12 @@ an inactive table without opening it. Failed saves refuse creation/switching;
 unreadable bytes require the user's recovery flow. Listing returns names and
 IDs only, with a revision guard for continuation pages.
 
+The library may hold no table once the user deletes the last one (#466). Then
+listing returns `activeTableId: null` and no tables, and every read, edit,
+workspace and library command fails with `no_active_table` and the current
+revisions, never a blank snapshot. The agent cannot start the first table: the
+user does, from the welcome surface.
+
 ## Admission and recovery
 
 A table command carries a session, table ID and document revision. A workspace

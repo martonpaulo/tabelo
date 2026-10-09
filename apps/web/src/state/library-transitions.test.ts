@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { documentFromMatrix } from "@/core/document";
+import { documentFromMatrix, isDocumentBlank } from "@/core/document";
 import { CURRENT_VERSION, LIBRARY_KEY, tableKey } from "@/persistence/schema";
 import { flushPersistence, useTabeloStore } from "./store";
 
@@ -12,15 +12,22 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
+// The active table's id, for a test that has one open.
+function activeId(): string {
+	const id = useTabeloStore.getState().library.activeId;
+	if (id === null) throw new Error("no active table");
+	return id;
+}
+
 function twoTables() {
-	const first = useTabeloStore.getState().library.activeId;
+	const first = activeId();
 	useTabeloStore
 		.getState()
 		.applyDocument(
 			documentFromMatrix([["Name"], ["Ingrid"]], { headerRow: true }),
 		);
 	useTabeloStore.getState().createTable();
-	const second = useTabeloStore.getState().library.activeId;
+	const second = activeId();
 	useTabeloStore.getState().switchTable(first);
 	return { first, second };
 }
@@ -105,7 +112,7 @@ describe("library transitions preserve recoverable work", () => {
 			);
 			writes.mockRestore();
 			refused.switchTable(second);
-			expect(useTabeloStore.getState().library.activeId).toBe(second);
+			expect(activeId()).toBe(second);
 			useTabeloStore.getState().switchTable(first);
 			expect(useTabeloStore.getState().draft?.text).toBe("unfinished source");
 			expect(useTabeloStore.getState().storageIssue).toBeNull();
@@ -165,7 +172,7 @@ describe("library transitions preserve recoverable work", () => {
 		expect(useTabeloStore.getState().replaceUnreadableStorage()).toBe(true);
 		const recovered = useTabeloStore.getState();
 		const saved = JSON.parse(
-			localStorage.getItem(tableKey(recovered.library.activeId)) ?? "{}",
+			localStorage.getItem(tableKey(recovered.library.activeId ?? "")) ?? "{}",
 		);
 		expect(saved.document).toEqual(recovered.document);
 		expect(localStorage.getItem(`${LIBRARY_KEY}.recovery`)).toBe(raw);
@@ -186,11 +193,11 @@ describe("a table keeps its session history while another is open", () => {
 	}
 
 	it("returns to a table with its undo and redo steps", () => {
-		const first = useTabeloStore.getState().library.activeId;
+		const first = activeId();
 		useTabeloStore.getState().applyDocument(base);
 		useTabeloStore.getState().applyDocument(edited);
 		useTabeloStore.getState().createTable();
-		const second = useTabeloStore.getState().library.activeId;
+		const second = activeId();
 		expect(useTabeloStore.getState().past).toHaveLength(0);
 		useTabeloStore.getState().switchTable(first);
 		expect(cellText()).toBe("Paulo");
@@ -204,7 +211,7 @@ describe("a table keeps its session history while another is open", () => {
 	});
 
 	it("keeps a superseded invalid draft recoverable through undo", () => {
-		const first = useTabeloStore.getState().library.activeId;
+		const first = activeId();
 		useTabeloStore.getState().applyDocument(base);
 		const pane = useTabeloStore
 			.getState()
@@ -221,13 +228,13 @@ describe("a table keeps its session history while another is open", () => {
 	});
 
 	it("drops only the deleted table's history", () => {
-		const first = useTabeloStore.getState().library.activeId;
+		const first = activeId();
 		useTabeloStore.getState().applyDocument(base);
 		useTabeloStore.getState().createTable();
-		const second = useTabeloStore.getState().library.activeId;
+		const second = activeId();
 		useTabeloStore.getState().applyDocument(edited);
 		useTabeloStore.getState().createTable();
-		const third = useTabeloStore.getState().library.activeId;
+		const third = activeId();
 		useTabeloStore.getState().deleteTable(first);
 		useTabeloStore.getState().switchTable(second);
 		expect(useTabeloStore.getState().past.length).toBeGreaterThan(0);
@@ -242,8 +249,84 @@ describe("a table keeps its session history while another is open", () => {
 		);
 		useTabeloStore.setState(initial, true);
 		useTabeloStore.getState().hydrate();
-		expect(useTabeloStore.getState().library.activeId).toBe(first);
-		expect(useTabeloStore.getState().library.activeId).not.toBe(second);
+		expect(activeId()).toBe(first);
+		expect(activeId()).not.toBe(second);
 		expect(cellText()).toBe("Ingrid");
+	});
+});
+
+// The library may hold no table (#466).
+describe("deleting the last table", () => {
+	function deleteOnlyTable() {
+		useTabeloStore
+			.getState()
+			.applyDocument(
+				documentFromMatrix([["Name"], ["Ingrid"]], { headerRow: true }),
+			);
+		flushPersistence();
+		const only = activeId();
+		useTabeloStore.getState().deleteTable(only);
+		return only;
+	}
+
+	it("removes its payload and leaves an empty library with nothing active", () => {
+		const only = deleteOnlyTable();
+		const state = useTabeloStore.getState();
+		expect(state.library).toEqual({ tables: [], activeId: null });
+		expect(isDocumentBlank(state.document)).toBe(true);
+		expect(state.past).toHaveLength(0);
+		expect(localStorage.getItem(tableKey(only))).toBeNull();
+		expect(JSON.parse(localStorage.getItem(LIBRARY_KEY) ?? "{}")).toMatchObject(
+			{ tables: [], activeId: null },
+		);
+	});
+
+	it("writes nothing while the library is empty and blank", () => {
+		deleteOnlyTable();
+		const keys = localStorage.length;
+		expect(flushPersistence().status).toBe("saved");
+		expect(localStorage.length).toBe(keys);
+		expect(useTabeloStore.getState().library.tables).toHaveLength(0);
+	});
+
+	it("reloads into the empty library", () => {
+		deleteOnlyTable();
+		useTabeloStore.setState(initial, true);
+		useTabeloStore.getState().hydrate();
+		expect(useTabeloStore.getState().library).toEqual({
+			tables: [],
+			activeId: null,
+		});
+		expect(useTabeloStore.getState().storageIssue).toBeNull();
+		expect(localStorage.length).toBe(1);
+	});
+
+	it("gives arriving content a new table and keeps it", () => {
+		deleteOnlyTable();
+		useTabeloStore
+			.getState()
+			.applyDocument(
+				documentFromMatrix([["Name"], ["Paulo"]], { headerRow: true }),
+			);
+		expect(flushPersistence().status).toBe("saved");
+		const created = activeId();
+		expect(useTabeloStore.getState().library.tables).toHaveLength(1);
+		useTabeloStore.setState(initial, true);
+		useTabeloStore.getState().hydrate();
+		expect(activeId()).toBe(created);
+		const { document } = useTabeloStore.getState();
+		expect(document.rows[0]?.cells[document.columns[0]?.id ?? ""]).toBe(
+			"Paulo",
+		);
+	});
+
+	it("starts an empty table on request", () => {
+		deleteOnlyTable();
+		const started = useTabeloStore.getState().ensureActiveTable();
+		expect(started.status).toBe("saved");
+		expect(useTabeloStore.getState().library.tables).toHaveLength(1);
+		expect(useTabeloStore.getState().ensureActiveTable().status).toBe(
+			"unchanged",
+		);
 	});
 });

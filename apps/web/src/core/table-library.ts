@@ -3,8 +3,9 @@
 // about its order or its size belongs to a component.
 //
 // A table's document, workspace, and draft stay with that table; the library
-// holds identity, order, and the colour of each table's mark. One table is always active, so the list is
-// never empty while the app is running.
+// holds identity, order, and the colour of each table's mark. The library may
+// hold no table at all: deleting the last one leaves nothing active and the app
+// shows the welcome surface (#466).
 
 export type TableId = string;
 
@@ -22,7 +23,8 @@ export interface TableEntry {
 
 export interface TableLibrary {
 	readonly tables: readonly TableEntry[];
-	readonly activeId: TableId;
+	// Null exactly when `tables` is empty.
+	readonly activeId: TableId | null;
 }
 
 // Where the library stops being comfortable to read in one menu (owner,
@@ -151,18 +153,13 @@ export function renameEntry(
 }
 
 // Removing the active table moves to its neighbour, the one after it when
-// there is one, so the list does not jump to the top. The caller keeps the
-// last table rather than removing it: a library with no table has no active
-// document to show.
-export function removeTable(
-	library: TableLibrary,
-	id: TableId,
-): TableLibrary | null {
-	if (library.tables.length < 2) return null;
+// there is one, so the list does not jump to the top. Removing the last table
+// leaves an empty library with nothing active (#466).
+export function removeTable(library: TableLibrary, id: TableId): TableLibrary {
 	const index = library.tables.findIndex((table) => table.id === id);
 	if (index === -1) return library;
 	const tables = library.tables.filter((table) => table.id !== id);
 	if (id !== library.activeId) return { ...library, tables };
 	const next = tables[Math.min(index, tables.length - 1)];
-	return { tables, activeId: next?.id ?? tables[0]?.id ?? library.activeId };
+	return { tables, activeId: next?.id ?? null };
 }

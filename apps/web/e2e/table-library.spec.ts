@@ -112,6 +112,42 @@ test("deleting a table asks first and leaves the others alone", async ({
 	).toHaveCount(1);
 });
 
+// The library may hold no table (#466): deleting the last one shows the
+// welcome surface rather than a regenerated blank table, a reload keeps it
+// there, and starting a table from it brings the workspace back.
+test("deleting the last table returns to the welcome surface, even after a reload", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Only table");
+
+	await tabelo.runAppCommand("deleteTable");
+	await tabelo.page
+		.getByRole("dialog", { name: copy.deleteTable.title })
+		.getByRole("button", { name: copy.deleteTable.confirm })
+		.click();
+	await expect(tabelo.welcome).toBeVisible();
+	await expect(tabelo.welcome).toBeFocused();
+
+	await tabelo.page.reload();
+	await expect(tabelo.welcome).toBeVisible();
+
+	await tabelo.welcome
+		.getByRole("button", { name: copy.empty.emptyAction })
+		.click();
+	await expect(tabelo.welcome).toBeHidden();
+	await expect(tabelo.cell(1, 1)).toHaveText("");
+	await tabelo.editCell(1, 1, "Fresh start");
+	const menu = await tabelo.openAppMenu();
+	await expect(
+		menu.getByRole("menuitem", { name: new RegExp(`^${DEFAULT_TABLE_NAME}`) }),
+	).toHaveCount(1);
+	await tabelo.page.keyboard.press("Escape");
+
+	await tabelo.page.reload();
+	await expect(tabelo.welcome).toBeHidden();
+	await expect(tabelo.cell(1, 1)).toHaveText("Fresh start");
+});
+
 // A table's mark colour is stored with it (#465): deleting an earlier table
 // must not repaint the ones after it, and a reload shows the same colours.
 async function markClasses(tabelo: TabeloPage): Promise<string[]> {

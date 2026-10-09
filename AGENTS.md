@@ -137,12 +137,15 @@ vocabulary and `docs/adr/` for the reasoning.
   User undo/redo pauses agent writes. Session credentials and receipts stay in
   memory. Ordinary editing needs neither an agent nor the local helper.
 
-- **A browser holds a library of tables, one of them active** (#403). Every
-  rule below is about the active table: it is the one document the views
+- **A browser holds a library of tables, at most one of them active** (#403).
+  Every rule below is about the active table: it is the one document the views
   project, and the only one an edit, a draft, or the history can reach. The
   others are storage until one is opened. There is no limit on how many a
   browser keeps; the app says so once the list stops reading comfortably in
-  one menu, and the menu scrolls from there.
+  one menu, and the menu scrolls from there. The library may hold no table:
+  deleting the last one leaves nothing active and shows the welcome surface,
+  no blank table is regenerated, and content arriving there gets a new table
+  first (decided on #466).
 - **Every table has exactly one header row.** There is no headerless mode and no
   `hasHeader` document state. Header presence is an **import-time** fact: formats
   that identify a header declare it, and CSV, TSV, or plain text asks whether row

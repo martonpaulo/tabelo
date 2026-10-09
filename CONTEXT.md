@@ -38,8 +38,10 @@ Related to: Column, Row, Cell, View, Table library
 
 The tables this browser holds and which one is active (#403). It carries
 identity, order, and the active table; each table's document, workspace, and
-draft live with that table, under its own storage key. One table is always
+draft live with that table, under its own storage key. At most one table is
 active: it is the one every view, edit, draft, and history step reaches. The
+library may be empty: deleting the last table leaves nothing active, and the
+welcome surface shows until a table is started (#466). The
 others are storage until one is opened, and no table can see another. Names
 are unique, so the list always says which table it offers.
 

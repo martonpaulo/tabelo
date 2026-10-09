@@ -114,9 +114,6 @@ export function AppMenu({
 	const workspaceLabelId = useId();
 	const canUndoDocument = useTabeloStore((state) => state.past.length > 0);
 	const library = useTabeloStore((state) => state.library);
-	// The app always shows a table, so the only one left cannot be deleted.
-	const deleteRefusal =
-		library.tables.length > 1 ? undefined : copy.disabled.deleteLastTable;
 	const columnCount = useTabeloStore((state) => state.document.columns.length);
 	const rowCount = useTabeloStore((state) => state.document.rows.length);
 	const canRedoDocument = useTabeloStore((state) => state.future.length > 0);
@@ -186,7 +183,6 @@ export function AppMenu({
 							table={table}
 							active={table.id === library.activeId}
 							size={copy.workspace.tableSize(columnCount, rowCount)}
-							deleteRefusal={deleteRefusal}
 							// Switching leaves the menu open: the reader is choosing
 							// among tables, and closing the list they are comparing
 							// would end the task at its first step (owner,
@@ -443,7 +439,6 @@ function TableCommands({
 	Separator,
 	table,
 	active,
-	deleteRefusal,
 	onOpen,
 	onRename,
 	onDelete,
@@ -455,7 +450,6 @@ function TableCommands({
 	readonly Separator: typeof DropdownMenuSeparator;
 	readonly table: TableEntry;
 	readonly active: boolean;
-	readonly deleteRefusal: string | undefined;
 	readonly onOpen: () => void;
 	readonly onRename: () => void;
 	readonly onDelete: () => void;
@@ -492,16 +486,10 @@ function TableCommands({
 				{copy.actions.downloadTable}
 			</Item>
 			<Separator />
-			<ControlTooltip reason={deleteRefusal}>
-				<Item
-					variant="destructive"
-					disabled={deleteRefusal !== undefined}
-					onClick={onDelete}
-				>
-					<IconTrash aria-hidden />
-					{copy.actions.deleteTableNamed(table.name)}
-				</Item>
-			</ControlTooltip>
+			<Item variant="destructive" onClick={onDelete}>
+				<IconTrash aria-hidden />
+				{copy.actions.deleteTableNamed(table.name)}
+			</Item>
 		</>
 	);
 }
@@ -510,7 +498,6 @@ function TableRow({
 	table,
 	active,
 	size,
-	deleteRefusal,
 	onOpen,
 	onRename,
 	onDelete,
@@ -521,7 +508,6 @@ function TableRow({
 	readonly table: TableEntry;
 	readonly active: boolean;
 	readonly size: string;
-	readonly deleteRefusal: string | undefined;
 	readonly onOpen: () => void;
 	readonly onRename: () => void;
 	readonly onDelete: () => void;
@@ -537,7 +523,6 @@ function TableRow({
 			Separator={ContextMenuSeparator}
 			table={table}
 			active={active}
-			deleteRefusal={deleteRefusal}
 			onOpen={onOpen}
 			onRename={onRename}
 			onDelete={onDelete}
@@ -615,7 +600,6 @@ function TableRow({
 						Separator={DropdownMenuSeparator}
 						table={table}
 						active={active}
-						deleteRefusal={deleteRefusal}
 						onOpen={onOpen}
 						onRename={onRename}
 						onDelete={onDelete}
