@@ -235,7 +235,9 @@ one (#370), not stepping commands or a live numeric readout. Set column width
 opens a dialog, because a typed number is a choice a menu cannot hold: it takes
 the width in rem, the unit the announcements speak, refuses a value outside the
 bounds rather than clamping it, says when the column is at the default, and
-offers Use default to go back to it. Rows have no height setting: a row is as
+offers Use default to go back to it. The visual table's pane menu adds Fit
+columns to content, which gives every unwrapped column its own content width in
+one atomic preference write, never a history step (#467, #137). Rows have no height setting: a row is as
 tall as its text, and a fixed height would clip a wrapped value (#370).
 The modifier click that builds a selection out of several
 areas is the same obligation, and the two `Space` chords above are its answer.

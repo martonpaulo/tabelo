@@ -569,6 +569,10 @@ export interface TabeloState {
 		availableRem: number,
 		contentRem?: readonly (number | undefined)[],
 	) => boolean;
+	// Gives every column the width its own content needs, in one write (#467).
+	// The caller measures, since only the DOM knows it; a column it could not
+	// measure, or one the person wrapped, keeps its width.
+	fitColumnsToContent: (contentRem: readonly (number | undefined)[]) => boolean;
 
 	addRowAbove: () => void;
 	addRowBelow: () => void;
@@ -1911,6 +1915,31 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		if (!changed) return false;
 		// Width is a workspace preference, like every other resize: it never
 		// reaches the document timeline.
+		set({ workspace: { ...state.workspace, columnWidths }, inputError: null });
+		return true;
+	},
+
+	fitColumnsToContent: (contentRem) => {
+		const state = get();
+		const columnWidths = { ...state.workspace.columnWidths };
+		let changed = false;
+		state.document.columns.forEach((column, index) => {
+			const measured = contentRem[index];
+			// A wrapped column's natural width is its widest unwrapped line, so
+			// fitting it would undo the wrapping choice; it keeps its width.
+			if (
+				measured === undefined ||
+				state.workspace.wrappedColumns.includes(column.id)
+			)
+				return;
+			const width = clampColumnWidth(measured);
+			if (columnWidths[column.id] === width) return;
+			columnWidths[column.id] = width;
+			changed = true;
+		});
+		if (!changed) return false;
+		// A workspace preference like every other width write (#137): one
+		// atomic update, never a document-history step.
 		set({ workspace: { ...state.workspace, columnWidths }, inputError: null });
 		return true;
 	},

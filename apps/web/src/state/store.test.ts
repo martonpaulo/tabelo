@@ -1718,3 +1718,53 @@ describe("typing over several selected cells", () => {
 		expect(useTabeloStore.getState().document).toEqual(before);
 	});
 });
+
+describe("fitting every column to its content (#467)", () => {
+	function withColumns() {
+		useTabeloStore
+			.getState()
+			.replaceDocument(
+				documentFromMatrix(samplePeopleMatrix(2), { headerRow: true }),
+			);
+		return useTabeloStore
+			.getState()
+			.document.columns.map((column) => column.id);
+	}
+
+	it("writes every measured width at once, clamped, outside the timeline", () => {
+		const ids = withColumns();
+		const before = useTabeloStore.getState();
+		const content = ids.map((_, index) =>
+			index === 0 ? 1 : index === 1 ? 500 : 12,
+		);
+
+		expect(before.fitColumnsToContent(content)).toBe(true);
+
+		const after = useTabeloStore.getState();
+		expect(after.workspace.columnWidths[ids[0] ?? ""]).toBe(4.5);
+		expect(after.workspace.columnWidths[ids[1] ?? ""]).toBe(64);
+		expect(after.workspace.columnWidths[ids[2] ?? ""]).toBe(12);
+		expect(after.document).toBe(before.document);
+		expect(after.past).toHaveLength(before.past.length);
+	});
+
+	it("keeps unmeasured and wrapped columns, and reports no change", () => {
+		const ids = withColumns();
+		const first = ids[0] ?? "";
+		const second = ids[1] ?? "";
+		useTabeloStore.setState((state) => ({
+			workspace: {
+				...state.workspace,
+				columnWidths: { [first]: 20, [second]: 30 },
+				wrappedColumns: [second],
+			},
+		}));
+
+		const content = ids.map((_, index) => (index === 1 ? 10 : undefined));
+		expect(useTabeloStore.getState().fitColumnsToContent(content)).toBe(false);
+		expect(useTabeloStore.getState().workspace.columnWidths).toEqual({
+			[first]: 20,
+			[second]: 30,
+		});
+	});
+});

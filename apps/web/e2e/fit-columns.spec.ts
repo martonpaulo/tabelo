@@ -89,3 +89,35 @@ test("fitting an oversized source stops at minimum zoom and preserves its text",
 	).toBeDisabled();
 	await expect(tabelo.cell(1, 2)).toHaveText(value);
 });
+
+// #467: every column takes the width its own content needs, in one command.
+test("fitting columns to content resizes every column at once", async ({
+	tabelo,
+}) => {
+	const value = "long ".repeat(14).trim();
+	await tabelo
+		.source("markdown")
+		.fill(`| A | Note |\n| --- | --- |\n| 1 | ${value} |`);
+	await expect(tabelo.cell(1, 2)).toHaveText(value);
+
+	const width = (column: number) =>
+		tabelo
+			.header(column)
+			.evaluate((node) => node.getBoundingClientRect().width);
+	const shortBefore = await width(1);
+	const longBefore = await width(2);
+
+	const menu = await tabelo.openPaneMenu("grid");
+	await menu
+		.getByRole("menuitem", { name: copy.workspace.fitColumnsToContent })
+		.click();
+	await expect(menu).toBeHidden();
+
+	// Direction, not geometry: the short column narrows, the long one widens.
+	await expect
+		.poll(
+			async () =>
+				(await width(1)) < shortBefore && (await width(2)) > longBefore,
+		)
+		.toBe(true);
+});

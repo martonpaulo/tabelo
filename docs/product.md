@@ -182,7 +182,7 @@ reversible implementation choice does not belong here.
 | Table name | Renamed from the App Menu, outside undo; the browser title is `Table name · Tabelo` | design system §3 | #82 |
 | Column width owner | A workspace preference keyed by column id | `CONTEXT.md` | #137 |
 | Column and row size | A column width can be typed exactly or reset to the default; rows have no height setting and follow their text | design system §9 | #370 |
-| Column width commands | Pointer resize, Fit column to content, and a keyboard resize | design system §9 | #81 |
+| Column width commands | Pointer resize, Fit column to content, Fit columns to content for every column at once, and a keyboard resize | design system §9 | #81, #467 |
 | Cell types | Carried, never inferred from appearance | ADR 0008 | #147 |
 | Inline formatting | Normalized inline content (marks, links, images) is document data in headers and textual cells, never marker text; `cellText` is its one projection; native values are never formatted | ADR 0011 | #306 |
 | Inline editing | The Visual Table formats the complete text of each selected textual cell as one history step, adds, edits, and removes links and images in one cell through dialogs, and edits text in a restricted rich cell editor built on the browser's editing surface with the document as the only model, whose own menu carries the Format group for the range being edited | ADR 0011 | #306, #398, #399 |

@@ -18,6 +18,7 @@ import { cn } from "@tabelo/ui/lib/utils";
 import {
 	IconAdjustmentsHorizontal,
 	IconArrowAutofitWidth,
+	IconArrowsHorizontal,
 	IconArrowsMove,
 	IconChevronDown,
 	IconClipboardCopy,
@@ -127,6 +128,27 @@ function fitColumnsToPane(paneId: string): void {
 	);
 	if (!store.fitColumnsToPaneWidth(room, content)) {
 		store.announceStatus(copy.status.fitColumnsUnchanged);
+	}
+}
+
+// Every column of a grid pane at the width its own content needs (#467).
+// Measured when the command runs, like Fit to pane width.
+function fitColumnsToContent(paneId: string): void {
+	const pane = document.querySelector<HTMLElement>(paneSelector(paneId));
+	const table = pane?.querySelector("table");
+	const store = useTabeloStore.getState();
+	const zoom =
+		store.workspace.panes.find((candidate) => candidate.id === paneId)?.zoom ??
+		DEFAULT_PANE_ZOOM;
+	const content = table
+		? measureColumnFitWidths(table, store.document.columns.length, zoom)
+		: [];
+	if (content.every((width) => width === undefined)) {
+		store.announceStatus(copy.status.fitColumnsUnavailable);
+		return;
+	}
+	if (!store.fitColumnsToContent(content)) {
+		store.announceStatus(copy.status.fitContentUnchanged);
 	}
 }
 
@@ -404,6 +426,18 @@ export function PaneMenu({
 							<IconArrowAutofitWidth aria-hidden />
 							{copy.workspace.fitToPaneWidth}
 						</DropdownMenuItem>
+						{/* Only stored widths can fit their content; a text view's
+						    columns are its text (#467). */}
+						{view.kind === "grid" && (
+							<DropdownMenuItem
+								onClick={() =>
+									menuDialog.runAfterClose(() => fitColumnsToContent(paneId))
+								}
+							>
+								<IconArrowsHorizontal aria-hidden />
+								{copy.workspace.fitColumnsToContent}
+							</DropdownMenuItem>
+						)}
 					</DropdownMenuGroup>
 
 					{/* Find is keyboard-first, and this is the affordance that keeps it
