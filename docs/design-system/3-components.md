@@ -97,11 +97,13 @@ inside a `DropdownMenuRadioGroup`, never a plain item wearing a tick or a tint.
 The primitive supplies `menuitemradio`, `aria-checked`, and the arrow-key
 behaviour. The selected row background is the only visible selection mark.
 
-A menu's checkbox and radio indicators are the product's own checkbox and radio
-controls, not menu-specific drawings: the same 1rem box, the same control
-radius, the same `--control-outline` when unset, and the same primary fill once
-set. They are declared once in `menu-styles.ts` and shared by the dropdown and
-context menus.
+A menu's indicators are the product's own controls, not menu-specific
+drawings. A radio indicator is the shared radio: the same 1rem circle, the same
+`--control-outline` when unset, and the same primary fill once set. An on/off
+item wears the shared `Switch` anatomy at menu size: an outlined track with the
+thumb at the start, the solid primary with the thumb at the end once on, so
+Settings and menus draw one kind of on/off choice. Both are declared once in
+`menu-styles.ts` and shared by the dropdown and context menus.
 
 Every option in a single-selection list uses the same anatomy: one meaningful
 leading icon, primary text with an optional description, optional trailing
@@ -370,8 +372,10 @@ stays visible only as blurred context and is inert; the global action button is 
 until the user chooses an empty table, pastes, or imports. This is an onboarding
 surface, not a dialog: it does not claim modal semantics and never appears
 automatically over saved content, an unfinished draft, or a table the user
-emptied during the current visit. An explicit New table command resets the
-document first and then returns to this surface (#46). A trusted `Mod`+`V` paste event
+emptied during the current visit. An explicit New table command adds a table
+to the library and opens it on this surface (#46, #403); going back from it
+while the new table is still empty deletes that table and returns to the one
+the user came from. A trusted `Mod`+`V` paste event
 starts the table directly while the surface is open. When a paste or an import
 has to ask whether row 1 is the header, the surface stays drawn under that
 question, inert, so no empty-table frame shows in between (owner, 2026-09-19):
@@ -452,9 +456,8 @@ A dialog is allowed **only as the direct result of a command the user issued**,
 and only when the command has a choice to make that the current menu cannot
 hold without cascading: a choice with its own options, one that needs stating
 before it happens, or the layout gallery opened from the global menu. The
-download chooser holds format-specific output choices. New table also uses a
-dialog when the current visit has held valid content or a pending draft would
-be lost; an untouched session returns to onboarding without interruption (#46).
+download chooser holds format-specific output choices. New table needs no
+dialog: it adds a table beside the others and replaces nothing (#403).
 
 Adding a view qualifies under **"needs stating before it happens"**, not under
 length. Seven views are something a menu holds comfortably, so the list is not
@@ -528,8 +531,8 @@ setting's own values: `On` and `Off` for a switch, the four modes for spaces.
 Following and overriding are therefore told apart by the checked segment's
 name alone, for sight and assistive technology alike. When the segments cannot
 share one row (spaces always, a switch below `sm`), the follow segment takes a
-row of its own above the values. The footer's `Use defaults` clears all four
-overrides and is disabled, with its reason, while the pane already follows
+row of its own above the values. The footer's `Use defaults` clears every
+override and is disabled, with its reason, while the pane already follows
 every default; `Done` closes, returning focus to the pane actions trigger. The
 menu keeps its checked `Wrap lines` beside `Display…` as the one-step toggle for
 the setting read most, and choosing it records the same override as `On` or
@@ -591,8 +594,8 @@ A dialog that asks for one value uses the shared `SingleSelectionList` and
 with native Base UI radio semantics behind the shared visual anatomy: icon on
 the left, content in the middle, and optional metadata. Each option is an
 option block (`optionBlockStyles` and `optionBlockStateStyles` in
-`packages/ui`): the muted fill at rest, 0.75rem by 0.625rem padding, the
-control radius, and 0.375rem separation. The start surface's three actions are
+`packages/ui`): the muted fill at rest, 0.75rem padding, the control radius,
+and 0.375rem separation. The start surface's three actions are
 the same block, with its recommended action wearing the primary emphasis.
 Hover uses the shared accent, the checked row is the solid primary with white
 text, keyboard focus outlines the

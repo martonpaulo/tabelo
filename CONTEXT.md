@@ -243,25 +243,33 @@ Related to: Column, Serializer
 
 ### Draft
 
-Text in a source view that has not yet been committed to the table document.
-Exactly one draft exists at a time, owned by the view being typed into; every
-other view is a pure projection. A draft may be invalid, and an invalid draft
-never modifies the table document. Interface copy calls a draft the user's
-**unfinished edits**; "draft" stays a code and documentation term (#78).
+The text buffer of the source pane being typed into, with what it parsed to.
+Exactly one draft exists at a time, owned by that pane; every other view is a
+pure projection. A draft is **clean** when its text parses: its meaning is
+already committed to the table document, and the buffer is kept so
+synchronization never rewrites the user's formatting, cursor, or history. A
+draft is **invalid** when its text does not parse: that is unfinished input,
+and it never modifies the table document. Interface copy calls an invalid
+draft the user's **unfinished edits**; "draft" stays a code and documentation
+term (#78).
 
 Related to: Commit, Parser, Superseded draft, View
 
 ### Commit
 
 The moment a valid parse of a draft replaces the table document and becomes one
-step on the document timeline. Commits are debounced, not per-keystroke.
+step on the document timeline. Every editor transaction is parsed
+synchronously, so valid text commits at once (ADR 0001); only the error
+feedback of an invalid draft waits for a short grace period. Saving to browser
+storage is separate: autosave is debounced after changes settle, and is not a
+commit.
 
 Related to: Draft, Document timeline
 
 ### Superseded draft
 
-A draft that was still uncommitted when a table edit took ownership and
-regenerated every view. It is displaced, never destroyed, and remains reachable
+An invalid draft that was still uncommitted when another edit took ownership
+and regenerated every view. It is displaced, never destroyed, and remains reachable
 through undo.
 
 Related to: Draft, Document timeline

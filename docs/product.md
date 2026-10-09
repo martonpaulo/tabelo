@@ -214,8 +214,8 @@ reversible implementation choice does not belong here.
 | Table menu order | Every table context menu, the Visual Table's and each source view's, lists its commands in one order: its own subject, Cut/Copy/Paste, Undo/Redo, Select, Insert, Duplicate/Clear, the Move, Sort, Fill, and Move focus submenus, then Delete; same label, icon, and legend for the same command | design system §3 | owner, 2026-09-19 |
 | Group titles | Alignment, Edit, Move; no single-item title | design system §3 | #75, #81 |
 | Cascading menus | Only for flat, immediate, self-explanatory command lists, one level deep; includes the grid's directional groups | design system §3 | #149, #155, #369 |
-| New table | Confirm when work exists; success returns to the welcome surface | `AGENTS.md` domain rules | #39, #46 |
-| Floating menu identity | Global commands; New table is destructive; identity includes copyright | design system §6 | #71 |
+| New table | Adds a table beside the others and asks nothing; it opens on the welcome surface, where going back deletes the still-empty table | `AGENTS.md` domain rules | #39, #46, #403 |
+| Floating menu identity | Global commands; identity includes copyright | design system §6 | #71, #403 |
 | Pinning | Optional first data row and first data column only | design system §9 | #160 |
 | Sort, find, and fill | Sorting and find are in scope; every pane finds in what it shows, and replaces only where its view is editable; fill repeats and offers a numeric series | design system §3, §9 | #143, #144, #150, #280 |
 | Whole-table structure | Transpose and Delete empty rows and columns are in scope, as floating menu commands; Transpose asks first, with Transpose anyway or Cancel, when first-column numbers, booleans, or nulls would become header text; both report in a notice with Undo, which also restores the removed columns' widths and wrapping | design system §5 | #235 |

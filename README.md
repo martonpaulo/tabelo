@@ -154,9 +154,8 @@ Paulo,Developer,No
 
 ```json
 [
-  ["Name", "Role", "Active"],
-  ["Ingrid", "Designer", "Yes"],
-  ["Paulo", "Developer", "No"]
+  {"Name": "Ingrid", "Role": "Designer", "Active": "Yes"},
+  {"Name": "Paulo", "Role": "Developer", "Active": "No"}
 ]
 ```
 
@@ -204,8 +203,9 @@ there. Those formats cannot express alignment, so Tabelo quietly remembers it.
   dropping the first column's name from the title, and dropping bullets with no
   value. Neither ever reaches the editable pane, since both throw away what the
   parser needs to read the file back.
-- **Nothing to save.** Your table stays in browser storage and comes back when
-  you return. Starting a new table asks before clearing real work.
+- **Nothing to save.** Your tables stay in this browser's storage and come back
+  when you return. The app menu lists them and switches between them, and
+  **New table** adds one beside the others instead of replacing anything.
 - **Works offline.** A service worker caches the app on your first visit. No
   install prompt, no app store, nothing to accept. When an update is ready, the
   Tabelo button marks it and offers a reload after saving the current table.
@@ -281,10 +281,16 @@ holds the working agreements.
 
 ## Privacy
 
-Your data never leaves your browser. There is no backend, no account, and no
-telemetry of any kind. The document lives in `localStorage` on your machine.
-Clear your browser storage and it is gone: there is no copy anywhere else,
+Editing never sends your data anywhere. There is no backend, no account, and no
+telemetry of any kind. Your tables live in `localStorage` on your machine.
+Clear your browser storage and they are gone: there is no copy anywhere else,
 including with us.
+
+The one exception is the optional [external agent](#external-agent), and only
+after you pair it yourself. A paired agent on your computer reaches that tab's
+tables, to read, create, open, rename and edit them but never delete one, and
+it may send what it reads to its own model provider. Disconnect it from the
+app menu at any time; until you pair one, nothing is shared.
 
 ---
 
@@ -305,7 +311,8 @@ including with us.
   other Chromium-based browsers. It may well work elsewhere, but nothing is
   checked there, and a bug that only appears in another browser is not something
   this project fixes.
-- **One document at a time.** Four views of it, but one table.
+- **One table open at a time.** The browser keeps as many as you like, and
+  every view shows the one that is open.
 - **Reordering is keyboard and menu, not drag.** This was a choice: the keyboard
   path works for everyone, and drag-only reordering does not.
 - **Layouts come from a preset list.** Eight arrangements of a 2×2 grid, not a

@@ -75,8 +75,8 @@ no reason to read; the moment a reason exists, it must be reachable without a
 pointer. This applies to the current layout in Layout and the current pane
 view in Change view, and to the find bar's buttons while there is nothing to
 step through (#376). Download remains enabled because producing a file is an
-action even when its format choice did not change; destructive New table and
-first-visit creation also still perform real actions.
+action even when its format choice did not change; New table and first-visit
+creation also still perform real actions.
 
 Destructive menu actions use one shared state treatment. Their label, icon, and
 any secondary anatomy inherit the same destructive foreground at rest, on

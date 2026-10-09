@@ -30,11 +30,14 @@ cells:
 | `documentToMatrix` + `TextEncoder.encode`, the unavoidable toll before a Wasm module computes anything | ~0.18 ms |
 | Marshalling cell by cell instead of one blob | 0.492 ms |
 
-**The tuned TypeScript version is faster than the floor cost of the Wasm
-equivalent.** Getting the table across the boundary at all costs more than doing
-the whole job in JavaScript once the JavaScript stops doing the job twice. There
-is no version of the Wasm port that wins, because the thing it would have to
-beat is cheaper than its own entry fee.
+**On that workload and machine, the tuned TypeScript version is faster than
+the floor cost of the Wasm equivalent.** Getting that table across the boundary
+cost more than doing the whole job in JavaScript once the JavaScript stopped
+doing the job twice. For this serializer at the target scale, a Wasm port had
+no room to win, because what it had to beat was cheaper than its own entry fee.
+The figures are one serializer, one table shape, one engine and one machine;
+they are not a general claim about WebAssembly, other codecs, or other
+workloads.
 
 That single-pass rewrite is #264, and its parse-side counterpart is #263. The
 work this ADR declines is the work those two make unnecessary.
@@ -50,11 +53,16 @@ The costs a port would have carried, all avoided:
   it can draw a table has a new loading state in its most common interaction.
 - **Tens to hundreds of kilobytes in the service worker precache**, paid by
   every visitor on every deploy, to save fractions of a millisecond.
-- **A second copy of the escaping rules.** `docs/adr/0002` requires Markdown's
-  escaping to be exactly reversible, and the property tests are what keep it
-  that way. Rules living in a compiled module are rules those tests cannot
-  reach, and the escaping grammar is the last place in this product that should
-  have two owners.
+- **A second home for the escaping rules.** `docs/adr/0002` requires
+  Markdown's escaping to be exactly reversible, and the property tests are what
+  keep it that way. A compiled module's exports are callable from JavaScript,
+  so those tests could still reach a port through its JavaScript boundary, and
+  a port could keep one grammar owner. The cost is the work to get there: an
+  adapter that marshals documents across the boundary, a test harness that
+  instantiates the module, and a migration during which the TypeScript and
+  compiled grammars coexist and must be proven equal. The escaping grammar is
+  the last place in this product that should carry that risk without a
+  measured gain.
 
 What this does not decide:
 

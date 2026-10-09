@@ -224,9 +224,11 @@ vocabulary and `docs/adr/` for the reasoning.
   empties the selected cells, `Mod+Backspace` deletes the selected rows or
   columns. Neither may fire while text is being edited in a cell or a source
   view.
-- **New table is destructive only when work exists.** Confirm before replacing a
-  non-empty document or any pending draft, including an invalid draft. Skip the
-  confirmation only when the document is empty and no draft exists.
+- **New table adds a table and replaces nothing** (#403). It creates a table
+  beside the others in the library and opens it on the welcome surface, so it
+  never asks: no document or draft is replaced. Going back from that welcome
+  surface while the new table is still empty deletes it and reopens the table
+  the user came from.
 
 ## Frozen technical direction
 
@@ -269,8 +271,9 @@ Do not add without an explicit, demonstrated need:
 - an animation library, CSS-in-JS, or Storybook
 - analytics or telemetry of any kind
 - a second implementation language, including WebAssembly. Measured and
-  declined in `docs/adr/0009`: the tuned TypeScript serializer is faster than
-  the floor cost of getting the table across the Wasm boundary at all
+  declined in `docs/adr/0009`: on its measured workload, the tuned TypeScript
+  serializer was faster than the floor cost of getting the table across the
+  Wasm boundary at all
 - Turborepo or Nx
 
 ## Architecture boundaries
@@ -301,10 +304,12 @@ parent-relative escape; they detect neither cycles nor orphan modules.
   rules live here and nowhere else.
 - **View registry**: what the workspace can display, described by capability.
   It may import codecs; it must never import the editor or any component.
-- **Synchronization**: owns the text draft buffer, debouncing, parse
-  scheduling, structural diffing that preserves identifiers, and loop
-  prevention. Every editor transaction carries an origin annotation;
-  sync-originated transactions never re-trigger a parse.
+- **Synchronization**: owns the text draft buffer, the synchronous parse of
+  every editor transaction and the grace period before an error shows,
+  structural diffing that preserves identifiers, and loop prevention. The
+  debounced autosave is a separate concern, not a parse delay. Every editor
+  transaction carries an origin annotation; sync-originated transactions never
+  re-trigger a parse.
 - **History**: the document timeline and its interaction with the text editor's
   local history.
 - **Persistence**: one current, versioned `localStorage` schema per stored

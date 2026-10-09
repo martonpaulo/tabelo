@@ -33,10 +33,10 @@ export const menuSingleSelectionItemStateStyles =
 
 // The option block: one choice drawn as a filled, rounded block with an icon,
 // a label, a line of detail, and an optional trailing hint. The start surface,
-// every choice dialog, and every checkbox option share it, so a choice looks
-// the same wherever it is offered (2026-09-18 restyle). Resting on the muted
-// fill, a pointer lifts it to the accent, and the chosen one, or the one
-// action a surface recommends, is the solid primary with white text.
+// every choice dialog, and every Settings and Display row share it, so a
+// choice looks the same wherever it is offered (2026-09-18 restyle). Resting
+// on the muted fill, a pointer lifts it to the accent, and the chosen one, or
+// the one action a surface recommends, is the solid primary with white text.
 export const optionBlockStyles =
 	"relative flex min-h-control-md w-full items-center gap-3 rounded-interactive bg-muted p-3 text-left text-sm leading-snug [&_[data-slot=selection-option-icon]>svg:not([class*='size-'])]:size-5";
 
@@ -51,10 +51,9 @@ export const menuShortcutStyles =
 export const menuShortcutKeyStyles =
 	"font-sans text-xs leading-none tracking-normal";
 
-// The two menu indicators wear the product's own checkbox and radio anatomy:
-// the same 1rem box, the same control radius, the same unfilled outline, and
-// the same primary fill once chosen. A menu is not the place to invent a third
-// way of drawing a choice. See docs/design-system/3-components.md.
+// The two menu indicators wear the product's own controls, so a menu is not
+// the place to invent another way of drawing a choice. The radio indicator
+// below is the shared radio. See docs/design-system/3-components.md.
 // A menu's on/off item wears the shared Switch's anatomy at menu size: an
 // outlined track with the thumb at the start, the solid primary with the thumb
 // at the end once on. Settings and menus then draw one kind of on/off choice.
