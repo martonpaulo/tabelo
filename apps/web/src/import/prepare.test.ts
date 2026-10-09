@@ -248,3 +248,30 @@ describe("header decision metadata", () => {
 		expect(result.value.headerRow).toBeUndefined();
 	});
 });
+
+// #415: the plain flavour beside merged cells carries the same shifted rows,
+// so the paste is refused rather than falling through to it.
+describe("merged HTML cells", () => {
+	const html =
+		'<table><tr><th>Name</th><th>City</th><th>Age</th></tr><tr><td rowspan="2">Ingrid</td><td>Rio</td><td>31</td></tr><tr><td>Madrid</td><td>29</td></tr></table>';
+
+	it("refuses a rich paste instead of reading its plain text", () => {
+		const result = prepareImport({
+			payload: { text: "Name\tCity\tAge\nIngrid\tRio\t31\nMadrid\t29", html },
+		});
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.error).toMatchObject({
+			code: "invalid-format",
+			format: "html",
+			issues: [{ code: "html-merged-cells-unsupported" }],
+		});
+	});
+
+	it("refuses an HTML file import", () => {
+		const result = prepareImport({ payload: { text: html }, format: "html" });
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.error.code).toBe("invalid-format");
+	});
+});

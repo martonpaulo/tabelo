@@ -689,6 +689,9 @@ export const copy = {
 				case "html-embedded-content-unsupported":
 					message = `<${issue.tag}> can't be kept in a cell. Remove it or replace it with text.`;
 					break;
+				case "html-merged-cells-unsupported":
+					message = `Row ${issue.row} has merged cells (rowspan or colspan), which a table here can't hold. Unmerge them, or repeat the value in each cell, and try again.`;
+					break;
 				case "json-invalid":
 					message = "This isn't valid JSON yet.";
 					break;
@@ -1120,10 +1123,14 @@ export const copy = {
 			kind === "close" ? "Discard and close" : "Discard and change",
 		// The message says what went wrong and what to do; the detail line
 		// says what did not happen, the same for every refusal.
-		importError: (error: ImportError) => {
+		importError: (error: ImportError): string => {
 			switch (error.code) {
-				case "invalid-format":
-					return `Not valid ${views[error.format].label}.`;
+				case "invalid-format": {
+					// The first reason the parser gave says what to change.
+					const [first] = error.issues;
+					const heading = `Not valid ${views[error.format].label}.`;
+					return first ? `${heading} ${copy.source.issue(first)}` : heading;
+				}
 				case "too-many-rows":
 					return `${error.actual} rows, over the ${error.limit} limit. Remove rows and try again.`;
 				case "too-many-columns":

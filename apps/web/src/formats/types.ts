@@ -50,6 +50,14 @@ export type ParseIssue =
 			readonly code: "html-embedded-content-unsupported";
 			readonly tag: string;
 	  } & LocatedParseIssue)
+	// A cell whose rowspan or colspan covers more than one slot (#415): the
+	// document holds one value per row and column, so the read is refused
+	// rather than shifting values under other headers. `row` is the 1-based
+	// `<tr>` of the first such cell.
+	| ({
+			readonly code: "html-merged-cells-unsupported";
+			readonly row: number;
+	  } & LocatedParseIssue)
 	| ({ readonly code: "json-invalid" } & LocatedParseIssue)
 	| ({ readonly code: "json-rows-required" } & LocatedParseIssue)
 	| ({ readonly code: "json-row-object-required" } & LocatedParseIssue)

@@ -64,6 +64,35 @@ test("a JSON file with nested cells preserves the current table", async ({
 	await expect(tabelo.notice("error")).toBeVisible();
 });
 
+// #415: a merged cell would move every later value under the wrong header,
+// so a rich paste or an HTML file holding one is refused, never read as the
+// shifted plain text beside it.
+const MERGED = [
+	"<table><tr><th>Name</th><th>City</th><th>Age</th></tr>",
+	'<tr><td rowspan="2">Ingrid</td><td>Rio</td><td>31</td></tr>',
+	"<tr><td>Madrid</td><td>29</td></tr></table>",
+].join("");
+
+test("a rich paste with merged cells preserves the current table", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "keep me");
+	await tabelo.paste("Name\tCity\tAge\nIngrid\tRio\t31\nMadrid\t29", MERGED);
+
+	await expect(tabelo.cell(1, 1)).toHaveText("keep me");
+	await expect(tabelo.notice("error")).toBeVisible();
+});
+
+test("an HTML file with merged cells preserves the current table", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "keep me");
+	await tabelo.importFile("merged.html", MERGED, "text/html");
+
+	await expect(tabelo.cell(1, 1)).toHaveText("keep me");
+	await expect(tabelo.notice("error")).toBeVisible();
+});
+
 test("an oversized paste is rejected without changing the table", async ({
 	tabelo,
 }) => {

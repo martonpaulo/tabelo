@@ -1,7 +1,7 @@
 import {
 	type ClipboardPayload,
 	type ClipboardSource,
-	readClipboardTable,
+	readClipboard,
 } from "@/clipboard/parse";
 import { stripTabeloPayload } from "@/clipboard/payload";
 import { documentFromMatrix, normalizeMatrix } from "@/core/document";
@@ -168,9 +168,19 @@ export function prepareImport(
 			warnings: parsed.warnings,
 		};
 	} else {
-		const parsed = readClipboardTable(request.payload);
+		const parsed = readClipboard(request.payload);
 		if (!parsed) return { ok: false, error: { code: "empty" } };
-		table = parsed;
+		if (!parsed.ok) {
+			return {
+				ok: false,
+				error: {
+					code: "invalid-format",
+					format: "html",
+					issues: [parsed.issue],
+				},
+			};
+		}
+		table = parsed.table;
 	}
 
 	// The shape is read off the parsed matrix, before it is padded out to a

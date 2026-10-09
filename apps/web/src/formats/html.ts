@@ -329,6 +329,29 @@ function ownCells(row: Element): Element[] {
 	);
 }
 
+// The HTML table model's reading of a span attribute: a non-negative integer
+// after optional leading whitespace, and `null` when the attribute is absent or
+// does not start with a digit, which the model treats as the default.
+// https://html.spec.whatwg.org/multipage/tables.html#processing-model-1
+function spanAttribute(cell: Element, name: string): number | null {
+	const match = /^[\t\n\f\r ]*\+?(\d+)/.exec(cell.getAttribute(name) ?? "");
+	return match?.[1] === undefined ? null : Number(match[1]);
+}
+
+// Whether a cell covers more than its own slot once the browser has laid the
+// table out (#415). A `colspan` of zero or one, or one that cannot be read, is
+// one column; a `rowspan` reaches at most to the end of its row group, and zero
+// means exactly that end, so a span that the group clips back to one row is
+// still an ordinary cell. `rowsLeft` counts this row and the ones after it in
+// the same group.
+function mergesSlots(cell: Element, rowsLeft: number): boolean {
+	const columns = spanAttribute(cell, "colspan");
+	if (columns !== null && columns > 1) return true;
+	const rows = spanAttribute(cell, "rowspan");
+	if (rows === null) return false;
+	return (rows === 0 ? rowsLeft : Math.min(rows, rowsLeft)) > 1;
+}
+
 // Extracts the first table from an HTML fragment. Shared by this codec and the
 // clipboard, which faces the same problem from a different direction. Null
 // when there is no table to read at all.
@@ -356,6 +379,22 @@ export function readHtmlTable(html: string): HtmlTableReading | null {
 		(row) => row.closest("table") === table,
 	);
 	if (rows.length === 0) return null;
+
+	// A merged cell has no place in a table of one value per row and column:
+	// appending it like any other cell moves every value after it under the
+	// wrong header, so the read is refused before anything is replaced (#415).
+	const merged = rows.findIndex((row, index) => {
+		const rowsLeft = rows
+			.slice(index)
+			.filter((later) => later.parentElement === row.parentElement).length;
+		return ownCells(row).some((cell) => mergesSlots(cell, rowsLeft));
+	});
+	if (merged !== -1) {
+		return {
+			ok: false,
+			issue: { code: "html-merged-cells-unsupported", row: merged + 1 },
+		};
+	}
 
 	const warnings: CellIssue[] = [];
 	const matrix: TextContent[][] = [];

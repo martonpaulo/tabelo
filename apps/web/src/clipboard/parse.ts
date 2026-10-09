@@ -9,6 +9,7 @@ import type {
 import { listSniffableCodecs } from "@/formats";
 import {
 	type HtmlTable,
+	type HtmlTableReading,
 	htmlProjection,
 	normalizeLineEndings,
 	readHtmlFragment,
@@ -108,15 +109,44 @@ function describedFragmentValue(
 export function readClipboardTable(
 	payload: ClipboardPayload,
 ): ClipboardTable | null {
+	const read = readClipboard(payload);
+	return read?.ok ? read.table : null;
+}
+
+export type ClipboardReading =
+	| { readonly ok: true; readonly table: ClipboardTable }
+	| { readonly ok: false; readonly issue: ParseIssue };
+
+// `readClipboardTable`, saying why a paste is refused outright. Markup that
+// refuses to be read, such as an image with no alternative text, falls through
+// to the plain text beside it, which is what every other application would
+// paste. Merged cells do not (#415): the plain flavour an application writes
+// for them carries the same shifted rows, so falling through would import
+// exactly the loss the refusal exists to prevent.
+export function readClipboard(
+	payload: ClipboardPayload,
+): ClipboardReading | null {
 	const text = payload.text ?? "";
 	const split = payload.html
 		? readTabeloPayload(payload.html)
 		: { html: "", selection: null };
 
-	// Markup that refuses to be read, such as an image with no alternative
-	// text, falls through to the plain text beside it, which is what every
-	// other application would paste.
 	const reading = split.html ? readHtmlTable(split.html) : null;
+	if (
+		reading?.ok === false &&
+		reading.issue.code === "html-merged-cells-unsupported"
+	) {
+		return { ok: false, issue: reading.issue };
+	}
+	const table = readTable(text, split, reading);
+	return table ? { ok: true, table } : null;
+}
+
+function readTable(
+	text: string,
+	split: ReturnType<typeof readTabeloPayload>,
+	reading: HtmlTableReading | null,
+): ClipboardTable | null {
 	const html = reading?.ok ? reading.table : null;
 	if (html) {
 		const typed =

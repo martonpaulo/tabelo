@@ -387,3 +387,80 @@ describe("html inline content", () => {
 		);
 	});
 });
+
+// #415: one value per row and column, so a merged cell is refused rather than
+// appended, which moved every later value under the wrong header.
+describe("html merged cells", () => {
+	const refused = (html: string) => {
+		const result = htmlCodec.parseMatrix(html);
+		expect(result.ok).toBe(false);
+		if (result.ok) return null;
+		return result.issues[0];
+	};
+
+	it("refuses a body rowspan instead of shifting the next row", () => {
+		const issue = refused(
+			'<table><tr><th>Name</th><th>City</th><th>Age</th></tr><tr><td rowspan="2">Ingrid</td><td>Rio</td><td>31</td></tr><tr><td>Madrid</td><td>29</td></tr></table>',
+		);
+		expect(issue).toEqual({ code: "html-merged-cells-unsupported", row: 2 });
+	});
+
+	it("refuses a header colspan", () => {
+		expect(
+			refused(
+				'<table><tr><th colspan="2">Person</th></tr><tr><td>Ingrid</td><td>Rio</td></tr></table>',
+			)?.code,
+		).toBe("html-merged-cells-unsupported");
+	});
+
+	it("refuses a cell spanning rows and columns", () => {
+		expect(
+			refused(
+				'<table><tr><th>A</th><th>B</th><th>C</th></tr><tr><td rowspan="2" colspan="2">x</td><td>1</td></tr><tr><td>2</td></tr></table>',
+			),
+		).toEqual({ code: "html-merged-cells-unsupported", row: 2 });
+	});
+
+	it("refuses rowspan zero when rows follow in its group", () => {
+		expect(
+			refused(
+				'<table><tbody><tr><td rowspan="0">Ingrid</td><td>Rio</td></tr><tr><td>Madrid</td></tr></tbody></table>',
+			)?.code,
+		).toBe("html-merged-cells-unsupported");
+	});
+
+	it.each([
+		['<td colspan="1" rowspan="1">Ingrid</td>', "explicit spans of one"],
+		['<td colspan="0">Ingrid</td>', "a colspan of zero"],
+		['<td colspan="wide">Ingrid</td>', "an unreadable colspan"],
+		['<td rowspan="3">Ingrid</td>', "a rowspan clipped by the last row"],
+		['<td rowspan="0">Ingrid</td>', "rowspan zero on the last row"],
+	])("reads %s as an ordinary cell (%s)", (cell) => {
+		const result = htmlCodec.parse(
+			`<table><thead><tr><th rowspan="4">Name</th><th>City</th></tr></thead><tbody><tr>${cell}<td>Rio</td></tr></tbody></table>`,
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(documentToMatrix(result.document)).toEqual([
+			["Name", "City"],
+			["Ingrid", "Rio"],
+		]);
+	});
+
+	it("keeps nested inline formatting in an unmerged table", () => {
+		const html =
+			'<table><tr><th>Name</th><th>City</th></tr><tr><td colspan="1"><strong>Ingrid</strong></td><td>Rio</td></tr></table>';
+		const result = htmlCodec.parse(html);
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		const again = htmlCodec.parse(htmlCodec.serialize(result.document));
+		expect(again.ok).toBe(true);
+		if (!again.ok) return;
+		expect(documentToMatrix(again.document)).toEqual(
+			documentToMatrix(result.document),
+		);
+		expect(htmlCodec.serialize(result.document)).toContain(
+			"<strong>Ingrid</strong>",
+		);
+	});
+});
