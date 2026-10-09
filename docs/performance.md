@@ -531,6 +531,33 @@ table with every marker removed. Milliseconds.
 | --- | --- | --- |
 | Formatted content makes the target scale slow | Every interaction stays under 200 ms INP and scrolling keeps its 19 ms worst frame. Formatting adds about 60 ms to the paste commit, the one figure that was already above 100 ms, and brings formatting a whole column beside Markdown and committing a cell beside it to 136 and 120 ms INP, from 88 and 72 | **Accepted, not traced.** Nothing crosses the 200 ms line, and the codec and clipboard figures above account for under 10 ms of any of it, so the rest is rendering the semantic elements and the source editor's update. Trace the Markdown column format first if a report names it. |
 
+### Unclosed inline candidates in one long cell (#417)
+
+A valid cell holding thousands of `[` or `![` that never complete used to be
+rescanned to its end from every opener: Markdown's label search and Jira's
+construct search (also run by the Jira row splitter at every offset) were
+quadratic in the cell's length, independently of row count. `inline-scan.bench.ts`
+doubles one cell from 2,000 to 16,000 characters beside a plain `x` control.
+Node, Vitest bench, mean of 50 samples, milliseconds; `before` is commit
+`6e951b5`, same machine and session.
+
+| cell | call | 2,000 | 4,000 | 8,000 | 16,000 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| plain control | `markdown` parse | 0.10 | 0.10 | 0.17 | 0.31 |
+| `[` before | `markdown` parse | 8.3 | 29.7 | 125.4 | 508.7 |
+| `[` after | `markdown` parse | 0.23 | 0.46 | 1.35 | 2.35 |
+| `![` before | `markdown` parse | 9.2 | 39.9 | 153.7 | 568.4 |
+| `![` after | `markdown` parse | 0.29 | 0.36 | 0.61 | 1.30 |
+| plain control | `jira` parse | 0.08 | 0.09 | 0.16 | 0.32 |
+| `[` before | `jira` parse | 14.8 | 64.9 | 260.3 | 996.2 |
+| `[` after | `jira` parse | 0.39 | 0.66 | 1.26 | 3.59 |
+| `![` before | `jira` parse | 7.3 | 33.0 | 132.1 | 504.7 |
+| `![` after | `jira` parse | 0.55 | 0.97 | 1.61 | 3.52 |
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| One long literal cell of unclosed link syntax can block the main thread | Before, each doubling multiplied the time by about four, up to a second for one 16 KB Jira cell. After, each doubling roughly doubles it, like the control | **Fixed.** A per-cell memo of where each label and destination closes (Markdown) and a per-line table of the next unescaped `]`, `\|` and `!` (Jira) replace the rescans; the grammar is unchanged. |
+
 ### Adding an entry
 
 An entry belongs here when a suspicion has been measured, whatever the answer.

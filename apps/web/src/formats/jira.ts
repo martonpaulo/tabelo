@@ -1,6 +1,6 @@
 import { cellTextContentAt } from "@/core/cell-value";
 import type { TableDocument, TextContent } from "@/core/types";
-import { jiraConstructEnd, parseJiraCell, writeJiraCell } from "./jira-inline";
+import { jiraConstructEnds, parseJiraCell, writeJiraCell } from "./jira-inline";
 import {
 	firstLineBlock,
 	lineSpans,
@@ -30,7 +30,8 @@ import type {
 // collapsed by the caller. Unlike Markdown, Jira pads nothing, so a cell's
 // surrounding space is its own.
 function jiraCellSpans(line: string): SourceRowRange[] {
-	return pipeCellSpans(line, jiraConstructEnd);
+	const constructEnd = jiraConstructEnds(line);
+	return pipeCellSpans(line, (_, index) => constructEnd(index));
 }
 
 function splitJiraRow(line: string): string[] {

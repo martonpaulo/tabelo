@@ -230,6 +230,108 @@ function decodeRange(raw: string, from: number, to: number): string {
 	return unescapeCell(raw.slice(from, to));
 }
 
+// Where a bracketed label or a parenthesised destination closes, by the offset
+// just past its opener, or -1 when it never does. A link candidate that never
+// closes used to be rescanned from every opener inside it, so one long literal
+// cell of brackets cost time quadratic in its length (#417). Remembering each
+// answer for the length of one cell's parse lets a nested opener reuse its own,
+// so every character is walked once at the nesting level it belongs to.
+type CloseMemo = Map<number, number>;
+
+interface LinkMemo {
+	readonly label: CloseMemo;
+	readonly destination: CloseMemo;
+}
+
+// One step of a close search, as a number so the walk allocates nothing per
+// character: an offset to skip to, or one of these.
+const OPEN = -1;
+const CLOSE = -2;
+const FAIL = -3;
+
+// The close of the opener whose content begins at `start`, reading with `step`.
+// Iterative, because a cell of thousands of openers would overflow the stack as
+// recursion. A level that fails fails every level around it: none of them can
+// close before it does.
+function findClose(
+	start: number,
+	to: number,
+	memo: CloseMemo,
+	step: (at: number) => number,
+): number {
+	const known = memo.get(start);
+	if (known !== undefined) return known;
+	const pending = [start];
+	let at = start;
+	while (pending.length > 0) {
+		const next = at < to ? step(at) : FAIL;
+		if (next >= 0) {
+			at = next;
+			continue;
+		}
+		const close = next === CLOSE ? at : -1;
+		if (next === OPEN) {
+			const inner = memo.get(at + 1);
+			if (inner === undefined) {
+				pending.push(at + 1);
+				at += 1;
+				continue;
+			}
+			if (inner !== -1) {
+				at = inner + 1;
+				continue;
+			}
+		}
+		if (close === -1) {
+			for (const level of pending) memo.set(level, -1);
+			break;
+		}
+		const level = pending.pop();
+		if (level !== undefined) memo.set(level, close);
+		at = close + 1;
+	}
+	return memo.get(start) ?? -1;
+}
+
+// A label nests balanced brackets and may hide one inside a code span.
+function labelClose(
+	raw: string,
+	start: number,
+	to: number,
+	memo: CloseMemo,
+): number {
+	return findClose(start, to, memo, (at) => {
+		const match = matchMarkdownEscape(raw, at);
+		if (match) return at + match.source.length;
+		const char = raw[at];
+		if (char === "`") {
+			const code = scanCode(raw, at, to);
+			return code ? code.end : at + backtickRun(raw, at, to);
+		}
+		if (char === "[") return OPEN;
+		if (char === "]") return CLOSE;
+		return at + 1;
+	});
+}
+
+// A destination nests balanced parentheses and holds no raw whitespace.
+function destinationClose(
+	raw: string,
+	start: number,
+	to: number,
+	memo: CloseMemo,
+): number {
+	return findClose(start, to, memo, (at) => {
+		const match = matchMarkdownEscape(raw, at);
+		if (match) return at + match.source.length;
+		const char = raw[at];
+		if (char === undefined || /\s/u.test(char)) return FAIL;
+		if (char === "(") return OPEN;
+		if (char === ")") return CLOSE;
+		return at + 1;
+	});
+}
+
 // `[label](url)` or `![alt](url)`, starting at the bracket. The label may nest
 // balanced brackets and hide one inside a code span; the destination may nest
 // balanced parentheses and holds no raw whitespace, as in GFM.
@@ -238,57 +340,14 @@ function scanLink(
 	index: number,
 	to: number,
 	image: boolean,
+	memo: LinkMemo,
 ): { readonly token: ParseToken; readonly end: number } | null {
 	const labelFrom = index + (image ? 2 : 1);
-	let depth = 0;
-	let at = labelFrom;
-	let labelTo = -1;
-	while (at < to) {
-		const match = matchMarkdownEscape(raw, at);
-		if (match) {
-			at += match.source.length;
-			continue;
-		}
-		const char = raw[at];
-		if (char === "`") {
-			const code = scanCode(raw, at, to);
-			at = code ? code.end : at + backtickRun(raw, at, to);
-			continue;
-		}
-		if (char === "[") depth += 1;
-		if (char === "]") {
-			if (depth === 0) {
-				labelTo = at;
-				break;
-			}
-			depth -= 1;
-		}
-		at += 1;
-	}
+	const labelTo = labelClose(raw, labelFrom, to, memo.label);
 	if (labelTo === -1 || raw[labelTo + 1] !== "(") return null;
 
 	const urlFrom = labelTo + 2;
-	let parens = 0;
-	let urlTo = -1;
-	at = urlFrom;
-	while (at < to) {
-		const match = matchMarkdownEscape(raw, at);
-		if (match) {
-			at += match.source.length;
-			continue;
-		}
-		const char = raw[at];
-		if (char === undefined || /\s/u.test(char)) return null;
-		if (char === "(") parens += 1;
-		if (char === ")") {
-			if (parens === 0) {
-				urlTo = at;
-				break;
-			}
-			parens -= 1;
-		}
-		at += 1;
-	}
+	const urlTo = destinationClose(raw, urlFrom, to, memo.destination);
 	if (urlTo === -1) return null;
 	const url = decodeRange(raw, urlFrom, urlTo);
 	if (url === "") return null;
@@ -321,6 +380,7 @@ function tokenizeMarkdown(
 		tokens.push(token);
 	};
 
+	const memo: LinkMemo = { label: new Map(), destination: new Map() };
 	let index = from;
 	while (index < to) {
 		const match = matchMarkdownEscape(raw, index);
@@ -377,7 +437,7 @@ function tokenizeMarkdown(
 			continue;
 		}
 		if (!inLabel && (char === "[" || (char === "!" && next === "["))) {
-			const link = scanLink(raw, index, to, char === "!");
+			const link = scanLink(raw, index, to, char === "!", memo);
 			if (link) {
 				push(link.token);
 				index = link.end;

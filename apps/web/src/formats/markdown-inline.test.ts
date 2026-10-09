@@ -171,3 +171,67 @@ describe("Markdown inline syntax", () => {
 		});
 	});
 });
+
+// A link candidate that never completes is literal text, and reading it once
+// must not cost a scan of the rest of the cell from every opener inside it
+// (#417). The bound is generous on purpose: the quadratic scan took seconds at
+// this length, the linear one takes milliseconds, and nothing in between is a
+// figure this test reads. `pnpm bench` measures the growth.
+const LONG_LITERAL = 64_000;
+const SCAN_BUDGET_MS = 2_000;
+
+describe("Markdown link candidates that never complete (#417)", () => {
+	it.each([
+		["opening brackets", "["],
+		["image openers", "!["],
+		["labels with an unclosed destination", "[Rio]("],
+		["nested destinations", "[Rio](x("],
+	])("reads a long cell of %s as its own text", (_, unit) => {
+		const raw = unit.repeat(Math.ceil(LONG_LITERAL / unit.length));
+		const started = performance.now();
+		const parsed = parseMarkdownCell(raw);
+		const elapsed = performance.now() - started;
+		expect(parsed).toBe(raw);
+		expect(elapsed).toBeLessThan(SCAN_BUDGET_MS);
+		expectRoundTrip(parsed);
+	});
+
+	it("still finds a link after a candidate that never closes", () => {
+		expect(
+			cellValuesEqual(
+				parseMarkdownCell("[Rio [Ingrid](https://example.com/ingrid)"),
+				content(run("[Rio "), {
+					kind: "link",
+					url: "https://example.com/ingrid",
+					children: [run("Ingrid")],
+				}),
+			),
+		).toBe(true);
+	});
+
+	it("keeps balanced brackets in a label and parentheses in a destination", () => {
+		expect(
+			cellValuesEqual(
+				parseMarkdownCell("[[Rio] `]` Ingrid](https://example.com/a(b)c)"),
+				content({
+					kind: "link",
+					url: "https://example.com/a(b)c",
+					children: [run("[Rio] "), run("]", "code"), run(" Ingrid")],
+				}),
+			),
+		).toBe(true);
+	});
+
+	it("leaves a destination with whitespace literal, then reads the next link", () => {
+		expect(
+			cellValuesEqual(
+				parseMarkdownCell("[Rio](a b) [Ingrid](c)"),
+				content(run("[Rio](a b) "), {
+					kind: "link",
+					url: "c",
+					children: [run("Ingrid")],
+				}),
+			),
+		).toBe(true);
+	});
+});

@@ -117,20 +117,44 @@ export function unescapeJiraCell(value: string): string {
 
 // Constructs
 
-// Where the unescaped `stop` character after `from` sits on the line, or -1.
-function unescapedIndex(line: string, from: number, stop: string): number {
-	for (let index = from; index < line.length; index += 1) {
-		const char = line[index];
-		if (char === "\\" && index + 1 < line.length) {
+// The first unescaped `stop` at or after any offset of one line, or -1,
+// answered from one pass over the line rather than a scan per question (#417).
+// A scan from an offset pairs every backslash with the character after it, so
+// it agrees with a scan from the line's start everywhere except inside a run of
+// backslashes it begins in. That run is resolved here; past it, the two agree.
+function unescapedFinder(line: string, stop: string): (from: number) => number {
+	const length = line.length;
+	const escaped = new Uint8Array(length);
+	for (let index = 0; index < length; index += 1) {
+		if (line[index] === "\\" && index + 1 < length) {
 			index += 1;
-			continue;
+			escaped[index] = 1;
 		}
-		if (char === stop) return index;
 	}
-	return -1;
+	const next = new Int32Array(length + 1).fill(-1);
+	for (let index = length - 1; index >= 0; index -= 1) {
+		next[index] =
+			line[index] === stop && escaped[index] === 0
+				? index
+				: (next[index + 1] ?? -1);
+	}
+	return (from) => {
+		let at = from;
+		while (at < length && line[at] === "\\") at += 1;
+		if (at >= length) return -1;
+		if ((at - from) % 2 === 0 && line[at] === stop) return at;
+		return next[at + 1] ?? -1;
+	};
 }
 
 const IMAGE_PARAMETER = "|alt=";
+
+// A construct Jira reads before it splits a table row: where it ends, one past
+// its closing character, and where its own separator sits.
+interface JiraConstruct {
+	readonly end: number;
+	readonly separator: number;
+}
 
 // A link or an image whose own separator is a bare pipe. Jira reads both
 // before it splits a table row, so the row splitter and the cell parser have
@@ -139,31 +163,62 @@ const IMAGE_PARAMETER = "|alt=";
 //   [label|url]         a bracket, a bare pipe inside, the closing bracket
 //   !url|alt=text!      a URL with no whitespace, `|alt=`, the closing `!`
 //
-// Anything else is not a construct, and its pipes split the row as ever.
-export function jiraConstructEnd(line: string, index: number): number | null {
-	const char = line[index];
-	if (char === "[") {
-		const close = unescapedIndex(line, index + 1, "]");
-		if (close === -1) return null;
-		const pipe = unescapedIndex(line.slice(0, close), index + 1, "|");
-		return pipe === -1 ? null : close + 1;
-	}
-	if (char === "!") {
-		let at = index + 1;
-		while (at < line.length) {
-			const current = line[at];
-			if (current === "\\" && at + 1 < line.length) {
-				at += 2;
-				continue;
-			}
-			if (current === undefined || /[\s|\]!]/u.test(current)) break;
-			at += 1;
+// Anything else is not a construct, and its pipes split the row as ever. The
+// reader is built once per line and asked at every offset, so the searches it
+// needs are answered from tables rather than rescanned from each candidate.
+function jiraConstructReader(
+	line: string,
+): (index: number) => JiraConstruct | null {
+	let finders: {
+		readonly bracket: (from: number) => number;
+		readonly pipe: (from: number) => number;
+		readonly bang: (from: number) => number;
+	} | null = null;
+	const find = () => {
+		finders ??= {
+			bracket: unescapedFinder(line, "]"),
+			pipe: unescapedFinder(line, "|"),
+			bang: unescapedFinder(line, "!"),
+		};
+		return finders;
+	};
+	return (index) => {
+		const char = line[index];
+		if (char === "[") {
+			const { bracket, pipe } = find();
+			const close = bracket(index + 1);
+			if (close === -1) return null;
+			const separator = pipe(index + 1);
+			return separator === -1 || separator >= close
+				? null
+				: { end: close + 1, separator };
 		}
-		if (at === index + 1 || !line.startsWith(IMAGE_PARAMETER, at)) return null;
-		const close = unescapedIndex(line, at + IMAGE_PARAMETER.length, "!");
-		return close === -1 ? null : close + 1;
-	}
-	return null;
+		if (char === "!") {
+			let at = index + 1;
+			while (at < line.length) {
+				const current = line[at];
+				if (current === "\\" && at + 1 < line.length) {
+					at += 2;
+					continue;
+				}
+				if (current === undefined || /[\s|\]!]/u.test(current)) break;
+				at += 1;
+			}
+			if (at === index + 1 || !line.startsWith(IMAGE_PARAMETER, at))
+				return null;
+			const close = find().bang(at + IMAGE_PARAMETER.length);
+			return close === -1 ? null : { end: close + 1, separator: at };
+		}
+		return null;
+	};
+}
+
+// Where each offset's construct ends, for the row splitter.
+export function jiraConstructEnds(
+	line: string,
+): (index: number) => number | null {
+	const read = jiraConstructReader(line);
+	return (index) => read(index)?.end ?? null;
 }
 
 // Parsing
@@ -231,13 +286,12 @@ function scanCode(
 function parseConstruct(
 	raw: string,
 	index: number,
-	end: number,
+	{ end, separator }: JiraConstruct,
 ): ParseToken | null {
 	if (raw[index] === "[") {
-		const pipe = unescapedIndex(raw.slice(0, end - 1), index + 1, "|");
-		const url = unescapeJiraCell(raw.slice(pipe + 1, end - 1));
+		const url = unescapeJiraCell(raw.slice(separator + 1, end - 1));
 		if (url === "") return null;
-		const label = tokenizeJira(raw, index + 1, pipe, true);
+		const label = tokenizeJira(raw, index + 1, separator, true);
 		if (tokensText(label) === "") return null;
 		return { kind: "link", url, children: label };
 	}
@@ -267,6 +321,7 @@ function tokenizeJira(
 		tokens.push(token);
 	};
 
+	let readConstruct: ((at: number) => JiraConstruct | null) | null = null;
 	let index = from;
 	while (index < to) {
 		const match = matchJiraEscape(raw, index);
@@ -291,11 +346,12 @@ function tokenizeJira(
 			continue;
 		}
 		if (!inLabel && (char === "[" || char === "!")) {
-			const end = jiraConstructEnd(raw.slice(0, to), index);
-			const token = end === null ? null : parseConstruct(raw, index, end);
-			if (end !== null && token) {
+			readConstruct ??= jiraConstructReader(raw.slice(0, to));
+			const construct = readConstruct(index);
+			const token = construct && parseConstruct(raw, index, construct);
+			if (construct && token) {
 				push(token);
-				index = end;
+				index = construct.end;
 				continue;
 			}
 		}

@@ -151,3 +151,83 @@ describe("Jira inline syntax", () => {
 		expect(cellValuesEqual(readCell(row, column.id), image)).toBe(true);
 	});
 });
+
+// A link or image candidate that never completes is literal text, and neither
+// the cell parser nor the row splitter may rescan the rest of the line from
+// every opener inside it (#417). The bound is generous on purpose: the
+// quadratic scan took seconds at this length and the linear one takes
+// milliseconds. `pnpm bench` measures the growth.
+const LONG_LITERAL = 64_000;
+const SCAN_BUDGET_MS = 2_000;
+
+describe("Jira link candidates that never complete (#417)", () => {
+	const units = [
+		["opening brackets", "["],
+		["labels with a separator but no close", "[Rio|"],
+		["escaped openers between brackets", "[\\["],
+	] as const;
+
+	it.each(units)("reads a long cell of %s as its own text", (_, unit) => {
+		const raw = unit.repeat(Math.ceil(LONG_LITERAL / unit.length));
+		const started = performance.now();
+		const parsed = parseJiraCell(raw);
+		const elapsed = performance.now() - started;
+		expect(parsed).toBe(raw.replaceAll("\\[", "["));
+		expect(elapsed).toBeLessThan(SCAN_BUDGET_MS);
+		expectRoundTrip(parsed);
+	});
+
+	it.each(units)("splits a row holding a long cell of %s", (_, unit) => {
+		const raw = unit.repeat(Math.ceil(LONG_LITERAL / unit.length));
+		const cell = raw.replaceAll("|", "\\|");
+		const started = performance.now();
+		const parsed = jiraCodec.parse(`||note||\n|${cell}|\n`);
+		const elapsed = performance.now() - started;
+		if (!parsed.ok) throw new Error("the table did not parse");
+		const [row] = parsed.document.rows;
+		const [column] = parsed.document.columns;
+		if (!row || !column) throw new Error("missing cell");
+		expect(readCell(row, column.id)).toBe(raw.replaceAll("\\[", "["));
+		expect(elapsed).toBeLessThan(SCAN_BUDGET_MS);
+	});
+
+	it("still finds a link after a candidate that never closes", () => {
+		expect(
+			cellValuesEqual(
+				parseJiraCell("[Rio [Ingrid|https://example.com/ingrid]"),
+				content({
+					kind: "link",
+					url: "https://example.com/ingrid",
+					children: [run("Rio [Ingrid")],
+				}),
+			),
+		).toBe(true);
+		expect(
+			cellValuesEqual(
+				parseJiraCell("[Rio \\] [Ingrid|https://example.com/ingrid]"),
+				content({
+					kind: "link",
+					url: "https://example.com/ingrid",
+					children: [run("Rio ] [Ingrid")],
+				}),
+			),
+		).toBe(true);
+	});
+
+	it("reads a separator after a run of backslashes by its own parity", () => {
+		// `&#92;` is the literal backslash, `\\` the line break, `\|` a pipe.
+		expect(
+			cellValuesEqual(
+				parseJiraCell("[Rio\\\\|https://example.com/rio]"),
+				content({
+					kind: "link",
+					url: "https://example.com/rio",
+					children: [run("Rio\n")],
+				}),
+			),
+		).toBe(true);
+		expect(parseJiraCell("[Rio\\|https://example.com/rio]")).toBe(
+			"[Rio|https://example.com/rio]",
+		);
+	});
+});
