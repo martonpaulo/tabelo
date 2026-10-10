@@ -10,6 +10,7 @@ import { copy } from "@/copy/copy";
 import { product, tableDocumentTitle } from "@/copy/product";
 import { isDocumentBlank } from "@/core/document";
 import { runHistory } from "@/history/coordinator";
+import { eraseStoredData, storageErased } from "@/persistence/erase";
 import { usePwaUpdate } from "@/pwa/use-pwa-update";
 import { hasSessionWork, startAutosave, useTabeloStore } from "@/state/store";
 import { AgentDialog } from "@/ui/agent-dialog";
@@ -35,6 +36,7 @@ type RootDialog =
 	| "delete-table"
 	| "rename-table"
 	| "settings"
+	| "erase"
 	| "agent"
 	| null;
 
@@ -174,6 +176,23 @@ export function TabeloApp() {
 			return;
 		dialogOpenerRef.current = appMenuTriggerRef.current;
 		setRootDialog(dialog);
+	};
+
+	// One modal step replacing another, such as Settings handing over to its
+	// erase confirmation and back (#423). The current step closes first and
+	// the next opens only once that close has finished, so two popups are never
+	// on screen together, not even mid-transition. The flow's opener is kept,
+	// so leaving the last step still returns focus to where the flow began.
+	const [nextRootDialog, setNextRootDialog] = useState<RootDialog>(null);
+	const [returnedFromErase, setReturnedFromErase] = useState(false);
+	const replaceRootDialog = (next: Exclude<RootDialog, null>) => {
+		setNextRootDialog(next);
+		setRootDialog(null);
+	};
+	const openNextRootDialog = (open: boolean) => {
+		if (open || nextRootDialog === null) return;
+		setNextRootDialog(null);
+		setRootDialog(nextRootDialog);
 	};
 
 	const closeRootDialog = (open: boolean) => {
@@ -355,7 +374,9 @@ export function TabeloApp() {
 					inert={showWelcome || undefined}
 				>
 					<Workspace
-						interactive={!showWelcome && rootDialog === null}
+						interactive={
+							!showWelcome && rootDialog === null && nextRootDialog === null
+						}
 						addViewRequest={addViewRequest}
 						addViewOpenerRef={appMenuTriggerRef}
 					/>
@@ -424,7 +445,34 @@ export function TabeloApp() {
 			/>
 			<SettingsDialog
 				open={rootDialog === "settings"}
-				onOpenChange={closeRootDialog}
+				onOpenChange={(open) => {
+					setReturnedFromErase(false);
+					closeRootDialog(open);
+				}}
+				onOpenChangeComplete={openNextRootDialog}
+				onErase={() => replaceRootDialog("erase")}
+				focusErase={returnedFromErase}
+			/>
+			<ConfirmDialog
+				open={rootDialog === "erase"}
+				// Cancel and Escape go back to Settings, onto the control that
+				// asked; nothing has been erased.
+				onOpenChange={(open) => {
+					// The close that follows a confirm is the page going away.
+					if (open || storageErased()) return;
+					setReturnedFromErase(true);
+					replaceRootDialog("settings");
+				}}
+				onOpenChangeComplete={openNextRootDialog}
+				onConfirm={() => {
+					eraseStoredData();
+					// A reload is what makes "as it did the first time" true: every
+					// store in memory is built at startup from what was just erased.
+					window.location.reload();
+				}}
+				title={copy.eraseEverything.title}
+				description={copy.eraseEverything.description}
+				confirmLabel={copy.eraseEverything.confirm}
 			/>
 			<RenameTableDialog
 				open={rootDialog === "rename-table"}

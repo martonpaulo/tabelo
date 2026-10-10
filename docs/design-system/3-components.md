@@ -696,8 +696,11 @@ One destructive control lives inside Settings rather than in a menu: erasing
 everything Tabelo stored in this browser (owner, 2026-09-20). It sits in its
 own section under the settings, below a hairline, as a destructive button with
 one line saying what goes, and it asks through the shared confirm dialog
-before anything is removed. The same confirm dialog asks before a table is
-deleted (#403). Nothing else in Settings is destructive.
+before anything is removed. That confirmation is a step of its own that
+replaces Settings rather than opening over it, and Cancel or Escape replaces it
+with Settings again, focus back on the erase button (#423). The same confirm
+dialog asks before a table is deleted (#403). Nothing else in Settings is
+destructive.
 
 Single-selection dialogs grow to show their complete option list. A dialog
 never grows past the window: every dialog caps its height at the viewport and

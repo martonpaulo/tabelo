@@ -14,9 +14,8 @@ import {
 import { Switch } from "@tabelo/ui/components/switch";
 import { cn } from "@tabelo/ui/lib/utils";
 import { IconSquareCheck, IconTrash } from "@tabler/icons-react";
-import { lazy, type ReactNode, Suspense, useId, useState } from "react";
+import { lazy, type ReactNode, Suspense, useId, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
-import { eraseStoredData } from "@/persistence/erase";
 import {
 	DEFAULT_PREFERENCES,
 	type Preferences,
@@ -28,7 +27,6 @@ import {
 	usePreferences,
 	usePreferencesIssue,
 } from "@/preferences/use-preferences";
-import { ConfirmDialog } from "@/ui/confirm-dialog";
 import {
 	DialogActions,
 	DialogAlternative,
@@ -68,16 +66,27 @@ function SwitchOption({
 // dialog closes, so there is nothing left for an Apply step to confirm
 // (owner decision, 2026-09-18). A write the browser refuses is reported in
 // place and the controls fall back to what was actually saved.
+//
+// Erasing is asked in a step of its own that replaces this dialog rather than
+// stacking over it (#423): the app owns which step is showing, and this dialog
+// only asks for the next one. `focusErase` is set when the user comes back
+// from that step, so they land on the control they left.
 export function SettingsDialog({
 	open,
 	onOpenChange,
+	onOpenChangeComplete,
+	onErase,
+	focusErase,
 }: {
 	readonly open: boolean;
 	readonly onOpenChange: (open: boolean) => void;
+	readonly onOpenChangeComplete?: (open: boolean) => void;
+	readonly onErase: () => void;
+	readonly focusErase: boolean;
 }) {
 	const preferences = usePreferences();
 	const [saveError, setSaveError] = useState(false);
-	const [eraseOpen, setEraseOpen] = useState(false);
+	const eraseRef = useRef<HTMLButtonElement>(null);
 	const titleId = useId();
 	const descriptionId = useId();
 	const displayLabelId = useId();
@@ -104,8 +113,10 @@ export function SettingsDialog({
 				setSaveError(false);
 				onOpenChange(false);
 			}}
+			onOpenChangeComplete={onOpenChangeComplete}
 		>
 			<DialogContent
+				initialFocus={focusErase ? eraseRef : undefined}
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
 				width="wide"
@@ -259,13 +270,14 @@ export function SettingsDialog({
 
 				{/* Everything this browser holds, in one place, so the way out
 				    is where the settings are rather than hidden in a menu
-				    (owner, 2026-09-20). It asks first, and it is the only
-				    destructive control here. */}
+				    (owner, 2026-09-20). It asks first, in a step that replaces
+				    this one, and it is the only destructive control here. */}
 				<section className="border-line-subtle border-t pt-4">
 					<Button
+						ref={eraseRef}
 						type="button"
 						variant="destructive"
-						onClick={() => setEraseOpen(true)}
+						onClick={onErase}
 					>
 						<IconTrash aria-hidden />
 						{copy.eraseEverything.confirm}
@@ -290,19 +302,6 @@ export function SettingsDialog({
 					</DialogConfirm>
 				</DialogActions>
 			</DialogContent>
-			<ConfirmDialog
-				open={eraseOpen}
-				onOpenChange={setEraseOpen}
-				onConfirm={() => {
-					eraseStoredData();
-					// A reload is what makes "as it did the first time" true: every
-					// store in memory is built at startup from what was just erased.
-					window.location.reload();
-				}}
-				title={copy.eraseEverything.title}
-				description={copy.eraseEverything.description}
-				confirmLabel={copy.eraseEverything.confirm}
-			/>
 		</Dialog>
 	);
 }

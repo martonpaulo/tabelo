@@ -18,6 +18,10 @@ import {
 interface ConfirmDialogProps {
 	readonly open: boolean;
 	readonly onOpenChange: (open: boolean) => void;
+	// When a close has finished its transition, for a flow whose next step
+	// may only open once this one is gone (see the design system's one-dialog
+	// rule).
+	readonly onOpenChangeComplete?: (open: boolean) => void;
 	readonly onConfirm: () => void;
 	readonly title: string;
 	readonly description: string;
@@ -27,13 +31,18 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
 	open,
 	onOpenChange,
+	onOpenChangeComplete,
 	onConfirm,
 	title,
 	description,
 	confirmLabel,
 }: ConfirmDialogProps) {
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog
+			open={open}
+			onOpenChange={onOpenChange}
+			onOpenChangeComplete={onOpenChangeComplete}
+		>
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>{title}</DialogTitle>
