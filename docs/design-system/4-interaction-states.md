@@ -117,7 +117,17 @@ pane's anatomy: the alert and `Unavailable` status, a reason that says the
 table and any unsaved text are safe, and `Reload view` and `Change view` below
 it. The header, the other panes, the document, the pending draft, and autosave
 keep working, because none of them lives in the view. Focus moves to
-`Reload view` only when the failure took it from inside the pane.
+`Reload view` only when the failure took it from inside the pane, and returns
+to the pane frame when `Reload view` held it, so a reload never drops focus to
+the page.
+
+**A view whose code never arrived offers `Reload Tabelo`** (#419). The
+source editor and the preview load as their own chunks, and the browser keeps
+a failed chunk request for the life of the page, so mounting the view again
+cannot recover it. The pane keeps the same anatomy, with a reason that names
+the connection, and `Reload Tabelo` in place of `Reload view`. It writes the
+table and any unfinished edits to storage first and reloads only when that
+write succeeds; otherwise the page stays, with an error notice saying why.
 
 **A saved workspace says it is loading** (#420). Restoring a saved table waits
 for the code of the views it shows before the workspace renders, so the page

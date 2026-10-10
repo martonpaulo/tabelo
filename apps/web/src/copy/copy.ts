@@ -493,6 +493,12 @@ export const copy = {
 		viewFailed:
 			"This view ran into a problem and stopped. Your table and your unsaved text are safe.",
 		reloadView: "Reload view",
+		// A pane whose view's code never arrived, usually a dropped connection
+		// (#419). Only loading the page again can fetch it, and that waits for
+		// the session to be saved, so the promise holds.
+		viewCodeUnavailable:
+			"This view couldn't be loaded. Check your connection, then reload Tabelo. Your table and your unfinished edits are saved first.",
+		reloadApp: "Reload Tabelo",
 		changeViewHint: (label: string) =>
 			`Choose the view shown in the ${label} pane`,
 		movePane: "Move pane",
@@ -1273,6 +1279,10 @@ export const copy = {
 		replacedSavedData: "Saved data replaced. The original was kept.",
 		updateCheckFailed: "Couldn't check for an update. Try again later.",
 		updateFailed: "Couldn't update. Reload and try again.",
+		// Reload Tabelo refuses to leave the page while the session can't be
+		// stored, since the reload would lose it (#419).
+		reloadBlocked:
+			"Couldn't reload, because your table couldn't be saved first. It stays open here.",
 	},
 
 	a11y: {

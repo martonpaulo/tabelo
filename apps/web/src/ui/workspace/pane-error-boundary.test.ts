@@ -2,9 +2,18 @@
 
 import { act, createElement, type ReactNode, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	type Mock,
+	vi,
+} from "vitest";
 import { PaneErrorBoundary, usePaneFailure } from "./pane-error-boundary";
 import { PaneEntryContext } from "./use-pane-entry";
+import { ViewCodeUnavailable } from "./view-code-unavailable";
 
 // A pane catches its own view's failure. What matters is the contract, not
 // the words: the view is replaced by a status offering two commands, the
@@ -17,11 +26,17 @@ declare global {
 let host: HTMLElement;
 let root: Root;
 let failing: boolean;
+let onReloadApp: Mock<() => void>;
 
 // A view that throws while it renders whenever the test says so.
 function View() {
 	if (failing) throw new Error("the view failed");
 	return createElement("p", { "data-view": "" }, "view content");
+}
+
+// A lazy view whose code failed to load, as its loader reports it.
+function UnloadedView(): never {
+	throw new ViewCodeUnavailable(new TypeError("Failed to fetch"));
 }
 
 // A view that reports a failure raised outside React, as CodeMirror does.
@@ -48,6 +63,7 @@ function render(
 				createElement(PaneErrorBoundary, {
 					viewId,
 					onChangeView,
+					onReloadApp,
 					children: child(),
 				}),
 				createElement("p", { "data-sibling": "" }, "other pane"),
@@ -71,6 +87,7 @@ beforeEach(() => {
 	document.body.append(host);
 	root = createRoot(host);
 	failing = false;
+	onReloadApp = vi.fn();
 	reportFromOutside = null;
 	// React and the boundary both log the caught error, which is expected here.
 	vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -99,6 +116,26 @@ describe("PaneErrorBoundary", () => {
 		act(() => buttons()[0]?.click());
 		expect(failure()).toBeNull();
 		expect(host.querySelector("[data-view]")).not.toBeNull();
+	});
+
+	// Code that never arrived cannot be mounted again: the browser keeps the
+	// failed request, so the first command loads the page instead (#419).
+	it("offers a page reload, not a remount, for a view whose code never arrived", () => {
+		render("markdown", () => createElement(UnloadedView));
+		expect(failure()?.dataset.paneFailure).toBe("code");
+		act(() => buttons()[0]?.click());
+		expect(onReloadApp).toHaveBeenCalledOnce();
+		expect(failure()).not.toBeNull();
+	});
+
+	it("remounts a view that broke while running, without reloading the page", () => {
+		failing = true;
+		render("markdown", () => createElement(View));
+		expect(failure()?.dataset.paneFailure).toBe("view");
+		failing = false;
+		act(() => buttons()[0]?.click());
+		expect(onReloadApp).not.toHaveBeenCalled();
+		expect(failure()).toBeNull();
 	});
 
 	it("hands the change-view command its own button as the opener", () => {
@@ -130,6 +167,18 @@ describe("PaneErrorBoundary", () => {
 		failing = true;
 		render("markdown", () => createElement(View), vi.fn(), true);
 		expect(document.activeElement).toBe(buttons()[0]);
+	});
+
+	it("returns focus to the pane frame when reloading took it from the command", () => {
+		host.dataset.paneId = "pane";
+		host.tabIndex = -1;
+		failing = true;
+		render("markdown", () => createElement(View), vi.fn(), true);
+		expect(document.activeElement).toBe(buttons()[0]);
+		failing = false;
+		act(() => buttons()[0]?.click());
+		expect(host.querySelector("[data-view]")).not.toBeNull();
+		expect(document.activeElement).toBe(host);
 	});
 
 	it("leaves focus alone when the view failed while nobody was in it", () => {

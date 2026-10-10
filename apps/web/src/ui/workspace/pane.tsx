@@ -20,6 +20,7 @@ import { PaneFindBar } from "./find-bar";
 import { PaneContent } from "./pane-content";
 import { PaneErrorBoundary } from "./pane-error-boundary";
 import { PaneIdentity, PaneMenu } from "./pane-menu";
+import { reloadAppAfterSave } from "./reload-app";
 import { PaneAssistanceContext } from "./use-pane-assistance";
 import { PaneEntryContext, usePaneEntry } from "./use-pane-entry";
 import {
@@ -239,7 +240,11 @@ export const Pane = memo(function Pane({
 						<PaneAssistanceContext.Provider value={assistance}>
 							{/* Around the content only, so a view that fails leaves the
 							    header, its Change view command, and the find bar working. */}
-							<PaneErrorBoundary viewId={view.id} onChangeView={changeView}>
+							<PaneErrorBoundary
+								viewId={view.id}
+								onChangeView={changeView}
+								onReloadApp={reloadAppAfterSave}
+							>
 								{view.kind === "grid" ? (
 									<PaneContent
 										paneId={pane.id}

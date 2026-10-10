@@ -12,6 +12,7 @@ import {
 import { copy } from "@/copy/copy";
 import { AvailabilityStatus } from "@/ui/primitives/selection-option";
 import { usePaneEntered } from "./use-pane-entry";
+import { ViewCodeUnavailable } from "./view-code-unavailable";
 
 // One view failing must never take the app down with it. React unmounts the
 // whole root on an error no boundary catches, which turned a single view's
@@ -42,11 +43,18 @@ interface PaneErrorBoundaryProps {
 	// it clears the failure.
 	readonly viewId: string;
 	readonly onChangeView: (opener: HTMLButtonElement | null) => void;
+	// Loads the page again once the session is safely stored, the one recovery
+	// for a view whose code never arrived (#419).
+	readonly onReloadApp: () => void;
 	readonly children: ReactNode;
 }
 
+// Why the pane stopped: its view broke while it ran, which mounting it again
+// can recover, or its code never arrived, which only a page load can.
+type PaneFailureKind = "view" | "code";
+
 interface PaneErrorBoundaryState {
-	readonly failed: boolean;
+	readonly failure: PaneFailureKind | null;
 	// Bumped by Reload view, so the view mounts again from nothing rather than
 	// resuming whatever state it failed in.
 	readonly generation: number;
@@ -56,43 +64,67 @@ export class PaneErrorBoundary extends Component<
 	PaneErrorBoundaryProps,
 	PaneErrorBoundaryState
 > {
-	override state: PaneErrorBoundaryState = { failed: false, generation: 0 };
+	override state: PaneErrorBoundaryState = { failure: null, generation: 0 };
 
-	static getDerivedStateFromError(): Partial<PaneErrorBoundaryState> {
-		return { failed: true };
+	static getDerivedStateFromError(
+		error: unknown,
+	): Partial<PaneErrorBoundaryState> {
+		return {
+			failure: error instanceof ViewCodeUnavailable ? "code" : "view",
+		};
 	}
 
 	override componentDidCatch(error: unknown, info: ErrorInfo) {
 		console.error(error, info.componentStack);
 	}
 
+	// Where focus goes once Reload view has replaced the failure, set only when
+	// the command held focus: removing it would otherwise drop focus to the
+	// page. The pane frame says which pane came back, and entering its content
+	// stays a deliberate keystroke, as everywhere else focus is placed.
+	private focusAfterRestart: HTMLElement | null = null;
+
 	override componentDidUpdate(previous: PaneErrorBoundaryProps) {
-		if (previous.viewId !== this.props.viewId && this.state.failed) {
-			this.setState(({ generation }) => ({
-				failed: false,
-				generation: generation + 1,
-			}));
+		if (previous.viewId !== this.props.viewId && this.state.failure) {
+			this.restart();
+			return;
 		}
+		const target = this.focusAfterRestart;
+		this.focusAfterRestart = null;
+		if (target && !this.state.failure) {
+			const active = document.activeElement;
+			if (!active || active === document.body) target.focus();
+		}
+	}
+
+	private restart() {
+		this.setState(({ generation }) => ({
+			failure: null,
+			generation: generation + 1,
+		}));
 	}
 
 	// Stable for the boundary's lifetime, so a view can hold it in a ref.
 	private readonly report: ReportFailure = (error) => {
 		console.error(error);
-		if (!this.state.failed) this.setState({ failed: true });
+		if (!this.state.failure) this.setState({ failure: "view" });
 	};
 
-	private readonly reload = () => {
-		this.setState(({ generation }) => ({
-			failed: false,
-			generation: generation + 1,
-		}));
+	private readonly reload = (command: HTMLButtonElement) => {
+		this.focusAfterRestart =
+			document.activeElement === command
+				? command.closest<HTMLElement>("[data-pane-id]")
+				: null;
+		this.restart();
 	};
 
 	override render() {
-		if (this.state.failed) {
+		if (this.state.failure) {
 			return (
 				<PaneFailure
+					kind={this.state.failure}
 					onReload={this.reload}
+					onReloadApp={this.props.onReloadApp}
 					onChangeView={this.props.onChangeView}
 				/>
 			);
@@ -112,15 +144,21 @@ function ViewGeneration({ children }: { readonly children: ReactNode }) {
 }
 
 // The blocked pane's anatomy (docs/design-system/4-interaction-states.md): the
-// alert and Unavailable status, the reason, and the commands that recover.
+// alert and Unavailable status, the reason, and the commands that recover. A
+// view whose code never arrived offers Reload Tabelo in place of Reload view,
+// because mounting it again would meet the same remembered failure.
 function PaneFailure({
+	kind,
 	onReload,
+	onReloadApp,
 	onChangeView,
 }: {
-	readonly onReload: () => void;
+	readonly kind: PaneFailureKind;
+	readonly onReload: (command: HTMLButtonElement) => void;
+	readonly onReloadApp: () => void;
 	readonly onChangeView: (opener: HTMLButtonElement | null) => void;
 }) {
-	const reload = useRef<HTMLButtonElement>(null);
+	const recover = useRef<HTMLButtonElement>(null);
 	// A failure inside a view the user was working in removes the element that
 	// had focus, and the browser drops it to the page. The keyboard user lands
 	// on the first recovery command instead of nowhere. Entry is still the
@@ -131,31 +169,37 @@ function PaneFailure({
 	useEffect(() => {
 		const active = document.activeElement;
 		if (wasEntered.current && (!active || active === document.body)) {
-			reload.current?.focus();
+			recover.current?.focus();
 		}
 	}, []);
 	return (
 		<div
 			role="status"
 			aria-label={copy.a11y.failedView}
-			data-pane-failure=""
+			data-pane-failure={kind}
 			className="flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-4 text-center text-sm"
 		>
 			<AvailabilityStatus kind="unavailable" />
 			<p className="max-w-md select-text text-pretty text-muted-foreground">
-				{copy.workspace.viewFailed}
+				{kind === "code"
+					? copy.workspace.viewCodeUnavailable
+					: copy.workspace.viewFailed}
 			</p>
 			<div className="flex flex-wrap items-center justify-center gap-2">
 				<Button
-					ref={reload}
+					ref={recover}
 					variant="secondary"
 					size="xs"
 					className="bg-accent"
 					data-pane-entry=""
-					onClick={onReload}
+					onClick={(event) =>
+						kind === "code" ? onReloadApp() : onReload(event.currentTarget)
+					}
 				>
 					<IconRefresh aria-hidden />
-					{copy.workspace.reloadView}
+					{kind === "code"
+						? copy.workspace.reloadApp
+						: copy.workspace.reloadView}
 				</Button>
 				<Button
 					variant="secondary"

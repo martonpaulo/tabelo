@@ -6,6 +6,7 @@ import { TableGrid } from "@/ui/grid/table-grid";
 import { BlockedState } from "@/ui/source/blocked-state";
 import type { ViewDefinition, ViewKind } from "@/views/types";
 import type { SourceDisplayOverrides } from "@/workspace/source-display";
+import { ViewCodeUnavailable } from "./view-code-unavailable";
 
 // A code-split view that can be loaded ahead of its first render. React.lazy
 // suspends the first render of every lazy component, even one whose module has
@@ -16,6 +17,13 @@ import type { SourceDisplayOverrides } from "@/workspace/source-display";
 // takes is fixed when it mounts: switching from the lazy wrapper to the direct
 // component later would be a different element type, and React would remount
 // the view, taking CodeMirror's caret and local history with it.
+//
+// A load that fails, such as a chunk request lost to a dropped connection,
+// rejects with a `ViewCodeUnavailable`, so the pane can tell it from a view
+// that broke while running (#419). Mounting the view again cannot recover it:
+// React.lazy keeps the rejection, and the browser keeps a failed module fetch
+// for the life of the page, answering a second import of the same chunk with
+// the same failure and no request. Only loading the page again asks again.
 function preloadableView<Props extends object>(
 	load: () => Promise<{ readonly default: ComponentType<Props> }>,
 ) {
@@ -23,10 +31,15 @@ function preloadableView<Props extends object>(
 	let pending: Promise<{ readonly default: ComponentType<Props> }> | null =
 		null;
 	const preload = () => {
-		pending ??= load().then((module) => {
-			loaded = module.default;
-			return module;
-		});
+		pending ??= load().then(
+			(module) => {
+				loaded = module.default;
+				return module;
+			},
+			(error: unknown) => {
+				throw new ViewCodeUnavailable(error);
+			},
+		);
 		return pending;
 	};
 	const Suspending = lazy(preload);
@@ -58,7 +71,7 @@ const preloadByKind: Readonly<
 // Loads the code of every lazy view in the list and settles when all of it is
 // here, or returns null when none of them is lazy, so a caller can tell that
 // there is nothing to wait for. A failed load settles too: the pane's own lazy
-// path then meets the same failure it always did.
+// path then meets the same failure and shows it.
 export function preloadPaneContent(
 	views: readonly ViewDefinition[],
 ): Promise<void> | null {
