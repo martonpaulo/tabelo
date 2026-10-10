@@ -4,6 +4,7 @@ import { getCodec, listCodecs } from "@/formats";
 import { expect, test } from "./fixtures";
 import {
 	downloadConfirm,
+	expectDescribedBy,
 	openDownloadChooser,
 	renderedSource,
 } from "./helpers";
@@ -347,6 +348,12 @@ test("an invalid draft is named rather than silently left out", async ({
 	await expect(
 		dialog.getByRole("button", { name: copy.download.copyDraft }),
 	).toBeVisible();
+	// The warning is the confirm's description, so reaching Download from the
+	// keyboard says what the file will leave out (#453).
+	await expectDescribedBy(
+		downloadConfirm(page),
+		dialog.locator("[data-draft-warning]"),
+	);
 
 	// Downloading gives exactly what the message promised: the last valid table.
 	const file = await savedFile(page, async () => {
@@ -400,6 +407,8 @@ test("a healthy document shows no draft warning", async ({ page, tabelo }) => {
 	await expect(
 		page.getByRole("button", { name: copy.download.copyDraft }),
 	).toHaveCount(0);
+	// Nothing to warn about, so the confirm carries no description at all.
+	await expect(downloadConfirm(page)).toHaveAccessibleDescription("");
 });
 
 // An output option a keyboard cannot reach is not an option. The two Records
@@ -430,6 +439,14 @@ test("an output option is reached by Tab and toggled by Space", async ({
 	const options = declared.map((option) =>
 		dialog.getByRole("checkbox", { name: copy.download.option(option) }),
 	);
+	// Each option's helper is its own checkbox's description (#453), so the
+	// explanation arrives with the focus rather than only by reading on.
+	for (const option of declared) {
+		await expectDescribedBy(
+			dialog.getByRole("checkbox", { name: copy.download.option(option) }),
+			dialog.locator(`[data-output-option="${option}"] p`),
+		);
+	}
 
 	for (const option of options) {
 		const before = await option.isChecked();

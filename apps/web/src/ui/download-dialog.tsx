@@ -84,6 +84,8 @@ export function DownloadDialog({
 	const titleId = useId();
 	const hintId = useId();
 	const formatDescriptionId = useId();
+	const draftWarningId = useId();
+	const lossWarningId = useId();
 
 	const selectedCodec =
 		codecs.find((candidate) => candidate.id === selected) ??
@@ -111,6 +113,13 @@ export function DownloadDialog({
 	// it is said before the download, beside the choice (#306).
 	const formatted = hasInlineContent(document);
 	const flattens = formatted && flattensInlineContent(codec);
+	// Each consequence describes the control that authorizes it (#453): the
+	// loss belongs to the format choice and both belong to the confirm, so a
+	// keyboard user reaching either hears it before anything is written.
+	const consequenceIds = [
+		pendingDraft ? draftWarningId : null,
+		flattens ? lossWarningId : null,
+	].filter((id) => id !== null);
 
 	const confirm = () => {
 		const failure = canSerialize(codec, document);
@@ -158,7 +167,9 @@ export function DownloadDialog({
 
 				{pendingDraft ? (
 					<Notice severity="warning">
-						<span className="flex-1">{copy.download.invalidDraft}</span>
+						<span id={draftWarningId} data-draft-warning className="flex-1">
+							{copy.download.invalidDraft}
+						</span>
 						<Button
 							variant="outline"
 							size="xs"
@@ -173,7 +184,11 @@ export function DownloadDialog({
 
 				<SingleSelectionList
 					aria-label={copy.download.format}
-					aria-describedby={formatDescriptionId}
+					aria-describedby={
+						flattens
+							? `${formatDescriptionId} ${lossWarningId}`
+							: formatDescriptionId
+					}
 					className="grid-cols-2"
 					value={codec.id}
 					onValueChange={(value) => setSelected(value as CodecId)}
@@ -198,27 +213,48 @@ export function DownloadDialog({
 				{/* The chosen format described once, below the grid, and the
 				    options it declares under that description: they belong to the
 				    format they modify. */}
-				<div className="grid gap-1.5">
-					<p id={formatDescriptionId} className="text-muted-foreground text-sm">
-						{getView(codec.id).description}
-					</p>
-					{options.map((option) => (
-						<OutputOption key={option} option={option} />
-					))}
+				<div>
+					<div className="grid gap-1.5">
+						<p
+							id={formatDescriptionId}
+							className="text-muted-foreground text-sm"
+						>
+							{getView(codec.id).description}
+						</p>
+						{options.map((option) => (
+							<OutputOption key={option} option={option} />
+						))}
+					</div>
 					{/* Below the formats, with the description it qualifies, so
-					    choosing a format never moves the list under the pointer. */}
-					{flattens ? (
-						<Notice severity="warning">
-							<span data-projection-disclosure className="flex-1">
-								{copy.download.plainProjection}
-							</span>
-						</Notice>
-					) : null}
+					    choosing a format never moves the list under the pointer.
+					    The status region is mounted before its text, so choosing a
+					    format that flattens is announced inside the modal. It is
+					    this dialog's own text, never a notice, so the app's live
+					    regions do not say it a second time (#453). Empty, it has no
+					    box, and the gap travels with the warning. */}
+					<div role="status">
+						{flattens ? (
+							<Notice severity="warning" className="mt-1.5">
+								<span
+									id={lossWarningId}
+									data-projection-disclosure
+									className="flex-1"
+								>
+									{copy.download.plainProjection}
+								</span>
+							</Notice>
+						) : null}
+					</div>
 				</div>
 
 				<DialogActions>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>
-					<DialogConfirm onClick={confirm}>
+					<DialogConfirm
+						onClick={confirm}
+						aria-describedby={
+							consequenceIds.length > 0 ? consequenceIds.join(" ") : undefined
+						}
+					>
 						{destination === "clipboard"
 							? copy.download.copyAsFormat(getView(codec.id).label)
 							: copy.download.downloadAs(
@@ -278,12 +314,14 @@ function FormatChoice({
 
 function OutputOption({ option }: { readonly option: OutputOptionId }) {
 	const checkboxId = useId();
+	const hintId = useId();
 	const value = useTabeloStore((state) => state.outputOptions[option]);
 
 	return (
-		<div className="flex items-start gap-2 py-1">
+		<div data-output-option={option} className="flex items-start gap-2 py-1">
 			<Checkbox
 				id={checkboxId}
+				aria-describedby={hintId}
 				checked={value}
 				onCheckedChange={(checked) =>
 					useTabeloStore.getState().setOutputOption(option, checked === true)
@@ -294,7 +332,7 @@ function OutputOption({ option }: { readonly option: OutputOptionId }) {
 				<Label htmlFor={checkboxId} className="font-normal text-sm">
 					{copy.download.option(option)}
 				</Label>
-				<p className="text-muted-foreground text-xs">
+				<p id={hintId} className="text-muted-foreground text-xs">
 					{copy.download.optionHint(option)}
 				</p>
 			</div>

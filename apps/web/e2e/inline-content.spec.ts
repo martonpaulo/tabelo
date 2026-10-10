@@ -3,6 +3,8 @@ import { copy } from "@/copy/copy";
 import { conditionNoticeIds } from "@/state/notice-queue";
 import { expect, test } from "./fixtures";
 import {
+	downloadConfirm,
+	expectDescribedBy,
 	openDownloadChooser,
 	renderedSource,
 	type TabeloPage,
@@ -170,4 +172,33 @@ test("downloading a plain format discloses the projection first", async ({
 
 	await dialog.getByRole("radio", { name: /Markdown/ }).click();
 	await expect(note).toHaveCount(0);
+});
+
+// The loss is said where the choice is made and where it is confirmed, and its
+// arrival is announced inside the modal, not only drawn (#453).
+test("the projection loss describes the format choice and the confirm", async ({
+	page,
+	tabelo,
+}) => {
+	await loadFixture(tabelo);
+	await openDownloadChooser(page);
+	const dialog = page.getByRole("dialog");
+	await expect(dialog).toBeVisible();
+	const formats = dialog.getByRole("radiogroup", {
+		name: copy.download.format,
+	});
+	const note = dialog.locator("[data-projection-disclosure]");
+	const status = dialog.getByRole("status");
+	await expect(status).toHaveCount(1);
+
+	await dialog.getByRole("radio", { name: /CSV/ }).click();
+	await expect(status.locator("[data-projection-disclosure]")).toBeVisible();
+	await expectDescribedBy(formats, note);
+	await expectDescribedBy(downloadConfirm(page), note);
+
+	await dialog.getByRole("radio", { name: /Markdown/ }).click();
+	await expect(note).toHaveCount(0);
+	await expect(status).toBeEmpty();
+	await expect(downloadConfirm(page)).toHaveAccessibleDescription("");
+	await expect(formats).not.toHaveAccessibleDescription("");
 });

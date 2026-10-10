@@ -178,6 +178,22 @@ export function lastCopied(page: Page): Promise<CopiedFlavours | undefined> {
 	);
 }
 
+// Whether a control's computed accessible description includes the text of an
+// element on the page. The expectation is read from that element, never from
+// the copy constant that produced it, so the check is the relationship alone.
+export async function expectDescribedBy(
+	control: Locator,
+	description: Locator,
+): Promise<void> {
+	const text = ((await description.textContent()) ?? "")
+		.replace(/\s+/g, " ")
+		.trim();
+	expect(text).not.toBe("");
+	await expect(control).toHaveAccessibleDescription(
+		new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+	);
+}
+
 // The download chooser's confirm button. Its name carries the chosen
 // extension, so it is found by the part that stays the same across formats.
 export function downloadConfirm(page: Page): Locator {

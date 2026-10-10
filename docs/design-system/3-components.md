@@ -642,6 +642,7 @@ than independent booleans. Raising `z-index` is not a hierarchy fix.
 | Dismissal | Escape and an explicit Cancel; focus returns to what opened it |
 | Button hierarchy | One right-aligned, non-wrapping action row; below the `sm` breakpoint the actions stack at full width in the same order instead. Cancel or another neutral dismissal comes first, ordinary alternatives follow, and exactly one emphasized decision comes last. That decision is destructive red or primary blue, never both |
 | Confirmation | One primary verb naming the operation: "Download", not "OK" |
+| Consequences | A warning shown in a dialog is the description of the control that authorizes it: the choice that causes it and the confirm that carries it out, so it is heard before anything happens. One that comes and goes with a choice sits in the dialog's own `role="status"` region, mounted before its text; it is never routed through the app's notice live regions, which would announce it twice (#453) |
 
 Compose `packages/ui`'s `Dialog`; do not build a second modal. Prefer the
 explicit Cancel and Confirm pair over the primitive's corner close button, so
