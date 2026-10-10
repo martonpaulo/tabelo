@@ -1,6 +1,7 @@
 // The library is the set of tables this browser holds and which one is
 // active. It is domain data, not presentation: the menu lists it, but nothing
-// about its order or its size belongs to a component.
+// about its order or its size belongs to a component, and how a mark is
+// painted belongs to the menu, not here (#435).
 //
 // A table's document, workspace, and draft stay with that table; the library
 // holds identity, order, and the colour of each table's mark. The library may
@@ -88,22 +89,6 @@ export function isNameTaken(
 	return library.tables.some(
 		(table) => table.id !== exceptId && table.name === name,
 	);
-}
-
-// The `!` is deliberate: a menu item paints every descendant with the
-// highlight colour on hover and focus, and the mark must not change with the
-// pointer, since it says which table the row is (owner, 2026-09-20).
-const TABLE_MARK_CLASSES: Readonly<Record<TableMark, string>> = {
-	1: "text-table-mark-1!",
-	2: "text-table-mark-2!",
-	3: "text-table-mark-3!",
-	4: "text-table-mark-4!",
-	5: "text-table-mark-5!",
-	6: "text-table-mark-6!",
-};
-
-export function tableMarkClass(mark: TableMark): string {
-	return TABLE_MARK_CLASSES[mark];
 }
 
 // A new table takes the first mark no table uses. Once all six are taken the

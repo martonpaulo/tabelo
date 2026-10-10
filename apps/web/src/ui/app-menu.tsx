@@ -56,7 +56,7 @@ import { deleteEmptyRowsAndColumns } from "@/core/operations";
 import {
 	isLargeLibrary,
 	type TableEntry,
-	tableMarkClass,
+	type TableMark,
 } from "@/core/table-library";
 import {
 	canRunHistory,
@@ -425,6 +425,27 @@ export function AppMenu({
 const revealedRowActionStyles =
 	"px-2 opacity-0 group-hover/table-row:opacity-100 group-focus-within/table-row:opacity-100 focus:opacity-100 focus-visible:opacity-100";
 
+// The `!` is deliberate: a menu item paints every descendant with the
+// highlight colour on hover and focus, and the mark must not change with the
+// pointer, since it says which table the row is (owner, 2026-09-20).
+const TABLE_MARK_CLASSES: Readonly<Record<TableMark, string>> = {
+	1: "text-table-mark-1!",
+	2: "text-table-mark-2!",
+	3: "text-table-mark-3!",
+	4: "text-table-mark-4!",
+	5: "text-table-mark-5!",
+	6: "text-table-mark-6!",
+};
+
+// A table's mark, the one presentation every menu surface listing a table
+// uses (#435). The colour is the table's, in every state: a hover or keyboard
+// highlight changes the item's background, never the mark, so the cue does
+// not move as the pointer does. It is never the only cue, since the name is
+// beside it.
+function TableMarkIcon({ mark }: { readonly mark: TableMark }) {
+	return <IconFileText aria-hidden className={TABLE_MARK_CLASSES[mark]} />;
+}
+
 // One row shape for every table, active or not (owner, 2026-09-20): the
 // table's colour mark, its name, and the two commands that act on it. Rename
 // and delete are menu items in their own right rather than buttons nested in
@@ -463,7 +484,7 @@ function TableCommands({
 				// Opening from here is the same command the row itself carries,
 				// so it leaves the menu open in the same way (owner, 2026-09-20).
 				<Item closeOnClick={false} onClick={onOpen}>
-					<IconFileText aria-hidden className={tableMarkClass(table.mark)} />
+					<TableMarkIcon mark={table.mark} />
 					{copy.actions.openTable}
 				</Item>
 			)}
@@ -552,11 +573,7 @@ function TableRow({
 						closeOnClick={false}
 						onClick={onOpen}
 					>
-						{/* The colour is the table's, in every state: a hover or keyboard
-				    highlight changes the item's background, never the mark, so the
-				    cue does not move as the pointer does. It is never the only
-				    cue, since the name is beside it. */}
-						<IconFileText aria-hidden className={tableMarkClass(table.mark)} />
+						<TableMarkIcon mark={table.mark} />
 						<MenuOption
 							truncateLabel
 							label={table.name}
