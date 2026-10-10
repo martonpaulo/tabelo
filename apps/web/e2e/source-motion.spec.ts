@@ -1,5 +1,5 @@
 import { copy } from "@/copy/copy";
-import { samplePeopleCsv } from "@/core/sample-data";
+import { samplePeopleCsv, samplePerson } from "@/core/sample-data";
 import { expect, test } from "./fixtures";
 import { outsidePinnedHeader } from "./helpers";
 
@@ -160,4 +160,43 @@ test("source focus stays visible and reduced motion keeps the cursor solid", asy
 		};
 	});
 	expect(reducedMotionFocus.style).toBe("solid");
+});
+
+// A line whose dominant direction is left to right, ending in right-to-left
+// text: End and Home must land on the logical line edges, so typed text joins
+// the value at its logical end or start (#457, @codemirror/view 6.43.13). The
+// greetings are words, not people, and every other byte must survive.
+test("Home and End reach the logical line edges beside right-to-left text", async ({
+	page,
+	tabelo,
+}) => {
+	const first = samplePerson(0);
+	const second = samplePerson(1);
+	const greeting = "\u05e9\u05dc\u05d5\u05dd";
+	const other = "\u0645\u0631\u062d\u0628\u0627";
+	await tabelo.paste(
+		[
+			["Name", "Greeting"].join("\t"),
+			[first.name, greeting].join("\t"),
+			[second.name, other].join("\t"),
+		].join("\n"),
+	);
+	await tabelo.showInSourcePane("csv");
+	const editor = tabelo.source("csv");
+	await expect(editor).toBeVisible();
+	await expect(tabelo.cell(1, 2)).toHaveText(greeting);
+
+	await editor.click();
+	await page.keyboard.press("ControlOrMeta+Home");
+	await page.keyboard.press("ArrowDown");
+	await page.keyboard.press("End");
+	await page.keyboard.type("!");
+	await expect(tabelo.cell(1, 2)).toHaveText(`${greeting}!`);
+
+	await page.keyboard.press("Home");
+	await page.keyboard.type("Dr ");
+	await expect(tabelo.cell(1, 1)).toHaveText(`Dr ${first.name}`);
+	await expect(tabelo.cell(1, 2)).toHaveText(`${greeting}!`);
+	await expect(tabelo.cell(2, 1)).toHaveText(second.name);
+	await expect(tabelo.cell(2, 2)).toHaveText(other);
 });
