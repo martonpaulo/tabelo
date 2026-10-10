@@ -49,6 +49,17 @@ export function cellText(value: CellValue): string {
 	}
 }
 
+// A value that is not text: what formatting cannot reach and what a format
+// without types cannot keep (docs/adr/0008). Listed in one fixed order, so
+// every sentence naming several of them names them alike.
+export type TypedValueType = Exclude<CellValueType, "string">;
+
+export const typedValueOrder: readonly TypedValueType[] = [
+	"number",
+	"boolean",
+	"null",
+];
+
 // Inline content is text with structure, so its carried type is `string`: a
 // text column expects it, and the Cell type command sees text.
 export function cellValueType(value: CellValue): CellValueType {

@@ -5,8 +5,7 @@ import {
 } from "@tabelo/ui/lib/shortcut";
 import type { CopyScope } from "@/clipboard/serialize";
 import { product } from "@/copy/product";
-import type { TypedValueType } from "@/core/cell-formatting";
-import { cellText } from "@/core/cell-value";
+import { cellText, type TypedValueType } from "@/core/cell-value";
 import { columnLetter } from "@/core/column-letter";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import { isTextContent } from "@/core/inline-content";
@@ -231,6 +230,12 @@ const typedValueNouns = {
 
 function typedValues(types: readonly TypedValueType[]): string {
 	return joinedPositions(types.map((type) => typedValueNouns[type]));
+}
+
+// Formats offered as a choice between them: "JSON", "Markdown or HTML Source".
+function alternativeFormats(labels: readonly string[]): string {
+	if (labels.length <= 2) return labels.join(" or ");
+	return `${labels.slice(0, -1).join(", ")}, or ${labels.at(-1)}`;
 }
 
 function capitalized(text: string): string {
@@ -1093,7 +1098,21 @@ export const copy = {
 		// Said before a file in a format that cannot spell inline structure is
 		// written, when the table holds some (#306).
 		plainProjection:
-			"This format keeps text only. Formatting and link addresses are left out, and images become their alt text.",
+			"This format doesn't keep formatting. Link addresses are left out, and images become their alt text.",
+		// The other losses the chooser discloses (#431), each naming only what
+		// the table holds and, when a format keeps it, which one to choose.
+		// Nothing here says a format keeps more than the one property named.
+		typedValuesLost: (
+			types: readonly TypedValueType[],
+			alternatives: readonly string[],
+		) =>
+			alternatives.length > 0
+				? `This format doesn't keep the types of ${typedValues(types)}. Choose ${alternativeFormats(alternatives)} to keep them.`
+				: `This format doesn't keep the types of ${typedValues(types)}.`,
+		alignmentLost: (alternatives: readonly string[]) =>
+			alternatives.length > 0
+				? `This format doesn't keep column alignment. Choose ${alternativeFormats(alternatives)} to keep it.`
+				: "This format doesn't keep column alignment.",
 	},
 
 	empty: {

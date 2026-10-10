@@ -1,6 +1,9 @@
 import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
+import { samplePeople } from "@/core/sample-data";
 import { getCodec, listCodecs } from "@/formats";
+import type { CodecId } from "@/formats/types";
+import { getView } from "@/views/registry";
 import { expect, test } from "./fixtures";
 import {
 	downloadConfirm,
@@ -472,4 +475,90 @@ test("an output option is reached by Tab and toggled by Space", async ({
 		await page.keyboard.press("Space");
 		expect(await option.isChecked()).toBe(before);
 	}
+});
+
+// What a file in the chosen format leaves out is said beside the choice, and
+// only what applies to this table (#431). Each loss is located by what it is
+// about, never by its wording.
+test.describe("export losses", () => {
+	function formatChoice(page: Page, id: CodecId) {
+		return page
+			.getByRole("dialog")
+			.getByRole("radio", { name: new RegExp(`${getView(id).label}$`) });
+	}
+
+	test("a typed table hears the type loss and the format that keeps it", async ({
+		page,
+		tabelo,
+	}) => {
+		const [ingrid, paulo] = samplePeople;
+		// Ages are numbers because this JSON states them; one is null.
+		const roster = JSON.stringify([
+			{ name: ingrid?.name, age: ingrid?.age },
+			{ name: paulo?.name, age: null },
+		]);
+		await tabelo.importFile("roster.json", roster, "application/json");
+		await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+		await openChooser(page);
+		const dialog = page.getByRole("dialog");
+		const formats = dialog.getByRole("radiogroup", {
+			name: copy.download.format,
+		});
+		const typed = dialog
+			.getByRole("status")
+			.locator('[data-export-loss="typed-values"]');
+
+		await formatChoice(page, "csv").click();
+		await expect(typed).toBeVisible();
+		await expectDescribedBy(formats, typed);
+		await expectDescribedBy(downloadConfirm(page), typed);
+
+		await formatChoice(page, "json").click();
+		await expect(typed).toHaveCount(0);
+		await expect(dialog.getByRole("status")).toBeEmpty();
+		await expect(downloadConfirm(page)).toHaveAccessibleDescription("");
+	});
+
+	test("a plain text table discloses nothing in any format", async ({
+		page,
+		tabelo,
+	}) => {
+		await tabelo.importFile(
+			"roster.md",
+			["| name | city |", "| --- | --- |", "| Ingrid | Rio |"].join("\n"),
+			"text/markdown",
+		);
+		await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+		await openChooser(page);
+		const dialog = page.getByRole("dialog");
+
+		for (const codec of listCodecs()) {
+			await formatChoice(page, codec.id).click();
+			await expect(formatChoice(page, codec.id)).toBeChecked();
+			await expect(dialog.locator("[data-export-loss]")).toHaveCount(0);
+			await expect(downloadConfirm(page)).toHaveAccessibleDescription("");
+		}
+	});
+
+	test("an aligned table hears the alignment loss where it applies", async ({
+		page,
+		tabelo,
+	}) => {
+		await tabelo.importFile(
+			"roster.md",
+			["| name | city |", "| :---: | --- |", "| Ingrid | Rio |"].join("\n"),
+			"text/markdown",
+		);
+		await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+		await openChooser(page);
+		const dialog = page.getByRole("dialog");
+		const alignment = dialog.locator('[data-export-loss="alignment"]');
+
+		await formatChoice(page, "csv").click();
+		await expect(alignment).toBeVisible();
+		await expectDescribedBy(downloadConfirm(page), alignment);
+
+		await formatChoice(page, "markdown").click();
+		await expect(alignment).toHaveCount(0);
+	});
 });

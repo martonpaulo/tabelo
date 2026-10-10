@@ -36,6 +36,16 @@ inline structure, while alignment a format cannot express stays on the
 document. Markdown and HTML still apply alignment edits because their syntax
 carries it. This is registry data, not a switch on codec ids.
 
+The download chooser reads the same three facts to say, before anything is
+written, what a file in the chosen format leaves out of the current table
+(#431): inline structure, the types of numbers, booleans, and null values, and
+column alignment, each only when the table holds it. Where another format that
+can write the table keeps that one property, the sentence names it, and never
+claims it keeps anything more. One owner beside the inline projection rule
+derives these losses. A column's expected type is not disclosed: it guides
+entry in the grid and no format writes it, JSON included, so no file is ever
+a complete copy of the document.
+
 A codec may also declare `outputOptions`: choices that belong to the file it
 writes and to nothing else. Records declares `includeFirstColumnName` and
 `includeEmptyValues`, because both produce output its own parser cannot read

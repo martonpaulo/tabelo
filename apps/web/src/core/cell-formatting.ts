@@ -1,4 +1,10 @@
-import { cellText, cellValueType, readCell } from "./cell-value";
+import {
+	cellText,
+	cellValueType,
+	readCell,
+	type TypedValueType,
+	typedValueOrder,
+} from "./cell-value";
 import {
 	inlineImages,
 	inlineLength,
@@ -104,15 +110,6 @@ export function selectionMarkState(
 	}
 	return states.has("on") ? "on" : "off";
 }
-
-// A value formatting cannot reach: anything but text (docs/adr/0008).
-export type TypedValueType = Exclude<CellValueType, "string">;
-
-const typedValueOrder: readonly TypedValueType[] = [
-	"number",
-	"boolean",
-	"null",
-];
 
 // The selected cells a mark leaves alone because they hold a typed value, and
 // which types those are, in a fixed order, so the notice about them can name

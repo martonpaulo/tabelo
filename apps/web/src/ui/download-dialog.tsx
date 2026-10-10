@@ -10,7 +10,6 @@ import {
 import { Label } from "@tabelo/ui/components/label";
 import { type ReactNode, useId, useMemo, useState } from "react";
 import { copy } from "@/copy/copy";
-import { hasInlineContent } from "@/core/document";
 import {
 	canSerialize,
 	DEFAULT_CODEC_ID,
@@ -39,7 +38,7 @@ import {
 	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
 import { codecSpelling } from "@/ui/spelling";
-import { flattensInlineContent } from "@/views/projection-loss";
+import { exportLosses, hasExportLoss } from "@/views/projection-loss";
 import { getView } from "@/views/registry";
 
 // Writing the table out is a choice, not a click. The user chooses the format
@@ -108,17 +107,18 @@ export function DownloadDialog({
 		state.draft && state.draft.status !== "clean" ? state.draft : null,
 	);
 
-	// A file in a format that cannot spell inline structure holds only what
-	// the table reads as. Choosing the format is the user's authorization, so
-	// it is said before the download, beside the choice (#306).
-	const formatted = hasInlineContent(document);
-	const flattens = formatted && flattensInlineContent(codec);
+	// What a file in this format leaves out of this table: inline structure
+	// (#306), the types of non-text values, and column alignment (#431).
+	// Choosing the format is the user's authorization, so it is said before
+	// the download, beside the choice, and only what applies is said.
+	const losses = exportLosses(document, codec);
+	const lossy = hasExportLoss(losses);
 	// Each consequence describes the control that authorizes it (#453): the
 	// loss belongs to the format choice and both belong to the confirm, so a
 	// keyboard user reaching either hears it before anything is written.
 	const consequenceIds = [
 		pendingDraft ? draftWarningId : null,
-		flattens ? lossWarningId : null,
+		lossy ? lossWarningId : null,
 	].filter((id) => id !== null);
 
 	const confirm = () => {
@@ -185,7 +185,7 @@ export function DownloadDialog({
 				<SingleSelectionList
 					aria-label={copy.download.format}
 					aria-describedby={
-						flattens
+						lossy
 							? `${formatDescriptionId} ${lossWarningId}`
 							: formatDescriptionId
 					}
@@ -228,19 +228,41 @@ export function DownloadDialog({
 					{/* Below the formats, with the description it qualifies, so
 					    choosing a format never moves the list under the pointer.
 					    The status region is mounted before its text, so choosing a
-					    format that flattens is announced inside the modal. It is
+					    format that loses something is announced inside the modal. It is
 					    this dialog's own text, never a notice, so the app's live
 					    regions do not say it a second time (#453). Empty, it has no
 					    box, and the gap travels with the warning. */}
 					<div role="status">
-						{flattens ? (
+						{lossy ? (
 							<Notice severity="warning" className="mt-1.5">
-								<span
-									id={lossWarningId}
-									data-projection-disclosure
-									className="flex-1"
-								>
-									{copy.download.plainProjection}
+								<span id={lossWarningId} className="grid flex-1 gap-1">
+									{losses.inlineContent ? (
+										<span
+											data-export-loss="inline-content"
+											data-projection-disclosure
+										>
+											{copy.download.plainProjection}
+										</span>
+									) : null}
+									{losses.typedValues.length > 0 ? (
+										<span data-export-loss="typed-values">
+											{copy.download.typedValuesLost(
+												losses.typedValues,
+												losses.typedValueAlternatives.map(
+													(candidate) => getView(candidate.id).label,
+												),
+											)}
+										</span>
+									) : null}
+									{losses.alignment ? (
+										<span data-export-loss="alignment">
+											{copy.download.alignmentLost(
+												losses.alignmentAlternatives.map(
+													(candidate) => getView(candidate.id).label,
+												),
+											)}
+										</span>
+									) : null}
 								</span>
 							</Notice>
 						) : null}

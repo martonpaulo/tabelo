@@ -2,10 +2,13 @@ import {
 	cellText,
 	cellTextAt,
 	cellValuesEqual,
+	cellValueType,
 	DEFAULT_EXPECTED_TYPE,
 	headerContent,
 	isBlankCell,
 	readCell,
+	type TypedValueType,
+	typedValueOrder,
 } from "./cell-value";
 import { createColumnId, createRowId } from "./ids";
 import { isInlineContent } from "./inline-content";
@@ -88,6 +91,35 @@ export function hasInlineContent(document: TableDocument): boolean {
 		document.rows.some((row) => Object.values(row.cells).some(isInlineContent));
 	inlineContentCache.set(document, found);
 	return found;
+}
+
+const typedValueCache = new WeakMap<TableDocument, readonly TypedValueType[]>();
+
+// Which kinds of value other than text the cells hold, in the fixed order,
+// which is what a format that spells text only cannot keep (docs/adr/0008).
+// Headers hold text only, so only cells are read. Cached per document like
+// hasInlineContent, because a dialog reads it on every store write.
+export function typedValueTypes(
+	document: TableDocument,
+): readonly TypedValueType[] {
+	const known = typedValueCache.get(document);
+	if (known !== undefined) return known;
+
+	const found = new Set<string>();
+	for (const row of document.rows) {
+		for (const value of Object.values(row.cells)) {
+			found.add(cellValueType(value));
+		}
+	}
+	const types = typedValueOrder.filter((type) => found.has(type));
+	typedValueCache.set(document, types);
+	return types;
+}
+
+// True when any column is aligned on purpose, which is document state a
+// format without alignment syntax leaves out of its text (AGENTS.md).
+export function hasColumnAlignment(document: TableDocument): boolean {
+	return document.columns.some((column) => column.align !== "default");
 }
 
 // Pads every row to the widest row so the matrix is rectangular.

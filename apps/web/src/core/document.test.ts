@@ -5,9 +5,13 @@ import {
 	createRow,
 	documentFromMatrix,
 	documentToMatrix,
+	hasColumnAlignment,
 	isDocumentBlank,
 	reconcileDocument,
+	typedValueTypes,
 } from "./document";
+import { setAlignment, setCell } from "./operations";
+import { samplePeopleMatrix } from "./sample-data";
 import type { CellValue, InlineContent, TableDocument } from "./types";
 
 function docOf(matrix: string[][]): TableDocument {
@@ -490,5 +494,36 @@ describe("reconciling spelled booleans", () => {
 		]);
 		const { spelledBooleans: _, ...projected } = spelled;
 		expect(reconcileDocument(current, text, projected)).toBe(current);
+	});
+});
+
+// What a format without types or alignment syntax would leave out (#431).
+describe("document facts an export can lose", () => {
+	it("names no typed value for a table of text", () => {
+		const document = documentFromMatrix(
+			samplePeopleMatrix(2).map((row) => row.map(String)),
+			{ headerRow: true },
+		);
+		expect(typedValueTypes(document)).toEqual([]);
+	});
+
+	it("names each typed kind present once, in the fixed order", () => {
+		const roster = documentFromMatrix(samplePeopleMatrix(2), {
+			headerRow: true,
+		});
+		expect(typedValueTypes(roster)).toEqual(["number"]);
+
+		const mixed = setCell(setCell(roster, 0, 1, null), 1, 1, true);
+		expect(typedValueTypes(mixed)).toEqual(["number", "boolean", "null"]);
+		// The earlier document is a different value and keeps its own answer.
+		expect(typedValueTypes(roster)).toEqual(["number"]);
+	});
+
+	it("reports alignment only once a column is aligned on purpose", () => {
+		const document = documentFromMatrix(samplePeopleMatrix(1), {
+			headerRow: true,
+		});
+		expect(hasColumnAlignment(document)).toBe(false);
+		expect(hasColumnAlignment(setAlignment(document, 3, "right"))).toBe(true);
 	});
 });
