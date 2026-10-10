@@ -6,8 +6,8 @@ allowBuilds:
 catalog:
   zod: ^4.6.5
   typescript: ^6
-  "@types/node": ^24.0.0
-  "@tabler/icons-react": ^3.46.0
+  "@types/node": ^24.19.1
+  "@tabler/icons-react": ^3.49.0
   react: ^19.3.0
   react-dom: ^19.3.0
   sonner: ^2.0.8
