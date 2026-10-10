@@ -1,11 +1,17 @@
 import { randomUUID } from "node:crypto";
+import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { type AgentResult, resultSchema } from "@tabelo/agent-protocol";
 import { copy } from "@/copy/copy";
 import { test as base, expect } from "./fixtures";
-import { lastCopied, recordingClipboard, TabeloPage } from "./helpers";
+import {
+	expectDescribedBy,
+	lastCopied,
+	recordingClipboard,
+	TabeloPage,
+} from "./helpers";
 
 type Snapshot = {
 	sessionId: string;
@@ -675,4 +681,51 @@ test("a write from another tab revokes the paired session", async ({
 	} finally {
 		await other.close();
 	}
+});
+
+// A loopback port nothing listens on: bound by the system, then released.
+async function closedPort(): Promise<number> {
+	const server = createServer();
+	await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+	const address = server.address();
+	await new Promise<void>((resolve) => server.close(() => resolve()));
+	if (address === null || typeof address === "string") {
+		throw new Error("The test port has no number.");
+	}
+	return address.port;
+}
+
+// Only a malformed code is the field's own error. A well-formed code the
+// helper does not answer leaves the field valid and as typed, with the
+// failure said by the form and Connect still the way to retry (#451).
+test("a malformed code marks the field and a refused connection does not", async ({
+	page,
+	tabelo,
+}) => {
+	await (await tabelo.openAppMenu())
+		.getByRole("menuitem", { name: copy.agent.connect, exact: true })
+		.click();
+	const dialog = page.getByRole("dialog", { name: copy.agent.connect });
+	const field = dialog.getByRole("textbox", { name: copy.agent.descriptor });
+	const connect = dialog.getByRole("button", {
+		name: copy.agent.connectAction,
+		exact: true,
+	});
+
+	await field.fill("not a code");
+	await connect.click();
+	await expect(field).toHaveAttribute("aria-invalid", "true");
+	await expectDescribedBy(field, dialog.getByRole("alert"));
+
+	const code = `${await closedPort()}:12345678`;
+	await field.fill(code);
+	await connect.click();
+	await expect(dialog.getByRole("alert")).toBeVisible();
+	await expect(field).not.toHaveAttribute("aria-invalid");
+	await expect(field).toHaveAccessibleDescription("");
+	await expect(field).toHaveValue(code);
+	await expect(connect).toBeEnabled();
+	await expect(
+		dialog.getByRole("button", { name: copy.actions.cancel }),
+	).toBeEnabled();
 });

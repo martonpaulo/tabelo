@@ -7,10 +7,10 @@ import {
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { Input } from "@tabelo/ui/components/input";
-import { Label } from "@tabelo/ui/components/label";
 import { Textarea } from "@tabelo/ui/components/textarea";
 import { type FormEvent, useId, useRef, useState } from "react";
 import {
+	type AgentConnectionError,
 	connectAgent,
 	disconnectAgent,
 	pauseAgent,
@@ -25,7 +25,16 @@ import {
 	DialogCancel,
 	DialogConfirm,
 } from "@/ui/primitives/dialog-buttons";
+import { FormFailure, FormField } from "@/ui/primitives/form-field";
 import { useContentWhileOpen } from "@/ui/primitives/use-content-while-open";
+
+const connectionErrorCopy: Record<AgentConnectionError, string> = {
+	"invalid-descriptor": copy.agent.invalidDescriptor,
+	"connection-failed": copy.agent.connectionFailed,
+	"invalid-response": copy.agent.invalidResponse,
+	"session-ended": copy.agent.sessionEnded,
+	uncertain: copy.agent.uncertain,
+};
 
 export function AgentDialog({
 	open,
@@ -40,10 +49,19 @@ export function AgentDialog({
 	const state = useAgentConnection();
 	const titleId = useId();
 	const descriptionId = useId();
-	const inputId = useId();
-	const errorId = useId();
 	const inputRef = useRef<HTMLInputElement>(null);
 	const paired = state.status === "connected" || state.status === "paused";
+	// A malformed code is the field's own error; any other reason is about the
+	// helper or the session, so the code stays valid and the form says it
+	// (#451).
+	const descriptorError =
+		state.error === "invalid-descriptor"
+			? connectionErrorCopy[state.error]
+			: null;
+	const connectionFailure =
+		state.error !== null && state.error !== "invalid-descriptor"
+			? connectionErrorCopy[state.error]
+			: null;
 	const title = paired
 		? state.status === "paused"
 			? copy.agent.paused
@@ -80,19 +98,18 @@ export function AgentDialog({
 				</DialogHeader>
 				{paired ? null : (
 					<>
-						<div className="grid gap-2">
-							<Label htmlFor={inputId}>{copy.agent.descriptor}</Label>
-							<Input
-								ref={inputRef}
-								id={inputId}
-								value={descriptor}
-								autoComplete="off"
-								spellCheck={false}
-								aria-invalid={state.error ? true : undefined}
-								aria-describedby={state.error ? errorId : undefined}
-								onChange={(event) => setDescriptor(event.target.value)}
-							/>
-						</div>
+						<FormField label={copy.agent.descriptor} error={descriptorError}>
+							{(control) => (
+								<Input
+									{...control}
+									ref={inputRef}
+									value={descriptor}
+									autoComplete="off"
+									spellCheck={false}
+									onChange={(event) => setDescriptor(event.target.value)}
+								/>
+							)}
+						</FormField>
 						<p className="text-muted-foreground text-sm">
 							{copy.agent.disclosure}
 						</p>
@@ -145,10 +162,8 @@ export function AgentDialog({
 						</details>
 					</>
 				)}
-				{state.error ? (
-					<p id={errorId} role="alert" className="text-destructive text-sm">
-						{state.error}
-					</p>
+				{connectionFailure ? (
+					<FormFailure>{connectionFailure}</FormFailure>
 				) : null}
 				<DialogActions>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>

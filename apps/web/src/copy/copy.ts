@@ -937,7 +937,8 @@ export const copy = {
 		tooLong: "Use 120 characters or fewer.",
 		unchanged: "Enter a different table name.",
 		duplicate: "Another table already has this name.",
-		saveError: "The table name couldn't be saved. Try again.",
+		saveError:
+			"The table name couldn't be saved. Allow browser storage or free some space, then try again.",
 	},
 
 	// Confirming a Cell type change that replaces a value (#371). Values are

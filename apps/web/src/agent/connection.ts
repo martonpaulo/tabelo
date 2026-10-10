@@ -12,9 +12,19 @@ import { LIBRARY_KEY } from "@/persistence/schema";
 import { useTabeloStore } from "@/state/store";
 import { AgentSession } from "./session";
 
+// Why the last connection attempt or session ended, as a reason rather than
+// copy (#451): only a malformed code is a fact about what the user typed, and
+// the dialog decides from the reason which of its parts reports it.
+export type AgentConnectionError =
+	| "invalid-descriptor"
+	| "connection-failed"
+	| "invalid-response"
+	| "session-ended"
+	| "uncertain";
+
 type ConnectionState = {
 	status: "disconnected" | "connecting" | "connected" | "paused";
-	error: string | null;
+	error: AgentConnectionError | null;
 	lastOutcome: string | null;
 };
 export const useAgentConnection = create<ConnectionState>(() => ({
@@ -104,7 +114,7 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 	const match = /^(\d{1,5}):(\d{8})$/.exec(descriptor.trim());
 	const port = Number(match?.[1]);
 	if (!match || port < 1 || port > 65535) {
-		useAgentConnection.setState({ error: copy.agent.invalidDescriptor });
+		useAgentConnection.setState({ error: "invalid-descriptor" });
 		return Promise.resolve(false);
 	}
 	useAgentConnection.setState({
@@ -118,7 +128,7 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 	} catch {
 		useAgentConnection.setState({
 			status: "disconnected",
-			error: copy.agent.connectionFailed,
+			error: "connection-failed",
 		});
 		return Promise.resolve(false);
 	}
@@ -131,7 +141,7 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 		finish = resolve;
 	});
 	const guards = watchInputGuards(document);
-	const stop = (error: string | null = null) => {
+	const stop = (error: AgentConnectionError | null = null) => {
 		if (closed) return;
 		closed = true;
 		clearTimeout(timer);
@@ -152,11 +162,11 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 				event.key === LIBRARY_KEY ||
 				event.key.startsWith("tabelo.table."))
 		)
-			stop(copy.agent.sessionEnded);
+			stop("session-ended");
 	};
 	const pageHidden = () => stop();
 	const timer = setTimeout(
-		() => stop(copy.agent.connectionFailed),
+		() => stop("connection-failed"),
 		AGENT_LIMITS.pairingMs,
 	);
 	cleanup = () => stop();
@@ -173,29 +183,29 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 				}),
 			),
 		);
-	socket.onerror = () => stop(copy.agent.connectionFailed);
+	socket.onerror = () => stop("connection-failed");
 	socket.onclose = () =>
-		stop(credential ? copy.agent.sessionEnded : copy.agent.connectionFailed);
+		stop(credential ? "session-ended" : "connection-failed");
 	socket.onmessage = (event) => {
 		if (closed) return;
 		if (
 			typeof event.data !== "string" ||
 			new TextEncoder().encode(event.data).byteLength > AGENT_LIMITS.bytes
 		) {
-			stop(copy.agent.invalidResponse);
+			stop("invalid-response");
 			return;
 		}
 		let value: unknown;
 		try {
 			value = JSON.parse(event.data);
 		} catch {
-			stop(copy.agent.invalidResponse);
+			stop("invalid-response");
 			return;
 		}
 		if (!credential) {
 			const paired = pairedSchema.safeParse(value);
 			if (!paired.success || paired.data.sessionId !== sessionId) {
-				stop(copy.agent.invalidResponse);
+				stop("invalid-response");
 				return;
 			}
 			credential = paired.data.credential;
@@ -203,7 +213,7 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 			session = new AgentSession({
 				id: sessionId,
 				busy: guards.busy,
-				onEnd: () => stop(copy.agent.sessionEnded),
+				onEnd: () => stop("session-ended"),
 				onChange: (paused) => {
 					useAgentConnection.setState({
 						status: paused ? "paused" : "connected",
@@ -217,7 +227,7 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 		}
 		const parsed = requestSchema.safeParse(value);
 		if (!parsed.success || parsed.data.credential !== credential || !session) {
-			stop(copy.agent.invalidResponse);
+			stop("invalid-response");
 			return;
 		}
 		const request = parsed.data;
@@ -237,7 +247,7 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 				result: outcome,
 			};
 			if (encodedBytes(response) > AGENT_LIMITS.bytes) {
-				stop(copy.agent.invalidResponse);
+				stop("invalid-response");
 				return;
 			}
 			socket.send(JSON.stringify(response));
@@ -265,7 +275,7 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 				}
 			}
 		} catch {
-			stop(copy.agent.uncertain);
+			stop("uncertain");
 		}
 	};
 	return connected;

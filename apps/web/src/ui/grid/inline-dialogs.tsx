@@ -5,8 +5,6 @@ import {
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { Input } from "@tabelo/ui/components/input";
-import { Label } from "@tabelo/ui/components/label";
-import { cn } from "@tabelo/ui/lib/utils";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import type { LinkDraft } from "@/core/cell-formatting";
@@ -16,6 +14,7 @@ import {
 	DialogCancel,
 	DialogConfirm,
 } from "@/ui/primitives/dialog-buttons";
+import { FormField } from "@/ui/primitives/form-field";
 
 // The Visual Table's two formatting dialogs (#306): a link needs its text and
 // its address together, and an image its address and its alternative text, so
@@ -41,8 +40,8 @@ export interface ImageRequest {
 	readonly finalFocus: () => HTMLElement | null;
 }
 
-// A field, its label, and the one line under it that is either the hint or
-// the error, and keeps its height either way so nothing below it moves.
+// A field of these dialogs: the shared anatomy with its note line kept, so a
+// missing value reported under it never moves the actions.
 function Field({
 	label,
 	hint,
@@ -58,31 +57,18 @@ function Field({
 	readonly onChange: (value: string) => void;
 	readonly inputRef?: React.RefObject<HTMLInputElement | null>;
 }) {
-	const id = useId();
-	const noteId = useId();
 	return (
-		<div className="grid gap-2">
-			<Label htmlFor={id}>{label}</Label>
-			<Input
-				ref={inputRef}
-				id={id}
-				value={value}
-				spellCheck={false}
-				aria-invalid={error ? true : undefined}
-				aria-describedby={noteId}
-				onChange={(event) => onChange(event.target.value)}
-			/>
-			<p
-				id={noteId}
-				className={cn(
-					"min-h-5 text-sm",
-					error ? "text-destructive" : "text-muted-foreground",
-				)}
-				role={error ? "alert" : undefined}
-			>
-				{error ?? hint}
-			</p>
-		</div>
+		<FormField label={label} hint={hint} error={error} reserveLine>
+			{(control) => (
+				<Input
+					{...control}
+					ref={inputRef}
+					value={value}
+					spellCheck={false}
+					onChange={(event) => onChange(event.target.value)}
+				/>
+			)}
+		</FormField>
 	);
 }
 

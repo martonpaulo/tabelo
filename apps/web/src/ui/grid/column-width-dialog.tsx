@@ -6,8 +6,6 @@ import {
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { Input } from "@tabelo/ui/components/input";
-import { Label } from "@tabelo/ui/components/label";
-import { cn } from "@tabelo/ui/lib/utils";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import { useTabeloStore } from "@/state/store";
@@ -17,6 +15,7 @@ import {
 	DialogCancel,
 	DialogConfirm,
 } from "@/ui/primitives/dialog-buttons";
+import { FormField } from "@/ui/primitives/form-field";
 import {
 	DEFAULT_COLUMN_WIDTH,
 	isSameColumnWidth,
@@ -57,8 +56,6 @@ export function ColumnWidthDialog({
 	const [submitted, setSubmitted] = useState(false);
 	const titleId = useId();
 	const descriptionId = useId();
-	const inputId = useId();
-	const hintId = useId();
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	// Each opening starts from the column's own width, not the last draft.
@@ -130,35 +127,29 @@ export function ColumnWidthDialog({
 						</DialogDescription>
 					</DialogHeader>
 
-					<div className="grid gap-2">
-						<Label htmlFor={inputId}>{copy.columnWidth.label}</Label>
-						<Input
-							ref={inputRef}
-							id={inputId}
-							inputMode="decimal"
-							// Selected on arrival so a typed number replaces the current one.
-							onFocus={(event) => event.currentTarget.select()}
-							value={draft}
-							aria-invalid={error ? true : undefined}
-							aria-describedby={hintId}
-							onChange={(event) => {
-								setDraft(event.target.value);
-								setSubmitted(false);
-							}}
-						/>
-						<p
-							id={hintId}
-							// The line keeps its height when empty, so an error appearing
-							// or the default note going away never moves the buttons.
-							className={cn(
-								"min-h-5 text-sm",
-								error ? "text-destructive" : "text-muted-foreground",
-							)}
-							role={error ? "alert" : undefined}
-						>
-							{error ?? (isDefault ? copy.columnWidth.atDefault : null)}
-						</p>
-					</div>
+					{/* The note line keeps its height when empty, so an error appearing
+					    or the default note going away never moves the buttons. */}
+					<FormField
+						label={copy.columnWidth.label}
+						hint={isDefault ? copy.columnWidth.atDefault : undefined}
+						error={error}
+						reserveLine
+					>
+						{(control) => (
+							<Input
+								{...control}
+								ref={inputRef}
+								inputMode="decimal"
+								// Selected on arrival so a typed number replaces the current one.
+								onFocus={(event) => event.currentTarget.select()}
+								value={draft}
+								onChange={(event) => {
+									setDraft(event.target.value);
+									setSubmitted(false);
+								}}
+							/>
+						)}
+					</FormField>
 
 					<DialogActions>
 						<DialogCancel>{copy.actions.cancel}</DialogCancel>

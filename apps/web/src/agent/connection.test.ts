@@ -1,7 +1,12 @@
 // @vitest-environment happy-dom
 
-import { afterEach, describe, expect, it } from "vitest";
-import { watchInputGuards } from "./connection";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+	connectAgent,
+	disconnectAgent,
+	useAgentConnection,
+	watchInputGuards,
+} from "./connection";
 
 let guards: ReturnType<typeof watchInputGuards> | null = null;
 afterEach(() => {
@@ -41,5 +46,49 @@ describe("agent input guards", () => {
 		disposed.dispose();
 		document.body.dispatchEvent(pointer("gotpointercapture"));
 		expect(disposed.busy()).toBeNull();
+	});
+});
+
+// A socket that never opens: the browser reports an error and then closes it,
+// as it does when nothing listens on the loopback port.
+class RefusedSocket {
+	onopen: (() => void) | null = null;
+	onerror: (() => void) | null = null;
+	onclose: (() => void) | null = null;
+	onmessage: ((event: MessageEvent) => void) | null = null;
+	constructor() {
+		queueMicrotask(() => {
+			this.onerror?.();
+			this.onclose?.();
+		});
+	}
+	send(): void {}
+	close(): void {}
+}
+
+describe("agent connection errors", () => {
+	afterEach(() => {
+		disconnectAgent();
+		vi.unstubAllGlobals();
+		useAgentConnection.setState({ status: "disconnected", error: null });
+	});
+
+	// The reason, not its copy, decides which part of the dialog reports it
+	// (#451): only a malformed code is about what the user typed.
+	it("reports a malformed code as an invalid descriptor", async () => {
+		expect(await connectAgent("not a code")).toBe(false);
+		expect(useAgentConnection.getState()).toMatchObject({
+			status: "disconnected",
+			error: "invalid-descriptor",
+		});
+	});
+
+	it("reports a well-formed code that cannot connect as a connection failure", async () => {
+		vi.stubGlobal("WebSocket", RefusedSocket);
+		expect(await connectAgent("4321:12345678")).toBe(false);
+		expect(useAgentConnection.getState()).toMatchObject({
+			status: "disconnected",
+			error: "connection-failed",
+		});
 	});
 });

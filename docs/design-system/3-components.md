@@ -639,6 +639,7 @@ than independent booleans. Raising `z-index` is not a hierarchy fix.
 | Title | `DialogTitle`, `text-lg font-semibold` (see Typography) |
 | Supporting copy | `DialogDescription`, one sentence saying what to choose |
 | Initial focus | A dialog that asks for text names its first field as `DialogContent`'s `initialFocus` (owner, 2026-09-19). React's `autoFocus` is never used in a dialog: it fires on mount, before a menu that opened the dialog has returned focus to its trigger, so the first keystrokes land outside the modal |
+| Field feedback | A field is the shared `FormField`: its label, its control, and one line under it that is the hint or the field's own error. Only an error about the value in that field marks it invalid and describes it. A failed operation on valid input, such as storage refusing a save or a connection that did not open, is the form's own `FormFailure` message above the actions: the field stays valid and as typed, and the actions stay the way to retry or leave (#451) |
 | Dismissal | Escape and an explicit Cancel; focus returns to what opened it |
 | Button hierarchy | One right-aligned, non-wrapping action row; below the `sm` breakpoint the actions stack at full width in the same order instead. Cancel or another neutral dismissal comes first, ordinary alternatives follow, and exactly one emphasized decision comes last. That decision is destructive red or primary blue, never both |
 | Confirmation | One primary verb naming the operation: "Download", not "OK" |

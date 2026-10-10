@@ -6,7 +6,6 @@ import {
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { Input } from "@tabelo/ui/components/input";
-import { Label } from "@tabelo/ui/components/label";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import { DEFAULT_TABLE_NAME } from "@/copy/product";
@@ -17,9 +16,13 @@ import {
 	DialogCancel,
 	DialogConfirm,
 } from "@/ui/primitives/dialog-buttons";
+import { FormFailure, FormField } from "@/ui/primitives/form-field";
 import { useContentWhileOpen } from "@/ui/primitives/use-content-while-open";
 
-type NameError = "empty" | "too-long" | "save" | "duplicate" | null;
+// What is wrong with the typed name itself. A refused save is not one of
+// these: the name is fine and stays valid, and the failure is the form's
+// (#451).
+type NameError = "empty" | "too-long" | "duplicate" | null;
 
 export function RenameTableDialog({
 	open,
@@ -44,22 +47,23 @@ export function RenameTableDialog({
 	const initialDraft = currentName === DEFAULT_TABLE_NAME ? "" : currentName;
 	const [draft, setDraft] = useState(initialDraft);
 	const [error, setError] = useState<NameError>(null);
+	const [saveFailed, setSaveFailed] = useState(false);
 	const titleId = useId();
 	const descriptionId = useId();
-	const inputId = useId();
-	const errorId = useId();
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
 		if (!open) return;
 		setDraft(initialDraft);
 		setError(null);
+		setSaveFailed(false);
 	}, [initialDraft, open]);
 
 	const close = (nextOpen: boolean) => {
 		if (nextOpen) return;
 		setDraft(initialDraft);
 		setError(null);
+		setSaveFailed(false);
 		onOpenChange(false);
 	};
 
@@ -68,6 +72,7 @@ export function RenameTableDialog({
 		const validated = validateTableName(
 			draft.trim() === "" ? DEFAULT_TABLE_NAME : draft,
 		);
+		setSaveFailed(false);
 		if (!validated.ok) {
 			setError(validated.reason);
 			return;
@@ -80,7 +85,7 @@ export function RenameTableDialog({
 			return;
 		}
 		if (outcome.status !== "saved") {
-			setError("save");
+			setSaveFailed(true);
 			return;
 		}
 		onOpenChange(false);
@@ -97,9 +102,7 @@ export function RenameTableDialog({
 				? copy.tableName.tooLong
 				: error === "duplicate"
 					? copy.tableName.duplicate
-					: error === "save"
-						? copy.tableName.saveError
-						: null;
+					: null;
 
 	const content = useContentWhileOpen(
 		open,
@@ -120,26 +123,25 @@ export function RenameTableDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="grid gap-2">
-					<Label htmlFor={inputId}>{copy.tableName.label}</Label>
-					<Input
-						ref={inputRef}
-						id={inputId}
-						value={draft}
-						placeholder={DEFAULT_TABLE_NAME}
-						aria-invalid={errorMessage ? true : undefined}
-						aria-describedby={errorMessage ? errorId : undefined}
-						onChange={(event) => {
-							setDraft(event.target.value);
-							setError(null);
-						}}
-					/>
-					{errorMessage ? (
-						<p id={errorId} className="text-destructive text-sm" role="alert">
-							{errorMessage}
-						</p>
-					) : null}
-				</div>
+				<FormField label={copy.tableName.label} error={errorMessage}>
+					{(control) => (
+						<Input
+							{...control}
+							ref={inputRef}
+							value={draft}
+							placeholder={DEFAULT_TABLE_NAME}
+							onChange={(event) => {
+								setDraft(event.target.value);
+								setError(null);
+								setSaveFailed(false);
+							}}
+						/>
+					)}
+				</FormField>
+
+				{saveFailed ? (
+					<FormFailure>{copy.tableName.saveError}</FormFailure>
+				) : null}
 
 				<DialogActions>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>

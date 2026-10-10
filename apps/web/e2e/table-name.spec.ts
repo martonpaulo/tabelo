@@ -5,6 +5,7 @@ import { expect, test } from "./fixtures";
 import {
 	activeTableMenuItem,
 	downloadConfirm,
+	expectDescribedBy,
 	openDownloadChooser,
 } from "./helpers";
 
@@ -99,11 +100,52 @@ test("rename validates input and Escape restores trigger focus", async ({
 	await input.fill("😀".repeat(121));
 	await dialog.getByRole("button", { name: copy.tableName.confirm }).click();
 	await expect(dialog.getByRole("alert")).toBeVisible();
+	// A name that breaks a rule is the field's own error (#451).
+	await expect(input).toHaveAttribute("aria-invalid", "true");
+	await expectDescribedBy(input, dialog.getByRole("alert"));
 
 	await page.keyboard.press("Escape");
 	await expect(dialog).toBeHidden();
 	await expect(trigger).toBeFocused();
 	await expect(page).toHaveTitle(tableDocumentTitle("Untitled table"));
+});
+
+// A valid name that storage refuses is still a valid name: the field stays
+// valid and as typed, the form says what failed, and Rename retries (#451).
+test("a refused save keeps the typed name valid and retryable", async ({
+	page,
+	tabelo,
+}) => {
+	await expect(tabelo.workspace).toBeVisible();
+	await page.evaluate(() => {
+		const write = Storage.prototype.setItem;
+		(window as unknown as { __refuse: boolean }).__refuse = true;
+		Storage.prototype.setItem = function (key: string, value: string) {
+			if (
+				(window as unknown as { __refuse: boolean }).__refuse &&
+				key.startsWith("tabelo.table.")
+			)
+				throw new DOMException("Full", "QuotaExceededError");
+			write.call(this, key, value);
+		};
+	});
+	const dialog = await openRenameDialog(page);
+	const input = dialog.getByRole("textbox", { name: copy.tableName.label });
+	const confirm = dialog.getByRole("button", { name: copy.tableName.confirm });
+
+	await input.fill("Project roles");
+	await confirm.click();
+	await expect(dialog.getByRole("alert")).toBeVisible();
+	await expect(input).not.toHaveAttribute("aria-invalid");
+	await expect(input).toHaveAccessibleDescription("");
+	await expect(input).toHaveValue("Project roles");
+
+	await page.evaluate(() => {
+		(window as unknown as { __refuse: boolean }).__refuse = false;
+	});
+	await confirm.click();
+	await expect(dialog).toBeHidden();
+	await expect(page).toHaveTitle(tableDocumentTitle("Project roles"));
 });
 
 // A form dialog opened from a menu owns focus on arrival: keystrokes, not a
