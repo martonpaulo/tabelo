@@ -222,7 +222,7 @@ reversible implementation choice does not belong here.
 | New table | Adds a table beside the others and asks nothing; it opens on the welcome surface, where going back deletes the still-empty table | `AGENTS.md` domain rules | #39, #46, #403 |
 | Floating menu identity | Global commands; identity includes copyright | design system §6 | #71, #403 |
 | Pinning | Optional first data row and first data column only | design system §9 | #160 |
-| Sort, find, and fill | Sorting and find are in scope; every pane finds in what it shows, and replaces only where its view is editable; fill repeats and offers a numeric series | design system §3, §9 | #143, #144, #150, #280 |
+| Sort, find, and fill | Sorting and find are in scope; every pane finds in what it shows, and replaces, or selects every match as text, only where its view is editable; fill repeats and offers a numeric series | design system §3, §9 | #143, #144, #150, #280, #429 |
 | Whole-table structure | Transpose and Delete empty rows and columns are in scope, as floating menu commands; Transpose asks first, with Transpose anyway or Cancel, when first-column numbers, booleans, or nulls would become header text; both report in a notice with Undo, which also restores the removed columns' widths and wrapping | design system §5 | #235 |
 | `Mod`+`D` | Belongs to a focused editable source editor and to the grid, unconditionally; the grid adds the next cell with exactly the same value | design system §9 | #232, #361 |
 | Empty source field | One caret stop, at the value start | design system §2 | #345 |

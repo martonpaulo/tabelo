@@ -34,6 +34,10 @@ export interface FindTarget {
 	// surface leaves these out.
 	readonly replaceCurrent?: (replacement: string) => boolean;
 	readonly replaceAll?: (replacement: string) => number;
+	// Turn every match into the surface's own selection, returning how many
+	// were selected. Editing what is selected is editing, so this too is
+	// offered only where the view is editable (#429).
+	readonly selectAll?: () => number;
 	// The bar closed: drop the marks and the reported count.
 	readonly close: () => void;
 	// Put the keyboard back on the surface, where closing the bar returns it.

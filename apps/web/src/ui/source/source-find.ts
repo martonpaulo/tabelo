@@ -116,6 +116,35 @@ function revealFirstFrom(view: EditorView): void {
 	});
 }
 
+// Every occurrence of the current query as one multiple selection (#429), or
+// null when there is nothing to select. It walks the same cursor `findSummary`
+// counts with, so the number the bar shows is the number of ranges selected.
+// The occurrence the bar calls current stays the primary range, as the grid
+// keeps its focused cell, so selecting everything moves the user nowhere.
+//
+// Upstream's `selectMatches` is not used: it gives up silently above 1000
+// matches (`matchAll(state, 1000)` returns null), which a Markdown pipe passes
+// at the target scale, and it always makes the first match primary. The cursor
+// and `EditorSelection` are still upstream's own matching and selection.
+// https://github.com/codemirror/search/blob/main/src/search.ts
+export function allMatchesSelection(
+	state: EditorState,
+): EditorSelection | null {
+	const query = getSearchQuery(state);
+	if (!query.valid) return null;
+	const main = state.selection.main;
+	const ranges = [];
+	let primary = 0;
+	const cursor = query.getCursor(state);
+	for (let next = cursor.next(); !next.done; next = cursor.next()) {
+		if (next.value.from === main.from && next.value.to === main.to) {
+			primary = ranges.length;
+		}
+		ranges.push(EditorSelection.range(next.value.from, next.value.to));
+	}
+	return ranges.length === 0 ? null : EditorSelection.create(ranges, primary);
+}
+
 function targetFor(view: EditorView): FindTarget {
 	const setQuery = (query: SearchQuery) => {
 		if (!searchPanelOpen(view.state)) openSearchPanel(view);
@@ -157,6 +186,19 @@ function targetFor(view: EditorView): FindTarget {
 			withReplacement(replacement);
 			const count = findSummary(view.state)?.total ?? 0;
 			return replaceAll(view) ? count : 0;
+		},
+		// Selection only: no text changes and nothing reaches either history
+		// until the user types into the ranges, which is then one ordinary
+		// editor transaction like any other multiple-selection edit.
+		selectAll: () => {
+			const selection = allMatchesSelection(view.state);
+			if (!selection) return 0;
+			view.dispatch({
+				selection,
+				scrollIntoView: true,
+				userEvent: "select.search.matches",
+			});
+			return selection.ranges.length;
 		},
 		close: () => {
 			closeSearchPanel(view);

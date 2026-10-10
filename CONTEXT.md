@@ -231,6 +231,10 @@ document-timeline step. Editing every selected range at once is one editor
 transaction and therefore one step of the editor's own history. Interface copy
 calls the ranges **matches**, as Find does (#78).
 
+Find's select every match in an editable source pane (#429) leaves the same kind
+of transient multiple selection, gathered at once by Find's own rule instead:
+literal, and case-sensitive only when Match case is on.
+
 Related to: Draft, Document timeline, View
 
 ### Alignment

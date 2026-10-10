@@ -433,6 +433,20 @@ counts coverage like every other selection, so a cell holding the query twice is
 still one cell, and the grid's own extent announcement says how many, so nothing
 is announced twice. The cell the bar was on stays the focused one.
 
+In an editable source pane the same command selects text instead of cells
+(#429): every occurrence the count reports becomes one range of the editor's own
+multiple selection, by Find's literal query and Match case and from the same
+search the count runs, so the number spoken and the ranges selected cannot
+disagree. Its name says it selects matches in the text, so it is never mistaken
+for the grid's cell selection. The occurrence the bar was on stays the primary
+range, the caret stays in the bar, and the count of selected matches is
+announced through the shared polite channel. `Escape` returns the caret to the
+editor with every range still selected, so typing edits them all in one editor
+transaction, one step of the editor's own history, and the other views follow
+through normal synchronization. Selecting changes no text, so an invalid draft
+stays exactly as it was. The rendered preview has no such command: it finds
+without editing.
+
 Replace acts through the ordinary cell and header edit path, so one replacement
 is one history step and Replace all is exactly one, whatever it touched.
 Replaced text is written back as a string: a projection that was rewritten is

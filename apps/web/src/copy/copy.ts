@@ -574,6 +574,11 @@ export const copy = {
 		showReplace: "Show replace",
 		hideReplace: "Hide replace",
 		selectAll: "Select every matching cell",
+		// A source pane selects the matched text itself, not the cells behind
+		// it, so its command says so (#429).
+		selectAllText: "Select every match in the text",
+		selectedText: (count: number) =>
+			`${count} ${count === 1 ? "match" : "matches"} selected`,
 		previous: "Previous match",
 		next: "Next match",
 		replace: "Replace match",

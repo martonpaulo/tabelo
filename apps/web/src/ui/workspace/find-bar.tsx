@@ -246,6 +246,26 @@ export function PaneFindBar({
 			);
 	};
 
+	// The grid's areas announce their own extent, so only a source pane's ranges
+	// are spoken here. The caret stays in the bar, as it does for the grid;
+	// Escape hands the editor back with every range still selected.
+	const selectAll = () => {
+		if (searchesDocument) {
+			useTabeloStore.getState().selectAllMatches();
+			return;
+		}
+		const count = target?.selectAll?.() ?? 0;
+		if (count > 0)
+			useTabeloStore.getState().announceStatus(copy.find.selectedText(count));
+	};
+	// Cells in the grid, text where the view is editable; never in a read-only
+	// view, which has nothing to edit through a selection.
+	const selectAllName = searchesDocument
+		? copy.find.selectAll
+		: replaceable && target?.selectAll
+			? copy.find.selectAllText
+			: null;
+
 	const close = () => {
 		useTabeloStore.getState().closeFind(paneId);
 		// Back to the pane's own surface, so it keeps the keyboard instead of
@@ -372,19 +392,19 @@ export function PaneFindBar({
 							<IconChevronDown aria-hidden />
 						</Button>
 					</ControlTooltip>
-					{/* Every matching cell becomes one selected area, which hands the
-				    result straight to the operations that already act on a selection:
-				    clear, copy, delete, alignment. The grid's own extent
-				    announcement says how many, so nothing is announced twice. A
-				    command about cells, so only the pane that shows cells has it. */}
-					{searchesDocument ? (
-						<ControlTooltip name={copy.find.selectAll} reason={noMatchReason}>
+					{/* In the grid every matching cell becomes one selected area, which
+				    hands the result straight to the operations that already act on
+				    a selection: clear, copy, delete, alignment. In an editable
+				    source every occurrence becomes one range of the editor's own
+				    multiple selection, so typing edits them all (#429). */}
+					{selectAllName ? (
+						<ControlTooltip name={selectAllName} reason={noMatchReason}>
 							<Button
 								variant="ghost"
 								size="icon-sm"
 								disabled={total === 0}
 								focusableWhenDisabled={total === 0}
-								onClick={() => useTabeloStore.getState().selectAllMatches()}
+								onClick={selectAll}
 							>
 								<IconMarquee2 aria-hidden />
 							</Button>

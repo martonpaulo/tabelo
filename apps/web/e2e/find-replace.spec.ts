@@ -377,6 +377,39 @@ test("a source pane replaces in its text and every other view follows", async ({
 	await expect(tabelo.cell(1, 2)).toHaveText("Lisbon");
 });
 
+test("a source pane selects every match in its text, and typing edits them all", async ({
+	tabelo,
+}) => {
+	await tabelo.paste(cities("Rio", "rio", "Madrid"));
+	await openSourceFind(tabelo, "csv", "Amsterdam");
+	const selectAll = paneBar(tabelo, "csv").getByRole("button", {
+		name: copy.find.selectAllText,
+	});
+	// Nothing to select is a reason, not a hidden control (#376).
+	await expect(selectAll).toBeDisabled();
+
+	// The same query and Match case the count uses: both spellings.
+	await paneQuery(tabelo, "csv").fill("rio");
+	await expect(paneCount(tabelo, "csv")).toHaveText("1/2");
+	await selectAll.click();
+	// The occurrence the bar was on is still the current one.
+	await expect(paneCount(tabelo, "csv")).toHaveText("1/2");
+
+	// Escape hands the editor back with every range still selected, so typing
+	// is one edit over all of them, reaching the table like any other.
+	await paneQuery(tabelo, "csv").press("Escape");
+	await expect(tabelo.source("csv")).toBeFocused();
+	await tabelo.page.keyboard.insertText("Lisbon");
+	await expect(tabelo.cell(1, 1)).toHaveText("Lisbon");
+	await expect(tabelo.cell(2, 1)).toHaveText("Lisbon");
+	await expect(tabelo.cell(3, 1)).toHaveText("Madrid");
+
+	// One step of the editor's own history takes the whole edit back.
+	await tabelo.page.keyboard.press("ControlOrMeta+z");
+	await expect(tabelo.cell(1, 1)).toHaveText("Rio");
+	await expect(tabelo.cell(2, 1)).toHaveText("rio");
+});
+
 test("a replace that breaks the source leaves it invalid, exactly as typing would", async ({
 	tabelo,
 }) => {
@@ -419,6 +452,13 @@ test("the rendered preview finds and offers no replacing at all", async ({
 	).toHaveCount(0);
 	await expect(
 		bar.getByRole("textbox", { name: copy.find.replacement }),
+	).toHaveCount(0);
+	// Nor a selection to edit through: no select command of either kind.
+	await expect(
+		bar.getByRole("button", { name: copy.find.selectAllText }),
+	).toHaveCount(0);
+	await expect(
+		bar.getByRole("button", { name: copy.find.selectAll }),
 	).toHaveCount(0);
 
 	// The mark is presentation only: nothing was wrapped around the matched
