@@ -327,3 +327,32 @@ test("a confirmation waits while the page is out of sight", async ({
 	await page.clock.fastForward(PAST_ANY_LIFETIME);
 	await expect(confirmation).toHaveCount(0);
 });
+
+test("a confirmation waits while the window is not the one in use", async ({
+	page,
+	tabelo,
+}) => {
+	await withControlledClock(page, tabelo);
+	await tabelo.editCell(1, 1, "Ingrid");
+	await setClipboard(page, "granted");
+	await copyCell(page);
+	const confirmation = tabelo.notice("info");
+	await expect(confirmation).toHaveCount(1);
+	await moveAway(page);
+
+	// Headless Chromium keeps every page focused, so leaving the window is
+	// stated to the page the way the browser would report it.
+	const setWindowFocus = (focused: boolean) =>
+		page.evaluate((next) => {
+			document.hasFocus = () => next;
+			window.dispatchEvent(new Event(next ? "focus" : "blur"));
+		}, focused);
+
+	await setWindowFocus(false);
+	await page.clock.fastForward(PAST_ANY_LIFETIME);
+	await expect(confirmation).toHaveCount(1);
+
+	await setWindowFocus(true);
+	await page.clock.fastForward(PAST_ANY_LIFETIME);
+	await expect(confirmation).toHaveCount(0);
+});
