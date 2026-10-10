@@ -627,6 +627,41 @@ longest cell, so a trace taken before #496 lands would measure the padding
 again. Trace grid beside Markdown, Jira and the rendered preview with the
 browser method under `## Method` after #496 if a large-cell stall remains.
 
+### Library hydration (#440)
+
+Startup reads every table's payload for its name (`readLibrary` in
+`state/store.ts`), because the name lives in the table's own payload (#403),
+then reads the active table again to open it. The audit on 2026-09-22
+(Chromium, reference machine A, median of three) saw first DOM at 140.2 ms
+with one 200-row table and 233.2 ms with 100 of them, while the read span grew
+from 11.0 ms (2 reads) to 109.7 ms (101 reads); 500 tables of 5 rows took 501
+reads and first DOM 140.9 ms. The first-DOM increase is the read span: the
+active table renders the same either way, and the cost follows stored bytes,
+not the number of tables.
+
+What one read costs, measured on 2026-10-10 on reference machine B (x86_64,
+Node 22, Vitest 4) at commit `a6b3540` with a disposable Vitest bench driver
+on `benchOptions` timing, over payloads built the way `saveTable` writes them.
+`localStorage.getItem` is not in these figures. Milliseconds, `min` of 200.
+
+| stored table | characters | `JSON.parse` | parse and `validatePersistedState` (today) | parse and a name check only |
+| --- | ---: | ---: | ---: | ---: |
+| 200 rows, plain | 30,590 | 0.120 | 0.458 | 0.120 |
+| 200 rows, formatted | 171,305 | 1.195 | 3.656 | 1.189 |
+| 5 rows, plain | 1,829 | 0.008 | 0.047 | 0.008 |
+
+Schema validation is two thirds to four fifths of each read. At 100 inactive
+tables of 200 plain rows that is about 46 ms of decode here, of which a
+name-only read would remove about 34 ms.
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| Startup cost depends on inactive payload size | First DOM grows by the read span (93 ms against 99 ms at 100 tables of 200 rows); 501 small reads add nothing visible; one 200-row read is 0.46 ms here, mostly validation | **Confirmed, and kept.** It grows with stored bytes, which the `localStorage` quota bounds (#446 owns storage capacity), it is paid once per load and never per edit, and saves already write the active table alone. |
+| Reading inactive tables later would remove the cost | The same decode, moved to the first time the table menu opens | **Rejected.** It turns a startup cost into an interaction delay of the same size, and the menu would need a state for names not yet read. |
+| Reading only the name of an inactive table is a free saving | About 74% of the decode, with no storage change | **Rejected.** An unreadable inactive payload would show its stored name instead of the default and look healthy until it is opened, which weakens the recovery signal for about 34 ms at 100 large tables. |
+| A metadata index holding the names would remove the cost | Inactive decode drops to one index read | **Not recommended at this benefit.** It stores each name twice, the drift #403 designed out, and needs an index version 4 with its migration, fixture and rollback. Reopen only with a report of startup above 100 ms that the read span explains. |
+| Reading the active table twice at startup is waste | One extra read: 0.46 ms here at 200 rows | **Disproved as worth a change.** |
+
 ### Adding an entry
 
 An entry belongs here when a suspicion has been measured, whatever the answer.
