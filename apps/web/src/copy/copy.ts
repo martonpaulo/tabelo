@@ -630,6 +630,11 @@ export const copy = {
 		firstColumn: "The selected column is already first.",
 		lastColumn: "The selected column is already last.",
 		sortSingleRow: "Sorting needs at least two rows. Add a row first.",
+		// A submenu whose rows are all disabled for different reasons (#497).
+		// That happens only where the selection sits against several table edges
+		// at once, and each row's remedy differs, so no one "how" sentence holds.
+		submenuNothingApplies:
+			"None of these commands applies to the current selection.",
 		lastRemainingRow: "A table must keep at least one row.",
 		lastRemainingColumn: "A table must keep at least one column.",
 		headerRowRequired: "Every table keeps its header row.",

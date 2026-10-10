@@ -135,14 +135,14 @@ test("a draft that does not parse names no row, so the move is refused", async (
 	await expectOrder(tabelo, ["Ingrid", "Paulo"]);
 	expect(await editor.textContent()).toBe(before);
 
+	// The menu refuses it too: with every row inside refused, the Move
+	// submenu itself is disabled (#497).
 	await page.keyboard.press("ContextMenu");
-	const move = await openSubmenu(
-		page,
-		page.getByRole("menu").first(),
-		copy.actions.move,
-	);
 	await expect(
-		move.getByRole("menuitem", { name: copy.actions.moveDown }),
+		page
+			.getByRole("menu")
+			.first()
+			.getByRole("menuitem", { name: copy.actions.move, exact: true }),
 	).toHaveAttribute("aria-disabled", "true");
 });
 
@@ -392,25 +392,38 @@ test("a draft that does not parse disables every structural command", async ({
 			"true",
 		);
 	}
-	const move = await openSubmenu(page, menu, copy.actions.move);
-	await expect(
-		move.getByRole("menuitem", { name: copy.actions.moveRight }),
-	).toHaveAttribute("aria-disabled", "true");
-	// With nothing enabled inside, Base UI leaves focus on the Move row rather
-	// than on a disabled item, so the keyboard goes on from that row. ArrowLeft
-	// there would close the whole context menu, not the submenu (#480).
+	// Every row of Move and of Sort is refused, so each submenu is disabled as
+	// a whole and says why on its own trigger, where the keyboard can reach it
+	// (#497): opening it would land on nothing a keyboard could read.
 	const moveRow = menu.getByRole("menuitem", {
 		name: copy.actions.move,
 		exact: true,
 	});
-	await expect(moveRow).toBeFocused();
+	const sortRow = menu.getByRole("menuitem", {
+		name: copy.actions.sort,
+		exact: true,
+	});
+	for (const row of [moveRow, sortRow]) {
+		await expect(row).toHaveAttribute("aria-disabled", "true");
+		await expect(row).toHaveAccessibleDescription(
+			copy.disabled.sourceRowUnparsed,
+		);
+	}
+	await moveRow.focus();
+	for (const key of ["ArrowRight", "Enter"]) {
+		await page.keyboard.press(key);
+		await expect(moveRow).toBeFocused();
+		await expect(menu).toBeVisible();
+		await expect(
+			page.getByRole("menu", { name: copy.actions.move }),
+		).toHaveCount(0);
+	}
+	// The parent menu stays open and the keyboard carries on from the row.
 	await page.keyboard.press("ArrowDown");
-	await expect(move).toBeHidden();
-	await expect(menu).toBeVisible();
-	const sort = await openSubmenu(page, menu, copy.actions.sort);
-	await expect(
-		sort.getByRole("menuitem", { name: copy.actions.sortAscending }),
-	).toHaveAttribute("aria-disabled", "true");
+	await expect(sortRow).toBeFocused();
+	await expect(page.locator('[role="tooltip"][data-open]')).toContainText(
+		copy.disabled.sourceRowUnparsed,
+	);
 });
 
 // The grid's four insert chords, in every pane whose codec maps rows (owner,

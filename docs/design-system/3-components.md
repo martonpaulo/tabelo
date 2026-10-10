@@ -196,8 +196,19 @@ own, with `ArrowLeft` or `Escape`, hands focus back to its trigger in the menu
 that is still open. A command chosen in a submenu closes the whole menu, and
 then the root menu alone decides where focus lands, as it does for a
 first-level command; the shared submenu part enforces this, so a menu never
-sets a submenu's final focus itself. A submenu whose every row is disabled
-takes no focus when it opens, so the keyboard carries on from its trigger.
+sets a submenu's final focus itself.
+
+A submenu whose every row is disabled is itself disabled (#497, superseding
+the #480 rule that it opened and took no focus). Its trigger keeps its place
+and its keyboard stop, reports `aria-disabled`, opens nothing on `ArrowRight`,
+`Enter`, `Space`, or a pointer, and carries one written reason through the
+shared disabled tooltip, so the parent menu stays open and the keyboard goes on
+from that row. The reason is the one its rows share, or, when they are refused
+for different reasons, one general sentence that none of the commands applies
+to the current selection. One helper decides it, and the one submenu part the
+grid's and every source view's table menu draw their submenus with applies it,
+so no menu computes it on its own. The app menu's one submenu, each table's
+options, holds no row that can be disabled.
 
 **The app menu** reads in this order (owner, 2026-09-20). `Tables` lists the
 library, one row shape for every table: the table's colour mark, its name, and

@@ -9,9 +9,6 @@ import {
 	ContextMenuLabel,
 	ContextMenuSeparator,
 	ContextMenuShortcut,
-	ContextMenuSub,
-	ContextMenuSubContent,
-	ContextMenuSubTrigger,
 	ContextMenuTrigger,
 } from "@tabelo/ui/components/context-menu";
 import {
@@ -60,6 +57,7 @@ import {
 	ColumnTypeChangeDialog,
 	type PendingColumnTypeChange,
 } from "@/ui/grid/cell-type-change-dialog";
+import { CommandSubmenu } from "@/ui/grid/command-submenu";
 import {
 	ColumnAlignmentGroup,
 	ColumnExpectedTypeGroup,
@@ -286,17 +284,16 @@ function MenuGroups({ groups }: { readonly groups: readonly Group[] }) {
 				<ContextMenuGroup>
 					{section.map((group) =>
 						group.submenu && group.label ? (
-							<ContextMenuSub key={group.id}>
-								<ContextMenuSubTrigger>
-									<group.submenu aria-hidden />
-									{group.label}
-								</ContextMenuSubTrigger>
-								<ContextMenuSubContent aria-label={group.label}>
-									{group.actions.map((item) => (
-										<MenuItem key={item.id} item={item} />
-									))}
-								</ContextMenuSubContent>
-							</ContextMenuSub>
+							<CommandSubmenu
+								key={group.id}
+								icon={group.submenu}
+								label={group.label}
+								rowReasons={group.actions.map((item) => item.reason)}
+							>
+								{group.actions.map((item) => (
+									<MenuItem key={item.id} item={item} />
+								))}
+							</CommandSubmenu>
 						) : null,
 					)}
 				</ContextMenuGroup>

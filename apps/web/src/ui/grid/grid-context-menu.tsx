@@ -9,9 +9,6 @@ import {
 	ContextMenuSegmentedItem,
 	ContextMenuSeparator,
 	ContextMenuShortcut,
-	ContextMenuSub,
-	ContextMenuSubContent,
-	ContextMenuSubTrigger,
 	ContextMenuTrigger,
 } from "@tabelo/ui/components/context-menu";
 import { segmentedGroupStyles } from "@tabelo/ui/components/menu-styles";
@@ -60,6 +57,7 @@ import {
 } from "./cell-type-change-dialog";
 import { cellTypeOptions, expectedTypeOptions } from "./cell-type-options";
 import { measureColumnFitWidth } from "./column-fit";
+import { CommandSubmenu } from "./command-submenu";
 import {
 	cellCommandRefusal,
 	runSelectionMark,
@@ -782,15 +780,16 @@ export function GridContextMenu({
 								<ContextMenuGroup>
 									{section.map((group) =>
 										group.submenu && group.label ? (
-											<ContextMenuSub key={group.id}>
-												<ContextMenuSubTrigger>
-													<group.submenu.icon aria-hidden />
-													{group.label}
-												</ContextMenuSubTrigger>
-												<ContextMenuSubContent aria-label={group.label}>
-													{group.actions.map(item)}
-												</ContextMenuSubContent>
-											</ContextMenuSub>
+											<CommandSubmenu
+												key={group.id}
+												icon={group.submenu.icon}
+												label={group.label}
+												rowReasons={group.actions.map((action) =>
+													action.disabled ? action.disabledReason : undefined,
+												)}
+											>
+												{group.actions.map(item)}
+											</CommandSubmenu>
 										) : null,
 									)}
 								</ContextMenuGroup>

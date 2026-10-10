@@ -218,6 +218,7 @@ reversible implementation choice does not belong here.
 | Table menu order | Every table context menu, the Visual Table's and each source view's, lists its commands in one order: its own subject, Cut/Copy/Paste, Undo/Redo, Select, Insert, Duplicate/Clear, the Move, Sort, Fill, and Move focus submenus, then Delete; same label, icon, and legend for the same command | design system §3 | owner, 2026-09-19 |
 | Group titles | Alignment, Edit, Move; no single-item title | design system §3 | #75, #81 |
 | Cascading menus | Only for flat, immediate, self-explanatory command lists, one level deep; includes the grid's directional groups | design system §3 | #149, #155, #369 |
+| All-disabled submenu | A submenu whose every row is disabled is itself disabled, in place, with one written reason reachable from the keyboard: the reason its rows share, or one general sentence when they differ | design system §3 | #497 |
 | New table | Adds a table beside the others and asks nothing; it opens on the welcome surface, where going back deletes the still-empty table | `AGENTS.md` domain rules | #39, #46, #403 |
 | Floating menu identity | Global commands; identity includes copyright | design system §6 | #71, #403 |
 | Pinning | Optional first data row and first data column only | design system §9 | #160 |

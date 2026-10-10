@@ -363,10 +363,12 @@ test("actions needing one area are disabled with a reason, never hidden", async 
 		menu.getByRole("menuitem", { name: copy.actions.deleteColumns(2) }),
 	).toBeEnabled();
 
-	const blocked = (await openSubmenu(page, menu, copy.actions.move)).getByRole(
-		"menuitem",
-		{ name: copy.actions.moveLeft },
-	);
+	// Every move needs one area, so the Move submenu is disabled as a whole and
+	// explains itself on its own trigger (#497).
+	const blocked = menu.getByRole("menuitem", {
+		name: copy.actions.move,
+		exact: true,
+	});
 	await expect(blocked).toBeDisabled();
 	await blocked.hover();
 	await expect(page.getByRole("tooltip")).toBeVisible();
@@ -389,10 +391,14 @@ test("adjacent columns stay separate under the modifier and join under Shift", a
 	await columnHandle(tabelo, 1).click();
 	await columnHandle(tabelo, 2).click({ modifiers: [modifier] });
 	await openCellMenu(page, tabelo);
-	const refused = await moveRight();
+	// Two areas refuse every move, so the Move submenu itself is refused and
+	// says why on its trigger (#497).
+	const refused = menu.getByRole("menuitem", {
+		name: copy.actions.move,
+		exact: true,
+	});
 	await expect(refused).toBeDisabled();
 	await expect(refused).toHaveAccessibleDescription(/\S/);
-	await page.keyboard.press("Escape");
 	await page.keyboard.press("Escape");
 	await expect(menu).toHaveCount(0);
 

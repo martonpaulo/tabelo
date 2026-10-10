@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
-import { openSubmenu, type TabeloPage } from "./helpers";
+import type { TabeloPage } from "./helpers";
 
 const modifier = process.platform === "darwin" ? "Meta" : "Control";
 
@@ -199,16 +199,16 @@ test("header and multiarea fill commands stay visible with a reason", async ({
 	page,
 	tabelo,
 }) => {
+	// Every fill direction is refused for one reason, so the Fill submenu is
+	// disabled as a whole and gives that reason on its own trigger (#497).
+	const fillTrigger = (menu: Locator) =>
+		menu.getByRole("menuitem", { name: copy.actions.fill, exact: true });
 	await tabelo.header(1).click({ button: "right" });
 	let menu = page.locator('[data-slot="context-menu-content"]');
-	let fillDown = (await openSubmenu(page, menu, copy.actions.fill)).getByRole(
-		"menuitem",
-		{ name: copy.actions.fillDown },
-	);
-	await expect(fillDown).toBeDisabled();
-	await fillDown.hover();
+	await expect(fillTrigger(menu)).toBeDisabled();
+	await fillTrigger(menu).hover();
 	await expect(page.getByRole("tooltip")).toBeVisible();
-	await page.keyboard.press("Escape");
+	// The first Escape dismisses the tooltip, the second the menu.
 	await page.keyboard.press("Escape");
 	await page.keyboard.press("Escape");
 	await expect(menu).toBeHidden();
@@ -217,12 +217,8 @@ test("header and multiarea fill commands stay visible with a reason", async ({
 	await tabelo.cell(3, 3).click({ modifiers: [modifier] });
 	await tabelo.cell(3, 3).click({ button: "right" });
 	menu = page.locator('[data-slot="context-menu-content"]');
-	fillDown = (await openSubmenu(page, menu, copy.actions.fill)).getByRole(
-		"menuitem",
-		{ name: copy.actions.fillDown },
-	);
-	await expect(fillDown).toBeDisabled();
-	await fillDown.hover();
+	await expect(fillTrigger(menu)).toBeDisabled();
+	await fillTrigger(menu).hover();
 	await expect(page.getByRole("tooltip")).toBeVisible();
 	await expect(fillHandle(tabelo)).toHaveCount(0);
 });

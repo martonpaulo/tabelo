@@ -138,17 +138,26 @@ test("a one-row table says why it cannot be sorted", async ({ tabelo }) => {
 	await tabelo.dismissNotices();
 
 	const menu = await tabelo.openColumnMenu(1);
-	const item = (
-		await openSubmenu(tabelo.page, menu, copy.actions.sort)
-	).getByRole("menuitem", { name: copy.actions.sortAscending });
-	// Unavailable through the accessibility tree, so the reason stays reachable
-	// rather than the item dropping out of the menu's keyboard order.
-	await expect(item).toBeDisabled();
-	await item.hover();
+	// Both directions are refused for the same reason, so the Sort submenu is
+	// disabled as a whole and gives that reason on its own trigger (#497),
+	// staying in the menu's keyboard order rather than opening onto nothing.
+	const trigger = menu.getByRole("menuitem", {
+		name: copy.actions.sort,
+		exact: true,
+	});
+	await expect(trigger).toBeDisabled();
+	await expect(trigger).toHaveAccessibleDescription(
+		copy.disabled.sortSingleRow,
+	);
+	await trigger.press("ArrowRight");
+	await expect(trigger).toBeFocused();
+	await expect(
+		tabelo.page.getByRole("menu", { name: copy.actions.sort }),
+	).toHaveCount(0);
+	await trigger.hover();
 	const tooltip = tabelo.page.locator('[role="tooltip"][data-open]');
 	await expect(tooltip).toBeVisible();
 	await expect(tooltip).toContainText(copy.disabled.sortSingleRow);
-	await expect(item).toHaveAccessibleDescription(copy.disabled.sortSingleRow);
 });
 
 test("sorting acts on the menu's column and keeps every selected area", async ({
