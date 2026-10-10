@@ -503,9 +503,13 @@ it belongs to the pane the way the header does.
   one row tall, grows through the browser's own `field-sizing: content` that the
   shared primitive already declares, and scrolls once it reaches three rows.
   Enter navigates and replaces, so a line break reaches a field by paste rather
-  than by keystroke. The controls beside a field stay on its first row. A field
-  takes the typeface of the view it belongs to, so a query typed against a
-  monospaced source reads the way the source does.
+  than by keystroke. The controls beside a field stay on its first row while
+  that row can also hold the field's reserved 10rem; in a narrower pane they
+  move together onto the line below it, at the trailing edge, and the field
+  takes the whole row, rather than shrinking until a name breaks letter by
+  letter (#421). The wrap is visual only, so the tab order does not change. A
+  field takes the typeface of the view it belongs to, so a query typed against
+  a monospaced source reads the way the source does.
 - **Its one piece of state is passive text.** The match count is a legend beside
   the controls with no role and nothing to press, and it reads compactly
   (`3/14`) while the same number is spoken in full through the shared polite

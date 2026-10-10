@@ -102,7 +102,11 @@ function FindField({
 			placeholder={label}
 			spellCheck={false}
 			className={cn(
-				"max-h-14 min-h-control-sm min-w-0 flex-1 overflow-auto py-1",
+				// The reserved width is what the row wraps around: below it the
+				// controls move to a line of their own instead of the field
+				// shrinking (#421). `min-w-0` still lets it fit a pane narrower
+				// than that.
+				"max-h-14 min-h-control-sm min-w-0 flex-1 basis-40 overflow-auto py-1",
 				monospace && "font-source",
 			)}
 			onChange={(event) => onChange(event.target.value)}
@@ -114,6 +118,10 @@ function FindField({
 		/>
 	);
 }
+
+// The controls after a field, kept together so a row that wraps moves them as
+// one group, at the trailing edge, rather than one button at a time.
+const FIND_CONTROLS = "ms-auto flex shrink-0 items-start gap-1.5";
 
 interface PaneFindBarProps {
 	readonly paneId: string;
@@ -282,7 +290,12 @@ export function PaneFindBar({
 			className="sticky bottom-0 left-0 z-40 mt-auto flex w-full shrink-0 flex-col gap-1.5 border-line-subtle border-t bg-surface-header px-2 py-1.5 group-data-[under-fab]/pane:pr-fab-safe"
 			onKeyDown={onKeyDown}
 		>
-			<div className="flex items-start gap-1.5">
+			{/* Each row wraps rather than squeezing its field (#421): when the
+			    field's reserved width and the controls do not fit one line, the
+			    controls move together onto the line below it, at the trailing
+			    edge, and the field takes the whole row. DOM and tab order stay
+			    as they are. */}
+			<div className="flex flex-wrap items-start gap-1.5">
 				{replaceable ? (
 					<ControlTooltip
 						name={replacing ? copy.find.hideReplace : copy.find.showReplace}
@@ -316,85 +329,87 @@ export function PaneFindBar({
 					}}
 				/>
 
-				{/* The buttons below stay in the tab order while there is nothing to
+				<div className={FIND_CONTROLS}>
+					{/* The buttons below stay in the tab order while there is nothing to
 				    step through, so their reason reaches the keyboard too (#376). */}
-				{/* Passive text, never a control: it states which occurrence the pane
+					{/* Passive text, never a control: it states which occurrence the pane
 				    is marking, which is the written half of a cue that is otherwise
 				    only a colour. Tabular figures and a reserved width keep the
 				    buttons beside it still as the number climbs. */}
-				<span
-					data-slot="find-position"
-					className="flex h-control-sm min-w-10 shrink-0 items-center justify-center text-muted-foreground text-xs tabular-nums"
-				>
-					{hasResult(find.query, total)
-						? total > 0 && result && result.index < 0
-							? copy.find.countUnplaced(total)
-							: copy.find.count(
-									total === 0 ? 0 : (result?.index ?? 0) + 1,
-									total,
-								)
-						: null}
-				</span>
+					<span
+						data-slot="find-position"
+						className="flex h-control-sm min-w-10 shrink-0 items-center justify-center text-muted-foreground text-xs tabular-nums"
+					>
+						{hasResult(find.query, total)
+							? total > 0 && result && result.index < 0
+								? copy.find.countUnplaced(total)
+								: copy.find.count(
+										total === 0 ? 0 : (result?.index ?? 0) + 1,
+										total,
+									)
+							: null}
+					</span>
 
-				<ControlTooltip name={copy.find.previous} reason={stepReason}>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						disabled={total === 0}
-						focusableWhenDisabled={total === 0}
-						onClick={() => step(-1)}
-					>
-						<IconChevronUp aria-hidden />
-					</Button>
-				</ControlTooltip>
-				<ControlTooltip name={copy.find.next} reason={stepReason}>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						disabled={total === 0}
-						focusableWhenDisabled={total === 0}
-						onClick={() => step(1)}
-					>
-						<IconChevronDown aria-hidden />
-					</Button>
-				</ControlTooltip>
-				{/* Every matching cell becomes one selected area, which hands the
-				    result straight to the operations that already act on a selection:
-				    clear, copy, delete, alignment. The grid's own extent
-				    announcement says how many, so nothing is announced twice. A
-				    command about cells, so only the pane that shows cells has it. */}
-				{searchesDocument ? (
-					<ControlTooltip name={copy.find.selectAll} reason={noMatchReason}>
+					<ControlTooltip name={copy.find.previous} reason={stepReason}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							disabled={total === 0}
 							focusableWhenDisabled={total === 0}
-							onClick={() => useTabeloStore.getState().selectAllMatches()}
+							onClick={() => step(-1)}
 						>
-							<IconMarquee2 aria-hidden />
+							<IconChevronUp aria-hidden />
 						</Button>
 					</ControlTooltip>
-				) : null}
-				<ControlTooltip name={copy.find.matchCase}>
-					<Toggle
-						size="sm"
-						pressed={find.caseSensitive}
-						onPressedChange={(pressed) => search({ caseSensitive: pressed })}
-					>
-						<IconLetterCase aria-hidden />
-					</Toggle>
-				</ControlTooltip>
+					<ControlTooltip name={copy.find.next} reason={stepReason}>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							disabled={total === 0}
+							focusableWhenDisabled={total === 0}
+							onClick={() => step(1)}
+						>
+							<IconChevronDown aria-hidden />
+						</Button>
+					</ControlTooltip>
+					{/* Every matching cell becomes one selected area, which hands the
+				    result straight to the operations that already act on a selection:
+				    clear, copy, delete, alignment. The grid's own extent
+				    announcement says how many, so nothing is announced twice. A
+				    command about cells, so only the pane that shows cells has it. */}
+					{searchesDocument ? (
+						<ControlTooltip name={copy.find.selectAll} reason={noMatchReason}>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								disabled={total === 0}
+								focusableWhenDisabled={total === 0}
+								onClick={() => useTabeloStore.getState().selectAllMatches()}
+							>
+								<IconMarquee2 aria-hidden />
+							</Button>
+						</ControlTooltip>
+					) : null}
+					<ControlTooltip name={copy.find.matchCase}>
+						<Toggle
+							size="sm"
+							pressed={find.caseSensitive}
+							onPressedChange={(pressed) => search({ caseSensitive: pressed })}
+						>
+							<IconLetterCase aria-hidden />
+						</Toggle>
+					</ControlTooltip>
 
-				<ControlTooltip name={copy.find.close}>
-					<Button variant="ghost" size="icon-sm" onClick={close}>
-						<IconX aria-hidden />
-					</Button>
-				</ControlTooltip>
+					<ControlTooltip name={copy.find.close}>
+						<Button variant="ghost" size="icon-sm" onClick={close}>
+							<IconX aria-hidden />
+						</Button>
+					</ControlTooltip>
+				</div>
 			</div>
 
 			{replacing ? (
-				<div className="flex items-start gap-1.5">
+				<div className="flex flex-wrap items-start gap-1.5">
 					{/* Holds the disclosure control's track, so the two fields line up
 					    on their leading edge instead of stepping. */}
 					<span aria-hidden className="size-control-sm shrink-0" />
@@ -410,28 +425,30 @@ export function PaneFindBar({
 							replaceOne();
 						}}
 					/>
-					<ControlTooltip name={copy.find.replace} reason={noMatchReason}>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							disabled={total === 0}
-							focusableWhenDisabled={total === 0}
-							onClick={replaceOne}
-						>
-							<IconReplace aria-hidden />
-						</Button>
-					</ControlTooltip>
-					<ControlTooltip name={copy.find.replaceAll} reason={noMatchReason}>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							disabled={total === 0}
-							focusableWhenDisabled={total === 0}
-							onClick={replaceAll}
-						>
-							<IconArrowsExchange aria-hidden />
-						</Button>
-					</ControlTooltip>
+					<div className={FIND_CONTROLS}>
+						<ControlTooltip name={copy.find.replace} reason={noMatchReason}>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								disabled={total === 0}
+								focusableWhenDisabled={total === 0}
+								onClick={replaceOne}
+							>
+								<IconReplace aria-hidden />
+							</Button>
+						</ControlTooltip>
+						<ControlTooltip name={copy.find.replaceAll} reason={noMatchReason}>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								disabled={total === 0}
+								focusableWhenDisabled={total === 0}
+								onClick={replaceAll}
+							>
+								<IconArrowsExchange aria-hidden />
+							</Button>
+						</ControlTooltip>
+					</div>
 				</div>
 			) : null}
 		</section>

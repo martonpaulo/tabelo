@@ -452,3 +452,91 @@ test("closing a pane's view drops its find with it", async ({ tabelo }) => {
 
 	await expect(paneBar(tabelo, "tsv")).toHaveCount(0);
 });
+
+// A narrow pane wraps the bar's controls onto their own line rather than
+// squeezing the query field until a name breaks letter by letter (#421).
+// Checked by thresholds, never by sizes: the field keeps a usable width, every
+// control stays on screen and clear of the floating app button, and the page
+// never scrolls sideways.
+const USABLE_QUERY_WIDTH = 128;
+
+async function expectUsableBar(tabelo: TabeloPage, bar: Locator) {
+	const page = tabelo.page;
+	const viewport = page.viewportSize();
+	if (!viewport) throw new Error("No viewport");
+	const fab = await page
+		.getByRole("button", { name: copy.actions.openAppMenu })
+		.boundingBox();
+	if (!fab) throw new Error("No floating app button");
+
+	for (const field of await bar.getByRole("textbox").all()) {
+		const box = await field.boundingBox();
+		expect(box?.width ?? 0).toBeGreaterThanOrEqual(USABLE_QUERY_WIDTH);
+	}
+	for (const control of await bar.getByRole("button").all()) {
+		await expect(control).toBeVisible();
+		const box = await control.boundingBox();
+		if (!box) throw new Error("A find control has no box");
+		expect(box.x).toBeGreaterThanOrEqual(0);
+		expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+		const overlapsFab =
+			box.x < fab.x + fab.width &&
+			fab.x < box.x + box.width &&
+			box.y < fab.y + fab.height &&
+			fab.y < box.y + box.height;
+		expect(overlapsFab).toBe(false);
+	}
+	expect(
+		await page.evaluate(
+			() => document.documentElement.scrollWidth <= window.innerWidth,
+		),
+	).toBe(true);
+}
+
+for (const width of [320, 375]) {
+	test(`keeps a usable query field in every kind of pane at ${width}px`, async ({
+		page,
+		tabelo,
+	}) => {
+		await page.setViewportSize({ width, height: 800 });
+		await tabelo.paste(PEOPLE);
+
+		// The grid, with its select-all control.
+		await openFind(tabelo, samplePeople[0]?.name ?? "");
+		await expectUsableBar(tabelo, paneBar(tabelo, "grid"));
+		await expect(paneCount(tabelo, "grid")).toHaveText("1/1");
+		// A query with a line break grows the field and keeps every control.
+		await paneQuery(tabelo, "grid").fill("Ingrid\nRio");
+		await expectUsableBar(tabelo, paneBar(tabelo, "grid"));
+
+		// A source pane, with replacing expanded.
+		await openSourceFind(tabelo, "csv", samplePeople[1]?.name ?? "");
+		await paneBar(tabelo, "csv")
+			.getByRole("button", { name: copy.find.showReplace })
+			.click();
+		await expect(
+			paneBar(tabelo, "csv").getByRole("textbox", {
+				name: copy.find.replacement,
+			}),
+		).toBeVisible();
+		await expectUsableBar(tabelo, paneBar(tabelo, "csv"));
+		await expect(paneCount(tabelo, "csv")).toHaveText("1/1");
+
+		// The rendered preview, which only finds.
+		await tabelo.showInSourcePane("html-preview");
+		await tabelo.pane("html-preview").locator("[data-pane-entry]").click();
+		await page.keyboard.press("ControlOrMeta+f");
+		await paneQuery(tabelo, "html-preview").fill("rio");
+		await expectUsableBar(tabelo, paneBar(tabelo, "html-preview"));
+
+		// Keyboard order is unchanged by the wrap: from the query, Tab reaches
+		// the controls in their written order, ending with close.
+		await paneQuery(tabelo, "html-preview").focus();
+		await page.keyboard.press("Tab");
+		await expect(
+			paneBar(tabelo, "html-preview").getByRole("button", {
+				name: copy.find.previous,
+			}),
+		).toBeFocused();
+	});
+}
