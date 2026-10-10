@@ -90,24 +90,10 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
   under it. The pane whose area reaches the workspace's bottom trailing
   corner, decided from the layout and never from its view (the last pane when
   stacked), also pads its find bar's trailing edge by `--fab-safe-area`, so no
-  control has to stay under the button. Its menu contains the Tabelo identity and description, the current
-  table name with a Rename command, Undo, Redo, the whole-table commands
-  Transpose table and Delete empty rows and columns (#235), New table, Import,
-  the `Copy as` submenu (#149), Download, Add view, Layout, Settings, and a
-  link to the GitHub repository. The whole-table commands live here because
-  they act on the document rather than on a row, a column, or a pane: an axis
-  menu is named for the axis it acts on, and a pane menu for its pane. They are
-  one untitled group of plain items after Undo and Redo, each disabled with a
-  written reason when it cannot apply, and each reports its result in an
-  `info` notice offering `Undo` (see `4-interaction-states.md`, Notice
-  severity), with no confirmation before it. Transpose turns the first column into the header
-  row, which holds text only, so when that column holds any number, boolean,
-  or null it first asks in the same dialog shape as the column type change,
-  naming how many values will become text, with `Cancel` (nothing changes) and
-  `Transpose anyway`; with none it runs at once. The dialog opens after the
-  menu has closed and returns focus to the menu trigger, and the transpose is
-  one undo step either way (owner, 2026-09-19, #235). The trigger has a stable accessible name
-  and never replaces visible menu labels with unexplained icons. Global Add
+  control has to stay under the button. What its menu holds, and how the
+  whole-table commands in it behave, is canonical in
+  [§3, the app menu](3-components.md#menus-that-carry-a-choice). The trigger
+  has a stable accessible name and never replaces visible menu labels with unexplained icons. Global Add
   view chooses the first valid split in workspace reading order and opens the
   same view chooser as the pane-edge command. It does not ask for placement or
   maintain a second placement policy. Keyboard focus on the trigger uses the
@@ -159,8 +145,8 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
   plain menu items. A command that does not apply is absent when capability
   decides it, while a temporarily unavailable structural command remains in
   place, disabled with a written reason.
-- Download and Layout remain document-level commands in the floating menu and
-  keep their dialogs. Add view remains in the floating menu and on splittable
+- Download table, in each table's options, and Change layout remain
+  document-level commands in the floating menu and keep their dialogs. Add view remains in the floating menu and on splittable
   pane edges; it never moves into the pane actions menu.
 - Layout offers only the arrangements of the pane count that is open (#72): two
   columns or two rows at two panes, the four asymmetric splits at three. It

@@ -293,8 +293,8 @@ are sentence case. Product, format, and key names keep their own capitals
 (Markdown, CSV, Enter). View names are the one deliberate exception to
 sentence case: each view has one Title Case name, owned by the registry's copy
 and used everywhere the view is named, the pane header, Change view, Add view,
-Download, Copy as, and accessible names alike: Visual Table, Markdown, CSV,
-TSV, HTML Source, Rendered Preview, Jira, JSON, Records (owner, 2026-09-19).
+the format chooser behind Copy table and Download table, and accessible names
+alike: Visual Table, Markdown, CSV, TSV, HTML Source, Rendered Preview, Jira, JSON, Records (owner, 2026-09-19).
 There is no second, shorter name; a narrow pane truncates the one name with an
 ellipsis. Inside an accessible name, a qualifier after a comma
 stays lowercase: "Name, expected type number".

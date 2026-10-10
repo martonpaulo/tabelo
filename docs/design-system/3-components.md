@@ -158,10 +158,10 @@ marks it will type with.
 Every action collection uses the menu primitive's semantic Group, in dropdown
 and context menus alike (#75). A visible group title is reserved for the three
 inline segmented choices, Expected type, Alignment, and Cell type, and for
-Edit (owner, 2026-09-19), for Format (#306), and for the app menu's three
-sections, `Tables`, `This table`, and `Workspace` (owner, 2026-09-20): that
-menu reaches three different subjects, and a hairline alone never said which
-one a command acts on. It is canonical copy rendered through GroupLabel, and
+Edit (owner, 2026-09-19), for Format (#306), and for the app menu's
+`Tables` and `Workspace` sections (owner, 2026-09-20): that menu reaches
+different subjects, and a hairline alone never said which one a command acts
+on. It is canonical copy rendered through GroupLabel, and
 the Group is named with `aria-labelledby`. Clipboard, History, Select, Insert,
 Remove, and the self-explanatory width actions (Fit column to content, Set
 column width) remain untitled semantic groups, without an empty label. Move,
@@ -176,22 +176,20 @@ follow the same grouping contract.
 A submenu is allowed for exactly one shape: **a flat list of immediate,
 self-explanatory commands that needs no explanatory state**. Every row performs
 its command the moment it is chosen, there is nothing to state beforehand, and
-nothing to unwind afterwards. The approved members are the global `Copy as` (#149),
-whose rows are the codec registry and which is the standing example; column
+nothing to unwind afterwards. The approved members are column
 `Alignment` (#155) and cell `Cell type`, which keep their radio-group semantics
 wherever they are placed; and the named groups of directional commands in the
 table menus, `Move`, `Fill`, and `Move focus, keep selection`, folded in on
 #369 because a flat grid context menu had grown taller than a laptop screen,
 with `Sort` and its two directions beside them (owner, 2026-09-19). Clipboard,
 History, Select, Insert, Edit, and Remove stay on the first level, one click
-away. The app menu's `Export` joined the class on 2026-09-20 (owner), holding
-`Import file`, `Copy as`, and `Download table`: everything that moves the table
-between Tabelo and a file or the clipboard, which the top level had been
-carrying beside the commands that edit the table. It is also the one place a
-submenu contains a second submenu, because `Copy as` is a member of this class
-in its own right and flattening its rows into `Export` would put one row per
-codec beside three unrelated commands. Nothing else nests, and no third level
-exists.
+away. The one other submenu is each table's options control in the app menu
+(owner, 2026-09-20, below), which holds what can be done to that table; some of
+its rows open a dialog or ask first, which the shape above otherwise excludes.
+No submenu contains another, and no third level exists. The global `Copy as`
+submenu and the app menu's `Export` submenu are gone: copying the table opens
+the same format chooser as downloading it, and importing a file is `Mod+O` and
+the welcome surface (owner, 2026-09-20).
 
 Focus has one owner as a submenu closes (#480). A submenu that closes on its
 own, with `ArrowLeft` or `Escape`, hands focus back to its trigger in the menu
@@ -201,16 +199,34 @@ first-level command; the shared submenu part enforces this, so a menu never
 sets a submenu's final focus itself. A submenu whose every row is disabled
 takes no focus when it opens, so the keyboard carries on from its trigger.
 
-**The app menu** is three sections in this order (owner, 2026-09-20). `Tables`
-lists the library, one row shape for every table: the table's colour mark, its
-name, and the two commands that act on it. The open table adds its size line,
-the muted resting fill, a check, and `aria-current`, and the list ends with
-`New table`. `This table` holds the undo and redo pair, then the commands that
-reshape the table, then `Export`. `Workspace` holds `Add view` and
-`Change layout`, with `Settings` below them under a separator, reaching past
-all three. The menu has no brand row: the trigger is the product's own mark.
-Its footer is one line, the product and its copyright in muted text beside the
-link to its source.
+**The app menu** reads in this order (owner, 2026-09-20). `Tables` lists the
+library, one row shape for every table: the table's colour mark, its name, and
+one options control holding what can be done to that table, which a right click
+on the name also opens. The open table adds its size line, the muted resting
+fill, a check, and `aria-current`, and the list ends with `New table`. The
+undo and redo pair follows as an untitled group, because the table it walks
+was just read above it. `Workspace` holds `Add view` and `Change layout`, with
+`Settings` and the agent connection below them under a separator. The menu has
+no brand row: the trigger is the product's own mark. Its footer is one line,
+the product and its copyright in muted text beside the link to its source.
+
+A table's options list `Open table` (except on the open one), `Rename table`,
+the whole-table commands `Transpose table` and `Delete empty rows and columns`
+(#235), `Copy table` and `Download table`, which share one format chooser, and
+`Delete` with the table's name last, under a separator. The whole-table commands live there because
+they act on a table rather than on a row, a column, or a pane: an axis menu is
+named for the axis it acts on, and a pane menu for its pane. Running one on a
+table that is not open opens that table first, so the change lands in its own
+history. Each is disabled with a written reason when it cannot apply, and each
+reports its result in an `info` notice offering `Undo` (see
+`4-interaction-states.md`, Notice severity), with no confirmation before it.
+Transpose turns the first column into the header row, which holds text only,
+so when that column holds any number, boolean, or null it first asks in the
+same dialog shape as the column type change, naming how many values will
+become text, with `Cancel` (nothing changes) and `Transpose anyway`; with none
+it runs at once. The dialog opens after the menu has closed and returns focus
+to the menu trigger, and the transpose is one undo step either way (owner,
+2026-09-19, #235).
 
 A per-row command that repeats down a list rests at zero opacity and is
 revealed by a pointer over its row or by focus reaching any item in it
@@ -242,12 +258,12 @@ menu, and a legend only where that view binds the key. One list in
 through it rather than keeping a list of its own.
 
 A submenu may open with one muted note when a row's outcome depends on the
-document, and only then. `Copy as` is the one case: while the table holds
-formatting, a note at its top names the formats that copy text only, read from
-each codec's declared inline-content capability rather than a list of ids, and
-nothing is shown otherwise (#306). The note is static text that describes the
-submenu (`aria-describedby`), never a row, and it wraps inside the width the
-rows set.
+document, and only then. The note is static text that describes the submenu
+(`aria-describedby`), never a row, and it wraps inside the width the rows set.
+No submenu uses it today: its one case was the global `Copy as`, and the
+formats that copy or download text only while the table holds formatting are
+now said in the format chooser, beside the choice, read from each codec's
+declared inline-content capability rather than a list of ids (#306).
 
 Every other choice still opens one dialog, and the two standing examples say
 why. **Add view** carries a consequence the list cannot show, because the same
