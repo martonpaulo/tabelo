@@ -204,7 +204,8 @@ settings remain outside this tool surface. The user can still perform their
 normal UI actions; session changes invalidate any obsolete authorization.
 
 Library mutations carry the current active table ID, document revision and
-library revision, plus a request ID. Creating or opening returns a compact
+library revision, plus a request ID. The table ID is `null` only to create the
+first table of an empty library (#481). Creating or opening returns a compact
 snapshot in `data.table`, ready for the next edit without another read. If a
 table opens into recovery, `data.tableError` replaces that snapshot: the agent
 must not mistake an unreadable payload for empty content. Renaming can target
@@ -213,10 +214,17 @@ unreadable bytes require the user's recovery flow. Listing returns names and
 IDs only, with a revision guard for continuation pages.
 
 The library may hold no table once the user deletes the last one (#466). Then
-listing returns `activeTableId: null` and no tables, and every read, edit,
-workspace and library command fails with `no_active_table` and the current
-revisions, never a blank snapshot. The agent cannot start the first table: the
-user does, from the welcome surface.
+listing returns `activeTableId: null`, no tables and the current revisions.
+Every read, edit, workspace and library command fails with `no_active_table`
+and the current revisions, never a blank snapshot, except one: a create with
+`tableId: null` and those revisions starts the first table (#481). It runs the
+same library operation as any other create, so the new table becomes active,
+takes the default name unless one is given, is saved with the index, and
+replaces the welcome surface in the browser, as starting a table there does.
+A `null` table ID while a table is active is stale and refused with
+`session_changed`; a create naming a table ID in an empty library still gets
+`no_active_table`. The schema only widened, so the protocol version did not
+change; an older helper rejects `null` at its own schema.
 
 ## Admission and recovery
 

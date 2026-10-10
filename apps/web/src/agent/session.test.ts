@@ -127,6 +127,116 @@ describe("agent command admission", () => {
 		expect(useTabeloStore.getState().library.tables).toHaveLength(0);
 	});
 
+	// The first table of an empty library is the one thing a paired agent can
+	// still start, by naming no current table (#481).
+	function emptyLibrary(): { revisions: Record<string, unknown> } {
+		useTabeloStore.getState().deleteTable(tableId());
+		const listed = execute(
+			{ tool: "tabelo_list_tables", args: { sessionId: session.id } },
+			1,
+		);
+		if (!listed.data) throw new Error("listing failed");
+		return { revisions: listed.data };
+	}
+	function libraryCall(
+		requestId: string,
+		revisions: Record<string, unknown>,
+		action: LibraryEdit["action"],
+		table: string | null = null,
+	) {
+		return {
+			tool: "tabelo_manage_tables" as const,
+			args: {
+				sessionId: session.id,
+				tableId: table,
+				requestId,
+				expectedDocumentRevision: Number(revisions.documentRevision),
+				expectedLibraryRevision: Number(revisions.libraryRevision),
+				action,
+			},
+		};
+	}
+
+	it("creates the first table of an empty library as the active one", () => {
+		const { revisions } = emptyLibrary();
+		const created = execute(
+			libraryCall("first-table", revisions, { kind: "create" }),
+			2,
+		);
+		expect(created).toMatchObject({
+			ok: true,
+			code: "applied",
+			data: { applied: true, persistence: "saved" },
+		});
+		expect(created.data?.table).toMatchObject({
+			tableId: created.data?.tableId,
+		});
+		const library = useTabeloStore.getState().library;
+		expect(library.tables).toHaveLength(1);
+		expect(library.activeId).toBe(created.data?.tableId);
+		expect(
+			Number(created.data?.libraryRevision) > Number(revisions.libraryRevision),
+		).toBe(true);
+		const listed = execute(
+			{ tool: "tabelo_list_tables", args: { sessionId: session.id } },
+			3,
+		);
+		expect(listed.data).toMatchObject({
+			activeTableId: created.data?.tableId,
+			totalTables: 1,
+		});
+		const edit = command("into-first-table");
+		expect(execute(edit, 4).code).toBe("applied");
+	});
+
+	it("keeps refusing every other command while the library is empty", () => {
+		const { revisions } = emptyLibrary();
+		const refusals = [
+			libraryCall("open", revisions, { kind: "open", targetTableId: "gone" }),
+			libraryCall("rename", revisions, {
+				kind: "rename",
+				targetTableId: "gone",
+				name: "Research",
+			}),
+			{
+				tool: "tabelo_edit_workspace",
+				args: {
+					sessionId: session.id,
+					tableId: "gone",
+					requestId: "workspace",
+					expectedDocumentRevision: Number(revisions.documentRevision),
+					expectedWorkspaceRevision: Number(revisions.workspaceRevision),
+					action: { kind: "set_layout", layoutId: "single" },
+				},
+			},
+		];
+		refusals.forEach((call, index) => {
+			expect(execute(call, index + 2).code).toBe("no_active_table");
+		});
+		expect(
+			execute(
+				{
+					tool: "tabelo_manage_tables",
+					args: {
+						...libraryCall("other-session", revisions, { kind: "create" }).args,
+						sessionId: "another-session",
+					},
+				},
+				10,
+			).code,
+		).toBe("session_changed");
+		expect(useTabeloStore.getState().library.tables).toHaveLength(0);
+	});
+
+	it("treats a create naming no table as stale while a table is active", () => {
+		const revisions = read();
+		const before = useTabeloStore.getState().library;
+		expect(
+			execute(libraryCall("stale-empty", revisions, { kind: "create" })).code,
+		).toBe("session_changed");
+		expect(useTabeloStore.getState().library).toBe(before);
+	});
+
 	it("guards library continuation pages and reports unreadable opened data without a fake empty snapshot", () => {
 		useTabeloStore.getState().createTable("Research");
 		const listed = execute({

@@ -172,6 +172,62 @@ test("the paired library creates, renames and reopens tables without duplicate c
 	expect((await agent.read()).tableId).toBe(original.tableId);
 });
 
+test("the agent starts the first table of an empty library and the welcome surface gives way (#481)", async ({
+	page,
+	tabelo,
+	agent,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.runAppCommand("deleteTable");
+	await page
+		.getByRole("dialog", { name: copy.deleteTable.title })
+		.getByRole("button", { name: copy.deleteTable.confirm })
+		.click();
+	await expect(tabelo.welcome).toBeVisible();
+
+	const empty = await agent.call("tabelo_list_tables", {
+		sessionId: agent.sessionId,
+	});
+	expect(empty.data).toMatchObject({ activeTableId: null, totalTables: 0 });
+	expect(
+		(await agent.call("tabelo_read", { sessionId: agent.sessionId })).code,
+	).toBe("no_active_table");
+	const created = await agent.call("tabelo_manage_tables", {
+		sessionId: agent.sessionId,
+		tableId: null,
+		requestId: randomUUID(),
+		expectedDocumentRevision: empty.data?.documentRevision,
+		expectedLibraryRevision: empty.data?.libraryRevision,
+		action: { kind: "create" },
+	});
+	expect(created, JSON.stringify(created)).toMatchObject({
+		ok: true,
+		data: { applied: true },
+	});
+	await expect(tabelo.welcome).toBeHidden();
+
+	const table = created.data?.table as Snapshot;
+	expect(
+		(
+			await agent.call(
+				"tabelo_edit_table",
+				tableArgs(table, [
+					{
+						kind: "set_header",
+						columnId: required(table.columns[0]).id,
+						value: "Name",
+					},
+				]),
+			)
+		).code,
+	).toBe("applied");
+	await expect(tabelo.header(1)).toHaveText("Name");
+
+	await page.reload();
+	await expect(tabelo.welcome).toBeHidden();
+	await expect(tabelo.header(1)).toHaveText("Name");
+});
+
 test("MCP creation refuses storage failure and keeps the current editable table", async ({
 	page,
 	tabelo,

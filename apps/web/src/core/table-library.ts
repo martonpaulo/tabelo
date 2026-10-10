@@ -43,11 +43,14 @@ export function isLargeLibrary(library: TableLibrary): boolean {
 // and two identical entries make that a guess. A library of one keeps the
 // plain default; from the second table on the names are numbered, and the
 // first table is numbered with them while it still carries the untouched
-// default (owner, 2026-09-20).
+// default (owner, 2026-09-20). The first table of an empty library is that
+// library of one, so it takes the plain default too (#481).
 export function nameForNewTable(
 	library: TableLibrary,
 	defaultName: string,
 ): { readonly name: string; readonly renameFirst: string | null } {
+	if (library.tables.length === 0)
+		return { name: defaultName, renameFirst: null };
 	const renameFirst =
 		library.tables.length === 1 && library.tables[0]?.name === defaultName
 			? `${defaultName} 1`

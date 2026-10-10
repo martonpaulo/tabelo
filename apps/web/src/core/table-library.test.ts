@@ -25,6 +25,12 @@ function libraryOf(...names: readonly string[]): TableLibrary {
 }
 
 describe("naming a new table", () => {
+	it("gives the first table of an empty library the plain default (#481)", () => {
+		expect(
+			nameForNewTable({ tables: [], activeId: null }, DEFAULT_NAME),
+		).toEqual({ name: DEFAULT_NAME, renameFirst: null });
+	});
+
 	it("numbers the first table when the second one arrives", () => {
 		expect(nameForNewTable(libraryOf(DEFAULT_NAME), DEFAULT_NAME)).toEqual({
 			name: "Untitled table 2",

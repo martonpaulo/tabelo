@@ -277,8 +277,17 @@ export class AgentSession {
 		>,
 	): AgentResult {
 		// With no table active there is no document to edit and no table a
-		// library command could name as current; the user starts one (#466).
-		if (this.tableId === null)
+		// library command could name as current (#466). The one command that
+		// still means something is creating the first table, and it says so by
+		// naming no current table (#481).
+		if (
+			this.tableId === null &&
+			!(
+				call.tool === "tabelo_manage_tables" &&
+				call.args.action.kind === "create" &&
+				call.args.tableId === null
+			)
+		)
 			return failure("no_active_table", this.revisions());
 		if (call.args.tableId !== this.tableId) return failure("session_changed");
 		if (this.paused) return failure("session_paused");
