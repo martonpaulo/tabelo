@@ -1,7 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
-import { activeTableMenuItem, openSubmenu } from "./helpers";
+import { activeTableMenuItem, openSubmenu, setClipboard } from "./helpers";
 
 async function expectDialogOptionAnatomy(dialog: Locator, expected: number) {
 	const list = dialog.getByRole("radiogroup");
@@ -483,4 +483,31 @@ test("the Copy table dialog is keyboard operable and returns focus to the app me
 	await page.keyboard.press("Escape");
 	await expect(dialog).toBeHidden();
 	await expect(trigger).toBeFocused();
+});
+
+test("focus moved elsewhere while a menu is leaving stays where it went", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	await setClipboard(page, "granted");
+	// The menu's exit transition is held open so the move lands inside it every
+	// time, then finished through the Web Animations API, which is what Base UI
+	// waits on before it unmounts the menu and returns focus (#501).
+	await page.addStyleTag({ content: ":root:root { --motion-exit: 3600s; }" });
+	await tabelo.cell(1, 1).click({ button: "right" });
+	const menu = page.getByRole("menu");
+	await page.getByRole("menuitem", { name: copy.actions.copy }).click();
+	await expect(menu).toHaveAttribute("data-ending-style");
+
+	const dismiss = tabelo
+		.notice("info")
+		.getByRole("button", { name: copy.actions.dismiss });
+	await dismiss.focus();
+	await menu.evaluate((element) => {
+		for (const animation of element.getAnimations()) animation.finish();
+	});
+
+	await expect(menu).toHaveCount(0);
+	await expect(dismiss).toBeFocused();
 });

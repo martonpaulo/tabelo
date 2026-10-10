@@ -196,7 +196,10 @@ own, with `ArrowLeft` or `Escape`, hands focus back to its trigger in the menu
 that is still open. A command chosen in a submenu closes the whole menu, and
 then the root menu alone decides where focus lands, as it does for a
 first-level command; the shared submenu part enforces this, so a menu never
-sets a submenu's final focus itself.
+sets a submenu's final focus itself. A closing menu hands focus anywhere only
+while focus is still in a menu or on the page: a user who moved focus on during
+the exit transition keeps it where they put it (#501). The shared popup part
+enforces this in front of every menu's own final focus.
 
 A submenu whose every row is disabled is itself disabled (#497, superseding
 the #480 rule that it opened and took no focus). Its trigger keeps its place

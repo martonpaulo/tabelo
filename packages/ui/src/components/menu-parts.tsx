@@ -63,6 +63,27 @@ function submenuFinalFocus(trigger: HTMLElement | null): boolean {
 	return trigger?.closest("[role='menu']")?.hasAttribute("data-open") ?? false;
 }
 
+// Where a closing menu may send focus once its exit transition ends (#501).
+// Base UI returns focus only while focus is still in the menu or on the page
+// body, so a user who moved on while the menu was leaving keeps their place
+// (https://github.com/floating-ui/floating-ui/issues/2607). A function
+// `finalFocus` counts as an explicit destination and skips that check, which
+// took focus back from a notice's Dismiss button and sent the next Enter into
+// a grid cell. This puts the check back in front of every such function.
+type FinalFocus = MenuPrimitive.Popup.Props["finalFocus"];
+
+function keepingFocusThatMovedOn(finalFocus: FinalFocus): FinalFocus {
+	if (typeof finalFocus !== "function") return finalFocus;
+	return (closeType) => {
+		const active = document.activeElement;
+		const movedOn =
+			active !== null &&
+			active !== document.body &&
+			active.closest("[role='menu']") === null;
+		return movedOn ? false : finalFocus(closeType);
+	};
+}
+
 export interface MenuComponentOptions {
 	// The prefix every `data-slot` in this menu carries, such as
 	// "dropdown-menu": the attribute the stylesheet and the browser suite read.
@@ -95,6 +116,7 @@ export function createMenuComponents(options: MenuComponentOptions) {
 		side = options.content.side,
 		sideOffset = options.content.sideOffset,
 		className,
+		finalFocus,
 		...props
 	}: MenuPrimitive.Popup.Props & MenuPlacement) {
 		const Positioner = options.positioner;
@@ -114,6 +136,7 @@ export function createMenuComponents(options: MenuComponentOptions) {
 							menuPopupStyles,
 							className,
 						)}
+						finalFocus={keepingFocusThatMovedOn(finalFocus)}
 						{...props}
 					/>
 				</Positioner>
