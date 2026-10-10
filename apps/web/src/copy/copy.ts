@@ -10,6 +10,7 @@ import { cellText } from "@/core/cell-value";
 import { columnLetter } from "@/core/column-letter";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import { isTextContent } from "@/core/inline-content";
+import type { SortDirection } from "@/core/operations";
 import type { FillSeriesRefusal } from "@/core/series";
 import type { TableShapeLimitError } from "@/core/table-limits";
 import type {
@@ -25,6 +26,21 @@ import type {
 } from "@/formats/types";
 import type { ImportError } from "@/import/prepare";
 import type { PanePositionId, SplitEdge } from "@/workspace/layout";
+
+// The two sort directions, as each expected type reads them. A boolean column
+// sorts false before true, as the comparison orders them.
+const sortLabels: Record<
+	ExpectedColumnType | "none",
+	Record<SortDirection, string>
+> = {
+	text: { ascending: "Sort A → Z", descending: "Sort Z → A" },
+	number: { ascending: "Sort 1 → 9", descending: "Sort 9 → 1" },
+	boolean: {
+		ascending: "Sort false → true",
+		descending: "Sort true → false",
+	},
+	none: { ascending: "Sort ascending", descending: "Sort descending" },
+};
 
 // Every user-visible string lives here. One place to keep the voice
 // consistent, and the seam a locale would plug into if Tabelo ever ships one.
@@ -846,9 +862,12 @@ export const copy = {
 		alignDefault: "No alignment",
 		alignment: "Alignment",
 		// Sorting reorders the table itself rather than the view, so the labels
-		// say what the rows do and never suggest a sort that stays applied.
-		sortAscending: "Sort ascending",
-		sortDescending: "Sort descending",
+		// say what the rows do and never suggest a sort that stays applied. Each
+		// direction is named by the column's expected type (#470), which is
+		// carried rather than read from the cells, and generically when no column
+		// is resolved, such as a caret outside every cell.
+		sortLabel: (direction: SortDirection, type?: ExpectedColumnType) =>
+			sortLabels[type ?? "none"][direction],
 		// The submenu holding both, in the grid's column menu and in a source
 		// pane's, where it sorts by the column under the caret.
 		sort: "Sort",

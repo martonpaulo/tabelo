@@ -560,13 +560,17 @@ export function buildTableActions(
 				: copy.status.rowsAlreadySorted,
 		);
 	};
+	const sortType =
+		sortColumn === undefined
+			? undefined
+			: document.columns[sortColumn]?.expectedType;
 	const sort: TableAction[] =
 		sortColumn === undefined
 			? []
 			: [
 					{
 						id: "sort-ascending",
-						label: copy.actions.sortAscending,
+						label: copy.actions.sortLabel("ascending", sortType),
 						icon: IconSortAscending,
 						disabled: sortReason !== undefined,
 						disabledReason: sortReason,
@@ -575,7 +579,7 @@ export function buildTableActions(
 					},
 					{
 						id: "sort-descending",
-						label: copy.actions.sortDescending,
+						label: copy.actions.sortLabel("descending", sortType),
 						icon: IconSortDescending,
 						disabled: sortReason !== undefined,
 						disabledReason: sortReason,

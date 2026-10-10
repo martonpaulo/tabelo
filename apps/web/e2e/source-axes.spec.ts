@@ -162,7 +162,9 @@ for (const view of columnViews) {
 		await page.keyboard.press("ContextMenu");
 		await expect(menu).toHaveAccessibleName(/City/);
 		await (await openSubmenu(page, menu, copy.actions.sort))
-			.getByRole("menuitem", { name: copy.actions.sortAscending })
+			.getByRole("menuitem", {
+				name: copy.actions.sortLabel("ascending", "text"),
+			})
 			.click();
 		await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
 		expect(await order(tabelo)).toEqual(["Paulo", "Ingrid"]);

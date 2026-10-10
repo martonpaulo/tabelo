@@ -41,7 +41,7 @@ test("sorting a column reorders the document for every open view", async ({
 }) => {
 	await seedRoster(tabelo);
 	await tabelo.showInSourcePane("markdown");
-	await sortColumn(tabelo, 1, copy.actions.sortAscending);
+	await sortColumn(tabelo, 1, copy.actions.sortLabel("ascending", "text"));
 
 	await expect(tabelo.cell(1, 1)).toHaveText("Felix");
 	await expect(tabelo.cell(4, 1)).toHaveText("Paulo");
@@ -54,7 +54,7 @@ test("sorting a column reorders the document for every open view", async ({
 	const markdown = await source.innerText();
 	expect(markdown.indexOf("Felix")).toBeLessThan(markdown.indexOf("Paulo"));
 
-	await sortColumn(tabelo, 1, copy.actions.sortDescending);
+	await sortColumn(tabelo, 1, copy.actions.sortLabel("descending", "text"));
 	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
 	await expect(tabelo.cell(4, 1)).toHaveText("Felix");
 });
@@ -65,7 +65,7 @@ test("a sort is one undo step, and redo returns to the sorted order", async ({
 	await seedRoster(tabelo);
 	const before = await names(tabelo);
 
-	await sortColumn(tabelo, 1, copy.actions.sortAscending);
+	await sortColumn(tabelo, 1, copy.actions.sortLabel("ascending", "text"));
 	const sorted = await names(tabelo);
 	expect(sorted).not.toEqual(before);
 
@@ -99,7 +99,7 @@ test("sorting is reachable and announced from the keyboard", async ({
 	const item = (await openSubmenu(page, menu, copy.actions.sort)).getByRole(
 		"menuitem",
 		{
-			name: copy.actions.sortDescending,
+			name: copy.actions.sortLabel("descending", "text"),
 		},
 	);
 	await item.focus();
@@ -123,10 +123,10 @@ test("sorting an ordered table says so instead of claiming rows moved", async ({
 	await tabelo.columnIndex(1).getByRole("button").first().click();
 	await expect(tabelo.announcements).not.toBeEmpty();
 
-	await sortColumn(tabelo, 1, copy.actions.sortAscending);
+	await sortColumn(tabelo, 1, copy.actions.sortLabel("ascending", "text"));
 	const sorted = await names(tabelo);
 
-	await sortColumn(tabelo, 1, copy.actions.sortAscending);
+	await sortColumn(tabelo, 1, copy.actions.sortLabel("ascending", "text"));
 	expect(await names(tabelo)).toEqual(sorted);
 	await expect(tabelo.announcements).toContainText(
 		copy.status.rowsAlreadySorted,
@@ -173,7 +173,7 @@ test("sorting acts on the menu's column and keeps every selected area", async ({
 
 	// Opening the city column's own menu keeps both areas: a menu only
 	// collapses a selection that does not already hold its target.
-	await sortColumn(tabelo, 2, copy.actions.sortAscending);
+	await sortColumn(tabelo, 2, copy.actions.sortLabel("ascending", "text"));
 
 	// Sorted by city, which is neither roster order nor name order.
 	await expect(tabelo.cell(1, 2)).toHaveText("Buenos Aires");
@@ -208,7 +208,7 @@ test("a sort keeps every row of a selected block selected", async ({
 	await page.keyboard.press("Shift+ArrowDown");
 	await page.keyboard.press("Shift+ArrowDown");
 
-	await sortColumn(tabelo, 1, copy.actions.sortAscending);
+	await sortColumn(tabelo, 1, copy.actions.sortLabel("ascending", "text"));
 	await expect(tabelo.cell(1, 1)).toHaveText("a");
 
 	// All three cells of the block are still selected. Losing the one whose
@@ -217,4 +217,27 @@ test("a sort keeps every row of a selected block selected", async ({
 	for (const row of [1, 2, 3]) {
 		await expect(tabelo.cell(row, 2)).toHaveAttribute("aria-selected", "true");
 	}
+});
+
+test("a number column names its sort directions by number and sorts by value", async ({
+	tabelo,
+}) => {
+	await seedRoster(tabelo);
+	// The age column made a number column by the user's choice, which is the
+	// only way a column becomes one: nothing reads the digits for a type.
+	const menu = await tabelo.openColumnMenu(4);
+	await menu
+		.getByRole("group", { name: copy.actions.expectedType })
+		.getByRole("menuitemradio", {
+			name: copy.cellTypes.expected.number,
+			exact: true,
+		})
+		.click();
+	await menu.waitFor({ state: "hidden" });
+	await expect(tabelo.cell(1, 4)).toHaveAttribute("data-cell-type", "number");
+
+	// The item is found only under the number column's own label (#470).
+	await sortColumn(tabelo, 4, copy.actions.sortLabel("descending", "number"));
+	await expect(tabelo.cell(1, 4)).toHaveAttribute("title", "60");
+	await expect(tabelo.cell(1, 1)).toHaveText("Felix");
 });

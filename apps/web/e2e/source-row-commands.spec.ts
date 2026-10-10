@@ -340,7 +340,11 @@ test("sorting by the caret's column reorders the table and the caret follows its
 	const editor = tabelo.source("markdown");
 	await caretInFirstRow(page, editor);
 
-	await runMenuCommand(page, copy.actions.sortDescending, copy.actions.sort);
+	await runMenuCommand(
+		page,
+		copy.actions.sortLabel("descending", "text"),
+		copy.actions.sort,
+	);
 	await expectOrder(tabelo, ["Paulo", "Ingrid"]);
 	await page.keyboard.type("X");
 	await expect(tabelo.cell(2, 1)).toHaveText("XIngrid");

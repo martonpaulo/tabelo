@@ -184,6 +184,9 @@ interface ColumnFacts {
 interface MenuState {
 	readonly target: MenuTarget;
 	readonly column: ColumnFacts | null;
+	// The expected type of the column a sort would order by, which names the
+	// two directions (#470); absent where the target names no cell.
+	readonly sortType?: ExpectedColumnType;
 	// Why the cell a letter names cannot be acted on, for its expected type and
 	// alignment.
 	readonly cellRefusal: SourceRowRefusal | null;
@@ -457,9 +460,14 @@ export function SourceContextMenu({
 				: null;
 		};
 		const cellResolution = table?.cell(at);
+		const sortColumn =
+			cellResolution?.ok && cellResolution.column !== null
+				? store.document.columns[cellResolution.column]
+				: undefined;
 		return {
 			target,
 			column: columnFacts(),
+			sortType: sortColumn?.expectedType,
 			cellRefusal:
 				cellResolution && !cellResolution.ok ? cellResolution.refusal : null,
 			selectRow: caretCell && !caretCell.ok ? caretCell.refusal : null,
@@ -682,14 +690,14 @@ export function SourceContextMenu({
 				commands,
 				"sort-ascending",
 				"sort-ascending",
-				copy.actions.sortAscending,
+				copy.actions.sortLabel("ascending", state.sortType),
 				IconSortAscending,
 			),
 			structural(
 				commands,
 				"sort-descending",
 				"sort-descending",
-				copy.actions.sortDescending,
+				copy.actions.sortLabel("descending", state.sortType),
 				IconSortDescending,
 			),
 		],

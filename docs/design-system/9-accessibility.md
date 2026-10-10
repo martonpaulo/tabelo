@@ -526,7 +526,7 @@ no row commands.
 **The rest of the grid's structure is in the same menu** (owner, 2026-09-19,
 option A on #255). Beside the two row moves, a pane that maps rows offers
 Insert row above and below, Insert column left and right, Duplicate row, Move
-left and right under Move, Sort ascending and descending under Sort, and
+left and right under Move, the two sort directions under Sort, and
 Delete row and column, each acting on the row or column under the caret as
 one document step with the pane's keystroke history cleared, like the row
 move. **The inserts take the grid's four insert chords** (owner, 2026-09-19):
@@ -563,7 +563,7 @@ every pane that maps rows:
 - **Right-click** on a letter opens that column's menu: its expected type,
   its alignment where the format spells it (Markdown; the codec's
   `columnAlignment` reconciliation is `carried`), insert left and right, Move
-  left and right, Sort ascending and descending, and delete. The
+  left and right, the two sort directions, and delete. The
   grid-only preferences (width, fit, wrapping, pinning) stay in the grid. On
   a row's line number it opens that row's menu: insert above and below,
   duplicate, Move up and down, and delete. Both are named as the grid's are,
@@ -801,8 +801,8 @@ mirrors the row-number gutter on the other axis. Both are chrome:
   opened on a target already inside the selection keeps the selection instead of
   collapsing onto it: collapsing would silently discard the rest of what the
   user picked and leave the menu acting on one column of several.
-- **Sorting is the exception to that rule, deliberately.** Sort ascending and
-  Sort descending act on the column whose menu is open and never on every
+- **Sorting is the exception to that rule, deliberately.** The two sort
+  directions act on the column whose menu is open and never on every
   selected column: sorting by several columns at once is not a thing the
   document can express, so an action reached from column C's menu orders the
   table by C. They are two immediate commands beside alignment rather than a
@@ -810,7 +810,11 @@ mirrors the row-number gutter on the other axis. Both are chrome:
   nothing stays applied afterwards for a radio group to read back. They are
   written inline in the column menu for the same reason alignment and expected
   type are: the shared action list acts on the selection, and these act on one
-  named column. Below two rows they are disabled with the reason written out,
+  named column. Each direction is named by that column's expected type, the
+  carried one and never one read from its cells: A → Z for text, 1 → 9 for a
+  number, false → true for a boolean, and the reverse, so the label says
+  which way the rows go; a text menu whose caret names no cell keeps the
+  generic ascending and descending (#470). Below two rows they are disabled with the reason written out,
   and sorting a table already in that order says so rather than claiming rows
   moved.
 - It is never itself selected and never takes `--selection-fill`. Selecting a
