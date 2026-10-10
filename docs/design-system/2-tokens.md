@@ -770,8 +770,8 @@ decides the type. On 2026-09-19 the owner chose Figtree over Inter as the closes
 | Start surface title | `text-xl font-semibold`: the product name on the first-visit surface, the one text above the dialog title |
 | Dialog title | `text-lg font-semibold`, owned by the shared `DialogTitle` and never overridden per dialog |
 | Dialog section | `text-sm font-medium` |
-| Control label | `text-sm font-medium` |
-| Nested setting | `text-sm font-normal`: a setting inside a dialog section, and the options it owns |
+| Control label | `text-sm font-medium`, owned by the shared `Label` and inherited by every field that uses it (#452) |
+| Nested setting | `text-sm font-normal`: a setting inside a dialog section, and the options it owns, including every segment of a segmented choice, owned by `segmentedItemStyles` (#452) |
 | Table cell | `text-sm` |
 | Native cell value | `text-content font-value` |
 | Source editor | `text-sm font-source` |

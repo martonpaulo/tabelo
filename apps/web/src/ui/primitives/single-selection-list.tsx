@@ -70,6 +70,10 @@ export function SingleSelectionOption({
 					optionBlockStyles,
 					controlStateTransitionStyles,
 					optionBlockStateStyles,
+					// The block is the whole option, not a control label: its own
+					// label sets the medium weight, and the description, metadata
+					// and status under it stay at normal weight.
+					"font-normal",
 					// Room at the trailing edge for the correction drawn over it.
 					recovery && !compact && "pr-32",
 					"focus-within:outline-(--focus-ring) focus-within:outline-2 focus-within:outline-offset-2",

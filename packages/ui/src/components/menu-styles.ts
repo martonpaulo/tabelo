@@ -76,17 +76,19 @@ export const menuSeparatorStyles = "-mx-1 my-2 h-hairline bg-border";
 // Two to four short, mutually exclusive values laid side by side: the shared
 // SegmentedControl in a dialog and the segmented radio group in a menu draw
 // with these same two strings, so a choice like a column's expected type or
-// alignment reads the same in both places (2026-09-19).
+// alignment reads the same in both places (2026-09-19). A segment is one of
+// the values a setting owns, so it takes the nested-setting role, `text-sm` at
+// normal weight, never the `text-xs` kept for descriptions (#452).
 export const segmentedGroupStyles =
 	"grid auto-cols-fr grid-flow-col gap-0.5 rounded-interactive bg-surface-app p-0.5";
 
 export const segmentedItemStyles =
-	"flex min-h-control-sm cursor-pointer select-none items-center justify-center gap-1 rounded-indicator px-2 py-1 text-center text-muted-foreground text-xs leading-tight not-data-checked:hover:bg-accent not-data-checked:hover:text-accent-foreground not-data-checked:data-highlighted:bg-accent not-data-checked:data-highlighted:text-accent-foreground data-checked:bg-primary data-checked:text-primary-foreground data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:shrink-0";
+	"flex min-h-control-sm cursor-pointer select-none items-center justify-center gap-1 rounded-indicator px-2 py-1 text-center text-muted-foreground text-sm leading-tight not-data-checked:hover:bg-accent not-data-checked:hover:text-accent-foreground not-data-checked:data-highlighted:bg-accent not-data-checked:data-highlighted:text-accent-foreground data-checked:bg-primary data-checked:text-primary-foreground data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:shrink-0";
 
 // A command drawn as one segment of a row of related commands, such as the pane
 // zoom's out, reset, and in: the segment geometry, the menu's own highlight.
 export const menuInlineItemStyles =
-	"min-h-control-sm justify-center gap-1.5 rounded-indicator px-2 py-1 text-xs";
+	"min-h-control-sm justify-center gap-1.5 rounded-indicator px-2 py-1 text-sm";
 
 // The partly-on mark: a dot centred under the icon, in the accent. Forced
 // colours are the app stylesheet's, beside the Format marks' other rules.

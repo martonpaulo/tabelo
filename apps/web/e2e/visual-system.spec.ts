@@ -2,7 +2,11 @@ import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { layoutPresets } from "@/workspace/layout";
 import { expect, test } from "./fixtures";
-import { outsidePinnedHeader } from "./helpers";
+import {
+	activeTableMenuItem,
+	outsidePinnedHeader,
+	type TabeloPage,
+} from "./helpers";
 
 async function contrastBetween(
 	page: Page,
@@ -808,4 +812,168 @@ test("start actions keep one priority order across widths", async ({
 		await page.setViewportSize({ width, height: 700 });
 		await assertActionPriority();
 	}
+});
+
+// The control-label floor (#452) belongs to the shared owners, so it is read
+// from one control of each: the field label, a segment in a dialog and in a
+// menu, the inline zoom command, and the Add view band. A pane title is the
+// `text-sm` reference; nothing here may compute smaller than it.
+async function fontSize(control: Locator): Promise<number> {
+	return control.evaluate((element) =>
+		Number.parseFloat(getComputedStyle(element).fontSize),
+	);
+}
+
+async function openSettings(tabelo: TabeloPage): Promise<Locator> {
+	const menu = await tabelo.openAppMenu();
+	await menu.getByRole("menuitem", { name: copy.settings.title }).click();
+	await menu.waitFor({ state: "hidden" });
+	const dialog = tabelo.page.getByRole("dialog", { name: copy.settings.title });
+	await dialog.waitFor({ state: "visible" });
+	return dialog;
+}
+
+async function openDisplay(tabelo: TabeloPage): Promise<Locator> {
+	const menu = await tabelo.openPaneMenu("markdown");
+	await menu.getByRole("menuitem", { name: copy.paneDisplay.command }).click();
+	await menu.waitFor({ state: "hidden" });
+	const dialog = tabelo.page.getByRole("dialog", {
+		name: copy.paneDisplay.title,
+	});
+	await dialog.waitFor({ state: "visible" });
+	return dialog;
+}
+
+// A segment whose label does not fit would clip or spill; either way its
+// content is wider than its box, or the group pushes past its dialog.
+async function expectSegmentsFit(group: Locator): Promise<void> {
+	expect(
+		await group.evaluate((element) => {
+			const surface = element.closest('[role="dialog"], [role="menu"]');
+			return surface !== null && surface.scrollWidth <= surface.clientWidth;
+		}),
+	).toBe(true);
+	const segments = await group
+		.locator('[role="radio"], [role="menuitemradio"]')
+		.all();
+	expect(segments.length).toBeGreaterThan(0);
+	for (const segment of segments) {
+		expect(
+			await segment.evaluate(
+				(element) => element.scrollWidth <= element.clientWidth,
+			),
+		).toBe(true);
+	}
+}
+
+test("critical control labels hold the shared text-sm floor", async ({
+	page,
+	tabelo,
+}) => {
+	const floor = await fontSize(
+		tabelo.pane("markdown").getByRole("heading").first(),
+	);
+
+	const appMenu = await tabelo.openAppMenu();
+	const rename = await activeTableMenuItem(
+		page,
+		appMenu,
+		() => copy.actions.renameTable,
+	);
+	await rename.click();
+	const renameDialog = page.getByRole("dialog", {
+		name: copy.actions.renameTable,
+	});
+	expect(
+		await renameDialog
+			.getByRole("textbox", { name: copy.tableName.label })
+			.evaluate((input) => {
+				const label = (input as HTMLInputElement).labels?.[0];
+				return label ? Number.parseFloat(getComputedStyle(label).fontSize) : 0;
+			}),
+	).toBeGreaterThanOrEqual(floor);
+	await page.keyboard.press("Escape");
+	await expect(renameDialog).toBeHidden();
+
+	const settings = await openSettings(tabelo);
+	const spaces = settings.getByRole("radiogroup", {
+		name: copy.settings.spaceIndicators.label,
+	});
+	for (const segment of await spaces.getByRole("radio").all()) {
+		expect(await fontSize(segment)).toBeGreaterThanOrEqual(floor);
+	}
+	await page.keyboard.press("Escape");
+	await expect(settings).toBeHidden();
+
+	const paneMenu = await tabelo.openPaneMenu("markdown");
+	expect(
+		await fontSize(
+			paneMenu.getByRole("menuitem", { name: copy.workspace.resetZoom }),
+		),
+	).toBeGreaterThanOrEqual(floor);
+	await page.keyboard.press("Escape");
+	await expect(paneMenu).toBeHidden();
+
+	const columnMenu = await tabelo.openColumnMenu(1);
+	const expectedType = columnMenu.getByRole("group", {
+		name: copy.actions.expectedType,
+	});
+	for (const segment of await expectedType.getByRole("menuitemradio").all()) {
+		expect(await fontSize(segment)).toBeGreaterThanOrEqual(floor);
+	}
+	await page.keyboard.press("Escape");
+	await expect(columnMenu).toBeHidden();
+
+	const band = tabelo.splitControl("grid", "bottom");
+	await band.focus();
+	expect(await fontSize(band)).toBeGreaterThanOrEqual(floor);
+	// The band keeps its words inside its own box at that size: their line is
+	// never taller than the room between the band's borders.
+	expect(
+		await band.evaluate((element) => {
+			const words = element.querySelector("span");
+			return (
+				words !== null &&
+				words.getBoundingClientRect().height <= element.clientHeight
+			);
+		}),
+	).toBe(true);
+});
+
+test("segmented choices keep their labels whole at 200% text size", async ({
+	page,
+	tabelo,
+}) => {
+	// A narrow window just above the small breakpoint, where every segmented
+	// group still lays its values out on one row, and twice the root size.
+	await page.setViewportSize({ width: 800, height: 720 });
+	await page.evaluate(() => {
+		document.documentElement.style.fontSize = "200%";
+	});
+
+	const settings = await openSettings(tabelo);
+	for (const group of await settings.getByRole("radiogroup").all()) {
+		await expectSegmentsFit(group);
+	}
+	await page.keyboard.press("Escape");
+	await expect(settings).toBeHidden();
+
+	const display = await openDisplay(tabelo);
+	for (const group of await display.getByRole("radiogroup").all()) {
+		await expectSegmentsFit(group);
+	}
+	await page.keyboard.press("Escape");
+	await expect(display).toBeHidden();
+
+	const columnMenu = await tabelo.openColumnMenu(1);
+	await expectSegmentsFit(
+		columnMenu.getByRole("group", { name: copy.actions.expectedType }),
+	);
+	await page.keyboard.press("Escape");
+
+	expect(
+		await page.evaluate(
+			() => document.documentElement.scrollWidth <= window.innerWidth,
+		),
+	).toBe(true);
 });
