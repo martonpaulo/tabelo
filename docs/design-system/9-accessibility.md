@@ -525,7 +525,8 @@ no row commands.
 
 **The rest of the grid's structure is in the same menu** (owner, 2026-09-19,
 option A on #255). Beside the two row moves, a pane that maps rows offers
-Insert row above and below, Insert column left and right, Duplicate row, Move
+Insert row above and below, Insert column left and right, Duplicate row and
+column (#428), Move
 left and right under Move, the two sort directions under Sort, and
 Delete row and column, each acting on the row or column under the caret as
 one document step with the pane's keystroke history cleared, like the row
@@ -541,7 +542,9 @@ A column move in particular has none, because `Alt`+`ArrowLeft` and
 and the row move's, each written out on the disabled item: a draft that does
 not parse, a caret outside the table, or, for a column command, outside any
 cell; nothing inserted above the header row; the last row or column kept;
-sorting needs two rows. Deleting the header row promotes the first data row
+sorting needs two rows; a column copy whose repeated header the pane's own
+format cannot write, as JSON and Records cannot, is refused rather than renamed
+(#428). Deleting the header row promotes the first data row
 into it in the same step. The caret then lands where the user would look: in
 the new row or column after an insert, in the row or column that took the
 removed one's place after a delete, and in the same cell, wherever it went,
@@ -562,7 +565,8 @@ every pane that maps rows:
 
 - **Right-click** on a letter opens that column's menu: its expected type,
   its alignment where the format spells it (Markdown; the codec's
-  `columnAlignment` reconciliation is `carried`), insert left and right, Move
+  `columnAlignment` reconciliation is `carried`), insert left and right,
+  duplicate, Move
   left and right, the two sort directions, and delete. The
   grid-only preferences (width, fit, wrapping, pinning) stay in the grid. On
   a row's line number it opens that row's menu: insert above and below,

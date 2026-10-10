@@ -18,7 +18,9 @@ const menuOrder = {
 		"insert-column-left",
 		"insert-column-right",
 	],
-	edit: ["duplicate", "clear"],
+	// The grid's Duplicate acts on its selection's rows or columns; a source
+	// pane's text menu offers its caret's row and column side by side (#428).
+	edit: ["duplicate", "duplicate-column", "clear"],
 	// The four submenus, in this order, share one section (menu-sections.ts).
 	move: ["move-up", "move-down", "move-left", "move-right"],
 	sort: ["sort-ascending", "sort-descending"],

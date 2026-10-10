@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { readCell } from "@/core/cell-value";
+import { documentFromMatrix } from "@/core/document";
 import { HEADER_ROW } from "@/core/selection";
 import { viewChoiceRefusal } from "@/views/availability";
 import { listViews } from "@/views/registry";
@@ -494,6 +495,36 @@ describe("column width preference", () => {
 		expect(duplicate?.id).not.toBe(source.id);
 		expect(current.workspace.columnWidths[source.id]).toBe(18);
 		expect(current.workspace.columnWidths[duplicate?.id ?? ""]).toBe(18);
+	});
+
+	// A source pane duplicates through the same path (#428), so its copy
+	// keeps the width too, and is refused like the grid's at the column limit.
+	it("copies a source width when a source pane duplicates a column", () => {
+		const before = useTabeloStore.getState();
+		const source = before.document.columns[0];
+		if (!source) throw new Error("the default table has a column");
+		before.resizeColumn(0, 18);
+
+		expect(
+			before.editStructureAt({ kind: "duplicate-column", column: 0 }),
+		).toBe(true);
+		const current = useTabeloStore.getState();
+		const duplicate = current.document.columns[1];
+		expect(duplicate?.id).not.toBe(source.id);
+		expect(current.workspace.columnWidths[duplicate?.id ?? ""]).toBe(18);
+
+		const full = documentFromMatrix(
+			[Array.from({ length: 200 }, (_, index) => `column ${index}`)],
+			{ headerRow: true },
+		);
+		current.applyDocument(full);
+		expect(
+			useTabeloStore
+				.getState()
+				.editStructureAt({ kind: "duplicate-column", column: 0 }),
+		).toBe(false);
+		expect(useTabeloStore.getState().document).toBe(full);
+		expect(useTabeloStore.getState().inputError?.code).toBe("too-many-columns");
 	});
 
 	it("drops obsolete ids when import and New table replace the document", () => {

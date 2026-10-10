@@ -750,7 +750,7 @@ source view's context menu is the text counterpart and
 lists only commands the editor's keymap binds, so it never gains an action the
 keyboard lacks, with one carved-out group: in a pane whose codec maps rows, the
 grid's structural operations on the caret's row or column (move a column,
-insert a row or column, duplicate a row, sort, delete a row or column), because
+insert a row or column, duplicate a row or column (#428), sort, delete a row or column), because
 they are table commands reached from the text rather than text commands
 (Decided on #255). The inserts answer the grid's four insert chords (owner,
 2026-09-19); the others have no binding of their own. Never write an action inline in a

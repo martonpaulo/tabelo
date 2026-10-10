@@ -1,11 +1,12 @@
 import type { EditorState } from "@codemirror/state";
 import { copy } from "@/copy/copy";
-import type { SortDirection } from "@/core/operations";
+import { duplicateColumns, type SortDirection } from "@/core/operations";
 import {
 	createSelection,
 	type SelectionMoveRefusal,
 	selectionMoveRefusal,
 } from "@/core/selection";
+import { canSerialize } from "@/formats";
 import { cellAtPosition } from "@/formats/parse";
 import type { SourceTableRow, TableCodec } from "@/formats/types";
 import {
@@ -36,7 +37,11 @@ export type SourceRowRefusal =
 	| "outside-cell"
 	| "last-remaining-row"
 	| "last-remaining-column"
-	| "sort-single-row";
+	| "sort-single-row"
+	// A copy of the column would give the pane's format a table it cannot
+	// write, such as two keys of one name in JSON (#428). The copy keeps its
+	// source's header, so nothing renames it to fit.
+	| "duplicate-unrepresentable";
 
 export const sourceRowRefusalMessage: Record<SourceRowRefusal, string> = {
 	...moveRefusalMessage,
@@ -46,6 +51,7 @@ export const sourceRowRefusalMessage: Record<SourceRowRefusal, string> = {
 	"last-remaining-row": copy.disabled.lastRemainingRow,
 	"last-remaining-column": copy.disabled.lastRemainingColumn,
 	"sort-single-row": copy.disabled.sortSingleRow,
+	"duplicate-unrepresentable": copy.disabled.sourceDuplicateUnrepresentable,
 };
 
 // Where the caret belongs once the text is regenerated: a cell of a row, at a
@@ -175,6 +181,7 @@ export type SourceStructureCommand =
 	| "insert-row-above"
 	| "insert-row-below"
 	| "duplicate-row"
+	| "duplicate-column"
 	| "insert-column-left"
 	| "insert-column-right"
 	| "delete-row"
@@ -301,6 +308,16 @@ export function resolveSourceCommand(
 				caretAt(row, column + offset, cell.distance),
 			);
 		}
+		case "duplicate-column":
+			// Judged on the table the copy would make, by the pane's own codec,
+			// before anything is committed.
+			if (canSerialize(target.codec, duplicateColumns(document, [column]))) {
+				return { ok: false, refusal: "duplicate-unrepresentable" };
+			}
+			return editing(
+				{ kind: "duplicate-column", column },
+				caretAt(row, column + 1, cell.distance),
+			);
 		case "insert-column-left":
 			return editing(
 				{ kind: "insert-column", at: column },

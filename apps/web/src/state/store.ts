@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, type StoreApi } from "zustand";
 import type { ClipboardPayload, ClipboardSource } from "@/clipboard/parse";
 import type { ClipboardSelection } from "@/clipboard/payload";
 import { DEFAULT_TABLE_NAME } from "@/copy/product";
@@ -284,6 +284,7 @@ export type StructureEdit =
 	| { readonly kind: "insert-row"; readonly at: number }
 	| { readonly kind: "remove-row"; readonly row: number }
 	| { readonly kind: "duplicate-row"; readonly row: number }
+	| { readonly kind: "duplicate-column"; readonly column: number }
 	| { readonly kind: "insert-column"; readonly at: number }
 	| { readonly kind: "remove-column"; readonly column: number }
 	| {
@@ -808,6 +809,29 @@ export function currentMatch(find: FindState | null): CellMatch | null {
 // already `HEADER_ROW` in a match, so the two spaces are the same one.
 function matchPosition(match: CellMatch): CellPosition {
 	return { row: match.row, column: match.column };
+}
+
+// Duplicates columns as one document step and seeds each copy with its
+// source's width, which is a workspace preference and so no step of its own.
+// The grid's selection and a source pane's caret both duplicate through here
+// (#428), so a copy looks the same whichever surface made it.
+function applyColumnDuplication(
+	state: TabeloState,
+	set: StoreApi<TabeloState>["setState"],
+	columns: readonly number[],
+): void {
+	const next = duplicateColumns(state.document, columns);
+	const columnWidths = widthsAfterDuplication(
+		state.document,
+		next,
+		state.workspace.columnWidths,
+	);
+	state.applyDocument(next);
+	if (columnWidths !== state.workspace.columnWidths) {
+		set((current) => ({
+			workspace: { ...current.workspace, columnWidths },
+		}));
+	}
 }
 
 function widthsAfterDuplication(
@@ -2189,7 +2213,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const grows =
 			edit.kind === "insert-row" || edit.kind === "duplicate-row"
 				? growthLimitError(document, 1, 0)
-				: edit.kind === "insert-column"
+				: edit.kind === "insert-column" || edit.kind === "duplicate-column"
 					? growthLimitError(document, 0, 1)
 					: null;
 		if (grows) {
@@ -2218,6 +2242,9 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				return true;
 			case "duplicate-row":
 				state.applyDocument(duplicateRows(document, [edit.row]));
+				return true;
+			case "duplicate-column":
+				applyColumnDuplication(state, set, [edit.column]);
 				return true;
 			case "insert-column":
 				state.applyDocument(insertColumns(document, edit.at));
@@ -2302,18 +2329,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			set({ inputError: error });
 			return;
 		}
-		const next = duplicateColumns(state.document, columns);
-		const columnWidths = widthsAfterDuplication(
-			state.document,
-			next,
-			state.workspace.columnWidths,
-		);
-		state.applyDocument(next);
-		if (columnWidths !== state.workspace.columnWidths) {
-			set((current) => ({
-				workspace: { ...current.workspace, columnWidths },
-			}));
-		}
+		applyColumnDuplication(state, set, columns);
 	},
 
 	moveSelectedColumn: (offset) => {

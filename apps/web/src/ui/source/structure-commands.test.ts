@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { cellText } from "@/core/cell-value";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
 import { samplePeopleMatrix, samplePerson } from "@/core/sample-data";
+import { jsonCodec } from "@/formats/json";
 import { markdownCodec } from "@/formats/markdown";
 import { textForView, useTabeloStore } from "@/state/store";
 import {
@@ -268,6 +269,40 @@ describe("source structural commands", () => {
 			"sort-ascending",
 		);
 		expect(plan.ok && plan.run()).toBeNull();
+	});
+
+	it("duplicates the caret's column beside it as one history step, landing in the copy", () => {
+		useTabeloStore.getState().setColumnAlignment(1, "right", "column");
+		const before = useTabeloStore.getState().past.length;
+		expect(command(ingrid.city, "duplicate-column")).toBe(ingrid.city);
+		expect(headers()).toEqual(["name", "city", "city", "role", "age"]);
+		const [, source, copied] = useTabeloStore.getState().document.columns;
+		expect(copied?.id).not.toBe(source?.id);
+		expect(copied?.align).toBe("right");
+		expect(useTabeloStore.getState().past).toHaveLength(before + 1);
+		useTabeloStore.getState().undo();
+		expect(headers()).toEqual(["name", "city", "role", "age"]);
+		expect(refusal("---", "duplicate-column")).toBe("outside-cell");
+	});
+
+	// JSON keys every value by its header, so a copy that repeats one cannot
+	// be written: the command is refused before anything is committed (#428).
+	it("refuses a column copy the pane's format can't hold, changing nothing", () => {
+		const shown = textForView(useTabeloStore.getState().document, "json");
+		if (!shown.ok) throw new Error("the sample table projects to JSON");
+		const target: SourceRowTarget = {
+			...markdownTarget(),
+			viewId: "json",
+			codec: jsonCodec,
+		};
+		const before = useTabeloStore.getState().document;
+		const plan = resolveSourceCommand(
+			editorAt(shown.text, ingrid.city),
+			target,
+			"duplicate-column",
+		);
+		expect(plan).toEqual({ ok: false, refusal: "duplicate-unrepresentable" });
+		expect(useTabeloStore.getState().document).toBe(before);
 	});
 
 	it("refuses a column command off a cell, and what the grid refuses", () => {

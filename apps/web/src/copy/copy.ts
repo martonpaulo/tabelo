@@ -640,6 +640,9 @@ export const copy = {
 		sourceRowUnparsed: "Fix the text so it reads as a table first.",
 		sourceRowOutside: "Put the caret in a table row first.",
 		sourceCellOutside: "Put the caret in a table cell first.",
+		// A copy keeps its column's header, and some formats key on headers.
+		sourceDuplicateUnrepresentable:
+			"This format needs every header to be unique, and a copy would repeat this one.",
 		fitWrappedColumn: "Turn off Wrap text to fit this column.",
 		columnAlreadyFitted: "This column already fits its content.",
 		columnFitUnavailable: "This column can't be measured right now.",

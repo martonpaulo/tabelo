@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
+import { documentFromMatrix } from "@/core/document";
 import { listViews } from "@/views/registry";
 import { expect, test } from "./fixtures";
 import { openSubmenu, renderedSource, type TabeloPage } from "./helpers";
@@ -475,5 +476,54 @@ for (const view of mappedViews) {
 		await chord("Alt+Shift+Enter");
 		await expect(tabelo.header(2)).toHaveText("Name");
 		await expect(tabelo.header(3)).toHaveText("City");
+	});
+}
+
+// Duplicate column in every pane whose codec maps rows (#428): the caret's
+// column is copied beside it as one document step, unless the copy's repeated
+// header is something the pane's own format cannot write. Which formats refuse
+// is read from each codec's precondition, never from a list of names.
+const repeatedHeader = documentFromMatrix(
+	[
+		["Name", "Name", "City"],
+		["Ingrid", "Ingrid", "Rio"],
+	],
+	{ headerRow: true },
+);
+for (const view of mappedViews) {
+	const refuses = view.codec?.precondition?.(repeatedHeader) != null;
+	test(`${view.id}: Duplicate column ${refuses ? "says why the format can't hold the copy" : "copies the caret's column as one step"}`, async ({
+		page,
+		tabelo,
+	}) => {
+		await seed(tabelo);
+		if (view.id !== "markdown")
+			await tabelo.choosePaneView("markdown", view.id);
+		const editor = tabelo.source(view.id);
+		await caretInFirstRow(page, editor);
+
+		if (refuses) {
+			await page.keyboard.press("ContextMenu");
+			const item = page
+				.getByRole("menu")
+				.first()
+				.getByRole("menuitem", { name: copy.actions.duplicateColumns(1) });
+			await expect(item).toHaveAttribute("aria-disabled", "true");
+			await expect(item).toHaveAccessibleDescription(
+				copy.disabled.sourceDuplicateUnrepresentable,
+			);
+			await page.keyboard.press("Escape");
+			await expect(tabelo.header(2)).toHaveText("City");
+			return;
+		}
+
+		await runMenuCommand(page, copy.actions.duplicateColumns(1));
+		await expect(tabelo.header(2)).toHaveText("Name");
+		await expect(tabelo.header(3)).toHaveText("City");
+		await expect(tabelo.cell(1, 2)).toHaveText("Ingrid");
+		await expect(tabelo.cell(2, 2)).toHaveText("Paulo");
+		await expect(editor).toBeFocused();
+		await page.keyboard.press("ControlOrMeta+Z");
+		await expect(tabelo.header(2)).toHaveText("City");
 	});
 }

@@ -116,6 +116,7 @@ const structureCommands: readonly SourceStructureCommand[] = [
 	"insert-row-above",
 	"insert-row-below",
 	"duplicate-row",
+	"duplicate-column",
 	"insert-column-left",
 	"insert-column-right",
 	"sort-ascending",
@@ -682,16 +683,35 @@ export function SourceContextMenu({
 		],
 	});
 
-	const duplicateGroup = (commands: SourceTableCommands): Group => ({
+	// The caret's row and column, as Insert and Delete offer both; a line
+	// number's menu duplicates its row and a letter's its column (#428).
+	const duplicateGroup = (
+		commands: SourceTableCommands,
+		axes: Axes,
+	): Group => ({
 		id: "edit",
 		label: copy.actions.edit,
 		actions: [
-			structural(
-				commands,
-				"duplicate",
-				"duplicate-row",
-				tableCommand.duplicateRows(1),
-			),
+			...(axes.rows
+				? [
+						structural(
+							commands,
+							"duplicate",
+							"duplicate-row",
+							tableCommand.duplicateRows(1),
+						),
+					]
+				: []),
+			...(axes.columns
+				? [
+						structural(
+							commands,
+							"duplicate-column",
+							"duplicate-column",
+							tableCommand.duplicateColumns(1),
+						),
+					]
+				: []),
 		],
 	});
 
@@ -726,7 +746,7 @@ export function SourceContextMenu({
 	// The caret's row and column: every table command, beside the text ones.
 	const tableGroups = (commands: SourceTableCommands): Group[] => [
 		{ id: "insert", actions: insertItems(commands, bothAxes) },
-		duplicateGroup(commands),
+		duplicateGroup(commands, bothAxes),
 		moveGroup([...moveRowItems(commands), ...moveColumnItems(commands)]),
 		sortGroup(commands),
 		removeGroup(commands, bothAxes),
@@ -737,7 +757,7 @@ export function SourceContextMenu({
 	// pinning).
 	const rowGroups = (commands: SourceTableCommands, at: number): Group[] => [
 		{ id: "insert", actions: insertItems(commands, rowAxis) },
-		duplicateGroup(commands),
+		duplicateGroup(commands, rowAxis),
 		moveGroup(moveRowItems(commands, at)),
 		removeGroup(commands, rowAxis),
 	];
@@ -746,6 +766,7 @@ export function SourceContextMenu({
 	// (width, wrapping, pinning) and what the text menu already has.
 	const columnGroups = (commands: SourceTableCommands): Group[] => [
 		{ id: "insert", actions: insertItems(commands, columnAxis) },
+		duplicateGroup(commands, columnAxis),
 		moveGroup(moveColumnItems(commands)),
 		sortGroup(commands),
 		removeGroup(commands, columnAxis),
