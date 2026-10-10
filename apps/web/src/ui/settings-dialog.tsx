@@ -34,10 +34,60 @@ import {
 } from "@/ui/primitives/dialog-buttons";
 import { MenuOption } from "@/ui/primitives/menu-option";
 import { DisplayGlyph, GlyphSlot } from "@/ui/source/display-glyph";
+import {
+	PREVIEW_FRAME_CLASS,
+	PREVIEW_MIN_HEIGHT,
+} from "@/ui/source/indicator-preview-sample";
+
+// The box the preview waits in, and the box it stays in when its code never
+// arrives (#422). It is the drawn preview's own frame at the drawn preview's
+// height, so the controls under it do not move when the editor replaces it,
+// and it says in words what is happening there.
+function PreviewPlaceholder({
+	pending,
+	children,
+}: {
+	readonly pending: boolean;
+	readonly children: string;
+}) {
+	return (
+		<div
+			data-slot="indicator-preview-placeholder"
+			className={cn(PREVIEW_FRAME_CLASS, "flex items-center justify-center")}
+			style={{ minHeight: PREVIEW_MIN_HEIGHT }}
+		>
+			<p
+				role="status"
+				// A wait over within a frame or two paints nothing, as at startup.
+				className={cn(
+					"px-3 text-center text-muted-foreground text-sm",
+					pending && "tabelo-boot-status",
+				)}
+			>
+				{children}
+			</p>
+		</div>
+	);
+}
+
+function PreviewUnavailable() {
+	return (
+		<PreviewPlaceholder pending={false}>
+			{copy.settings.previewUnavailable}
+		</PreviewPlaceholder>
+	);
+}
 
 // The preview is a real read-only source editor, so it waits for the editor
-// chunk the same way a text view does.
-const IndicatorPreview = lazy(() => import("@/ui/source/indicator-preview"));
+// chunk the same way a text view does. A chunk that never arrives leaves the
+// dialog standing with a written reason in the preview's place: the browser
+// keeps a failed chunk request for the life of the page (#419), and every
+// setting still applies without a preview to show it.
+const IndicatorPreview = lazy(() =>
+	import("@/ui/source/indicator-preview").catch(() => ({
+		default: PreviewUnavailable,
+	})),
+);
 
 function SwitchOption({
 	glyph,
@@ -139,7 +189,9 @@ export function SettingsDialog({
 						</p>
 						<Suspense
 							fallback={
-								<div className="h-24 rounded-interactive bg-surface-app" />
+								<PreviewPlaceholder pending>
+									{copy.status.loading}
+								</PreviewPlaceholder>
 							}
 						>
 							<IndicatorPreview

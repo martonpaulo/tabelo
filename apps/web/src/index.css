@@ -312,7 +312,8 @@ body {
 	}
 }
 
-/* The status a saved workspace shows while its views load (#420). It is in the
+/* The status a saved workspace shows while its views load (#420), and the
+   Settings preview while its editor loads (#422). It is in the
    accessibility tree from its first render; only its paint waits, so a warm
    start, done within a frame or two, does not blink a line of text before
    the workspace. Nothing moves: the status is simply not painted until the

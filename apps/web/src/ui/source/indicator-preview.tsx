@@ -1,36 +1,18 @@
 import { EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { useEffect, useRef } from "react";
-import { documentFromMatrix } from "@/core/document";
-import { samplePerson } from "@/core/sample-data";
 import { tsvCodec } from "@/formats";
 import type { Preferences } from "@/preferences/contract";
 import { showsAlignment } from "./column-alignment";
 import { syntaxTheme } from "./editor-theme";
+import {
+	PREVIEW_FRAME_CLASS,
+	PREVIEW_MIN_HEIGHT,
+	PREVIEW_ROWS,
+	PREVIEW_TEXT,
+} from "./indicator-preview-sample";
 import { indicatorExtensions, languageFor } from "./source-editor";
 import { sourceRowsField } from "./source-rows";
-
-// A few synthetic TSV lines that exercise every setting the dialog switches:
-// tabs between values, an empty field, a run of spaces inside a value, spaces
-// left at the end of a line, and a value holding a line break, written the way
-// the TSV codec writes one.
-const first = samplePerson(0);
-const second = samplePerson(1);
-const PREVIEW_TEXT = tsvCodec.serialize(
-	documentFromMatrix(
-		[
-			["name", "city", "role"],
-			[first.name, `${first.city}\n${second.city}`, `${first.role}  `],
-			[second.name, "", `Lead  ${second.role}`],
-		],
-		{ headerRow: true },
-	),
-);
-
-// Where the sample's rows sit, from the codec's own parse, which is what column
-// alignment reads in a real pane.
-const parsed = tsvCodec.parse(PREVIEW_TEXT);
-const PREVIEW_ROWS = parsed.ok ? (parsed.rows ?? null) : null;
 
 // The settings preview is a real source editor, read-only, built from the same
 // extensions every text view uses, so what it shows cannot drift from what the
@@ -99,7 +81,8 @@ export default function IndicatorPreview({
 			// The trailing padding keeps a clipped line off the box's edge on a
 			// narrow window: the preview never scrolls, so text that does not
 			// fit stops short of the edge instead of touching it.
-			className="[&_.cm-content]:select-none! pointer-events-none select-none overflow-hidden rounded-interactive bg-surface-code pr-3 [&_.cm-editor]:m-0 [&_.cm-editor]:h-auto"
+			className={`[&_.cm-content]:select-none! pointer-events-none select-none pr-3 [&_.cm-editor]:m-0 [&_.cm-editor]:h-auto ${PREVIEW_FRAME_CLASS}`}
+			style={{ minHeight: PREVIEW_MIN_HEIGHT }}
 		/>
 	);
 }

@@ -418,6 +418,8 @@ export const copy = {
 		reset: "Reset to defaults",
 		previewLabel: "Preview",
 		preview: "Preview of a source view with the chosen settings",
+		// In the preview's place when its code could not load (#422).
+		previewUnavailable: "The preview couldn't load. Your settings still apply.",
 		display: {
 			label: "Source views",
 		},

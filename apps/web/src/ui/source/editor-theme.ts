@@ -3,6 +3,7 @@ import { EditorView } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { copy } from "@/copy/copy";
 import { SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";
+import { sourceEndRoom, sourceLineBox, sourceTopInset } from "./source-metrics";
 import {
 	ALL_SPACES_CLASS,
 	SPACE_SCOPE_CLASS,
@@ -19,13 +20,8 @@ import {
 // styles come from a JS theme rather than a class, so the calc is repeated here
 // instead of being reached through Tailwind.
 const contentFontSize = "calc(var(--pane-zoom, 1) * 0.875rem)";
-// One whole row of the shared `--spacing-content-line-box` rhythm the grid's
-// cells and the rendered preview's rows are built from, carried as a line
-// height so the text centres inside it exactly as a table cell's text centres
-// in its own row. The content and the line-number gutter both use it, which is
-// what keeps a number level with its line without either side depending on a
-// measurement pass having already run.
-const contentLineBox = "calc(var(--pane-zoom, 1) * 2rem)";
+// One whole row of the content rhythm: see source-metrics.ts.
+const contentLineBox = sourceLineBox;
 
 // What a header cell looks like in every source view. Formats whose grammar
 // marks its header cells reach this through the `heading` tag below; HTML
@@ -114,13 +110,8 @@ export const editorTheme = EditorView.theme({
 		fontWeight: "600",
 	},
 	".cm-scroller": {
-		// The column markers (#368) float over the top of the scroller, which
-		// runs the pane's full height, so the text starts below them: they
-		// publish their height as `--tabelo-source-top-inset` while shown. With
-		// the strip the text starts right under it, as the grid's header row
-		// starts right under its letters, so every row sits at the same height
-		// in every view (owner, 2026-09-19); without one, a small inset.
-		paddingTop: "var(--tabelo-source-top-inset, calc(var(--spacing) * 1.5))",
+		// Below the column markers while they show: see source-metrics.ts.
+		paddingTop: sourceTopInset,
 		fontFamily: "var(--font-family-source)",
 		lineHeight: contentLineBox,
 		overscrollBehavior: "contain",
@@ -128,9 +119,8 @@ export const editorTheme = EditorView.theme({
 	".cm-content": {
 		// No top padding: the first line is the table's header row, so a gap above
 		// it would separate table data from its pane. The bottom padding is the
-		// room every pane leaves below its content (`--pane-end-room`), which is
-		// also the target for clicking below the last line to focus the editor.
-		padding: "0 0 var(--pane-end-room)",
+		// room every pane leaves below its content.
+		padding: `0 0 ${sourceEndRoom}`,
 		outline: "none",
 		userSelect: "text",
 	},
