@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { registry } from "@/views/registry";
 import { layoutPresets } from "@/workspace/layout";
 import libraryIndexV1 from "./fixtures/library-index-v1.json";
 import libraryIndexV2 from "./fixtures/library-index-v2.json";
@@ -200,6 +201,37 @@ describe("loading a stored payload", () => {
 
 			expect(outcome.status, preset.id).toBe("ok");
 		}
+	});
+
+	// The stored view id is validated against identity data beside the
+	// registry, not the registry itself, so this pins the two together: every
+	// view the product offers survives a save and a load, and an id it does not
+	// register stays unreadable rather than being coerced (#434).
+	it("restores every registered view and refuses an unknown one", () => {
+		const single = layoutPresets.find((preset) => preset.id === "single");
+		if (!single) throw new Error("Expected the single layout preset.");
+		const workspaceShowing = (view: string) => ({
+			...payload().workspace,
+			layout: single.id,
+			panes: [{ id: "only", view, slots: single.panes[0], zoom: 1 }],
+			activePaneId: "only",
+		});
+
+		for (const id of Object.keys(registry)) {
+			const stored = JSON.parse(
+				JSON.stringify(payload({ workspace: workspaceShowing(id) })),
+			);
+			const outcome = validatePersistedState(stored);
+			expect(outcome.status, id).toBe("ok");
+			if (outcome.status !== "ok") continue;
+			expect(outcome.state.workspace.panes[0]?.view).toBe(id);
+		}
+
+		expect(
+			validatePersistedState(
+				payload({ workspace: workspaceShowing("spreadsheet") }),
+			),
+		).toEqual({ status: "unreadable", reason: "current-schema-invalid" });
 	});
 
 	// A payload Tabelo did not write may list the same tiling in any order. The

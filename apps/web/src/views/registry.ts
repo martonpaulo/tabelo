@@ -23,6 +23,7 @@ import type { TableCodec } from "@/formats/types";
 import {
 	canParse,
 	type SourceTabBehaviour,
+	VIEW_IDS,
 	type ViewCapabilities,
 	type ViewDefinition,
 	type ViewId,
@@ -74,8 +75,9 @@ const readOnlySourceCapabilities = {
 // One icon family (owner, 2026-09-19): every text view is a file, so it wears
 // a Tabler file icon with its format's mark; the grid and the preview, which
 // are not files, keep their own shapes. See docs/design-system.md section 6.
-// Exported for the test that keeps `viewOrder` naming every entry: the type
-// makes this map exhaustive, and nothing else may enumerate views.
+// Exported for the test that keeps `VIEW_IDS` naming every entry: the type
+// makes this map exhaustive, and only that id list beside it may enumerate
+// views.
 export const registry: Record<ViewId, ViewDefinition> = {
 	grid: {
 		id: "grid",
@@ -187,25 +189,13 @@ export const registry: Record<ViewId, ViewDefinition> = {
 	},
 };
 
-// Presentation order wherever views are offered.
-export const viewOrder: readonly ViewId[] = [
-	"grid",
-	"markdown",
-	"csv",
-	"tsv",
-	"html",
-	"html-preview",
-	"jira",
-	"json",
-	"records",
-];
-
 export function getView(id: ViewId): ViewDefinition {
 	return registry[id];
 }
 
+// In the presentation order `VIEW_IDS` gives.
 export function listViews(): readonly ViewDefinition[] {
-	return viewOrder.map((id) => registry[id]);
+	return VIEW_IDS.map((id) => registry[id]);
 }
 
 // The editable view that reads and writes a given format, which is how an

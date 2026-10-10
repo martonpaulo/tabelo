@@ -4,11 +4,11 @@ import {
 	isLargeLibrary,
 	isNameTaken,
 	LARGE_LIBRARY_SIZE,
-	markForPosition,
 	nameForNewTable,
 	nextTableMark,
 	removeTable,
 	renameEntry,
+	TABLE_MARKS,
 	type TableLibrary,
 	withUniqueNames,
 } from "./table-library";
@@ -19,7 +19,7 @@ function libraryOf(...names: readonly string[]): TableLibrary {
 	const tables = names.map((name, index) => ({
 		id: `t${index}`,
 		name,
-		mark: markForPosition(index),
+		mark: TABLE_MARKS[index % TABLE_MARKS.length] ?? TABLE_MARKS[0],
 	}));
 	return { tables, activeId: tables[0]?.id ?? "" };
 }

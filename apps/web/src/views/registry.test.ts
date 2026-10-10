@@ -1,13 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { listCodecs } from "@/formats";
-import {
-	editableViewForCodec,
-	listViews,
-	registry,
-	viewOrder,
-} from "./registry";
+import { CODEC_IDS } from "@/formats/types";
+import { editableViewForCodec, listViews, registry } from "./registry";
 import type { ViewId } from "./types";
-import { canParse } from "./types";
+import { canParse, VIEW_IDS } from "./types";
 
 // Whether a view code-splits behind a lazy import is registry data, not a
 // branch the pane renderer takes on a view's kind or id. See docs/adr/0005.
@@ -83,11 +79,25 @@ describe("editable view for a format", () => {
 
 // The registry is exhaustive by its type; the presentation order beside it is
 // a plain list, so a view added to one and forgotten in the other would
-// compile and vanish from every chooser (#404 audit).
+// compile and vanish from every chooser and from persistence (#404 audit,
+// #434).
 describe("the presentation order", () => {
 	it("names every registered view exactly once", () => {
-		expect([...viewOrder].sort()).toEqual(
+		expect([...VIEW_IDS].sort()).toEqual(
 			Object.keys(registry).sort() as ViewId[],
 		);
+	});
+
+	it("lists every view under the id it is registered by", () => {
+		expect(listViews().map((view) => view.id)).toEqual(VIEW_IDS);
+	});
+});
+
+// The codec ids are the order and the registry keys at once, so an omission
+// cannot compile; a repeated id would list one codec twice (#434).
+describe("the codec order", () => {
+	it("names each codec once, under the id it is registered by", () => {
+		expect(new Set(CODEC_IDS).size).toBe(CODEC_IDS.length);
+		expect(listCodecs().map((codec) => codec.id)).toEqual(CODEC_IDS);
 	});
 });

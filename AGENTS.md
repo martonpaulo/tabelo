@@ -217,9 +217,11 @@ vocabulary and `docs/adr/` for the reasoning.
   already present in another pane stay visible but disabled; persisted workspace
   data that violates this invariant is invalid.
 - **Formats and views are registry data, never branching.** Nothing outside
-  `formats/index.ts` and `views/registry.ts` may enumerate formats. Render by
-  `kind`, decide behaviour by `capabilities`, and never switch on a view id.
-  Adding a format is one file plus one registry line: see `docs/adr/0005`.
+  `formats/index.ts` and `views/registry.ts`, and the framework-free ordered id
+  lists beside them that persistence validates against, may enumerate formats
+  (#434). Render by `kind`, decide behaviour by `capabilities`, and never
+  switch on a view id. Adding a format is one file plus one registry line: see
+  `docs/adr/0005`.
 - **Backspace clears contents; the modifier removes structure.** `Backspace`
   empties the selected cells, `Mod+Backspace` deletes the selected rows or
   columns. Neither may fire while text is being edited in a cell or a source

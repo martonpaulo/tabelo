@@ -1,7 +1,25 @@
 import type { TablerIcon } from "@tabler/icons-react";
 import type { CodecId, TableCodec } from "@/formats/types";
 
+// Every codec id is also a view id, so the exhaustive view registry does not
+// compile until a new codec has a view.
 export type ViewId = "grid" | CodecId | "html-preview";
+
+// Every view id, in presentation order wherever views are offered. It is
+// framework-free identity data, so persistence can validate a stored view id
+// without importing the registry, its icons, or its copy. A contract test
+// keeps it naming each registered view exactly once.
+export const VIEW_IDS = [
+	"grid",
+	"markdown",
+	"csv",
+	"tsv",
+	"html",
+	"html-preview",
+	"jira",
+	"json",
+	"records",
+] as const satisfies readonly ViewId[];
 
 // How a view presents the table, which decides how the workspace renders it and
 // which clipboard behaviour applies.

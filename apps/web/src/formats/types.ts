@@ -2,14 +2,20 @@ import type { ReconciliationSource } from "@/core/document";
 import type { TableShapeLimitError } from "@/core/table-limits";
 import type { Alignment, CellValue, TableDocument } from "@/core/types";
 
-export type CodecId =
-	| "markdown"
-	| "csv"
-	| "tsv"
-	| "html"
-	| "jira"
-	| "json"
-	| "records";
+// Every codec id, in the product's own order wherever formats are listed. The
+// codec registry is keyed by this list, so an id without a codec fails to
+// compile and a codec cannot be registered without a place in the order.
+export const CODEC_IDS = [
+	"markdown",
+	"csv",
+	"tsv",
+	"html",
+	"jira",
+	"json",
+	"records",
+] as const;
+
+export type CodecId = (typeof CODEC_IDS)[number];
 
 interface LocatedParseIssue {
 	// 1-based line in the source text, when the problem can be located.

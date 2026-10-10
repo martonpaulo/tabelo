@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-	markForPosition,
-	TABLE_MARKS,
-	type TableMark,
-} from "@/core/table-library";
+import { TABLE_MARKS, type TableMark } from "@/core/table-library";
 import {
 	PERSISTED_VERSION,
 	type PersistedState,
@@ -51,10 +47,22 @@ const libraryIndexSchema = z.object({
 	activeId: z.string().min(1).nullable(),
 });
 
+// The six marks versions 1 and 2 knew, pinned here rather than read from the
+// live `TABLE_MARKS`, so a later change to the marks cannot change how an old
+// index reads or migrates (#434).
+const HISTORICAL_TABLE_MARKS = [1, 2, 3, 4, 5, 6] as const;
+
 // Version 2 always held at least one table, one of them active.
 const libraryIndexV2Schema = z.object({
 	version: z.literal(2),
-	tables: z.array(indexEntrySchema).min(1),
+	tables: z
+		.array(
+			z.object({
+				id: z.string().min(1),
+				mark: z.literal(HISTORICAL_TABLE_MARKS),
+			}),
+		)
+		.min(1),
 	activeId: z.string().min(1),
 });
 
@@ -76,9 +84,10 @@ function migrateLibraryIndexV2(raw: unknown): unknown {
 }
 
 // The forward step from version 1: every table keeps the colour it showed,
-// which was the one its place gave it. It lands on version 2, and the next
-// step carries it on. Each result is validated like any stored index, so a
-// step that produced something invalid is reported rather than trusted.
+// which was the one its place gave it, cycling through the six marks. It
+// lands on version 2, and the next step carries it on. Each result is
+// validated like any stored index, so a step that produced something invalid
+// is reported rather than trusted.
 function migrateLibraryIndexV1(raw: unknown): unknown {
 	const parsed = libraryIndexV1Schema.safeParse(raw);
 	if (!parsed.success) return raw;
@@ -86,7 +95,7 @@ function migrateLibraryIndexV1(raw: unknown): unknown {
 		version: 2,
 		tables: parsed.data.tables.map((id, position) => ({
 			id,
-			mark: markForPosition(position),
+			mark: HISTORICAL_TABLE_MARKS[position % HISTORICAL_TABLE_MARKS.length],
 		})),
 		activeId: parsed.data.activeId,
 	};

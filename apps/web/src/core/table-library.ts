@@ -106,14 +106,6 @@ export function tableMarkClass(mark: TableMark): string {
 	return TABLE_MARK_CLASSES[mark];
 }
 
-// The mark a table shows by its place in the list, the rule before #465. It
-// survives only as the migration that lets a saved table keep the colour it
-// already showed.
-export function markForPosition(position: number): TableMark {
-	const cycle = TABLE_MARKS.length;
-	return TABLE_MARKS[((position % cycle) + cycle) % cycle] ?? TABLE_MARKS[0];
-}
-
 // A new table takes the first mark no table uses. Once all six are taken the
 // colour repeats, so it identifies a table only together with its name: the
 // new one takes the mark the fewest tables share, the first such in order.

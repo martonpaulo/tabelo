@@ -4,6 +4,7 @@ import { isValidInlineContent } from "@/core/inline-content";
 import { MAX_TABLE_NAME_CODE_POINTS } from "@/core/table-name";
 import type { InlineContent } from "@/core/types";
 import { SPACE_INDICATOR_VALUES } from "@/preferences/contract";
+import { VIEW_IDS } from "@/views/types";
 import { workspacePanesTileLayout } from "@/workspace/layout";
 import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 
@@ -53,17 +54,10 @@ const documentSchema = z.object({
 	),
 });
 
-const viewIdSchema = z.enum([
-	"grid",
-	"markdown",
-	"csv",
-	"tsv",
-	"html",
-	"html-preview",
-	"jira",
-	"json",
-	"records",
-]);
+// The current schema accepts exactly the views the product registers. A
+// historical schema, once one exists again, pins the literal ids its version
+// knew instead of reading this live list (#434).
+const viewIdSchema = z.enum(VIEW_IDS);
 
 const slotSchema = z.enum(["a", "b", "c", "d"]);
 const layoutSchema = z.enum([

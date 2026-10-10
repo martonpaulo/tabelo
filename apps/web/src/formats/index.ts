@@ -6,11 +6,12 @@ import { jsonCodec } from "./json";
 import { markdownCodec } from "./markdown";
 import { recordsCodec } from "./records";
 import { tsvCodec } from "./tsv";
-import type {
-	CodecId,
-	OutputOptions,
-	PreconditionFailure,
-	TableCodec,
+import {
+	CODEC_IDS,
+	type CodecId,
+	type OutputOptions,
+	type PreconditionFailure,
+	type TableCodec,
 } from "./types";
 
 // The codec registry. Downloads, clipboard sniffing, and the view registry all
@@ -28,23 +29,13 @@ const registry: Record<CodecId, TableCodec> = {
 
 export const DEFAULT_CODEC_ID = "markdown" satisfies CodecId;
 
-// Order is the product's own preference, shown wherever formats are listed.
-export const codecOrder = [
-	DEFAULT_CODEC_ID,
-	"csv",
-	"tsv",
-	"html",
-	"jira",
-	"json",
-	"records",
-] as const satisfies readonly CodecId[];
-
 export function getCodec(id: CodecId): TableCodec {
 	return registry[id];
 }
 
+// In the order `CODEC_IDS` gives, the product's own preference.
 export function listCodecs(): readonly TableCodec[] {
-	return codecOrder.map((id) => registry[id]);
+	return CODEC_IDS.map((id) => registry[id]);
 }
 
 export function listSniffableCodecs(): readonly TableCodec[] {
