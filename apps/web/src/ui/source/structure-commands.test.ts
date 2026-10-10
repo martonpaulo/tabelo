@@ -15,7 +15,7 @@ import {
 	resolveSourceRowMove,
 	type SourceRowTarget,
 	type SourceStructureCommand,
-} from "./row-commands";
+} from "./structure-commands";
 
 const initialState = useTabeloStore.getInitialState();
 

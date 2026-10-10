@@ -9,6 +9,7 @@ import {
 	selectionRect,
 } from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
+import { moveRefusalMessage } from "@/ui/table/command-presentation";
 import {
 	axisHandleIndex,
 	axisHandleSelector,
@@ -17,7 +18,6 @@ import {
 	type ReorderAxis,
 	reorderDragOf,
 } from "./grid-drag";
-import { moveRefusalMessage } from "./table-actions";
 import type { GridAutoscrollPoint } from "./use-grid-autoscroll";
 
 // Where the block would land, drawn as one line. Offsets are in rem against the

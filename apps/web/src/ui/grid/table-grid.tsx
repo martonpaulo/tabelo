@@ -50,6 +50,10 @@ import {
 	InlineContentView,
 	type InlineSurface,
 } from "@/ui/inline/inline-content";
+import {
+	fillRefusalMessage,
+	moveRefusalMessage,
+} from "@/ui/table/command-presentation";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
 import { usePaneFind } from "@/ui/workspace/use-pane-find";
 import {
@@ -92,11 +96,7 @@ import {
 import { revealGridCell } from "./reveal-cell";
 import { RichCellEditor } from "./rich-cell-editor";
 import { coveredBySpans, decodeSpans, spansOf } from "./selection-spans";
-import {
-	fillRefusalMessage,
-	moveRefusalMessage,
-	runFillDirection,
-} from "./table-actions";
+import { runFillDirection } from "./table-actions";
 import {
 	type TypedCellDecision,
 	TypedCellDecisionDialog,

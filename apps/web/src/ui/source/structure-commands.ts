@@ -13,8 +13,8 @@ import {
 	useTabeloStore,
 	visibleTextForPane,
 } from "@/state/store";
-import { moveRefusalMessage } from "@/ui/grid/table-actions";
 import { paneSpelling } from "@/ui/spelling";
+import { moveRefusalMessage } from "@/ui/table/command-presentation";
 import type { ViewId } from "@/views/types";
 
 // Structural commands run from a source pane (#255). The caret names a table

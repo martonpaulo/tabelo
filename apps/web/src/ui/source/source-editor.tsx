@@ -85,18 +85,6 @@ import {
 } from "./pinned-header";
 import { recordsLanguage } from "./records-language";
 import {
-	caretOffset,
-	resolveSourceCell,
-	resolveSourceColumnMove,
-	resolveSourceCommand,
-	resolveSourceRowMove,
-	type SourceCaretTarget,
-	type SourceRowRefusal,
-	type SourceRowTarget,
-	type SourceStructureCommand,
-	sourceRowRefusalMessage,
-} from "./row-commands";
-import {
 	axisSelection,
 	type SourceAxis,
 	type SourceAxisTarget,
@@ -107,6 +95,18 @@ import { SourceContextMenu } from "./source-context-menu";
 import { sourceFind } from "./source-find";
 import { setSourceRows, sourceRowsField } from "./source-rows";
 import { assistanceExtension } from "./structural-assistance";
+import {
+	caretOffset,
+	resolveSourceCell,
+	resolveSourceColumnMove,
+	resolveSourceCommand,
+	resolveSourceRowMove,
+	type SourceCaretTarget,
+	type SourceRowRefusal,
+	type SourceRowTarget,
+	type SourceStructureCommand,
+	sourceRowRefusalMessage,
+} from "./structure-commands";
 import { indicatorClasses, spaceScope } from "./whitespace-indicators";
 
 // Marks a transaction as coming from synchronization rather than the user.

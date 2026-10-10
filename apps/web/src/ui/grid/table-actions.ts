@@ -1,33 +1,15 @@
 import {
-	IconArrowBackUp,
-	IconArrowBarToDown,
-	IconArrowBarToLeft,
-	IconArrowBarToRight,
-	IconArrowBarToUp,
 	IconArrowDown,
-	IconArrowForwardUp,
 	IconArrowLeft,
-	IconArrowNarrowDown,
-	IconArrowNarrowLeft,
-	IconArrowNarrowRight,
-	IconArrowNarrowUp,
 	IconArrowRight,
-	IconArrowsMove,
-	IconArrowsSort,
 	IconArrowUp,
 	IconBucketDroplet,
-	IconClipboard,
-	IconCopy,
 	IconEraser,
 	IconFocusCentered,
-	IconScissors,
-	IconSortAscending,
-	IconSortDescending,
 	IconSquareArrowDown,
 	IconSquareArrowLeft,
 	IconSquareArrowRight,
 	IconSquareArrowUp,
-	IconTrash,
 	type TablerIcon,
 } from "@tabler/icons-react";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
@@ -40,7 +22,6 @@ import {
 	isContiguous,
 	neighbourCell,
 	type SelectionFillRefusal,
-	type SelectionMoveRefusal,
 	selectionColumns,
 	selectionCoversHeader,
 	selectionDataRows,
@@ -56,6 +37,12 @@ import {
 	commandDocumentUnchanged,
 	commandTargetStatus,
 } from "@/ui/command-target";
+import {
+	fillRefusalMessage,
+	moveRefusalMessage,
+	tableCommand,
+	tableCommandGroup,
+} from "@/ui/table/command-presentation";
 import {
 	type MenuCommandId,
 	type MenuGroupId,
@@ -90,24 +77,6 @@ export interface TableActionGroup {
 	readonly submenu?: { readonly icon: TablerIcon };
 	readonly actions: readonly TableAction[];
 }
-
-export const moveRefusalMessage: Record<SelectionMoveRefusal, string> = {
-	"single-area": copy.disabled.singleAreaRequired,
-	"header-row": copy.disabled.headerRowRequired,
-	"first-row": copy.disabled.firstRow,
-	"last-row": copy.disabled.lastRow,
-	"first-column": copy.disabled.firstColumn,
-	"last-column": copy.disabled.lastColumn,
-};
-
-export const fillRefusalMessage: Record<SelectionFillRefusal, string> = {
-	"single-area": copy.disabled.singleAreaRequired,
-	"header-row": copy.disabled.headerRowRequired,
-	"first-row": copy.disabled.firstRow,
-	"last-row": copy.disabled.lastRow,
-	"first-column": copy.disabled.firstColumn,
-	"last-column": copy.disabled.lastColumn,
-};
 
 export function commitFillTarget(target: {
 	readonly top: number;
@@ -309,9 +278,8 @@ export function buildTableActions(
 		],
 	] as const;
 
-	// Three directional groups share one menu, so each takes its own glyph
-	// family: insert lands against a boundary line, move is the long-stemmed
-	// narrow arrow, and fill keeps the plain arrow it drags along.
+	// Labels, icons, and legends come from the shared presentation, so the
+	// source menus draw the same command the same way (#433).
 	const insert: TableAction[] = [];
 	if (showRows) {
 		// Inserting beside the header row still adds one data row, so the label
@@ -320,18 +288,14 @@ export function buildTableActions(
 		insert.push(
 			{
 				id: "insert-row-above",
-				shortcut: copy.shortcuts.addRowAbove,
-				label: copy.actions.insertRowsAbove(insertCount),
-				icon: IconArrowBarToUp,
+				...tableCommand.insertRowAbove(insertCount),
 				disabled: severalAreas,
 				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addRowAbove(),
 			},
 			{
 				id: "insert-row-below",
-				shortcut: copy.shortcuts.addRowBelow,
-				label: copy.actions.insertRowsBelow(insertCount),
-				icon: IconArrowBarToDown,
+				...tableCommand.insertRowBelow(insertCount),
 				disabled: severalAreas,
 				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addRowBelow(),
@@ -342,18 +306,14 @@ export function buildTableActions(
 		insert.push(
 			{
 				id: "insert-column-left",
-				shortcut: copy.shortcuts.addColumnLeft,
-				label: copy.actions.insertColumnsLeft(columnCount),
-				icon: IconArrowBarToLeft,
+				...tableCommand.insertColumnLeft(columnCount),
 				disabled: severalAreas,
 				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addColumnLeft(),
 			},
 			{
 				id: "insert-column-right",
-				shortcut: copy.shortcuts.addColumnRight,
-				label: copy.actions.insertColumnsRight(columnCount),
-				icon: IconArrowBarToRight,
+				...tableCommand.insertColumnRight(columnCount),
 				disabled: severalAreas,
 				disabledReason: copy.disabled.singleAreaRequired,
 				run: () => store.addColumnRight(),
@@ -364,23 +324,17 @@ export function buildTableActions(
 	const clipboard: TableAction[] = [
 		{
 			id: "cut",
-			label: copy.actions.cut,
-			icon: IconScissors,
-			shortcut: copy.shortcuts.cut,
+			...tableCommand.cut,
 			run: () => void copySelectionToClipboard("cut"),
 		},
 		{
 			id: "copy",
-			label: copy.actions.copy,
-			icon: IconCopy,
-			shortcut: copy.shortcuts.copy,
+			...tableCommand.copy,
 			run: () => void copySelectionToClipboard("copy"),
 		},
 		{
 			id: "paste",
-			label: copy.actions.paste,
-			icon: IconClipboard,
-			shortcut: copy.shortcuts.paste,
+			...tableCommand.paste,
 			disabled: severalAreas,
 			disabledReason: copy.disabled.singleAreaRequired,
 			run: () => void pasteFromClipboard(),
@@ -392,18 +346,14 @@ export function buildTableActions(
 	const history: TableAction[] = [
 		{
 			id: "undo",
-			label: copy.actions.undo,
-			icon: IconArrowBackUp,
-			shortcut: copy.shortcuts.undo,
+			...tableCommand.undo,
 			disabled: store.past.length === 0,
 			disabledReason: copy.disabled.undo,
 			run: () => useTabeloStore.getState().undo(),
 		},
 		{
 			id: "redo",
-			label: copy.actions.redo,
-			icon: IconArrowForwardUp,
-			shortcut: copy.shortcuts.redo,
+			...tableCommand.redo,
 			disabled: store.future.length === 0,
 			disabledReason: copy.disabled.redo,
 			run: () => useTabeloStore.getState().redo(),
@@ -414,10 +364,9 @@ export function buildTableActions(
 	const edit: TableAction[] = [
 		{
 			id: "duplicate",
-			label: duplicatesColumns
-				? copy.actions.duplicateColumns(columnCount)
-				: copy.actions.duplicateRows(rowCount),
-			icon: IconCopy,
+			...(duplicatesColumns
+				? tableCommand.duplicateColumns(columnCount)
+				: tableCommand.duplicateRows(rowCount)),
 			// Duplicating the header row is not a thing a table can do: it would
 			// give the document a second one.
 			disabled: !duplicatesColumns && noDataRows,
@@ -441,9 +390,7 @@ export function buildTableActions(
 		move.push(
 			{
 				id: "move-up",
-				label: copy.actions.moveUp,
-				icon: IconArrowNarrowUp,
-				shortcut: copy.shortcuts.moveUp,
+				...tableCommand.moveUp,
 				disabled: moveUpRefusal !== null,
 				disabledReason:
 					moveUpRefusal === null
@@ -453,9 +400,7 @@ export function buildTableActions(
 			},
 			{
 				id: "move-down",
-				label: copy.actions.moveDown,
-				icon: IconArrowNarrowDown,
-				shortcut: copy.shortcuts.moveDown,
+				...tableCommand.moveDown,
 				disabled: moveDownRefusal !== null,
 				disabledReason:
 					moveDownRefusal === null
@@ -516,9 +461,7 @@ export function buildTableActions(
 		move.push(
 			{
 				id: "move-left",
-				label: copy.actions.moveLeft,
-				icon: IconArrowNarrowLeft,
-				shortcut: copy.shortcuts.moveLeft,
+				...tableCommand.moveLeft,
 				disabled: moveLeftRefusal !== null,
 				disabledReason:
 					moveLeftRefusal === null
@@ -528,9 +471,7 @@ export function buildTableActions(
 			},
 			{
 				id: "move-right",
-				label: copy.actions.moveRight,
-				icon: IconArrowNarrowRight,
-				shortcut: copy.shortcuts.moveRight,
+				...tableCommand.moveRight,
 				disabled: moveRightRefusal !== null,
 				disabledReason:
 					moveRightRefusal === null
@@ -570,8 +511,7 @@ export function buildTableActions(
 			: [
 					{
 						id: "sort-ascending",
-						label: copy.actions.sortLabel("ascending", sortType),
-						icon: IconSortAscending,
+						...tableCommand.sort("ascending", sortType),
 						disabled: sortReason !== undefined,
 						disabledReason: sortReason,
 						keepsFocus: true,
@@ -579,8 +519,7 @@ export function buildTableActions(
 					},
 					{
 						id: "sort-descending",
-						label: copy.actions.sortLabel("descending", sortType),
-						icon: IconSortDescending,
+						...tableCommand.sort("descending", sortType),
 						disabled: sortReason !== undefined,
 						disabledReason: sortReason,
 						keepsFocus: true,
@@ -592,9 +531,7 @@ export function buildTableActions(
 	if (showRows) {
 		remove.push({
 			id: "delete-rows",
-			label: copy.actions.deleteRows(removableRowCount),
-			icon: IconTrash,
-			shortcut: copy.shortcuts.deleteStructure,
+			...tableCommand.deleteRows(removableRowCount),
 			danger: true,
 			// A selection covering the header promotes rather than empties the
 			// table, so the last-row guard has nothing to protect against there.
@@ -606,8 +543,7 @@ export function buildTableActions(
 	if (showColumns) {
 		remove.push({
 			id: "delete-columns",
-			label: copy.actions.deleteColumns(columnCount),
-			icon: IconTrash,
+			...tableCommand.deleteColumns(columnCount),
 			danger: true,
 			disabled: deletionGuard.wouldRemoveAllColumns,
 			disabledReason: copy.disabled.lastRemainingColumn,
@@ -627,14 +563,14 @@ export function buildTableActions(
 		},
 		{
 			id: "move",
-			label: copy.actions.move,
-			submenu: { icon: IconArrowsMove },
+			label: tableCommandGroup.move.label,
+			submenu: { icon: tableCommandGroup.move.icon },
 			actions: move,
 		},
 		{
 			id: "sort",
-			label: copy.actions.sort,
-			submenu: { icon: IconArrowsSort },
+			label: tableCommandGroup.sort.label,
+			submenu: { icon: tableCommandGroup.sort.icon },
 			actions: sort,
 		},
 		{

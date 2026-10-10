@@ -14,9 +14,9 @@ import {
 } from "@/workspace/source-display";
 import { BlockedState } from "./blocked-state";
 import { showsAlignment } from "./column-alignment";
-import type { SourceRowTarget } from "./row-commands";
 import { type SourceDiagnostic, SourceEditor } from "./source-editor";
 import { sourceFeedbackIds } from "./source-feedback";
+import type { SourceRowTarget } from "./structure-commands";
 
 // One component serves every source format. What differs between Markdown, CSV,
 // TSV, HTML, Jira, and JSON is entirely described by the registry: codec, highlight

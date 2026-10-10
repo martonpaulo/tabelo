@@ -738,10 +738,15 @@ the modal overlay.
 | Primitives | `packages/ui/src/components/` | Generic, product-agnostic shadcn components |
 | Product primitives | `apps/web/src/ui/primitives/` | Tabelo's shared Panel frame |
 | Features | `apps/web/src/ui/{grid,source,preview,workspace}/` | Components that know about the table document |
+| Table commands | `apps/web/src/ui/table/` | Presentation the grid and source menus share: each table command's label, icon, and legend, the refusal copy, and the column controls (#433) |
 
 Actions are described once and rendered many times. `ui/grid/table-actions.ts`
 is the single list of table operations; the grid context menu and the pane
-menu are renderers over it. A source view's context menu is the text counterpart and
+menu are renderers over it. How a command looks, its label, icon, and legend,
+is declared once in `ui/table/` and read by both that list and the source
+menus, while each keeps its own adapter for what the command acts on: the
+selection in the grid, the caret or a named line in a source pane (#433). A
+source view's context menu is the text counterpart and
 lists only commands the editor's keymap binds, so it never gains an action the
 keyboard lacks, with one carved-out group: in a pane whose codec maps rows, the
 grid's structural operations on the caret's row or column (move a column,

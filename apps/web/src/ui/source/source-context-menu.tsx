@@ -12,28 +12,11 @@ import {
 	ContextMenuTrigger,
 } from "@tabelo/ui/components/context-menu";
 import {
-	IconArrowBackUp,
-	IconArrowBarToDown,
-	IconArrowBarToLeft,
-	IconArrowBarToRight,
-	IconArrowBarToUp,
-	IconArrowForwardUp,
-	IconArrowNarrowDown,
-	IconArrowNarrowLeft,
-	IconArrowNarrowRight,
-	IconArrowNarrowUp,
-	IconArrowsMove,
-	IconArrowsSort,
-	IconClipboard,
-	IconCopy,
 	IconCursorText,
 	IconLayoutColumns,
 	IconLayoutRows,
-	IconScissors,
 	IconSelectAll,
-	IconSortAscending,
-	IconSortDescending,
-	IconTrash,
+	type TablerIcon,
 } from "@tabler/icons-react";
 import {
 	Fragment,
@@ -59,10 +42,6 @@ import {
 } from "@/ui/grid/cell-type-change-dialog";
 import { CommandSubmenu } from "@/ui/grid/command-submenu";
 import {
-	ColumnAlignmentGroup,
-	ColumnExpectedTypeGroup,
-} from "@/ui/grid/grid-context-menu";
-import {
 	type MenuCommandId,
 	type MenuGroupId,
 	orderMenuGroups,
@@ -71,17 +50,20 @@ import { menuSections } from "@/ui/grid/menu-sections";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
 import {
+	ColumnAlignmentGroup,
+	ColumnExpectedTypeGroup,
+} from "@/ui/table/column-controls";
+import {
+	type CommandPresentation,
+	tableCommand,
+	tableCommandGroup,
+} from "@/ui/table/command-presentation";
+import {
 	type OccurrenceSummary,
 	occurrenceSelectionApplies,
 	occurrenceSummary,
 	selectNextOccurrenceAsPrimary,
 } from "./occurrence-selection";
-import {
-	type SourceCellResolution,
-	type SourceRowRefusal,
-	type SourceStructureCommand,
-	sourceRowRefusalMessage,
-} from "./row-commands";
 import {
 	axisAnchor,
 	labelAt,
@@ -90,6 +72,12 @@ import {
 	selectedSourceAxis,
 } from "./source-axes";
 import { sourceRowsField } from "./source-rows";
+import {
+	type SourceCellResolution,
+	type SourceRowRefusal,
+	type SourceStructureCommand,
+	sourceRowRefusalMessage,
+} from "./structure-commands";
 
 // The table commands of a pane whose codec maps rows (#255): why each is
 // unavailable, read as the menu opens, and the command itself. The row moves
@@ -135,6 +123,17 @@ const structureCommands: readonly SourceStructureCommand[] = [
 	"delete-row",
 	"delete-column",
 ];
+
+// A shared command drawn without the grid's legend, where the editor's keymap
+// gives that chord to a text command: Alt+ArrowLeft and Alt+ArrowRight are
+// word motion on macOS, and Mod+Backspace deletes text, so a column move and a
+// row delete have no key here.
+function withoutLegend({
+	label,
+	icon,
+}: CommandPresentation): CommandPresentation {
+	return { label, icon };
+}
 
 // Which of a table's axes a menu's commands act on.
 interface Axes {
@@ -242,7 +241,7 @@ function caretAxis(view: EditorView, axis: SourceAxis): number | null {
 type Item = {
 	readonly id: MenuCommandId;
 	readonly label: string;
-	readonly icon: typeof IconCopy;
+	readonly icon: TablerIcon;
 	// Absent for the commands without a binding of their own.
 	readonly shortcut?: string;
 	readonly danger?: boolean;
@@ -255,7 +254,7 @@ type Item = {
 type Group = {
 	readonly id: MenuGroupId;
 	readonly label?: string;
-	readonly submenu?: typeof IconCopy;
+	readonly submenu?: TablerIcon;
 	readonly actions: readonly Item[];
 };
 
@@ -569,15 +568,11 @@ export function SourceContextMenu({
 		commands: SourceTableCommands,
 		id: MenuCommandId,
 		command: SourceStructureCommand,
-		label: string,
-		icon: typeof IconCopy,
-		shortcut?: string,
+		presentation: CommandPresentation,
 		danger = false,
 	): Item => ({
 		id,
-		label,
-		icon,
-		shortcut,
+		...presentation,
 		danger,
 		reason: refused(state.structure?.[command]),
 		run: () =>
@@ -599,17 +594,13 @@ export function SourceContextMenu({
 						commands,
 						"insert-row-above",
 						"insert-row-above",
-						copy.actions.insertRowsAbove(1),
-						IconArrowBarToUp,
-						copy.shortcuts.addRowAbove,
+						tableCommand.insertRowAbove(1),
 					),
 					structural(
 						commands,
 						"insert-row-below",
 						"insert-row-below",
-						copy.actions.insertRowsBelow(1),
-						IconArrowBarToDown,
-						copy.shortcuts.addRowBelow,
+						tableCommand.insertRowBelow(1),
 					),
 				]
 			: []),
@@ -619,17 +610,13 @@ export function SourceContextMenu({
 						commands,
 						"insert-column-left",
 						"insert-column-left",
-						copy.actions.insertColumnsLeft(1),
-						IconArrowBarToLeft,
-						copy.shortcuts.addColumnLeft,
+						tableCommand.insertColumnLeft(1),
 					),
 					structural(
 						commands,
 						"insert-column-right",
 						"insert-column-right",
-						copy.actions.insertColumnsRight(1),
-						IconArrowBarToRight,
-						copy.shortcuts.addColumnRight,
+						tableCommand.insertColumnRight(1),
 					),
 				]
 			: []),
@@ -642,17 +629,13 @@ export function SourceContextMenu({
 	const moveRowItems = (commands: SourceTableCommands, at?: number): Item[] => [
 		{
 			id: "move-up",
-			label: copy.actions.moveUp,
-			icon: IconArrowNarrowUp,
-			shortcut: copy.shortcuts.moveUp,
+			...tableCommand.moveUp,
 			reason: refused(state.moveUp),
 			run: () => commands.moveRow(-1, at),
 		},
 		{
 			id: "move-down",
-			label: copy.actions.moveDown,
-			icon: IconArrowNarrowDown,
-			shortcut: copy.shortcuts.moveDown,
+			...tableCommand.moveDown,
 			reason: refused(state.moveDown),
 			run: () => commands.moveRow(1, at),
 		},
@@ -662,43 +645,39 @@ export function SourceContextMenu({
 			commands,
 			"move-left",
 			"move-column-left",
-			copy.actions.moveLeft,
-			IconArrowNarrowLeft,
+			withoutLegend(tableCommand.moveLeft),
 		),
 		structural(
 			commands,
 			"move-right",
 			"move-column-right",
-			copy.actions.moveRight,
-			IconArrowNarrowRight,
+			withoutLegend(tableCommand.moveRight),
 		),
 	];
 
 	const moveGroup = (actions: readonly Item[]): Group => ({
 		id: "move",
-		label: copy.actions.move,
-		submenu: IconArrowsMove,
+		label: tableCommandGroup.move.label,
+		submenu: tableCommandGroup.move.icon,
 		actions,
 	});
 
 	const sortGroup = (commands: SourceTableCommands): Group => ({
 		id: "sort",
-		label: copy.actions.sort,
-		submenu: IconArrowsSort,
+		label: tableCommandGroup.sort.label,
+		submenu: tableCommandGroup.sort.icon,
 		actions: [
 			structural(
 				commands,
 				"sort-ascending",
 				"sort-ascending",
-				copy.actions.sortLabel("ascending", state.sortType),
-				IconSortAscending,
+				tableCommand.sort("ascending", state.sortType),
 			),
 			structural(
 				commands,
 				"sort-descending",
 				"sort-descending",
-				copy.actions.sortLabel("descending", state.sortType),
-				IconSortDescending,
+				tableCommand.sort("descending", state.sortType),
 			),
 		],
 	});
@@ -711,8 +690,7 @@ export function SourceContextMenu({
 				commands,
 				"duplicate",
 				"duplicate-row",
-				copy.actions.duplicateRows(1),
-				IconCopy,
+				tableCommand.duplicateRows(1),
 			),
 		],
 	});
@@ -726,9 +704,7 @@ export function SourceContextMenu({
 							commands,
 							"delete-rows",
 							"delete-row",
-							copy.actions.deleteRows(1),
-							IconTrash,
-							undefined,
+							withoutLegend(tableCommand.deleteRows(1)),
 							true,
 						),
 					]
@@ -739,9 +715,7 @@ export function SourceContextMenu({
 							commands,
 							"delete-columns",
 							"delete-column",
-							copy.actions.deleteColumns(1),
-							IconTrash,
-							undefined,
+							tableCommand.deleteColumns(1),
 							true,
 						),
 					]
@@ -804,25 +778,19 @@ export function SourceContextMenu({
 			actions: [
 				{
 					id: "cut",
-					label: copy.actions.cut,
-					icon: IconScissors,
-					shortcut: copy.shortcuts.cut,
+					...tableCommand.cut,
 					reason: readOnly ?? nothingSelected,
 					run: () => void writeSelection(true),
 				},
 				{
 					id: "copy",
-					label: copy.actions.copy,
-					icon: IconCopy,
-					shortcut: copy.shortcuts.copy,
+					...tableCommand.copy,
 					reason: nothingSelected,
 					run: () => void writeSelection(false),
 				},
 				{
 					id: "paste",
-					label: copy.actions.paste,
-					icon: IconClipboard,
-					shortcut: copy.shortcuts.paste,
+					...tableCommand.paste,
 					reason: readOnly,
 					run: () => void paste(),
 				},
@@ -833,17 +801,13 @@ export function SourceContextMenu({
 			actions: [
 				{
 					id: "undo",
-					label: copy.actions.undo,
-					icon: IconArrowBackUp,
-					shortcut: copy.shortcuts.undo,
+					...tableCommand.undo,
 					reason: state.canUndo ? undefined : copy.disabled.undo,
 					run: () => history("undo"),
 				},
 				{
 					id: "redo",
-					label: copy.actions.redo,
-					icon: IconArrowForwardUp,
-					shortcut: copy.shortcuts.redo,
+					...tableCommand.redo,
 					reason: state.canRedo ? undefined : copy.disabled.redo,
 					run: () => history("redo"),
 				},

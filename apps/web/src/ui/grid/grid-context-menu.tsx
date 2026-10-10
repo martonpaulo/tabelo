@@ -14,10 +14,6 @@ import {
 import { segmentedGroupStyles } from "@tabelo/ui/components/menu-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
-	IconAlignCenter,
-	IconAlignJustified,
-	IconAlignLeft,
-	IconAlignRight,
 	IconArrowsHorizontal,
 	IconPin,
 	IconRuler,
@@ -39,14 +35,14 @@ import {
 	type GridSelection,
 } from "@/core/selection";
 import { convertCellValue } from "@/core/typed-input";
-import type {
-	Alignment,
-	CellValueType,
-	ExpectedColumnType,
-} from "@/core/types";
+import type { CellValueType, ExpectedColumnType } from "@/core/types";
 import { useTabeloStore } from "@/state/store";
 import { ControlTooltip } from "@/ui/primitives/control-tooltip";
 import { useMenuDialogCommand } from "@/ui/primitives/use-menu-dialog-command";
+import {
+	ColumnAlignmentGroup,
+	ColumnExpectedTypeGroup,
+} from "@/ui/table/column-controls";
 import { isSameColumnWidth } from "@/workspace/column-width";
 import type { PinnedGridAxis } from "@/workspace/layout";
 import {
@@ -55,7 +51,7 @@ import {
 	type PendingCellTypeChange,
 	type PendingColumnTypeChange,
 } from "./cell-type-change-dialog";
-import { cellTypeOptions, expectedTypeOptions } from "./cell-type-options";
+import { cellTypeOptions } from "./cell-type-options";
 import { measureColumnFitWidth } from "./column-fit";
 import { CommandSubmenu } from "./command-submenu";
 import {
@@ -94,21 +90,6 @@ interface MenuTarget {
 	readonly index: number;
 	readonly onCell?: boolean;
 }
-
-const alignments: {
-	value: Alignment;
-	label: string;
-	icon: typeof IconAlignLeft;
-}[] = [
-	{
-		value: "default",
-		label: copy.actions.alignDefault,
-		icon: IconAlignJustified,
-	},
-	{ value: "left", label: copy.actions.alignLeft, icon: IconAlignLeft },
-	{ value: "center", label: copy.actions.alignCenter, icon: IconAlignCenter },
-	{ value: "right", label: copy.actions.alignRight, icon: IconAlignRight },
-];
 
 // The first data row and the first data column on their own axes. The header
 // row is row -1 and already sticky, so the first row a pin can reach is the
@@ -273,89 +254,6 @@ function ColumnMenuGroups({
 			</ContextMenuGroup>
 			<ContextMenuSeparator />
 		</>
-	);
-}
-
-// The column's expected type as segments, read from the column. Shared with a
-// source pane's column letter (#395), which says why it is off when the text
-// has no table to act on.
-export function ColumnExpectedTypeGroup({
-	value,
-	onChange,
-	reason,
-}: {
-	readonly value: ExpectedColumnType;
-	readonly onChange: (next: ExpectedColumnType) => void;
-	readonly reason?: string;
-}) {
-	const labelId = useId();
-	return (
-		<ContextMenuRadioGroup
-			aria-labelledby={labelId}
-			value={value}
-			onValueChange={(next) => onChange(next as ExpectedColumnType)}
-		>
-			<ContextMenuLabel id={labelId}>
-				{copy.actions.expectedType}
-			</ContextMenuLabel>
-			<div className={cn(segmentedGroupStyles, "mx-1 mb-1")}>
-				{expectedTypeOptions.map((option) => (
-					<ControlTooltip key={option.value} reason={reason}>
-						<ContextMenuSegmentedItem
-							value={option.value}
-							disabled={reason !== undefined}
-							aria-description={reason}
-						>
-							<option.icon aria-hidden />
-							{option.label}
-						</ContextMenuSegmentedItem>
-					</ControlTooltip>
-				))}
-			</div>
-		</ContextMenuRadioGroup>
-	);
-}
-
-// Four immediate choices laid side by side, the same segmented drawing as the
-// expected type above them. Each segment is an icon with its full name as its
-// accessible name, and the radio semantics read the checked value from the
-// column rather than the last click (2026-09-19, replacing the submenu).
-export function ColumnAlignmentGroup({
-	align,
-	onChange,
-	reason,
-}: {
-	readonly align?: Alignment;
-	readonly onChange: (next: Alignment) => void;
-	readonly reason?: string;
-}) {
-	const labelId = useId();
-	return (
-		<ContextMenuRadioGroup
-			aria-labelledby={labelId}
-			value={align ?? "default"}
-			onValueChange={(next) => onChange(next as Alignment)}
-		>
-			<ContextMenuLabel id={labelId}>{copy.actions.alignment}</ContextMenuLabel>
-			<div className={cn(segmentedGroupStyles, "mx-1 mb-1")}>
-				{alignments.map((option) => (
-					<ControlTooltip
-						key={option.value}
-						name={option.label}
-						reason={reason}
-					>
-						<ContextMenuSegmentedItem
-							value={option.value}
-							aria-label={option.label}
-							disabled={reason !== undefined}
-							aria-description={reason}
-						>
-							<option.icon aria-hidden />
-						</ContextMenuSegmentedItem>
-					</ControlTooltip>
-				))}
-			</div>
-		</ContextMenuRadioGroup>
 	);
 }
 

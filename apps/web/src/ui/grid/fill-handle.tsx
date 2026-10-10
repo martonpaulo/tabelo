@@ -3,8 +3,9 @@ import { useLayoutEffect, useState } from "react";
 import { copy } from "@/copy/copy";
 import type { CellPosition, CellRect } from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
+import { fillRefusalMessage } from "@/ui/table/command-presentation";
 import { usePaneEntered } from "@/ui/workspace/use-pane-entry";
-import { fillRefusalMessage, runFillDirection } from "./table-actions";
+import { runFillDirection } from "./table-actions";
 import type { FillDragController } from "./use-fill-drag";
 
 // Where the handle stands with the table scrolled to its origin, in rem, and
