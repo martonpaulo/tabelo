@@ -111,3 +111,29 @@ test("a confirmation clears itself and a failure does not", async ({
 	await expect(confirmation).toHaveCount(0, { timeout: 15_000 });
 	await expect(refusedCopy(tabelo)).toBeVisible();
 });
+
+// A condition keeps its identifier while what it says changes (#449). The
+// alert region used to keep reading the first refusal while the notice on
+// screen showed the second. Compared region to notice, never to copy.
+test("a refusal that replaces another is announced as the one on screen", async ({
+	tabelo,
+}) => {
+	const refusal = tabelo.notice("error");
+	const visibleText = async () =>
+		(await refusal.innerText()).replace(/\s+/g, " ").trim();
+
+	await tabelo.importFile("broken.csv", 'Name\n"unterminated', "text/csv");
+	await expect(refusal).toHaveCount(1);
+	const first = await visibleText();
+	await expect(tabelo.alerts).toHaveText(first);
+
+	await tabelo.importFile(
+		"nested.json",
+		'[{"person":{"name":"Ingrid"}}]',
+		"application/json",
+	);
+	await expect(refusal).not.toHaveText(first);
+	const second = await visibleText();
+	await expect(refusal).toHaveCount(1);
+	await expect(tabelo.alerts).toHaveText(second);
+});

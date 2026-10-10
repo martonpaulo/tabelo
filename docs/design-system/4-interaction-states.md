@@ -205,7 +205,10 @@ Everything else, including a plain "Copied", is polite.
 
 Only what has not been announced yet is written, so dismissing one notice never
 reads the remaining ones out again, and a batch arriving together becomes one
-utterance rather than a burst. The visible notice bar carries no live
+utterance rather than a burst. A notice that keeps its identity while its
+message, detail, or urgency changes, such as one refused import replacing
+another, has not been announced in its new form and is written again, to the
+region its urgency names (#449). The visible notice bar carries no live
 semantics of its own.
 
 The polite region also carries text that has no visible counterpart, currently

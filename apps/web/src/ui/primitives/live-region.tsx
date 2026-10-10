@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { NoticeUrgency } from "@/state/notice-queue";
+import {
+	type AnnouncedRecord,
+	type Announcement,
+	freshAnnouncements,
+} from "@/ui/primitives/announcements";
 
 // A live region inserted into the page at the same moment as its text is not
 // reliably announced: assistive technology has to already be watching the
@@ -10,12 +15,6 @@ import type { NoticeUrgency } from "@/state/notice-queue";
 // carries no live semantics of its own, which is what keeps dismissing one
 // notice from reading the remaining ones out again.
 // See docs/design-system/4-interaction-states.md.
-
-export interface Announcement {
-	readonly id: string;
-	readonly message: string;
-	readonly urgency: NoticeUrgency;
-}
 
 export function LiveRegions({
 	announcements,
@@ -30,15 +29,14 @@ export function LiveRegions({
 }) {
 	const [polite, setPolite] = useState("");
 	const [assertive, setAssertive] = useState("");
-	const announced = useRef<ReadonlySet<string>>(new Set());
+	const announced = useRef<AnnouncedRecord>(new Map());
 
 	useEffect(() => {
-		const fresh = announcements.filter(
-			(announcement) => !announced.current.has(announcement.id),
+		const { fresh, record } = freshAnnouncements(
+			announced.current,
+			announcements,
 		);
-		announced.current = new Set(
-			announcements.map((announcement) => announcement.id),
-		);
+		announced.current = record;
 
 		// Back to silence once nothing is outstanding, so that the same message
 		// later is a change in the text rather than the identical string again.
@@ -48,8 +46,9 @@ export function LiveRegions({
 			return;
 		}
 
-		// Only what has not been said yet: removing a notice must not re-read the
-		// ones that stayed. Writing the whole batch at once is also what keeps
+		// Only what has not been said yet, which includes a notice whose text or
+		// urgency changed: removing a notice must not re-read the ones that
+		// stayed. Writing the whole batch at once is also what keeps
 		// several notices arriving together from becoming a burst of speech.
 		if (fresh.length === 0) return;
 		setPolite(textFor(fresh, "polite"));
