@@ -56,14 +56,16 @@ const preloadByKind: Readonly<
 };
 
 // Loads the code of every lazy view in the list and settles when all of it is
-// here. A failed load settles too: the pane's own lazy path then meets the same
-// failure it always did.
+// here, or returns null when none of them is lazy, so a caller can tell that
+// there is nothing to wait for. A failed load settles too: the pane's own lazy
+// path then meets the same failure it always did.
 export function preloadPaneContent(
 	views: readonly ViewDefinition[],
-): Promise<void> {
+): Promise<void> | null {
 	const loads = views
 		.filter((view) => view.loading === "lazy")
 		.map((view) => preloadByKind[view.kind]?.());
+	if (loads.length === 0) return null;
 	return Promise.allSettled(loads).then(() => undefined);
 }
 

@@ -312,6 +312,21 @@ body {
 	}
 }
 
+/* The status a saved workspace shows while its views load (#420). It is in the
+   accessibility tree from its first render; only its paint waits, so a warm
+   start, done within a frame or two, does not blink a line of text before
+   the workspace. Nothing moves: the status is simply not painted until the
+   wait has become noticeable. */
+.tabelo-boot-status {
+	animation: tabelo-boot-reveal 0s 0.4s both;
+}
+
+@keyframes tabelo-boot-reveal {
+	from {
+		opacity: 0;
+	}
+}
+
 /* Every Tabler icon carries this class and sets its stroke as a presentation
    attribute, which any stylesheet rule outranks, so one rule owns the weight. */
 .tabler-icon {

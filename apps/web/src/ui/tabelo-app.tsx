@@ -91,17 +91,38 @@ function opensOnWelcome(): boolean {
 	return isDocumentBlank(state.document) && !hasSessionWork(state);
 }
 
-// Restores the saved session and loads the code of the views it shows, before
-// the first render. Hydrating first makes the first render the saved
-// workspace, so saved content never flashes the welcome surface and nothing
-// renders twice. Loading the shown views first lets their panes paint with the
-// rest of the workspace instead of behind a loading state. A session that opens
-// on the welcome surface waits for nothing, since the surface covers the panes.
-export function prepareTabeloApp(): Promise<void> {
+// Restores the saved session and starts loading the code of the views it
+// shows, before the first render of the app. Hydrating first makes that render
+// the saved workspace, so saved content never flashes the welcome surface and
+// nothing renders twice. Loading the shown views first lets their panes paint
+// with the rest of the workspace instead of behind a loading state. Returns
+// what to wait for, or null when nothing needs waiting for: a session that
+// opens on the welcome surface, since the surface covers the panes, and a
+// workspace whose views are all already in the bundle.
+export function prepareTabeloApp(): Promise<void> | null {
 	useTabeloStore.getState().hydrate();
-	if (opensOnWelcome()) return Promise.resolve();
+	if (opensOnWelcome()) return null;
 	return preloadPaneContent(
 		useTabeloStore.getState().workspace.panes.map((pane) => getView(pane.view)),
+	);
+}
+
+// What stands in for the app while a saved workspace waits for the code of its
+// views (#420). Without it the page was blank for as long as that took, with
+// nothing to see or to read. It is a written status, never focused, and it
+// is replaced by the workspace itself, never by the welcome surface. Its paint
+// is held back for a moment by `.tabelo-boot-status`, so a warm start, over
+// within a frame or two, does not blink a line of text first.
+export function RestoringWorkspace() {
+	return (
+		<div
+			role="status"
+			className="tabelo-boot-status flex h-full items-center justify-center"
+		>
+			<span className="text-muted-foreground text-sm">
+				{copy.status.restoringTable}
+			</span>
+		</div>
 	);
 }
 

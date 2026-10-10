@@ -119,6 +119,15 @@ it. The header, the other panes, the document, the pending draft, and autosave
 keep working, because none of them lives in the view. Focus moves to
 `Reload view` only when the failure took it from inside the pane.
 
+**A saved workspace says it is loading** (#420). Restoring a saved table waits
+for the code of the views it shows before the workspace renders, so the page
+stands in with one written status, never focused and never the welcome
+surface, until the workspace replaces it, whether that code arrived or not. It
+is in the accessibility tree from the start, but its paint waits 0.4s
+(`.tabelo-boot-status`), so a warm start does not blink a line of text first.
+Nothing moves. A session that opens on the welcome surface, or shows only the
+grid, waits for nothing and shows no status.
+
 **A refusal that names a position offers the correction beside it** (#146). The
 refused choice stays natively disabled with its reason, and an ordinary enabled
 `Go to cell` command sits immediately after it as a sibling: never nested inside

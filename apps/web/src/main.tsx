@@ -2,7 +2,11 @@ import { ShortcutKeyLabelsProvider } from "@tabelo/ui/components/shortcut-keys";
 import ReactDOM from "react-dom/client";
 import "@/index.css";
 import { copy } from "@/copy/copy";
-import { prepareTabeloApp, TabeloApp } from "@/ui/tabelo-app";
+import {
+	prepareTabeloApp,
+	RestoringWorkspace,
+	TabeloApp,
+} from "@/ui/tabelo-app";
 
 // GitHub Pages has no SPA rewrite rule, so the deploy workflow serves
 // index.html as 404.html. That gets a deep link here, but leaves the deep path
@@ -32,13 +36,23 @@ if (!rootElement) {
 // first render replaces the static content.
 if (rootElement.dataset.mounted !== "true") {
 	rootElement.dataset.mounted = "true";
-	void prepareTabeloApp().then(() => {
-		ReactDOM.createRoot(rootElement).render(
-			<ShortcutKeyLabelsProvider labels={copy.keys}>
-				<div className="h-full">
-					<TabeloApp />
-				</div>
-			</ShortcutKeyLabelsProvider>,
-		);
-	});
+	const root = ReactDOM.createRoot(rootElement);
+	const app = (
+		<ShortcutKeyLabelsProvider labels={copy.keys}>
+			<div className="h-full">
+				<TabeloApp />
+			</div>
+		</ShortcutKeyLabelsProvider>
+	);
+	const preparing = prepareTabeloApp();
+	if (preparing) {
+		// A saved workspace waits for the code of its views. The page says so
+		// meanwhile rather than staying blank (#420), and the app replaces the
+		// status whether the code arrived or not: a view that could not load
+		// shows its own failure inside its pane.
+		root.render(<RestoringWorkspace />);
+		void preparing.then(() => root.render(app));
+	} else {
+		root.render(app);
+	}
 }

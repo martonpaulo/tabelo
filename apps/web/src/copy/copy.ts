@@ -1115,6 +1115,8 @@ export const copy = {
 		// broken.
 		rowsAlreadySorted: "The rows are already in this order.",
 		loading: "Loading…",
+		// Shown while a saved table's views load at startup (#420).
+		restoringTable: "Loading your table…",
 		// Spoken after a Format command, since a mark changes nothing a screen
 		// reader would otherwise announce.
 		formatApplied: (format: string, on: boolean) =>
