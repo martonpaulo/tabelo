@@ -192,6 +192,21 @@ remains expires as usual. Choosing `Undo` runs that undo and removes the
 notice. The notice is the command's only announcement; its text reaches the
 polite region once.
 
+An expiring notice counts down only while nobody attends to it (#450). The
+countdown pauses while the pointer rests on the notice, while keyboard focus is
+inside it, and while the page is hidden or its window is not the one in use.
+When attention leaves, it continues with the time it had left; a repeated
+message still starts a fresh lifetime, and a withdrawn `Undo` restarts it at
+the plain confirmation's length. Pausing never keeps an `Undo` whose document
+has changed: that offer follows the document, not the clock.
+
+When a notice removes the control that held focus, by dismissal, `Undo`, or a
+withdrawn `Undo`, focus returns to where it came from. If that element is gone,
+as after a whole-table `Undo` redraws the grid, the grid cell at the same
+address takes it, and failing that the first control of a remaining notice.
+Focus never falls to the page, and a user who already moved focus elsewhere is
+never pulled back.
+
 ### Announcing
 
 Two live regions, one `role="status"` and one `role="alert"`, are mounted for

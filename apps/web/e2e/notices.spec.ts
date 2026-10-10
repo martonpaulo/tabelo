@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
+import { samplePeopleCsv } from "@/core/sample-data";
 import { expect, test } from "./fixtures";
 import { faultyClipboard, setClipboard, type TabeloPage } from "./helpers";
 
@@ -136,4 +137,193 @@ test("a refusal that replaces another is announced as the one on screen", async 
 	const second = await visibleText();
 	await expect(refusal).toHaveCount(1);
 	await expect(tabelo.alerts).toHaveText(second);
+});
+
+// An expiring notice counts down only while nobody is attending to it (#450).
+// The browser clock is installed before the app loads and then jumped past
+// each lifetime, so nothing here waits on wall time. Jumps are larger than
+// the longest lifetime, 8s for a notice offering Undo.
+const PAST_ANY_LIFETIME = 9_000;
+
+async function withControlledClock(page: Page, tabelo: TabeloPage) {
+	await page.clock.install();
+	await page.reload();
+	await tabelo.dismissWelcome();
+}
+
+// A whole-table command reports in the one notice that offers Undo.
+async function transposeWithUndo(tabelo: TabeloPage) {
+	await tabelo.paste(samplePeopleCsv(2).replaceAll(",", "\t"));
+	await tabelo.dismissNotices();
+	const menu = await tabelo.openTableOptions();
+	await menu
+		.getByRole("menuitem", { name: copy.actions.transposeTable })
+		.click();
+	await menu.waitFor({ state: "hidden" });
+	const notice = tabelo.notice("info");
+	const undo = notice.getByRole("button", { name: copy.actions.undo });
+	await expect(undo).toBeVisible();
+	return { notice, undo };
+}
+
+async function moveAway(page: Page) {
+	await page.mouse.move(1, (page.viewportSize()?.height ?? 600) - 1);
+}
+
+test("keyboard focus on Undo holds the notice, which expires once focus leaves", async ({
+	page,
+	tabelo,
+}) => {
+	await withControlledClock(page, tabelo);
+	const { notice, undo } = await transposeWithUndo(tabelo);
+	await moveAway(page);
+
+	await undo.focus();
+	await page.clock.fastForward(PAST_ANY_LIFETIME);
+	await expect(undo).toBeFocused();
+	await expect(notice).toHaveCount(1);
+
+	await tabelo.cell(1, 1).focus();
+	// It resumes with the time it had left rather than vanishing at once.
+	await expect(notice).toHaveCount(1);
+	await page.clock.fastForward(PAST_ANY_LIFETIME);
+	await expect(notice).toHaveCount(0);
+});
+
+test("choosing Undo from the keyboard leaves focus on the table, not the page", async ({
+	page,
+	tabelo,
+}) => {
+	await withControlledClock(page, tabelo);
+	const { notice, undo } = await transposeWithUndo(tabelo);
+	await tabelo.cell(1, 1).click();
+
+	await undo.focus();
+	await page.keyboard.press("Enter");
+
+	await expect(notice).toHaveCount(0);
+	await expect(tabelo.header(2)).toHaveText("city");
+	await expect(tabelo.cell(1, 1)).toBeFocused();
+});
+
+test("dismissing a notice from the keyboard returns focus to where it came from", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	await setClipboard(page, "granted");
+	await copyCell(page);
+	await tabelo.cell(1, 1).focus();
+
+	const dismiss = tabelo
+		.notice("info")
+		.getByRole("button", { name: copy.actions.dismiss });
+	await dismiss.focus();
+	await page.keyboard.press("Enter");
+
+	await expect(tabelo.notices).toHaveCount(0);
+	await expect(tabelo.cell(1, 1)).toBeFocused();
+});
+
+test("a hovered confirmation stays, and expires after the pointer leaves", async ({
+	page,
+	tabelo,
+}) => {
+	await withControlledClock(page, tabelo);
+	await tabelo.editCell(1, 1, "Ingrid");
+	await setClipboard(page, "granted");
+	await copyCell(page);
+	const confirmation = tabelo.notice("info");
+	await expect(confirmation).toHaveCount(1);
+
+	await confirmation.hover();
+	await page.clock.fastForward(PAST_ANY_LIFETIME);
+	await expect(confirmation).toHaveCount(1);
+
+	await moveAway(page);
+	await expect(confirmation).toHaveCount(1);
+	await page.clock.fastForward(PAST_ANY_LIFETIME);
+	await expect(confirmation).toHaveCount(0);
+});
+
+test("a repeated confirmation that appears under the pointer stays", async ({
+	page,
+	tabelo,
+}) => {
+	await withControlledClock(page, tabelo);
+	await tabelo.editCell(1, 1, "Ingrid");
+	await setClipboard(page, "granted");
+	await copyCell(page);
+	const confirmation = tabelo.notice("info");
+	await expect(confirmation).toHaveCount(1);
+	const identity = confirmation.locator("[data-notice-id]");
+	const first = await identity.getAttribute("data-notice-id");
+
+	// The same copy again, from the keyboard, so the pointer never moves off
+	// the notice it rests on.
+	await confirmation.hover();
+	await tabelo.cell(1, 1).focus();
+	await page.keyboard.press("Shift+F10");
+	await page.getByRole("menuitem", { name: copy.actions.copy }).focus();
+	await page.keyboard.press("Enter");
+	// The repeat replaced the notice rather than adding a second one.
+	await expect(identity).not.toHaveAttribute("data-notice-id", first ?? "");
+	await expect(confirmation).toHaveCount(1);
+
+	await page.clock.fastForward(PAST_ANY_LIFETIME);
+	await expect(confirmation).toHaveCount(1);
+});
+
+test("a document change withdraws Undo even while the notice is held", async ({
+	page,
+	tabelo,
+}) => {
+	await withControlledClock(page, tabelo);
+	const { notice, undo } = await transposeWithUndo(tabelo);
+	await tabelo.cell(1, 1).click();
+
+	await notice.hover();
+	await page.keyboard.type("Felix");
+	await page.keyboard.press("Enter");
+
+	await expect(undo).toHaveCount(0);
+	await page.clock.fastForward(PAST_ANY_LIFETIME);
+	await expect(notice).toHaveCount(1);
+
+	// What remains is a plain confirmation and expires like one.
+	await moveAway(page);
+	await page.clock.fastForward(PAST_ANY_LIFETIME);
+	await expect(notice).toHaveCount(0);
+});
+
+test("a confirmation waits while the page is out of sight", async ({
+	page,
+	tabelo,
+}) => {
+	await withControlledClock(page, tabelo);
+	await tabelo.editCell(1, 1, "Ingrid");
+	await setClipboard(page, "granted");
+	await copyCell(page);
+	const confirmation = tabelo.notice("info");
+	await expect(confirmation).toHaveCount(1);
+	await moveAway(page);
+
+	// Headless Chromium always reports a visible, focused page, so the hidden
+	// state is stated to the page the way the browser would announce it.
+	const setVisibility = (state: "hidden" | "visible") =>
+		page.evaluate((next) => {
+			Object.defineProperty(document, "visibilityState", {
+				configurable: true,
+				get: () => next,
+			});
+			document.dispatchEvent(new Event("visibilitychange"));
+		}, state);
+
+	await setVisibility("hidden");
+	await page.clock.fastForward(PAST_ANY_LIFETIME);
+	await expect(confirmation).toHaveCount(1);
+
+	await setVisibility("visible");
+	await page.clock.fastForward(PAST_ANY_LIFETIME);
+	await expect(confirmation).toHaveCount(0);
 });
