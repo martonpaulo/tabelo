@@ -5,6 +5,7 @@ import { samplePeopleMatrix } from "@/core/sample-data";
 import { applyEdits } from "@/testing/assistance";
 import { markdownCodec } from "./markdown";
 import { markdownDividerAssistance } from "./markdown-assistance";
+import { MAX_PADDED_WIDTH } from "./markdown-grammar";
 import { minimalChange } from "./minimal-change";
 
 // Applies one user edit, `before` to `after`, the way the source editor does:
@@ -286,6 +287,30 @@ describe("markdown column padding assistance", () => {
 				"|Paulo| Madrid |extra|",
 			].join("\n"),
 		);
+	});
+
+	it("pads up to the width cap, never to a wider cell (#496)", () => {
+		const long = "x".repeat(MAX_PADDED_WIDTH * 2);
+		const capped = [
+			`| name   | city${" ".repeat(MAX_PADDED_WIDTH - 4)} |`,
+			`| ------ | ${"-".repeat(MAX_PADDED_WIDTH)} |`,
+			`| Ingrid | Rio${" ".repeat(MAX_PADDED_WIDTH - 3)} |`,
+			`| Paulo  | ${long} |`,
+		].join("\n");
+		expect(replace(people, "Madrid", long)).toBe(capped);
+
+		// Typing in a short cell keeps the capped width rather than re-padding
+		// to the long cell, and the result is what the serializer writes.
+		const typedShort = typeAfter(capped, "Rio", "s");
+		expect(typedShort).toBe(
+			capped.replace(
+				`| Rio${" ".repeat(MAX_PADDED_WIDTH - 3)} |`,
+				`| Rios${" ".repeat(MAX_PADDED_WIDTH - 4)} |`,
+			),
+		);
+		const parsed = markdownCodec.parse(typedShort);
+		if (!parsed.ok) throw new Error("The capped table does not parse.");
+		expect(markdownCodec.serialize(parsed.document)).toBe(typedShort);
 	});
 
 	it("touches no other column", () => {

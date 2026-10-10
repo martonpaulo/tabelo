@@ -98,7 +98,8 @@ function reshapeAlignments(
 }
 
 // The widest cell of every column, measured the way the serializer measures
-// it, so a table the serializer wrote is already what this would produce.
+// it and capped where it caps (#496), so a table the serializer wrote is
+// already what this would produce.
 function columnWidths(block: TableBlock, columns: number): number[] {
 	const widths = Array<number>(columns).fill(MIN_DIVIDER_WIDTH);
 	const measure = (line: string) => {
@@ -312,8 +313,8 @@ function cellPadding(
 }
 
 // Column padding assistance (#401): the column being typed in keeps every row
-// padded to its widest cell, in the text itself, so the source stays aligned
-// the way the serializer writes it. A named structural-assistance feature
+// padded to its widest cell, up to `MAX_PADDED_WIDTH` (#496), in the text
+// itself, so the source stays aligned the way the serializer writes it. A named structural-assistance feature
 // under "Source text is free; structural assistance is narrow" in AGENTS.md:
 //
 // - Syntax: a cell of the header or of a body row of a table block whose

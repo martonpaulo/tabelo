@@ -598,27 +598,49 @@ characters the rest of the per-change work stays small in every shape:
 2.7 (3.4 formatted), and `JSON.parse` with `validatePersistedState` 1.2 (13.9
 formatted).
 
-The Markdown rows are not a per-character cost. Markdown pads every row of a
-column to its widest cell, so one long cell is written once per row: the
-projection is 3,319,061 characters at 16,384 and about 182 million at 900,000.
+The Markdown rows are not a per-character cost. Markdown padded every row of a
+column to its widest cell, so one long cell was written once per row: the
+projection was 3,319,061 characters at 16,384 and about 182 million at 900,000.
 Per character of text it parses, Markdown is as cheap as the others.
+
+After #496 (padding capped at 120 display columns), measured on 2026-10-10 on
+the same machine B with the same driver conditions, at `3d44076` plus the fix.
+The before column was rerun in the same session and agrees with the table
+above. Milliseconds, `plain` shape.
+
+| call | 16,384 | 131,072 | 900,000 |
+| --- | ---: | ---: | ---: |
+| `markdown` projection length, before | 3,319,061 | 26,486,037 | 181,809,493 |
+| `markdown` projection length, after | 49,997 | 164,685 | 933,613 |
+| `markdown` serialize, before / after | 2.8 / 0.31 | 35.9 / 0.71 | 208 / 3.1 |
+| `markdown` parse, before / after | 35.9 / 1.3 to 2.8 | 270 / 3.4 | 1,950 / 45 to 63 |
+
+The projection now grows by the long cell's own length: 900,000 characters of
+cell make a 933,613-character table. The engine-limit cases no longer throw: a
+2,000,000-character cell in a 200-, 300- or 500-row table serializes to about
+2.03 to 2.07 million characters, where before the 300- and 500-row tables threw
+`RangeError: Invalid string length`. Warm, the 500-row case takes 280 ms to
+serialize and 136 ms to parse; that cell ends in a space, so it goes through
+the general escaping writer rather than the plain fast path, which is linear,
+like Jira's serializer.
 
 A source-pane paste above the 1 MB import budget (#441 comment 6091390520),
 measured as a limited parse of unpadded text with one long cell: Markdown 82,
 137 and 297 ms at 1, 2 and 4 MB; Jira 86, 172 and 382; CSV 1.4 to 1.7. The
-paste is accepted. Projecting the result back as Markdown is what fails: a
-300-row table with a 2,000,000-character cell throws
+paste is accepted. Before #496, projecting the result back as Markdown failed:
+a 300-row table with a 2,000,000-character cell threw
 `RangeError: Invalid string length` in `serialize`, and a 500-row table with a
-1,048,576-character cell builds 526 million characters, just under V8's
-limit, in 3.7 s.
+1,048,576-character cell built 526 million characters, just under V8's
+limit, in 3.7 s. With the cap the same tables project to about 1.1 and 2.0
+million characters.
 
 | suspicion | measured | verdict |
 | --- | --- | --- |
-| Codec work owns the large-cell stall | Markdown serialize 414 ms and parse 2.0 s at 900,000 characters; every other codec under 70 ms except Jira serialize at 230 ms. A Markdown pane with no draft parses its projection on every document change (#296), so the parse is paid on each edit anywhere in the table | **Confirmed for Markdown, by output size.** Column padding multiplies the longest cell by the row count, and at the top of the shape limits reaches the engine's string limit, which `AGENTS.md` calls a defect. Captured as #496, which needs the owner's choice of padding rule because #401 recorded the current one. No cell limit and no truncation. |
-| Jira and Records are slow per character | Linear: Jira serialize 230 ms and parse 67 ms, Records about 58 ms each way, at 900,000 characters | **Accepted for now.** Linear and well under the Markdown figure. Revisit only after #496 if a browser trace still names them. |
+| Codec work owns the large-cell stall | Markdown serialize 414 ms and parse 2.0 s at 900,000 characters; every other codec under 70 ms except Jira serialize at 230 ms. A Markdown pane with no draft parses its projection on every document change (#296), so the parse is paid on each edit anywhere in the table | **Confirmed for Markdown, by output size.** Column padding multiplies the longest cell by the row count, and at the top of the shape limits reaches the engine's string limit, which `AGENTS.md` calls a defect. Fixed by #496: padding stops at 120 display columns, so a wider cell overflows only its own row, and at 900,000 characters serialize takes 3.1 ms and parse 45 to 63 ms. No cell limit and no truncation. |
+| Jira and Records are slow per character | Linear: Jira serialize 230 ms and parse 67 ms, Records about 58 ms each way, at 900,000 characters | **Accepted for now.** Linear. Now that #496 is fixed they are the slowest codecs at this size; revisit only if a browser trace names them. |
 | Persistence is part of the stall | Save payload stringify 2.7 to 3.4 ms at 900,000 characters, after the autosave debounce rather than in the edit's task; load validation 1.2 to 13.9 ms, at startup only | **Disproved.** |
 | The pure per-change passes grow with the cell | `setCell`, `reconcileDocument`, `alignmentPadding` and `minimalChange` all under 5 ms at 900,000 characters | **Disproved.** |
-| A source-pane paste above 1 MB needs a byte budget | Limited parse 137 ms (Markdown) and 172 ms (Jira) at 2 MB, linear; each keystroke in that pane parses the draft again | **No budget recommended.** Source text is free (#294) and the parse is linear. The hazard is the Markdown projection after the commit, which #496 owns. |
+| A source-pane paste above 1 MB needs a byte budget | Limited parse 137 ms (Markdown) and 172 ms (Jira) at 2 MB, linear; each keystroke in that pane parses the draft again | **No budget recommended.** Source text is free (#294) and the parse is linear. The hazard was the Markdown projection after the commit, fixed by #496. |
 
 Not measured: the source editor's view work and layout or paint, which need a
 browser trace and were outside this run. The evidence above already sets

@@ -79,7 +79,11 @@ keeping its alignment divider in step with the table (Decided on #297),
 opening a new row with `| ` on Enter at the end of a row below the divider
 (Decided on #391), and keeping the column being typed in padded to its widest
 cell in every row, measured the way the serializer pads it, so the text stays
-what the serializer would write for that column (Decided on #401). Jira declares the same row-start feature on its own terms:
+what the serializer would write for that column (Decided on #401). Both pad a
+column to at most 120 display columns: a wider cell is written with no padding
+and overflows only its own row, so one long cell costs its own length rather
+than its length times the row count, and a column whose cells fit keeps exactly
+the padding it had (Decided on #496). Jira declares the same row-start feature on its own terms:
 a bare `|`, because a space after the pipe is part of the cell value in Jira,
 and after the header line as well, because Jira has no divider (Decided on
 #391). Jira also declares empty-cell fill: its empty cell is written as one

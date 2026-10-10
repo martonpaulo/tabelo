@@ -3,6 +3,7 @@ import { documentFromMatrix, documentToMatrix } from "@/core/document";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import { csvCodec } from "./csv";
 import { markdownCodec } from "./markdown";
+import { MAX_PADDED_WIDTH } from "./markdown-grammar";
 import { escapeCell, unescapeCell } from "./markdown-inline";
 
 // The escaping contract from docs/adr/0002 is the one thing in this project
@@ -432,6 +433,94 @@ describe("markdown padding for empty cells", () => {
 
 		const [, , row] = markdownCodec.serialize(parsed.document).split("\n");
 		expect(row).toBe("| A table header longer than the placeholder |");
+	});
+});
+
+describe("markdown padding width cap (#496)", () => {
+	// A note column for Ingrid and Paulo, Paulo's note being `note`.
+	const notes = (note: string) =>
+		documentFromMatrix(
+			[
+				["Name", "Note"],
+				["Ingrid", "Rio"],
+				["Paulo", note],
+			],
+			{ headerRow: true },
+		);
+
+	it("pads a column to its widest cell while that cell fits the cap", () => {
+		const note = "x".repeat(MAX_PADDED_WIDTH);
+		const [header, divider, ingrid, paulo] = markdownCodec
+			.serialize(notes(note))
+			.split("\n");
+		expect(header).toBe(`| Name   | Note${" ".repeat(MAX_PADDED_WIDTH - 4)} |`);
+		expect(divider).toBe(`| ------ | ${"-".repeat(MAX_PADDED_WIDTH)} |`);
+		expect(ingrid).toBe(`| Ingrid | Rio${" ".repeat(MAX_PADDED_WIDTH - 3)} |`);
+		expect(paulo).toBe(`| Paulo  | ${note} |`);
+	});
+
+	it.each([
+		{ case: "ASCII", note: "x".repeat(MAX_PADDED_WIDTH + 1) },
+		{ case: "wide characters", note: "東".repeat(MAX_PADDED_WIDTH / 2 + 1) },
+	])(
+		"stops padding at the cap and lets a wider $case cell overflow its own row",
+		({ note }) => {
+			const [header, divider, ingrid, paulo] = markdownCodec
+				.serialize(notes(note))
+				.split("\n");
+			expect(header).toBe(
+				`| Name   | Note${" ".repeat(MAX_PADDED_WIDTH - 4)} |`,
+			);
+			expect(divider).toBe(`| ------ | ${"-".repeat(MAX_PADDED_WIDTH)} |`);
+			expect(ingrid).toBe(
+				`| Ingrid | Rio${" ".repeat(MAX_PADDED_WIDTH - 3)} |`,
+			);
+			expect(paulo).toBe(`| Paulo  | ${note} |`);
+		},
+	);
+
+	// The projection grows with the table's content: an over-wide cell adds its
+	// own length and nothing per row, whatever the row count.
+	it("charges one long cell its own length, never once per row", () => {
+		const rows = 200;
+		const table = (note: string) =>
+			documentFromMatrix(
+				[
+					["Name", "Note"],
+					...Array.from({ length: rows }, (_, index) => [
+						index % 2 === 0 ? "Ingrid" : "Paulo",
+						index === rows / 2 ? note : "Rio",
+					]),
+				],
+				{ headerRow: true },
+			);
+		const atCap = markdownCodec.serialize(table("x".repeat(MAX_PADDED_WIDTH)));
+		const long = 100_000;
+		const overCap = markdownCodec.serialize(table("x".repeat(long)));
+		expect(overCap.length - long).toBe(atCap.length - MAX_PADDED_WIDTH);
+	});
+
+	// The case from #441 that reached the engine's maximum string length: a
+	// 2,000,000-character cell in a table at the row limit.
+	it("serializes a 2,000,000-character cell in a 500-row table and reads it back", () => {
+		const long = `${"One long note that keeps going. ".repeat(62_500).slice(0, 1_999_999)}.`;
+		const rows = 500;
+		const matrix = [
+			["Name", "Note"],
+			...Array.from({ length: rows }, (_, index) => [
+				index % 2 === 0 ? "Ingrid" : "Paulo",
+				index === rows / 2 ? long : "Rio",
+			]),
+		];
+		const text = markdownCodec.serialize(
+			documentFromMatrix(matrix, { headerRow: true }),
+		);
+		const perRow = "| Paulo  |  |".length + MAX_PADDED_WIDTH + 1;
+		expect(text.length).toBeLessThanOrEqual(long.length + (rows + 2) * perRow);
+
+		const parsed = markdownCodec.parse(text, { limited: true });
+		assert(parsed.ok);
+		expect(documentToMatrix(parsed.document)).toEqual(matrix);
 	});
 });
 

@@ -61,9 +61,22 @@ export function displayWidth(text: string): number {
 	return ASCII_PRINTABLE.test(text) ? text.length : stringWidth(text);
 }
 
+// The widest a column is padded to, in display columns (Decided on #496). A
+// cell wider than this is written once and overflows its own row, so one long
+// cell costs its own length rather than its length times the row count, which
+// at the top of the shape limits reached the engine's maximum string length.
+// Every column whose cells fit keeps exactly the padding it had before.
+export const MAX_PADDED_WIDTH = 120;
+
 // How much of its column one escaped cell claims. An empty cell claims room for
 // the empty-value placeholder a source view draws there, which is what keeps
-// the column aligned around that word: see core/empty-value.ts.
+// the column aligned around that word: see core/empty-value.ts. No cell claims
+// more than `MAX_PADDED_WIDTH`, and because the serializer and the column
+// padding assistance (#401) both fold their columns through this one function,
+// they keep one rule.
 export function reservedWidth(text: string, width: number): number {
-	return text === "" ? EMPTY_VALUE_PLACEHOLDER.length : width;
+	return Math.min(
+		text === "" ? EMPTY_VALUE_PLACEHOLDER.length : width,
+		MAX_PADDED_WIDTH,
+	);
 }

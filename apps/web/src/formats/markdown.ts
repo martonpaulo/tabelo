@@ -244,7 +244,9 @@ function serializeMarkdown(
 	document: TableDocument,
 	{ lineBreakTags = false, booleanMarks = false }: Spelling = {},
 ): string {
-	// Pad columns to a common width so the source stays readable by hand. An
+	// Pad columns to a common width so the source stays readable by hand, up to
+	// `MAX_PADDED_WIDTH`: a wider cell gets no padding and only its own row
+	// overflows (#496), which `reservedWidth` decides. An
 	// empty cell is padded to hold the empty-value placeholder, because a source
 	// view draws that word where the cell's value would be: reserving the room
 	// here is what keeps the column aligned around it, and keeps the file the

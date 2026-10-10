@@ -631,7 +631,8 @@ whose format has a structural-assistance feature (Markdown has three: the
 alignment divider, #297, a new row's opening `| ` on Enter at the end of a
 row below the divider, with the caret after it, #391, and the padding of the
 column being typed in, which grows and shrinks with its widest cell in every
-row while the caret stays where the user is typing, #401; Jira has one, a new
+row, up to 120 display columns (#496), while the caret stays where the user is
+typing, #401; Jira has one, a new
 row's bare `|` on Enter at the end of the header or a row, #391) shows one checked
 `Smart editing` item in its pane actions menu, beside `Wrap lines`. The one
 item covers every feature its format declares. Turning it off reconfigures the live
