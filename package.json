@@ -39,5 +39,5 @@
 			"biome check --write --no-errors-on-unmatched"
 		]
 	},
-	"packageManager": "pnpm@11.7.0"
+	"packageManager": "pnpm@11.28.2"
 }
