@@ -326,6 +326,53 @@ test("unfinished source and cell input remain untouched by agent commands", asyn
 	expect((await agent.read()).columns).toHaveLength(state.columns.length);
 });
 
+test("a selection press does not refuse agent edits, a captured drag does (#472)", async ({
+	page,
+	tabelo,
+	agent,
+}) => {
+	const state = await agent.read();
+	const rename = (snapshot: Snapshot, value: string) =>
+		agent.call(
+			"tabelo_edit_table",
+			tableArgs(snapshot, [
+				{
+					kind: "set_header",
+					columnId: required(snapshot.columns[0]).id,
+					value,
+				},
+			]),
+		);
+	const centre = async (target: ReturnType<typeof tabelo.cell>) => {
+		const box = await target.boundingBox();
+		if (!box) throw new Error("Expected a visible target.");
+		return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+	};
+
+	const cell = await centre(tabelo.cell(1, 1));
+	await page.mouse.move(cell.x, cell.y);
+	await page.mouse.down();
+	expect((await rename(state, "Name")).code).toBe("applied");
+	await page.mouse.up();
+	await expect(tabelo.header(1)).toHaveText("Name");
+
+	const handle = tabelo
+		.columnIndex(1)
+		.locator('[aria-hidden][class*="cursor-col-resize"]');
+	const grip = await centre(handle);
+	await page.mouse.move(grip.x, grip.y);
+	await page.mouse.down();
+	const during = await agent.read();
+	expect(await rename(during, "City")).toMatchObject({
+		code: "user_busy",
+		data: { reason: "pointer_gesture" },
+	});
+	await page.mouse.up();
+	await expect(tabelo.header(1)).toHaveText("Name");
+	expect((await rename(await agent.read(), "City")).code).toBe("applied");
+	await expect(tabelo.header(1)).toHaveText("City");
+});
+
 test("the agent manages registry views and loses access after a reload", async ({
 	page,
 	tabelo,

@@ -228,8 +228,12 @@ A stale request is rejected in full, even if the human edit was elsewhere in the
 table. The agent must reread and reconsider the facts used to compute values.
 
 Unfinished grid/header input, source drafts, IME composition and open choices
-block mutations. An actively focused source editor also blocks writes. Merely
-leaving DOM focus behind when moving to the external agent does not block them.
+block mutations. An actively focused source editor also blocks writes. So does
+a pointer gesture that holds pointer capture: every drag that changes something
+on move or on drop (fill, row and column reorder, column and split resize)
+captures its pointer, and a new one must too. A click or drag-select that only
+moves the selection or focus does not block (#472). Merely leaving DOM focus
+behind when moving to the external agent does not block them either.
 No refused request is queued to execute unexpectedly later.
 
 Each successful table batch creates one ordinary undo step. Human and agent

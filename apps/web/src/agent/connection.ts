@@ -33,6 +33,70 @@ export function pauseAgent(paused: boolean): void {
 	activeSession?.pause(paused);
 }
 
+// The unfinished input the DOM knows about and the store does not. Only a
+// gesture holding pointer capture counts as a pointer gesture: every drag that
+// changes something on move or on drop (fill, reorder, column and split resize)
+// captures its pointer, while a click or drag-select that only moves the
+// selection does not (#472). The browser releases capture itself on pointerup,
+// pointercancel or removal, so this state cannot outlive the gesture the way a
+// pointerdown flag could.
+export function watchInputGuards(doc: Document): {
+	busy: () => string | null;
+	dispose: () => void;
+} {
+	let composing = false;
+	const captured = new Set<number>();
+	const compositionStart = () => {
+		composing = true;
+	};
+	const compositionEnd = () => {
+		composing = false;
+	};
+	const captureGot = (event: PointerEvent) => {
+		captured.add(event.pointerId);
+	};
+	const captureLost = (event: PointerEvent) => {
+		captured.delete(event.pointerId);
+	};
+	doc.addEventListener("compositionstart", compositionStart, true);
+	doc.addEventListener("compositionend", compositionEnd, true);
+	doc.addEventListener("gotpointercapture", captureGot, true);
+	doc.addEventListener("lostpointercapture", captureLost, true);
+	return {
+		busy: () => {
+			if (composing) return "composition";
+			if (captured.size > 0) return "pointer_gesture";
+			if (
+				Array.from(
+					doc.querySelectorAll<HTMLElement>(
+						'[role="dialog"], [role="alertdialog"], [role="menu"]',
+					),
+				).some((element) =>
+					element.checkVisibility({
+						visibilityProperty: true,
+						opacityProperty: true,
+					}),
+				)
+			)
+				return "open_choice";
+			if (
+				doc.hasFocus() &&
+				doc.activeElement?.closest(
+					'input, textarea, [contenteditable="true"], .cm-editor',
+				)
+			)
+				return "text_input";
+			return null;
+		},
+		dispose: () => {
+			doc.removeEventListener("compositionstart", compositionStart, true);
+			doc.removeEventListener("compositionend", compositionEnd, true);
+			doc.removeEventListener("gotpointercapture", captureGot, true);
+			doc.removeEventListener("lostpointercapture", captureLost, true);
+		},
+	};
+}
+
 export function connectAgent(descriptor: string): Promise<boolean> {
 	disconnectAgent();
 	const match = /^(\d{1,5}):(\d{8})$/.exec(descriptor.trim());
@@ -59,50 +123,12 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 	const sessionId = crypto.randomUUID();
 	let credential: string | null = null;
 	let session: AgentSession | null = null;
-	let composing = false;
-	let pointer = false;
 	let closed = false;
 	let finish: (connected: boolean) => void;
 	const connected = new Promise<boolean>((resolve) => {
 		finish = resolve;
 	});
-	const compositionStart = () => {
-		composing = true;
-	};
-	const compositionEnd = () => {
-		composing = false;
-	};
-	const pointerStart = () => {
-		pointer = true;
-	};
-	const pointerEnd = () => {
-		pointer = false;
-	};
-	const busy = () => {
-		if (composing) return "composition";
-		if (pointer) return "pointer_gesture";
-		if (
-			Array.from(
-				document.querySelectorAll<HTMLElement>(
-					'[role="dialog"], [role="alertdialog"], [role="menu"]',
-				),
-			).some((element) =>
-				element.checkVisibility({
-					visibilityProperty: true,
-					opacityProperty: true,
-				}),
-			)
-		)
-			return "open_choice";
-		if (
-			document.hasFocus() &&
-			document.activeElement?.closest(
-				'input, textarea, [contenteditable="true"], .cm-editor',
-			)
-		)
-			return "text_input";
-		return null;
-	};
+	const guards = watchInputGuards(document);
 	const stop = (error: string | null = null) => {
 		if (closed) return;
 		closed = true;
@@ -111,12 +137,7 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 		activeSession = null;
 		cleanup = null;
 		socket.close();
-		document.removeEventListener("compositionstart", compositionStart, true);
-		document.removeEventListener("compositionend", compositionEnd, true);
-		document.removeEventListener("pointerdown", pointerStart, true);
-		document.removeEventListener("pointerup", pointerEnd, true);
-		document.removeEventListener("pointercancel", pointerEnd, true);
-		window.removeEventListener("blur", pointerEnd);
+		guards.dispose();
 		window.removeEventListener("storage", storageChanged);
 		window.removeEventListener("pagehide", pageHidden);
 		useAgentConnection.setState({ status: "disconnected", error });
@@ -137,12 +158,6 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 		AGENT_LIMITS.pairingMs,
 	);
 	cleanup = () => stop();
-	document.addEventListener("compositionstart", compositionStart, true);
-	document.addEventListener("compositionend", compositionEnd, true);
-	document.addEventListener("pointerdown", pointerStart, true);
-	document.addEventListener("pointerup", pointerEnd, true);
-	document.addEventListener("pointercancel", pointerEnd, true);
-	window.addEventListener("blur", pointerEnd);
 	window.addEventListener("storage", storageChanged);
 	window.addEventListener("pagehide", pageHidden);
 	socket.onopen = () =>
@@ -185,7 +200,7 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 			clearTimeout(timer);
 			session = new AgentSession({
 				id: sessionId,
-				busy,
+				busy: guards.busy,
 				onEnd: () => stop(copy.agent.sessionEnded),
 				onChange: (paused) => {
 					useAgentConnection.setState({
