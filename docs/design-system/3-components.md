@@ -664,7 +664,7 @@ than independent booleans. Raising `z-index` is not a hierarchy fix.
 | Initial focus | A dialog that asks for text names its first field as `DialogContent`'s `initialFocus` (owner, 2026-09-19). React's `autoFocus` is never used in a dialog: it fires on mount, before a menu that opened the dialog has returned focus to its trigger, so the first keystrokes land outside the modal |
 | Field feedback | A field is the shared `FormField`: its label, its control, and one line under it that is the hint or the field's own error. Only an error about the value in that field marks it invalid and describes it. A failed operation on valid input, such as storage refusing a save or a connection that did not open, is the form's own `FormFailure` message above the actions: the field stays valid and as typed, and the actions stay the way to retry or leave (#451) |
 | Dismissal | Escape and an explicit Cancel; focus returns to what opened it |
-| Button hierarchy | One right-aligned, non-wrapping action row; below the `sm` breakpoint the actions stack at full width in the same order instead. Cancel or another neutral dismissal comes first, ordinary alternatives follow, and exactly one emphasized decision comes last. That decision is destructive red or primary blue, never both |
+| Button hierarchy | One right-aligned, non-wrapping action row; below the `sm` breakpoint the actions stack at full width in the same order instead. Cancel or another neutral dismissal comes first, ordinary alternatives follow, and exactly one emphasized decision comes last. That decision is destructive red or the primary accent, never both |
 | Confirmation | One primary verb naming the operation: "Download", not "OK" |
 | Consequences | A warning shown in a dialog is the description of the control that authorizes it: the choice that causes it and the confirm that carries it out, so it is heard before anything happens. One that comes and goes with a choice sits in the dialog's own `role="status"` region, mounted before its text; it is never routed through the app's notice live regions, which would announce it twice (#453) |
 
@@ -680,8 +680,8 @@ option block (`optionBlockStyles` and `optionBlockStateStyles` in
 `packages/ui`): the muted fill at rest, 0.75rem padding, the control radius,
 and 0.375rem separation. The start surface's three actions are
 the same block, with its recommended action wearing the primary emphasis.
-Hover uses the shared accent, the checked row is the solid primary with white
-text, keyboard focus outlines the
+Hover uses the shared accent, the checked row is the solid primary with its paired
+label colour, keyboard focus outlines the
 whole row, and disabled rows stay visible with their reason. No radio circle or
 other redundant selected glyph is visible. A title and optional description
 use the shared `MenuOption` rhythm. Do not recreate this structure inside a
@@ -698,7 +698,7 @@ than overflowing the surface. Decided on #355. One shared, deliberately
 generous top spacing separates the footer from the dialog content in every
 dialog. A neutral dismissal comes first, ordinary reversible alternatives
 follow, and exactly one decisive action comes last at the far right. That last
-action is primary blue for the normal path or destructive red for an
+action is the primary accent for the normal path or destructive red for an
 irreversible path. One group never presents both emphasized colours. The destructive
 button is a soft tinted fill, never bare red text: `--destructive` at low alpha
 behind `--destructive` text, a step stronger on hover, so it carries the same

@@ -7,7 +7,7 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
   visit opens. Never build a free slot editor.
 - The app surface remains visible as a 0.5rem inset and a 0.5rem gap between panes.
   Each pane is a 0.5rem-radius surface with a subtle outline. With two or more
-  panes, the active pane adds a thicker blue edge. A one-pane workspace has no
+  panes, the active pane adds a thicker accent edge. A one-pane workspace has no
   persistent active edge because there is no competing pane to distinguish;
   keyboard focus remains visible. This framing applies at every supported width.
 - The page never scrolls. Panes scroll independently. Every pane's content
@@ -62,7 +62,7 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
 - A notice's actions carry no outline, because they are the quiet way out of a
   condition rather than a decision the surface is asking for. Weight, not
   colour, separates them from the message: the action is the body-strong style,
-  never blue, never capitalised, never italic. Blue belongs to focus and
+  never the accent, never capitalised, never italic. The accent belongs to focus and
   selection, and capitals and italics cost legibility for the readers who can
   least afford it.
 - The area holds every notice the app currently has, oldest first, with

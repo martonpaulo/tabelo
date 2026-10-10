@@ -59,7 +59,7 @@ any of them.
 
 | Reference | What it is the reference for |
 | :--- | :--- |
-| Claude (claude.ai) | The visual language: warm neutral greys one step apart per layer, the type, stacked option blocks with a line of detail, soft borders with shadowed floating layers, one blue accent. The approved start surface came from it |
+| Claude (claude.ai) | The visual language: the type, stacked option blocks with a line of detail, soft borders with shadowed floating layers, one accent. The approved start surface came from it; its warm greys and blue accent were replaced by the Ink and Amber palette on #456 |
 | Linear | Menus, keyboard-first operation, shortcut hints, and density: compact where the user works fast, never cramped |
 | Notion databases | The visual table: row lines only, no vertical dividers or chrome bands, the header set apart by weight |
 | VS Code and Zed | The source views: line numbers inside the code box, whitespace and empty-value markers, caret and selection behaviour |
@@ -70,8 +70,10 @@ Tabelo is a focused table editor, not a spreadsheet (`docs/product.md`).
 The earlier palette and radius scale came from
 [petrroll/markdown-to-teams](https://github.com/petrroll/markdown-to-teams); on
 2026-09-18 the owner replaced them with the look above: warm neutral greys,
-Figtree, a deeper primary blue that carries white text, and a 0.5rem/0.75rem
-radius scale.
+Figtree, a deeper primary blue, and a 0.5rem/0.75rem radius scale. On
+2026-09-22 the owner chose the Ink and Amber palette, which replaced the warm
+greys and the blue (#456): pure neutral surfaces a wider step apart and one
+reserved amber accent.
 
 - **Structured.** Grid cells, row and column headers, resize affordances, pane
   edges, and major workspace divisions are rectilinear. The table remains the
@@ -82,9 +84,11 @@ radius scale.
   surfaces use a 0.75rem surface radius, except the tooltip, which keeps the
   control radius ([§3 Tooltip](design-system/3-components.md#tooltip)). There are no pills or arbitrarily rounded
   containers.
-- **Neutral with one blue accent.** Neutral greys distinguish surfaces before
-  lines do. Blue marks focus, selection, and checked or active controls. Status
-  colours are the only other colours and always have written meaning.
+- **Neutral with one reserved accent.** Neutral greys distinguish surfaces
+  before lines do. Amber marks focus, selection, and checked or active
+  controls, and no data value ever uses it, so anything amber is something the
+  user chose or is on (#456). Content tones are the cool set; status colours
+  always have written meaning.
 - **Compact, not tiny.** Controls remain 1.75–2rem tall. Critical labels stay at
   0.875rem; space comes from removing repetition and progressive disclosure, never
   from shrinking essential text.

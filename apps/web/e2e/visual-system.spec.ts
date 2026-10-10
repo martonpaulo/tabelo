@@ -73,6 +73,42 @@ async function contrastBetweenColors(
 	);
 }
 
+// How far either side of the accent's hue a colour still reads as the same
+// family. Amber sits between orange and yellow, and a tone within this many
+// degrees of it would be taken for a selection.
+const ACCENT_HUE_FAMILY_DEGREES = 25;
+
+// A colour token's hue in degrees, or null for a neutral grey, which has no
+// hue to share.
+async function hueOf(page: Page, token: string): Promise<number | null> {
+	return page.evaluate((token) => {
+		const value = getComputedStyle(document.documentElement)
+			.getPropertyValue(token)
+			.trim();
+		const canvas = document.createElement("canvas");
+		canvas.width = 1;
+		canvas.height = 1;
+		const context = canvas.getContext("2d", { willReadFrequently: true });
+		if (!context) throw new Error("Canvas colour conversion is unavailable.");
+		context.fillStyle = value;
+		context.fillRect(0, 0, 1, 1);
+		const [red = 0, green = 0, blue = 0] = [
+			...context.getImageData(0, 0, 1, 1).data.slice(0, 3),
+		].map((channel) => channel / 255);
+		const max = Math.max(red, green, blue);
+		const min = Math.min(red, green, blue);
+		const chroma = max - min;
+		if (chroma < 0.05) return null;
+		const sector =
+			max === red
+				? ((green - blue) / chroma + 6) % 6
+				: max === green
+					? (blue - red) / chroma + 2
+					: (red - green) / chroma + 4;
+		return sector * 60;
+	}, token);
+}
+
 test("controls, surfaces, and menus share their semantic visual hierarchy", async ({
 	page,
 	tabelo,
@@ -701,6 +737,52 @@ test("text and focus tokens meet their contrast floors", async ({ page }) => {
 			];
 		});
 		expect(new Set(selectionFills).size).toBe(3);
+
+		// The control outline identifies a control on every surface it sits on
+		// (WCAG 1.4.11).
+		for (const surface of ["--surface-panel", "--surface-floating"]) {
+			expect(
+				await contrastBetween(page, "--control-outline", surface),
+				surface,
+			).toBeGreaterThanOrEqual(3);
+		}
+
+		// Every colour that describes content is read on the code surface, the
+		// darkest box content sits in, and stays out of the accent's hue family:
+		// amber means selection, focus, or the primary action and nothing else
+		// (#456). Punctuation is the one quiet tone, below 4.5:1 by design and
+		// never carrying meaning alone, so only the hue rule applies to it.
+		const contentTokens = [
+			"--value-string",
+			"--value-number",
+			"--value-boolean",
+			"--value-null",
+			"--syntax-notation",
+			"--syntax-tag",
+			"--syntax-link",
+			"--table-mark-1",
+			"--table-mark-2",
+			"--table-mark-3",
+			"--table-mark-4",
+			"--table-mark-5",
+			"--table-mark-6",
+		];
+		for (const token of contentTokens) {
+			expect(
+				await contrastBetween(page, token, "--surface-code"),
+				token,
+			).toBeGreaterThanOrEqual(4.5);
+		}
+		const accentHue = await hueOf(page, "--selection-edge");
+		expect(accentHue).not.toBeNull();
+		for (const token of [...contentTokens, "--syntax-punctuation"]) {
+			const hue = await hueOf(page, token);
+			if (hue === null || accentHue === null) continue;
+			const distance = Math.abs(hue - accentHue);
+			expect(Math.min(distance, 360 - distance), token).toBeGreaterThan(
+				ACCENT_HUE_FAMILY_DEGREES,
+			);
+		}
 	}
 });
 

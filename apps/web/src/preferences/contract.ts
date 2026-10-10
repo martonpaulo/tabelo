@@ -24,7 +24,7 @@ export const SPACE_INDICATOR_VALUES = [
 
 // The browser's address bar and task switcher tint, matching the only palette
 // the product has. One value rather than a per-theme record: see docs/adr/0010.
-export const THEME_COLOR = "#1c1c1b";
+export const THEME_COLOR = "#111111";
 
 export type SpaceIndicators = (typeof SPACE_INDICATOR_VALUES)[number];
 

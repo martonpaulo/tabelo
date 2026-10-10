@@ -47,6 +47,13 @@ user-issued resizing.
 | `--surface-code` | `bg-surface-code` | The inset rounded box a source view's text and line numbers sit in (owner, 2026-09-19) |
 | `--surface-floating` | `bg-surface-floating` | Menus, tooltips, and dialogs above panes |
 
+The surfaces are the pure neutral greys of the Ink and Amber palette (decided
+on #456): app `#111111`, code `#141414`, panel `#1b1b1b`, floating `#212121`,
+header `#262626`. Their relative luminance climbs 0.0056, 0.0070, 0.0110,
+0.0152, 0.0194, a wider step than the warm greys they replaced, so the page,
+the pane on it, and the inset code box read as three planes rather than one
+field.
+
 Order matters: app is furthest back, interface chrome sits above the panel,
 and a pane's content box sits inset in it. Neighbouring surfaces are close in tone on purpose and are not held to a
 contrast ratio: they group content, they do not identify a component. A
@@ -73,7 +80,7 @@ pane says so with a quiet lock in its header whose name and tooltip are "Read-on
 | `--line-strong` | `border-line-strong` | Boundaries between panes |
 | `--line-floating` | `ring-line-floating` | The soft boundary of anything that floats: menus, tooltips, dialogs, notices |
 | `--line-pane` | pane edge | A pane's own edge, almost the pane's tone |
-| `--active-pane-edge` | active pane edge | The active pane's translucent blue edge |
+| `--active-pane-edge` | active pane edge | The active pane's translucent accent edge |
 | `--control-outline` | `border-control-outline` | Unfilled small controls that must remain identifiable against their surface |
 
 Borders are always 0.0625rem. Use them for the table grid, pane boundaries, or an
@@ -90,7 +97,7 @@ surface adds `bg-clip-padding` so its background does not paint under that
 border and muddy it.
 
 **A state recolours that stroke; it never adds another.** The active pane's
-blue edge is the pane's own border wearing the accent, not a second border
+accent edge is the pane's own border wearing the accent, not a second border
 inside it, and it keeps the resting width so activating a pane moves nothing.
 Two strokes at slightly different radii is exactly how a corner ends up looking
 doubled, which is what the overlay this replaced did.
@@ -122,7 +129,8 @@ surface that needs a boundary composes one of them. Writing `ring-1`, a bare
 and a browser test walks the live DOM to catch it.
 
 `--control-outline` carries a contrast floor and is tested for it: it reaches
-at least 3:1 against every surface it can appear over, because
+at least 3:1 against every surface it can appear over (`#8a8a8a`: 4.99:1 on
+the panel, 4.66:1 on the floating surface), because
 [WCAG 1.4.11](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)
 requires that much of anything needed to identify a control. `--line-floating`
 carried the same floor until the owner chose soft borders on 2026-09-19: a
@@ -148,12 +156,26 @@ possible way to say "these characters", and the pale tone is reserved for fills
 that sit under content rather than replace its ground. The paired foreground is
 what keeps the marked characters readable (#144).
 
-The accent family is blue. Use its solid tone only for focus,
-selection, and checked or active controls; use the pale tone for hover or
-selection fills. Text selection is intentionally stronger than an active line
-and is a separate token from structural cell selection, so the two meanings do
-not accumulate into a muddy block in dark mode. Ordinary neutral buttons and
-links do not become blue merely for decoration.
+**The accent is amber, and it is reserved** (decided on #456). Amber means
+selection, focus, or the primary action, and nothing else: no data value,
+syntax token, or table mark ever uses its hue, so anything amber on screen is
+something the user chose or is on. This is the criterion any later colour
+token is checked against, and a browser test holds every content tone outside
+the accent's hue family.
+
+The solid tone, `#f5a524`, is `--selection-edge`, `--focus-ring`, and
+`--primary` alike and clears 9.03:1 on `--surface-code`; `--primary-foreground`
+is the near-black `#1a1206`, 9.08:1 on the amber fill. Use the solid tone only
+for focus, selection, and checked or active controls. The translucent tones are
+the same amber: `--selection-fill` at 20%, `--text-selection-fill` at 27%,
+`--active-line-fill` at 8%, and the active pane edge at 45%. The fills that
+sit under text are lighter in alpha than the earlier blue ones, because amber
+is the lighter hue and the text over them must stay readable. Text selection is
+intentionally stronger than an active line and is a separate token from
+structural cell selection, so the two meanings do not accumulate into a muddy
+block. A pointer highlight is a neutral lift (`--accent`), never amber.
+Ordinary neutral buttons and links do not take the accent merely for
+decoration.
 
 ### Semantic values and syntax
 
@@ -176,13 +198,17 @@ number `1`, in accordance with ADR 0008.
 | `--syntax-punctuation` | (source views only) | Brackets, pipes, separators, the Markdown alignment divider, and markup markers | Grammar position; quieter than every value tone by design |
 | `--syntax-link` | `text-syntax-link` | Links, URLs, and autolinks | Underline on the link text and the address shape |
 
-The palette is "A · Quente" (owner, 2026-09-19): string `#b9c98a`, number
-`#e8b06f`, boolean `#d49bc0`, null `#8fb3d9`, notation `#e0876a`, link
-`#8cc4ff`, and punctuation `#6f6d66`, each written once as a token in the
-global stylesheet. Every value, notation, and link tone reaches WCAG AA
-contrast (4.5:1) against `--surface-code`, `--surface-panel`, and the
-selected-cell composite; on `--surface-code` the lowest is notation at 6.2:1.
-Punctuation is the one exception, at 3.2:1: it is structure drawn as
+The palette is the cool set of Ink and Amber (decided on #456, superseding
+the warm "A · Quente" set of 2026-09-19): string `#8fd18a`, number `#6fd3c4`,
+boolean `#e29ec4`, null `#8ab6f0`, notation `#ff7b72`, tag `#b9a7e0`, link
+`#7fc9ff`, and punctuation `#6b6b6b`, each written once as a token in the
+global stylesheet. None of them shares the accent's amber hue. Every value,
+notation, tag, and link tone reaches WCAG AA contrast (4.5:1) against
+`--surface-code`, `--surface-panel`, and the selected-cell composite; on
+`--surface-code` they measure string 10.22, number 10.34, boolean 8.70, null
+8.80, notation 7.31, tag 8.48, and link 10.26, and on a selected cell the
+lowest is notation at 4.97:1. The table marks reuse these tones and inherit
+their figures. Punctuation is the one exception, at 3.46:1: it is structure drawn as
 decoration, and the text between the delimiters, never the delimiter's tone,
 carries the content. Forced colours replaces every one of these tones with the
 system text colour, so each keeps a second channel that survives there: weight
@@ -190,14 +216,14 @@ for the header and for numbers and booleans in sources, the underline for
 links, and the glyph shape for notation. Close hues also differ by weight, underline,
 numeric spacing, or literal shape, so hue is never their only distinction.
 These colours describe content, not interaction or status: selection keeps its
-blue fill and edge, while the warm warning and destructive band stays reserved
+amber fill and edge, while the warning orange and destructive red stay reserved
 for diagnostics and destructive state.
 
 ### Status
 
 | Token | Utility | Meaning |
 | :--- | :--- | :--- |
-| `--status-warning` | `bg-status-warning` | Source parses with a non-blocking warning |
+| `--status-warning` | `bg-status-warning` | Source parses with a non-blocking warning. `#ff9e4f`, orange rather than yellow so a warning does not read as a selection: it always comes with its icon and its text and is never drawn as a fill or an edge (#456) |
 | `--destructive` | `text-destructive` | Destructive action confirmation |
 
 **Colour never carries meaning alone.** A source diagnostic combines underline
@@ -205,8 +231,8 @@ shape with written tooltip text. This is not optional.
 
 **A status colour means only its status** (#53, #287). Syntax highlighting never borrows
 one: an escaped pipe or an HTML attribute name is not a source that parsed with
-a warning, and lending the amber to either leaves it carrying two meanings at
-once. The only status colour the source editor spends is `--status-warning` on
+a warning, and lending the warning orange to either leaves it carrying two
+meanings at once. The only status colour the source editor spends is `--status-warning` on
 the warning diagnostic's own underline, and `--destructive` on markup the
 grammar could not read. See "Syntax and table structure" later in this section.
 

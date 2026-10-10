@@ -36,7 +36,8 @@ export const menuSingleSelectionItemStateStyles =
 // every choice dialog, and every Settings and Display row share it, so a
 // choice looks the same wherever it is offered (2026-09-18 restyle). Resting
 // on the muted fill, a pointer lifts it to the accent, and the chosen one, or
-// the one action a surface recommends, is the solid primary with white text.
+// the one action a surface recommends, is the solid primary with its paired
+// label colour.
 export const optionBlockStyles =
 	"relative flex min-h-control-md w-full items-center gap-3 rounded-interactive bg-muted p-3 text-left text-sm leading-snug [&_[data-slot=selection-option-icon]>svg:not([class*='size-'])]:size-5";
 

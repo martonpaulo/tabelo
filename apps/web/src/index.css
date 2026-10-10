@@ -98,51 +98,61 @@
 :root {
 	color-scheme: dark;
 
-	/* Warm neutral greys, one step apart per layer (2026-09-18 restyle, from
-	   the approved start-surface design): the page, the panes on it, and the
-	   chrome inside a pane each read as their own plane. */
-	--surface-app: #1c1c1b;
-	--surface-panel: #262624;
-	--surface-header: #30302d;
+	/* Ink and Amber (#456): pure neutral greys, a wide step apart per layer, so
+	   the page, the panes on it, and the inset code box each read as their own
+	   plane. Relative luminance climbs app 0.0056, code 0.0070, panel 0.0110,
+	   floating 0.0152, header 0.0194. Neighbouring surfaces group content and
+	   are not held to a contrast ratio. */
+	--surface-app: #111111;
+	--surface-panel: #1b1b1b;
+	--surface-header: #262626;
 	/* The inset box a source view's text sits in, one step below the pane.
 	   Its line numbers are set as the grid's row numbers are (owner,
 	   2026-09-19). */
-	--surface-code: #1f1f1e;
-	--surface-floating: #2c2c2a;
+	--surface-code: #141414;
+	--surface-floating: #212121;
 
-	--line-subtle: #3a3a37;
-	--line-strong: #4a4a46;
+	--line-subtle: #303030;
+	--line-strong: #404040;
 	/* The boundary of anything floating. Soft on purpose (owner, 2026-09-19):
 	   a menu or dialog is told apart by its own surface and its shadow, as in
 	   the editors the product is compared with, not by a bright outline. This
 	   reverses the 3:1 floor the line used to carry. */
-	--line-floating: #454541;
+	--line-floating: #3a3a3a;
 	/* A pane's own edge: almost the pane's tone, so panes read as quiet
-	   blocks; the active pane adds a translucent blue edge on top. */
-	--line-pane: #30302d;
-	--active-pane-edge: rgb(77 166 255 / 45%);
-	--control-outline: #8a8984;
+	   blocks; the active pane wears a translucent accent edge instead. */
+	--line-pane: #262626;
+	--active-pane-edge: rgb(245 165 36 / 45%);
+	/* 4.99:1 on the panel and 4.66:1 on the floating surface. */
+	--control-outline: #8a8a8a;
 
-	--selection-fill: rgb(77 166 255 / 24%);
-	--text-selection-fill: rgb(77 166 255 / 32%);
-	--active-line-fill: rgb(77 166 255 / 9%);
-	--selection-edge: #4da6ff;
+	/* The accent is reserved (#456): amber means selection, focus, or the
+	   primary action, and no data value, syntax token, or table mark ever uses
+	   its hue. Anything amber on screen is something the user chose or is on.
+	   The solid tone clears 9.03:1 on the code surface. The fills that sit under
+	   text are lighter in alpha than the blue they replace, because amber is
+	   the lighter hue and the text over them has to stay readable. */
+	--selection-fill: rgb(245 165 36 / 20%);
+	--text-selection-fill: rgb(245 165 36 / 27%);
+	--active-line-fill: rgb(245 165 36 / 8%);
+	--selection-edge: #f5a524;
 	--focus-ring: var(--selection-edge);
 
-	/* The source views' syntax palette, "A · Quente" (owner, 2026-09-19):
-	   warm value hues that each clear 4.5:1 on --surface-code (string 9.3,
-	   number 8.5, boolean 7.3, null 7.6, notation 6.2, tag 6.4, link 9.0). The grid's
-	   typed values read the same four value tokens. Punctuation is structure
-	   drawn as decoration, deliberately quieter at 3.2:1, and never carries
-	   meaning alone: the text between it does. */
-	--value-string: #b9c98a;
-	--value-number: #e8b06f;
-	--value-boolean: #d49bc0;
-	--value-null: #8fb3d9;
-	--syntax-punctuation: #6f6d66;
-	--syntax-notation: #e0876a;
-	--syntax-tag: #a99bc4;
-	--syntax-link: #8cc4ff;
+	/* The source views' syntax palette, the cool set the reserved accent leaves
+	   (#456): every value and syntax hue stays clear of amber and clears 4.5:1
+	   on --surface-code (string 10.22, number 10.34, boolean 8.70, null 8.80,
+	   notation 7.31, tag 8.48, link 10.26). The grid's typed values read the
+	   same four value tokens. Punctuation is structure drawn as decoration,
+	   deliberately quieter at 3.46:1, and never carries meaning alone: the text
+	   between it does. */
+	--value-string: #8fd18a;
+	--value-number: #6fd3c4;
+	--value-boolean: #e29ec4;
+	--value-null: #8ab6f0;
+	--syntax-punctuation: #6b6b6b;
+	--syntax-notation: #ff7b72;
+	--syntax-tag: #b9a7e0;
+	--syntax-link: #7fc9ff;
 
 	/* The table library's colour cycle (#403, owner, 2026-09-20). A table's
 	   mark takes the next colour by its place in the list, so the first
@@ -157,7 +167,10 @@
 	--table-mark-5: var(--syntax-notation);
 	--table-mark-6: var(--syntax-tag);
 
-	--status-warning: #fbbf24;
+	/* Orange rather than yellow, so a warning does not read as a selection. A
+	   warning always comes with its icon and its text and is never drawn as a
+	   fill or an edge, which is what keeps it apart from the accent (#456). */
+	--status-warning: #ff9e4f;
 
 	--control-h-sm: 1.75rem;
 	--control-h-md: 2rem;
@@ -253,25 +266,27 @@
 
 	/* Keep shadcn primitives on the same neutral product surfaces. */
 	--background: var(--surface-panel);
-	--foreground: #f0eee8;
+	--foreground: #fafafa;
 	--card: var(--surface-panel);
 	--card-foreground: var(--foreground);
 	--popover: var(--surface-floating);
 	--popover-foreground: var(--foreground);
-	/* White text on it clears 4.5:1, and the fill itself clears 3:1 against
-	   the panel and floating surfaces, where it also marks a checked control. */
-	--primary: #2b76cb;
-	--primary-foreground: #ffffff;
+	/* The solid accent. Its near-black label clears 9.08:1 on it, and the fill
+	   itself clears 3:1 against the panel and floating surfaces, where it also
+	   marks a checked control. */
+	--primary: var(--selection-edge);
+	--primary-foreground: #1a1206;
 	--secondary: var(--surface-header);
 	--secondary-foreground: var(--foreground);
 	/* One step above the floating surface, so an option block reads as a
 	   control on a menu or dialog rather than as a hole in it. */
-	--muted: #353532;
-	--muted-foreground: #b4b2a9;
+	--muted: #2a2a2a;
+	/* 6.83:1 on the panel. */
+	--muted-foreground: #a3a3a3;
 	/* A pointer or keyboard highlight is a neutral lift, one step above the
-	   floating surface; blue is kept for what is chosen, not what is pointed
-	   at (2026-09-18 restyle). */
-	--accent: #3a3a37;
+	   floating surface; the amber accent is kept for what is chosen, not what
+	   is pointed at. */
+	--accent: #303030;
 	--accent-foreground: var(--foreground);
 	--destructive: #fca5a5;
 	--border: var(--line-subtle);
@@ -600,7 +615,7 @@ textarea,
 @layer base {
 	/* One focus treatment for the whole app (owner, 2026-09-19): a two-hairline
 	   ring drawn outside the control with a gap, so it never merges with a chosen
-	   option's blue fill or a control's own edge. Keyboard operation is a
+	   option's accent fill or a control's own edge. Keyboard operation is a
 	   first-class path here, not a fallback. In the base layer so the few places
 	   that must draw it inset, such as a pane frame that fills its container, can
 	   say so with a utility. */
