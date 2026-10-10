@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { cellText, cellTextAt, isBlankCell, readCell } from "@/core/cell-value";
+import {
+	cellText,
+	cellTextAt,
+	cellValuesEqual,
+	isBlankCell,
+	readCell,
+} from "@/core/cell-value";
 import type { CellValue, Row } from "@/core/types";
 
 describe("projecting a cell value to text", () => {
@@ -62,5 +68,15 @@ describe("reading a cell out of a row", () => {
 		expect(readCell(row, "text")).toBe("Ingrid");
 		expect(readCell(row, "zero")).toBe(0);
 		expect(cellTextAt(row, "zero")).toBe("0");
+	});
+});
+
+// Negative zero is the same cell number as zero (docs/adr/0008): it projects
+// to the same text and JSON writes it as `0`, so no write may tell them apart.
+describe("negative zero as a cell number", () => {
+	it("is the same value as zero and projects to the same text", () => {
+		expect(cellValuesEqual(-0, 0)).toBe(true);
+		expect(cellText(-0)).toBe(cellText(0));
+		expect(JSON.stringify({ age: -0 })).toBe(JSON.stringify({ age: 0 }));
 	});
 });

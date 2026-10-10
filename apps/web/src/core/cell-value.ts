@@ -67,6 +67,9 @@ export function cellValueType(value: CellValue): CellValueType {
 // The same carried value. Scalars compare by identity, so `35` and `"35"`
 // differ and so do `null` and `""`; inline content compares by structure,
 // because two equal values parsed or pasted separately are two objects.
+// `-0` and `0` are deliberately the same number: they project to the same
+// text and JSON writes both as `0`, so writing one over the other is no change
+// (docs/adr/0008).
 export function cellValuesEqual(left: CellValue, right: CellValue): boolean {
 	if (left === right) return true;
 	return (

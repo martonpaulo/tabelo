@@ -139,6 +139,10 @@ holds the same line on the way in (#416): a number literal past the
 largest double, which `JSON.parse` reads as `Infinity`, refuses the whole read,
 in the source view, a file import, and a paste alike, instead of being carried
 as a number that cannot be written back or coerced to text or `null`.
+Negative zero is the opposite case and needs no refusal: `JSON.stringify` and
+the text projection both spell it `0`, the same type and the same text, so a
+cell number treats `-0` and `0` as one value, and writing one over the other
+changes nothing.
 
 ADR 0001 is amended: its "opaque strings throughout" sentence described the
 model this replaces. What survives from it, and matters more, is that Tabelo

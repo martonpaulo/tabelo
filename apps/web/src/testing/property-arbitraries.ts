@@ -99,11 +99,15 @@ const expectedColumnTypeArbitrary: fc.Arbitrary<ExpectedColumnType> =
 
 // Every scalar a cell may hold. Only finite numbers: a non-finite number is
 // not a persistable cell value, so generating one would test a state the
-// product refuses rather than one it has to survive.
+// product refuses rather than one it has to survive. And never `-0`: a cell
+// number is one value with `0` (docs/adr/0008), so a property asserting
+// `Object.is` would demand a distinction the product deliberately lacks.
 export const nativeCellValueArbitrary: fc.Arbitrary<
 	Exclude<CellValue, string>
 > = fc.oneof(
-	fc.double({ noNaN: true, noDefaultInfinity: true }),
+	fc
+		.double({ noNaN: true, noDefaultInfinity: true })
+		.map((value) => (value === 0 ? 0 : value)),
 	fc.integer(),
 	fc.boolean(),
 	fc.constant(null),
