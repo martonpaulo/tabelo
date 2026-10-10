@@ -206,6 +206,34 @@ A column may therefore still hold values that disagree with its expectation:
 those a typed source put there, those the user kept with Convert the rest, and
 those entered later as explicit text.
 
+## Amendment: a format may spell a boolean (#464, #484)
+
+The owner chose Option B on #464: a text format with a widely used spelling for
+a boolean may offer it as an output choice. Markdown offers `[x]` and `[ ]`
+(#484); Jira and HTML follow in #485. The rule this ADR set still holds, and
+the amendment is how:
+
+- **The spelling is an output choice, never document state.** It is a spelling
+  in the sense of ADR 0002's #397 amendment: lossless, off by default, a global
+  default in Settings that a pane may override, and followed by the pane and
+  every output of the format alike. The cell is the same boolean either way.
+- **A token is read back only through retention.** With the spelling on, the
+  parser reports an unescaped whole-cell token as the boolean it spells, and
+  reconciliation keeps it only where the existing value at that position is
+  the same boolean: the text did not change since the pane wrote it. An edited
+  token, or a token typed into a new or text cell, stays the string the user
+  typed. With the spelling on, projection text such as `true` no longer keeps
+  an existing boolean, because the pane never wrote one that way.
+- **No type is inferred from new text.** With the spelling off, and for every
+  import, paste, and clipboard read, a token is text. This is the one spelling
+  whose parse depends on the choice: with it off a plain string that reads like
+  a token is written as it is, and reading it as a boolean would change its
+  meaning. A plain string that equals a token is escaped under the spelling, so
+  it round-trips byte-exact in both.
+- Switching the spelling lets go of a pane's committed draft, so the pane shows
+  the document in the new spelling; unfinished edits are kept and, once they
+  parse, read in the spelling then chosen, as one undoable step.
+
 ## Amendment: text may carry inline structure (#306)
 
 A textual cell, and a header, may hold inline content: text with marks, links,

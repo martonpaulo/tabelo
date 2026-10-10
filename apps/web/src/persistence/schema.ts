@@ -4,6 +4,7 @@ import {
 	PERSISTED_VERSION,
 	type PersistedState,
 	persistedStateSchema,
+	persistedStateV1Schema,
 } from "./state-schema";
 
 // One key per table, plus one index naming them. A save then writes the
@@ -150,6 +151,25 @@ function persistedVersion(raw: unknown): number | null {
 		: null;
 }
 
+// The forward step from version 1: every pane follows the global boolean
+// spelling, which is off by default, so every output keeps the text it wrote
+// (#484). Its result is validated like any stored payload, so a step that
+// produced something invalid is reported rather than trusted, and an invalid
+// version 1 payload is left as it was.
+function migratePersistedStateV1(raw: unknown): unknown {
+	const parsed = persistedStateV1Schema.safeParse(raw);
+	if (!parsed.success) return raw;
+	const { workspace } = parsed.data;
+	return {
+		...parsed.data,
+		version: PERSISTED_VERSION,
+		workspace: {
+			...workspace,
+			panes: workspace.panes.map((pane) => ({ ...pane, booleanMarks: null })),
+		},
+	};
+}
+
 export function validatePersistedState(raw: unknown): LoadOutcome {
 	if (raw === null || raw === undefined) return { status: "empty" };
 
@@ -161,7 +181,9 @@ export function validatePersistedState(raw: unknown): LoadOutcome {
 		return { status: "unreadable", reason: "future-version" };
 	}
 
-	const parsed = persistedStateSchema.safeParse(raw);
+	const parsed = persistedStateSchema.safeParse(
+		version === 1 ? migratePersistedStateV1(raw) : raw,
+	);
 	if (!parsed.success) {
 		return { status: "unreadable", reason: "current-schema-invalid" };
 	}

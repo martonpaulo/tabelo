@@ -99,6 +99,69 @@ describe("markdown cell escaping", () => {
 		}
 	});
 
+	// #484: the boolean spelling writes task-list marks; off, nothing changes.
+	it("serializes booleans as marks only under the boolean spelling", () => {
+		const document = documentFromMatrix(
+			[
+				["name", "remote", "note"],
+				["Ingrid", true, "[x]"],
+				["Paulo", false, "[ ]"],
+			],
+			{ headerRow: true },
+		);
+		const plain = markdownCodec.serialize(document);
+		const marks = markdownCodec.serialize(document, { booleanMarks: true });
+
+		expect(plain).toBe(
+			markdownCodec.serialize(document, { booleanMarks: false }),
+		);
+		expect(plain.split("\n")[2]).toBe("| Ingrid | true   | \\[x] |");
+		expect(marks.split("\n")[2]).toBe("| Ingrid | [x]    | \\[x] |");
+		expect(marks.split("\n")[3]).toBe("| Paulo  | [ ]    | \\[ ] |");
+	});
+
+	it("reads an unescaped token as a boolean only when asked to", () => {
+		const text = [
+			"| [x] | remote | note  |",
+			"| --- | ------ | ----- |",
+			"| a   | [x]    | \\[x] |",
+			"| b   | [ ]    | \\[ ] |",
+		].join("\n");
+		const values = (spelled: boolean) => {
+			const parsed = markdownCodec.parse(text, { booleanMarks: spelled });
+			assert(parsed.ok);
+			return documentToMatrix(parsed.document);
+		};
+		const typed = markdownCodec.parse(text, { booleanMarks: true });
+		assert(typed.ok);
+
+		expect(typed.document.columns[0]?.header).toBe("[x]");
+		expect(
+			typed.document.rows.map((row) =>
+				typed.document.columns.map((column) => row.cells[column.id]),
+			),
+		).toEqual([
+			["a", true, "[x]"],
+			["b", false, "[ ]"],
+		]);
+		expect(values(false)).toEqual([
+			["[x]", "remote", "note"],
+			["a", "[x]", "[x]"],
+			["b", "[ ]", "[ ]"],
+		]);
+	});
+
+	it("never reads a boolean from text it imports or pastes", () => {
+		const parsed = markdownCodec.parseMatrix(
+			["| a | b |", "| --- | --- |", "| [x] | [ ] |"].join("\n"),
+		);
+		assert(parsed.ok);
+		expect(parsed.table.matrix).toEqual([
+			["a", "b"],
+			["[x]", "[ ]"],
+		]);
+	});
+
 	it("never emits a bare pipe that would split a row", () => {
 		const escaped = escapeCell("a | b");
 		const unescapedPipes = escaped.replace(/\\\|/g, "");

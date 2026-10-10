@@ -14,7 +14,7 @@ import { canSerialize, csvCodec, listCodecs, type TableCodec } from "@/formats";
 import { jiraCodec } from "@/formats/jira";
 import { escapeJiraCell, unescapeJiraCell } from "@/formats/jira-inline";
 import { escapeCell, unescapeCell } from "@/formats/markdown-inline";
-import { cellAtPosition } from "@/formats/parse";
+import { cellAtPosition, reconciliationFor } from "@/formats/parse";
 import {
 	expectedDocumentForCodec,
 	observeDocumentForCodec,
@@ -132,7 +132,9 @@ describe("jira empty and whitespace cells", () => {
 describe("registered codec properties", () => {
 	// #397. A format offering a choice of spelling reads back, byte-exact, what
 	// either spelling wrote, and writing what it read in the same spelling
-	// changes nothing; the two spellings read back as the same table.
+	// changes nothing; the two spellings read back as the same table. Each is
+	// read in the spelling it was written in, which only the boolean spelling
+	// depends on (#484): text that reads like a token stays text in both.
 	for (const codec of listCodecs()) {
 		for (const id of codec.spellings ?? []) {
 			test.prop(
@@ -142,7 +144,10 @@ describe("registered codec properties", () => {
 				const tables = [false, true].map((chosen) => {
 					const spelling = { [id]: chosen };
 					const text = codec.serialize(document, spelling);
-					const parsed = expectSuccessfulParse(codec.id, codec.parse(text));
+					const parsed = expectSuccessfulParse(
+						codec.id,
+						codec.parse(text, spelling),
+					);
 					expect(valuesOf(parsed)).toEqual(valuesOf(document));
 					expect(parsed.columns.map((column) => column.header)).toEqual(
 						document.columns.map((column) => column.header),
@@ -268,6 +273,31 @@ describe("registered codec properties", () => {
 				);
 			},
 		);
+
+		// #484: under the boolean spelling, a boolean is written as the format's
+		// token and an unchanged token keeps it, byte-exact both ways.
+		if (codec.booleanTokens) {
+			test.prop(
+				{ document: typedTextCodecDocumentArbitrary(codec) },
+				{ numRuns: PROPERTY_RUNS },
+			)(
+				`${codec.id} preserves mixed native values under its boolean spelling`,
+				({ document }) => {
+					const spelling = { booleanMarks: true };
+					const text = codec.serialize(document, spelling);
+					const parsed = expectSuccessfulParse(
+						codec.id,
+						codec.parse(text, spelling),
+					);
+					const reconciliation = reconciliationFor(codec, spelling);
+
+					expect(reconcileDocument(document, parsed, reconciliation)).toBe(
+						document,
+					);
+					expect(codec.serialize(parsed, spelling)).toBe(text);
+				},
+			);
+		}
 
 		test.prop({ case: typedTextCodecCase(codec) }, { numRuns: PROPERTY_RUNS })(
 			`${codec.id} turns only a retyped projection into a string`,

@@ -3,6 +3,7 @@ import { registry } from "@/views/registry";
 import { layoutPresets } from "@/workspace/layout";
 import libraryIndexV1 from "./fixtures/library-index-v1.json";
 import libraryIndexV2 from "./fixtures/library-index-v2.json";
+import tableV1 from "./fixtures/table-v1.json";
 import {
 	CURRENT_VERSION,
 	LIBRARY_VERSION,
@@ -44,6 +45,41 @@ function payload(overrides: Record<string, unknown> = {}) {
 describe("loading a stored payload", () => {
 	it("reports nothing stored", () => {
 		expect(validatePersistedState(null).status).toBe("empty");
+	});
+
+	// #484: a version 1 table keeps everything it held, and every pane follows
+	// the global boolean spelling, so its outputs keep the text they wrote.
+	it("migrates a version 1 table payload forward", () => {
+		expect(validatePersistedState(tableV1)).toEqual({
+			status: "ok",
+			state: {
+				...tableV1,
+				version: CURRENT_VERSION,
+				workspace: {
+					...tableV1.workspace,
+					panes: tableV1.workspace.panes.map((pane) => ({
+						...pane,
+						booleanMarks: null,
+					})),
+				},
+			},
+		});
+	});
+
+	it("keeps an invalid version 1 table payload unreadable", () => {
+		expect(validatePersistedState({ ...tableV1, name: "" }).status).toBe(
+			"unreadable",
+		);
+		const [first, second] = tableV1.workspace.panes;
+		expect(
+			validatePersistedState({
+				...tableV1,
+				workspace: {
+					...tableV1.workspace,
+					panes: [first, { ...second, view: "grid" }],
+				},
+			}).status,
+		).toBe("unreadable");
 	});
 
 	it("accepts a current payload", () => {

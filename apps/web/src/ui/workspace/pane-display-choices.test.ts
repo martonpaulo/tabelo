@@ -68,6 +68,13 @@ describe("pane display choices", () => {
 				.filter((view) => offersSetting("lineBreakTags", view))
 				.map((view) => view.id),
 		).toEqual(["markdown"]);
+		// #484: so is the boolean spelling, until Jira and HTML declare it.
+		expect(
+			listViews()
+				.filter((view) => view.kind === "source")
+				.filter((view) => offersSetting("booleanMarks", view))
+				.map((view) => view.id),
+		).toEqual(["markdown"]);
 		for (const view of listViews()) {
 			expect(offersSetting("wrap", view)).toBe(true);
 		}

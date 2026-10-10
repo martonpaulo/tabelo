@@ -58,6 +58,9 @@ const escapeTokenArbitrary = fc.constantFrom(
 	"`",
 	"[",
 	"]",
+	// Markdown's boolean tokens (#484), typed as text.
+	"[x]",
+	"[ ]",
 	"(",
 	")",
 	"!",

@@ -49,6 +49,7 @@ const ROWS: readonly SourceDisplayKey[] = [
 	"lineBreakIndicators",
 	"spaceIndicators",
 	"lineBreakTags",
+	"booleanMarks",
 ];
 
 // The words a segment shows for one of a setting's own values.

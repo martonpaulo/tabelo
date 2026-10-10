@@ -170,6 +170,21 @@ export interface ReconciliationSource {
 	// projection keeps the structure it came from, and only a cell whose text
 	// actually changed becomes plain (docs/adr/0011).
 	readonly inlineContent: "carried" | "unexpressed";
+	// Present when the source spells a boolean as a token of its own, which a
+	// format does only under its boolean spelling (#464, #484). Its parser then
+	// reports an unescaped token as the boolean, and reconciliation keeps that
+	// boolean only where the existing value is the same boolean: the text did
+	// not change since the pane wrote it. Anywhere else the token is new or
+	// edited text and stays the string the user typed. A projection string such
+	// as `true` no longer keeps a boolean either, because the pane never wrote
+	// one that way. No type is ever read from new text (docs/adr/0008).
+	readonly spelledBooleans?: BooleanTokens;
+}
+
+// The text a format writes for each boolean under its boolean spelling.
+export interface BooleanTokens {
+	readonly true: string;
+	readonly false: string;
 }
 
 const DEFAULT_RECONCILIATION_SOURCE: ReconciliationSource = {
@@ -187,11 +202,19 @@ const DEFAULT_RECONCILIATION_SOURCE: ReconciliationSource = {
 // stays distinct from an empty string despite both projecting to empty text.
 // A changed or newly inserted text cell remains the parsed string, and a
 // typed source always supplies the canonical scalar itself.
+//
+// A spelled boolean (see `spelledBooleans`) is the one parsed value that is
+// not taken as it stands: it survives only as the same boolean it replaces.
 function reconciledValue<Value extends CellValue>(
 	existing: Value | undefined,
 	parsed: Value,
 	source: ReconciliationSource,
 ): Value {
+	const tokens = source.spelledBooleans;
+	if (tokens && typeof parsed === "boolean") {
+		if (existing === parsed) return existing;
+		return (parsed ? tokens.true : tokens.false) as Value;
+	}
 	if (existing === undefined) return parsed;
 	if (cellValuesEqual(existing, parsed)) return existing;
 	if (typeof parsed !== "string" || cellText(existing) !== parsed) {
@@ -200,6 +223,7 @@ function reconciledValue<Value extends CellValue>(
 	if (isInlineContent(existing)) {
 		return source.inlineContent === "unexpressed" ? existing : parsed;
 	}
+	if (tokens && typeof existing === "boolean") return parsed;
 	return source.cellValues === "text" ? existing : parsed;
 }
 

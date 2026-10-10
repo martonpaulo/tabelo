@@ -15,8 +15,10 @@ import { MAX_PANE_ZOOM, MIN_PANE_ZOOM } from "@/workspace/zoom";
 // preserved raw and reported, as before.
 //
 // The rule this replaces still applies from here on: a change to this shape
-// ships with the step that carries the previous one into it.
-export const PERSISTED_VERSION = 1 as const;
+// ships with the step that carries the previous one into it. Version 2 gives
+// every pane the boolean spelling override (#484); `persistence/schema.ts`
+// carries version 1 forward.
+export const PERSISTED_VERSION = 2 as const;
 
 // A number JSON cannot round-trip is not a cell value: `JSON.stringify`
 // writes `NaN` and `Infinity` as `null`, which would silently turn a number
@@ -87,6 +89,7 @@ const paneSchema = z.object({
 	lineBreakIndicators: z.boolean().nullable().default(null),
 	alignColumns: z.boolean().nullable().default(null),
 	lineBreakTags: z.boolean().nullable().default(null),
+	booleanMarks: z.boolean().nullable().default(null),
 });
 
 const workspaceSchema = z.object({
@@ -112,6 +115,21 @@ const tableNameSchema = z
 	.min(1)
 	.refine((name) => name === name.trim())
 	.refine((name) => [...name].length <= MAX_TABLE_NAME_CODE_POINTS);
+
+// Version 1, before panes had a boolean spelling override. Only the forward
+// step reads it; the invariants below are checked on the step's result.
+export const persistedStateV1Schema = z.object({
+	version: z.literal(1),
+	name: tableNameSchema,
+	document: documentSchema,
+	draft: draftSchema.nullable(),
+	workspace: workspaceSchema.extend({
+		panes: z
+			.array(paneSchema.omit({ booleanMarks: true }))
+			.min(1)
+			.max(4),
+	}),
+});
 
 export const persistedStateSchema = z
 	.object({

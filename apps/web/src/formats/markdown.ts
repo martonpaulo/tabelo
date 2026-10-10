@@ -1,5 +1,6 @@
-import { cellTextContentAt } from "@/core/cell-value";
-import type { TableDocument, TextContent } from "@/core/types";
+import { cellTextContentAt, readCell } from "@/core/cell-value";
+import type { BooleanTokens } from "@/core/document";
+import type { CellValue, Row, TableDocument, TextContent } from "@/core/types";
 import { markdownAssistance } from "./markdown-assistance";
 import {
 	alignmentMarker,
@@ -35,6 +36,24 @@ import type {
 // they stay literal, and `\s` carries the `u` flag the boundary encoding uses,
 // so a non-breaking space is not mistaken for an ordinary one.
 const NEEDS_ESCAPING = /^\s|\s$|[&\\|\n\r<*_~`[\]!]/u;
+
+// How Markdown spells a boolean under the boolean spelling (#484): the
+// task-list checkbox marks. A plain string that reads like one is never
+// written bare, because a literal `[` is always escaped as `\[`, so the raw
+// token is unambiguous in both spellings.
+const MARKDOWN_BOOLEAN_TOKENS: BooleanTokens = {
+	true: "[x]",
+	false: "[ ]",
+};
+
+// The boolean a body cell's raw text spells, under the boolean spelling only.
+// The raw text is the cell with its padding trimmed and nothing decoded, so an
+// escaped `\[x]` is never a token.
+function spelledBoolean(raw: string): boolean | null {
+	if (raw === MARKDOWN_BOOLEAN_TOKENS.true) return true;
+	if (raw === MARKDOWN_BOOLEAN_TOKENS.false) return false;
+	return null;
+}
 
 export interface EscapedCell {
 	readonly text: string;
@@ -84,7 +103,13 @@ function lineCells(text: string, line: SourceRowRange): SourceRowRange[] {
 	}));
 }
 
-function parseMarkdownMatrix(text: string): MatrixParseResult {
+// `booleanMarks` reads a token as a boolean and is asked for only by a parse
+// of text written in that spelling: import, paste, and the clipboard read the
+// matrix without it, so they never produce a boolean from text.
+function parseMarkdownMatrix(
+	text: string,
+	booleanMarks = false,
+): MatrixParseResult {
 	const lines = text.split(/\r?\n/);
 	// A Markdown table is a contiguous block of non-blank lines.
 	const found = firstLineBlock(lines);
@@ -149,7 +174,10 @@ function parseMarkdownMatrix(text: string): MatrixParseResult {
 				line: start + 3 + offset,
 			});
 		}
-		return cells.map(parseMarkdownCell);
+		return cells.map((cell): CellValue => {
+			const spelled = booleanMarks ? spelledBoolean(cell) : null;
+			return spelled ?? parseMarkdownCell(cell);
+		});
 	});
 
 	// Ragged rows are padded rather than rejected: the user is mid-edit, and
@@ -214,7 +242,7 @@ function markdownFields(text: string): SourceFieldRange[] {
 
 function serializeMarkdown(
 	document: TableDocument,
-	{ lineBreakTags = false }: Spelling = {},
+	{ lineBreakTags = false, booleanMarks = false }: Spelling = {},
 ): string {
 	// Pad columns to a common width so the source stays readable by hand. An
 	// empty cell is padded to hold the empty-value placeholder, because a source
@@ -245,12 +273,19 @@ function serializeMarkdown(
 	const headers = document.columns.map((column, index) =>
 		reserve(index, escapeAndMeasure(column.header, lineBreakTags)),
 	);
+	const bodyCell = (row: Row, columnId: string): EscapedCell => {
+		const value = readCell(row, columnId);
+		if (booleanMarks && typeof value === "boolean") {
+			const token = value
+				? MARKDOWN_BOOLEAN_TOKENS.true
+				: MARKDOWN_BOOLEAN_TOKENS.false;
+			return { text: token, width: displayWidth(token) };
+		}
+		return escapeAndMeasure(cellTextContentAt(row, columnId), lineBreakTags);
+	};
 	const body = document.rows.map((row) =>
 		document.columns.map((column, index) =>
-			reserve(
-				index,
-				escapeAndMeasure(cellTextContentAt(row, column.id), lineBreakTags),
-			),
+			reserve(index, bodyCell(row, column.id)),
 		),
 	);
 
@@ -291,11 +326,15 @@ export const markdownCodec: TableCodec = {
 	padsColumns: true,
 	sourceFields: markdownFields,
 	structuralAssistance: markdownAssistance,
-	parseMatrix: parseMarkdownMatrix,
+	parseMatrix: (text) => parseMarkdownMatrix(text),
 	parse: (text, options) =>
-		toDocumentParseResult(parseMarkdownMatrix(text), options),
+		toDocumentParseResult(
+			parseMarkdownMatrix(text, options?.booleanMarks),
+			options,
+		),
 	serialize: serializeMarkdown,
-	spellings: ["lineBreakTags"],
+	spellings: ["lineBreakTags", "booleanMarks"],
+	booleanTokens: MARKDOWN_BOOLEAN_TOKENS,
 	sniffPriority: 20,
 	canSniff: (text) => text.includes("|"),
 };

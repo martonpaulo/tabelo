@@ -406,3 +406,89 @@ describe("reconciling inline content", () => {
 		expect(documentToMatrix(document)).toEqual([["Name"], ["Ingrid"]]);
 	});
 });
+
+// #484: under a boolean spelling a token keeps a boolean only where the text
+// did not change; every other token, and every projection string, is text.
+describe("reconciling spelled booleans", () => {
+	const spelled = {
+		cellValues: "text",
+		columnAlignment: "carried",
+		inlineContent: "carried",
+		spelledBooleans: { true: "[x]", false: "[ ]" },
+	} as const;
+	const current = documentFromMatrix(
+		[
+			["name", "remote"],
+			["Ingrid", true],
+			["Paulo", false],
+		],
+		{ headerRow: true },
+	);
+	const values = (document: TableDocument): CellValue[][] =>
+		document.rows.map((row) =>
+			document.columns.map((column) => row.cells[column.id] as CellValue),
+		);
+	const parsed = (matrix: CellValue[][]): TableDocument =>
+		documentFromMatrix([["name", "remote"], ...matrix], { headerRow: true });
+
+	it("keeps an unchanged token's boolean and the document itself", () => {
+		const next = reconcileDocument(
+			current,
+			parsed([
+				["Ingrid", true],
+				["Paulo", false],
+			]),
+			spelled,
+		);
+		expect(next).toBe(current);
+	});
+
+	it("turns an edited token into the text the user typed", () => {
+		const next = reconcileDocument(
+			current,
+			parsed([
+				["Ingrid", false],
+				["Paulo", false],
+			]),
+			spelled,
+		);
+		expect(values(next)).toEqual([
+			["Ingrid", "[ ]"],
+			["Paulo", false],
+		]);
+	});
+
+	it("turns a token typed into a new row, a new column, or a text cell into text", () => {
+		const next = reconcileDocument(
+			current,
+			documentFromMatrix(
+				[
+					["name", "remote", "lead"],
+					[true, true, false],
+					["Paulo", false, true],
+					["Mabel", true, false],
+				],
+				{ headerRow: true },
+			),
+			spelled,
+		);
+		expect(values(next)).toEqual([
+			["[x]", true, "[ ]"],
+			["Paulo", false, "[x]"],
+			["Mabel", "[x]", "[ ]"],
+		]);
+	});
+
+	it("never lets projection text keep a boolean", () => {
+		const text = parsed([
+			["Ingrid", "true"],
+			["Paulo", "false"],
+		]);
+		expect(values(reconcileDocument(current, text, spelled))).toEqual([
+			["Ingrid", "true"],
+			["Paulo", "false"],
+		]);
+		const { spelledBooleans: _, ...projected } = spelled;
+		expect(reconcileDocument(current, text, projected)).toBe(current);
+	});
+});

@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import { copy } from "@/copy/copy";
 import type { SourceTableRow } from "@/formats/types";
 import { usePreferences } from "@/preferences/use-preferences";
@@ -52,16 +52,32 @@ export default function SourceView({
 		lineBreakIndicators,
 		alignColumns,
 		lineBreakTags,
+		booleanMarks,
 	} = resolveSourceDisplay(usePreferences(), overrides);
+	const spelling = useMemo(
+		() => ({ lineBreakTags, booleanMarks }),
+		[lineBreakTags, booleanMarks],
+	);
 
 	// The projection recomputes only when the document changes, not when some
 	// other pane is being typed into.
 	// The spelling is the pane's own resolved choice (#397): changing it
 	// re-serializes the projection, and a pending draft keeps its text.
 	const projected = useMemo(
-		() => textForView(document, viewId, { lineBreakTags }),
-		[document, viewId, lineBreakTags],
+		() => textForView(document, viewId, spelling),
+		[document, viewId, spelling],
 	);
+
+	// The boolean spelling is the one whose parse depends on the choice
+	// (#484): a committed draft written in the other spelling would read its
+	// booleans as text on the next keystroke. Switching it lets that draft go,
+	// so the pane shows the document in the new spelling; unfinished edits stay.
+	const spelledBooleans = useRef(booleanMarks);
+	useEffect(() => {
+		if (spelledBooleans.current === booleanMarks) return;
+		spelledBooleans.current = booleanMarks;
+		useTabeloStore.getState().releaseCleanDraft(paneId, viewId);
+	}, [booleanMarks, paneId, viewId]);
 
 	// Only the view holding the pending draft shows unsaved text; every other
 	// view is a pure projection. See docs/adr/0001.
@@ -82,9 +98,9 @@ export default function SourceView({
 		if (draft) return draft.status === "clean" ? draft.rows : NO_ROWS;
 		const codec = view.codec;
 		if (!codec?.mapsSourceRows || !projected.ok) return NO_ROWS;
-		const parsed = codec.parse(projected.text);
+		const parsed = codec.parse(projected.text, spelling);
 		return parsed.ok ? (parsed.rows ?? NO_ROWS) : NO_ROWS;
-	}, [draft, projected, view]);
+	}, [draft, projected, view, spelling]);
 	const diagnostics = useMemo((): readonly SourceDiagnostic[] => {
 		if (!draft) return [];
 		const severity = draft.status === "invalid" ? "error" : "warning";
@@ -168,7 +184,9 @@ export default function SourceView({
 				ariaLabel={copy.a11y.sourceEditor(view.label)}
 				onChange={(text, history) => {
 					if (!editable) return;
-					useTabeloStore.getState().setDraft(paneId, viewId, text, history);
+					useTabeloStore
+						.getState()
+						.setDraft(paneId, viewId, text, history, spelling);
 				}}
 				onUndoBeyondLocal={() => useTabeloStore.getState().undo()}
 				onRedoBeyondLocal={() => useTabeloStore.getState().redo()}

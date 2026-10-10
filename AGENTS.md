@@ -189,7 +189,9 @@ vocabulary and `docs/adr/` for the reasoning.
   reconciliation, an unchanged string projection retains the existing cell
   value; changed or newly inserted text stays a string. `null` and the empty
   string project alike and stay distinct only when the previous document
-  supplies that distinction. See `docs/adr/0008`.
+  supplies that distinction. Under a format's opt-in boolean spelling, a token
+  keeps a boolean only where the text did not change, and projection text no
+  longer does (#484). See `docs/adr/0008`.
 - **Column alignment is document state.** Alignment is Markdown- and
   HTML-specific metadata but belongs to the document, so it survives time spent
   in CSV, TSV, or Jira. None of those formats can express it, and it round-trips

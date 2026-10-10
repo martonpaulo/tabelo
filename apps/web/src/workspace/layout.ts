@@ -490,6 +490,7 @@ export function applyLayout(
 			lineBreakIndicators: existing?.lineBreakIndicators ?? null,
 			alignColumns: existing?.alignColumns ?? null,
 			lineBreakTags: existing?.lineBreakTags ?? null,
+			booleanMarks: existing?.booleanMarks ?? null,
 		};
 	});
 }

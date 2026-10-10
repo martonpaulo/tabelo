@@ -21,6 +21,7 @@ export const INHERIT_SOURCE_DISPLAY: SourceDisplayOverrides = {
 	lineBreakIndicators: null,
 	alignColumns: null,
 	lineBreakTags: null,
+	booleanMarks: null,
 };
 
 // The one rule that decides what a source pane shows: its own choice where it
@@ -40,5 +41,6 @@ export function resolveSourceDisplay(
 			overrides.lineBreakIndicators ?? defaults.lineBreakIndicators,
 		alignColumns: overrides.alignColumns ?? defaults.alignColumns,
 		lineBreakTags: overrides.lineBreakTags ?? defaults.lineBreakTags,
+		booleanMarks: overrides.booleanMarks ?? defaults.booleanMarks,
 	};
 }

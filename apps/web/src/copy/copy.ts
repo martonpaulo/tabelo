@@ -448,6 +448,10 @@ export const copy = {
 			label: "Use <br> for line breaks in cells",
 			description: "Markdown writes <br> instead of &#10;",
 		},
+		booleanMarks: {
+			label: "Use [x] and [ ] for true and false",
+			description: "Markdown writes [x] and [ ], not true and false",
+		},
 		alignColumns: {
 			label: "Align columns",
 			description: "CSV, TSV, and Jira columns line up while lines don't wrap",

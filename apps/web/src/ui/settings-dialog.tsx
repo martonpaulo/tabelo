@@ -184,6 +184,12 @@ export function SettingsDialog({
 							checked={preferences.lineBreakTags}
 							onCheckedChange={(checked) => update({ lineBreakTags: checked })}
 						/>
+						<SwitchOption
+							glyph={<DisplayGlyph setting="booleanMarks" />}
+							{...copy.settings.booleanMarks}
+							checked={preferences.booleanMarks}
+							onCheckedChange={(checked) => update({ booleanMarks: checked })}
+						/>
 						<div className={cn(optionBlockStyles, "grid gap-3")}>
 							<div className="flex items-center gap-3">
 								<DisplayGlyph setting="spaceIndicators" />

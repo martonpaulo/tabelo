@@ -1,6 +1,7 @@
 import { type ReconciliationSource, reconcileDocument } from "@/core/document";
 import type { TableDocument } from "@/core/types";
-import type { ParseIssue, SourceTableRow } from "@/formats/types";
+import { reconciliationFor } from "@/formats/parse";
+import type { ParseIssue, SourceTableRow, Spelling } from "@/formats/types";
 import { getView } from "@/views/registry";
 import type { ViewId } from "@/views/types";
 import type { Workspace } from "@/workspace/layout";
@@ -91,13 +92,17 @@ export type DraftRead =
 	  };
 
 // Reads a pane's text. Null when the pane does not show that view, or the view
-// has no codec to parse it with: there is then no draft to hold.
+// has no codec to parse it with: there is then no draft to hold. `spelling` is
+// the pane's resolved one, the spelling its text is written in: the parse and
+// the reconciliation both read in it, and the timeline compares in the same
+// terms through the reconciliation returned (#484).
 export function readDraft(
 	previous: Draft | null,
 	document: TableDocument,
 	workspace: Workspace,
 	owner: DraftOwner,
 	text: string,
+	spelling: Spelling = {},
 ): DraftRead | null {
 	const { paneId, viewId } = owner;
 	const pane = workspace.panes.find(
@@ -114,7 +119,7 @@ export function readDraft(
 	// Limited: a draft past the shared size limits is an invalid draft like
 	// any other, its text kept and editable while every other pane keeps the
 	// accepted table, and it is refused before a document is built (#418).
-	const result = codec.parse(text, { limited: true });
+	const result = codec.parse(text, { ...spelling, limited: true });
 
 	if (!result.ok) {
 		const continuingVisibleError = sameOwner && previous.status === "invalid";
@@ -139,6 +144,7 @@ export function readDraft(
 		};
 	}
 
+	const reconciliation = reconciliationFor(codec, spelling);
 	return {
 		ok: true,
 		draft: {
@@ -151,12 +157,8 @@ export function readDraft(
 			rows: result.rows ?? [],
 		},
 		displacesInvalid,
-		document: reconcileDocument(
-			document,
-			result.document,
-			codec.reconciliation,
-		),
-		reconciliation: codec.reconciliation,
+		document: reconcileDocument(document, result.document, reconciliation),
+		reconciliation,
 	};
 }
 

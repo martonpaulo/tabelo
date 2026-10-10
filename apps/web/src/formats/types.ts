@@ -1,4 +1,4 @@
-import type { ReconciliationSource } from "@/core/document";
+import type { BooleanTokens, ReconciliationSource } from "@/core/document";
 import type { TableShapeLimitError } from "@/core/table-limits";
 import type { Alignment, CellValue, TableDocument } from "@/core/types";
 
@@ -190,8 +190,10 @@ export type ParseResult =
 // shared size limits before any document is built, and refuses with a
 // `table-too-large` issue past them (#418). A source pane parses user text
 // this way; a caller reading the codec's own output of a document it already
-// holds, a round trip, or a benchmark parses without it.
-export interface ParseOptions {
+// holds, a round trip, or a benchmark parses without it. The spelling is the
+// one the text was written in: only `booleanMarks` changes what a parse reads
+// (see Spelling).
+export interface ParseOptions extends Spelling {
 	readonly limited?: boolean;
 }
 
@@ -235,10 +237,19 @@ export interface OutputOptions {
 // clipboard would hold, and the parser reads every spelling whatever is
 // chosen, so the choice decides only which one is written. A format ignores
 // a spelling it does not declare.
+//
+// `booleanMarks` is the one exception (#464, #484): its parse depends on the
+// choice. With it off, a plain string that reads like a token is written as
+// it is, so reading it as a boolean would change its meaning; only a parse
+// that asks for the spelling reads a token, and even then reconciliation
+// keeps the boolean only where the text did not change (docs/adr/0008).
 export interface Spelling {
 	// Markdown only: write a line break inside a cell as `<br>` rather than
 	// as the character reference `&#10;`.
 	readonly lineBreakTags?: boolean;
+	// Write a boolean cell as the format's `booleanTokens` rather than as the
+	// text `true` or `false`.
+	readonly booleanMarks?: boolean;
 }
 
 export type SpellingId = keyof Spelling;
@@ -290,6 +301,11 @@ export interface TableCodec {
 	// Which spellings this format offers a choice between (#397). Absent means
 	// it writes one spelling of everything, and no pane offers a choice.
 	readonly spellings?: readonly SpellingId[];
+	// The tokens this format writes for a boolean under `booleanMarks`,
+	// declared exactly when `spellings` includes it (#484). Reconciliation
+	// reads them to turn a token that did not keep a boolean back into the
+	// text the user typed.
+	readonly booleanTokens?: BooleanTokens;
 	// The separator this format writes between fields, for the formats that
 	// have one. Declared rather than sniffed, because a source view only ever
 	// reads back this codec's own output. Presentation reads it to place

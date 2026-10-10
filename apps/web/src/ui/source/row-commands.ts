@@ -88,11 +88,12 @@ function resolveSourceCaret(
 	const draft = store.draft;
 	const ownsDraft =
 		draft?.paneId === target.paneId && draft.viewId === target.viewId;
+	const spelling = paneSpelling(target.paneId);
 	const shown = visibleTextForPane(
 		store,
 		target.paneId,
 		target.viewId,
-		paneSpelling(target.paneId),
+		spelling,
 	);
 	if (
 		(ownsDraft && draft.status !== "clean") ||
@@ -102,7 +103,7 @@ function resolveSourceCaret(
 		return { ok: false, refusal: "unparsed" };
 	}
 
-	const parsed = target.codec.parse(text);
+	const parsed = target.codec.parse(text, spelling);
 	const rows = parsed.ok ? parsed.rows : undefined;
 	const { document } = store;
 	if (!rows || rows.length !== document.rows.length + 1) {

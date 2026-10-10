@@ -103,6 +103,49 @@ describe("draft buffer", () => {
 // Every source view parses its own pane's text through the same limited read,
 // so the size limits are judged once for all of them (#418). Driven from the
 // registry, so a format added later is covered because it was registered.
+// #484: a pane's text is read in the spelling it is written in, and the
+// reconciliation it returns is the one the timeline compares with.
+describe("reading a draft in the pane's spelling", () => {
+	const team = documentFromMatrix(
+		[
+			["name", "remote"],
+			["Ingrid", true],
+		],
+		{ headerRow: true },
+	);
+	const cellOf = (read: ReturnType<typeof readDraft>) => {
+		if (!read?.ok) throw new Error("the draft must parse");
+		const [row] = read.document.rows;
+		const column = read.document.columns[1];
+		if (!row || !column) throw new Error("the cell must exist");
+		return row.cells[column.id];
+	};
+
+	it("keeps a boolean whose token did not change", () => {
+		const text = "| name   | remote |\n| --- | --- |\n| Ingrid | [x] |";
+		const read = readDraft(null, team, workspace, markdownOwner(), text, {
+			booleanMarks: true,
+		});
+		expect(read?.ok && read.document).toBe(team);
+		expect(read?.ok && read.reconciliation.spelledBooleans).toBeTruthy();
+	});
+
+	it("keeps an edited token, and every token read without the spelling, as text", () => {
+		const edited = "| name   | remote |\n| --- | --- |\n| Ingrid | [ ] |";
+		expect(
+			cellOf(
+				readDraft(null, team, workspace, markdownOwner(), edited, {
+					booleanMarks: true,
+				}),
+			),
+		).toBe("[ ]");
+		const unchanged = "| name   | remote |\n| --- | --- |\n| Ingrid | [x] |";
+		const plain = readDraft(null, team, workspace, markdownOwner(), unchanged);
+		expect(cellOf(plain)).toBe("[x]");
+		expect(plain?.ok && plain.reconciliation.spelledBooleans).toBeUndefined();
+	});
+});
+
 describe("draft size limits", () => {
 	// A table of `rows` data rows and `columns` columns, header included, in
 	// the format the view writes. Values are positions, not people.

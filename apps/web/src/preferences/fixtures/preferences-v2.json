@@ -1,0 +1,11 @@
+{
+	"version": 2,
+	"wrap": false,
+	"spaceIndicators": "trailing",
+	"tabIndicators": true,
+	"emptyValueIndicators": false,
+	"lineBreakIndicators": true,
+	"alignColumns": false,
+	"lineBreakTags": true,
+	"booleanCheckboxes": false
+}

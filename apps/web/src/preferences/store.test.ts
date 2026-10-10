@@ -109,6 +109,7 @@ describe("an unreadable stored payload", () => {
 			lineBreakIndicators: true,
 			alignColumns: true,
 			lineBreakTags: false,
+			booleanMarks: false,
 			booleanCheckboxes: true,
 		} as const;
 		const storage = {
@@ -139,6 +140,7 @@ describe("an unreadable stored payload", () => {
 			lineBreakIndicators: false,
 			alignColumns: false,
 			lineBreakTags: true,
+			booleanMarks: true,
 			booleanCheckboxes: false,
 		} as const;
 

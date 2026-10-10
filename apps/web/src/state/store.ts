@@ -484,14 +484,19 @@ export interface TabeloState {
 	replaceDocument: (next: TableDocument) => void;
 
 	// `history` names a text change the editor's own undo or redo produced, as
-	// opposed to one the user typed: see `findTimelineStep`.
+	// opposed to one the user typed: see `findTimelineStep`. `spelling` is the
+	// pane's resolved spelling, the one its text is written in (#484).
 	setDraft: (
 		paneId: string,
 		viewId: ViewId,
 		text: string,
 		history?: HistoryDirection,
+		spelling?: Spelling,
 	) => void;
 	discardDraft: () => void;
+	// Lets go of a pane's committed draft, so the pane shows the document's
+	// projection again. An unfinished draft is never displaced.
+	releaseCleanDraft: (paneId: string, viewId: ViewId) => void;
 
 	setLayout: (layout: LayoutId) => void;
 	setPaneView: (paneId: string, view: ViewId) => void;
@@ -1348,7 +1353,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		get().applyDocument(next);
 	},
 
-	setDraft: (paneId, viewId, text, history) => {
+	setDraft: (paneId, viewId, text, history, spelling) => {
 		if (history)
 			set((state) => ({ historyNavigation: state.historyNavigation + 1 }));
 		const state = get();
@@ -1359,6 +1364,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			state.workspace,
 			owner,
 			text,
+			spelling,
 		);
 		if (!read) return;
 
@@ -1414,6 +1420,15 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		cancelInvalidGrace();
 		set({ draft: null, pendingPaneAction: null });
 	},
+
+	releaseCleanDraft: (paneId, viewId) =>
+		set((state) =>
+			state.draft?.paneId === paneId &&
+			state.draft.viewId === viewId &&
+			state.draft.status === "clean"
+				? { draft: null }
+				: state,
+		),
 
 	setLayout: (layout) =>
 		set((state) => {

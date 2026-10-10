@@ -1928,3 +1928,40 @@ describe("pasting whitespace and empty fields", () => {
 		]);
 	});
 });
+
+// #484: switching the boolean spelling lets a committed draft go, so the pane
+// shows the document in the new spelling, and never touches unfinished edits.
+describe("releasing a clean draft", () => {
+	function markdownPane(): string {
+		const paneId = useTabeloStore
+			.getState()
+			.workspace.panes.find((pane) => pane.view === "markdown")?.id;
+		if (!paneId) throw new Error("the default workspace has a Markdown pane");
+		return paneId;
+	}
+
+	it("drops a committed draft of that pane and keeps the document", () => {
+		const paneId = markdownPane();
+		const store = useTabeloStore.getState();
+		store.setDraft(paneId, "markdown", "| Name |\n| --- |\n| Ingrid |");
+		const document = useTabeloStore.getState().document;
+
+		useTabeloStore.getState().releaseCleanDraft(paneId, "markdown");
+
+		expect(useTabeloStore.getState().draft).toBeNull();
+		expect(useTabeloStore.getState().document).toBe(document);
+	});
+
+	it("keeps unfinished edits and another pane's draft", () => {
+		const paneId = markdownPane();
+		useTabeloStore.getState().setDraft(paneId, "markdown", "| unfinished |");
+		useTabeloStore.getState().releaseCleanDraft(paneId, "markdown");
+		expect(useTabeloStore.getState().draft?.text).toBe("| unfinished |");
+
+		useTabeloStore
+			.getState()
+			.setDraft(paneId, "markdown", "| Name |\n| --- |\n| Ingrid |");
+		useTabeloStore.getState().releaseCleanDraft("another", "markdown");
+		expect(useTabeloStore.getState().draft?.status).toBe("clean");
+	});
+});

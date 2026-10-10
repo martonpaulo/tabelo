@@ -44,4 +44,5 @@ const glyphs: Record<SourceDisplayKey, ReactNode> = {
 	// The spelling the setting writes, as the mark of a setting that draws
 	// nothing.
 	lineBreakTags: "<br>",
+	booleanMarks: "[x]",
 };

@@ -1,0 +1,64 @@
+{
+	"version": 1,
+	"name": "Team",
+	"document": {
+		"columns": [
+			{ "id": "c1", "header": "name", "align": "left", "expectedType": "text" },
+			{
+				"id": "c2",
+				"header": "city",
+				"align": "default",
+				"expectedType": "text"
+			},
+			{
+				"id": "c3",
+				"header": "remote",
+				"align": "center",
+				"expectedType": "boolean"
+			}
+		],
+		"rows": [
+			{ "id": "r1", "cells": { "c1": "Ingrid", "c2": "Rio", "c3": true } },
+			{ "id": "r2", "cells": { "c1": "Paulo", "c2": "Madrid", "c3": false } }
+		]
+	},
+	"draft": null,
+	"workspace": {
+		"layout": "columns",
+		"panes": [
+			{
+				"id": "p1",
+				"view": "grid",
+				"slots": ["a", "c"],
+				"zoom": 1,
+				"wrap": null,
+				"spaceIndicators": null,
+				"tabIndicators": null,
+				"emptyValueIndicators": null,
+				"lineBreakIndicators": null,
+				"alignColumns": null,
+				"lineBreakTags": null
+			},
+			{
+				"id": "p2",
+				"view": "markdown",
+				"slots": ["b", "d"],
+				"zoom": 1,
+				"wrap": true,
+				"spaceIndicators": "boundary",
+				"tabIndicators": null,
+				"emptyValueIndicators": false,
+				"lineBreakIndicators": null,
+				"alignColumns": null,
+				"lineBreakTags": true
+			}
+		],
+		"wrappedColumns": [],
+		"columnWidths": { "c1": 12 },
+		"pinFirstDataRow": false,
+		"pinFirstDataColumn": false,
+		"columnRatio": 0.5,
+		"rowRatio": 0.5,
+		"activePaneId": "p2"
+	}
+}

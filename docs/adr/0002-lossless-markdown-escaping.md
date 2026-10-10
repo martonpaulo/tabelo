@@ -54,6 +54,16 @@ copy) follow the same choice, so the pane shows what the file holds. The parser
 reads `&#10;` and every `<br>` spelling whatever is chosen, each reversed
 exactly once, and a value survives the round trip byte-exact in both.
 
+Amended by #484 (owner's Option B on #464): a boolean cell may be spelled as a
+task-list mark, `[x]` for true and `[ ]` for false, when the setting "Use [x]
+and [ ] for true and false" is on, a global default in Settings that a Markdown
+pane may override; by default a boolean is still written `true` or `false`. No
+new escape is needed: a literal `[` is always written `\[`, so a plain string
+`[x]` is `\[x]` in both spellings and only the serializer ever writes a bare
+token. Unlike the line-break spelling, this one is read only while it is on,
+and a token reads back as a boolean only where the text did not change: see
+ADR 0008's amendment for #484.
+
 ## Consequences
 
 - By default Markdown output holds no HTML for a line break: `&#10;` is valid

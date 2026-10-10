@@ -1,4 +1,4 @@
-import { documentFromMatrix } from "@/core/document";
+import { documentFromMatrix, type ReconciliationSource } from "@/core/document";
 import { matrixShapeLimitError } from "@/core/table-limits";
 import type {
 	EscapeMatcher,
@@ -7,7 +7,22 @@ import type {
 	ParseResult,
 	SourceRowRange,
 	SourceTableRow,
+	Spelling,
+	TableCodec,
 } from "./types";
+
+// The reconciliation a pane's text is read with, in the spelling it was
+// written in (#484). Under the boolean spelling of a format that declares
+// tokens, an unchanged token keeps its boolean and anything else stays text;
+// every other spelling reads as the codec's own facts say.
+export function reconciliationFor(
+	codec: TableCodec,
+	spelling: Spelling,
+): ReconciliationSource {
+	return spelling.booleanMarks && codec.booleanTokens
+		? { ...codec.reconciliation, spelledBooleans: codec.booleanTokens }
+		: codec.reconciliation;
+}
 
 // The line break as JSON and Records both spell it inside a value: a backslash
 // and `n`, where that backslash is not itself escaped. Both formats write a

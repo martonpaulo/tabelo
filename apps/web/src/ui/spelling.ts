@@ -16,7 +16,10 @@ import {
 // at most once in a workspace, so there is never a second pane to disagree.
 
 function spellingOf(display: SourceDisplay): Spelling {
-	return { lineBreakTags: display.lineBreakTags };
+	return {
+		lineBreakTags: display.lineBreakTags,
+		booleanMarks: display.booleanMarks,
+	};
 }
 
 function resolvedSpelling(overrides: SourceDisplayOverrides): Spelling {

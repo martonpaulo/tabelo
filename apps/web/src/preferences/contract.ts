@@ -5,7 +5,7 @@ export const PREFERENCES_STORAGE_KEY = "tabelo.preferences";
 // Where an unreadable payload is copied before the user replaces it, beside
 // the table's own recovery key and for the same reason.
 export const PREFERENCES_RECOVERY_KEY = "tabelo.preferences.recovery";
-export const PREFERENCES_VERSION = 2;
+export const PREFERENCES_VERSION = 3;
 
 // Which spaces a source view marks. These are the modes VS Code's
 // `editor.renderWhitespace` offers, kept by their names, because they are a
@@ -49,6 +49,11 @@ export interface SourceDisplay {
 	// changes the text a Markdown pane and every Markdown output hold, never
 	// what the table is; the parser reads both whatever is chosen.
 	readonly lineBreakTags: boolean;
+	// How a format that declares the boolean spelling writes a boolean cell
+	// (#484): as the text `true` or `false` by default, as the format's own
+	// tokens (Markdown's `[x]` and `[ ]`) when this is on. A spelling like
+	// `lineBreakTags`, except that the parse reads a token only while it is on.
+	readonly booleanMarks: boolean;
 }
 
 // The global default for every source pane's display. A pane may override each
@@ -80,6 +85,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
 	lineBreakIndicators: true,
 	alignColumns: true,
 	lineBreakTags: false,
+	booleanMarks: false,
 	booleanCheckboxes: true,
 };
 
@@ -89,12 +95,19 @@ const indicatorShape = {
 	emptyValueIndicators: z.boolean(),
 };
 
-const sourceDisplayShape = {
+// The source display as versions 1 and 2 stored it, frozen here so a later
+// setting cannot change what an earlier payload is read as.
+const sourceDisplayV2Shape = {
 	wrap: z.boolean(),
 	...indicatorShape,
 	lineBreakIndicators: z.boolean(),
 	alignColumns: z.boolean(),
 	lineBreakTags: z.boolean(),
+};
+
+const sourceDisplayShape = {
+	...sourceDisplayV2Shape,
+	booleanMarks: z.boolean(),
 };
 
 const preferencesSchema = z
@@ -105,23 +118,51 @@ const preferencesSchema = z
 	})
 	.strict();
 
-// Version 1 held the source display defaults alone.
-const preferencesV1Schema = z
-	.object({ version: z.literal(1), ...sourceDisplayShape })
+// Version 2 had no boolean spelling.
+const preferencesV2Schema = z
+	.object({
+		version: z.literal(2),
+		...sourceDisplayV2Shape,
+		booleanCheckboxes: z.boolean(),
+	})
 	.strict();
 
+// Version 1 held the source display defaults alone.
+const preferencesV1Schema = z
+	.object({ version: z.literal(1), ...sourceDisplayV2Shape })
+	.strict();
+
+// The forward step from version 2: booleans keep the text `true` and `false`
+// every output wrote until now (#484).
+function migratePreferencesV2(raw: unknown): unknown {
+	const parsed = preferencesV2Schema.safeParse(raw);
+	if (!parsed.success) return raw;
+	return {
+		...parsed.data,
+		version: 3,
+		booleanMarks: DEFAULT_PREFERENCES.booleanMarks,
+	};
+}
+
 // The forward step from version 1: a boolean cell keeps the checkbox the
-// product now draws by default (#483). Its result is validated like any stored
-// payload, so a step that produced something invalid is reported rather than
-// trusted, and an invalid version 1 payload is left as it was.
+// product now draws by default (#483). It lands on version 2, and the next
+// step carries it on.
 function migratePreferencesV1(raw: unknown): unknown {
 	const parsed = preferencesV1Schema.safeParse(raw);
 	if (!parsed.success) return raw;
 	return {
 		...parsed.data,
-		version: PREFERENCES_VERSION,
+		version: 2,
 		booleanCheckboxes: DEFAULT_PREFERENCES.booleanCheckboxes,
 	};
+}
+
+// Each step's result is validated like any stored payload, so a step that
+// produced something invalid is reported rather than trusted, and an invalid
+// earlier payload is left as it was.
+function migratePreferences(value: unknown, version: number): unknown {
+	const atV2 = version === 1 ? migratePreferencesV1(value) : value;
+	return version === 1 || version === 2 ? migratePreferencesV2(atV2) : value;
 }
 
 function storedVersion(value: unknown): unknown {
@@ -150,9 +191,7 @@ function readPreferences(value: unknown): PreferencesReadOutcome {
 	if (version > PREFERENCES_VERSION) {
 		return { status: "unreadable", reason: "future-version" };
 	}
-	const current = validatePreferences(
-		version === 1 ? migratePreferencesV1(value) : value,
-	);
+	const current = validatePreferences(migratePreferences(value, version));
 	return current
 		? { status: "ok", preferences: current }
 		: { status: "unreadable", reason: "current-schema-invalid" };
