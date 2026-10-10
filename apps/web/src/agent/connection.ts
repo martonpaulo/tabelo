@@ -37,7 +37,9 @@ export function pauseAgent(paused: boolean): void {
 // gesture holding pointer capture counts as a pointer gesture: every drag that
 // changes something on move or on drop (fill, reorder, column and split resize)
 // captures its pointer, while a click or drag-select that only moves the
-// selection does not (#472). The browser releases capture itself on pointerup,
+// selection does not (#472). Capture is granted at the gesture's first pointer
+// event after the request, so a press that has not moved changes nothing and
+// does not block yet. The browser releases capture itself on pointerup,
 // pointercancel or removal, so this state cannot outlive the gesture the way a
 // pointerdown flag could.
 export function watchInputGuards(doc: Document): {

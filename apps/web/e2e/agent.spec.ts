@@ -362,6 +362,9 @@ test("a selection press does not refuse agent edits, a captured drag does (#472)
 	const grip = await centre(handle);
 	await page.mouse.move(grip.x, grip.y);
 	await page.mouse.down();
+	// The browser grants a requested capture at the next pointer event, so the
+	// drag has to move before it holds one.
+	await page.mouse.move(grip.x + 8, grip.y);
 	const during = await agent.read();
 	expect(await rename(during, "City")).toMatchObject({
 		code: "user_busy",
