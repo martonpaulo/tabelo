@@ -49,15 +49,32 @@ test("a boolean cell is a named checkbox without a tab stop of its own", async (
 	const unchecked = tabelo.cell(2, 2).getByRole("checkbox");
 	await expect(checked).toHaveAttribute("aria-checked", "true");
 	await expect(unchecked).toHaveAttribute("aria-checked", "false");
-	// The name identifies the cell: its column's header and its row number,
-	// both data the grid itself shows.
-	await expect(checked).toHaveAccessibleName(new RegExp(`${HEADER}.*2`));
-	await expect(unchecked).toHaveAccessibleName(new RegExp(`${HEADER}.*3`));
+	// The name is the column alone: the row and column headers already
+	// convey position, so no row number or other coordinate is repeated
+	// (#498).
+	for (const checkbox of [checked, unchecked]) {
+		await expect(checkbox).toHaveAccessibleName(new RegExp(HEADER));
+		await expect(checkbox).not.toHaveAccessibleName(/\d/);
+	}
 	await expect(checked).toHaveAttribute("tabindex", "-1");
 	// The cell stays unlabelled and keeps the grid's roving focus.
 	await expect(tabelo.cell(1, 2)).not.toHaveAttribute("aria-label");
 	// Only booleans: a text cell has no checkbox.
 	await expect(tabelo.cell(1, 1).getByRole("checkbox")).toHaveCount(0);
+});
+
+test("a boolean checkbox under a blank header is named by its column letter", async ({
+	tabelo,
+}) => {
+	await importBooleans(tabelo);
+	await tabelo.header(2).click();
+	await tabelo.page.keyboard.press("Backspace");
+	await expect(tabelo.header(2)).toHaveText("");
+
+	const checkbox = tabelo.cell(1, 2).getByRole("checkbox");
+	await expect(checkbox).toHaveAccessibleName("B");
+	await expect(checkbox).toHaveAttribute("aria-checked", "true");
+	await expect(tabelo.cell(1, 2)).not.toHaveAttribute("aria-label");
 });
 
 test("a click toggles in place and one undo reverts it", async ({ tabelo }) => {

@@ -1328,10 +1328,11 @@ export const copy = {
 		expectedColumnType: (type: ExpectedColumnType) =>
 			`Expected type ${expectedColumnTypeLabels[type].toLowerCase()}`,
 		// A boolean cell's checkbox (#483). Its state says only checked or
-		// not, so its name says which cell it stands in: the column as its
-		// header names it, then the row.
-		booleanCell: (header: string, column: number, row: number) =>
-			`${header.trim() === "" ? columnLetter(column) : header}, row ${row + 2}`,
+		// not, so its name says which column it answers for, as the header
+		// names it. The row is left to the table's own structure, which
+		// already conveys position, as for every other cell (#498).
+		booleanCell: (header: string, column: number) =>
+			header.trim() === "" ? columnLetter(column) : header,
 		// The editor that opens inside a cell is a control, not a cell, so it
 		// names itself by position rather than borrowing the cell's value.
 		// Columns go by the letters of the index strip, as everywhere else.

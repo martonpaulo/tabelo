@@ -2384,7 +2384,6 @@ const DataRow = memo(function DataRow({
 											label={copy.a11y.booleanCell(
 												cellText(column.header),
 												columnIndex,
-												rowIndex,
 											)}
 											onToggle={(next) =>
 												useTabeloStore

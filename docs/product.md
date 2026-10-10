@@ -242,6 +242,7 @@ reversible implementation choice does not belong here.
 | Pinned source header | The codec's first mapped row, Markdown divider included, stays at the top of a scrolled source pane as an inert copy | design system §2 | #252 |
 | Grid lines | Subtle where the grid continues, strong where chrome meets the table; no state recolours a line | design system §9 | #346 |
 | Selection on letters and numbers | A neutral surface and semibold label, never the selection fill | design system §9 | #291 |
+| Boolean checkbox name | The column alone, its header text or its letter when blank; never a row number or other coordinate | design system §9 | #498 |
 | Copied mark and focus | One two-tone marquee on a focused copied cell, on the range's real edge | design system §4 | #223, #349 |
 | Project mark | `logo.svg` is the one source for every icon | design system §6 | #307 |
 | Settings | Display preferences apply as they change, with a live preview, `Switch` rows, and a `SegmentedControl` for spaces | design system §3 | owner, 2026-09-18 |

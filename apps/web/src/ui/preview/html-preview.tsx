@@ -49,15 +49,10 @@ export default function HtmlPreview({
 		() => visibleShape(document),
 		[document],
 	);
-	// Where each visible row and column sits in the table, so a checkbox is
-	// named by the same position the grid names it by.
-	const positions = useMemo(
-		() => ({
-			rows: new Map(document.rows.map((row, index) => [row.id, index])),
-			columns: new Map(
-				document.columns.map((column, index) => [column.id, index]),
-			),
-		}),
+	// Where each visible column sits in the table, so a checkbox is named by
+	// the same column letter the grid names it by when its header is blank.
+	const columnIndexes = useMemo(
+		() => new Map(document.columns.map((column, index) => [column.id, index])),
 		[document],
 	);
 
@@ -136,9 +131,8 @@ export default function HtmlPreview({
 							<PreviewRow
 								key={row.id}
 								row={row}
-								rowIndex={positions.rows.get(row.id) ?? 0}
 								columns={visibleColumns}
-								columnIndexes={positions.columns}
+								columnIndexes={columnIndexes}
 								booleanMarks={booleanMarks}
 							/>
 						))}
@@ -163,7 +157,6 @@ export default function HtmlPreview({
 // which is a layer that the uncommon shape has not earned.
 interface PreviewRowProps {
 	readonly row: Row;
-	readonly rowIndex: number;
 	readonly columns: readonly Column[];
 	readonly columnIndexes: ReadonlyMap<string, number>;
 	readonly booleanMarks: boolean;
@@ -171,7 +164,6 @@ interface PreviewRowProps {
 
 const PreviewRow = memo(function PreviewRow({
 	row,
-	rowIndex,
 	columns,
 	columnIndexes,
 	booleanMarks,
@@ -193,7 +185,6 @@ const PreviewRow = memo(function PreviewRow({
 							copy.a11y.booleanCell(
 								cellText(column.header),
 								columnIndexes.get(column.id) ?? 0,
-								rowIndex,
 							)
 						}
 						booleanMarks={booleanMarks}

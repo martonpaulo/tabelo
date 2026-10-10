@@ -201,6 +201,9 @@ test("the preview follows the HTML spelling with read-only checkboxes", async ({
 	await expect(boxes.nth(0)).toHaveAttribute("aria-checked", "true");
 	await expect(boxes.nth(1)).toHaveAttribute("aria-checked", "false");
 	await expect(boxes.nth(0)).toHaveAttribute("aria-readonly", "true");
+	// Named like the grid's boolean cell: its column alone, no row (#498).
+	await expect(boxes.nth(1)).toHaveAccessibleName(new RegExp(HEADER));
+	await expect(boxes.nth(1)).not.toHaveAccessibleName(/\d/);
 	// Clicking a read-only checkbox changes nothing, and it is no tab stop.
 	await boxes.nth(1).click();
 	await expect(boxes.nth(1)).toHaveAttribute("aria-checked", "false");

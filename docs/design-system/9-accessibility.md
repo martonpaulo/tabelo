@@ -656,10 +656,12 @@ in the editor's accessible name. Neither treatment adds another focus target.
 
 A boolean cell drawn as a checkbox (#483) keeps that model. The cell stays
 unlabelled; its content is the checkbox, whose `aria-checked` is the value and
-whose name is the column header (its letter when the header is blank) and the
-row number, "Name, row 2", because a checkbox's own state says only checked or
-not. The checkbox is not focusable on its own, so it adds no tab stop, and the
-hidden type text stays beside it.
+whose name is its column alone: the header text, or the column letter when the
+header is blank, because a checkbox's own state says only checked or not. The
+name carries no row number or other coordinate: the row and column headers
+already convey position, as for every other cell (decided on #498). The
+checkbox is not focusable on its own, so it adds no tab stop, and the hidden
+type text stays beside it.
 
 Grid entry follows the column expectation without turning it into inference
 (#201).
