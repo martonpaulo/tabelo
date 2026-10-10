@@ -321,7 +321,6 @@ export const copy = {
 	// workspace around it (owner, 2026-09-20).
 	menuSections: {
 		tables: "Tables",
-		thisTable: "This table",
 		workspace: "Workspace",
 	},
 
@@ -858,14 +857,6 @@ export const copy = {
 		columnActionsFor: (column: string) => `${COLUMN_ACTIONS}: ${column}`,
 		copySource: "Copy source",
 		copyFormattedTable: "Copy formatted table",
-		// The document as a chosen format, whatever the workspace happens to be
-		// showing. Distinct from Copy source, which copies the pane in front of
-		// the user, draft and all.
-		copyAs: "Copy as",
-		// Said at the top of Copy as while the table holds formatting (#306),
-		// naming the formats that cannot spell it.
-		copyAsTextOnly: (formats: readonly string[]) =>
-			`${joinedPositions(formats)} copy text only, without formatting.`,
 		downloadTable: "Download table",
 		copyTable: "Copy table",
 		openTable: "Open table",
@@ -876,9 +867,6 @@ export const copy = {
 		// Named for the table it acts on, because every row in the list carries
 		// this command and the name is what tells them apart (owner, 2026-09-20).
 		renameTableNamed: (name: string) => `Rename ${name}`,
-		// The one place a table leaves or enters Tabelo as a file or as text:
-		// Import file, Copy as, and Download table (owner, 2026-09-20).
-		exportTable: "Export",
 		importFile: "Import file",
 		newTable: "New table",
 		// Every table's row carries rename and delete, so both are named after
