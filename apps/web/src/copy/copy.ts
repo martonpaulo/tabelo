@@ -449,8 +449,9 @@ export const copy = {
 			description: "Markdown writes <br> instead of &#10;",
 		},
 		booleanMarks: {
-			label: "Use [x] and [ ] for true and false",
-			description: "Markdown writes [x] and [ ], not true and false",
+			label: "Write true and false as checkmarks",
+			description:
+				"Markdown writes [x] and [ ], Jira (/) and (x), HTML checkboxes",
 		},
 		alignColumns: {
 			label: "Align columns",

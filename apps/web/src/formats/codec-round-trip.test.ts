@@ -51,15 +51,32 @@ describe("registered codec byte round trips", () => {
 
 // #484: a format that offers the boolean spelling says which tokens it writes,
 // and only such a format does, so reconciliation always has the text to fall
-// back to and no pane offers a spelling that would write nothing.
+// back to and no pane offers a spelling that would write nothing. Written and
+// read in that spelling, a boolean comes back as itself (#485: HTML's checkbox
+// has no text, so its fallback text is empty for both values).
 describe("registered boolean spellings", () => {
+	const document = documentFromMatrix(
+		[
+			["Name", "Active"],
+			["Ingrid", true],
+			["Paulo", false],
+		],
+		{ headerRow: true },
+	);
+
 	it("declare their tokens exactly when they offer the spelling", () => {
 		for (const codec of listCodecs()) {
 			const offers = codec.spellings?.includes("booleanMarks") === true;
 			expect(codec.booleanTokens !== undefined, codec.id).toBe(offers);
-			if (codec.booleanTokens) {
-				expect(codec.booleanTokens.true).not.toBe(codec.booleanTokens.false);
-			}
+			if (!offers) continue;
+			const text = codec.serialize(document, { booleanMarks: true });
+			expect(text, codec.id).not.toBe(codec.serialize(document));
+			const parsed = codec.parse(text, { booleanMarks: true });
+			expect(parsed.ok, codec.id).toBe(true);
+			if (!parsed.ok) continue;
+			expect(documentToMatrix(parsed.document), codec.id).toEqual(
+				documentToMatrix(document),
+			);
 		}
 	});
 });

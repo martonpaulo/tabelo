@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
 import { jiraCodec } from "./jira";
 import { escapeJiraCell, unescapeJiraCell } from "./jira-inline";
@@ -116,5 +116,97 @@ describe("jira serialization", () => {
 		expect(reparsed.ok).toBe(true);
 		if (!reparsed.ok) return;
 		expect(documentToMatrix(reparsed.document)).toEqual(original);
+	});
+});
+
+// #485: under the boolean spelling Jira writes its status icons, a plain
+// string that would read as one is escaped, and only a parse that asks for
+// the spelling reads an unescaped icon as a boolean.
+describe("jira boolean spelling", () => {
+	const document = documentFromMatrix(
+		[
+			["name", "remote", "note"],
+			["Ingrid", true, "(/)"],
+			["Paulo", false, "(x)"],
+		],
+		{ headerRow: true },
+	);
+
+	it("writes status icons only under the spelling", () => {
+		const plain = jiraCodec.serialize(document);
+		const icons = jiraCodec.serialize(document, { booleanMarks: true });
+
+		expect(jiraCodec.serialize(document, { booleanMarks: false })).toBe(plain);
+		expect(plain.split("\n").slice(1)).toEqual([
+			"|Ingrid|true|(/)|",
+			"|Paulo|false|(x)|",
+		]);
+		expect(icons.split("\n").slice(1)).toEqual([
+			"|Ingrid|(/)|\\(/)|",
+			"|Paulo|(x)|\\(x)|",
+		]);
+	});
+
+	it("escapes a whole-cell icon and nothing else", () => {
+		const text = jiraCodec.serialize(
+			documentFromMatrix([["note"], ["(/) done"], ["see (x)"], ["(see)"]], {
+				headerRow: true,
+			}),
+			{ booleanMarks: true },
+		);
+		expect(text.split("\n").slice(1)).toEqual([
+			"|(/) done|",
+			"|see (x)|",
+			"|(see)|",
+		]);
+	});
+
+	it("reads an unescaped icon as a boolean only when asked to", () => {
+		const text = "||(/)||remote||note||\n|a|(/)|\\(/)|\n|b|(x)|\\(x)|";
+		const spelled = jiraCodec.parse(text, { booleanMarks: true });
+		const plain = jiraCodec.parse(text);
+		assert(spelled.ok && plain.ok);
+
+		expect(spelled.document.columns[0]?.header).toBe("(/)");
+		expect(
+			spelled.document.rows.map((row) =>
+				spelled.document.columns.map((column) => row.cells[column.id]),
+			),
+		).toEqual([
+			["a", true, "(/)"],
+			["b", false, "(x)"],
+		]);
+		expect(documentToMatrix(plain.document)).toEqual([
+			["(/)", "remote", "note"],
+			["a", "(/)", "(/)"],
+			["b", "(x)", "(x)"],
+		]);
+	});
+
+	it("never reads a boolean from text it imports or pastes", () => {
+		const parsed = jiraCodec.parseMatrix("||a||b||\n|(/)|(x)|");
+		assert(parsed.ok);
+		expect(parsed.table.matrix).toEqual([
+			["a", "b"],
+			["(/)", "(x)"],
+		]);
+	});
+
+	it("reads text written before the spelling existed the same way", () => {
+		// A line break before a parenthesis is the one place a backslash stood
+		// before `(` in earlier output, and it is still a line break.
+		const earlier = jiraCodec.serialize(
+			documentFromMatrix([["note"], ["one\n(two)"], ["(/)"]], {
+				headerRow: true,
+			}),
+		);
+		expect(earlier).toBe("||note||\n|one\\\\(two)|\n|(/)|");
+		const parsed = jiraCodec.parse(earlier);
+		assert(parsed.ok);
+		expect(documentToMatrix(parsed.document)).toEqual([
+			["note"],
+			["one\n(two)"],
+			["(/)"],
+		]);
 	});
 });

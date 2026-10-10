@@ -1,11 +1,14 @@
+import { Checkbox } from "@tabelo/ui/components/checkbox";
 import { cn } from "@tabelo/ui/lib/utils";
 import { memo, useMemo, useRef } from "react";
 import { copy } from "@/copy/copy";
-import { cellTextContentAt } from "@/core/cell-value";
+import { cellText, cellTextContentAt, readCell } from "@/core/cell-value";
 import { isDocumentBlank } from "@/core/document";
 import type { Alignment, Column, Row } from "@/core/types";
+import type { TableCodec } from "@/formats/types";
 import { useTabeloStore } from "@/state/store";
 import { InlineContentView } from "@/ui/inline/inline-content";
+import { useCodecSpelling } from "@/ui/spelling";
 import { usePaneFind } from "@/ui/workspace/use-pane-find";
 import { usePreviewFind } from "./preview-find";
 import { visibleShape } from "./visible-shape";
@@ -29,14 +32,32 @@ const alignClass: Record<Alignment, string> = {
 	right: "text-right",
 };
 
-export default function HtmlPreview() {
+export default function HtmlPreview({
+	codec,
+}: {
+	// The codec this view borrows, whose spelling it shows in: a boolean is a
+	// read-only checkbox exactly when that format writes one (#485).
+	readonly codec: TableCodec | undefined;
+}) {
 	const document = useTabeloStore((state) => state.document);
+	const { booleanMarks = false } = useCodecSpelling(codec);
 
 	// What the reader is shown, and why, lives in `visible-shape.ts`. It
 	// recomputes only when the document changes, not when some other pane is
 	// being typed into.
 	const { columns: visibleColumns, rows: visibleRows } = useMemo(
 		() => visibleShape(document),
+		[document],
+	);
+	// Where each visible row and column sits in the table, so a checkbox is
+	// named by the same position the grid names it by.
+	const positions = useMemo(
+		() => ({
+			rows: new Map(document.rows.map((row, index) => [row.id, index])),
+			columns: new Map(
+				document.columns.map((column, index) => [column.id, index]),
+			),
+		}),
 		[document],
 	);
 
@@ -112,7 +133,14 @@ export default function HtmlPreview() {
 					</thead>
 					<tbody>
 						{visibleRows.map((row) => (
-							<PreviewRow key={row.id} row={row} columns={visibleColumns} />
+							<PreviewRow
+								key={row.id}
+								row={row}
+								rowIndex={positions.rows.get(row.id) ?? 0}
+								columns={visibleColumns}
+								columnIndexes={positions.columns}
+								booleanMarks={booleanMarks}
+							/>
 						))}
 					</tbody>
 				</table>
@@ -135,10 +163,19 @@ export default function HtmlPreview() {
 // which is a layer that the uncommon shape has not earned.
 interface PreviewRowProps {
 	readonly row: Row;
+	readonly rowIndex: number;
 	readonly columns: readonly Column[];
+	readonly columnIndexes: ReadonlyMap<string, number>;
+	readonly booleanMarks: boolean;
 }
 
-const PreviewRow = memo(function PreviewRow({ row, columns }: PreviewRowProps) {
+const PreviewRow = memo(function PreviewRow({
+	row,
+	rowIndex,
+	columns,
+	columnIndexes,
+	booleanMarks,
+}: PreviewRowProps) {
 	return (
 		<tr>
 			{columns.map((column) => (
@@ -149,13 +186,55 @@ const PreviewRow = memo(function PreviewRow({ row, columns }: PreviewRowProps) {
 						alignClass[column.align],
 					)}
 				>
-					{/* A cell may legitimately contain line breaks; preserving
-					    them is the point of the escaping the codecs do. */}
-					<span className="whitespace-pre-wrap">
-						<InlineContentView value={cellTextContentAt(row, column.id)} />
-					</span>
+					<PreviewCell
+						row={row}
+						column={column}
+						label={() =>
+							copy.a11y.booleanCell(
+								cellText(column.header),
+								columnIndexes.get(column.id) ?? 0,
+								rowIndex,
+							)
+						}
+						booleanMarks={booleanMarks}
+					/>
 				</td>
 			))}
 		</tr>
 	);
 });
+
+// One cell's content. Under the HTML boolean spelling a boolean is the
+// checkbox that format writes, drawn read-only: the preview shows the table
+// and never edits it, and it holds no tab stop of its own. Anything else is
+// its text, line breaks preserved, which is the point of the escaping the
+// codecs do.
+function PreviewCell({
+	row,
+	column,
+	label,
+	booleanMarks,
+}: {
+	readonly row: Row;
+	readonly column: Column;
+	readonly label: () => string;
+	readonly booleanMarks: boolean;
+}) {
+	const value = readCell(row, column.id);
+	if (booleanMarks && typeof value === "boolean") {
+		return (
+			<Checkbox
+				checked={value}
+				readOnly
+				tabIndex={-1}
+				aria-label={label()}
+				className="inline-flex cursor-default align-middle"
+			/>
+		);
+	}
+	return (
+		<span className="whitespace-pre-wrap">
+			<InlineContentView value={cellTextContentAt(row, column.id)} />
+		</span>
+	);
+}

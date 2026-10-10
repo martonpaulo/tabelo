@@ -127,6 +127,13 @@ contract:
 - *Jira reads links and images before it splits a row*, as Jira does, so the
   row splitter skips the pipes inside `[label|url]` and `!url|alt=...!`. One
   function says where each construct ends, for the splitter and the parser.
+- *Jira's whole-cell status icon* (#485). Under the opt-in boolean spelling,
+  `(/)` and `(x)` spell a boolean, so a plain string whose whole text is one of
+  them is written with its `(` escaped, `\(/)` or `\(x)`, and only then.
+  `(` is one of the characters a backslash makes literal, as Jira's renderer
+  reads it. Tabelo wrote no backslash before `(` earlier (a literal backslash
+  is `&#92;`, and a line break's `\\` is matched first), so its earlier output
+  reads back the same.
 - *HTML is untrusted and read only as a tree.* `<b>`, `<i>`, and `<strike>`
   normalize to bold, italic, and strikethrough. Declined formatting (`<sup>`,
   `<mark>`, `<del>`, and the rest of the issue's non-goals), a mark around

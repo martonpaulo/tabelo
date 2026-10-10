@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { documentFromMatrix } from "@/core/document";
+import { jiraCodec } from "./jira";
 import {
 	escapeJiraCell,
 	matchJiraEscape,
@@ -150,6 +152,26 @@ describe("matchJiraEscape", () => {
 			});
 		},
 	);
+
+	// #485: the one place Tabelo writes `\(` is a whole cell that would read as
+	// a status icon under the boolean spelling, and the glyph covers it.
+	it("recognizes the status-icon escape the boolean spelling writes", () => {
+		const document = documentFromMatrix([["note"], ["(/)"], ["(x)"]], {
+			headerRow: true,
+		});
+		const lines = jiraCodec
+			.serialize(document, { booleanMarks: true })
+			.split("\n");
+		for (const line of lines.slice(1)) {
+			const at = line.indexOf("\\(");
+			expect(at, line).toBe(1);
+			expect(matchJiraEscape(line, at)).toEqual({
+				source: "\\(",
+				decoded: "(",
+				kind: "character",
+			});
+		}
+	});
 
 	it("reports nothing where a character begins no sequence", () => {
 		expect(matchJiraEscape("plain", 0)).toBeNull();

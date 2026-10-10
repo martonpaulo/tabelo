@@ -181,7 +181,8 @@ export interface ReconciliationSource {
 	readonly spelledBooleans?: BooleanTokens;
 }
 
-// The text a format writes for each boolean under its boolean spelling.
+// The text of each boolean's token under a format's boolean spelling: what
+// the cell reads as once the token is not taken as a boolean.
 export interface BooleanTokens {
 	readonly true: string;
 	readonly false: string;

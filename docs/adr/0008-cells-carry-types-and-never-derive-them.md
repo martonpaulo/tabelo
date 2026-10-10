@@ -210,12 +210,14 @@ A column may therefore still hold values that disagree with its expectation:
 those a typed source put there, those the user kept with Convert the rest, and
 those entered later as explicit text.
 
-## Amendment: a format may spell a boolean (#464, #484)
+## Amendment: a format may spell a boolean (#464, #484, #485)
 
 The owner chose Option B on #464: a text format with a widely used spelling for
 a boolean may offer it as an output choice. Markdown offers `[x]` and `[ ]`
-(#484); Jira and HTML follow in #485. The rule this ADR set still holds, and
-the amendment is how:
+(#484), Jira its status icons `(/)` and `(x)`, and HTML a disabled checkbox
+input, checked for true (#485). One setting governs all three, and the rendered
+preview follows the HTML spelling with a read-only checkbox. The rule this ADR
+set still holds, and the amendment is how:
 
 - **The spelling is an output choice, never document state.** It is a spelling
   in the sense of ADR 0002's #397 amendment: lossless, off by default, a global
@@ -233,7 +235,11 @@ the amendment is how:
   whose parse depends on the choice: with it off a plain string that reads like
   a token is written as it is, and reading it as a boolean would change its
   meaning. A plain string that equals a token is escaped under the spelling, so
-  it round-trips byte-exact in both.
+  it round-trips byte-exact in both: Markdown already escapes every `[`, Jira
+  escapes the `(` of a whole-cell icon (`docs/adr/0011`), and HTML always
+  writes a literal `<` as `&lt;`, so no string can be read as its checkbox.
+  An HTML checkbox has no text, so one that does not keep a boolean becomes
+  the empty string, what the cell reads with the spelling off.
 - Switching the spelling lets go of a pane's committed draft, so the pane shows
   the document in the new spelling; unfinished edits are kept and, once they
   parse, read in the spelling then chosen, as one undoable step.

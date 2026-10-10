@@ -144,6 +144,57 @@ describe("reading a draft in the pane's spelling", () => {
 		expect(cellOf(plain)).toBe("[x]");
 		expect(plain?.ok && plain.reconciliation.spelledBooleans).toBeUndefined();
 	});
+
+	// #485: Jira and HTML read through the same rule. An unchanged token keeps
+	// its boolean; an edited one, or one typed into a new row, becomes the text
+	// the user typed, which for HTML's textless checkbox is the empty text.
+	const showing = (viewId: "jira" | "html") => {
+		const [first, ...rest] = workspace.panes;
+		if (!first) throw new Error("the default workspace has a pane");
+		const shown = {
+			...workspace,
+			panes: [{ ...first, view: viewId }, ...rest],
+		};
+		return { shown, owner: { paneId: first.id, viewId } };
+	};
+	const read = (viewId: "jira" | "html", text: string) => {
+		const { shown, owner } = showing(viewId);
+		return readDraft(null, team, shown, owner, text, { booleanMarks: true });
+	};
+	const lastCell = (result: ReturnType<typeof readDraft>) => {
+		if (!result?.ok) throw new Error("the draft must parse");
+		const row = result.document.rows.at(-1);
+		const column = result.document.columns[1];
+		if (!row || !column) throw new Error("the cell must exist");
+		return row.cells[column.id];
+	};
+
+	it("keeps an unchanged Jira icon as a boolean and an edited one as text", () => {
+		const unchanged = read("jira", "||name||remote||\n|Ingrid|(/)|");
+		expect(unchanged?.ok && unchanged.document).toBe(team);
+		expect(cellOf(read("jira", "||name||remote||\n|Ingrid|(x)|"))).toBe("(x)");
+		expect(
+			lastCell(read("jira", "||name||remote||\n|Ingrid|(/)|\n|Paulo|(/)|")),
+		).toBe("(/)");
+	});
+
+	it("keeps an unchanged HTML checkbox as a boolean and an edited one as text", () => {
+		const row = (cell: string) =>
+			`<table><tr><th>name</th><th>remote</th></tr><tr><td>Ingrid</td><td>${cell}</td></tr></table>`;
+		const checked = '<input type="checkbox" checked disabled>';
+		const unchecked = '<input type="checkbox" disabled>';
+		const unchanged = read("html", row(checked));
+		expect(unchanged?.ok && unchanged.document).toBe(team);
+		expect(cellOf(read("html", row(unchecked)))).toBe("");
+		expect(
+			lastCell(
+				read(
+					"html",
+					`<table><tr><th>name</th><th>remote</th></tr><tr><td>Ingrid</td><td>${checked}</td></tr><tr><td>Paulo</td><td>${checked}</td></tr></table>`,
+				),
+			),
+		).toBe("");
+	});
 });
 
 describe("draft size limits", () => {

@@ -115,7 +115,7 @@ export function PaneContent({ paneId, view, zoom, display }: PaneContentProps) {
 			{view.kind === "grid" ? (
 				<GridPane zoom={zoom} />
 			) : view.kind === "preview" ? (
-				<HtmlPreview />
+				<HtmlPreview codec={view.codec} />
 			) : (
 				// Deliberately unkeyed: one source view replaces another in place, so
 				// the editor is reconfigured rather than torn down and rebuilt. A key

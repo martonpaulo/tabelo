@@ -1,5 +1,6 @@
-import { cellTextContentAt } from "@/core/cell-value";
-import type { TableDocument, TextContent } from "@/core/types";
+import { cellTextContentAt, readCell } from "@/core/cell-value";
+import type { BooleanTokens } from "@/core/document";
+import type { CellValue, Row, TableDocument, TextContent } from "@/core/types";
 import { jiraConstructEnds, parseJiraCell, writeJiraCell } from "./jira-inline";
 import {
 	firstLineBlock,
@@ -13,6 +14,7 @@ import type {
 	ParseIssue,
 	SourceFieldRange,
 	SourceRowRange,
+	Spelling,
 	StructuralAssistance,
 	TableCodec,
 } from "./types";
@@ -95,6 +97,46 @@ function readJiraField(raw: string): TextContent {
 	return raw === EMPTY_FIELD ? "" : parseJiraCell(raw);
 }
 
+// How Jira spells a boolean under the boolean spelling (#485): its status
+// icons. A plain string whose whole text is one of them is written with its
+// `(` escaped, and only then, so the bare token is unambiguous while the
+// spelling is on and no other text changes a byte.
+const JIRA_BOOLEAN_TOKENS: BooleanTokens = {
+	true: "(/)",
+	false: "(x)",
+};
+
+function isBooleanToken(field: string): boolean {
+	return (
+		field === JIRA_BOOLEAN_TOKENS.true || field === JIRA_BOOLEAN_TOKENS.false
+	);
+}
+
+// One body cell as written. Under the spelling a boolean is its token, and a
+// cell whose written text would read as a token is escaped instead.
+function writeJiraBodyField(
+	row: Row,
+	columnId: string,
+	booleanMarks: boolean,
+): string {
+	const value = readCell(row, columnId);
+	if (booleanMarks && typeof value === "boolean") {
+		return value ? JIRA_BOOLEAN_TOKENS.true : JIRA_BOOLEAN_TOKENS.false;
+	}
+	const written = writeJiraField(cellTextContentAt(row, columnId));
+	return booleanMarks && isBooleanToken(written) ? `\\${written}` : written;
+}
+
+// One body cell as read. Only a parse that asks for the spelling reads an
+// unescaped token as the boolean it spells; reconciliation then keeps it only
+// where the text did not change (docs/adr/0008).
+function readJiraBodyField(raw: string, booleanMarks: boolean): CellValue {
+	if (booleanMarks && isBooleanToken(raw)) {
+		return raw === JIRA_BOOLEAN_TOKENS.true;
+	}
+	return readJiraField(raw);
+}
+
 const HEADER_LINE = /^\s*\|\|/;
 
 // A Jira header line opens with a doubled pipe, which is also what makes its
@@ -104,7 +146,13 @@ export function isJiraHeaderLine(line: string): boolean {
 	return HEADER_LINE.test(line);
 }
 
-function parseJiraMatrix(text: string): MatrixParseResult {
+// `booleanMarks` reads a token as a boolean and is asked for only by a parse
+// of text written in that spelling: import, paste, and the clipboard read the
+// matrix without it, so they never produce a boolean from text.
+function parseJiraMatrix(
+	text: string,
+	booleanMarks = false,
+): MatrixParseResult {
 	const lines = text.split(/\r?\n/);
 	const found = firstLineBlock(lines);
 	if (!found) {
@@ -143,7 +191,7 @@ function parseJiraMatrix(text: string): MatrixParseResult {
 				line: start + 2 + offset,
 			});
 		}
-		return cells.map(readJiraField);
+		return cells.map((cell) => readJiraBodyField(cell, booleanMarks));
 	});
 
 	return {
@@ -198,7 +246,10 @@ function jiraFields(text: string): SourceFieldRange[] {
 	return fields;
 }
 
-function serializeJira(document: TableDocument): string {
+function serializeJira(
+	document: TableDocument,
+	{ booleanMarks = false }: Spelling = {},
+): string {
 	const header = `||${document.columns
 		.map((column) => writeJiraField(column.header))
 		.join("||")}||`;
@@ -206,7 +257,7 @@ function serializeJira(document: TableDocument): string {
 	const body = document.rows.map(
 		(row) =>
 			`|${document.columns
-				.map((column) => writeJiraField(cellTextContentAt(row, column.id)))
+				.map((column) => writeJiraBodyField(row, column.id, booleanMarks))
 				.join("|")}|`,
 	);
 
@@ -269,10 +320,15 @@ export const jiraCodec: TableCodec = {
 	structuralAssistance: (before, after, changed) =>
 		jiraRowStart(before, after, changed) ??
 		jiraEmptyCellFill(before, after, changed),
-	parseMatrix: parseJiraMatrix,
+	parseMatrix: (text) => parseJiraMatrix(text),
 	parse: (text, options) =>
-		toDocumentParseResult(parseJiraMatrix(text), options),
+		toDocumentParseResult(
+			parseJiraMatrix(text, options?.booleanMarks),
+			options,
+		),
 	serialize: serializeJira,
+	spellings: ["booleanMarks"],
+	booleanTokens: JIRA_BOOLEAN_TOKENS,
 	sniffPriority: 30,
 	canSniff: (text) => isJiraHeaderLine(text),
 };

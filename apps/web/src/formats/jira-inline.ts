@@ -33,9 +33,11 @@ import type { EscapeMatcher } from "./types";
 
 // The punctuation a backslash makes literal, as Jira's renderer reads it. A
 // doubled backslash is the forced line break and a literal backslash is
-// `&#92;`, so neither is here.
+// `&#92;`, so neither is here. `(` is written escaped only where a whole cell
+// would otherwise read as a status icon under the boolean spelling (#485).
 const BACKSLASH_ESCAPABLE = new Set([
 	"|",
+	"(",
 	"*",
 	"_",
 	"+",

@@ -301,10 +301,11 @@ export interface TableCodec {
 	// Which spellings this format offers a choice between (#397). Absent means
 	// it writes one spelling of everything, and no pane offers a choice.
 	readonly spellings?: readonly SpellingId[];
-	// The tokens this format writes for a boolean under `booleanMarks`,
-	// declared exactly when `spellings` includes it (#484). Reconciliation
-	// reads them to turn a token that did not keep a boolean back into the
-	// text the user typed.
+	// The text of each boolean's token under `booleanMarks`, declared exactly
+	// when `spellings` includes it (#484). Reconciliation reads them to turn a
+	// token that did not keep a boolean back into the text the user typed:
+	// the token itself, or for HTML's checkbox, which holds no text, the empty
+	// text (#485).
 	readonly booleanTokens?: BooleanTokens;
 	// The separator this format writes between fields, for the formats that
 	// have one. Declared rather than sniffed, because a source view only ever

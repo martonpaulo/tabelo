@@ -3,7 +3,7 @@
 // parser, so its tests need a DOM. happy-dom is lighter than jsdom and enough
 // for parsing a table.
 
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 import { readCell } from "@/core/cell-value";
 import { documentFromMatrix, documentToMatrix } from "@/core/document";
 import type { InlineMark, InlineText } from "@/core/types";
@@ -482,5 +482,75 @@ describe("html merged cells", () => {
 		expect(htmlCodec.serialize(result.document)).toContain(
 			"<strong>Ingrid</strong>",
 		);
+	});
+});
+
+// #485: under the boolean spelling HTML writes a disabled checkbox, and only a
+// parse that asks for the spelling reads a data cell holding one as a boolean.
+describe("html boolean spelling", () => {
+	const document = documentFromMatrix(
+		[
+			["name", "remote"],
+			["Ingrid", true],
+			["Paulo", false],
+		],
+		{ headerRow: true },
+	);
+	const carried = (text: string, booleanMarks: boolean) => {
+		const parsed = htmlCodec.parse(text, { booleanMarks });
+		assert(parsed.ok);
+		return parsed.document.rows.map((row) =>
+			parsed.document.columns.map((column) => row.cells[column.id]),
+		);
+	};
+
+	it("writes checkboxes only under the spelling", () => {
+		const plain = htmlCodec.serialize(document);
+		const boxes = htmlCodec.serialize(document, { booleanMarks: true });
+
+		expect(htmlCodec.serialize(document, { booleanMarks: false })).toBe(plain);
+		expect(plain).toContain("<td>true</td>");
+		expect(plain).not.toContain("<input");
+		expect(boxes).toContain(
+			'<td><input type="checkbox" checked disabled></td>',
+		);
+		expect(boxes).toContain('<td><input type="checkbox" disabled></td>');
+		expect(boxes).not.toContain("<td>true</td>");
+	});
+
+	it("reads a checkbox as a boolean only when asked to, and maps its rows", () => {
+		const text = htmlCodec.serialize(document, { booleanMarks: true });
+		const spelled = htmlCodec.parse(text, { booleanMarks: true });
+		assert(spelled.ok);
+
+		expect(carried(text, true)).toEqual([
+			["Ingrid", true],
+			["Paulo", false],
+		]);
+		expect(carried(text, false)).toEqual([
+			["Ingrid", ""],
+			["Paulo", ""],
+		]);
+		// The row positions come from an echo read the same way, so a spelled
+		// table still maps every row to its source.
+		expect(spelled.rows).toHaveLength(3);
+	});
+
+	it("reads a checkbox beside other content, or in a header cell, as text", () => {
+		const text =
+			'<table><tr><th><input type="checkbox" checked></th><th>b</th></tr>' +
+			'<tr><td><input type="checkbox" checked> yes</td><td><input type="CHECKBOX" checked></td></tr></table>';
+		expect(carried(text, true)).toEqual([[" yes", true]]);
+	});
+
+	it("never reads a boolean from markup it imports or pastes", () => {
+		const parsed = htmlCodec.parseMatrix(
+			htmlCodec.serialize(document, { booleanMarks: true }),
+		);
+		assert(parsed.ok);
+		expect(parsed.table.matrix.slice(1)).toEqual([
+			["Ingrid", ""],
+			["Paulo", ""],
+		]);
 	});
 });

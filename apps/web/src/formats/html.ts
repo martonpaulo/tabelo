@@ -1,9 +1,12 @@
-import { cellTextContentAt } from "@/core/cell-value";
+import { cellTextContentAt, readCell as readRowCell } from "@/core/cell-value";
+import type { BooleanTokens } from "@/core/document";
 import { normalizeInline } from "@/core/inline-content";
 import type {
 	Alignment,
+	CellValue,
 	InlineMark,
 	InlineNode,
+	Row,
 	TableDocument,
 	TextContent,
 } from "@/core/types";
@@ -21,6 +24,7 @@ import type {
 	MatrixParseResult,
 	ParseIssue,
 	SourceTableRow,
+	Spelling,
 	TableCodec,
 } from "./types";
 
@@ -307,19 +311,27 @@ function alignmentOf(cell: Element): Alignment {
 	return "default";
 }
 
-export interface HtmlTable {
+export interface HtmlTable<Value extends CellValue = TextContent> {
 	// One row per `<tr>`, holding exactly the cells the parser found in it:
 	// ragged when the markup is, which is what the source position mapping
 	// must agree with.
-	readonly matrix: TextContent[][];
+	readonly matrix: Value[][];
 	readonly headerRow: boolean;
 	readonly alignments: readonly Alignment[];
 	readonly warnings: readonly ParseIssue[];
 }
 
-export type HtmlTableReading =
-	| { readonly ok: true; readonly table: HtmlTable }
+export type HtmlTableReading<Value extends CellValue = TextContent> =
+	| { readonly ok: true; readonly table: HtmlTable<Value> }
 	| { readonly ok: false; readonly issue: ParseIssue };
+
+// What one cell element holds, given the content `readCell` found in it.
+type CellValueReader<Value extends CellValue> = (
+	cell: Element,
+	content: TextContent,
+) => Value;
+
+const contentOnly: CellValueReader<TextContent> = (_, content) => content;
 
 // The cells of this row, and not of a row nested somewhere inside it.
 function ownCells(row: Element): Element[] {
@@ -353,8 +365,16 @@ function mergesSlots(cell: Element, rowsLeft: number): boolean {
 
 // Extracts the first table from an HTML fragment. Shared by this codec and the
 // clipboard, which faces the same problem from a different direction. Null
-// when there is no table to read at all.
+// when there is no table to read at all. It reads text only: a checkbox is a
+// boolean only to a parse that asks for the boolean spelling.
 export function readHtmlTable(html: string): HtmlTableReading | null {
+	return readTable(html, contentOnly);
+}
+
+function readTable<Value extends CellValue>(
+	html: string,
+	cellValue: CellValueReader<Value>,
+): HtmlTableReading<Value> | null {
 	if (typeof DOMParser === "undefined") return null;
 	if (!html.trim()) return null;
 
@@ -396,14 +416,14 @@ export function readHtmlTable(html: string): HtmlTableReading | null {
 	}
 
 	const warnings: CellIssue[] = [];
-	const matrix: TextContent[][] = [];
+	const matrix: Value[][] = [];
 	for (const row of rows) {
-		const values: TextContent[] = [];
+		const values: Value[] = [];
 		for (const cell of ownCells(row)) {
 			const reading = readCell(cell);
 			if (reading.refusal) return { ok: false, issue: reading.refusal };
 			for (const warning of reading.warnings) collectIssue(warnings, warning);
-			values.push(normalizeInline(reading.nodes));
+			values.push(cellValue(cell, normalizeInline(reading.nodes)));
 		}
 		matrix.push(values);
 	}
@@ -460,7 +480,38 @@ export function readHtmlFragment(html: string): HtmlFragmentReading | null {
 	};
 }
 
-function parseHtmlMatrix(text: string): MatrixParseResult {
+// How HTML spells a boolean under the boolean spelling (#485): a disabled
+// checkbox, checked for true. An input has no text, so a checkbox that does
+// not keep a boolean reads as the empty text it reads as with the spelling
+// off. A literal `<` is always written `&lt;`, so no string can collide.
+const CHECKBOX_TRUE = '<input type="checkbox" checked disabled>';
+const CHECKBOX_FALSE = '<input type="checkbox" disabled>';
+const HTML_BOOLEAN_TOKENS: BooleanTokens = { true: "", false: "" };
+
+// The boolean a data cell spells: a `<td>` whose one child is a checkbox,
+// read by its `checked` attribute. Anything else in the cell, or a `<th>`,
+// keeps its content.
+const spelledCheckbox: CellValueReader<CellValue> = (cell, content) => {
+	if (cell.tagName !== "TD" || cell.childNodes.length !== 1) return content;
+	const only = cell.firstChild;
+	if (only?.nodeType !== ELEMENT_NODE) return content;
+	const input = only as Element;
+	if (
+		input.tagName !== "INPUT" ||
+		input.getAttribute("type")?.toLowerCase() !== "checkbox"
+	) {
+		return content;
+	}
+	return input.hasAttribute("checked");
+};
+
+// `booleanMarks` reads a checkbox as a boolean and is asked for only by a
+// parse of text written in that spelling: import, paste, and the clipboard
+// read the matrix without it, so they never produce a boolean from markup.
+function parseHtmlMatrix(
+	text: string,
+	booleanMarks = false,
+): MatrixParseResult {
 	if (text.trim() === "") {
 		return { ok: false, issues: [{ code: "empty-source" }] };
 	}
@@ -471,7 +522,10 @@ function parseHtmlMatrix(text: string): MatrixParseResult {
 		};
 	}
 
-	const reading = readHtmlTable(text);
+	const cellValue: CellValueReader<CellValue> = booleanMarks
+		? spelledCheckbox
+		: contentOnly;
+	const reading = readTable(text, cellValue);
 	if (!reading) {
 		return {
 			ok: false,
@@ -489,7 +543,7 @@ function parseHtmlMatrix(text: string): MatrixParseResult {
 			alignments: table.alignments,
 		},
 		warnings: table.warnings.length > 0 ? table.warnings : undefined,
-		rows: htmlRows(text, table),
+		rows: htmlRows(text, table, cellValue),
 	};
 }
 
@@ -505,7 +559,8 @@ function parseHtmlMatrix(text: string): MatrixParseResult {
 // then has no text of its own.
 function htmlRows(
 	text: string,
-	table: HtmlTable,
+	table: HtmlTable<CellValue>,
+	cellValue: CellValueReader<CellValue>,
 ): readonly SourceTableRow[] | undefined {
 	const scanned = htmlSourceRows(text);
 	if (
@@ -521,8 +576,10 @@ function htmlRows(
 	// where the scan still sees markup could happen to have the same shape
 	// (#414). The rows are trusted only when reading their own text as a table
 	// gives back exactly what the parser read from the whole text.
-	const echo = readHtmlTable(
+	// Read with the same cell reader, so a spelled checkbox echoes as itself.
+	const echo = readTable(
 		`<table>${scanned.map((row) => text.slice(row.from, row.to)).join("")}</table>`,
+		cellValue,
 	);
 	if (
 		!echo?.ok ||
@@ -626,25 +683,47 @@ export function htmlCellContent(value: TextContent): string {
 
 function cellMarkup(
 	tag: "th" | "td",
-	value: TextContent,
+	content: string,
 	align: Alignment,
 ): string {
 	const style = align === "default" ? "" : ` style="text-align: ${align}"`;
-	return `      <${tag}${style}>${htmlCellContent(value)}</${tag}>`;
+	return `      <${tag}${style}>${content}</${tag}>`;
+}
+
+// One data cell's content. Under the spelling a boolean is its checkbox.
+function bodyCellContent(
+	row: Row,
+	columnId: string,
+	booleanMarks: boolean,
+): string {
+	const value = readRowCell(row, columnId);
+	if (booleanMarks && typeof value === "boolean") {
+		return value ? CHECKBOX_TRUE : CHECKBOX_FALSE;
+	}
+	return htmlCellContent(cellTextContentAt(row, columnId));
 }
 
 // Indented and line-broken on purpose: this output is meant to be read and
 // pasted by a person, not minified.
-function serializeHtml(document: TableDocument): string {
+function serializeHtml(
+	document: TableDocument,
+	{ booleanMarks = false }: Spelling = {},
+): string {
 	const header = document.columns
-		.map((column) => cellMarkup("th", column.header, column.align))
+		.map((column) =>
+			cellMarkup("th", htmlCellContent(column.header), column.align),
+		)
 		.join("\n");
 
 	const body = document.rows
 		.map((row) => {
 			const cells = document.columns
 				.map((column) =>
-					cellMarkup("td", cellTextContentAt(row, column.id), column.align),
+					cellMarkup(
+						"td",
+						bodyCellContent(row, column.id, booleanMarks),
+						column.align,
+					),
 				)
 				.join("\n");
 			return `    <tr>\n${cells}\n    </tr>`;
@@ -676,8 +755,13 @@ export const htmlCodec: TableCodec = {
 	mimeType: "text/html",
 	// Each `<tr>` from its own parse, as a block of lines (#402).
 	mapsSourceRows: true,
-	parseMatrix: parseHtmlMatrix,
+	parseMatrix: (text) => parseHtmlMatrix(text),
 	parse: (text, options) =>
-		toDocumentParseResult(parseHtmlMatrix(text), options),
+		toDocumentParseResult(
+			parseHtmlMatrix(text, options?.booleanMarks),
+			options,
+		),
 	serialize: serializeHtml,
+	spellings: ["booleanMarks"],
+	booleanTokens: HTML_BOOLEAN_TOKENS,
 };

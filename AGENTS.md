@@ -163,7 +163,9 @@ vocabulary and `docs/adr/` for the reasoning.
   before adding readable alignment padding. Jira escapes pipes, newlines,
   backslashes, and literal ampersands. Both also escape an inline-syntax marker
   exactly where their own grammar could read it as syntax, so plain text keeps
-  its bytes unless it holds something that parses (`docs/adr/0011`). Each
+  its bytes unless it holds something that parses (`docs/adr/0011`). Under its
+  opt-in boolean spelling, Jira also writes a cell whose whole text is a status
+  icon, `(/)` or `(x)`, as `\(/)` or `\(x)` (#485). Each
   parser reverses only the grammar its serializer emits, exactly once and
   without recursive decoding. A value must survive a round trip through either
   codec byte-exact. Never flatten or drop content to make serialized text look
@@ -191,7 +193,7 @@ vocabulary and `docs/adr/` for the reasoning.
   string project alike and stay distinct only when the previous document
   supplies that distinction. Under a format's opt-in boolean spelling, a token
   keeps a boolean only where the text did not change, and projection text no
-  longer does (#484). See `docs/adr/0008`.
+  longer does (#484, #485). See `docs/adr/0008`.
 - **Column alignment is document state.** Alignment is Markdown- and
   HTML-specific metadata but belongs to the document, so it survives time spent
   in CSV, TSV, or Jira. None of those formats can express it, and it round-trips

@@ -337,6 +337,11 @@ copy path produces. Decided on #77.
   reader sideways. Cells keep `whitespace-pre-wrap`, so the line breaks the
   codecs escape survive. Alignment comes from the column's own alignment.
 - **A document with no rows shows a written empty state**, not a bare header row.
+- **A boolean follows the HTML spelling** (#485). While HTML writes booleans
+  as checkboxes, the preview draws each as the shared `Checkbox`, read-only and
+  outside the tab order (the preview holds no controls), named like the grid's
+  boolean cell, with its checked state exposed. Otherwise it reads `true` or
+  `false` like any other value.
 - **Inline content renders as its semantic elements** (#306): `strong`, `em`,
   `u`, `s`, and `code` on the `font-value` token, built as React elements from
   the document's nodes, never from authored markup. Formatting is carried by
@@ -544,7 +549,7 @@ changing the preset or pane count.
 Settings is the other deliberate exception. It holds the six global source
 display defaults (#55, #276, the line-break mark, owner, 2026-09-19, and
 column alignment, #396), Markdown's line-break spelling (#397) and the boolean
-spelling (#484), and, under
+spelling shared by Markdown, Jira, and HTML (#484, #485), and, under
 its own Visual Table heading below them, the one switch that draws boolean
 cells as checkboxes (#483), whose icon is a checked box. Each one applies as it changes: a read-only preview at
 the top of the dialog is a real source editor built from the same indicator
@@ -560,8 +565,8 @@ lines, align columns, empty values, tabs, and line breaks are option blocks whos
 draw, wrapping's being the pane menu's own icon and alignment's a columns icon
 because neither draws a mark, and
 whose control is a `Switch`; so are Markdown's line-break spelling, whose icon
-is the `<br>` it writes, and the boolean spelling, whose icon is the `[x]` it
-writes; spaces is one option block holding a
+is the `<br>` it writes, and the boolean spelling, whose icon is the `[x]`
+Markdown writes; spaces is one option block holding a
 `SegmentedControl` of its four modes, with the chosen mode's description above
 it. A write the browser refuses is reported in place and the controls show what
 was actually saved. The owner replaced the earlier transactional draft with
@@ -577,7 +582,7 @@ Settings' layout, width, glyph slots, order, and footer, and applies each change
 as it is made; the pane behind it is the preview. It offers a setting only
 where the pane's format can use it: column alignment appears only in a pane
 whose format aligns on screen (#396), and each spelling only in a pane whose
-format offers a choice of it (#397, #484). Every setting is one option
+format offers a choice of it (#397, #484, #485). Every setting is one option
 block holding a `SegmentedControl` whose first segment is `Default (<value>)`,
 following the default in Settings and naming the value it follows, then the
 setting's own values: `On` and `Off` for a switch, the four modes for spaces.
