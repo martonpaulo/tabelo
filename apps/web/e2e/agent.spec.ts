@@ -184,6 +184,8 @@ test("the agent starts the first table of an empty library and the welcome surfa
 		.getByRole("button", { name: copy.deleteTable.confirm })
 		.click();
 	await expect(tabelo.welcome).toBeVisible();
+	// A dialog still fading out is an open choice to the agent's input guard.
+	await expect(page.getByRole("dialog")).toHaveCount(0);
 
 	const empty = await agent.call("tabelo_list_tables", {
 		sessionId: agent.sessionId,
