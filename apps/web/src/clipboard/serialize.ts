@@ -2,6 +2,7 @@ import Papa from "papaparse";
 import { cellText, headerContent } from "@/core/cell-value";
 import type { CellValue, TextContent } from "@/core/types";
 import { htmlCellContent } from "@/formats/html";
+import { readClipboardTable } from "./parse";
 import { type ClipboardSelection, embedTabeloPayload } from "./payload";
 
 // Copy writes two flavours: tab-separated text, which every spreadsheet
@@ -22,9 +23,41 @@ import { type ClipboardSelection, embedTabeloPayload } from "./payload";
 export type CopyScope = "selection" | "source" | "preview" | "format";
 
 export function matrixToTsv(matrix: readonly (readonly CellValue[])[]): string {
-	return Papa.unparse(
-		matrix.map((row) => row.map(cellText)),
-		{ delimiter: "\t", newline: "\n" },
+	const values = matrix.map((row) => row.map(cellText));
+	const tsv = Papa.unparse(values, { delimiter: "\t", newline: "\n" });
+	if (values.some((row) => row.length !== 1) || readsBackAs(tsv, values)) {
+		return tsv;
+	}
+	// One column carries no tab, so pasted alone this text is read as plain
+	// text, which keeps the quotes Papa adds around a boundary space or a
+	// double quote (#491). The bare lines are written instead, but only when
+	// they read back as the same values and need no qualifier in
+	// tab-separated values, so a spreadsheet still reads the same cells: no
+	// tab, no line break, and no double quote opening a value. A line break
+	// inside a value has no plain spelling at all, and a value that opens
+	// with a quote keeps the spreadsheet's reading; both stay quoted, and the
+	// HTML flavour beside them is what carries them exactly.
+	const lines = values.map(([value = ""]) => value);
+	const bare = lines.join("\n");
+	const plain = lines.every((value) => !/[\t\r\n]|^"/.test(value));
+	return plain && readsBackAs(bare, values) ? bare : tsv;
+}
+
+// Whether the clipboard reader, given this text and no other flavour, returns
+// exactly these values.
+function readsBackAs(
+	text: string,
+	values: readonly (readonly string[])[],
+): boolean {
+	const read = readClipboardTable({ text })?.matrix;
+	return (
+		read !== undefined &&
+		read.length === values.length &&
+		read.every(
+			(row, index) =>
+				row.length === values[index]?.length &&
+				row.every((cell, column) => cellText(cell) === values[index]?.[column]),
+		)
 	);
 }
 

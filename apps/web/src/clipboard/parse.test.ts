@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 
+import Papa from "papaparse";
 import { describe, expect, it } from "vitest";
 import { readClipboardTable } from "./parse";
 import { selectionClipboardPayload } from "./serialize";
@@ -80,5 +81,58 @@ describe("reading whitespace and empty fields", () => {
 			});
 			expect(readClipboardTable(payload)?.matrix).toEqual(matrix);
 		}
+	});
+});
+
+// The plain flavour a grid copy writes has to read back as the same values
+// when it is the only flavour pasted (#491). A one-column selection carries no
+// tab, so it is read as plain text, which has no quoting grammar to undo.
+describe("reading Tabelo's plain flavour alone", () => {
+	const plainOnly = (matrix: string[][]) =>
+		readClipboardTable({
+			text: selectionClipboardPayload({
+				matrix,
+				expectedTypes: matrix[0]?.map(() => "text") ?? [],
+			}).text,
+		})?.matrix;
+
+	it.each([
+		["a cell holding only spaces", [["  "]]],
+		["a leading space", [[" Ingrid"]]],
+		["a trailing space", [["Ingrid "]]],
+		["a double quote inside the value", [['say "hi"']]],
+		["one column of several rows", [["Ingrid"], [" Rio"]]],
+		["a comma beside a boundary space", [[" Ingrid, Rio"]]],
+		["several columns", [["Ingrid", " Rio"]]],
+	])("keeps %s byte for byte", (_case, matrix) => {
+		expect(plainOnly(matrix)).toEqual(matrix);
+	});
+
+	// Plain text written by another application keeps its quotes (#425).
+	it("still keeps quotes another application wrote", () => {
+		expect(readClipboardTable({ text: '"x"' })?.matrix).toEqual([['"x"']]);
+	});
+
+	// What a spreadsheet does with the same text: it reads it as tab-separated
+	// values, where a double quote opening a field is a qualifier. Every case,
+	// including the two plain text alone cannot spell, a line break inside a
+	// value and a value that opens with a quote, stays readable there.
+	it.each([
+		[["  "]],
+		[[" Ingrid"]],
+		[['say "hi"']],
+		[["Ingrid"], [" Rio"]],
+		[["Ingrid\nRio"]],
+		[['"Ingrid"']],
+		[["Ingrid", " Rio"]],
+		[["Ingrid", "Rio\tMadrid"]],
+	])("stays tab-separated values a spreadsheet reads: %j", (...matrix) => {
+		const text = selectionClipboardPayload({
+			matrix,
+			expectedTypes: matrix[0]?.map(() => "text") ?? [],
+		}).text;
+		expect(
+			Papa.parse<string[]>(text, { delimiter: "\t", newline: "\n" }).data,
+		).toEqual(matrix);
 	});
 });
