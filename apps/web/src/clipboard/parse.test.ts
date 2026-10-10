@@ -104,6 +104,11 @@ describe("reading Tabelo's plain flavour alone", () => {
 		["one column of several rows", [["Ingrid"], [" Rio"]]],
 		["a comma beside a boundary space", [[" Ingrid, Rio"]]],
 		["several columns", [["Ingrid", " Rio"]]],
+		// A one-column value holding a delimiter another format sniffs (#500).
+		["a comma", [["Rio, Madrid"]]],
+		["a semicolon", [["Rio; Madrid"]]],
+		["a pipe", [["Rio | Madrid"]]],
+		["several rows holding a comma", [["Rio, Madrid"], ["Ingrid"]]],
 	])("keeps %s byte for byte", (_case, matrix) => {
 		expect(plainOnly(matrix)).toEqual(matrix);
 	});
@@ -111,6 +116,22 @@ describe("reading Tabelo's plain flavour alone", () => {
 	// Plain text written by another application keeps its quotes (#425).
 	it("still keeps quotes another application wrote", () => {
 		expect(readClipboardTable({ text: '"x"' })?.matrix).toEqual([['"x"']]);
+	});
+
+	// The writer quotes a one-column value the reader would otherwise split
+	// (#500); the reader is unchanged, so text another application wrote is
+	// sniffed exactly as before.
+	it("still splits delimited text another application wrote", () => {
+		expect(readClipboardTable({ text: "Rio, Madrid" })).toMatchObject({
+			matrix: [["Rio", " Madrid"]],
+			source: "csv",
+		});
+		expect(readClipboardTable({ text: "Rio; Madrid" })?.matrix).toEqual([
+			["Rio", " Madrid"],
+		]);
+		expect(
+			readClipboardTable({ text: "| Rio | Madrid |\n| --- | --- |" }),
+		).toMatchObject({ matrix: [["Rio", "Madrid"]], source: "markdown" });
 	});
 
 	// What a spreadsheet does with the same text: it reads it as tab-separated
@@ -126,6 +147,11 @@ describe("reading Tabelo's plain flavour alone", () => {
 		[['"Ingrid"']],
 		[["Ingrid", " Rio"]],
 		[["Ingrid", "Rio\tMadrid"]],
+		[["Rio, Madrid"]],
+		[["Rio; Madrid"]],
+		[["Rio | Madrid"]],
+		[["Rio, Madrid"], ["Ingrid"]],
+		[["Rio|Madrid"], ["-|-"]],
 	])("stays tab-separated values a spreadsheet reads: %j", (...matrix) => {
 		const text = selectionClipboardPayload({
 			matrix,

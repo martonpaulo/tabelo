@@ -40,7 +40,20 @@ export function matrixToTsv(matrix: readonly (readonly CellValue[])[]): string {
 	const lines = values.map(([value = ""]) => value);
 	const bare = lines.join("\n");
 	const plain = lines.every((value) => !/[\t\r\n]|^"/.test(value));
-	return plain && readsBackAs(bare, values) ? bare : tsv;
+	if (plain && readsBackAs(bare, values)) return bare;
+	// A comma or a semicolon makes the reader take the text as comma-separated
+	// values, which splits a value Papa left unquoted, and the bare lines are
+	// the same text (#500). Quoting every field keeps each value whole there,
+	// and a spreadsheet reads the same quotes as qualifiers around the same
+	// cells. Lines that form a Markdown table have no spelling the reader
+	// takes back exactly, so they keep Papa's output, and the HTML flavour
+	// carries them.
+	const quoted = Papa.unparse(values, {
+		delimiter: "\t",
+		newline: "\n",
+		quotes: true,
+	});
+	return readsBackAs(quoted, values) ? quoted : tsv;
 }
 
 // Whether the clipboard reader, given this text and no other flavour, returns
