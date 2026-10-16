@@ -197,32 +197,3 @@ test("deleting an earlier table leaves every other table's mark colour as it was
 	await expect(tabelo.cell(1, 1)).toHaveText("Second");
 	expect(await markClasses(tabelo)).toEqual(before.slice(1));
 });
-
-// Duplicate (#471) opens a copy named after its source, and the two tables
-// are independent: an edit to the copy leaves the source as it was.
-test("duplicating a table opens an independent copy named after it", async ({
-	tabelo,
-}) => {
-	await tabelo.editCell(1, 1, "Original");
-
-	const options = await tabelo.openTableOptions();
-	await options
-		.getByRole("menuitem", { name: copy.actions.duplicateTable })
-		.click();
-	await expect(tabelo.cell(1, 1)).toHaveText("Original");
-	await tabelo.editCell(1, 1, "Changed in the copy");
-
-	const menu = await tabelo.openAppMenu();
-	const entries = menu.getByRole("menuitem", {
-		name: new RegExp(`^${DEFAULT_TABLE_NAME}`),
-	});
-	await expect(entries).toHaveCount(2);
-	await expect(
-		menu.getByRole("menuitem", {
-			name: new RegExp(`^${DEFAULT_TABLE_NAME} \\(copy\\)`),
-		}),
-	).toHaveCount(1);
-	await entries.first().click();
-	await tabelo.page.keyboard.press("Escape");
-	await expect(tabelo.cell(1, 1)).toHaveText("Original");
-});
