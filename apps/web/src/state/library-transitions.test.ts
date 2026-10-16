@@ -330,3 +330,123 @@ describe("deleting the last table", () => {
 		);
 	});
 });
+
+describe("duplicating a table", () => {
+	const roster = documentFromMatrix(
+		[
+			["Name", "City"],
+			["Ingrid", "Rio"],
+			["Paulo", "Madrid"],
+		],
+		{ headerRow: true },
+	);
+
+	function storedName(id: string): string | undefined {
+		return JSON.parse(localStorage.getItem(tableKey(id)) ?? "{}").name;
+	}
+
+	it("opens an exact copy of the open table under a new id and name, without its history", () => {
+		const source = activeId();
+		useTabeloStore.getState().renameTable("Roster");
+		useTabeloStore.getState().applyDocument(roster);
+		const column = useTabeloStore.getState().document.columns[0]?.id ?? "";
+		useTabeloStore.getState().toggleColumnWrap(column);
+		const before = useTabeloStore.getState();
+		expect(before.past.length).toBeGreaterThan(0);
+
+		const outcome = before.duplicateTable(source);
+		if (outcome.status !== "saved") throw new Error(outcome.status);
+		const after = useTabeloStore.getState();
+		expect(outcome.tableId).not.toBe(source);
+		expect(after.library.activeId).toBe(outcome.tableId);
+		expect(after.library.tables.map((table) => table.name)).toEqual([
+			"Roster",
+			"Roster (copy)",
+		]);
+		expect(after.name).toBe("Roster (copy)");
+		expect(after.document).toEqual(before.document);
+		expect(after.workspace).toEqual(before.workspace);
+		expect(after.past).toHaveLength(0);
+		expect(after.future).toHaveLength(0);
+		expect(storedName(outcome.tableId)).toBe("Roster (copy)");
+		expect(storedName(source)).toBe("Roster");
+		const index = JSON.parse(localStorage.getItem(LIBRARY_KEY) ?? "{}");
+		expect(index.activeId).toBe(outcome.tableId);
+		expect(index.tables).toHaveLength(2);
+	});
+
+	it("keeps the copy independent of its source", () => {
+		const source = activeId();
+		useTabeloStore.getState().applyDocument(roster);
+		useTabeloStore.getState().duplicateTable(source);
+		useTabeloStore
+			.getState()
+			.applyDocument(
+				documentFromMatrix([["Name"], ["Mabel"]], { headerRow: true }),
+			);
+		useTabeloStore.getState().switchTable(source);
+		expect(useTabeloStore.getState().document).toEqual(roster);
+		expect(useTabeloStore.getState().past.length).toBeGreaterThan(0);
+	});
+
+	it("copies a table that is not open from storage and numbers later copies", () => {
+		const { first, second } = twoTables();
+		useTabeloStore.getState().renameTable("Roster", first);
+		useTabeloStore.getState().switchTable(second);
+		const outcome = useTabeloStore.getState().duplicateTable(first);
+		if (outcome.status !== "saved") throw new Error(outcome.status);
+		expect(useTabeloStore.getState().name).toBe("Roster (copy)");
+		expect(isDocumentBlank(useTabeloStore.getState().document)).toBe(false);
+		const again = useTabeloStore.getState().duplicateTable(first);
+		if (again.status !== "saved") throw new Error(again.status);
+		expect(useTabeloStore.getState().name).toBe("Roster (copy 2)");
+		expect(useTabeloStore.getState().library.tables).toHaveLength(4);
+	});
+
+	it("refuses a table the library does not hold", () => {
+		expect(useTabeloStore.getState().duplicateTable("missing").status).toBe(
+			"missing",
+		);
+	});
+
+	it("leaves the library and open table untouched when the copy cannot be written", () => {
+		const source = activeId();
+		useTabeloStore.getState().applyDocument(roster);
+		flushPersistence();
+		const before = useTabeloStore.getState();
+		const raw = localStorage.getItem(LIBRARY_KEY);
+		const keys = Object.keys(localStorage);
+		const write = localStorage.setItem.bind(localStorage);
+		vi.spyOn(window.localStorage, "setItem").mockImplementation(
+			(key, value) => {
+				if (key !== tableKey(source))
+					throw new DOMException("Full", "QuotaExceededError");
+				write(key, value);
+			},
+		);
+		expect(before.duplicateTable(source).status).toBe("quota");
+		expect(useTabeloStore.getState().library).toBe(before.library);
+		expect(useTabeloStore.getState().document).toBe(before.document);
+		expect(localStorage.getItem(LIBRARY_KEY)).toBe(raw);
+		expect(Object.keys(localStorage).sort()).toEqual(keys.sort());
+	});
+
+	it("removes the copy's payload when only the index write fails", () => {
+		const source = activeId();
+		useTabeloStore.getState().applyDocument(roster);
+		flushPersistence();
+		const before = useTabeloStore.getState();
+		const keys = Object.keys(localStorage);
+		const write = localStorage.setItem.bind(localStorage);
+		vi.spyOn(window.localStorage, "setItem").mockImplementation(
+			(key, value) => {
+				if (key === LIBRARY_KEY)
+					throw new DOMException("Full", "QuotaExceededError");
+				write(key, value);
+			},
+		);
+		expect(before.duplicateTable(source).status).toBe("quota");
+		expect(useTabeloStore.getState().library).toBe(before.library);
+		expect(Object.keys(localStorage).sort()).toEqual(keys.sort());
+	});
+});

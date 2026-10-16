@@ -85,6 +85,7 @@ import {
 import {
 	addTable,
 	isNameTaken,
+	nameForDuplicate,
 	nameForNewTable,
 	nextTableMark,
 	removeTable,
@@ -671,6 +672,11 @@ export interface TabeloState {
 	// last one is deleted (#466); the others sit in storage under their own keys
 	// and are read when they become active.
 	createTable: (name?: string) => LibraryTransitionOutcome;
+	// Copies any table, open or not, into a new table that is opened. The copy
+	// carries the document, workspace, column preferences and any draft, under
+	// its own id and a name derived from the source; its history starts empty,
+	// because history belongs to the table it was recorded in.
+	duplicateTable: (id: TableId) => LibraryTransitionOutcome;
 	// The document of any table in the library: the open one from memory, and
 	// another from the key it is stored under. Read-only, for the commands
 	// that write a table out without opening it (owner, 2026-09-20).
@@ -2908,6 +2914,43 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		}
 		retainActiveSession(get());
 		set({ library, ...blank, storageIssue: null });
+		return { status: "saved", tableId: entry.id };
+	},
+
+	duplicateTable: (id) => {
+		const state = get();
+		const source = state.library.tables.find((table) => table.id === id);
+		if (!source) return { status: "missing" };
+		if (storageBlocksWrites(state.storageIssue)) return { status: "blocked" };
+		// The open table is written first, so the copy of it is the content on
+		// screen and leaving it for the copy cannot lose an edit.
+		const flushed = flushPersistence();
+		if (flushed.status !== "saved") return flushed;
+		// A payload that is missing or unreadable has nothing to copy, and a
+		// blank table under the copy's name would claim otherwise.
+		const payload =
+			id === state.library.activeId ? savePayload(get()) : storedPayload(id);
+		if (!payload) return { status: "blocked" };
+		const entry = {
+			id: createTableId(),
+			name: nameForDuplicate(state.library, source.name),
+			mark: nextTableMark(state.library),
+		};
+		const copied = { ...payload, name: entry.name };
+		const library = addTable(state.library, entry);
+		const saved = saveTable(entry.id, copied);
+		const indexed =
+			saved.status === "saved" ? writeLibraryIndex(library) : saved;
+		if (indexed.status !== "saved") {
+			// This key was allocated for this failed copy and holds nothing else.
+			if (saved.status === "saved") removeStoredTable(entry.id);
+			set({ storageIssue: { kind: indexed.status } });
+			return indexed;
+		}
+		retainActiveSession(get());
+		// Opened from what was just stored, the way switching opens a table, so
+		// the copy on screen is the copy a reload reads.
+		openTable(library);
 		return { status: "saved", tableId: entry.id };
 	},
 

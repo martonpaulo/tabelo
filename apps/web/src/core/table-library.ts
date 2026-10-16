@@ -8,6 +8,8 @@
 // hold no table at all: deleting the last one leaves nothing active and the app
 // shows the welcome surface (#466).
 
+import { MAX_TABLE_NAME_CODE_POINTS } from "@/core/table-name";
+
 export type TableId = string;
 
 // The colour of a table's mark, one of the six table mark tokens. It is
@@ -63,6 +65,28 @@ export function nameForNewTable(
 	let index = 1;
 	while (taken.has(`${defaultName} ${index}`)) index += 1;
 	return { name: `${defaultName} ${index}`, renameFirst };
+}
+
+// A duplicate is named after the table it copies, so the list says where it
+// came from: "Name (copy)", then "Name (copy 2)" and on for later copies. The
+// source part is shortened when the whole would pass the name limit, so the
+// suffix, which is what tells the copies apart, always survives.
+export function nameForDuplicate(
+	library: TableLibrary,
+	sourceName: string,
+): string {
+	const taken = new Set(library.tables.map((table) => table.name));
+	const named = (suffix: string) => {
+		const room = Math.max(0, MAX_TABLE_NAME_CODE_POINTS - [...suffix].length);
+		return `${[...sourceName].slice(0, room).join("").trimEnd()}${suffix}`;
+	};
+	let candidate = named(" (copy)");
+	let index = 2;
+	while (taken.has(candidate)) {
+		candidate = named(` (copy ${index})`);
+		index += 1;
+	}
+	return candidate;
 }
 
 // Two tables that already share a name, from before the rule or from a

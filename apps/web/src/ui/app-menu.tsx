@@ -29,6 +29,7 @@ import {
 	IconBrandGithub,
 	IconCheck,
 	IconClipboardCopy,
+	IconCopy,
 	IconDots,
 	IconDownload,
 	IconFilePlus,
@@ -190,6 +191,9 @@ export function AppMenu({
 							onOpen={() => useTabeloStore.getState().switchTable(table.id)}
 							onRename={() =>
 								menuDialog.runAfterClose(() => onRename(table.id))
+							}
+							onDuplicate={() =>
+								menuDialog.runAfterClose(() => duplicateTable(table))
 							}
 							onDelete={() =>
 								menuDialog.runAfterClose(() => onDeleteTable(table.id))
@@ -462,6 +466,7 @@ function TableCommands({
 	active,
 	onOpen,
 	onRename,
+	onDuplicate,
 	onDelete,
 	onCopy,
 	onDownload,
@@ -473,6 +478,7 @@ function TableCommands({
 	readonly active: boolean;
 	readonly onOpen: () => void;
 	readonly onRename: () => void;
+	readonly onDuplicate: () => void;
 	readonly onDelete: () => void;
 	readonly onCopy: () => void;
 	readonly onDownload: () => void;
@@ -491,6 +497,10 @@ function TableCommands({
 			<Item onClick={onRename}>
 				<IconPencil aria-hidden />
 				{copy.actions.renameTable}
+			</Item>
+			<Item onClick={onDuplicate}>
+				<IconCopy aria-hidden />
+				{copy.actions.duplicateTable}
 			</Item>
 			{/* Every table offers the same commands. Writing one out reads its
 			    stored document, so it never has to be opened; reshaping one is an
@@ -521,6 +531,7 @@ function TableRow({
 	size,
 	onOpen,
 	onRename,
+	onDuplicate,
 	onDelete,
 	onCopy,
 	onDownload,
@@ -531,6 +542,7 @@ function TableRow({
 	readonly size: string;
 	readonly onOpen: () => void;
 	readonly onRename: () => void;
+	readonly onDuplicate: () => void;
 	readonly onDelete: () => void;
 	readonly onCopy: () => void;
 	readonly onDownload: () => void;
@@ -546,6 +558,7 @@ function TableRow({
 			active={active}
 			onOpen={onOpen}
 			onRename={onRename}
+			onDuplicate={onDuplicate}
 			onDelete={onDelete}
 			onCopy={onCopy}
 			onDownload={onDownload}
@@ -619,6 +632,7 @@ function TableRow({
 						active={active}
 						onOpen={onOpen}
 						onRename={onRename}
+						onDuplicate={onDuplicate}
 						onDelete={onDelete}
 						onCopy={onCopy}
 						onDownload={onDownload}
@@ -653,6 +667,32 @@ function transposeTable(convertTypedValues = false): number | null {
 		});
 	}
 	return null;
+}
+
+// Duplicates a table and opens the copy, then says so, because the menu that
+// ran it has closed and the workspace now shows another table. A storage
+// failure is already reported by the storage notice; a source that could not
+// be read is said here, since nothing else would.
+function duplicateTable(table: TableEntry): void {
+	const store = useTabeloStore.getState();
+	const outcome = store.duplicateTable(table.id);
+	if (outcome.status === "saved") {
+		const name =
+			useTabeloStore
+				.getState()
+				.library.tables.find((entry) => entry.id === outcome.tableId)?.name ??
+			table.name;
+		store.pushNotice({
+			severity: "info",
+			message: copy.notices.tableDuplicated(table.name, name),
+		});
+	} else if (outcome.status === "blocked" || outcome.status === "missing") {
+		if (useTabeloStore.getState().storageIssue) return;
+		store.pushNotice({
+			severity: "warning",
+			message: copy.notices.tableNotDuplicated(table.name),
+		});
+	}
 }
 
 function TableStructureCommands({

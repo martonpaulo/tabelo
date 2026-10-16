@@ -4,6 +4,7 @@ import {
 	isLargeLibrary,
 	isNameTaken,
 	LARGE_LIBRARY_SIZE,
+	nameForDuplicate,
 	nameForNewTable,
 	nextTableMark,
 	removeTable,
@@ -12,6 +13,7 @@ import {
 	type TableLibrary,
 	withUniqueNames,
 } from "./table-library";
+import { MAX_TABLE_NAME_CODE_POINTS } from "./table-name";
 
 const DEFAULT_NAME = "Untitled table";
 
@@ -146,5 +148,35 @@ describe("a table's mark", () => {
 		const library = libraryOf("Roster", "Budget", "Costs");
 		const after = removeTable(library, "t0");
 		expect(after.tables.map((table) => table.mark)).toEqual([2, 3]);
+	});
+});
+
+describe("nameForDuplicate", () => {
+	it("names the first copy after its source", () => {
+		expect(nameForDuplicate(libraryOf("Roster"), "Roster")).toBe(
+			"Roster (copy)",
+		);
+	});
+
+	it("numbers later copies from two, skipping names already taken", () => {
+		expect(
+			nameForDuplicate(libraryOf("Roster", "Roster (copy)"), "Roster"),
+		).toBe("Roster (copy 2)");
+		expect(
+			nameForDuplicate(
+				libraryOf("Roster", "Roster (copy)", "Roster (copy 2)"),
+				"Roster",
+			),
+		).toBe("Roster (copy 3)");
+	});
+
+	it("shortens the source, never the suffix, to stay within the name limit", () => {
+		const long = "x".repeat(MAX_TABLE_NAME_CODE_POINTS);
+		const name = nameForDuplicate(libraryOf(long), long);
+		expect([...name]).toHaveLength(MAX_TABLE_NAME_CODE_POINTS);
+		expect(name.endsWith(" (copy)")).toBe(true);
+		const second = nameForDuplicate(libraryOf(long, name), long);
+		expect([...second].length).toBeLessThanOrEqual(MAX_TABLE_NAME_CODE_POINTS);
+		expect(second.endsWith(" (copy 2)")).toBe(true);
 	});
 });

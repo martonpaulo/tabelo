@@ -225,7 +225,7 @@ no brand row: the trigger is the product's own mark. Its footer is one line,
 the product and its copyright in muted text beside the link to its source.
 
 A table's options list `Open table` (except on the open one), `Rename table`,
-the whole-table commands `Transpose table` and `Delete empty rows and columns`
+`Duplicate table`, the whole-table commands `Transpose table` and `Delete empty rows and columns`
 (#235), `Copy table` and `Download table`, which share one format chooser, and
 `Delete` with the table's name last, under a separator. The whole-table commands live there because
 they act on a table rather than on a row, a column, or a pane: an axis menu is
@@ -234,7 +234,11 @@ table that is not open opens that table first, so the change lands in its own
 history. Each is disabled with a written reason when it cannot apply, and each
 reports its result in an `info` notice offering `Undo` (see
 `4-interaction-states.md`, Notice severity), with no confirmation before it.
-Transpose turns the first column into the header row, which holds text only,
+`Duplicate table` copies the table's document, workspace, column preferences,
+and any draft into a new table named `Name (copy)`, then `Name (copy 2)` and on,
+appended to the library and opened, with an empty history; an `info` notice
+names the copy, and it has no `Undo` because the copy is deleted like any
+other table. Transpose turns the first column into the header row, which holds text only,
 so when that column holds any number, boolean, or null it first asks in the
 same dialog shape as the column type change, naming how many values will
 become text, with `Cancel` (nothing changes) and `Transpose anyway`; with none

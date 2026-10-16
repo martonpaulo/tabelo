@@ -912,6 +912,7 @@ export const copy = {
 		// Named for the table it acts on, because every row in the list carries
 		// this command and the name is what tells them apart (owner, 2026-09-20).
 		renameTableNamed: (name: string) => `Rename ${name}`,
+		duplicateTable: "Duplicate table",
 		importFile: "Import file",
 		newTable: "New table",
 		// Every table's row carries rename and delete, so both are named after
@@ -1193,6 +1194,12 @@ export const copy = {
 		// Whole-table commands report in a notice rather than the status line,
 		// because the notice is also where their Undo is offered (#235).
 		tableTransposed: "Table transposed.",
+		// Said after Duplicate table, which opens the copy: the name tells the
+		// reader which table the workspace now shows.
+		tableDuplicated: (source: string, name: string) =>
+			`${name} created from ${source}.`,
+		tableNotDuplicated: (source: string) =>
+			`${source} could not be read, so it was not duplicated.`,
 		emptyRowsAndColumnsDeleted: (rows: number, columns: number) => {
 			const parts = [
 				rows > 0 ? `${rows} empty ${rows === 1 ? "row" : "rows"}` : "",
