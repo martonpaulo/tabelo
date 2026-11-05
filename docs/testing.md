@@ -152,6 +152,9 @@ broad invariant and measurements justify the larger budget.
 `AGENTS.md` lists the browser commands and when a change needs them. This
 section is the procedure for a focused run.
 
+Do not run the Playwright suite locally as a gate. Push to `main`, let CI run the browser suite,
+then read its result. A focused run while iterating, as below, is not a gate.
+
 Pass a focused spec path or Playwright option directly after the root script.
 Never add a standalone `--` after `pnpm test:e2e`: it ends option parsing and
 can turn a focused command into the configured project matrix. Before a new

@@ -36,6 +36,9 @@ the record, and a decision left there is one this document does not have.
 Where a rule replaces an earlier one, rewrite the paragraph rather than
 appending the change as chronology (#85).
 
+**A request to make the interface prettier starts with a visual mockup.** Show it first and get
+visual approval before changing the UI.
+
 **Also report, do not silently fix, when you find an existing pattern break**:
 a raw hex value, a one-off spacing, a control that does not match its family, a
 second way of doing something this document already covers. Say what it is,

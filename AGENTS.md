@@ -121,6 +121,8 @@ The product priority order is fixed:
 
 Do not trade a higher-priority item for a lower-priority item.
 
+Every view matches the visual grid in look and behaviour wherever its representation allows.
+
 ## Domain rules
 
 These are normative and were resolved deliberately. See `CONTEXT.md` for
@@ -369,8 +371,8 @@ derived from text; that projection reads its visible text. See `docs/adr/0011`.
 `pnpm validate` is the full gate before a commit: `pnpm check`,
 `pnpm check:dead-code`, `pnpm check-types` and `pnpm test`, in that order. A
 change is not done while `pnpm check`, `pnpm check-types`, or `pnpm test` fails
-on the exact current head. Add `pnpm test:e2e` when the change crosses a UI
-boundary. While iterating, prefer the smallest relevant check.
+on the exact current head. A change that crosses a UI boundary gets its
+browser result from CI, not from a local gate (`docs/testing.md`). While iterating, prefer the smallest relevant check.
 
 - `pnpm dev`: run the app locally. The dev and preview ports are derived from
   the worktree path so parallel checkouts cannot serve or test each other's
@@ -584,6 +586,9 @@ Both are slow while working, which is what makes elapsed time a bad signal here.
   something by hand that one of those already does is a defect, not craft; and
   writing a dependency's job by hand needs a stated reason.
 - Prefer the smallest correct, readable, reversible solution.
+- Choose technology on merit for the specific problem, never to match other projects.
+- Interview the owner on product and domain one question at a time, then decide the
+  architecture alone.
 - Maintain one owner and one source of truth for each rule, state, mapping,
   default, and copy value. Derive values instead of storing synchronized copies.
   Model invalid states explicitly.
@@ -796,6 +801,8 @@ write the card in the same turn: a card written only as Markdown does not ask.
 - Run the smallest relevant check repeatedly until it passes. Only then move to
   the next broader relevant validation, and finish with coverage proportional to
   the risk.
+- Judge repository state from `origin` or the default branch, never from a local working tree: it
+  goes stale when a parallel lane merges.
 - Report exact skips, blockers, residual risk, and manual gaps.
 
 ### Issue tracking for unresolved defects
