@@ -24,10 +24,10 @@
 	},
 	"devDependencies": {
 		"@tabelo/config": "workspace:*",
-		"@tailwindcss/postcss": "^4.3.2",
+		"@tailwindcss/postcss": "^4.3.4",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
-		"shadcn": "^4.21.0",
+		"shadcn": "^4.23.0",
 		"tailwindcss": "catalog:",
 		"typescript": "catalog:"
 	}
