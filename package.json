@@ -18,10 +18,10 @@
 		"test:e2e:serve": "pnpm --filter web run build && pnpm --filter web run serve --host 127.0.0.1",
 		"test:e2e:install": "pnpm --filter web exec playwright install chromium",
 		"dev:web": "pnpm --filter web dev",
-		"check": "biome check --write . && python3 scripts/text_check.py .",
+		"check": "biome check --write . && python3 scripts/text_check.py . && python3 scripts/conventions.py --root . && python3 -m unittest discover -s scripts -p 'test_*.py' -q",
 		"check:dead-code": "knip",
 		"validate": "pnpm check && pnpm check:dead-code && pnpm check-types && pnpm test",
-		"lint": "biome check . && python3 scripts/text_check.py .",
+		"lint": "biome check . && python3 scripts/text_check.py . && python3 scripts/conventions.py --root . && python3 -m unittest discover -s scripts -p 'test_*.py' -q",
 		"prepare": "husky",
 		"postinstall": "node apps/web/write-launch-config.js"
 	},

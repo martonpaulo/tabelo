@@ -383,8 +383,11 @@ browser result from CI, not from a local gate (`docs/testing.md`). While iterati
 - `pnpm check`: Biome format and lint with `--write`, then
   `scripts/text_check.py`, an unchanged copy of the Workbench text check (no
   invisible character, every relative link and anchor resolves, a long `docs/`
-  page opens with a Contents list). `pnpm lint`, which CI runs, does the same
-  without `--write` (#525)
+  page opens with a Contents list), then `scripts/conventions.py`, Tabelo's
+  own check of the mechanical rules under `## Code, comments, and
+  documentation` and the no-sleep rule for browser tests, with its fixture
+  tests (#540). `pnpm lint`, which CI runs, does the same without `--write`
+  (#525)
 - `pnpm bench`: the performance harness, on fixed synthetic tables at the
   target scale and one step past it. It prints numbers and never gates:
   there is no threshold and no CI job. `docs/performance.md` owns the
@@ -680,13 +683,21 @@ owner from both UI and agent entrypoints, and compact reads.
   external rule, not mechanics. Link official documentation when an external
   rule must stay visible to prevent a regression.
 - Write every TypeScript comment with `//`, including multi-line ones. Do not
-  use `/** */` or `/* */` blocks, and do not write JSDoc annotation tags.
+  use `/** */` or `/* */` blocks, and do not write JSDoc annotation tags. A
+  JSX comment, `{/* ... */}` among a component's children, is the one
+  exception: JSX has no `//` form there, and a `//` renders as text (#540).
 - Never use the Unicode em dash character (U+2014) anywhere in tracked project
   text, including code, comments, copy, documentation, metadata, and tests. Use
   a comma, colon, parentheses, or a sentence break that matches the meaning.
 - Use a relative import only for a sibling in the same directory: `./thing` is
   allowed, `../thing` and `./../thing` are not. Reach anything outside the
   current directory through the `@/` alias.
+- `scripts/conventions.py` enforces the three rules above and the browser
+  suite's no-sleep rule, naming file, line and rule (#540). It is a separate
+  script because `scripts/text_check.py` stays an unchanged Workbench copy and
+  Biome has no rule for comment form or em dashes; its parent-import rule is
+  there rather than in Biome because a subtree's `noRestrictedImports`
+  override replaces the root's patterns instead of adding to them.
 - Update the smallest canonical documentation section when a durable contract
   changes. Do not create empty documentation for possible future use.
 - Keep the README easy to scan. Preserve third-party licenses and notices.
