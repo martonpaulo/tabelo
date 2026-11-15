@@ -65,6 +65,11 @@
 	--radius-interactive: var(--control-radius);
 	--radius-indicator: var(--indicator-radius);
 	--radius-surface: var(--surface-radius);
+	/* The selection edge's width, for every selection and focus mark:
+	   `border-edge` (and its sides), `outline-edge`, `outline-offset-edge`. */
+	--border-width-edge: var(--selection-edge-w);
+	--outline-width-edge: var(--selection-edge-w);
+	--outline-offset-edge: var(--selection-edge-w);
 
 	--font-source: var(--font-family-source);
 	--font-value: var(--font-family-source);

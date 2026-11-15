@@ -396,7 +396,7 @@ export function AppMenu({
 						{pwaUpdate.ready ? (
 							<span
 								aria-hidden
-								className="border-surface-app bg-selection-edge absolute top-1 right-1 size-2 rounded-full border-2"
+								className="border-surface-app bg-selection-edge border-edge absolute top-1 right-1 size-2 rounded-full"
 							/>
 						) : null}
 					</DropdownMenuTrigger>

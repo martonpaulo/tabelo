@@ -213,7 +213,7 @@ export function FillHandle({
 			>
 				<span
 					aria-hidden
-					className="border-background bg-selection-edge size-2 rounded-xs border shadow-sm"
+					className="border-surface-code bg-selection-edge size-2 border"
 				/>
 				<span id="grid-fill-handle-hint" className="sr-only">
 					{copy.a11y.fillHandleHint}

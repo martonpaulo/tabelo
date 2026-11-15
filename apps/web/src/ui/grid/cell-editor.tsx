@@ -150,7 +150,7 @@ export function CellEditor({
 			// and add a line that is not there.
 			className={cn(
 				"bg-surface-code py-content-line-inset text-content leading-content-line absolute inset-0 z-10 h-full w-full cursor-text resize-none overflow-hidden px-2 break-words",
-				"outline-selection-edge outline-2 -outline-offset-2",
+				"outline-selection-edge outline-edge -outline-offset-edge",
 				monospace && "font-value",
 				align,
 			)}

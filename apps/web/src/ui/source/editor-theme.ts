@@ -277,7 +277,7 @@ export const editorTheme = EditorView.theme({
 	// where it is measured, so it is equally sharp at every column (#359).
 	".cm-tabeloCaret, .cm-dropCursor": {
 		display: "none",
-		borderLeft: "calc(2 * var(--hairline-w)) solid var(--selection-edge)",
+		borderLeft: "var(--selection-edge-w) solid var(--selection-edge)",
 		height: "calc(var(--pane-zoom, 1) * 1.25rem) !important",
 		marginTop: "calc(var(--pane-zoom, 1) * -0.125rem)",
 	},

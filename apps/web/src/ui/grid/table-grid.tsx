@@ -266,10 +266,10 @@ function CellMarks({
 	const sides =
 		copied &&
 		cn(
-			copied.top && "border-t-2",
-			copied.right && "border-r-2",
-			copied.bottom && "border-b-2",
-			copied.left && "border-l-2",
+			copied.top && "border-t-edge",
+			copied.right && "border-r-edge",
+			copied.bottom && "border-b-edge",
+			copied.left && "border-l-edge",
 		);
 	return (
 		<>
@@ -277,7 +277,7 @@ function CellMarks({
 				<span
 					aria-hidden
 					data-focus-mark
-					className={cn(place, "border-selection-edge border-2")}
+					className={cn(place, "border-selection-edge border-edge")}
 				/>
 			) : null}
 			{copied ? (
@@ -1943,7 +1943,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				ref={glideRef}
 				aria-hidden
 				data-selection-glide
-				className="border-selection-edge pointer-events-none absolute top-0 left-0 z-20 hidden border-2 transition-transform duration-(--motion-selection) ease-(--motion-ease)"
+				className="border-selection-edge border-edge pointer-events-none absolute top-0 left-0 z-20 hidden transition-transform duration-(--motion-selection) ease-(--motion-ease)"
 			/>
 
 			{/* Drawn against the positioned wrapper rather than the table, because a

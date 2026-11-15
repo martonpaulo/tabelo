@@ -145,6 +145,7 @@ content the user is already looking at and carry no floor either.
 | :--- | :--- | :--- |
 | `--selection-fill` | `bg-selection-fill` | Background of selected cells |
 | `--selection-edge` | `border-selection-edge` | The focused cell's mark, focus rings, resize affordance |
+| `--selection-edge-w` | `border-edge` (and `border-t-edge` and the other sides), `outline-edge`, `outline-offset-edge` | 0.125rem: the width of every selection and focus mark: the focus ring and its gap, the focused cell, the copied range, the fill preview, the cell editor, the drop indicator, the source caret. In inline styles, `var(--selection-edge-w)`. A mark that writes `border-2`, `outline-2`, or a literal width is a pattern break (#560) |
 | `--text-selection-fill` | CSS selection | Native and source-editor text selection |
 | `--primary` / `--primary-foreground` | `bg-primary text-primary-foreground` | The solid accent with a contrast-paired label: the primary decision button, a checked control, and the current find match in every pane |
 | `--active-line-fill` | Source editor theme | Current source line without competing with selected text, drawn with its gutter number only in the editor that has focus (owner, 2026-09-19) |

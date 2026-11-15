@@ -772,7 +772,7 @@ export function RichCellEditor({
 				// Grows with its content over the rows below, as the textarea did,
 				// without measuring: a block's height already follows its text.
 				"bg-surface-code py-content-line-inset text-content leading-content-line absolute inset-x-0 top-0 z-10 min-h-full w-full cursor-text px-2 break-words whitespace-pre-wrap select-text",
-				"outline-selection-edge outline-2 -outline-offset-2",
+				"outline-selection-edge outline-edge -outline-offset-edge",
 				align,
 			)}
 		/>

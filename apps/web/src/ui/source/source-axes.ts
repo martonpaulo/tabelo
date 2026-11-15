@@ -604,11 +604,11 @@ const axisTheme = EditorView.theme({
 		backgroundColor: "var(--selection-edge)",
 	},
 	".cm-tabeloDropIndicator[data-drop-indicator='row']": {
-		height: "0.125rem",
+		height: "var(--selection-edge-w)",
 		transform: "translateY(-50%)",
 	},
 	".cm-tabeloDropIndicator[data-drop-indicator='column']": {
-		width: "0.125rem",
+		width: "var(--selection-edge-w)",
 		transform: "translateX(-50%)",
 	},
 	".cm-lineNumbers .cm-gutterElement.cm-tabeloRowLabel": { cursor: "pointer" },

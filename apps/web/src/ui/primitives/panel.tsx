@@ -35,7 +35,7 @@ const PanelRoot = forwardRef<HTMLElement, React.ComponentProps<"section">>(
 				// biome-ignore lint/a11y/noNoninteractiveTabindex: pane focus ring requires this
 				tabIndex={0}
 				className={cn(
-					`rounded-surface focus-visible:outline-selection-edge relative isolate flex min-h-0 min-w-0 flex-col overflow-hidden focus-visible:outline-2 focus-visible:-outline-offset-2 ${panelSurfaceStyles}`,
+					`rounded-surface focus-visible:outline-selection-edge focus-visible:outline-edge focus-visible:-outline-offset-edge relative isolate flex min-h-0 min-w-0 flex-col overflow-hidden ${panelSurfaceStyles}`,
 					className,
 				)}
 				onKeyDown={(event) => {

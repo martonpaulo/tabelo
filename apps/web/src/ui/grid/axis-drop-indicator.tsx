@@ -49,14 +49,14 @@ export function AxisDropIndicator({
 							top: `${geometry.start}rem`,
 							left: `${geometry.cross}rem`,
 							width: `${geometry.length}rem`,
-							height: "0.125rem",
+							height: "var(--selection-edge-w)",
 							transform: "translateY(-50%)",
 						}
 					: {
 							left: `${geometry.start}rem`,
 							top: `${geometry.cross}rem`,
 							height: `${geometry.length}rem`,
-							width: "0.125rem",
+							width: "var(--selection-edge-w)",
 							transform: "translateX(-50%)",
 						}
 			}

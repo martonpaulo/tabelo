@@ -76,7 +76,7 @@ export function SingleSelectionOption({
 					"font-normal",
 					// Room at the trailing edge for the correction drawn over it.
 					recovery && !compact && "pr-32",
-					"focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-(--focus-ring)",
+					"focus-within:outline-edge focus-within:outline-offset-edge focus-within:outline-(--focus-ring)",
 				)}
 			>
 				{compact ? (
