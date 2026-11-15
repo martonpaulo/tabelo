@@ -84,7 +84,7 @@ export default function HtmlPreview({
 					paneFind.open();
 				}
 			}}
-			className="tabelo-scroll-boundary h-full select-text overflow-auto p-4 pr-pane-trailing pb-pane-end"
+			className="tabelo-scroll-boundary pr-pane-trailing pb-pane-end h-full overflow-auto p-4 select-text"
 		>
 			{/* A table with nothing in it has nothing to read, so it shows the
 			    empty state rather than a grid of blank cells (#357). */}
@@ -93,8 +93,8 @@ export default function HtmlPreview({
 					data-slot="preview-empty"
 					className="flex h-full flex-col items-center justify-center text-center"
 				>
-					<p className="font-medium text-sm">{copy.empty.previewTitle}</p>
-					<p className="mt-1 text-muted-foreground text-xs">
+					<p className="text-sm font-medium">{copy.empty.previewTitle}</p>
+					<p className="text-muted-foreground mt-1 text-xs">
 						{copy.empty.previewBody}
 					</p>
 				</div>
@@ -108,7 +108,7 @@ export default function HtmlPreview({
 					// Drawn like the tables in Claude's own answers (owner,
 					// 2026-09-19): one rounded hairline around the table, a quiet
 					// header band, and row lines only, no vertical dividers.
-					className="w-auto max-w-full border-separate border-spacing-0 overflow-hidden rounded-interactive border border-line-subtle text-content"
+					className="rounded-interactive border-line-subtle text-content w-auto max-w-full border-separate border-spacing-0 overflow-hidden border"
 				>
 					<thead>
 						<tr className="bg-surface-header">

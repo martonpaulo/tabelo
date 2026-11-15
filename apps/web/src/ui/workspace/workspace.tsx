@@ -106,8 +106,8 @@ function Resizer({ axis, ratio, extent, containerRef }: ResizerProps) {
 				aria-valuemax={85}
 				className={
 					isColumns
-						? "pointer-events-auto absolute top-0 z-30 h-full w-2 -translate-x-1/2 cursor-col-resize touch-none hover:bg-selection-edge/30 focus-visible:bg-selection-edge/40"
-						: "pointer-events-auto absolute left-0 z-30 h-2 w-full -translate-y-1/2 cursor-row-resize touch-none hover:bg-selection-edge/30 focus-visible:bg-selection-edge/40"
+						? "hover:bg-selection-edge/30 focus-visible:bg-selection-edge/40 pointer-events-auto absolute top-0 z-30 h-full w-2 -translate-x-1/2 cursor-col-resize touch-none"
+						: "hover:bg-selection-edge/30 focus-visible:bg-selection-edge/40 pointer-events-auto absolute left-0 z-30 h-2 w-full -translate-y-1/2 cursor-row-resize touch-none"
 				}
 				style={
 					isColumns ? { left: `${ratio * 100}%` } : { top: `${ratio * 100}%` }
@@ -276,7 +276,7 @@ export function Workspace({
 			ref={containerRef}
 			aria-label={copy.a11y.workspace}
 			className={cn(
-				"tabelo-scroll-boundary relative min-h-0 min-w-0 flex-1 gap-2 bg-surface-app p-2",
+				"tabelo-scroll-boundary bg-surface-app relative min-h-0 min-w-0 flex-1 gap-2 p-2",
 				// Stacked, the workspace itself scrolls between panes; tiled, it
 				// never does and each pane scrolls its own content.
 				stacked ? "flex flex-col overflow-y-auto" : "grid",

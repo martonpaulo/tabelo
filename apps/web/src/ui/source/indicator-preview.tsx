@@ -81,7 +81,7 @@ export default function IndicatorPreview({
 			// The trailing padding keeps a clipped line off the box's edge on a
 			// narrow window: the preview never scrolls, so text that does not
 			// fit stops short of the edge instead of touching it.
-			className={`[&_.cm-content]:select-none! pointer-events-none select-none pr-3 [&_.cm-editor]:m-0 [&_.cm-editor]:h-auto ${PREVIEW_FRAME_CLASS}`}
+			className={`pointer-events-none pr-3 select-none [&_.cm-content]:select-none! [&_.cm-editor]:m-0 [&_.cm-editor]:h-auto ${PREVIEW_FRAME_CLASS}`}
 			style={{ minHeight: PREVIEW_MIN_HEIGHT }}
 		/>
 	);

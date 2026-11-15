@@ -61,7 +61,7 @@ export function Notice({
 		>
 			<div
 				className={cn(
-					"flex items-start gap-3 rounded-surface p-3 text-sm",
+					"rounded-surface flex items-start gap-3 p-3 text-sm",
 					!floating && "bg-muted",
 				)}
 			>

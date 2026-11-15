@@ -177,7 +177,7 @@ const rowLineInside = "-mb-hairline";
 // source view keeps between a line number and its text.
 function axisNumberClass(movable: boolean): string {
 	return cn(
-		"flex h-content-line-box w-full items-center justify-end rounded-interactive pr-grid-gutter-trailing pl-1 text-right hover:text-foreground",
+		"h-content-line-box rounded-interactive pr-grid-gutter-trailing hover:text-foreground flex w-full items-center justify-end pl-1 text-right",
 		rowLineInside,
 		axisLabelCursor(movable),
 	);
@@ -221,7 +221,7 @@ interface ClipboardEdges {
 // and a pinned or sticky layer still covers it when the cell scrolls beneath.
 function cellMarkClass(reachTop: boolean, reachLeft: boolean) {
 	return cn(
-		"pointer-events-none absolute -right-hairline -bottom-hairline",
+		"-right-hairline -bottom-hairline pointer-events-none absolute",
 		reachTop ? "-top-hairline" : "top-0",
 		reachLeft ? "-left-hairline" : "left-0",
 	);
@@ -277,7 +277,7 @@ function CellMarks({
 				<span
 					aria-hidden
 					data-focus-mark
-					className={cn(place, "border-2 border-selection-edge")}
+					className={cn(place, "border-selection-edge border-2")}
 				/>
 			) : null}
 			{copied ? (
@@ -1690,7 +1690,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				<div
 					ref={stripRef}
 					data-column-strip
-					className="sticky top-0 z-30 grid h-grid-strip"
+					className="h-grid-strip sticky top-0 z-30 grid"
 					style={{
 						width: surfaceWidth,
 						gridTemplateColumns: `var(--grid-gutter-w) ${document.columns
@@ -1702,7 +1702,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					    control. */}
 					<div
 						className={cn(
-							"sticky left-0 z-30 border-r border-r-transparent bg-surface-code",
+							"bg-surface-code sticky left-0 z-30 border-r border-r-transparent",
 							!pinnedColumn && "edge-while-scrolled-x",
 						)}
 					/>
@@ -1750,7 +1750,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 					aria-label={copy.a11y.grid}
 					aria-rowcount={document.rows.length + 1}
 					aria-colcount={document.columns.length}
-					className="tabelo-grid table-fixed border-separate border-spacing-0 text-content"
+					className="tabelo-grid text-content table-fixed border-separate border-spacing-0"
 					onKeyDown={handleKeyDown}
 				>
 					<colgroup>
@@ -1779,7 +1779,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 								// menu fell through to cell actions on a non-cell.
 								data-row-header={HEADER_ROW}
 								className={cn(
-									"sticky top-grid-strip left-0 z-30 border-r border-r-transparent border-b border-b-transparent bg-surface-code p-0 text-right align-top font-index font-normal text-muted-foreground text-xs tabular-nums",
+									"top-grid-strip bg-surface-code font-index text-muted-foreground sticky left-0 z-30 border-r border-b border-r-transparent border-b-transparent p-0 text-right align-top text-xs font-normal tabular-nums",
 									// The gutter's edge appears only while content scrolls
 									// under it; a pinned column carries its own edge instead.
 									!pinnedColumn && "edge-while-scrolled-x",
@@ -1943,7 +1943,7 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 				ref={glideRef}
 				aria-hidden
 				data-selection-glide
-				className="pointer-events-none absolute top-0 left-0 z-20 hidden border-2 border-selection-edge transition-transform duration-(--motion-selection) ease-(--motion-ease)"
+				className="border-selection-edge pointer-events-none absolute top-0 left-0 z-20 hidden border-2 transition-transform duration-(--motion-selection) ease-(--motion-ease)"
 			/>
 
 			{/* Drawn against the positioned wrapper rather than the table, because a
@@ -2134,9 +2134,9 @@ const DataRow = memo(function DataRow({
 					// Row lines start at a row's first cell: the gutter keeps the
 					// border's room, so rows stay one pitch, and draws no line under
 					// its numbers (owner, 2026-09-19).
-					"sticky left-0 border-r border-r-transparent border-b border-b-transparent bg-surface-code align-top",
+					"bg-surface-code sticky left-0 border-r border-b border-r-transparent border-b-transparent align-top",
 					!pinnedColumn && "edge-while-scrolled-x",
-					"p-0 text-right font-index font-normal text-muted-foreground text-xs tabular-nums",
+					"font-index text-muted-foreground p-0 text-right text-xs font-normal tabular-nums",
 					// The row's number is how the row identifies itself,
 					// so they hold position with it. Pinned it sticks on both axes and
 					// joins the corner layer, like the header row's own gutter cell.
@@ -2243,7 +2243,7 @@ const DataRow = memo(function DataRow({
 							// the strong line the grid already draws around chrome,
 							// against the subtle one every interior boundary carries.
 							pinnedRow && "border-b-line-strong",
-							pinnedCell && "border-r border-r-line-strong",
+							pinnedCell && "border-r-line-strong border-r",
 							// A cell being edited overrides the column's own clipping so
 							// its editor can grow and wrap over the rows below it while
 							// the value is too long for the column, without touching
@@ -2357,7 +2357,7 @@ const DataRow = memo(function DataRow({
 							<span
 								data-column-content={columnIndex}
 								className={cn(
-									"grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1 leading-content-line-box",
+									"leading-content-line-box grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1",
 									rowLineInside,
 									wrapped
 										? "min-h-grid-row"
@@ -2496,7 +2496,7 @@ function ColumnIndexCell({
 				// content surface with no band, no dividers, and no line under
 				// them; only the header row's bottom edge and the row lines draw.
 				"min-w-0",
-				"bg-surface-code text-left font-index font-normal text-muted-foreground text-xs",
+				"bg-surface-code font-index text-muted-foreground text-left text-xs font-normal",
 				selected && selectedAxisClass,
 				// Pinned it sticks sideways and joins the corner layer, beside the
 				// dead corner where the letters meet the row numbers. The strip
@@ -2507,7 +2507,7 @@ function ColumnIndexCell({
 				// `relative`: pairing the two would win over `sticky` and turn the
 				// offset into a shift rather than a scroll threshold.
 				pinned
-					? "sticky left-grid-gutter z-30 border-r border-r-line-strong"
+					? "left-grid-gutter border-r-line-strong sticky z-30 border-r"
 					: "relative z-20",
 				// The letter of a column an insert command just added arrives with
 				// the column it names.
@@ -2529,7 +2529,7 @@ function ColumnIndexCell({
 				)}
 				onKeyDown={onTypeOverAxis}
 				className={cn(
-					"flex h-full w-full min-w-0 items-center rounded-interactive px-2 text-left hover:text-foreground",
+					"rounded-interactive hover:text-foreground flex h-full w-full min-w-0 items-center px-2 text-left",
 					axisLabelCursor(movable),
 				)}
 				onPointerDown={(event) => {
@@ -2558,7 +2558,7 @@ function ColumnIndexCell({
 			    focused grid column has Alt+Shift+Left/Right as its keyboard equal. */}
 			<div
 				aria-hidden
-				className="absolute top-0 right-0 z-20 h-full w-2 cursor-col-resize touch-none after:absolute after:inset-y-1 after:right-0 after:w-hairline after:rounded-full hover:after:bg-selection-edge"
+				className="after:w-hairline hover:after:bg-selection-edge absolute top-0 right-0 z-20 h-full w-2 cursor-col-resize touch-none after:absolute after:inset-y-1 after:right-0 after:rounded-full"
 				onPointerDown={(event) => {
 					event.preventDefault();
 					event.currentTarget.setPointerCapture(event.pointerId);
@@ -2686,15 +2686,15 @@ function HeaderCell({
 				// The header row carries no side dividers, like every row of the
 				// modern table, and the one strong line under it is what separates
 				// the names from the data (owner, 2026-09-19).
-				"sticky border-b border-b-line-strong align-top",
-				"cursor-cell select-none px-2 font-semibold",
+				"border-b-line-strong sticky border-b align-top",
+				"cursor-cell px-2 font-semibold select-none",
 				// Sticks below the index strip rather than at the very top, so the
 				// two chrome layers stack instead of covering one another.
 				"top-grid-strip",
 				// Pinned it sticks on both axes and joins the corner layer, beside
 				// the gutter cell that names the header row, and carries the strong
 				// edge the pinned column draws all the way down.
-				pinned ? "left-grid-gutter z-30 border-r border-r-line-strong" : "z-20",
+				pinned ? "left-grid-gutter border-r-line-strong z-30 border-r" : "z-20",
 				// See the data cell's identical rule: editing overrides clipping so a
 				// header longer than its column can grow and wrap while it's being
 				// typed, without changing the column's wrap preference.
@@ -2755,7 +2755,7 @@ function HeaderCell({
 						// The same line pitch as a wrapped data cell (#374).
 						wrapped
 							? cn("min-h-grid-row", wrappedLinesClass)
-							: "h-content-line-box overflow-hidden text-ellipsis whitespace-pre leading-content-line-box",
+							: "h-content-line-box leading-content-line-box overflow-hidden text-ellipsis whitespace-pre",
 					)}
 				>
 					{markedValue(

@@ -144,7 +144,7 @@ function Image({
 				aria-label={alt}
 				aria-description={copy.a11y.imageNotShown}
 				data-image-state="unavailable"
-				className="inline-flex items-baseline gap-1 text-muted-foreground"
+				className="text-muted-foreground inline-flex items-baseline gap-1"
 			>
 				<IconPhotoOff aria-hidden className="size-content-line self-center" />
 				<span aria-hidden>{alt}</span>

@@ -351,7 +351,7 @@ function OutputOption({ option }: { readonly option: OutputOptionId }) {
 				className="mt-0.5"
 			/>
 			<div className="min-w-0 flex-1">
-				<Label htmlFor={checkboxId} className="font-normal text-sm">
+				<Label htmlFor={checkboxId} className="text-sm font-normal">
 					{copy.download.option(option)}
 				</Label>
 				<p id={hintId} className="text-muted-foreground text-xs">

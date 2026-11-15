@@ -60,7 +60,7 @@ function PreviewPlaceholder({
 				role="status"
 				// A wait over within a frame or two paints nothing, as at startup.
 				className={cn(
-					"px-3 text-center text-muted-foreground text-sm",
+					"text-muted-foreground px-3 text-center text-sm",
 					pending && "tabelo-boot-status",
 				)}
 			>
@@ -181,7 +181,7 @@ export function SettingsDialog({
 
 				<div
 					data-slot="settings-body"
-					className="grid min-h-0 content-start gap-4 overflow-y-auto overflow-x-hidden"
+					className="grid min-h-0 content-start gap-4 overflow-x-hidden overflow-y-auto"
 				>
 					<div className="grid gap-1.5">
 						<p className="text-muted-foreground text-xs">
@@ -204,7 +204,7 @@ export function SettingsDialog({
 					{/* The seven global defaults a source pane follows until it makes
 					    its own choice (#276). */}
 					<section className="grid gap-1.5" aria-labelledby={displayLabelId}>
-						<h3 id={displayLabelId} className="mb-1 font-medium text-sm">
+						<h3 id={displayLabelId} className="mb-1 text-sm font-medium">
 							{copy.settings.display.label}
 						</h3>
 						<SwitchOption
@@ -291,7 +291,7 @@ export function SettingsDialog({
 					{/* How the Visual Table draws a boolean cell (#483): one global
 					    switch, not a source display default. */}
 					<section className="grid gap-1.5" aria-labelledby={gridLabelId}>
-						<h3 id={gridLabelId} className="mb-1 font-medium text-sm">
+						<h3 id={gridLabelId} className="mb-1 text-sm font-medium">
 							{copy.settings.visualTable.label}
 						</h3>
 						<SwitchOption
@@ -334,7 +334,7 @@ export function SettingsDialog({
 						<IconTrash aria-hidden />
 						{copy.eraseEverything.confirm}
 					</Button>
-					<p className="mt-2 text-muted-foreground text-sm">
+					<p className="text-muted-foreground mt-2 text-sm">
 						{copy.eraseEverything.description}
 					</p>
 				</section>

@@ -771,8 +771,8 @@ export function RichCellEditor({
 			className={cn(
 				// Grows with its content over the rows below, as the textarea did,
 				// without measuring: a block's height already follows its text.
-				"absolute inset-x-0 top-0 z-10 min-h-full w-full cursor-text select-text whitespace-pre-wrap break-words bg-surface-code px-2 py-content-line-inset text-content leading-content-line",
-				"outline-2 outline-selection-edge -outline-offset-2",
+				"bg-surface-code py-content-line-inset text-content leading-content-line absolute inset-x-0 top-0 z-10 min-h-full w-full cursor-text px-2 break-words whitespace-pre-wrap select-text",
+				"outline-selection-edge outline-2 -outline-offset-2",
 				align,
 			)}
 		/>
@@ -835,7 +835,7 @@ export function RichCellEditor({
 				// row as tall as what is being typed.
 				<span
 					aria-hidden
-					className={cn("invisible block min-h-grid-row", wrappedLinesClass)}
+					className={cn("min-h-grid-row invisible block", wrappedLinesClass)}
 				>
 					<InlineContentView value={sizer} surface="grid-wrapped" />{" "}
 				</span>

@@ -160,7 +160,7 @@ export function AppMenu({
 			aria-label={copy.actions.openAppMenu}
 			align="end"
 			side="top"
-			className="w-auto min-w-64 max-w-screen-fit-w"
+			className="max-w-screen-fit-w w-auto min-w-64"
 		>
 			{/* Three named sections, so the reader sees what a command acts on
 			    before reading the command: the library, the open table, and the
@@ -262,7 +262,7 @@ export function AppMenu({
 						<DropdownMenuItem
 							disabled={!canUndo}
 							onClick={() => run("undo")}
-							className="justify-center bg-muted"
+							className="bg-muted justify-center"
 						>
 							<IconArrowBackUp aria-hidden />
 							{copy.actions.undo}
@@ -275,7 +275,7 @@ export function AppMenu({
 						<DropdownMenuItem
 							disabled={!canRedo}
 							onClick={() => run("redo")}
-							className="justify-center bg-muted"
+							className="bg-muted justify-center"
 						>
 							<IconArrowForwardUp aria-hidden />
 							{copy.actions.redo}
@@ -340,7 +340,7 @@ export function AppMenu({
 			    on the left, the way to its source on the right. The link stays a
 			    menu item so the keyboard reaches it with the rest. */}
 			<DropdownMenuGroup className="flex items-center gap-2 pl-2">
-				<p className="min-w-0 flex-1 truncate text-muted-foreground text-xs">
+				<p className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
 					{copy.menuFooter}
 				</p>
 				<DropdownMenuItem
@@ -383,7 +383,7 @@ export function AppMenu({
 								// because outline carries a resting border and fill of its own in
 								// dark mode, which no transparent override on this element can
 								// win against.
-								className="fixed right-fab-inset bottom-fab-inset z-40 size-fab hover:shadow-(--shadow-floating)"
+								className="right-fab-inset bottom-fab-inset size-fab fixed z-40 hover:shadow-(--shadow-floating)"
 							/>
 						}
 					>
@@ -396,7 +396,7 @@ export function AppMenu({
 						{pwaUpdate.ready ? (
 							<span
 								aria-hidden
-								className="absolute top-1 right-1 size-2 rounded-full border-2 border-surface-app bg-selection-edge"
+								className="border-surface-app bg-selection-edge absolute top-1 right-1 size-2 rounded-full border-2"
 							/>
 						) : null}
 					</DropdownMenuTrigger>
@@ -617,7 +617,7 @@ function TableRow({
 					aria-label={copy.actions.tableOptionsNamed(table.name)}
 					className={cn(
 						revealedRowActionStyles,
-						"min-h-0 self-center text-muted-foreground",
+						"text-muted-foreground min-h-0 self-center",
 					)}
 				>
 					<IconDots aria-hidden />

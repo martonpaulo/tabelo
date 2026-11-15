@@ -35,7 +35,7 @@ export function MenuOption({
 				<span
 					id={descriptionId}
 					data-slot="menu-option-description"
-					className="block text-muted-foreground text-xs"
+					className="text-muted-foreground block text-xs"
 				>
 					{description}
 				</span>

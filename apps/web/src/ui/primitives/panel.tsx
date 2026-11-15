@@ -35,7 +35,7 @@ const PanelRoot = forwardRef<HTMLElement, React.ComponentProps<"section">>(
 				// biome-ignore lint/a11y/noNoninteractiveTabindex: pane focus ring requires this
 				tabIndex={0}
 				className={cn(
-					`relative isolate flex min-h-0 min-w-0 flex-col overflow-hidden rounded-surface focus-visible:outline-2 focus-visible:outline-selection-edge focus-visible:-outline-offset-2 ${panelSurfaceStyles}`,
+					`rounded-surface focus-visible:outline-selection-edge relative isolate flex min-h-0 min-w-0 flex-col overflow-hidden focus-visible:outline-2 focus-visible:-outline-offset-2 ${panelSurfaceStyles}`,
 					className,
 				)}
 				onKeyDown={(event) => {
@@ -71,7 +71,7 @@ function PanelHeader({
 	return (
 		<header
 			className={cn(
-				"flex h-panel-header shrink-0 items-center gap-1.5 px-3",
+				"h-panel-header flex shrink-0 items-center gap-1.5 px-3",
 				className,
 			)}
 		>
@@ -102,7 +102,7 @@ function PanelBody({
 				// Every view's content sits in one inset rounded box below the
 				// pane header, so a table, a source, and a preview share one shape
 				// (owner, 2026-09-19): two layers, the pane and its content.
-				"tabelo-scroll-boundary relative mx-2 mb-2 min-h-0 flex-1 overflow-auto rounded-interactive bg-surface-code",
+				"tabelo-scroll-boundary rounded-interactive bg-surface-code relative mx-2 mb-2 min-h-0 flex-1 overflow-auto",
 				className,
 			)}
 			{...props}

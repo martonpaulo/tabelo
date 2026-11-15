@@ -90,7 +90,7 @@ function PaneLoading() {
 	return (
 		<div
 			role="status"
-			className="in-[[inert]]:invisible flex h-full items-center justify-center"
+			className="flex h-full items-center justify-center in-[[inert]]:invisible"
 		>
 			<span className="text-muted-foreground text-sm">
 				{copy.status.loading}

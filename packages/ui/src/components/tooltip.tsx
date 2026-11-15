@@ -52,7 +52,7 @@ function TooltipContent({
 					data-slot="tooltip-content"
 					role="tooltip"
 					className={cn(
-						`z-50 inline-flex w-fit max-w-xs items-center gap-1.5 rounded-interactive px-3 py-1.5 text-popover-foreground text-xs has-data-[slot=kbd]:pr-1.5 ${floatingSurfaceStyles}`,
+						`rounded-interactive text-popover-foreground z-50 inline-flex w-fit max-w-xs items-center gap-1.5 px-3 py-1.5 text-xs has-data-[slot=kbd]:pr-1.5 ${floatingSurfaceStyles}`,
 						popupTransitionStyles,
 						className,
 					)}
@@ -61,7 +61,7 @@ function TooltipContent({
 					{children}
 					{/* One hairline taller than it shows, so its base overlaps the bubble's
 					    edge and the fill covers it: no line between arrow and bubble. */}
-					<TooltipPrimitive.Arrow className="relative z-50 block h-[calc(0.375rem+var(--hairline-w))] w-3 overflow-clip before:absolute before:bottom-0 before:left-1/2 before:size-2 before:-translate-x-1/2 before:translate-y-1/2 before:rotate-45 before:border before:border-line-floating before:bg-popover before:content-[''] data-[side=bottom]:-top-1.5 data-[side=left]:-right-[calc(0.5625rem-var(--hairline-w)/2)] data-[side=top]:-bottom-1.5 data-[side=right]:-left-[calc(0.5625rem-var(--hairline-w)/2)] data-[side=left]:rotate-90 data-[side=right]:-rotate-90 data-[side=top]:rotate-180" />
+					<TooltipPrimitive.Arrow className="before:border-line-floating before:bg-popover relative z-50 block h-[calc(0.375rem+var(--hairline-w))] w-3 overflow-clip before:absolute before:bottom-0 before:left-1/2 before:size-2 before:-translate-x-1/2 before:translate-y-1/2 before:rotate-45 before:border before:content-[''] data-[side=bottom]:-top-1.5 data-[side=left]:-right-[calc(0.5625rem-var(--hairline-w)/2)] data-[side=left]:rotate-90 data-[side=right]:-left-[calc(0.5625rem-var(--hairline-w)/2)] data-[side=right]:-rotate-90 data-[side=top]:-bottom-1.5 data-[side=top]:rotate-180" />
 				</TooltipPrimitive.Popup>
 			</TooltipPrimitive.Positioner>
 		</TooltipPrimitive.Portal>

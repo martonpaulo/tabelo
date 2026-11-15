@@ -81,8 +81,8 @@ export function PaneIdentity({ view }: PaneIdentityProps) {
 	const Icon = view.icon;
 
 	return (
-		<h2 className="flex min-w-0 items-center gap-1.5 font-medium text-sm">
-			<Icon aria-hidden className="shrink-0 text-muted-foreground" />
+		<h2 className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
+			<Icon aria-hidden className="text-muted-foreground shrink-0" />
 			<span className="truncate">{view.label}</span>
 
 			{/* A quiet lock with the words in its tooltip and accessible name,
@@ -92,7 +92,7 @@ export function PaneIdentity({ view }: PaneIdentityProps) {
 					<span
 						role="img"
 						aria-label={copy.workspace.readOnly}
-						className="inline-flex shrink-0 text-muted-foreground"
+						className="text-muted-foreground inline-flex shrink-0"
 					>
 						<IconLock aria-hidden className="size-3.5" />
 					</span>

@@ -13,7 +13,7 @@ export function LayoutGlyph({
 	return (
 		<span
 			className={cn(
-				"grid size-6 grid-cols-2 grid-rows-2 gap-hairline border border-muted-foreground/50 p-hairline",
+				"gap-hairline border-muted-foreground/50 p-hairline grid size-6 grid-cols-2 grid-rows-2 border",
 				className,
 			)}
 		>

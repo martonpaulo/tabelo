@@ -203,7 +203,7 @@ export const Pane = memo(function Pane({
 					{occurrences ? (
 						<span
 							data-slot="pane-occurrences"
-							className="shrink-0 whitespace-nowrap text-muted-foreground text-xs tabular-nums"
+							className="text-muted-foreground shrink-0 text-xs whitespace-nowrap tabular-nums"
 						>
 							{copy.workspace.occurrencesSelected(
 								occurrences.selected,
@@ -411,11 +411,11 @@ function SplitControl({
 				style={bandPlacement(edge, anchor)}
 				className={cn(
 					"fixed z-20 inline-flex items-center justify-center gap-1 overflow-hidden",
-					"border border-selection-edge border-dashed bg-selection-fill bg-clip-padding",
+					"border-selection-edge bg-selection-fill border border-dashed bg-clip-padding",
 					// The control-label floor (#452) inside the 1rem band: one line
 					// box of the type size itself, so the words fit without the band
 					// growing past the frame margin it straddles.
-					"cursor-pointer whitespace-nowrap font-medium text-foreground text-sm leading-none",
+					"text-foreground cursor-pointer text-sm leading-none font-medium whitespace-nowrap",
 					"opacity-0 hover:opacity-100",
 					disclosureTransitionStyles,
 					// Plain focus, not focus-visible: a control that has the focus while

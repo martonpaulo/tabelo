@@ -42,7 +42,7 @@ export function AxisDropIndicator({
 			// Static, like every other piece of grid geometry: see
 			// docs/design-system.md §7. The line is centred on the boundary it names
 			// so it reads as a gap rather than as an edge of either neighbour.
-			className="pointer-events-none absolute z-40 bg-selection-edge"
+			className="bg-selection-edge pointer-events-none absolute z-40"
 			style={
 				horizontal
 					? {

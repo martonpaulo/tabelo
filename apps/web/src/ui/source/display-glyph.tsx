@@ -27,7 +27,7 @@ export function GlyphSlot({ children }: { readonly children: ReactNode }) {
 	return (
 		<span
 			aria-hidden
-			className="flex h-7 w-12 shrink-0 items-center justify-center rounded-indicator bg-surface-app font-source text-muted-foreground text-xs"
+			className="rounded-indicator bg-surface-app font-source text-muted-foreground flex h-7 w-12 shrink-0 items-center justify-center text-xs"
 		>
 			{children}
 		</span>

@@ -361,7 +361,7 @@ export function TabeloApp() {
 	}, [rootDialog]);
 
 	return (
-		<div className="flex h-full min-h-0 flex-col bg-surface-app">
+		<div className="bg-surface-app flex h-full min-h-0 flex-col">
 			{/* The interface is a workspace of panes, so no visible text acts as the
 			    page heading. Assistive technology and search engines still expect
 			    one, and it names the product rather than the open table, which the

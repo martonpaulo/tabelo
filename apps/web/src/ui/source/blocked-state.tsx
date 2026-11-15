@@ -31,7 +31,7 @@ export function BlockedState({
 			className="flex h-full flex-col items-center justify-center gap-3 overflow-y-auto p-4 text-center text-sm"
 		>
 			<AvailabilityStatus kind="unavailable" />
-			<p className="max-w-md select-text text-pretty text-muted-foreground">
+			<p className="text-muted-foreground max-w-md text-pretty select-text">
 				{copy.source.blocked(failure)}
 			</p>
 			{recovery ? <RecoveryButton recovery={recovery} target={target} /> : null}

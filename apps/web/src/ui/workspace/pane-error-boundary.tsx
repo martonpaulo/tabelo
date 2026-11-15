@@ -180,7 +180,7 @@ function PaneFailure({
 			className="flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-4 text-center text-sm"
 		>
 			<AvailabilityStatus kind="unavailable" />
-			<p className="max-w-md select-text text-pretty text-muted-foreground">
+			<p className="text-muted-foreground max-w-md text-pretty select-text">
 				{kind === "code"
 					? copy.workspace.viewCodeUnavailable
 					: copy.workspace.viewFailed}

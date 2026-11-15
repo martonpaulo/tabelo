@@ -33,7 +33,7 @@ export function AvailabilityStatus({
 		<span
 			data-availability={kind}
 			data-slot="selection-option-status"
-			className="inline-flex items-center gap-1 text-muted-foreground text-xs"
+			className="text-muted-foreground inline-flex items-center gap-1 text-xs"
 		>
 			<StatusIcon
 				aria-hidden

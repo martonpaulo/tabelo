@@ -106,7 +106,7 @@ function FindField({
 				// controls move to a line of their own instead of the field
 				// shrinking (#421). `min-w-0` still lets it fit a pane narrower
 				// than that.
-				"max-h-14 min-h-control-sm min-w-0 flex-1 basis-40 overflow-auto py-1",
+				"min-h-control-sm max-h-14 min-w-0 flex-1 basis-40 overflow-auto py-1",
 				monospace && "font-source",
 			)}
 			onChange={(event) => onChange(event.target.value)}
@@ -307,7 +307,7 @@ export function PaneFindBar({
 		<section
 			aria-label={replaceable ? copy.find.title : copy.find.titleReadOnly}
 			data-slot="find-bar"
-			className="sticky bottom-0 left-0 z-40 mt-auto flex w-full shrink-0 flex-col gap-1.5 border-line-subtle border-t bg-surface-header px-2 py-1.5 group-data-[under-fab]/pane:pr-fab-safe"
+			className="border-line-subtle bg-surface-header group-data-[under-fab]/pane:pr-fab-safe sticky bottom-0 left-0 z-40 mt-auto flex w-full shrink-0 flex-col gap-1.5 border-t px-2 py-1.5"
 			onKeyDown={onKeyDown}
 		>
 			{/* Each row wraps rather than squeezing its field (#421): when the
@@ -358,7 +358,7 @@ export function PaneFindBar({
 				    buttons beside it still as the number climbs. */}
 					<span
 						data-slot="find-position"
-						className="flex h-control-sm min-w-10 shrink-0 items-center justify-center text-muted-foreground text-xs tabular-nums"
+						className="h-control-sm text-muted-foreground flex min-w-10 shrink-0 items-center justify-center text-xs tabular-nums"
 					>
 						{hasResult(find.query, total)
 							? total > 0 && result && result.index < 0

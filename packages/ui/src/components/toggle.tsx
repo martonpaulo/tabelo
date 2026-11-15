@@ -4,17 +4,17 @@ import { cn } from "@tabelo/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 
 const toggleVariants = cva(
-	`group/toggle inline-flex cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-interactive font-medium text-xs not-aria-pressed:hover:bg-accent not-aria-pressed:hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`,
+	`group/toggle rounded-interactive not-aria-pressed:hover:bg-accent not-aria-pressed:hover:text-accent-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground dark:aria-invalid:ring-destructive/40 inline-flex cursor-pointer items-center justify-center gap-1 text-xs font-medium whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${controlStateTransitionStyles}`,
 	{
 		variants: {
 			variant: {
 				default: "bg-transparent",
-				outline: "border border-input bg-transparent",
+				outline: "border-input border bg-transparent",
 			},
 			size: {
 				default:
 					"h-8 min-w-8 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-				sm: "h-7 min-w-7 rounded-interactive px-2.5 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
+				sm: "rounded-interactive h-7 min-w-7 px-2.5 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
 				lg: "h-9 min-w-9 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
 			},
 		},

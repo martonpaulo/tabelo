@@ -91,7 +91,7 @@ export function EmptyState({
 	return (
 		<div
 			inert={suspended || undefined}
-			className="absolute inset-0 z-40 flex items-center justify-center bg-surface-app/60 p-4 supports-backdrop-filter:backdrop-blur-sm"
+			className="bg-surface-app/60 absolute inset-0 z-40 flex items-center justify-center p-4 supports-backdrop-filter:backdrop-blur-sm"
 		>
 			<section
 				ref={sectionRef}
@@ -118,7 +118,7 @@ export function EmptyState({
 					}
 				}}
 				className={cn(
-					"w-[min(26rem,calc(100vw-2rem))] rounded-surface p-6 text-popover-foreground outline-none",
+					"rounded-surface text-popover-foreground w-[min(26rem,calc(100vw-2rem))] p-6 outline-none",
 					floatingSurfaceStyles,
 				)}
 			>
@@ -127,13 +127,13 @@ export function EmptyState({
 					// rather than by the product, and without the introduction or
 					// the credits, which belong to the first sight of Tabelo
 					// (owner, 2026-09-20).
-					<h2 id="empty-state-title" className="font-semibold text-lg">
+					<h2 id="empty-state-title" className="text-lg font-semibold">
 						{copy.empty.newTableTitle}
 					</h2>
 				) : (
 					<h2
 						id="empty-state-title"
-						className="flex items-center gap-2 font-semibold text-xl"
+						className="flex items-center gap-2 text-xl font-semibold"
 					>
 						{/* The product's own mark, as the app menu shows it (owner,
 					    2026-09-19), rather than a generic table icon. */}
@@ -147,7 +147,7 @@ export function EmptyState({
 					</h2>
 				)}
 				{onCancel ? null : (
-					<p className="mt-2 text-muted-foreground text-sm leading-relaxed">
+					<p className="text-muted-foreground mt-2 text-sm leading-relaxed">
 						{copy.empty.intro}
 					</p>
 				)}
@@ -197,7 +197,7 @@ export function EmptyState({
 				    2026-09-19). */}
 				<div
 					hidden={Boolean(onCancel)}
-					className="mt-6 flex flex-col items-center text-muted-foreground text-xs"
+					className="text-muted-foreground mt-6 flex flex-col items-center text-xs"
 				>
 					<p>
 						{copy.empty.credit}{" "}
@@ -230,7 +230,7 @@ function ExternalLinkText({
 			href={href}
 			target="_blank"
 			rel="noreferrer"
-			className="inline-flex items-center gap-1 py-1 underline-offset-2 transition-colors hover:text-foreground hover:underline"
+			className="hover:text-foreground inline-flex items-center gap-1 py-1 underline-offset-2 transition-colors hover:underline"
 		>
 			{children}
 			<IconExternalLink aria-hidden className="size-3" />

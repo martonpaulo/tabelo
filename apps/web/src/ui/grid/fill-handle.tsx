@@ -182,7 +182,7 @@ export function FillHandle({
 				aria-describedby="grid-fill-handle-hint"
 				data-fill-handle
 				className={cn(
-					"absolute top-0 left-0 inline-flex h-control-sm w-control-sm -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-interactive",
+					"h-control-sm w-control-sm rounded-interactive absolute top-0 left-0 inline-flex -translate-x-1/2 -translate-y-1/2 items-center justify-center",
 					"cursor-crosshair touch-none",
 					position.followX && "follow-scroll-hold-x",
 				)}
@@ -213,7 +213,7 @@ export function FillHandle({
 			>
 				<span
 					aria-hidden
-					className="size-2 rounded-xs border border-background bg-selection-edge shadow-sm"
+					className="border-background bg-selection-edge size-2 rounded-xs border shadow-sm"
 				/>
 				<span id="grid-fill-handle-hint" className="sr-only">
 					{copy.a11y.fillHandleHint}
