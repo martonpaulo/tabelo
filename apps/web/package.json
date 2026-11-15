@@ -51,7 +51,7 @@
 		"@types/papaparse": "^5.5.2",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
-		"@vite-pwa/assets-generator": "^1.0.4",
+		"@vite-pwa/assets-generator": "^2.0.0",
 		"@vitejs/plugin-react": "^6.3.0",
 		"happy-dom": "^21.0.4",
 		"typescript": "catalog:",
