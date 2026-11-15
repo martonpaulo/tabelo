@@ -150,7 +150,10 @@ content the user is already looking at and carry no floor either.
 | Token | Utility | Use |
 | :--- | :--- | :--- |
 | `--selection-fill` | `bg-selection-fill` | Background of selected cells |
-| `--selection-edge` | `border-selection-edge` | The focused cell's mark, focus rings, resize affordance |
+| `--selection-edge` | `border-selection-edge` | The focused cell's mark, focus rings |
+| `--resize-affordance` | `bg-resize-affordance` | The one resize affordance, the solid accent: the column resize handle's hairline, and the base of the pane separator's band (#580) |
+| `--resize-band-hover` / `--resize-band-focus` | `bg-resize-band-hover`, `bg-resize-band-focus` | The pane separator's band: `--resize-affordance` at 30% under a pointer and 40% with focus (#580) |
+| `--fill-preview-fill` | `bg-fill-preview-fill` | The fill preview: `--selection-fill` at half strength, so cells a drag would fill read as proposed rather than selected (#580) |
 | `--selection-edge-w` | `border-edge` (and `border-t-edge` and the other sides), `outline-edge`, `outline-offset-edge` | 0.125rem: the width of every selection and focus mark: the focus ring and its gap, the focused cell, the copied range, the fill preview, the cell editor, the drop indicator, the source caret. In inline styles, `var(--selection-edge-w)`. A mark that writes `border-2`, `outline-2`, or a literal width is a pattern break (#560) |
 | `--text-selection-fill` | CSS selection | Native and source-editor text selection |
 | `--primary` / `--primary-foreground` | `bg-primary text-primary-foreground` | The solid accent with a contrast-paired label: the primary decision button, a checked control, and the current find match in every pane |
@@ -175,7 +178,10 @@ The solid tone, `#f5a524`, is `--selection-edge`, `--focus-ring`, and
 is the near-black `#1a1206`, 9.08:1 on the amber fill. Use the solid tone only
 for focus, selection, and checked or active controls. The translucent tones are
 the same amber: `--selection-fill` at 20%, `--text-selection-fill` at 27%,
-`--active-line-fill` at 8%, and the active pane edge at 45%. The fills that
+`--active-line-fill` at 8%, the active pane edge at 45%, the pane separator's
+band at 30% and 40%, and the fill preview at 10%. Each is a named token in the
+table above; a component writing its own alpha of the accent is a pattern
+break (#580). The fills that
 sit under text are lighter in alpha than the earlier blue ones, because amber
 is the lighter hue and the text over them must stay readable. Text selection is
 intentionally stronger than an active line and is a separate token from
@@ -290,7 +296,11 @@ own.
 
 The two radii communicate hierarchy rather than decoration. Grid cells, row or
 column headers, resize tracks, and layout glyphs stay square because their
-geometry communicates table structure.
+geometry communicates table structure. A row number or column letter is the
+one exception inside that structure: it is a control (it selects its axis and
+opens its menu) drawn with no fill of its own, so its `rounded-interactive`
+shows only in its focus ring, the shape every control's ring takes, and the
+header cell it sits in stays square (#580).
 
 Column width is a persisted workspace preference keyed by stable column id,
 never table document state or a document-history step (#137). Pointer resize,
@@ -760,16 +770,16 @@ The values that were off the scale were snapped to the nearest step (owner,
 side (were `3` by `2.5`), an inset menu row or label starts at `6` (was `7`),
 and the offline page pads `6` (was `8`). One Tabelo-authored value stays off
 the scale on purpose: a checked menu row's `pr-12` is clearance for the trailing
-on/off indicator, not rhythm. Vendored shadcn primitives keep their upstream
-values.
+on/off indicator, not rhythm, and a refused choice-dialog option's `pr-32` is
+clearance for the recovery button drawn over its trailing edge (#580).
+Vendored shadcn primitives keep their upstream values.
 
 **One screen inset.** A floating layer that can grow as wide or as tall as the
 window (a dialog, the app menu, the start card) leaves `--screen-inset`, 2rem,
 between itself and the screen's edges, 1rem on each side. It is read through
 `max-w-screen-fit-w` and `max-h-screen-fit-h` rather than a `calc()` written at
-each call site; the app menu used 1.5rem until #354. The start card's
-`min(26rem, …)` clamp still spells the same 2rem inline and should read the
-token when that file is next touched.
+each call site; the app menu used 1.5rem until #354, and the start card spelled
+the 2rem inline until #580.
 
 ### Where shared style lives
 
@@ -779,7 +789,10 @@ One mechanism per kind of repetition, all already in the stack (#354):
   `apps/web/src/index.css`. A value Tailwind has a theme namespace for goes in
   `@theme` and is used as a normal utility (`h-control-md`, `rounded-surface`);
   one it has none for, such as a z-index, is a custom property read with the
-  variable shorthand (`z-(--z-notice)`, `z-(--z-grid-pinned)`).
+  variable shorthand (`z-(--z-notice)`, `z-(--z-grid-pinned)`). The ladder's
+  named steps are the floating action button (`--z-fab`, 40) and notices
+  (`--z-notice`, 45); menus, tooltips, and dialogs sit above both at the
+  `z-50` the vendored shadcn popups write themselves (#580).
 - **Plain CSS that is one visual idea**: a Tailwind
   [`@utility`](https://tailwindcss.com/docs/adding-custom-styles#adding-custom-utilities)
   in `index.css`, such as `bg-sticky-selection-fill` or `cell-clip`, so it

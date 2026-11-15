@@ -35,7 +35,7 @@ export function FillPreview({
 		<div
 			aria-hidden
 			data-fill-preview={geometry.target}
-			className="border-selection-edge bg-selection-fill/50 border-edge pointer-events-none absolute z-30 border-dashed"
+			className="border-selection-edge bg-fill-preview-fill border-edge pointer-events-none absolute z-30 border-dashed"
 			// The geometry runs from the first cell's top-left corner to the last
 			// cell's bottom-right grid line. Reaching one hairline further up and
 			// left puts the preview's edges on the grid lines around the cells, the

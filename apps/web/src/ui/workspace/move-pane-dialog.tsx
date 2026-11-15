@@ -16,7 +16,6 @@ import {
 import {
 	SingleSelectionList,
 	SingleSelectionOption,
-	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
 import { useContentWhileOpen } from "@/ui/primitives/use-content-while-open";
 import { getView } from "@/views/registry";
@@ -68,11 +67,10 @@ export function MovePaneDialog({
 			aria-labelledby={titleId}
 			aria-describedby={hintId}
 			width="wide"
-			className={singleSelectionDialogContentStyles}
 		>
 			<DialogHeader>
 				<DialogTitle id={titleId}>{copy.workspace.movePane}</DialogTitle>
-				<DialogDescription id={hintId} className="text-sm">
+				<DialogDescription id={hintId}>
 					{pane ? copy.workspace.movePaneHint(getView(pane.view).label) : null}
 				</DialogDescription>
 			</DialogHeader>

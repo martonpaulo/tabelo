@@ -16,7 +16,6 @@ import {
 import {
 	SingleSelectionList,
 	SingleSelectionOption,
-	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
 import { useContentWhileOpen } from "@/ui/primitives/use-content-while-open";
 import { type LayoutId, layoutsForPaneCount } from "@/workspace/layout";
@@ -54,11 +53,10 @@ export function LayoutDialog({
 			aria-labelledby={titleId}
 			aria-describedby={hintId}
 			width="wide"
-			className={singleSelectionDialogContentStyles}
 		>
 			<DialogHeader>
 				<DialogTitle id={titleId}>{copy.workspace.layout}</DialogTitle>
-				<DialogDescription id={hintId} className="text-sm">
+				<DialogDescription id={hintId}>
 					{copy.workspace.layoutHint}
 				</DialogDescription>
 			</DialogHeader>

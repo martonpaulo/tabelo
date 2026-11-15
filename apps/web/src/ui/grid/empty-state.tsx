@@ -118,7 +118,7 @@ export function EmptyState({
 					}
 				}}
 				className={cn(
-					"rounded-surface text-popover-foreground w-[min(26rem,calc(100vw-2rem))] p-6 outline-none",
+					"rounded-surface text-popover-foreground max-w-screen-fit-w w-104 p-6 outline-none",
 					floatingSurfaceStyles,
 				)}
 			>

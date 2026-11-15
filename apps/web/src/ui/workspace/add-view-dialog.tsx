@@ -17,7 +17,6 @@ import {
 import {
 	SingleSelectionList,
 	SingleSelectionOption,
-	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
 import { useContentWhileOpen } from "@/ui/primitives/use-content-while-open";
 import { getView, listViews } from "@/views/registry";
@@ -82,11 +81,10 @@ export function AddViewDialog({
 			aria-labelledby={titleId}
 			aria-describedby={hintId}
 			width="wide"
-			className={singleSelectionDialogContentStyles}
 		>
 			<DialogHeader>
 				<DialogTitle id={titleId}>{copy.addView.title}</DialogTitle>
-				<DialogDescription id={hintId} className="text-sm">
+				<DialogDescription id={hintId}>
 					{option && splitPane
 						? copy.addView.hint(
 								option.edge,

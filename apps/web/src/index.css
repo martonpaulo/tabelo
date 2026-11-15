@@ -25,6 +25,10 @@
 	/* Interaction accent: what the user has selected. */
 	--color-selection-fill: var(--selection-fill);
 	--color-selection-edge: var(--selection-edge);
+	--color-resize-affordance: var(--resize-affordance);
+	--color-resize-band-hover: var(--resize-band-hover);
+	--color-resize-band-focus: var(--resize-band-focus);
+	--color-fill-preview-fill: var(--fill-preview-fill);
 	--color-table-mark-1: var(--table-mark-1);
 	--color-table-mark-2: var(--table-mark-2);
 	--color-table-mark-3: var(--table-mark-3);
@@ -166,6 +170,27 @@
 	--active-line-fill: rgb(245 165 36 / 8%);
 	--selection-edge: #f5a524;
 	--focus-ring: var(--selection-edge);
+	/* The resize affordance both resize controls read (#580): the column
+	   resize handle draws it as a hairline, and the pane separator, a wider
+	   band, tints with it at two strengths, the stronger once it has focus. */
+	--resize-affordance: var(--selection-edge);
+	--resize-band-hover: color-mix(
+		in oklab,
+		var(--resize-affordance) 30%,
+		transparent
+	);
+	--resize-band-focus: color-mix(
+		in oklab,
+		var(--resize-affordance) 40%,
+		transparent
+	);
+	/* The fill preview is the selection fill at half strength, so the cells a
+	   drag would fill read as proposed rather than as selected (#580). */
+	--fill-preview-fill: color-mix(
+		in oklab,
+		var(--selection-fill) 50%,
+		transparent
+	);
 
 	/* The source views' syntax palette, the cool set the reserved accent leaves
 	   (#456): every value and syntax hue stays clear of amber and clears 4.5:1
@@ -272,10 +297,14 @@
 	   rather than as being pushed. */
 	--motion-ease: cubic-bezier(0, 0, 0.2, 1);
 
+	/* The floating action button's layer: over the panes and their own
+	   layers (up to 30), under notices. */
+	--z-fab: 40;
 	/* The notice layer. Notices float over the workspace and over the floating
-	   action button, which owns z-index 40, but never over a menu, tooltip, or
-	   dialog, which own 50. Named here so the value is a decision rather than
-	   another number picked in a component. */
+	   action button, but never over a menu, tooltip, or dialog, which own 50:
+	   the vendored shadcn popups write `z-50` themselves, kept as upstream
+	   wrote it so a shadcn update stays a clean merge. Named here so the
+	   value is a decision rather than another number picked in a component. */
 	--z-notice: 45;
 	/* The grid's optional pinned layers slot between ordinary body cells and
 	   the row gutter (`z-10`), so a pinned row or column covers the table

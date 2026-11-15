@@ -106,8 +106,8 @@ function Resizer({ axis, ratio, extent, containerRef }: ResizerProps) {
 				aria-valuemax={85}
 				className={
 					isColumns
-						? "hover:bg-selection-edge/30 focus-visible:bg-selection-edge/40 pointer-events-auto absolute top-0 z-30 h-full w-2 -translate-x-1/2 cursor-col-resize touch-none"
-						: "hover:bg-selection-edge/30 focus-visible:bg-selection-edge/40 pointer-events-auto absolute left-0 z-30 h-2 w-full -translate-y-1/2 cursor-row-resize touch-none"
+						? "hover:bg-resize-band-hover focus-visible:bg-resize-band-focus pointer-events-auto absolute top-0 z-30 h-full w-2 -translate-x-1/2 cursor-col-resize touch-none"
+						: "hover:bg-resize-band-hover focus-visible:bg-resize-band-focus pointer-events-auto absolute left-0 z-30 h-2 w-full -translate-y-1/2 cursor-row-resize touch-none"
 				}
 				style={
 					isColumns ? { left: `${ratio * 100}%` } : { top: `${ratio * 100}%` }

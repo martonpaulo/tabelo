@@ -35,7 +35,6 @@ import { Notice } from "@/ui/primitives/notice";
 import {
 	SingleSelectionList,
 	SingleSelectionOption,
-	singleSelectionDialogContentStyles,
 } from "@/ui/primitives/single-selection-list";
 import { codecSpelling } from "@/ui/spelling";
 import { exportLosses, hasExportLoss } from "@/views/projection-loss";
@@ -148,7 +147,6 @@ export function DownloadDialog({
 				aria-labelledby={titleId}
 				aria-describedby={hintId}
 				width="wide"
-				className={singleSelectionDialogContentStyles}
 			>
 				<DialogHeader>
 					<DialogTitle id={titleId}>
@@ -156,7 +154,7 @@ export function DownloadDialog({
 							? copy.actions.copyTable
 							: copy.actions.downloadTable}
 					</DialogTitle>
-					<DialogDescription id={hintId} className="text-sm">
+					<DialogDescription id={hintId}>
 						{destination === "clipboard"
 							? copy.download.copiesAs(getView(codec.id).label)
 							: copy.download.savesAs(

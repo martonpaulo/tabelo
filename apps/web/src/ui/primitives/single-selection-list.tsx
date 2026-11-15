@@ -16,8 +16,6 @@ import {
 	type SelectionOptionContentProps,
 } from "./selection-option";
 
-export const singleSelectionDialogContentStyles = "text-sm";
-
 // One treatment for modal choices with exactly one current value. The radio
 // primitive owns semantics and keyboard behaviour; this component makes the
 // entire labelled row read as the option and gives selected, hover, focus, and
@@ -75,6 +73,9 @@ export function SingleSelectionOption({
 					// and status under it stay at normal weight.
 					"font-normal",
 					// Room at the trailing edge for the correction drawn over it.
+					// `pr-32` is clearance for that button, not rhythm, so it stays
+					// off the spacing scale on purpose, like a checked menu row's
+					// `pr-12` (docs/design-system/2-tokens.md, #580).
 					recovery && !compact && "pr-32",
 					"focus-within:outline-edge focus-within:outline-offset-edge focus-within:outline-(--focus-ring)",
 				)}

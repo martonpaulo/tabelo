@@ -133,7 +133,12 @@ are global and never renumbered, so a citation such as `docs/design-system.md
 ## 6. Icons
 
 Tabler outline icons only (`@tabler/icons-react`), `size-4` inside `control-md`
-and `size-3.5` inside `control-sm`. Tabler replaced Lucide by owner decision on
+and `size-3.5` inside `control-sm`. Three places outside a control row take
+their own documented size (#580): an option block's leading icon is `size-5`
+in its `size-6` cell, because the block is taller than a control row and its
+icon identifies the choice; a notice's severity icon is `size-4.5`, centred on
+the notice's first `text-sm` line; and an icon inline in `text-xs` text, such
+as the start card's external-link mark, is `size-3`. Tabler replaced Lucide by owner decision on
 2026-09-19, so the product draws from the same set as the approved mockups. Every
 icon uses the shared 1.5 stroke weight, applied once through the `.tabler-icon`
 rule in the global stylesheet, never per call site. Always `aria-hidden`,
