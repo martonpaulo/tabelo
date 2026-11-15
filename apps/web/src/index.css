@@ -287,7 +287,8 @@
 	--control-radius: 0.5rem;
 	--surface-radius: 0.75rem;
 	/* A checkbox is a 1rem box: the control radius would round it into a
-	   circle, which is the radio button's shape. */
+	   circle, which is the radio button's shape. Segments and the display
+	   glyph, small marks inside a control, share it (#578). */
 	--indicator-radius: 0.25rem;
 	--icon-stroke-width: 1.5;
 	--radius: var(--control-radius);

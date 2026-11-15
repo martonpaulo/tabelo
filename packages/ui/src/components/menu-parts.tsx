@@ -2,8 +2,7 @@
 
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import {
-	menuCheckboxIndicatorStyles,
-	menuCheckboxThumbStyles,
+	menuCheckboxIndicatorPlacementStyles,
 	menuChoiceItemLayoutStyles,
 	menuDestructiveItemStateStyles,
 	menuInteractiveItemStateStyles,
@@ -20,6 +19,10 @@ import {
 } from "@tabelo/ui/components/menu-styles";
 import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
 import { ShortcutKeys } from "@tabelo/ui/components/shortcut-keys";
+import {
+	switchThumbVariants,
+	switchTrackVariants,
+} from "@tabelo/ui/components/switch";
 import { cn } from "@tabelo/ui/lib/utils";
 import { IconChevronRight } from "@tabler/icons-react";
 import type * as React from "react";
@@ -277,7 +280,6 @@ export function createMenuComponents(options: MenuComponentOptions) {
 				data-slot={`${slot}-checkbox-item`}
 				data-inset={inset}
 				className={cn(
-					"group/menu-choice",
 					menuChoiceItemLayoutStyles,
 					menuInteractiveItemStateStyles,
 					className,
@@ -285,12 +287,18 @@ export function createMenuComponents(options: MenuComponentOptions) {
 				checked={checked}
 				{...props}
 			>
-				<span
-					className={menuCheckboxIndicatorStyles}
+				{/* Kept mounted so the off state draws its track too; it carries
+				    the item's checked state as `data-checked`. */}
+				<MenuPrimitive.CheckboxItemIndicator
+					keepMounted
+					className={cn(
+						switchTrackVariants({ size: "menu" }),
+						menuCheckboxIndicatorPlacementStyles,
+					)}
 					data-slot={`${slot}-checkbox-item-indicator`}
 				>
-					<span className={menuCheckboxThumbStyles} />
-				</span>
+					<span className={switchThumbVariants({ size: "menu" })} />
+				</MenuPrimitive.CheckboxItemIndicator>
 				{children}
 			</MenuPrimitive.CheckboxItem>
 		);

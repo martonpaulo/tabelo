@@ -114,10 +114,11 @@ behaviour. The selected row background is the only visible selection mark.
 A menu's indicators are the product's own controls, not menu-specific
 drawings. A radio indicator is the shared radio: the same 1rem circle, the same
 `--control-outline` when unset, and the same primary fill once set. An on/off
-item wears the shared `Switch` anatomy at menu size: an outlined track with the
+item wears the shared `Switch` at its `menu` size: an outlined track with the
 thumb at the start, the solid primary with the thumb at the end once on, so
-Settings and menus draw one kind of on/off choice. Both are declared once in
-`menu-styles.ts` and shared by the dropdown and context menus.
+Settings and menus draw one kind of on/off choice. The radio's shape is
+declared once in `menu-styles.ts` and the switch's anatomy once in `switch.tsx`
+(#578), and both are shared by the dropdown and context menus.
 
 Every option in a single-selection list uses the same anatomy: one meaningful
 leading icon, primary text with an optional description, optional trailing

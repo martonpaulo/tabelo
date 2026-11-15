@@ -279,10 +279,10 @@ what used to be two passes over every visual change is now one.
 | `--grid-row-h` | `min-h-grid-row` | `var(--spacing-content-line-box)`: minimum table row height, one content row (#579) |
 | `--grid-col-w` | `w-grid-col` | 10.5rem: default column width |
 | `--control-radius` | `rounded-interactive` | 0.5rem: buttons, fields, menu items, option blocks, badges |
-| `--indicator-radius` | `rounded-indicator` | 0.25rem: a checkbox's 1rem box |
+| `--indicator-radius` | `rounded-indicator` | 0.25rem: the radius of a small mark inside a control rather than of a control: a checkbox's 1rem box, a segment inside a segmented choice or a menu's inline command row, and a source pane's display glyph (#578) |
 | `--surface-radius` | `rounded-surface` | 0.75rem: panes, menus, dialogs, notices, empty states |
 
-Every height in `packages/ui`'s Button, Input, and Textarea resolves to one of
+Every height in `packages/ui`'s Button, Toggle, Input, and Textarea resolves to one of
 the three control heights; a primitive writing its own `h-9` or `size-8` is a
 pattern break (owner, 2026-09-19). The only exception is the 1.5rem `icon-xs`
 button, which sits inside a denser control and is no control height of its

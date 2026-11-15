@@ -15,12 +15,19 @@ export const menuItemInsetStyles = "px-2 py-2";
 export const menuLabelStyles =
 	"px-2 py-1.5 text-muted-foreground text-xs leading-none data-inset:pl-6";
 
-export const menuItemLayoutStyles = `relative flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive ${menuItemInsetStyles} text-sm leading-snug outline-hidden data-disabled:cursor-not-allowed data-inset:pl-6 data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
+// The one layout every menu row shares: an item, a choice, and a submenu
+// trigger differ only in their inset and in what a disabled row does.
+const menuRowLayoutStyles = `flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive text-sm leading-snug outline-hidden data-inset:pl-6 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
+
+const menuRowDisabledStyles =
+	"data-disabled:cursor-not-allowed data-disabled:opacity-50";
+
+export const menuItemLayoutStyles = `relative ${menuRowLayoutStyles} ${menuItemInsetStyles} ${menuRowDisabledStyles}`;
 
 // `pr-12` is clearance, not rhythm: it keeps a row's text off the trailing
 // on/off indicator (`right-2` plus its `w-7` track), so it stays off the
 // spacing scale on purpose (#354).
-export const menuChoiceItemLayoutStyles = `relative flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive py-2 pr-12 pl-2 text-sm leading-snug outline-hidden data-disabled:cursor-not-allowed data-inset:pl-6 data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
+export const menuChoiceItemLayoutStyles = `relative ${menuRowLayoutStyles} py-2 pr-12 pl-2 ${menuRowDisabledStyles}`;
 
 export const menuInteractiveItemStateStyles =
 	"not-data-disabled:hover:bg-accent not-data-disabled:hover:text-accent-foreground not-data-disabled:hover:**:text-accent-foreground not-data-disabled:focus:bg-accent not-data-disabled:focus:text-accent-foreground not-data-disabled:focus:**:text-accent-foreground";
@@ -55,14 +62,13 @@ export const menuShortcutKeyStyles =
 // The two menu indicators wear the product's own controls, so a menu is not
 // the place to invent another way of drawing a choice. The radio indicator
 // below is the shared radio. See docs/design-system/3-components.md.
-// A menu's on/off item wears the shared Switch's anatomy at menu size: an
-// outlined track with the thumb at the start, the solid primary with the thumb
-// at the end once on. Settings and menus then draw one kind of on/off choice.
-export const menuCheckboxIndicatorStyles =
-	"pointer-events-none absolute right-2 flex h-4 w-7 shrink-0 items-center rounded-full border border-control-outline group-data-checked/menu-choice:border-primary group-data-checked/menu-choice:bg-primary";
-
-export const menuCheckboxThumbStyles =
-	"block size-2.5 translate-x-0.5 rounded-full bg-control-outline transition-transform duration-100 ease-out group-data-checked/menu-choice:translate-x-3.5 group-data-checked/menu-choice:bg-primary-foreground";
+// A menu's on/off item wears the shared Switch at its `menu` size
+// (`switchTrackVariants` and `switchThumbVariants`): an outlined track with the
+// thumb at the start, the solid primary with the thumb at the end once on.
+// Settings and menus then draw one kind of on/off choice. This is only where
+// the indicator sits in its row.
+export const menuCheckboxIndicatorPlacementStyles =
+	"pointer-events-none absolute right-2";
 
 export const singleSelectionIndicatorShapeStyles =
 	"relative flex size-4 shrink-0 items-center justify-center rounded-full border border-control-outline";
@@ -70,7 +76,7 @@ export const singleSelectionIndicatorShapeStyles =
 export const singleSelectionIndicatorFillStyles =
 	"absolute inset-0 rounded-full bg-primary";
 
-export const menuSubTriggerLayoutStyles = `flex min-h-control-md cursor-pointer select-none items-center gap-3 rounded-interactive ${menuItemInsetStyles} text-sm leading-snug outline-hidden data-inset:pl-6 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 ${controlStateTransitionStyles}`;
+export const menuSubTriggerLayoutStyles = `${menuRowLayoutStyles} ${menuItemInsetStyles}`;
 
 export const menuSeparatorStyles = "-mx-1 my-2 h-hairline bg-border";
 

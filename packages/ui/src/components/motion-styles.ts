@@ -8,6 +8,11 @@ export const controlStateTransitionStyles =
 export const pressableControlTransitionStyles =
 	"transition-[background-color,border-color,color,box-shadow,opacity,transform] duration-100 ease-out";
 
+// A switch's thumb travels between its two ends at the control-state pace, so
+// the Settings switch and a menu's on/off indicator move alike.
+export const switchThumbTransitionStyles =
+	"transition-transform duration-100 ease-out";
+
 export const disclosureTransitionStyles =
 	"transition-[color,opacity] duration-100 ease-out";
 
