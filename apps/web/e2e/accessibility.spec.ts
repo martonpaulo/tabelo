@@ -111,3 +111,53 @@ test("the settings dialog has no WCAG violations", async ({
 
 	await expectNoAxeViolations(page, testInfo, "settings");
 });
+
+// WCAG 2.5.3, Label in Name: a speech-input user names a control by what it
+// shows, so every visible label must be a word of the accessible name. The
+// visible text is read from the page, never from the copy, so this checks the
+// relationship and not the wording (#556).
+function containsWord(text: string): RegExp {
+	const escaped = text.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return new RegExp(`(^|\\W)${escaped}(\\W|$)`, "i");
+}
+
+test("visible labels are words of their controls' accessible names", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editHeader(1, "Name");
+
+	// A column's select handle shows its letter, with or without a header.
+	for (const column of [1, 2]) {
+		const handle = tabelo.columnIndex(column).getByRole("button");
+		const shown = await handle.innerText();
+		expect(shown.trim()).not.toBe("");
+		await expect(handle).toHaveAccessibleName(containsWord(shown));
+	}
+
+	// The column menu says which letter it acts on, as its handle shows it.
+	const letter = await tabelo.columnIndex(1).getByRole("button").innerText();
+	await tabelo.columnIndex(1).click({ button: "right" });
+	const columnMenu = page.getByRole("menu");
+	await expect(columnMenu).toHaveAccessibleName(containsWord(letter));
+	await page.keyboard.press("Escape");
+	await columnMenu.waitFor({ state: "hidden" });
+
+	// The cell menu is named, by the row number and column letter the grid
+	// shows for the cell it opened on.
+	const rowNumber = await tabelo.rowIndex(2).innerText();
+	await tabelo.cell(1, 1).click({ button: "right" });
+	const cellMenu = page.getByRole("menu");
+	await expect(cellMenu).toHaveAccessibleName(containsWord(rowNumber));
+	await expect(cellMenu).toHaveAccessibleName(containsWord(letter));
+	await page.keyboard.press("Escape");
+	await cellMenu.waitFor({ state: "hidden" });
+
+	// Remove blanks shows two words, and its name carries them.
+	const options = await tabelo.openTableOptions();
+	const removeBlanks = options.getByRole("menuitem", {
+		name: copy.actions.deleteEmptyRowsAndColumnsDescription,
+	});
+	const shown = await removeBlanks.innerText();
+	await expect(removeBlanks).toHaveAccessibleName(containsWord(shown));
+});

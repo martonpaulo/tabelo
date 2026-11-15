@@ -920,11 +920,9 @@ export function SourceContextMenu({
 			? copy.actions.rowActionsFor(copy.a11y.rowNumber(target.index - 1))
 			: target.kind === "column" && state.column
 				? copy.actions.columnActionsFor(
-						copy.a11y.columnWithExpectedType(
-							state.column.header,
-							target.index,
-							state.column.expectedType,
-						),
+						state.column.header,
+						target.index,
+						state.column.expectedType,
 					)
 				: undefined;
 

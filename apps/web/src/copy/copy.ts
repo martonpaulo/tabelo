@@ -73,8 +73,23 @@ const GO_TO_CELL = "Go to cell";
 const PANE_ACTIONS = "Pane actions";
 const ROW_ACTIONS = "Row actions";
 const COLUMN_ACTIONS = "Column actions";
+const CELL_ACTIONS = "Cell actions";
 const SELECT_ROW = "Select row";
 const SELECT_COLUMN = "Select column";
+
+// What follows a column's letter in the names built on it: what its header
+// says and the type it expects. The letter is the index strip's visible label,
+// so each of those names carries it (WCAG 2.5.3, Label in Name), and an empty
+// header adds nothing beyond it.
+function columnDescription(header: string, type: ExpectedColumnType): string {
+	const expected = `expected type ${expectedColumnTypeLabels[type].toLowerCase()}`;
+	return header.trim() === "" ? expected : `${header}, ${expected}`;
+}
+
+// A cell by what the grid shows: its row number and column letter.
+function cellPosition(row: number, column: number): string {
+	return `Row ${row + 2}, column ${columnLetter(column)}`;
+}
 
 // One name for source wrapping wherever it is chosen: the global default in
 // Settings and a pane's own choice in its menu.
@@ -687,7 +702,7 @@ export const copy = {
 					return "The table can't grow any further.";
 			}
 		},
-		noEmptyRowsOrColumns: "There are no empty rows or columns.",
+		noEmptyRowsOrColumns: "There are no blank rows or columns.",
 		// An entirely empty table is left alone rather than reduced to nothing.
 		tableHasNoContent: "The table has no content yet.",
 		sourceNothingSelected: "Select some text first.",
@@ -880,11 +895,12 @@ export const copy = {
 		transposeTable: "Transpose table",
 		// "Remove", not "Delete": the menu it sits in also deletes the table,
 		// and the two should not read alike. Two words, like the commands
-		// around it, with the full wording kept as the accessible name below
-		// and the tooltip saying when there is nothing to remove (owner,
-		// 2026-09-20).
+		// around it, with the accessible name below opening with them and
+		// saying what is removed (WCAG 2.5.3, Label in Name), and the tooltip
+		// saying when there is nothing to remove (owner, 2026-09-20).
 		deleteEmptyRowsAndColumns: "Remove blanks",
-		deleteEmptyRowsAndColumnsDescription: "Remove blank rows and columns",
+		deleteEmptyRowsAndColumnsDescription:
+			"Remove blanks: blank rows and columns",
 		insertRowsAbove: (count: number) =>
 			`Insert ${count === 1 ? "row" : "rows"} above`,
 		insertRowsBelow: (count: number) =>
@@ -946,7 +962,17 @@ export const copy = {
 		rowActions: ROW_ACTIONS,
 		rowActionsFor: (row: string) => `${ROW_ACTIONS}: ${row}`,
 		columnActions: COLUMN_ACTIONS,
-		columnActionsFor: (column: string) => `${COLUMN_ACTIONS}: ${column}`,
+		columnActionsFor: (
+			header: string,
+			column: number,
+			type: ExpectedColumnType,
+		) =>
+			`${COLUMN_ACTIONS}: Column ${columnLetter(column)}, ${columnDescription(header, type)}`,
+		// The cell menu acts on the selection, so it is named for the cell the
+		// selection's focus is on, as the row and column menus are named for
+		// theirs.
+		cellActionsFor: (row: number, column: number) =>
+			`${CELL_ACTIONS}: ${cellPosition(row, column)}`,
 		copySource: "Copy source",
 		copyFormattedTable: "Copy formatted table",
 		downloadTable: "Download table",
@@ -1249,12 +1275,12 @@ export const copy = {
 			`${source} could not be read, so it was not duplicated.`,
 		emptyRowsAndColumnsDeleted: (rows: number, columns: number) => {
 			const parts = [
-				rows > 0 ? `${rows} empty ${rows === 1 ? "row" : "rows"}` : "",
+				rows > 0 ? `${rows} blank ${rows === 1 ? "row" : "rows"}` : "",
 				columns > 0
-					? `${columns} empty ${columns === 1 ? "column" : "columns"}`
+					? `${columns} blank ${columns === 1 ? "column" : "columns"}`
 					: "",
 			].filter((part) => part !== "");
-			return `${parts.join(" and ")} deleted.`;
+			return `${parts.join(" and ")} removed.`;
 		},
 		pendingPaneAction: (kind: "view" | "close") =>
 			kind === "close"
@@ -1429,7 +1455,13 @@ export const copy = {
 		// (WCAG 2.5.3, Label in Name).
 		selectHeaderRow: `${SELECT_ROW}: Header row 1`,
 		selectRowNamed: (row: string) => `${SELECT_ROW}: ${row}`,
-		selectColumnNamed: (column: string) => `${SELECT_COLUMN}: ${column}`,
+		// Opens with the letter the control shows (WCAG 2.5.3, Label in Name).
+		selectColumnNamed: (
+			header: string,
+			column: number,
+			type: ExpectedColumnType,
+		) =>
+			`${SELECT_COLUMN} ${columnLetter(column)}: ${columnDescription(header, type)}`,
 		columnLetter,
 		// Header cells name themselves after what they contain, because that name
 		// is what a screen reader reads out as the context for every cell beneath
@@ -1438,12 +1470,6 @@ export const copy = {
 		// inventing content that would serialize into the document.
 		columnHeader: (header: string, column: number) =>
 			header.trim() === "" ? columnLetter(column) : header,
-		columnWithExpectedType: (
-			header: string,
-			column: number,
-			type: ExpectedColumnType,
-		) =>
-			`${header.trim() === "" ? columnLetter(column) : header}, expected type ${expectedColumnTypeLabels[type].toLowerCase()}`,
 		// Read after a cell value it qualifies, so it opens with its own comma
 		// and stays lowercase.
 		cellTypeQualifier: (type: CellValueType) =>
@@ -1459,10 +1485,9 @@ export const copy = {
 		// The editor that opens inside a cell is a control, not a cell, so it
 		// names itself by position rather than borrowing the cell's value.
 		// Columns go by the letters of the index strip, as everywhere else.
-		cellEditor: (row: number, column: number) =>
-			`Row ${row + 2}, column ${columnLetter(column)}`,
+		cellEditor: (row: number, column: number) => cellPosition(row, column),
 		cellEditorWithType: (row: number, column: number, type: CellValueType) =>
-			`Row ${row + 2}, column ${columnLetter(column)}, type ${cellTypeLabels[type].toLowerCase()}`,
+			`${cellPosition(row, column)}, type ${cellTypeLabels[type].toLowerCase()}`,
 		headerEditor: (header: string, column: number) =>
 			`Rename ${header.trim() === "" ? `column ${columnLetter(column)}` : header}`,
 		// A list can refuse more than one choice at a time, and every recovery

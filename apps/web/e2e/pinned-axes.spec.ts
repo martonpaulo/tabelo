@@ -65,7 +65,7 @@ async function openColumnMenu(
 	column: number,
 	header: string,
 ): Promise<Locator> {
-	const name = `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType(header, column - 1, "text")}`;
+	const name = copy.actions.columnActionsFor(header, column - 1, "text");
 	const menu = tabelo.page.getByRole("menu", { name });
 	await menu.waitFor({ state: "hidden" });
 	await tabelo.columnIndex(column).click({ button: "right" });

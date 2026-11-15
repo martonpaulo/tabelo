@@ -320,7 +320,7 @@ test("the column is selected from the index strip", async ({
 	await tabelo
 		.columnIndex(1)
 		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.selectColumn}:`),
+			name: new RegExp(`^${copy.actions.selectColumn} [A-Z]+:`),
 		})
 		.focus();
 	await page.keyboard.press(" ");
@@ -481,7 +481,7 @@ test("workspace width survives document history, reload, and duplication", async
 	await tabelo
 		.columnIndex(1)
 		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.selectColumn}:`),
+			name: new RegExp(`^${copy.actions.selectColumn} [A-Z]+:`),
 		})
 		.click();
 	await tabelo.columnIndex(1).click({ button: "right" });

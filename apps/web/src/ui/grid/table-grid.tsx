@@ -2518,14 +2518,15 @@ function ColumnIndexCell({
 			{/* The handle for the whole column, and the cell's only control (#288).
 			    It fills the cell and carries the cells' own inline padding, so the
 			    letter starts exactly where the text of the column below it does.
-			    It names itself after the column it selects, falling back to the
-			    letter when the header is empty, which is the same rule the header
-			    cell announces by. */}
+			    Its name opens with the letter it shows, then says what the header
+			    holds and the type the column expects. */}
 			<button
 				type="button"
 				tabIndex={entered ? 0 : -1}
 				aria-label={copy.a11y.selectColumnNamed(
-					copy.a11y.columnWithExpectedType(header, columnIndex, expectedType),
+					header,
+					columnIndex,
+					expectedType,
 				)}
 				onKeyDown={onTypeOverAxis}
 				className={cn(

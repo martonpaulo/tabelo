@@ -84,11 +84,12 @@ type ContextAxis = TableActionContext["axis"];
 // What the menu was opened on. The index names the row or column an axis menu
 // acts on; a cell menu acts on the selection and needs none. `onCell` records
 // that a cell opened it, which an axis menu the keyboard opens from a cell
-// still is.
+// still is. `cell` is the cell a cell menu opened on, which names it.
 interface MenuTarget {
 	readonly axis: ContextAxis;
 	readonly index: number;
 	readonly onCell?: boolean;
+	readonly cell?: CellPosition;
 }
 
 // The first data row and the first data column on their own axes. The header
@@ -96,27 +97,27 @@ interface MenuTarget {
 // first data one, and both axes count their data from zero.
 const FIRST_DATA_INDEX = 0;
 
-// The menu's accessible name. A column names itself by its header, falling
-// back to its index-strip letter when it has none, so the menu of an unnamed
-// column is still identifiable. A cell menu keeps no name of its own.
+// The menu's accessible name. A column names itself by its index-strip letter
+// and its header, a row by its number, and a cell menu by the cell it opened
+// on, as the grid shows it (WCAG 2.5.3 asks the same of the axis controls).
 function menuLabel(
 	target: MenuTarget,
 	header: string,
-	expectedType?: ExpectedColumnType,
-): string | undefined {
+	expectedType: ExpectedColumnType | undefined,
+): string {
 	if (target.axis === "column") {
 		return copy.actions.columnActionsFor(
-			copy.a11y.columnWithExpectedType(
-				header,
-				target.index,
-				expectedType ?? "text",
-			),
+			header,
+			target.index,
+			expectedType ?? "text",
 		);
 	}
 	if (target.axis === "row") {
 		return copy.actions.rowActionsFor(copy.a11y.rowNumber(target.index));
 	}
-	return undefined;
+	const cell =
+		target.cell ?? activeRange(useTabeloStore.getState().selection).focus;
+	return copy.actions.cellActionsFor(cell.row, cell.column);
 }
 
 // The axis a keyboard-opened menu acts on. There is no click target to read,
@@ -604,13 +605,14 @@ export function GridContextMenu({
 							const [row, column] = (cell.dataset.cell ?? "0:0")
 								.split(":")
 								.map(Number);
-							targetCellForMenu(row ?? 0, column ?? 0);
+							const opened = { row: row ?? 0, column: column ?? 0 };
+							targetCellForMenu(opened.row, opened.column);
 							// A pointer names its own target; the keyboard has only the
 							// selection, so a selected row or column yields its axis menu.
 							setTarget(
 								fromKeyboard
-									? { ...targetFromSelection(), onCell: true }
-									: { axis: "cell", index: 0, onCell: true },
+									? { ...targetFromSelection(), onCell: true, cell: opened }
+									: { axis: "cell", index: 0, onCell: true, cell: opened },
 							);
 							return;
 						}

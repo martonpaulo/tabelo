@@ -225,7 +225,7 @@ no brand row: the trigger is the product's own mark. Its footer is one line,
 the product and its copyright in muted text beside the link to its source.
 
 A table's options list `Open table` (except on the open one), `Rename table`,
-`Duplicate table`, the whole-table commands `Transpose table` and `Delete empty rows and columns`
+`Duplicate table`, the whole-table commands `Transpose table` and `Remove blanks`
 (#235), `Copy table` and `Download table`, which share one format chooser, and
 `Delete` with the table's name last, under a separator. The whole-table commands live there because
 they act on a table rather than on a row, a column, or a pane: an axis menu is

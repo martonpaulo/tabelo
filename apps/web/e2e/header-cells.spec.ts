@@ -38,7 +38,7 @@ test("the strip's controls are owned by the surface, not by the grid", async ({
 	// Outside the table and still on the keyboard path, which is the reason the
 	// strip was never simply hidden from assistive technology.
 	const select = tabelo.columnIndex(2).getByRole("button", {
-		name: new RegExp(`^${copy.actions.selectColumn}:`),
+		name: new RegExp(`^${copy.actions.selectColumn} [A-Z]+:`),
 	});
 	await tabelo.cell(1, 1).click();
 	await select.focus();
@@ -110,7 +110,7 @@ test("the strip selects the column and the header cell selects itself", async ({
 	await tabelo
 		.columnIndex(1)
 		.getByRole("button", {
-			name: `${copy.actions.selectColumn}: Name`,
+			name: copy.a11y.selectColumnNamed("Name", 0, "text"),
 		})
 		.click();
 	await expect(tabelo.header(1)).toHaveAttribute("aria-selected", "true");
@@ -169,7 +169,7 @@ test("the column menu opens on the strip and names an unnamed column", async ({
 	await tabelo.columnIndex(1).click({ button: "right" });
 	await expect(
 		tabelo.page.getByRole("menu", {
-			name: `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("", 0, "text")}`,
+			name: copy.actions.columnActionsFor("", 0, "text"),
 		}),
 	).toBeVisible();
 });

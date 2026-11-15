@@ -36,7 +36,7 @@ test("a row number and a column letter are the only control on their cell", asyn
 		await expect(tabelo.columnIndex(column).getByRole("button")).toHaveCount(1);
 		await expect(
 			tabelo.columnIndex(column).getByRole("button", {
-				name: new RegExp(`^${copy.actions.selectColumn}:`),
+				name: new RegExp(`^${copy.actions.selectColumn} [A-Z]+:`),
 			}),
 		).toHaveCount(1);
 	}
@@ -201,7 +201,7 @@ test("the column menu moves a two-column selection as one block", async ({
 		.first()
 		.click({ modifiers: ["Shift"] });
 
-	const menuName = `${copy.actions.columnActions}: ${copy.a11y.columnWithExpectedType("name", 0, "text")}`;
+	const menuName = copy.actions.columnActionsFor("name", 0, "text");
 	await tabelo.columnIndex(1).click({ button: "right" });
 	const menu = page.getByRole("menu", { name: menuName });
 	await expect(menu).toBeVisible();

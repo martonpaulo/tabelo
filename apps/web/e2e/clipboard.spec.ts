@@ -126,7 +126,7 @@ test("pasting into a whole column keeps every input row", async ({
 	await tabelo
 		.columnIndex(1)
 		.getByRole("button", {
-			name: new RegExp(`^${copy.actions.selectColumn}:`),
+			name: new RegExp(`^${copy.actions.selectColumn} [A-Z]+:`),
 		})
 		.click();
 
