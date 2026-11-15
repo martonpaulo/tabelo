@@ -374,7 +374,9 @@ export function PaneMenu({
 								}
 							>
 								<DropdownMenuItem
-									aria-label={copy.workspace.resetZoom}
+									aria-label={copy.workspace.resetZoomFrom(
+										copy.workspace.zoomPercent(paneZoomPercent(zoom)),
+									)}
 									aria-keyshortcuts={copy.shortcuts.resetZoom}
 									closeOnClick={false}
 									disabled={zoom === DEFAULT_PANE_ZOOM}

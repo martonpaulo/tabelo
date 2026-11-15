@@ -43,10 +43,12 @@ const appCommandLabels: Record<Exclude<AppCommand, "deleteTable">, string> = {
 // 2026-09-20). A spec still names the command; the helper knows where it is.
 const exportCommands = new Set<AppCommand>(["downloadTable"]);
 
-const paneCommandLabels: Record<PaneCommand, string> = {
+// Reset zoom's name also carries the zoom it resets from, so it is matched by
+// its start rather than whole (a pattern ignores `exact`).
+const paneCommandLabels: Record<PaneCommand, string | RegExp> = {
 	closeView: copy.workspace.closeView,
 	zoomOut: copy.workspace.zoomOut,
-	resetZoom: copy.workspace.resetZoom,
+	resetZoom: new RegExp(`^${copy.workspace.resetZoom}\\b`),
 	zoomIn: copy.workspace.zoomIn,
 	copySource: copy.actions.copySource,
 	copyFormattedTable: copy.actions.copyFormattedTable,

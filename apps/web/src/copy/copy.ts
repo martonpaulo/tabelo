@@ -560,6 +560,9 @@ export const copy = {
 		zoomOut: "Zoom out",
 		zoomIn: "Zoom in",
 		resetZoom: "Reset zoom",
+		// The item shows the current zoom, so its name carries it too (WCAG
+		// 2.5.3, Label in Name).
+		resetZoomFrom: (percent: string) => `Reset zoom, ${percent}`,
 		wrapSource: WRAP_LINES,
 		wrapAllColumns: "Wrap all columns",
 		fitToPaneWidth: "Fit to pane width",
@@ -1397,7 +1400,9 @@ export const copy = {
 				? `Add view below the ${paneLabel}`
 				: `Add view to the right of the ${paneLabel}`,
 		rowNumber: (index: number) => `Row ${index + 2}`,
-		selectHeaderRow: "Select header row",
+		// The visible number is part of the name, as it is for every data row
+		// (WCAG 2.5.3, Label in Name).
+		selectHeaderRow: `${SELECT_ROW}: Header row 1`,
 		selectRowNamed: (row: string) => `${SELECT_ROW}: ${row}`,
 		selectColumnNamed: (column: string) => `${SELECT_COLUMN}: ${column}`,
 		columnLetter,
