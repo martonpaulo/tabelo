@@ -35,11 +35,11 @@ the working agreements this repository actually follows.
 
 ## Branches, commits, and pull requests
 
-Work happens on a branch and arrives through a pull request. The conventions are recorded in
-[`AGENTS.md`](AGENTS.md):
+The maintainer commits directly to `main`. An outside contribution arrives through a pull request
+from a branch. The conventions are recorded in [`AGENTS.md`](AGENTS.md):
 
 - **Branch name**: [Conventional Branch](https://conventionalbranch.org/), `type/<issue numbers>-short-description`,
-  where `type` is one of `feature`, `fix`, `hotfix`, `chore`, `docs`, `refactor`, `test`, `release` — for
+  where `type` is one of `feature`, `fix`, `hotfix`, `chore`, `docs`, `refactor`, `test`, `release`, for
   example `feature/24-two-level-keyboard-navigation`, or `chore/update-readme` when no issue exists.
 - **Commit subject**: a Conventional Commits subject; one made for an issue ends with the issue
   number, for example `feat: add the export button (#54)`. A commit belonging to no issue carries no
@@ -48,7 +48,8 @@ Work happens on a branch and arrives through a pull request. The conventions are
   example `feat(grid): add the export button (#54)` or `fix: normalize carriage returns (#54, #61)`.
 - **Pull request body**: it starts with one `Closes #<n>` line per issue the pull request closes,
   and that set must match the title's numbers exactly.
-- Pull requests are **squash merged** and the branch is deleted afterwards.
+- Pull requests are merged with a **merge commit**, so every branch commit reaches `main`, and the
+  branch is deleted afterwards.
 
 Nothing enforces the title automatically, so a wrong one is corrected in the GitHub UI before merge.
 
@@ -62,8 +63,10 @@ pnpm validate
 ```
 
 `pnpm validate` is the one command: `pnpm check`, `pnpm check:dead-code`, `pnpm check-types` and
-`pnpm test`, in that order. Add `pnpm test:e2e` when the change crosses a UI boundary, which is the
-coverage CI selects for you anyway; the first run needs `pnpm test:e2e:install` to fetch Chromium.
+`pnpm test`, in that order. The browser suite is not a local gate: CI selects and runs it. For a
+focused browser run while iterating, follow the one rule in
+[running browser specs locally](docs/testing.md#running-browser-specs-locally); the first run needs
+`pnpm test:e2e:install` to fetch Chromium.
 
 `pnpm check:dead-code` runs Knip, which is strict here: an unused file, export, or dependency is a
 finding, so remove what your change orphaned rather than leaving it behind.

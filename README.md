@@ -9,7 +9,7 @@ synchronized and everything running in your browser.
 
 [![Validate](https://github.com/martonpaulo/tabelo/actions/workflows/validate.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/validate.yml) [![Deploy](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml/badge.svg)](https://github.com/martonpaulo/tabelo/actions/workflows/deploy.yml)
 
-[![React 19.2](https://img.shields.io/badge/React-19.2-informational.svg)](https://react.dev) [![Vite 8.1](https://img.shields.io/badge/Vite-8.1-informational.svg)](https://vite.dev) [![TypeScript 6.0](https://img.shields.io/badge/TypeScript-6.0-informational.svg)](https://www.typescriptlang.org)
+[![React 19.3](https://img.shields.io/badge/React-19.3-informational.svg)](https://react.dev) [![Vite 8.3](https://img.shields.io/badge/Vite-8.3-informational.svg)](https://vite.dev) [![TypeScript 6.0](https://img.shields.io/badge/TypeScript-6.0-informational.svg)](https://www.typescriptlang.org)
 
 </div>
 
@@ -37,11 +37,9 @@ pnpm install
 pnpm dev
 ```
 
-Then open the URL it prints, which on a plain checkout and in CI is
-[http://localhost:3001](http://localhost:3001).
-
-Every other worktree gets its own port derived from its path, so several checkouts can run side by
-side without serving each other's build.
+Then open the URL it prints. Only CI pins the canonical port,
+[http://localhost:3001](http://localhost:3001); every local checkout gets its own port derived from
+its path, so several checkouts can run side by side without serving each other's build.
 
 <br />
 
@@ -91,8 +89,9 @@ opening a pull request.
 
 > [!TIP]
 > Before you commit: `pnpm validate`, that is `pnpm check`, `pnpm check:dead-code`,
-> `pnpm check-types` and `pnpm test`. Add `pnpm test:e2e` when the change crosses a UI boundary,
-> which is the coverage CI selects for you anyway.
+> `pnpm check-types` and `pnpm test`. The browser suite is not a local gate: CI runs it, and
+> [running browser specs locally](docs/testing.md#running-browser-specs-locally) is the one rule
+> for a focused run while iterating.
 
 <br />
 
@@ -108,6 +107,8 @@ workflows use only the `GITHUB_TOKEN` that GitHub Actions provides on its own.
 | `TABELO_DEV_PORT`      | Local dev       | Overrides the path-derived dev server port                        |
 | `TABELO_PREVIEW_PORT`  | Local dev       | Overrides the path-derived preview server port                    |
 | `TABELO_PWA_DEV`       | Local dev       | Enables the service worker in dev, for working on the worker itself |
+| `TABELO_E2E_WORKERS`   | Browser tests   | Playwright worker count for a local run; `1` while another checkout runs its suite |
+| `TABELO_E2E_CHROMIUM`  | Browser tests   | Path to a Chromium already on the machine, for one that cannot run `pnpm test:e2e:install` |
 | `CI`                   | CI              | Set by GitHub Actions; pins the canonical ports and the Playwright retry policy |
 
 ---
@@ -272,6 +273,7 @@ The decisions worth reading before you change anything:
 - [Carry a cell's type instead of deriving it from the text](docs/adr/0008-cells-carry-types-and-never-derive-them.md)
 - [Keep one implementation language, and why WebAssembly lost the measurement](docs/adr/0009-one-implementation-language.md)
 - [Ship one dark palette and no theme preference](docs/adr/0010-one-dark-palette.md)
+- [Carry inline formatting as structure in the document](docs/adr/0011-structured-inline-content.md)
 
 [`docs/design-system.md`](docs/design-system.md) is binding for anything visual,
 [`CONTEXT.md`](CONTEXT.md) defines the vocabulary, and [`AGENTS.md`](AGENTS.md)

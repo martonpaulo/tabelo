@@ -742,8 +742,10 @@ write the card in the same turn: a card written only as Markdown does not ask.
 
 - Ignore secrets, local environments, logs, caches, build output, and generated
   artifacts appropriate to the actual stack.
-- This project has no environment variables and therefore no `.env.example`. If
-  one is ever introduced, document every supported name with a safe placeholder.
+- This project has no application secret and no runtime variable, and therefore
+  no `.env.example`. The build, local-tooling and CI variables it reads are
+  listed in `README.md` `## 🔐 Secrets and variables`; a new one is added to
+  that table in the same change.
 - Do not add placeholder automation.
 - An executor does not touch `.github/workflows/` or `LICENSE`.
 
