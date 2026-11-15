@@ -148,6 +148,60 @@ describe("library transitions preserve recoverable work", () => {
 		},
 	);
 
+	// Deleting while the library index is unreadable or newer must leave the
+	// preserved index and every stored table as they were (#544).
+	it("deletes nothing while the library index is unreadable", () => {
+		const raw = JSON.stringify({
+			version: 99,
+			tables: ["original"],
+			activeId: "original",
+		});
+		localStorage.setItem(LIBRARY_KEY, raw);
+		localStorage.setItem(tableKey("original"), "original table bytes");
+		useTabeloStore.getState().hydrate();
+		useTabeloStore.setState({
+			library: {
+				tables: [{ id: "blank", name: "Untitled table", mark: 1 }],
+				activeId: "blank",
+			},
+		});
+		useTabeloStore.getState().deleteTable("blank");
+		expect(localStorage.getItem(LIBRARY_KEY)).toBe(raw);
+		expect(localStorage.getItem(tableKey("original"))).toBe(
+			"original table bytes",
+		);
+		expect(useTabeloStore.getState().storageIssue).toMatchObject({
+			kind: "unreadable",
+		});
+	});
+
+	// A refused index write leaves the table where it was, not half deleted.
+	it("keeps a table whose deletion could not be written", () => {
+		const { first } = twoTables();
+		const before = useTabeloStore.getState().library;
+		const kept = localStorage.getItem(tableKey(first));
+		const write = localStorage.setItem.bind(localStorage);
+		const writes = vi
+			.spyOn(window.localStorage, "setItem")
+			.mockImplementation((key, value) => {
+				if (key === LIBRARY_KEY)
+					throw new DOMException("Full", "QuotaExceededError");
+				write(key, value);
+			});
+		useTabeloStore.getState().deleteTable(first);
+		expect(useTabeloStore.getState().library).toBe(before);
+		expect(localStorage.getItem(tableKey(first))).toBe(kept);
+		expect(useTabeloStore.getState().storageIssue).toMatchObject({
+			kind: "quota",
+		});
+		// Retained sessions are module state the store reset does not clear,
+		// so the table is deleted for real before the next test.
+		writes.mockRestore();
+		useTabeloStore.setState({ storageIssue: null });
+		useTabeloStore.getState().deleteTable(first);
+		expect(localStorage.getItem(tableKey(first))).toBeNull();
+	});
+
 	it.each([
 		"{original index",
 		JSON.stringify({ version: 99, tables: ["original"], activeId: "original" }),

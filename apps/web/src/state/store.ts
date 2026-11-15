@@ -2991,7 +2991,18 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	deleteTable: (id) => {
 		const state = get();
 		if (!state.library.tables.some((table) => table.id === id)) return;
+		// An unreadable or newer library is preserved raw until the user
+		// replaces it; deleting would overwrite it with an index that names
+		// none of the stored tables (#544).
+		if (storageBlocksWrites(state.storageIssue)) return;
 		const library = removeTable(state.library, id);
+		// The index is written first, so a refused write leaves the table and
+		// the library exactly as they were rather than half deleted.
+		const indexed = writeLibraryIndex(library);
+		if (indexed.status !== "saved") {
+			set({ storageIssue: { kind: indexed.status } });
+			return;
+		}
 		// Nothing is flushed here: the table being deleted must not be written
 		// back on its way out. Deleting the last table leaves the library empty
 		// and the store on a blank table no key holds (#466).
@@ -2999,7 +3010,6 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		retainedSessions.delete(id);
 		if (id === state.library.activeId) openTable(library);
 		else set({ library });
-		writeLibraryIndex(library);
 	},
 
 	ensureActiveTable: () => {
