@@ -714,6 +714,44 @@ test("a write from another tab revokes the paired session", async ({
 	}
 });
 
+// Going back from the New table welcome surface deletes the new table only
+// while it is still empty; content a paired agent wrote there stays (#549).
+test("going back keeps a new table a paired agent already wrote into", async ({
+	tabelo,
+	agent,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.runAppCommand("newTable");
+	await expect(tabelo.welcome).toBeVisible();
+	const created = await agent.read();
+	const applied = await agent.call(
+		"tabelo_edit_table",
+		tableArgs(created, [
+			{
+				kind: "set_cells",
+				cells: [
+					{
+						rowId: required(created.rows[0]).id,
+						columnId: required(created.columns[0]).id,
+						value: "Paulo",
+					},
+				],
+			},
+		]),
+	);
+	expect(applied, JSON.stringify(applied)).toMatchObject({ code: "applied" });
+
+	await tabelo.welcome
+		.getByRole("button", { name: copy.actions.cancel })
+		.click();
+
+	await expect(tabelo.welcome).toBeHidden();
+	const after = await agent.read();
+	expect(after.tableId).toBe(created.tableId);
+	expect(after.rows[0]?.values[0]).toBe("Paulo");
+	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
+});
+
 // A loopback port nothing listens on: bound by the system, then released.
 async function closedPort(): Promise<number> {
 	const server = createServer();

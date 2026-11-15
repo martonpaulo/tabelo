@@ -15,6 +15,31 @@ async function createTable(tabelo: TabeloPage): Promise<void> {
 	await welcome.getByRole("button", { name: copy.empty.emptyAction }).click();
 }
 
+// Going back from a still-empty new table removes it and reopens the table
+// the user came from (#549).
+test("going back from an empty new table deletes it and reopens the previous one", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	await tabelo.runAppCommand("newTable");
+	await expect(tabelo.welcome).toBeVisible();
+
+	await tabelo.welcome
+		.getByRole("button", { name: copy.actions.cancel })
+		.click();
+
+	await expect(tabelo.welcome).toBeHidden();
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	// Going back puts the reader back in the app menu they came from.
+	const menu = tabelo.page.getByRole("menu", {
+		name: copy.actions.openAppMenu,
+	});
+	await expect(menu).toBeVisible();
+	await expect(
+		menu.getByRole("menuitem", { name: new RegExp(`^${DEFAULT_TABLE_NAME}`) }),
+	).toHaveCount(1);
+});
+
 test("a new table is added beside the current one and both keep their content", async ({
 	tabelo,
 }) => {

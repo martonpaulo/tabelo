@@ -221,13 +221,21 @@ export function TabeloApp() {
 	};
 
 	// Leaves the table that was just created, deletes it, and returns to the
-	// one the user came from. Only ever offered on a table with nothing in it,
-	// so nothing can be lost by taking it.
+	// one the user came from, but only while that table is still the open one
+	// and still holds nothing: a paired agent can write into it while the
+	// welcome surface is up, and then going back only closes the surface
+	// (#549).
 	const cancelNewTable = () => {
 		if (!newTableRetreat) return;
 		const store = useTabeloStore.getState();
-		store.switchTable(newTableRetreat.previous);
-		store.deleteTable(newTableRetreat.created);
+		const stillEmpty =
+			store.library.activeId === newTableRetreat.created &&
+			isDocumentBlank(store.document) &&
+			store.draft === null;
+		if (stillEmpty) {
+			store.switchTable(newTableRetreat.previous);
+			store.deleteTable(newTableRetreat.created);
+		}
 		setNewTableRetreat(null);
 		setWelcomeOpen(false);
 		// The reader came from the menu and is still choosing, so the menu is
