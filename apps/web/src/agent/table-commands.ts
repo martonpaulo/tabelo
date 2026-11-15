@@ -19,7 +19,21 @@ import {
 	HEADER_ROW,
 } from "@/core/selection";
 import { tableShapeLimitError } from "@/core/table-limits";
-import type { TableDocument } from "@/core/types";
+import type { Alignment, TableDocument } from "@/core/types";
+
+// The wire contract cannot import the app, so its alignment list is checked
+// against the core's here: a list that drifts fails to compile (#572).
+type WireAlignment = Extract<
+	TableOperation,
+	{ readonly kind: "set_alignment" }
+>["value"];
+type SameAlignments = [WireAlignment] extends [Alignment]
+	? [Alignment] extends [WireAlignment]
+		? true
+		: false
+	: false;
+const alignmentsMatch: SameAlignments = true;
+void alignmentsMatch;
 
 class CommandRefusal extends Error {}
 

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { EXPECTED_COLUMN_TYPES } from "@/core/cell-value";
 import { isValidInlineContent } from "@/core/inline-content";
 import { MAX_TABLE_NAME_CODE_POINTS } from "@/core/table-name";
-import type { InlineContent } from "@/core/types";
+import { ALIGNMENTS, type InlineContent } from "@/core/types";
 import { SPACE_INDICATOR_VALUES } from "@/preferences/contract";
 import { VIEW_IDS } from "@/views/types";
 import { workspacePanesTileLayout } from "@/workspace/layout";
@@ -39,7 +39,7 @@ const inlineContentSchema = z.custom<InlineContent>(isValidInlineContent);
 const columnSchema = z.object({
 	id: z.string().min(1),
 	header: z.union([z.string(), inlineContentSchema]),
-	align: z.enum(["default", "left", "center", "right"]),
+	align: z.enum(ALIGNMENTS),
 	expectedType: z.enum(EXPECTED_COLUMN_TYPES),
 });
 

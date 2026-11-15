@@ -1,8 +1,11 @@
 export type ColumnId = string;
 export type RowId = string;
 
-// Markdown column alignment. `default` emits `---` with no colon.
-export type Alignment = "default" | "left" | "center" | "right";
+// Markdown column alignment. `default` emits `---` with no colon. The one
+// list: persistence validates against it, and the agent wire contract is
+// checked against it at compile time (#572).
+export const ALIGNMENTS = ["default", "left", "center", "right"] as const;
+export type Alignment = (typeof ALIGNMENTS)[number];
 
 // The formatting a run of text can carry, in its one canonical order. See
 // docs/adr/0011 for the model and why code cannot combine with the others.
