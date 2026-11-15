@@ -39,6 +39,10 @@ The benchmarks live beside the code they measure, as `*.bench.ts`:
 | `apps/web/src/core/document.bench.ts` | `documentFromMatrix`, `documentToMatrix`, `reconcileDocument` |
 | `apps/web/src/core/operations.bench.ts` | the pure table operations, and the timer floor |
 
+`pnpm bench` runs them in the `unit` Vitest project only. Without
+`--project=unit` every bench ran once in each project and printed two figures
+for the same call (#583).
+
 `apps/web/src/testing/bench-fixtures.ts` owns the fixtures and the timing
 options. Both are deliberately in one place: a bench that builds its own table
 or sets its own iteration count produces a figure that cannot be compared with
@@ -279,6 +283,19 @@ one machine.
 | suspicion | measured | verdict |
 | --- | --- | --- |
 | Scroll lag with space indicators comes from the number of decoration spans | span count identical at 996 before and after; forced style+layout median 15.5 ms to 9.9 ms in `all` mode, layout 1.20 s to 0.45 s | **Disproved as stated, and the real cause fixed in #275.** The spans were never the cost. Each one was, because the theme gave it a `position: relative` block, a pseudo-element box, and the shaping of a `·`. Painting the dot as a background left the count untouched and made `all` mode as cheap as `boundary`, which it had never been. Do not reach for a run-matching decorator that collapses spans: the layout inside each span was the cost, not the span. |
+
+Measured in the browser by the project audit of 2026-11-15 (#583), production
+build in headless Chromium on an x86_64 cloud container (4 vCPU), about 2.3
+times slower than machine A by calibration on the 200 x 8 paste. Reopen any of
+them if the shape or the code path they name changes.
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| The scroll-driven row-header animations are work on a page left open | `document.getAnimations()` at rest: 206 running at 200 rows, 505 at 499, all on a `ScrollTimeline`, none on a `DocumentTimeline` | **Disproved.** A scroll timeline advances only when its scroller scrolls; nothing ticks at rest. |
+| Many row-header scroll animations make vertical scrolling slow | 120 programmatic scroll steps down and back: worst frame 17 ms, p95 17 ms, at 200 and 499 rows (4 columns) | **Disproved.** |
+| Changing views repeatedly or editing leaks memory | heap after forced GC: 14.1 MB, then 17.5, 18.1, 18.6, 18.8 MB after four rounds of five view changes, 20.1 MB after 40 more edits; DOM nodes, listeners and documents flat | **Disproved.** Growth converges; history is capped at 200 entries. |
+| The header question's row sample (#454) adds to a large paste | opening the dialog: longest task 0 to 53 ms, no event above 16 ms, at every shape up to 49,900 cells | **Disproved.** The sample reads a bounded corner of the matrix. |
+| Each CI browser shard rebuilding the app wastes CI time | `vite build` 3.9 s inside a 186 to 342 s browser step | **Disproved as worth a change.** Under 2% of a shard. |
 
 Also measured in #59 and found innocent, recorded so nobody investigates them
 again: `cn()` across 1000 cells at 2 ms; CodeMirror compartment reconfiguration

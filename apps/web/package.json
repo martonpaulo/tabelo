@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"bench": "vitest bench --run",
+		"bench": "vitest bench --run --project=unit",
 		"build": "vite build",
 		"serve": "vite preview",
 		"start": "vite",
