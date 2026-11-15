@@ -823,12 +823,10 @@ mirrors the row-number gutter on the other axis. Both are chrome:
   directions act on the column whose menu is open and never on every
   selected column: sorting by several columns at once is not a thing the
   document can express, so an action reached from column C's menu orders the
-  table by C. They are two immediate commands beside alignment rather than a
-  submenu or a stored choice, because the sort reorders the document once and
-  nothing stays applied afterwards for a radio group to read back. They are
-  written inline in the column menu for the same reason alignment and expected
-  type are: the shared action list acts on the selection, and these act on one
-  named column. Each direction is named by that column's expected type, the
+  table by C. They sit in the Sort submenu with the other directional
+  commands (#369), as two immediate commands rather than a stored choice,
+  because the sort reorders the document once and nothing stays applied
+  afterwards for a radio group to read back. Each direction is named by that column's expected type, the
   carried one and never one read from its cells: A → Z for text, 1 → 9 for a
   number, false → true for a boolean, and the reverse, so the label says
   which way the rows go; a text menu whose caret names no cell keeps the
