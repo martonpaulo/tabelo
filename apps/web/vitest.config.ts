@@ -11,6 +11,13 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
+		// Node 25 turned its own Web Storage global on by default. Without a
+		// storage file it leaves `localStorage` undefined, and that global
+		// shadows happy-dom's, so every storage test fails with "Cannot read
+		// properties of undefined" (#528). The flag is accepted from Node 22.4
+		// on, so it is safe on the pinned version too.
+		// https://nodejs.org/api/cli.html#--no-experimental-webstorage
+		execArgv: ["--no-experimental-webstorage"],
 		projects: [
 			{
 				extends: true,
