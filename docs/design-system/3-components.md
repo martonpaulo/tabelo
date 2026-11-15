@@ -786,7 +786,7 @@ the relationship visible.
 
 ### Agent connection (#405)
 
-The app menu offers Connect agent (MCP) when disconnected and shows the connected or
+The app menu offers Connect AI when disconnected and shows the connected or
 paused state in the same entry. The owner opens a standard dialog to paste the
 local connection code and read the data-sharing scope. First-time setup stays
 in the dialog: a Claude Code or Claude Desktop choice (#536), prerequisites,

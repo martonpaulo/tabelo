@@ -91,6 +91,14 @@ function cellPosition(row: number, column: number): string {
 	return `Row ${row + 2}, column ${columnLetter(column)}`;
 }
 
+// Parser reasons that only say the text can't be read yet. Under an import
+// heading that already says so, they add nothing but a word for typing.
+const restatesImportHeading: ReadonlySet<ParseIssue["code"]> = new Set([
+	"empty-source",
+	"json-invalid",
+	"delimited-parse-error",
+]);
+
 // One name for source wrapping wherever it is chosen: the global default in
 // Settings and a pane's own choice in its menu.
 const WRAP_LINES = "Wrap lines";
@@ -352,19 +360,19 @@ export const copy = {
 		connectedDescription:
 			"Your AI is connected to this table library. Undo pauses its edits. You can disconnect at any time.",
 		invalidDescriptor:
-			"Paste the complete connection code from your agent, including the port and colon.",
+			"Paste the complete connection code from your AI, including the port and colon.",
 		connectionFailed:
 			"Couldn’t connect. Check that the local connector is running, request a fresh code, and allow local network access in your browser.",
 		invalidResponse:
 			"The connector sent an unsupported message. Disconnect and check that Tabelo and the connector are up to date.",
 		sessionEnded:
-			"The agent connection ended. Connect again to share the current table.",
+			"The AI connection ended. Connect again to share the current table.",
 		uncertain:
 			"The connection ended before the result could be confirmed. Check the table before repeating the request.",
-		tableUpdated: "The agent updated the table.",
-		libraryUpdated: "The agent updated the table library.",
-		workspaceUpdated: "The agent updated the views.",
-		conflict: "Your edits were kept. The agent needs to read the table again.",
+		tableUpdated: "Your AI updated the table.",
+		libraryUpdated: "Your AI updated the table library.",
+		workspaceUpdated: "Your AI updated the views.",
+		conflict: "Your edits were kept. Your AI needs to read the table again.",
 	},
 	app: product,
 
@@ -752,7 +760,7 @@ export const copy = {
 		// they say the same thing rather than inventing two wordings for it.
 		noMatchingCell: "No cell holds that text.",
 		// The same refusal in a pane that searches its own text rather than cells.
-		noMatchingText: "This view does not contain that text.",
+		noMatchingText: "This view doesn't contain that text.",
 		cellTypeConversion: (label: string) =>
 			`This value can't be converted to ${label.toLowerCase()}.`,
 		updateInProgress: "The update is already being applied.",
@@ -1215,7 +1223,7 @@ export const copy = {
 		// The state a choice carries beside its label when it can't be chosen.
 		inUse: "In use",
 		// Fit columns to pane width (#404), which measures the pane as it runs.
-		fitColumnsUnavailable: "The pane could not be measured.",
+		fitColumnsUnavailable: "The pane couldn't be measured.",
 		fitColumnsUnchanged: "The columns already fit the pane.",
 		// Fit columns to content (#467).
 		fitContentUnchanged: "The columns already fit their content.",
@@ -1268,13 +1276,13 @@ export const copy = {
 			`Skipped ${plural(cells, "cell", "cells")}: ${typedValues(types)} have no formatting. Change ${cells === 1 ? "it" : "them"} to ${cellTypeLabels.string} first.`,
 		// Whole-table commands report in a notice rather than the status line,
 		// because the notice is also where their Undo is offered (#235).
-		tableTransposed: "Table transposed.",
+		tableTransposed: "Table transposed",
 		// Said after Duplicate table, which opens the copy: the name tells the
 		// reader which table the workspace now shows.
 		tableDuplicated: (source: string, name: string) =>
 			`${name} created from ${source}.`,
 		tableNotDuplicated: (source: string) =>
-			`${source} could not be read, so it was not duplicated.`,
+			`${source} couldn't be read, so it wasn't duplicated.`,
 		emptyRowsAndColumnsDeleted: (rows: number, columns: number) => {
 			const parts = [
 				rows > 0 ? `${rows} blank ${rows === 1 ? "row" : "rows"}` : "",
@@ -1282,7 +1290,7 @@ export const copy = {
 					? `${columns} blank ${columns === 1 ? "column" : "columns"}`
 					: "",
 			].filter((part) => part !== "");
-			return `${parts.join(" and ")} removed.`;
+			return `${parts.join(" and ")} removed`;
 		},
 		pendingPaneAction: (kind: "view" | "close") =>
 			kind === "close"
@@ -1295,10 +1303,19 @@ export const copy = {
 		importError: (error: ImportError): string => {
 			switch (error.code) {
 				case "invalid-format": {
-					// The first reason the parser gave says what to change.
+					// The first reason the parser gave says what to change. A file
+					// is not being typed, so a reason that only says the text is
+					// not valid yet repeats the heading: it gives way to where the
+					// problem starts, when the parser knows (#575).
 					const [first] = error.issues;
 					const heading = `Not valid ${views[error.format].label}.`;
-					return first ? `${heading} ${copy.source.issue(first)}` : heading;
+					if (!first) return heading;
+					if (restatesImportHeading.has(first.code)) {
+						return first.line === undefined
+							? heading
+							: `${heading} The problem starts on line ${first.line}.`;
+					}
+					return `${heading} ${copy.source.issue(first)}`;
 				}
 				case "too-many-rows":
 				case "too-many-columns":
@@ -1368,11 +1385,11 @@ export const copy = {
 		},
 		savedLibraryUnreadable: {
 			"future-version":
-				"Your table library was saved by a newer version and cannot be opened here. The index and table data are untouched.",
+				"Your table library was saved by a newer version and can't be opened here. The index and table data are untouched.",
 			"current-schema-invalid":
 				"The saved table library is damaged. The index and table data are untouched.",
 			"invalid-json":
-				"The saved table library could not be read. The index and table data are untouched.",
+				"The saved table library couldn't be read. The index and table data are untouched.",
 		},
 		recoveryFileNote:
 			"Download original saves that data exactly as found, for recovery by hand. It isn't a table to import.",
