@@ -1,5 +1,15 @@
 # Derive every representation from one table document
 
+## Contents
+
+- [Context](#context)
+- [Decision](#decision)
+- [Consequences](#consequences)
+- [Amendment: structural assistance produces the draft (#294)](#amendment-structural-assistance-produces-the-draft-294)
+- [Amendment: inline content is document data (#306)](#amendment-inline-content-is-document-data-306)
+- [Amendment: local agent commands (#405)](#amendment-local-agent-commands-405)
+- [Amendment: the invariant scopes to the active table (#403)](#amendment-the-invariant-scopes-to-the-active-table-403)
+
 ## Context
 
 Tabelo shows the same table three ways: a visual grid, Markdown source, and CSV

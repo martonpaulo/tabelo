@@ -58,3 +58,6 @@ dev-dist
 .cache
 tmp
 temp
+
+# Python bytecode from scripts/text_check.py
+__pycache__/

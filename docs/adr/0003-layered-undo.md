@@ -1,5 +1,15 @@
 # Layer text-editor undo on top of a document timeline
 
+## Contents
+
+- [Context](#context)
+- [Decision](#decision)
+- [Consequences](#consequences)
+- [Amendment: an assisted edit is one local step (#294)](#amendment-an-assisted-edit-is-one-local-step-294)
+- [Amendment: a local undo walks the timeline, it never extends it](#amendment-a-local-undo-walks-the-timeline-it-never-extends-it)
+- [Amendment: a change the pane did not make ends its local history](#amendment-a-change-the-pane-did-not-make-ends-its-local-history)
+- [Amendment: agent edits use chronological undo (#405)](#amendment-agent-edits-use-chronological-undo-405)
+
 ## Context
 
 Tabelo has two editing surfaces with genuinely different natural undo

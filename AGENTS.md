@@ -380,7 +380,11 @@ browser result from CI, not from a local gate (`docs/testing.md`). While iterati
   `.claude/launch.json` is generated from the same value on install
 - `pnpm build`: production build for every workspace
 - `pnpm check-types`: TypeScript across the workspace
-- `pnpm check`: Biome format and lint with `--write`
+- `pnpm check`: Biome format and lint with `--write`, then
+  `scripts/text_check.py`, an unchanged copy of the Workbench text check (no
+  invisible character, every relative link and anchor resolves, a long `docs/`
+  page opens with a Contents list). `pnpm lint`, which CI runs, does the same
+  without `--write` (#525)
 - `pnpm bench`: the performance harness, on fixed synthetic tables at the
   target scale and one step past it. It prints numbers and never gates:
   there is no threshold and no CI job. `docs/performance.md` owns the

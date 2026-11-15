@@ -1,5 +1,12 @@
 # Carry inline formatting as structure in the document
 
+## Contents
+
+- [Context](#context)
+- [Decision](#decision)
+- [Rejected alternatives](#rejected-alternatives)
+- [Consequences](#consequences)
+
 ## Context
 
 Tabelo had no canonical representation for inline formatting. A cell held a
@@ -104,8 +111,8 @@ contract:
 | Underline | `<u>text</u>` | `<u>` | `+text+` |
 | Strikethrough | `~~text~~` | `<s>` | `-text-` |
 | Code | `` `text` `` | `<code>` | `{{text}}` |
-| Link | `[label](url)` | `<a href>` | `[label\|url]` |
-| Image | `![alt](url)` | `<img src alt>` | `!url\|alt=alt!` |
+| Link | `[label](https://example.com)` | `<a href>` | `[label\|url]` |
+| Image | `![alt](https://example.com/a.png)` | `<img src alt>` | `!url\|alt=alt!` |
 
 - *Reading never infers.* A delimiter pairs only with a closer of its own mark
   and content between them, by a reduced form of the CommonMark emphasis

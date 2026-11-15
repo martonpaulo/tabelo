@@ -1,5 +1,15 @@
 # Carry a cell's type, never derive it from its text
 
+## Contents
+
+- [Context](#context)
+- [Decision](#decision)
+- [Consequences](#consequences)
+- [Amendment: the Cell type conversion table (#371)](#amendment-the-cell-type-conversion-table-371)
+- [Amendment: changing a column's expected type converts its cells (#392)](#amendment-changing-a-columns-expected-type-converts-its-cells-392)
+- [Amendment: a format may spell a boolean (#464, #484, #485)](#amendment-a-format-may-spell-a-boolean-464-484-485)
+- [Amendment: text may carry inline structure (#306)](#amendment-text-may-carry-inline-structure-306)
+
 ## Context
 
 Every Tabelo cell was a string. ADR 0001 stated it plainly: "Cell values are

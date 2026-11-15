@@ -4,6 +4,16 @@ Canonical implementation and extension contract for #405. The research note at
 `docs/research/local-agent-connection.md` explains the alternatives and initial
 transport experiment; it is not a second specification.
 
+## Contents
+
+- [Use the connection](#use-the-connection)
+- [Architecture and single owners](#architecture-and-single-owners)
+- [Adding or changing a command](#adding-or-changing-a-command)
+- [Current tool surface](#current-tool-surface)
+- [Admission and recovery](#admission-and-recovery)
+- [Verification](#verification)
+- [Performance contract](#performance-contract)
+
 ## Use the connection
 
 The editor remains a static site. Only this optional feature needs a Node.js 24+

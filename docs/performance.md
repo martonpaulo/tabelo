@@ -9,6 +9,14 @@ problem"; this document is the address that rule points at. Runtime performance
 is fifth in the product priority order and nothing here justifies trading data
 preservation, synchronization, keyboard interaction, or interface calm for it.
 
+## Contents
+
+- [The command](#the-command)
+- [Method](#method)
+- [Baseline](#baseline)
+- [Register of answered suspicions](#register-of-answered-suspicions)
+- [Local agent command path (#405)](#local-agent-command-path-405)
+
 ## The command
 
 ```sh

@@ -4,6 +4,16 @@ Canonical for what each automated test layer owns, how the suites are selected,
 and the execution budgets that keep feedback useful. `AGENTS.md` remains
 normative for required validation, test style, and repository process.
 
+## Contents
+
+- [Baseline](#baseline)
+- [Execution budgets](#execution-budgets)
+- [Suite ownership](#suite-ownership)
+- [The axe regression net](#the-axe-regression-net)
+- [Vitest projects](#vitest-projects)
+- [Running browser specs locally](#running-browser-specs-locally)
+- [CI selection](#ci-selection)
+
 ## Baseline
 
 Measured on 2026-08-24 at `dd637ae`, before the configuration changes in

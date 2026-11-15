@@ -4,6 +4,17 @@ Canonical answer to what Tabelo is, who it serves, and what it will never do.
 Read it before proposing a feature. `AGENTS.md` is normative for process and
 keeps the fixed product priority order; this file is normative for scope.
 
+## Contents
+
+- [What it is](#what-it-is)
+- [Who it is for](#who-it-is-for)
+- [The job](#the-job)
+- [What it does](#what-it-does)
+- [What it will never do](#what-it-will-never-do)
+- [How you know it worked](#how-you-know-it-worked)
+- [Constraints](#constraints)
+- [Decision index](#decision-index)
+
 ## What it is
 
 Tabelo is a browser-based table editor. One table document is shown through

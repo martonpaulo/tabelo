@@ -18,6 +18,14 @@ after its final response line; consecutive cards may share one rule. The emoji
 supplements the heading and never replaces it. Use one card per requested
 decision, and end with an exact response format the user can copy.
 
+## Contents
+
+- [Raise the card through the question tool](#raise-the-card-through-the-question-tool)
+- [Proposed issue](#proposed-issue)
+- [Decision needed](#decision-needed)
+- [Approval needed](#approval-needed)
+- [Action needed](#action-needed)
+
 ## Raise the card through the question tool
 
 A card written only as Markdown is a message, and a message ends the turn. The

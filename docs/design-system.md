@@ -7,6 +7,15 @@ Read this before writing or changing any UI.
 
 ---
 
+## Contents
+
+- [0. Pattern-break protocol: read this first](#0-pattern-break-protocol-read-this-first)
+- [1. The design line](#1-the-design-line)
+- [Parts](#parts)
+- [6. Icons](#6-icons)
+- [7. Motion](#7-motion)
+- [8. Copy](#8-copy)
+
 ## 0. Pattern-break protocol: read this first
 
 **Committing to one design line matters more than any individual improvement.**

@@ -1,5 +1,11 @@
 # Offer preset workspace layouts instead of free slot assignment
 
+## Contents
+
+- [Context](#context)
+- [Decision](#decision)
+- [Consequences](#consequences)
+
 ## Context
 
 The workspace is a 2×2 grid of slots, and a view may occupy one slot, two

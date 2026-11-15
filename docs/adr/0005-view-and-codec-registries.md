@@ -1,5 +1,11 @@
 # Describe formats and views in registries, not in the application core
 
+## Contents
+
+- [Context](#context)
+- [Decision](#decision)
+- [Consequences](#consequences)
+
 ## Context
 
 Tabelo began with two text formats named directly in the code: a `TextFormat`
