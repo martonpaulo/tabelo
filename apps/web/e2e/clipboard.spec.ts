@@ -377,7 +377,9 @@ test("a cut that lands after the selection moved deletes nothing it did not copy
 		).__releaseClipboard(),
 	);
 
-	await expect(tabelo.notice()).toBeVisible();
+	// One warning that nothing was cut, not the success notice (#486).
+	await expect(tabelo.notice("warning")).toHaveCount(1);
+	await expect(tabelo.notice("info")).toHaveCount(0);
 	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
 	await expect(tabelo.cell(1, 2)).toHaveText("Rio");
 });

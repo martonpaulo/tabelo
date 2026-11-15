@@ -31,7 +31,11 @@ import {
 	structureDeletionGuard,
 } from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
-import { copyToClipboard, pasteFromClipboard } from "@/ui/clipboard-actions";
+import {
+	announceCut,
+	copyToClipboard,
+	pasteFromClipboard,
+} from "@/ui/clipboard-actions";
 import {
 	captureCommandTarget,
 	commandDocumentUnchanged,
@@ -140,6 +144,7 @@ export async function copySelectionToClipboard(
 	const ok = await copyToClipboard(
 		selectionClipboardPayload(store.clipboardSelection()),
 		"selection",
+		{ confirm: intent === "copy" },
 	);
 	if (!ok) return "refused";
 
@@ -156,8 +161,12 @@ export async function copySelectionToClipboard(
 	}
 
 	after.clearCopiedRanges();
-	if (commandTargetStatus(target) !== "current") return "stale";
+	if (commandTargetStatus(target) !== "current") {
+		announceCut("selection", false);
+		return "stale";
+	}
 	after.clearSelection(rects);
+	announceCut("selection", true);
 	return "applied";
 }
 

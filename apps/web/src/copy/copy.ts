@@ -1247,6 +1247,13 @@ export const copy = {
 					: scope === "format"
 						? "Table copied"
 						: "Copied",
+		// A menu Cut whose target changed while the clipboard write was pending
+		// copies and removes nothing (#409); saying only "Copied" read as a
+		// finished cut (#486).
+		cutCancelled: (scope: "selection" | "source") =>
+			scope === "source"
+				? "Copied, but nothing was cut: the text changed first. Cut again to remove it."
+				: "Copied, but nothing was cut: the table changed first. Cut again to remove it.",
 		// Tabelo cannot grant itself clipboard permission, so the recovery is
 		// always the keyboard. It stays available because a trusted key press
 		// never needs the permission the button does.

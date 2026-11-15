@@ -74,3 +74,52 @@ test("a command chosen from the menu acts on the editor", async ({
 		.poll(async () => (await lastCopied(page))?.text ?? "")
 		.toContain("Ingrid");
 });
+
+// A menu Cut whose selection changed while the clipboard write was pending
+// removes nothing (#409), and says so in one warning instead of the success
+// notice a finished Cut gives (#486). The clipboard here holds every write
+// open until the test releases it.
+test("a cancelled menu Cut warns that nothing was removed", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	await page.evaluate(() => {
+		const pending: (() => void)[] = [];
+		Object.defineProperty(window, "__releaseClipboard", {
+			value: () => {
+				for (const release of pending.splice(0)) release();
+			},
+			configurable: true,
+		});
+		const held = () =>
+			new Promise<void>((resolve) => {
+				pending.push(resolve);
+			});
+		Object.defineProperty(navigator, "clipboard", {
+			value: { write: held, writeText: held },
+			configurable: true,
+		});
+	});
+	const editor = tabelo.source("markdown");
+	const menu = page.getByRole("menu");
+
+	await editor.click({ button: "right" });
+	await menu
+		.getByRole("menuitem", { name: copy.actions.selectAllText })
+		.click();
+	await expect(menu).toBeHidden();
+	await editor.click({ button: "right" });
+	await menu.getByRole("menuitem", { name: copy.actions.cut }).click();
+	await expect(menu).toBeHidden();
+	await editor.click();
+	await page.evaluate(() =>
+		(
+			window as unknown as { __releaseClipboard: () => void }
+		).__releaseClipboard(),
+	);
+
+	await expect(tabelo.notice("warning")).toHaveCount(1);
+	await expect(tabelo.notice("info")).toHaveCount(0);
+	await expect(editor).toContainText("Ingrid");
+});

@@ -397,6 +397,29 @@ describe("a command that resolves after its target moved", () => {
 		expect(cells()[1]).toEqual(["Ingrid", "Rio"]);
 	});
 
+	// A cancelled Cut says so in one warning rather than the success notice a
+	// finished one gives (#486), so nobody pastes a duplicate believing it moved.
+	it("warns once, instead of confirming, when a cut is cancelled", async () => {
+		const write = deferred<ClipboardWriteOutcome>();
+		writeClipboardTable.mockReturnValue(write.promise);
+
+		const outcome = copySelectionToClipboard("cut");
+		useTabeloStore.getState().editCell(0, 1, "Madrid");
+		write.resolve(granted);
+
+		expect(await outcome).toBe("stale");
+		const notices = useTabeloStore.getState().notices;
+		expect(notices).toHaveLength(1);
+		expect(notices[0]?.severity).toBe("warning");
+	});
+
+	it("confirms an applied cut with one informational notice", async () => {
+		expect(await copySelectionToClipboard("cut")).toBe("applied");
+		const notices = useTabeloStore.getState().notices;
+		expect(notices).toHaveLength(1);
+		expect(notices[0]?.severity).toBe("info");
+	});
+
 	it("deletes nothing when another table opened meanwhile", async () => {
 		const write = deferred<ClipboardWriteOutcome>();
 		writeClipboardTable.mockReturnValue(write.promise);

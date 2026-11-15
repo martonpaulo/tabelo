@@ -33,6 +33,7 @@ import { cellAtPosition } from "@/formats/parse";
 import { canRunHistory, runHistory } from "@/history/coordinator";
 import { useTabeloStore } from "@/state/store";
 import {
+	announceCut,
 	copyToClipboard,
 	readClipboardPayloadOrNotify,
 } from "@/ui/clipboard-actions";
@@ -511,12 +512,17 @@ export function SourceContextMenu({
 		const before = editor.state;
 		const text = selectedText(editor);
 		if (!text) return;
-		const written = await copyToClipboard({ text }, "source");
-		if (cut && written && unchangedSince(editor, before)) {
+		const written = await copyToClipboard({ text }, "source", {
+			confirm: !cut,
+		});
+		if (!cut || !written) return;
+		const removed = unchangedSince(editor, before);
+		if (removed) {
 			editor.dispatch(editor.state.replaceSelection(""), {
 				userEvent: "delete.cut",
 			});
 		}
+		announceCut("source", removed);
 	};
 
 	const paste = async () => {

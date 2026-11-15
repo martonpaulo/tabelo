@@ -49,9 +49,13 @@ export async function copyCodecToClipboard(
 	);
 }
 
+// `confirm: false` leaves the success notice to the caller: a Cut only knows
+// whether it removed anything once the write has resolved (#486). A refusal
+// is always reported here.
 export async function copyToClipboard(
 	payload: ClipboardPayload,
 	scope: CopyScope,
+	{ confirm = true }: { readonly confirm?: boolean } = {},
 ): Promise<boolean> {
 	const outcome = payload.html
 		? await writeClipboardTable(payload.text, payload.html)
@@ -60,14 +64,16 @@ export async function copyToClipboard(
 	// A refusal is a failure and says so, in its own tone and without a timer.
 	// It used to arrive as an informational message in the lowest-ranked slot,
 	// which is how the recovery advice went unread.
-	useTabeloStore.getState().pushNotice(
-		outcome.ok
-			? { severity: "info", message: copy.notices.copied(scope) }
-			: {
-					severity: "error",
-					message: copy.notices.clipboardWriteFailed(scope),
-				},
-	);
+	if (!outcome.ok) {
+		useTabeloStore.getState().pushNotice({
+			severity: "error",
+			message: copy.notices.clipboardWriteFailed(scope),
+		});
+	} else if (confirm) {
+		useTabeloStore
+			.getState()
+			.pushNotice({ severity: "info", message: copy.notices.copied(scope) });
+	}
 
 	// Copying a pane's text replaces what a grid copy put on the clipboard, so
 	// the mark it left would point at cells this copy did not take. The
@@ -78,6 +84,22 @@ export async function copyToClipboard(
 		useTabeloStore.getState().clearCopiedRanges();
 	}
 	return outcome.ok;
+}
+
+// One notice for a menu Cut whose copy landed: the ordinary confirmation when
+// it removed what it copied, and a warning when its target changed meanwhile
+// and nothing was removed, so the user does not paste a duplicate (#486).
+export function announceCut(
+	scope: "selection" | "source",
+	removed: boolean,
+): void {
+	useTabeloStore
+		.getState()
+		.pushNotice(
+			removed
+				? { severity: "info", message: copy.notices.copied(scope) }
+				: { severity: "warning", message: copy.notices.cutCancelled(scope) },
+		);
 }
 
 // Resolves to the raw payload, not a parsed table, and only when there is
