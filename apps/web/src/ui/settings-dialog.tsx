@@ -277,6 +277,28 @@ export function SettingsDialog({
 							}
 						/>
 					</section>
+
+					{/* Everything this browser holds, in one place, so the way out
+					    is where the settings are rather than hidden in a menu
+					    (owner, 2026-09-20). It asks first, in a step that replaces
+					    this one, and it is the only destructive control here. It
+					    scrolls with the settings it follows, so on a short screen the
+					    settings come first and the irreversible control is not the
+					    one always in view (#555). */}
+					<section className="border-line-subtle border-t pt-4">
+						<Button
+							ref={eraseRef}
+							type="button"
+							variant="destructive"
+							onClick={onErase}
+						>
+							<IconTrash aria-hidden />
+							{copy.eraseEverything.confirm}
+						</Button>
+						<p className="text-muted-foreground mt-2 text-sm">
+							{copy.eraseEverything.description}
+						</p>
+					</section>
 				</div>
 
 				{saveError ? (
@@ -289,25 +311,6 @@ export function SettingsDialog({
 						{copy.settings.sessionOnly}
 					</p>
 				) : null}
-
-				{/* Everything this browser holds, in one place, so the way out
-				    is where the settings are rather than hidden in a menu
-				    (owner, 2026-09-20). It asks first, in a step that replaces
-				    this one, and it is the only destructive control here. */}
-				<section className="border-line-subtle border-t pt-4">
-					<Button
-						ref={eraseRef}
-						type="button"
-						variant="destructive"
-						onClick={onErase}
-					>
-						<IconTrash aria-hidden />
-						{copy.eraseEverything.confirm}
-					</Button>
-					<p className="text-muted-foreground mt-2 text-sm">
-						{copy.eraseEverything.description}
-					</p>
-				</section>
 
 				{/* The shared action row: an ordinary alternative, then the one
 				    decisive action last, stacking at full width on a phone like

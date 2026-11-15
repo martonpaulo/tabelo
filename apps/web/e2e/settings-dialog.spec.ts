@@ -93,6 +93,24 @@ for (const viewport of [
 	});
 }
 
+// #555: on a phone the settings come first. The irreversible control scrolls
+// with them instead of staying pinned in view while they are cut off.
+test("on a phone, erasing is reached by scrolling past the settings", async ({
+	page,
+	tabelo,
+}) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	const settings = await openSettings(tabelo);
+	const erase = eraseButton(settings);
+	await expect(erase).not.toBeInViewport();
+
+	const body = settings.locator('[data-slot="settings-body"]');
+	await body.evaluate((node) => {
+		node.scrollTop = node.scrollHeight;
+	});
+	await expect(erase).toBeInViewport();
+});
+
 test("Escape and Cancel return to Settings, onto the erase control, with nothing erased", async ({
 	page,
 	tabelo,

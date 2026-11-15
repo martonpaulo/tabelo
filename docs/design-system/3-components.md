@@ -723,8 +723,10 @@ weight as the filled primary it stands in for (owner, 2026-09-19).
 One destructive control lives inside Settings rather than in a menu: erasing
 everything Tabelo stored in this browser (owner, 2026-09-20). It sits in its
 own section under the settings, below a hairline, as a destructive button with
-one line saying what goes, and it asks through the shared confirm dialog
-before anything is removed. That confirmation is a step of its own that
+one line saying what goes. It scrolls with the settings rather than staying
+pinned beside the action row, so a short screen shows the settings first and
+not the irreversible control (#555). It asks through the shared confirm
+dialog before anything is removed. That confirmation is a step of its own that
 replaces Settings rather than opening over it, and Cancel or Escape replaces it
 with Settings again, focus back on the erase button (#423). The same confirm
 dialog asks before a table is deleted (#403). Nothing else in Settings is
