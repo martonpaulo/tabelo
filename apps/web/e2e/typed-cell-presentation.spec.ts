@@ -115,7 +115,7 @@ test("the grid exposes real and expected types without replacing cell names", as
 		columnIndex.locator('[data-cell-type-mark="string"] svg'),
 	).toBeVisible();
 	const selectColumn = columnIndex.getByRole("button", {
-		name: /select column: qty, expected type text/i,
+		name: /select column [a-z]+: qty, expected type text/i,
 	});
 	await selectColumn.focus();
 	await expect(selectColumn).toBeFocused();
@@ -123,7 +123,7 @@ test("the grid exposes real and expected types without replacing cell names", as
 	// The column's menu from the keyboard, on the letter that holds focus.
 	await page.keyboard.press("Shift+F10");
 	const columnMenu = page.getByRole("menu", {
-		name: /column actions: qty, expected type text/i,
+		name: /column actions: column [a-z]+, qty, expected type text/i,
 	});
 	await expect(columnMenu).toBeVisible();
 	await page.keyboard.press("Escape");
@@ -210,7 +210,7 @@ test("a mixed column distinguishes real type from its number expectation", async
 	).toBeVisible();
 	await expect(
 		columnIndex.getByRole("button", {
-			name: /select column: value, expected type number/i,
+			name: /select column [a-z]+: value, expected type number/i,
 		}),
 	).toBeVisible();
 });
@@ -245,7 +245,7 @@ test("type marks remain legible under forced colours, zoom, and wrapping", async
 
 	await tabelo.columnIndex(1).click({ button: "right" });
 	const menu = page.getByRole("menu", {
-		name: /column actions: qty, expected type text/i,
+		name: /column actions: column [a-z]+, qty, expected type text/i,
 	});
 	await menu.getByRole("menuitemcheckbox", { name: /wrap text/i }).click();
 	await page.keyboard.press("Escape");
