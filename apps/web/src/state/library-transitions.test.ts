@@ -14,12 +14,13 @@ import {
 	tableKey,
 } from "@/persistence/schema";
 import { createDefaultWorkspace } from "@/workspace/layout";
-import { flushPersistence, useTabeloStore } from "./store";
+import { flushPersistence, resetStoreSession, useTabeloStore } from "./store";
 
 const initial = useTabeloStore.getInitialState();
 beforeEach(() => {
 	localStorage.clear();
 	useTabeloStore.setState(initial, true);
+	resetStoreSession();
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -548,5 +549,24 @@ describe("reading the library", () => {
 		expect(useTabeloStore.getState().name).toBe(DEFAULT_TABLE_NAME);
 		expect(localStorage.getItem(tableKey("t_readable"))).toBe(readable);
 		expect(localStorage.getItem(tableKey("t_damaged"))).toBe("{damaged");
+	});
+});
+
+describe("the library's session state resets with the store (#564)", () => {
+	it("forgets a left table's history once the session is reset", () => {
+		const { first, second } = twoTables();
+		expect(useTabeloStore.getState().past.length).toBeGreaterThan(0);
+
+		// Leaving the edited table retains its history, and returning restores it.
+		useTabeloStore.getState().switchTable(second);
+		useTabeloStore.getState().switchTable(first);
+		expect(useTabeloStore.getState().past.length).toBeGreaterThan(0);
+
+		// After a reset the retained history is gone, so nothing one test left
+		// behind can reach the next.
+		useTabeloStore.getState().switchTable(second);
+		resetStoreSession();
+		useTabeloStore.getState().switchTable(first);
+		expect(useTabeloStore.getState().past).toEqual([]);
 	});
 });

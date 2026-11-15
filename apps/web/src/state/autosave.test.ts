@@ -10,7 +10,12 @@ import {
 	vi,
 } from "vitest";
 import { CURRENT_VERSION, tableKey } from "@/persistence/schema";
-import { flushPersistence, startAutosave, useTabeloStore } from "./store";
+import {
+	flushPersistence,
+	resetStoreSession,
+	startAutosave,
+	useTabeloStore,
+} from "./store";
 
 // The active table's id, for a test that has one open.
 function activeId(): string {
@@ -34,6 +39,7 @@ beforeEach(() => {
 	window.localStorage.clear();
 	useTabeloStore.getState().discardDraft();
 	useTabeloStore.setState(initialState, true);
+	resetStoreSession();
 });
 
 afterEach(() => {

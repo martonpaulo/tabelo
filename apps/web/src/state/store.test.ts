@@ -11,7 +11,7 @@ import {
 	selectionDataRows,
 } from "@/core/selection";
 import type { CellValue, TableDocument } from "@/core/types";
-import { hasSessionWork, useTabeloStore } from "./store";
+import { hasSessionWork, resetStoreSession, useTabeloStore } from "./store";
 
 const initialState = useTabeloStore.getInitialState();
 
@@ -40,6 +40,7 @@ function selectionOf(...ranges: readonly SelectionRange[]): GridSelection {
 
 beforeEach(() => {
 	useTabeloStore.setState(initialState, true);
+	resetStoreSession();
 });
 
 describe("session content", () => {

@@ -3,7 +3,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { documentFromMatrix } from "@/core/document";
 import { LIBRARY_KEY, tableKey } from "@/persistence/schema";
-import { flushPersistence, startAutosave, useTabeloStore } from "./store";
+import {
+	flushPersistence,
+	resetStoreSession,
+	startAutosave,
+	useTabeloStore,
+} from "./store";
 
 // Two tabs of the app share one localStorage and nothing else (#543). A
 // second tab is a second, freshly imported copy of the store module, so its
@@ -18,6 +23,7 @@ let stopAutosave: (() => void) | null = null;
 beforeEach(() => {
 	localStorage.clear();
 	useTabeloStore.setState(initial, true);
+	resetStoreSession();
 });
 afterEach(() => {
 	stopAutosave?.();

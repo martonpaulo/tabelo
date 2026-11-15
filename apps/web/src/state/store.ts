@@ -123,13 +123,18 @@ import {
 import type { PersistenceFailureReason } from "@/persistence/schema";
 import type { SaveOutcome } from "@/persistence/storage";
 import {
+	cancelPendingSave,
 	type FlushOutcome,
 	flushStore,
 	savePayload,
 	startStoreAutosave,
 } from "@/state/autosave";
 import { NO_COPIED_RANGES, NO_FINDS } from "@/state/empty-state";
-import { createLibrarySlice, newLibrary } from "@/state/library";
+import {
+	createLibrarySlice,
+	newLibrary,
+	resetLibrarySession,
+} from "@/state/library";
 import {
 	conditionNoticeIds,
 	type NoticeRequest,
@@ -2596,6 +2601,15 @@ function columnTargets(state: TabeloState, column: number): readonly number[] {
 		state.document.columns.length,
 	);
 	return selected.includes(column) ? selected : [column];
+}
+
+// Clears what the store's modules keep beside its state: the library's
+// retained sessions and last-read index, and the pending save. Replacing the
+// state with `setState(initial, true)` reaches none of them, so a test that
+// resets the store calls this as well (#564).
+export function resetStoreSession(): void {
+	resetLibrarySession();
+	cancelPendingSave();
 }
 
 // The store's own autosave, under the names every caller already imports.
