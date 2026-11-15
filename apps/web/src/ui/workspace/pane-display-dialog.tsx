@@ -27,6 +27,7 @@ import type { ViewDefinition } from "@/views/types";
 import {
 	INHERIT_SOURCE_DISPLAY,
 	resolveSourceDisplay,
+	SOURCE_DISPLAY_ORDER,
 	type SourceDisplayKey,
 	type SourceDisplayOverrides,
 } from "@/workspace/source-display";
@@ -39,18 +40,6 @@ import {
 	overrideFromSegment,
 	segmentOf,
 } from "./pane-display-choices";
-
-// Settings' own order, so a reader who knows one dialog knows the other.
-const ROWS: readonly SourceDisplayKey[] = [
-	"wrap",
-	"alignColumns",
-	"emptyValueIndicators",
-	"tabIndicators",
-	"lineBreakIndicators",
-	"spaceIndicators",
-	"lineBreakTags",
-	"booleanMarks",
-];
 
 // The words a segment shows for one of a setting's own values.
 function valueLabel(segment: Exclude<DisplaySegment, typeof FOLLOW_DEFAULT>) {
@@ -186,17 +175,17 @@ export function PaneDisplayDialog({
 				</DialogHeader>
 
 				<div className="grid gap-1.5">
-					{ROWS.filter((setting) => offersSetting(setting, view)).map(
-						(setting) => (
-							<DisplayChoice
-								key={setting}
-								setting={setting}
-								defaults={defaults}
-								overrides={overrides}
-								onChoose={(segment) => setOverride(setting, segment)}
-							/>
-						),
-					)}
+					{SOURCE_DISPLAY_ORDER.filter((setting) =>
+						offersSetting(setting, view),
+					).map((setting) => (
+						<DisplayChoice
+							key={setting}
+							setting={setting}
+							defaults={defaults}
+							overrides={overrides}
+							onChoose={(segment) => setOverride(setting, segment)}
+						/>
+					))}
 				</div>
 
 				<DialogActions>
@@ -208,7 +197,7 @@ export function PaneDisplayDialog({
 								: undefined
 						}
 						onClick={() => {
-							for (const setting of ROWS) {
+							for (const setting of SOURCE_DISPLAY_ORDER) {
 								useTabeloStore
 									.getState()
 									.setPaneSourceDisplay(paneId, setting, null);

@@ -24,6 +24,20 @@ export const INHERIT_SOURCE_DISPLAY: SourceDisplayOverrides = {
 	booleanMarks: null,
 };
 
+// The order every surface lists these settings in: Settings' global defaults
+// and a pane's Display overrides read this one list, so a reader who knows one
+// dialog knows the other (#426).
+export const SOURCE_DISPLAY_ORDER: readonly SourceDisplayKey[] = [
+	"wrap",
+	"alignColumns",
+	"emptyValueIndicators",
+	"tabIndicators",
+	"lineBreakIndicators",
+	"lineBreakTags",
+	"booleanMarks",
+	"spaceIndicators",
+];
+
 // The one rule that decides what a source pane shows: its own choice where it
 // made one, the global default everywhere else. Every consumer reads through
 // this; nothing picks between a preference and an override itself.

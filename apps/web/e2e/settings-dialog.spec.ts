@@ -290,3 +290,68 @@ test("a preview that cannot load leaves the dialog working", async ({
 	await settings.getByRole("button", { name: copy.settings.done }).click();
 	await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+// Settings' defaults and a pane's Display overrides read one ordered list
+// (#426): the settings a pane offers appear in the order Settings shows them.
+async function settingOrder(controls: Locator): Promise<string[]> {
+	return controls.evaluateAll((elements) =>
+		elements.map((element) => {
+			const ids = element.getAttribute("aria-labelledby");
+			if (ids) {
+				return ids
+					.split(" ")
+					.map((id) => document.getElementById(id)?.textContent ?? "")
+					.join(" ")
+					.trim();
+			}
+			return (
+				element.getAttribute("aria-label") ??
+				element.closest("label")?.textContent ??
+				""
+			).trim();
+		}),
+	);
+}
+
+test("a Markdown pane's Display lists its settings in Settings' order", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, person.name);
+	const paneMenu = await tabelo.openPaneMenu("markdown");
+	await paneMenu
+		.getByRole("menuitem", { name: copy.paneDisplay.command })
+		.click();
+	const display = tabelo.page.getByRole("dialog", {
+		name: copy.paneDisplay.title,
+	});
+	await display.waitFor({ state: "visible" });
+	const paneOrder = await settingOrder(display.getByRole("radiogroup"));
+	await tabelo.page.keyboard.press("Escape");
+	await expect(display).toBeHidden();
+
+	const settings = await openSettings(tabelo);
+	const section = settings.getByRole("region", {
+		name: copy.settings.display.label,
+	});
+	// Where each of the pane's settings sits among Settings' display controls.
+	const positions: number[] = [];
+	for (const name of paneOrder) {
+		const control = section
+			.getByRole("switch", { name, exact: false })
+			.or(section.getByRole("radiogroup", { name, exact: true }))
+			.first();
+		positions.push(
+			await control.evaluate((element) =>
+				[
+					...(element
+						.closest("section")
+						?.querySelectorAll('[role="switch"], [role="radiogroup"]') ?? []),
+				].indexOf(element),
+			),
+		);
+	}
+
+	expect(paneOrder.length).toBeGreaterThan(1);
+	expect(positions.every((position) => position >= 0)).toBe(true);
+	expect(positions).toEqual([...positions].sort((a, b) => a - b));
+});

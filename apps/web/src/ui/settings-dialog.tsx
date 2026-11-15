@@ -38,6 +38,7 @@ import {
 	PREVIEW_FRAME_CLASS,
 	PREVIEW_MIN_HEIGHT,
 } from "@/ui/source/indicator-preview-sample";
+import { SOURCE_DISPLAY_ORDER } from "@/workspace/source-display";
 
 // The box the preview waits in, and the box it stays in when its code never
 // arrives (#422). It is the drawn preview's own frame at the drawn preview's
@@ -207,85 +208,54 @@ export function SettingsDialog({
 						<h3 id={displayLabelId} className="mb-1 text-sm font-medium">
 							{copy.settings.display.label}
 						</h3>
-						<SwitchOption
-							glyph={<DisplayGlyph setting="wrap" />}
-							{...copy.settings.wrap}
-							checked={preferences.wrap}
-							onCheckedChange={(checked) => update({ wrap: checked })}
-						/>
-						<SwitchOption
-							glyph={<DisplayGlyph setting="alignColumns" />}
-							{...copy.settings.alignColumns}
-							checked={preferences.alignColumns}
-							onCheckedChange={(checked) => update({ alignColumns: checked })}
-						/>
-						<SwitchOption
-							glyph={<DisplayGlyph setting="emptyValueIndicators" />}
-							{...copy.settings.emptyValueIndicators}
-							checked={preferences.emptyValueIndicators}
-							onCheckedChange={(checked) =>
-								update({ emptyValueIndicators: checked })
-							}
-						/>
-						<SwitchOption
-							glyph={<DisplayGlyph setting="tabIndicators" />}
-							{...copy.settings.tabIndicators}
-							checked={preferences.tabIndicators}
-							onCheckedChange={(checked) => update({ tabIndicators: checked })}
-						/>
-						<SwitchOption
-							glyph={<DisplayGlyph setting="lineBreakIndicators" />}
-							{...copy.settings.lineBreakIndicators}
-							checked={preferences.lineBreakIndicators}
-							onCheckedChange={(checked) =>
-								update({ lineBreakIndicators: checked })
-							}
-						/>
-						<SwitchOption
-							glyph={<DisplayGlyph setting="lineBreakTags" />}
-							{...copy.settings.lineBreakTags}
-							checked={preferences.lineBreakTags}
-							onCheckedChange={(checked) => update({ lineBreakTags: checked })}
-						/>
-						<SwitchOption
-							glyph={<DisplayGlyph setting="booleanMarks" />}
-							{...copy.settings.booleanMarks}
-							checked={preferences.booleanMarks}
-							onCheckedChange={(checked) => update({ booleanMarks: checked })}
-						/>
-						<div className={cn(optionBlockStyles, "grid gap-3")}>
-							<div className="flex items-center gap-3">
-								<DisplayGlyph setting="spaceIndicators" />
-								<MenuOption
-									labelId={spaceLabelId}
-									descriptionId={spaceDescriptionId}
-									label={copy.settings.spaceIndicators.label}
-									description={
-										copy.settings.spaceIndicators.options[
-											preferences.spaceIndicators
-										].description
-									}
+						{SOURCE_DISPLAY_ORDER.map((setting) =>
+							setting === "spaceIndicators" ? (
+								<div
+									key={setting}
+									className={cn(optionBlockStyles, "grid gap-3")}
+								>
+									<div className="flex items-center gap-3">
+										<DisplayGlyph setting="spaceIndicators" />
+										<MenuOption
+											labelId={spaceLabelId}
+											descriptionId={spaceDescriptionId}
+											label={copy.settings.spaceIndicators.label}
+											description={
+												copy.settings.spaceIndicators.options[
+													preferences.spaceIndicators
+												].description
+											}
+										/>
+									</div>
+									<SegmentedControl
+										// Four labels of two words do not fit one row below the
+										// small breakpoint, so they form two rows of two there
+										// rather than wrapping inside a segment.
+										className="max-sm:grid-flow-row max-sm:grid-cols-2"
+										aria-labelledby={spaceLabelId}
+										aria-describedby={spaceDescriptionId}
+										value={preferences.spaceIndicators}
+										onValueChange={(value) =>
+											update({ spaceIndicators: value as SpaceIndicators })
+										}
+									>
+										{SPACE_INDICATOR_VALUES.map((mode) => (
+											<SegmentedControlItem key={mode} value={mode}>
+												{copy.settings.spaceIndicators.options[mode].label}
+											</SegmentedControlItem>
+										))}
+									</SegmentedControl>
+								</div>
+							) : (
+								<SwitchOption
+									key={setting}
+									glyph={<DisplayGlyph setting={setting} />}
+									{...copy.settings[setting]}
+									checked={preferences[setting]}
+									onCheckedChange={(checked) => update({ [setting]: checked })}
 								/>
-							</div>
-							<SegmentedControl
-								// Four labels of two words do not fit one row below the
-								// small breakpoint, so they form two rows of two there
-								// rather than wrapping inside a segment.
-								className="max-sm:grid-flow-row max-sm:grid-cols-2"
-								aria-labelledby={spaceLabelId}
-								aria-describedby={spaceDescriptionId}
-								value={preferences.spaceIndicators}
-								onValueChange={(value) =>
-									update({ spaceIndicators: value as SpaceIndicators })
-								}
-							>
-								{SPACE_INDICATOR_VALUES.map((mode) => (
-									<SegmentedControlItem key={mode} value={mode}>
-										{copy.settings.spaceIndicators.options[mode].label}
-									</SegmentedControlItem>
-								))}
-							</SegmentedControl>
-						</div>
+							),
+						)}
 					</section>
 
 					{/* How the Visual Table draws a boolean cell (#483): one global
