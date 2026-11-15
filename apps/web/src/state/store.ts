@@ -324,8 +324,9 @@ export function transposeLimitError(
 
 // Adding rows or columns is judged by the shape it would produce, before the
 // operation builds it (#418). A refusal is reported and changes nothing: no
-// document, no history step, no selection moved as if it had worked.
-function growthLimitError(
+// document, no history step, no selection moved as if it had worked. The
+// menus read the same check to disable a growing command first (#489).
+export function growthLimitError(
 	document: TableDocument,
 	addedRows: number,
 	addedColumns: number,

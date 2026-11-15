@@ -367,7 +367,9 @@ A source that declares its header is charged for its data rows only; one whose
 header is still to be decided is charged for every row, since answering "data"
 keeps them all. A refusal changes nothing: an import or a grid command reports
 why, and a draft past the limit is an invalid draft, its text kept (#418).
-Import also has a byte budget of its own.
+A menu disables an insert or duplicate command that would pass the limit,
+with the reason, before it can be chosen; its shortcut is still refused and
+reported (#489). Import also has a byte budget of its own.
 
 Related to: Import, Draft, Table operation
 

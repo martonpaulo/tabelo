@@ -175,9 +175,11 @@ test("repeated paste is rejected when the resulting table exceeds the limit", as
 });
 
 // Inserting is held to the same limit as importing (#418): at the row limit,
-// a row inserted from the grid is refused with a notice and the table keeps
-// its shape.
-test("inserting a row at the row limit is refused without changing the table", async ({
+// the insert commands are disabled with a written reason in the grid and the
+// source menus (#489), and the shortcut is still refused with a notice. The
+// table keeps its shape.
+test("inserting a row at the row limit is disabled in the menus and refused by the shortcut", async ({
+	page,
 	tabelo,
 }) => {
 	const atLimit = Array.from({ length: IMPORT_LIMITS.rows }, (_, index) =>
@@ -188,15 +190,43 @@ test("inserting a row at the row limit is refused without changing the table", a
 	// The row menu numbers the header row 1, so the last data row is one more
 	// than the limit.
 	const menu = await tabelo.openRowMenu(IMPORT_LIMITS.rows + 1);
-	await menu
-		.getByRole("menuitem", { name: copy.actions.insertRowsBelow(1) })
-		.click();
+	const insert = menu.getByRole("menuitem", {
+		name: copy.actions.insertRowsBelow(1),
+	});
+	await expect(insert).toHaveAttribute("aria-disabled", "true");
+	await expect(insert).toHaveAccessibleDescription(/\S/);
+	await page.keyboard.press("Escape");
+	await expect(menu).toBeHidden();
 
+	const editor = tabelo.source("markdown");
+	await editor.click({ button: "right" });
+	const sourceMenu = page.getByRole("menu");
+	const sourceInsert = sourceMenu.getByRole("menuitem", {
+		name: copy.actions.insertRowsBelow(1),
+	});
+	await expect(sourceInsert).toHaveAttribute("aria-disabled", "true");
+	await expect(sourceInsert).toHaveAccessibleDescription(/\S/);
+	await page.keyboard.press("Escape");
+	await expect(sourceMenu).toBeHidden();
+
+	await tabelo.cell(IMPORT_LIMITS.rows, 1).click();
+	await page.keyboard.press("ControlOrMeta+Enter");
 	await expect(tabelo.notice("error")).toBeVisible();
 	await expect(tabelo.cell(IMPORT_LIMITS.rows, 1)).toHaveText(
 		String(IMPORT_LIMITS.rows - 1),
 	);
 	await expect(tabelo.cell(IMPORT_LIMITS.rows + 1, 1)).toHaveCount(0);
+});
+
+// Below the limit the same command stays available (#489).
+test("inserting a row below the row limit stays enabled", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	const menu = await tabelo.openRowMenu(2);
+	await expect(
+		menu.getByRole("menuitem", { name: copy.actions.insertRowsBelow(1) }),
+	).not.toHaveAttribute("aria-disabled", "true");
 });
 
 test("cancelling the file picker leaves the current table unchanged", async ({

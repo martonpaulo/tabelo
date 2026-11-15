@@ -640,6 +640,20 @@ export const copy = {
 					return "This table can't be transposed.";
 			}
 		},
+		// Insert and Duplicate at the size limit (#489). The reason names the
+		// shape the command would make, as Transpose's does.
+		growthLimit: (error: ImportError) => {
+			switch (error.code) {
+				case "too-many-rows":
+					return `This would make ${error.actual} rows, over the ${error.limit} limit. Delete rows first.`;
+				case "too-many-columns":
+					return `This would make ${error.actual} columns, over the ${error.limit} limit. Delete columns first.`;
+				case "too-many-cells":
+					return `This would make ${error.actual} cells, over the ${error.limit} limit. Reduce the table first.`;
+				default:
+					return "The table can't grow any further.";
+			}
+		},
 		noEmptyRowsOrColumns: "There are no empty rows or columns.",
 		// An entirely empty table is left alone rather than reduced to nothing.
 		tableHasNoContent: "The table has no content yet.",

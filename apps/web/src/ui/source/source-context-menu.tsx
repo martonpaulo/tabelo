@@ -28,10 +28,14 @@ import {
 } from "react";
 import { copy } from "@/copy/copy";
 import { cellText } from "@/core/cell-value";
-import type { Alignment, ExpectedColumnType } from "@/core/types";
+import type {
+	Alignment,
+	ExpectedColumnType,
+	TableDocument,
+} from "@/core/types";
 import { cellAtPosition } from "@/formats/parse";
 import { canRunHistory, runHistory } from "@/history/coordinator";
-import { useTabeloStore } from "@/state/store";
+import { growthLimitError, useTabeloStore } from "@/state/store";
 import {
 	announceCut,
 	copyToClipboard,
@@ -202,6 +206,9 @@ interface MenuState {
 	readonly moveUp: SourceRowRefusal | null;
 	readonly moveDown: SourceRowRefusal | null;
 	readonly structure: StructureRefusals | null;
+	// Why one more row or column would pass the size limit (#489), read from
+	// the store's own check as the menu opens.
+	readonly growth: { readonly row?: string; readonly column?: string };
 }
 
 const closed: MenuState = {
@@ -218,7 +225,17 @@ const closed: MenuState = {
 	moveUp: null,
 	moveDown: null,
 	structure: null,
+	growth: {},
 };
+
+function growthReason(
+	document: TableDocument,
+	rows: number,
+	columns: number,
+): string | undefined {
+	const error = growthLimitError(document, rows, columns);
+	return error ? copy.disabled.growthLimit(error) : undefined;
+}
 
 // What the selection holds, as the clipboard would receive it: CodeMirror's
 // own copy joins several ranges with the document's line break.
@@ -485,6 +502,10 @@ export function SourceContextMenu({
 			canRedo: canRunHistory(paneId, "redo", store.future.length > 0),
 			moveUp: table?.moveRefusal(-1, at) ?? null,
 			moveDown: table?.moveRefusal(1, at) ?? null,
+			growth: {
+				row: growthReason(store.document, 1, 0),
+				column: growthReason(store.document, 0, 1),
+			},
 			structure: table
 				? (Object.fromEntries(
 						structureCommands.map((command) => [
@@ -571,6 +592,19 @@ export function SourceContextMenu({
 	const refused = (refusal: SourceRowRefusal | null | undefined) =>
 		readOnly ?? (refusal ? sourceRowRefusalMessage[refusal] : undefined);
 
+	// A command that adds a row or a column is disabled at the size limit
+	// before it is refused after the click (#489).
+	const growthOf = (command: SourceStructureCommand) =>
+		command === "insert-row-above" ||
+		command === "insert-row-below" ||
+		command === "duplicate-row"
+			? state.growth.row
+			: command === "insert-column-left" ||
+					command === "insert-column-right" ||
+					command === "duplicate-column"
+				? state.growth.column
+				: undefined;
+
 	const structural = (
 		commands: SourceTableCommands,
 		id: MenuCommandId,
@@ -581,7 +615,7 @@ export function SourceContextMenu({
 		id,
 		...presentation,
 		danger,
-		reason: refused(state.structure?.[command]),
+		reason: refused(state.structure?.[command]) ?? growthOf(command),
 		run: () =>
 			commands.run(
 				command,

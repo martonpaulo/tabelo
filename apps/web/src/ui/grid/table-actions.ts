@@ -30,7 +30,7 @@ import {
 	selectionRects,
 	structureDeletionGuard,
 } from "@/core/selection";
-import { useTabeloStore } from "@/state/store";
+import { growthLimitError, useTabeloStore } from "@/state/store";
 import {
 	announceCut,
 	copyToClipboard,
@@ -170,6 +170,11 @@ export async function copySelectionToClipboard(
 	return "applied";
 }
 
+// Duplicate acts on columns only when the menu offers no rows.
+function duplicatesColumnsFor(showColumns: boolean, showRows: boolean) {
+	return showColumns && !showRows;
+}
+
 export interface TableActionContext {
 	// Which axis the menu was opened on. Cells offer both; a row or column
 	// header offers only its own, which is what keeps the menu short.
@@ -287,6 +292,20 @@ export function buildTableActions(
 		],
 	] as const;
 
+	// An insert needs one insertion point, and is disabled with the size limit
+	// it would pass rather than refused after the click (#489). The store reads
+	// the same check, so a shortcut at the limit is still refused and reported.
+	const insertReason = (rows: number, columns: number) => {
+		if (severalAreas) return copy.disabled.singleAreaRequired;
+		const error = growthLimitError(store.document, rows, columns);
+		return error ? copy.disabled.growthLimit(error) : undefined;
+	};
+	const duplicateLimit = growthLimitError(
+		store.document,
+		duplicatesColumnsFor(showColumns, showRows) ? 0 : rowCount,
+		duplicatesColumnsFor(showColumns, showRows) ? columnCount : 0,
+	);
+
 	// Labels, icons, and legends come from the shared presentation, so the
 	// source menus draw the same command the same way (#433).
 	const insert: TableAction[] = [];
@@ -294,37 +313,39 @@ export function buildTableActions(
 		// Inserting beside the header row still adds one data row, so the label
 		// never reads as a count of zero.
 		const insertCount = Math.max(1, rowCount);
+		const rowsReason = insertReason(insertCount, 0);
 		insert.push(
 			{
 				id: "insert-row-above",
 				...tableCommand.insertRowAbove(insertCount),
-				disabled: severalAreas,
-				disabledReason: copy.disabled.singleAreaRequired,
+				disabled: rowsReason !== undefined,
+				disabledReason: rowsReason,
 				run: () => store.addRowAbove(),
 			},
 			{
 				id: "insert-row-below",
 				...tableCommand.insertRowBelow(insertCount),
-				disabled: severalAreas,
-				disabledReason: copy.disabled.singleAreaRequired,
+				disabled: rowsReason !== undefined,
+				disabledReason: rowsReason,
 				run: () => store.addRowBelow(),
 			},
 		);
 	}
 	if (showColumns) {
+		const columnsReason = insertReason(0, columnCount);
 		insert.push(
 			{
 				id: "insert-column-left",
 				...tableCommand.insertColumnLeft(columnCount),
-				disabled: severalAreas,
-				disabledReason: copy.disabled.singleAreaRequired,
+				disabled: columnsReason !== undefined,
+				disabledReason: columnsReason,
 				run: () => store.addColumnLeft(),
 			},
 			{
 				id: "insert-column-right",
 				...tableCommand.insertColumnRight(columnCount),
-				disabled: severalAreas,
-				disabledReason: copy.disabled.singleAreaRequired,
+				disabled: columnsReason !== undefined,
+				disabledReason: columnsReason,
 				run: () => store.addColumnRight(),
 			},
 		);
@@ -369,7 +390,7 @@ export function buildTableActions(
 		},
 	];
 
-	const duplicatesColumns = showColumns && !showRows;
+	const duplicatesColumns = duplicatesColumnsFor(showColumns, showRows);
 	const edit: TableAction[] = [
 		{
 			id: "duplicate",
@@ -378,8 +399,13 @@ export function buildTableActions(
 				: tableCommand.duplicateRows(rowCount)),
 			// Duplicating the header row is not a thing a table can do: it would
 			// give the document a second one.
-			disabled: !duplicatesColumns && noDataRows,
-			disabledReason: copy.disabled.headerRowRequired,
+			disabled: (!duplicatesColumns && noDataRows) || duplicateLimit !== null,
+			disabledReason:
+				!duplicatesColumns && noDataRows
+					? copy.disabled.headerRowRequired
+					: duplicateLimit
+						? copy.disabled.growthLimit(duplicateLimit)
+						: undefined,
 			run: () =>
 				duplicatesColumns
 					? store.duplicateSelectedColumns()
