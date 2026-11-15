@@ -7,12 +7,12 @@ catalog:
   zod: ^4.6.7
   typescript: ^6
   "@types/node": ^24.19.2
-  "@tabler/icons-react": ^3.50.0
+  "@tabler/icons-react": ^3.51.0
   react: ^19.3.1
   react-dom: ^19.3.1
   "@types/react": ^19.3.0
   "@types/react-dom": ^19.3.0
-  tailwindcss: ^4.3.4
+  tailwindcss: ^4.3.5
 
 # Transitive advisories the direct dependencies have not shipped a fix for yet.
 # None of these reach the browser: they arrive through the shadcn CLI chain in
