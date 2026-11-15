@@ -133,6 +133,9 @@ export function TabeloApp() {
 	const pwaUpdate = usePwaUpdate();
 	const [rootDialog, setRootDialog] = useState<RootDialog>(null);
 	const [tableToDelete, setTableToDelete] = useState<string | null>(null);
+	// The delete dialog names its table. The name is read when it opens and
+	// kept after the deletion, so the closing dialog does not lose its title.
+	const [deleteTableName, setDeleteTableName] = useState("");
 	// Which table the copy or download chooser is about: any table can be
 	// written out, and writing one out never opens it.
 	const [tableToWrite, setTableToWrite] = useState<string | null>(null);
@@ -421,6 +424,12 @@ export function TabeloApp() {
 					onNewTable={startNewTable}
 					onDeleteTable={(tableId) => {
 						setTableToDelete(tableId);
+						setDeleteTableName(
+							useTabeloStore
+								.getState()
+								.library.tables.find((table) => table.id === tableId)?.name ??
+								"",
+						);
 						openRootDialog("delete-table");
 					}}
 					onRename={(tableId) => {
@@ -494,7 +503,7 @@ export function TabeloApp() {
 				open={rootDialog === "delete-table"}
 				onOpenChange={closeRootDialog}
 				onConfirm={deleteTable}
-				title={copy.deleteTable.title}
+				title={copy.deleteTable.title(deleteTableName)}
 				description={copy.deleteTable.description}
 				confirmLabel={copy.deleteTable.confirm}
 			/>

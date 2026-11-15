@@ -423,16 +423,18 @@ export const copy = {
 	} satisfies Record<PanePositionId, string>,
 
 	deleteTable: {
-		title: "Delete this table?",
+		// Named, because the table it deletes need not be the one on screen
+		// (#554).
+		title: (name: string) => `Delete ${name}?`,
 		description:
-			"The table and everything in it go. Any other tables stay as they are.",
+			"Its rows, columns and views are deleted from this browser. This can't be undone.",
 		confirm: "Delete table",
 	},
 
 	eraseEverything: {
 		title: "Erase everything Tabelo stored?",
 		description:
-			"Every table, its layout, and your settings go, and Tabelo starts as it did the first time. Nothing can be recovered.",
+			"Every table, its layout, and your settings are deleted, and Tabelo starts as it did the first time. Nothing can be recovered.",
 		confirm: "Erase everything",
 	},
 

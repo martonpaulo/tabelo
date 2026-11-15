@@ -186,7 +186,7 @@ test("the agent starts the first table of an empty library and the welcome surfa
 	await tabelo.editCell(1, 1, "Ingrid");
 	await tabelo.runAppCommand("deleteTable");
 	await page
-		.getByRole("dialog", { name: copy.deleteTable.title })
+		.getByRole("dialog")
 		.getByRole("button", { name: copy.deleteTable.confirm })
 		.click();
 	await expect(tabelo.welcome).toBeVisible();

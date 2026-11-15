@@ -117,9 +117,7 @@ test("deleting a table asks first and leaves the others alone", async ({
 	await tabelo.editCell(1, 1, "Delete me");
 
 	await tabelo.runAppCommand("deleteTable");
-	const dialog = tabelo.page.getByRole("dialog", {
-		name: copy.deleteTable.title,
-	});
+	const dialog = tabelo.page.getByRole("dialog");
 	await expect(dialog).toBeVisible();
 	await expect(
 		dialog.getByRole("button", { name: copy.deleteTable.confirm }),
@@ -147,7 +145,7 @@ test("deleting the last table returns to the welcome surface, even after a reloa
 
 	await tabelo.runAppCommand("deleteTable");
 	await tabelo.page
-		.getByRole("dialog", { name: copy.deleteTable.title })
+		.getByRole("dialog")
 		.getByRole("button", { name: copy.deleteTable.confirm })
 		.click();
 	await expect(tabelo.welcome).toBeVisible();
@@ -212,7 +210,7 @@ test("deleting an earlier table leaves every other table's mark colour as it was
 	await expect(tabelo.cell(1, 1)).toHaveText("First");
 	await tabelo.runAppCommand("deleteTable");
 	await tabelo.page
-		.getByRole("dialog", { name: copy.deleteTable.title })
+		.getByRole("dialog")
 		.getByRole("button", { name: copy.deleteTable.confirm })
 		.click();
 
