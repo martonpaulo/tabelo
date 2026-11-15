@@ -315,6 +315,27 @@ function storageNotice(issue: StorageIssue | null): AppNotice | null {
 		};
 	}
 
+	// Another tab holds the newer copy (#543). Reloading opens it; this tab's
+	// own unsaved edits survive only as the download, which is offered first.
+	if (issue.kind === "changed-elsewhere") {
+		return {
+			...base,
+			message: copy.notices.changedInAnotherTab,
+			actions: [
+				{
+					id: "download-copy",
+					label: copy.notices.downloadCopy,
+					run: downloadCurrentTable,
+				},
+				{
+					id: "reload-latest",
+					label: copy.notices.reloadLatest,
+					run: () => window.location.reload(),
+				},
+			],
+		};
+	}
+
 	return {
 		...base,
 		message:

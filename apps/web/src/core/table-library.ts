@@ -167,3 +167,32 @@ export function removeTable(library: TableLibrary, id: TableId): TableLibrary {
 	const next = tables[Math.min(index, tables.length - 1)];
 	return { tables, activeId: next?.id ?? null };
 }
+
+// Folds an index another tab may have written into the library this tab is
+// about to write, so an index write never drops a table this tab did not
+// remove (#543). `base` names the tables the stored index held when this tab
+// last read or wrote it; the difference between it and what storage holds now
+// is the other tab's work. A table the other tab added joins at the end, a
+// table it removed leaves (unless this tab has it open), and a table this tab
+// removed stays removed.
+export function mergeStoredEntries(
+	library: TableLibrary,
+	stored: readonly { readonly id: TableId; readonly mark: TableMark }[],
+	base: ReadonlySet<TableId>,
+	nameOf: (id: TableId) => string,
+): TableLibrary {
+	const storedIds = new Set(stored.map((entry) => entry.id));
+	const mine = new Set(library.tables.map((table) => table.id));
+	const kept = library.tables.filter(
+		(table) =>
+			table.id === library.activeId ||
+			storedIds.has(table.id) ||
+			!base.has(table.id),
+	);
+	const added = stored
+		.filter((entry) => !mine.has(entry.id) && !base.has(entry.id))
+		.map((entry) => ({ ...entry, name: nameOf(entry.id) }));
+	if (kept.length === library.tables.length && added.length === 0)
+		return library;
+	return { ...library, tables: [...kept, ...added] };
+}

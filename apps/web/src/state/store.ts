@@ -85,6 +85,7 @@ import {
 import {
 	addTable,
 	isNameTaken,
+	mergeStoredEntries,
 	nameForDuplicate,
 	nameForNewTable,
 	nextTableMark,
@@ -136,9 +137,11 @@ import {
 } from "@/import/prepare";
 import { storageErased } from "@/persistence/erase";
 import {
+	LIBRARY_KEY,
 	LIBRARY_VERSION,
 	type LibraryIndex,
 	type PersistenceFailureReason,
+	tableKey,
 } from "@/persistence/schema";
 import {
 	loadLibraryIndex,
@@ -151,6 +154,7 @@ import {
 	type StorageLoadOutcome,
 	saveLibraryIndex,
 	saveTable,
+	tableChangedElsewhere,
 } from "@/persistence/storage";
 import {
 	conditionNoticeIds,
@@ -360,6 +364,9 @@ export interface StatusAnnouncement {
 export type StorageIssue =
 	| { readonly kind: "unavailable"; readonly readBlocked?: boolean }
 	| { readonly kind: "quota" }
+	// Another tab wrote the library or the table this tab shows, so this tab's
+	// copy is no longer the newest: it stops writing until reloaded (#543).
+	| { readonly kind: "changed-elsewhere" }
 	| {
 			readonly kind: "unreadable";
 			// Why the saved bytes could not be opened, carried as a code so the
@@ -386,6 +393,7 @@ export type LibraryTransitionOutcome =
 function storageBlocksWrites(issue: StorageIssue | null): boolean {
 	return (
 		issue?.kind === "unreadable" ||
+		issue?.kind === "changed-elsewhere" ||
 		(issue?.kind === "unavailable" && issue.readBlocked === true)
 	);
 }
@@ -953,12 +961,64 @@ function entryName(library: TableLibrary, id: TableId | null): string {
 	);
 }
 
-function writeLibraryIndex(library: TableLibrary): SaveOutcome {
-	return saveLibraryIndex({
+// The tables the stored index held when this tab last read or wrote it, so
+// an index write can tell another tab's additions and removals from its own
+// (#543). Empty before anything was read, which makes a merge keep every
+// stored table rather than guess that one was removed.
+let indexBase: ReadonlySet<TableId> = new Set();
+
+function rememberIndex(library: TableLibrary): void {
+	indexBase = new Set(library.tables.map((table) => table.id));
+}
+
+type IndexWrite =
+	| { readonly status: "saved"; readonly library: TableLibrary }
+	| { readonly status: "quota" | "unavailable" | "blocked" };
+
+// Every index write reads the stored index first and keeps what another tab
+// added there, so two tabs creating tables in turn both keep theirs (#543).
+// The library it returns is the one written, which the caller adopts. A
+// stored index this build cannot read, from a newer or older tab, is never
+// written over: it is reported the way hydration reports it, and kept.
+function writeLibraryIndex(library: TableLibrary): IndexWrite {
+	const stored = loadLibraryIndex();
+	if (stored.status === "unreadable") {
+		useTabeloStore.setState({
+			storageIssue: {
+				kind: "unreadable",
+				scope: "library",
+				reason: stored.reason,
+				raw: stored.raw,
+			},
+		});
+		return { status: "blocked" };
+	}
+	const merged =
+		stored.status === "ok"
+			? mergeStoredEntries(library, stored.index.tables, indexBase, (id) => {
+					const outcome = loadTable(id);
+					return outcome.status === "ok"
+						? outcome.state.name
+						: DEFAULT_TABLE_NAME;
+				})
+			: library;
+	const saved = saveLibraryIndex({
 		version: LIBRARY_VERSION,
-		tables: library.tables.map(({ id, mark }) => ({ id, mark })),
-		activeId: library.activeId,
+		tables: merged.tables.map(({ id, mark }) => ({ id, mark })),
+		activeId: merged.activeId,
 	});
+	if (saved.status !== "saved") return saved;
+	rememberIndex(merged);
+	return { status: "saved", library: merged };
+}
+
+// What a failed index write leaves to report. A refusal has already said why.
+function indexFailure(
+	outcome: Exclude<IndexWrite, { status: "saved" }>,
+): StorageIssue | null {
+	return outcome.status === "blocked"
+		? useTabeloStore.getState().storageIssue
+		: { kind: outcome.status };
 }
 
 // The state a table starts from, and the state switching to an unreadable or
@@ -1216,6 +1276,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 
 	hydrate: () => {
 		retainedSessions.clear();
+		indexBase = new Set();
 		const session = get().library;
 		const loadedIndex = loadLibraryIndex();
 		if (loadedIndex.status === "unreadable") {
@@ -1233,18 +1294,20 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			set({ storageIssue: { kind: "unavailable", readBlocked: true } });
 			return;
 		}
-		const library = readLibrary(
+		let library = readLibrary(
 			session,
 			loadedIndex.status === "ok" ? loadedIndex.index : null,
 		);
+		if (loadedIndex.status === "ok") rememberIndex(library);
 		// A browser with no index gets one now, so the table this session is
 		// about to write is in the library rather than becoming an orphan key.
 		if (loadedIndex.status === "empty") {
 			const saved = writeLibraryIndex(library);
 			if (saved.status !== "saved") {
-				set({ storageIssue: { kind: saved.status } });
+				set({ storageIssue: indexFailure(saved) });
 				return;
 			}
+			library = saved.library;
 		}
 		// The table this session minted before reading storage belongs to no
 		// library once the stored one arrives. A save between the first render
@@ -1309,26 +1372,28 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const state = get();
 		if (state.storageIssue?.kind !== "unreadable") return false;
 		const activeId = state.library.activeId;
-		const outcome =
-			state.storageIssue.scope === "library" || activeId === null
-				? preserveUnreadableLibraryAndSave(
-						state.storageIssue.raw,
-						{
-							version: LIBRARY_VERSION,
-							tables: state.library.tables.map(({ id, mark }) => ({
-								id,
-								mark,
-							})),
-							activeId: state.library.activeId,
-						},
-						savePayload(state),
-					)
-				: preserveUnreadableAndSave(
-						activeId,
-						state.storageIssue.raw,
-						savePayload(state),
-					);
+		const writesIndex =
+			state.storageIssue.scope === "library" || activeId === null;
+		const outcome = writesIndex
+			? preserveUnreadableLibraryAndSave(
+					state.storageIssue.raw,
+					{
+						version: LIBRARY_VERSION,
+						tables: state.library.tables.map(({ id, mark }) => ({
+							id,
+							mark,
+						})),
+						activeId: state.library.activeId,
+					},
+					savePayload(state),
+				)
+			: preserveUnreadableAndSave(
+					activeId,
+					state.storageIssue.raw,
+					savePayload(state),
+				);
 		if (outcome.status === "saved") {
+			if (writesIndex) rememberIndex(state.library);
 			set({ storageIssue: null });
 			return true;
 		}
@@ -2905,16 +2970,19 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		);
 		const blank = blankTableState(entry.name);
 		const saved = saveTable(entry.id, blank);
-		const indexed =
-			saved.status === "saved" ? writeLibraryIndex(library) : saved;
+		if (saved.status !== "saved") {
+			set({ storageIssue: { kind: saved.status } });
+			return saved;
+		}
+		const indexed = writeLibraryIndex(library);
 		if (indexed.status !== "saved") {
 			// This key was allocated for this failed creation and contains no user edits.
-			if (saved.status === "saved") removeStoredTable(entry.id);
-			set({ storageIssue: { kind: indexed.status } });
+			removeStoredTable(entry.id);
+			set({ storageIssue: indexFailure(indexed) });
 			return indexed;
 		}
 		retainActiveSession(get());
-		set({ library, ...blank, storageIssue: null });
+		set({ library: indexed.library, ...blank, storageIssue: null });
 		return { status: "saved", tableId: entry.id };
 	},
 
@@ -2940,18 +3008,21 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const copied = { ...payload, name: entry.name };
 		const library = addTable(state.library, entry);
 		const saved = saveTable(entry.id, copied);
-		const indexed =
-			saved.status === "saved" ? writeLibraryIndex(library) : saved;
+		if (saved.status !== "saved") {
+			set({ storageIssue: { kind: saved.status } });
+			return saved;
+		}
+		const indexed = writeLibraryIndex(library);
 		if (indexed.status !== "saved") {
 			// This key was allocated for this failed copy and holds nothing else.
-			if (saved.status === "saved") removeStoredTable(entry.id);
-			set({ storageIssue: { kind: indexed.status } });
+			removeStoredTable(entry.id);
+			set({ storageIssue: indexFailure(indexed) });
 			return indexed;
 		}
 		retainActiveSession(get());
 		// Opened from what was just stored, the way switching opens a table, so
 		// the copy on screen is the copy a reload reads.
-		openTable(library);
+		openTable(indexed.library);
 		return { status: "saved", tableId: entry.id };
 	},
 
@@ -2980,11 +3051,11 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		const library = { ...state.library, activeId: id };
 		const indexed = writeLibraryIndex(library);
 		if (indexed.status !== "saved") {
-			set({ storageIssue: { kind: indexed.status } });
+			set({ storageIssue: indexFailure(indexed) });
 			return indexed;
 		}
 		retainActiveSession(get());
-		openTable(library, loaded);
+		openTable(indexed.library, loaded);
 		return { status: "saved", tableId: id };
 	},
 
@@ -3000,7 +3071,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		// the library exactly as they were rather than half deleted.
 		const indexed = writeLibraryIndex(library);
 		if (indexed.status !== "saved") {
-			set({ storageIssue: { kind: indexed.status } });
+			set({ storageIssue: indexFailure(indexed) });
 			return;
 		}
 		// Nothing is flushed here: the table being deleted must not be written
@@ -3008,8 +3079,8 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 		// and the store on a blank table no key holds (#466).
 		removeStoredTable(id);
 		retainedSessions.delete(id);
-		if (id === state.library.activeId) openTable(library);
-		else set({ library });
+		if (id === state.library.activeId) openTable(indexed.library);
+		else set({ library: indexed.library });
 	},
 
 	ensureActiveTable: () => {
@@ -3026,14 +3097,17 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 			...savePayload(state),
 			name: entry.name,
 		});
-		const indexed =
-			saved.status === "saved" ? writeLibraryIndex(library) : saved;
+		if (saved.status !== "saved") {
+			set({ storageIssue: { kind: saved.status } });
+			return saved;
+		}
+		const indexed = writeLibraryIndex(library);
 		if (indexed.status !== "saved") {
-			if (saved.status === "saved") removeStoredTable(entry.id);
-			set({ storageIssue: { kind: indexed.status } });
+			removeStoredTable(entry.id);
+			set({ storageIssue: indexFailure(indexed) });
 			return indexed;
 		}
-		set({ library, name: entry.name, storageIssue: null });
+		set({ library: indexed.library, name: entry.name, storageIssue: null });
 		return { status: "saved", tableId: entry.id };
 	},
 
@@ -3153,6 +3227,12 @@ export function flushPersistence(): FlushOutcome {
 		const created = current.ensureActiveTable();
 		return created.status === "saved" ? created : { status: "blocked" };
 	}
+	// The storage event normally says so first; this catches a write it has
+	// not delivered yet, so a stale tab never writes over a newer table (#543).
+	if (tableChangedElsewhere(current.library.activeId)) {
+		markChangedElsewhere();
+		return { status: "blocked" };
+	}
 	const outcome = saveTable(current.library.activeId, savePayload(current));
 	useTabeloStore.setState({
 		storageIssue: outcome.status === "saved" ? null : { kind: outcome.status },
@@ -3172,7 +3252,29 @@ useTabeloStore.subscribe((state, previous) => {
 	if (finds !== state.finds) useTabeloStore.setState({ finds });
 });
 
+// Another tab wrote what this tab would write next. Every write stops through
+// `storageBlocksWrites` until the user reloads, and the pending save goes with
+// it, so neither tab's stored edit is overwritten by a copy older than it.
+function markChangedElsewhere(): void {
+	if (saveTimer) {
+		clearTimeout(saveTimer);
+		saveTimer = null;
+	}
+	useTabeloStore.setState({ storageIssue: { kind: "changed-elsewhere" } });
+}
+
+// The browser fires `storage` in every other tab of this origin when one
+// writes, never in the writer itself. A null key is a `clear()`.
+function isSharedKeyForThisTab(key: string | null): boolean {
+	if (key === null || key === LIBRARY_KEY) return true;
+	const { activeId } = useTabeloStore.getState().library;
+	return activeId !== null && key === tableKey(activeId);
+}
+
 export function startAutosave(): () => void {
+	const onStorage = (event: StorageEvent) => {
+		if (isSharedKeyForThisTab(event.key)) markChangedElsewhere();
+	};
 	const flush = () => {
 		if (saveTimer) {
 			clearTimeout(saveTimer);
@@ -3199,10 +3301,12 @@ export function startAutosave(): () => void {
 		if (document.visibilityState === "hidden") flush();
 	};
 	window.addEventListener("pagehide", flush);
+	window.addEventListener("storage", onStorage);
 	document.addEventListener("visibilitychange", onVisibilityChange);
 	return () => {
 		unsubscribe();
 		window.removeEventListener("pagehide", flush);
+		window.removeEventListener("storage", onStorage);
 		document.removeEventListener("visibilitychange", onVisibilityChange);
 		if (saveTimer) {
 			clearTimeout(saveTimer);

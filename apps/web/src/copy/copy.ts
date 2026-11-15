@@ -1390,6 +1390,11 @@ export const copy = {
 			}
 		},
 		downloadCopy: "Download a copy",
+		// Another tab saved this table or the library (#543). Saving here
+		// stopped, so nothing this tab still holds overwrites the newer copy.
+		changedInAnotherTab:
+			"This table changed in another tab, so changes here are no longer saved. Download a copy to keep them, then reload.",
+		reloadLatest: "Reload",
 		downloadOriginal: "Download original",
 		replaceSavedData: "Replace saved data",
 		replacedSavedData: "Saved data replaced. The original was kept.",

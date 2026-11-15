@@ -95,9 +95,12 @@ export class AgentSession {
 			return "unfinished_source";
 		if (state.pendingImport || state.pendingPaneAction) return "pending_choice";
 		if (state.storageIssue?.kind === "unreadable") return "unreadable_storage";
+		// A tab another tab has overtaken no longer saves (#543), so an agent
+		// edit would live only in memory: refused like blocked storage.
 		if (
-			state.storageIssue?.kind === "unavailable" &&
-			state.storageIssue.readBlocked
+			(state.storageIssue?.kind === "unavailable" &&
+				state.storageIssue.readBlocked) ||
+			state.storageIssue?.kind === "changed-elsewhere"
 		)
 			return "unavailable_storage";
 		return this.busy();

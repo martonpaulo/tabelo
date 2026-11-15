@@ -45,6 +45,13 @@ welcome surface shows until a table is started (#466). The
 others are storage until one is opened, and no table can see another. Names
 are unique, so the list always says which table it offers.
 
+Two tabs of one browser share the library's storage and nothing else. A tab
+never writes over a newer copy another tab saved: once another tab changes the
+library index or the table this tab has open, this tab stops saving and offers
+a download of its copy and a reload. Every index write first reads the stored
+index and keeps the tables another tab added, so a write never drops a table
+this tab did not remove. Decided on #543.
+
 Related to: Table document, Workspace
 
 ### View

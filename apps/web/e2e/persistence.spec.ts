@@ -12,9 +12,37 @@ import {
 	PREFERENCES_VERSION,
 } from "@/preferences/contract";
 import { expect, test } from "./fixtures";
-import { seedTableStorage } from "./helpers";
+import { seedTableStorage, storedDocument, TabeloPage } from "./helpers";
 
 const validMarkdown = "| Name |\n| --- |\n| Ingrid |";
+
+// Two tabs on one table share storage and nothing else (#543). The tab that
+// learns the other one saved stops saving and says so, so neither tab's stored
+// edit is written over by the older copy the other still holds.
+test("a second tab never writes its older copy over the first tab's saved edit", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "Ingrid");
+	await expect.poll(() => storedDocument(tabelo.page)).toContain("Ingrid");
+	const second = new TabeloPage(await tabelo.page.context().newPage());
+	await second.page.goto("/");
+	await expect(second.cell(1, 1)).toHaveText("Ingrid");
+
+	await tabelo.editCell(2, 1, "Paulo");
+	await expect.poll(() => storedDocument(tabelo.page)).toContain("Paulo");
+	const notice = second.notice("error");
+	await expect(notice).toBeVisible();
+	await expect(
+		notice.getByRole("button", { name: copy.notices.reloadLatest }),
+	).toBeVisible();
+
+	await second.editCell(1, 2, "Rio");
+	await second.page.close();
+	await tabelo.page.reload();
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect(tabelo.cell(2, 1)).toHaveText("Paulo");
+	expect(await storedDocument(tabelo.page)).not.toContain("Rio");
+});
 const invalidMarkdown = "| Name |\n| not a divider |\n| Ingrid |";
 
 test("an unreadable library index stays recoverable without replacing its table payloads", async ({

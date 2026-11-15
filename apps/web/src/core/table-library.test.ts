@@ -4,6 +4,7 @@ import {
 	isLargeLibrary,
 	isNameTaken,
 	LARGE_LIBRARY_SIZE,
+	mergeStoredEntries,
 	nameForDuplicate,
 	nameForNewTable,
 	nextTableMark,
@@ -178,5 +179,45 @@ describe("nameForDuplicate", () => {
 		const second = nameForDuplicate(libraryOf(long, name), long);
 		expect([...second].length).toBeLessThanOrEqual(MAX_TABLE_NAME_CODE_POINTS);
 		expect(second.endsWith(" (copy 2)")).toBe(true);
+	});
+});
+
+// The index another tab wrote, folded into this tab's next index write (#543).
+describe("mergeStoredEntries", () => {
+	const library = libraryOf("Cities", "Roles", "Ages");
+	const stored = (...ids: readonly string[]) =>
+		ids.map((id) => ({ id, mark: TABLE_MARKS[0] }));
+	const ids = (merged: TableLibrary) => merged.tables.map((table) => table.id);
+
+	it("keeps a table another tab added and drops one it removed", () => {
+		const merged = mergeStoredEntries(
+			library,
+			stored("t0", "t2", "t9"),
+			new Set(["t0", "t1", "t2"]),
+			() => "Added elsewhere",
+		);
+		expect(ids(merged)).toEqual(["t0", "t2", "t9"]);
+		expect(merged.tables.at(-1)?.name).toBe("Added elsewhere");
+	});
+
+	it("keeps this tab's own removals and new tables", () => {
+		const mine = removeTable(library, "t1");
+		const merged = mergeStoredEntries(
+			mine,
+			stored("t0", "t1"),
+			new Set(["t0", "t1"]),
+			() => "unused",
+		);
+		expect(merged).toBe(mine);
+	});
+
+	it("never drops the open table", () => {
+		const merged = mergeStoredEntries(
+			library,
+			stored("t1", "t2"),
+			new Set(["t0", "t1", "t2"]),
+			() => "unused",
+		);
+		expect(ids(merged)).toEqual(["t0", "t1", "t2"]);
 	});
 });

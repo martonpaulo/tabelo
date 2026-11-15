@@ -38,6 +38,24 @@ export type StorageLoadOutcome =
 			readonly raw: string;
 	  };
 
+// The bytes this tab last read from or wrote to each table key, so a save can
+// tell that another tab wrote the table since (#543). A key this tab never
+// touched has no entry and nothing to compare against. Only a newer payload
+// counts: a key another tab removed is reported by the `storage` event, which
+// the browser delivers for removals as well.
+const seenTables = new Map<string, string | null>();
+
+export function tableChangedElsewhere(id: string): boolean {
+	if (!seenTables.has(id)) return false;
+	try {
+		const raw = window.localStorage.getItem(tableKey(id));
+		return raw !== null && raw !== seenTables.get(id);
+	} catch {
+		// Blocked storage: the write that follows reports it.
+		return false;
+	}
+}
+
 export function loadTable(id: string): StorageLoadOutcome {
 	let raw: string | null;
 	try {
@@ -46,6 +64,7 @@ export function loadTable(id: string): StorageLoadOutcome {
 		// Private browsing and blocked storage both throw here.
 		return { status: "unavailable" };
 	}
+	seenTables.set(id, raw);
 
 	if (raw === null) return { status: "empty" };
 
@@ -127,7 +146,10 @@ export function serializeTable(state: SavePayload): string {
 }
 
 export function saveTable(id: string, state: SavePayload): SaveOutcome {
-	return writeItem(browserStorage, tableKey(id), serializeTable(state));
+	const text = serializeTable(state);
+	const outcome = writeItem(browserStorage, tableKey(id), text);
+	if (outcome.status === "saved") seenTables.set(id, text);
+	return outcome;
 }
 
 export function preserveUnreadableAndSave(
@@ -187,6 +209,7 @@ export function removeTable(id: string): void {
 	try {
 		window.localStorage.removeItem(tableKey(id));
 		window.localStorage.removeItem(tableRecoveryKey(id));
+		seenTables.set(id, null);
 	} catch {
 		// Blocked storage: the entry is gone from the index either way.
 	}

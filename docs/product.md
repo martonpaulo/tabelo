@@ -215,6 +215,7 @@ reversible implementation choice does not belong here.
 | Source axes | In a pane that maps rows, a column letter and a table row's line number open the grid's column and row menus (less grid-only preferences), a click selects the column's cells or the row's text, a drag of a selected one reorders it, and the keyboard reaches the menus from that selection; the divider and non-table lines offer nothing | design system §9, ADR 0005 | #395 |
 | CSV export header | Always included | `AGENTS.md` domain rules | #148 |
 | Persistence migrations | An explicit forward-only chain; unreadable data is kept and explained by reason | `AGENTS.md` architecture | #184, #32 |
+| Two open tabs | A tab that another tab overtook stops saving and offers a download and a reload; index writes keep the tables another tab added | `CONTEXT.md` | #543 |
 | Codec escaping | Every escaping codec round-trips content losslessly | ADR 0002 | #183, #188 |
 
 ### Interaction and menus
