@@ -2,8 +2,14 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
 
 ## 2. Tokens
 
-All tokens live in `apps/web/src/index.css`. Product-wide primitives inherit
-shadcn's tokens from `packages/ui/src/styles/globals.css`.
+All tokens live in `apps/web/src/index.css`, the only owner of every colour
+and radius that renders, including the shadcn names (`--background`,
+`--primary`, `--border`, and the rest) the vendored primitives read.
+`packages/ui/src/styles/globals.css` owns only what the package itself needs:
+`--hairline-w`, `--weight-strong`, the font stack, and the `tabelo-hairline`
+utility. It still lists shadcn's upstream colour values as the vendored
+baseline, each one overridden by `index.css`; whether that baseline stays is
+decided by the upstream check (#535, #561).
 
 ### Rule: use tokens and relative units
 
@@ -805,6 +811,10 @@ decides the type. On 2026-09-19 the owner chose Figtree over Inter as the closes
 | Source editor | `text-sm font-source` |
 | Index chrome | `font-index` |
 | Helper / status | `text-xs text-muted-foreground` |
+
+A JS theme that sets text bold (the source editor's header cells, strong
+runs, and typed values) reads `var(--weight-strong)` (600, the weight
+`font-semibold` sets) rather than writing the number (#561).
 
 Critical control, pane, menu, notice, onboarding, and error labels never fall
 below `text-sm` (0.875rem). `text-xs` is reserved for optional descriptions,

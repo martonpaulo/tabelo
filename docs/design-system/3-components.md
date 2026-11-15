@@ -28,7 +28,7 @@ should be a slot instead.
 ### Do not rebuild what exists
 
 Before writing a control, check `packages/ui/src/components/`: it holds the
-shadcn primitives (button, dropdown-menu, badge, toggle-group, separator,
+shadcn primitives (button, dropdown-menu, toggle, checkbox, dialog,
 tooltip, input, and more). Compose those. A bare `<button>` in product code is
 a pattern break unless it is a grid cell affordance, which the grid owns.
 

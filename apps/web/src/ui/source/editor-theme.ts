@@ -28,7 +28,10 @@ const contentLineBox = sourceLineBox;
 // reaches it through a decoration class, because the HTML mode marks no header.
 // Weight, not colour, carries the distinction, so the header stays legible in
 // forced-colour mode and to anyone who cannot separate the two tones.
-const headerCellStyle = { color: "var(--foreground)", fontWeight: "600" };
+const headerCellStyle = {
+	color: "var(--foreground)",
+	fontWeight: "var(--weight-strong)",
+};
 
 // One tone for the non-content annotations the editor draws as glyphs: the tab
 // arrow and the empty-field placeholder. The space dot mixes the same muted
@@ -107,7 +110,7 @@ export const editorTheme = EditorView.theme({
 	},
 	".cm-tabeloColumnMarker[data-selected]": {
 		cursor: "grab",
-		fontWeight: "600",
+		fontWeight: "var(--weight-strong)",
 	},
 	".cm-scroller": {
 		// Below the column markers while they show: see source-metrics.ts.
@@ -259,13 +262,13 @@ export const editorTheme = EditorView.theme({
 	// no surface of their own (owner, 2026-09-19).
 	".cm-lineNumbers .cm-gutterElement.cm-tabeloReachedLine": {
 		color: "var(--foreground)",
-		fontWeight: "600",
+		fontWeight: "var(--weight-strong)",
 	},
 	".cm-activeLineGutter": { backgroundColor: "transparent" },
 	"&.cm-focused .cm-activeLineGutter": {
 		backgroundColor: "var(--active-line-fill)",
 		color: "var(--foreground)",
-		fontWeight: "600",
+		fontWeight: "var(--weight-strong)",
 	},
 	// `drawSelection`'s own layers are replaced by the ones in drawn-selection.ts,
 	// which fix their geometry; its selection and cursor layers stay mounted and
@@ -524,7 +527,7 @@ export const highlightStyle = HighlightStyle.define([
 	{ tag: tags.heading, ...headerCellStyle },
 	{ tag: tags.propertyName, ...headerCellStyle },
 	// Anything the user marked up inside a cell.
-	{ tag: tags.strong, fontWeight: "600" },
+	{ tag: tags.strong, fontWeight: "var(--weight-strong)" },
 	{ tag: tags.emphasis, fontStyle: "italic" },
 	{ tag: tags.strikethrough, textDecoration: "line-through" },
 	{
@@ -542,13 +545,13 @@ export const highlightStyle = HighlightStyle.define([
 	{
 		tag: tags.number,
 		color: "var(--value-number)",
-		fontWeight: "600",
+		fontWeight: "var(--weight-strong)",
 		fontVariantNumeric: "tabular-nums",
 	},
 	{
 		tag: tags.bool,
 		color: "var(--value-boolean)",
-		fontWeight: "600",
+		fontWeight: "var(--weight-strong)",
 	},
 	{ tag: tags.null, color: "var(--value-null)" },
 	// A character standing in for one it cannot spell directly: a Markdown or
