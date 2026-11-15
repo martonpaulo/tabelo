@@ -117,16 +117,47 @@ export type ReplacementOutcome = SaveOutcome & {
 	readonly recoveryPreserved: boolean;
 };
 
+// A replacement also reads, to find where its recovery copy can go.
+export interface RecoverableStorage extends WritableStorage {
+	readonly getItem: (key: string) => string | null;
+}
+
+// The keys a payload's recovery copies live under: the plain recovery key,
+// then `.2`, `.3` and so on for each later replacement of the same payload.
+function numberedRecoveryKey(recoveryKey: string, index: number): string {
+	return index === 1 ? recoveryKey : `${recoveryKey}.${index}`;
+}
+
+// Where these bytes are, or can go, without overwriting an earlier recovery
+// copy (#568). The same bytes already kept are not copied a second time.
+function recoveryKeyFor(
+	storage: RecoverableStorage,
+	recoveryKey: string,
+	raw: string,
+): string {
+	for (let index = 1; ; index += 1) {
+		const key = numberedRecoveryKey(recoveryKey, index);
+		const held = storage.getItem(key);
+		if (held === null || held === raw) return key;
+	}
+}
+
 // The only way an unreadable payload is ever overwritten: its bytes are
-// copied to the recovery key first, and nothing is written when that copy
-// fails.
+// copied to a recovery key first, never over an earlier copy, and nothing is
+// written when that copy fails.
 export function preserveRawThenWrite(
-	storage: WritableStorage,
+	storage: RecoverableStorage,
 	recoveryKey: string,
 	raw: string,
 	write: () => SaveOutcome,
 ): ReplacementOutcome {
-	const preserved = writeItem(storage, recoveryKey, raw);
+	let key: string;
+	try {
+		key = recoveryKeyFor(storage, recoveryKey, raw);
+	} catch {
+		return { status: "unavailable", recoveryPreserved: false };
+	}
+	const preserved = writeItem(storage, key, raw);
 	if (preserved.status !== "saved") {
 		return { ...preserved, recoveryPreserved: false };
 	}
@@ -135,7 +166,8 @@ export function preserveRawThenWrite(
 
 // Reaching `window.localStorage` can itself throw when storage is blocked, so
 // it is read inside the write rather than before it.
-const browserStorage: WritableStorage = {
+const browserStorage: RecoverableStorage = {
+	getItem: (key) => window.localStorage.getItem(key),
 	setItem: (key, value) => window.localStorage.setItem(key, value),
 };
 
@@ -203,12 +235,16 @@ export function preserveUnreadableLibraryAndSave(
 	});
 }
 
-// A deleted table takes its recovery copy with it: keeping the bytes of a
+// A deleted table takes its recovery copies with it: keeping the bytes of a
 // table the user chose to delete would be a copy they cannot see.
 export function removeTable(id: string): void {
 	try {
 		window.localStorage.removeItem(tableKey(id));
-		window.localStorage.removeItem(tableRecoveryKey(id));
+		for (let index = 1; ; index += 1) {
+			const key = numberedRecoveryKey(tableRecoveryKey(id), index);
+			if (window.localStorage.getItem(key) === null) break;
+			window.localStorage.removeItem(key);
+		}
 		seenTables.set(id, null);
 	} catch {
 		// Blocked storage: the entry is gone from the index either way.

@@ -933,13 +933,25 @@ function readLibrary(
 			state: outcome.status === "ok" ? outcome.state : null,
 		};
 	});
-	const library = withUniqueNames({
-		tables: tables.map(({ id, name, mark }) => ({ id, name, mark })),
+	// Only names two readable payloads store take part in numbering. A table
+	// that cannot be read shows the default as a placeholder it never stores,
+	// so it cannot make a readable table give up its name (#568).
+	const unique = withUniqueNames({
+		tables: tables
+			.filter((table) => table.state !== null)
+			.map(({ id, name, mark }) => ({ id, name, mark })),
 		activeId: index.activeId,
 	});
+	const library = {
+		tables: tables.map(
+			({ id, name, mark }) =>
+				unique.tables.find((entry) => entry.id === id) ?? { id, name, mark },
+		),
+		activeId: index.activeId,
+	};
 	// A name this read had to change belongs to that table, so it is written
 	// back rather than shown differently from what is stored.
-	for (const entry of library.tables) {
+	for (const entry of unique.tables) {
 		const source = tables.find((table) => table.id === entry.id);
 		if (!source?.state || source.name === entry.name) continue;
 		saveTable(entry.id, { ...source.state, name: entry.name });

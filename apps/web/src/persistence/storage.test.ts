@@ -7,6 +7,7 @@ import { CURRENT_VERSION, tableKey, tableRecoveryKey } from "./schema";
 import {
 	loadTable,
 	preserveUnreadableAndSave,
+	removeTable,
 	type SavePayload,
 	saveTable,
 } from "./storage";
@@ -131,5 +132,24 @@ describe("browser storage outcomes", () => {
 		expect(
 			JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "null"),
 		).toMatchObject({ version: CURRENT_VERSION, draft: null });
+	});
+
+	// A second replacement of the same payload keeps the first copy (#568).
+	it("never overwrites an earlier recovery copy", () => {
+		const first = "{first damaged bytes";
+		const second = "{second damaged bytes";
+		preserveUnreadableAndSave(TABLE_ID, first, payload);
+		expect(preserveUnreadableAndSave(TABLE_ID, second, payload)).toEqual({
+			status: "saved",
+			recoveryPreserved: true,
+		});
+		expect(window.localStorage.getItem(RECOVERY_KEY)).toBe(first);
+		expect(window.localStorage.getItem(`${RECOVERY_KEY}.2`)).toBe(second);
+		// The same bytes again are already kept, so no third copy appears.
+		preserveUnreadableAndSave(TABLE_ID, second, payload);
+		expect(window.localStorage.getItem(`${RECOVERY_KEY}.3`)).toBeNull();
+		// Deleting the table takes every copy with it.
+		removeTable(TABLE_ID);
+		expect(window.localStorage.length).toBe(0);
 	});
 });

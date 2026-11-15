@@ -1,8 +1,19 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { documentFromMatrix, isDocumentBlank } from "@/core/document";
-import { CURRENT_VERSION, LIBRARY_KEY, tableKey } from "@/persistence/schema";
+import { DEFAULT_TABLE_NAME } from "@/copy/product";
+import {
+	createEmptyDocument,
+	documentFromMatrix,
+	isDocumentBlank,
+} from "@/core/document";
+import {
+	CURRENT_VERSION,
+	LIBRARY_KEY,
+	LIBRARY_VERSION,
+	tableKey,
+} from "@/persistence/schema";
+import { createDefaultWorkspace } from "@/workspace/layout";
 import { flushPersistence, useTabeloStore } from "./store";
 
 const initial = useTabeloStore.getInitialState();
@@ -471,18 +482,19 @@ describe("duplicating a table", () => {
 		const raw = localStorage.getItem(LIBRARY_KEY);
 		const keys = Object.keys(localStorage);
 		const write = localStorage.setItem.bind(localStorage);
-		vi.spyOn(window.localStorage, "setItem").mockImplementation(
-			(key, value) => {
+		const writes = vi
+			.spyOn(window.localStorage, "setItem")
+			.mockImplementation((key, value) => {
 				if (key !== tableKey(source))
 					throw new DOMException("Full", "QuotaExceededError");
 				write(key, value);
-			},
-		);
+			});
 		expect(before.duplicateTable(source).status).toBe("quota");
 		expect(useTabeloStore.getState().library).toBe(before.library);
 		expect(useTabeloStore.getState().document).toBe(before.document);
 		expect(localStorage.getItem(LIBRARY_KEY)).toBe(raw);
 		expect(Object.keys(localStorage).sort()).toEqual(keys.sort());
+		writes.mockRestore();
 	});
 
 	it("removes the copy's payload when only the index write fails", () => {
@@ -492,15 +504,49 @@ describe("duplicating a table", () => {
 		const before = useTabeloStore.getState();
 		const keys = Object.keys(localStorage);
 		const write = localStorage.setItem.bind(localStorage);
-		vi.spyOn(window.localStorage, "setItem").mockImplementation(
-			(key, value) => {
+		const writes = vi
+			.spyOn(window.localStorage, "setItem")
+			.mockImplementation((key, value) => {
 				if (key === LIBRARY_KEY)
 					throw new DOMException("Full", "QuotaExceededError");
 				write(key, value);
-			},
-		);
+			});
 		expect(before.duplicateTable(source).status).toBe("quota");
 		expect(useTabeloStore.getState().library).toBe(before.library);
 		expect(Object.keys(localStorage).sort()).toEqual(keys.sort());
+		writes.mockRestore();
+	});
+});
+
+describe("reading the library", () => {
+	// A damaged table cannot take part in naming, so it never makes a readable
+	// table give up its name (#568).
+	it("keeps a readable table's stored name beside an unreadable one", () => {
+		const readable = JSON.stringify({
+			version: CURRENT_VERSION,
+			name: DEFAULT_TABLE_NAME,
+			document: createEmptyDocument(),
+			workspace: createDefaultWorkspace(),
+			draft: null,
+		});
+		localStorage.setItem(tableKey("t_damaged"), "{damaged");
+		localStorage.setItem(tableKey("t_readable"), readable);
+		localStorage.setItem(
+			LIBRARY_KEY,
+			JSON.stringify({
+				version: LIBRARY_VERSION,
+				tables: [
+					{ id: "t_damaged", mark: 1 },
+					{ id: "t_readable", mark: 2 },
+				],
+				activeId: "t_readable",
+			}),
+		);
+
+		useTabeloStore.getState().hydrate();
+
+		expect(useTabeloStore.getState().name).toBe(DEFAULT_TABLE_NAME);
+		expect(localStorage.getItem(tableKey("t_readable"))).toBe(readable);
+		expect(localStorage.getItem(tableKey("t_damaged"))).toBe("{damaged");
 	});
 });
