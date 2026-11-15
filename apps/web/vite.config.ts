@@ -21,6 +21,24 @@ const productMetadata = createProductMetadata({
 	siteOrigin: process.env.SITE_ORIGIN,
 });
 
+// GitHub Pages cannot send response headers, so the policy is a meta tag
+// (#570). It allows exactly what the app loads: its own scripts, styles,
+// fonts, manifest and service worker; `https:` and `data:` images in cells
+// (docs/adr/0011); and the loopback WebSocket of the paired local agent,
+// whose port is chosen per pairing. CodeMirror and the UI primitives write
+// inline styles, hence `'unsafe-inline'` for styles only. A meta policy
+// cannot refuse framing, and it is added to the build alone so the dev
+// server's hot-reload socket keeps working.
+const CONTENT_SECURITY_POLICY = [
+	"default-src 'self'",
+	"img-src 'self' https: data:",
+	"connect-src 'self' ws://127.0.0.1:*",
+	"style-src 'self' 'unsafe-inline'",
+	"object-src 'none'",
+	"base-uri 'none'",
+].join("; ");
+const CHARSET = '<meta charset="UTF-8" />';
+
 export default defineConfig({
 	base,
 	build: {
@@ -85,6 +103,20 @@ export default defineConfig({
 					.replace("__TABELO_PRODUCT_METADATA__", productMetadata)
 					.replace("__TABELO_STATIC_INTRO__", createStaticIntro())
 					.replace("__TABELO_THEME_COLOR__", THEME_COLOR),
+		},
+		{
+			name: "tabelo-content-security-policy",
+			apply: "build",
+			// The policy governs only what follows it, so it goes straight after
+			// the charset, ahead of every script and stylesheet.
+			transformIndexHtml: (html) => {
+				if (!html.includes(CHARSET))
+					throw new Error("index.html lost the charset the CSP follows");
+				return html.replace(
+					CHARSET,
+					`${CHARSET}\n    <meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}" />`,
+				);
+			},
 		},
 		tailwindcss(),
 		react(),
