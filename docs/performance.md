@@ -295,6 +295,7 @@ them if the shape or the code path they name changes.
 | Many row-header scroll animations make vertical scrolling slow | 120 programmatic scroll steps down and back: worst frame 17 ms, p95 17 ms, at 200 and 499 rows (4 columns) | **Disproved.** |
 | Changing views repeatedly or editing leaks memory | heap after forced GC: 14.1 MB, then 17.5, 18.1, 18.6, 18.8 MB after four rounds of five view changes, 20.1 MB after 40 more edits; DOM nodes, listeners and documents flat | **Disproved.** Growth converges; history is capped at 200 entries. |
 | The header question's row sample (#454) adds to a large paste | opening the dialog: longest task 0 to 53 ms, no event above 16 ms, at every shape up to 49,900 cells | **Disproved.** The sample reads a bounded corner of the matrix. |
+| Jira parse of formatted content grows faster than its input (#582) | `jira` codec `parse` on the `formatted` bench shape, 40 runs each in the unit project on the cloud container: median 16.2 ms at 200 rows and 79.7 ms at 1000 (4.9x for 5x); `min` 8.0 and 49.0 ms. The per-line construct finders are already built lazily, once per line | **Disproved.** The median is linear; the bench's `min` swings with garbage collection at 1000 rows. Reopen with a median, not a `min`, that grows faster than the rows. |
 | Each CI browser shard rebuilding the app wastes CI time | `vite build` 3.9 s inside a 186 to 342 s browser step | **Disproved as worth a change.** Under 2% of a shard. |
 
 Also measured in #59 and found innocent, recorded so nobody investigates them
