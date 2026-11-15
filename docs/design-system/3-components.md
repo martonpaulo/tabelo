@@ -248,7 +248,9 @@ to the menu trigger, and the transpose is one undo step either way (owner,
 
 A per-row command that repeats down a list rests at zero opacity and is
 revealed by a pointer over its row or by focus reaching any item in it
-(`group-hover` and `group-focus-within`). It keeps its place in the row, its
+(`group-hover` and `group-focus-within`). On a screen that cannot hover
+(`(hover: none)`) there is no pointer to reveal it with, so there it is always
+drawn (#552). It keeps its place in the row, its
 accessible name says which row it belongs to, and it is never `hidden` or
 `display:none`, which would take it out of the tab order and leave the keyboard
 without the command. Destructive colour follows the same rule as everywhere

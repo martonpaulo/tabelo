@@ -426,8 +426,10 @@ export function AppMenu({
 // stay focusable, and are revealed by a pointer over the row or by focus
 // reaching any item in it. Never `hidden` or `display:none`: that takes them
 // out of the tab order, and the keyboard would lose the commands entirely.
+// A screen that cannot hover has no pointer to reveal them with, so there
+// they are always drawn (#552).
 const revealedRowActionStyles =
-	"px-2 opacity-0 group-hover/table-row:opacity-100 group-focus-within/table-row:opacity-100 focus:opacity-100 focus-visible:opacity-100";
+	"px-2 opacity-0 group-hover/table-row:opacity-100 group-focus-within/table-row:opacity-100 focus:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100";
 
 // The `!` is deliberate: a menu item paints every descendant with the
 // highlight colour on hover and focus, and the mark must not change with the
@@ -610,7 +612,8 @@ function TableRow({
 			    (owner, 2026-09-20). Dots only: the chevron would be a second
 			    glyph on a control that already reads as "more", and the row has
 			    no label for it to follow. It is quiet until the row is hovered
-			    or reached from the keyboard. */}
+			    or reached from the keyboard, and always drawn on a screen that
+			    cannot hover. */}
 			<DropdownMenuSub>
 				<DropdownMenuSubTrigger
 					hideIndicator

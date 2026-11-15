@@ -1,7 +1,7 @@
 import { copy } from "@/copy/copy";
 import { DEFAULT_TABLE_NAME } from "@/copy/product";
 import { expect, test } from "./fixtures";
-import type { TabeloPage } from "./helpers";
+import { activeTableName, type TabeloPage } from "./helpers";
 
 // The library (#403): several tables live in this browser, the app menu lists
 // them, and one of them is active. What the tests assert is that a table's
@@ -229,4 +229,24 @@ test("duplicating a table opens an independent copy named after it", async ({
 	await entries.first().click();
 	await tabelo.page.keyboard.press("Escape");
 	await expect(tabelo.cell(1, 1)).toHaveText("Original");
+});
+
+// A pointer that can hover keeps the row's options control quiet until the
+// row is reached, which a touch screen does not (#552, e2e/touch.spec.ts).
+test("with a hovering pointer, a table row's options control shows only on its row", async ({
+	tabelo,
+}) => {
+	const menu = await tabelo.openAppMenu();
+	const name = copy.actions.tableOptionsNamed(
+		await activeTableName(tabelo.page),
+	);
+	const options = menu.getByRole("menuitem", { name, exact: true });
+
+	await menu
+		.getByRole("menuitem", { name: copy.workspace.addView, exact: true })
+		.hover();
+	await expect(options).toHaveCSS("opacity", "0");
+
+	await options.hover();
+	await expect(options).toHaveCSS("opacity", "1");
 });
