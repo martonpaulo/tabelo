@@ -227,3 +227,89 @@ test("paste into an existing selection never asks a document question", async ({
 	await expect(headerDialog(page)).toHaveCount(0);
 	await expect(tabelo.cell(1, 1)).toHaveText("Name");
 });
+
+// The question shows the incoming rows it asks about (#454): a read-only,
+// bounded sample of the prepared input, row 1 first and numbered, with no
+// focusable element before the buttons.
+test("the header question shows the incoming rows, row 1 first", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.importFile(
+		"people.csv",
+		'Name,City,Note\nIngrid,Rio,"Rio\nMadrid"\nPaulo,,',
+		"text/csv",
+	);
+	const dialog = headerDialog(page);
+	const sample = dialog.getByRole("table", { name: copy.headerImport.sample });
+	await expect(sample).toBeVisible();
+
+	const rows = sample.getByRole("row");
+	await expect(rows).toHaveCount(3);
+	await expect(rows.first().getByRole("rowheader")).toHaveText("1");
+	await expect(rows.first().getByRole("cell")).toHaveText([
+		"Name",
+		"City",
+		"Note",
+	]);
+	await expect(rows.nth(1).getByRole("cell").nth(2)).toHaveText("Rio\nMadrid");
+	await expect(rows.nth(2).getByRole("cell").nth(1)).toHaveText("");
+	await expect(sample.locator("a, button, input, [tabindex]")).toHaveCount(0);
+	await expect(sample).not.toHaveAttribute("aria-describedby");
+
+	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
+	await expect(dialog).toHaveCount(0);
+});
+
+test("a large paste shows a bounded sample and says what it left out", async ({
+	page,
+	tabelo,
+}) => {
+	const long = "x".repeat(200);
+	const lines = Array.from({ length: 12 }, (_, row) =>
+		Array.from({ length: 8 }, (_, column) =>
+			row === 1 && column === 0 ? long : `${row}:${column}`,
+		).join("\t"),
+	);
+	await tabelo.paste(lines.join("\n"), undefined, null);
+	const dialog = headerDialog(page);
+	const sample = dialog.getByRole("table", { name: copy.headerImport.sample });
+
+	const rows = sample.getByRole("row");
+	expect(await rows.count()).toBeLessThan(12);
+	expect(await rows.first().getByRole("cell").count()).toBeLessThan(8);
+	const clipped =
+		(await rows.nth(1).getByRole("cell").first().textContent()) ?? "";
+	expect(clipped.length).toBeLessThan(long.length);
+	// What the sample left out is said, and tied to the table it shortens.
+	await expect(sample).toHaveAccessibleDescription(/\S/);
+
+	await dialog
+		.getByRole("button", { name: copy.headerImport.asHeaders })
+		.click();
+	await expect(tabelo.header(1)).toHaveText("0:0");
+	await expect(tabelo.cell(1, 1)).toHaveText(long);
+});
+
+test("the sample wraps in a narrow window instead of scrolling sideways", async ({
+	page,
+	tabelo,
+}) => {
+	await page.setViewportSize({ width: 360, height: 720 });
+	await tabelo.paste(
+		`Name\tCity\tRole\n${"Ingrid ".repeat(20)}\tRio\tDesigner`,
+		undefined,
+		null,
+	);
+	const dialog = headerDialog(page);
+	await expect(
+		dialog.getByRole("table", { name: copy.headerImport.sample }),
+	).toBeVisible();
+	const overflow = await page.evaluate(
+		() => document.documentElement.scrollWidth > window.innerWidth,
+	);
+	expect(overflow).toBe(false);
+	await expect(
+		dialog.getByRole("button", { name: copy.headerImport.asHeaders }),
+	).toBeInViewport();
+});

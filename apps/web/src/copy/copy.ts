@@ -408,6 +408,18 @@ export const copy = {
 		description: "Row 1 can hold column names or be the first data row.",
 		asData: "Keep as data",
 		asHeaders: "Use as header row",
+		// The read-only corner of the incoming table under the question (#454).
+		sample: "Incoming rows",
+		rowNumber: (row: number) => `Row ${row}`,
+		omitted: (rows: number, columns: number) => {
+			const parts = [
+				rows > 0 ? `${rows} more ${rows === 1 ? "row" : "rows"}` : null,
+				columns > 0
+					? `${columns} more ${columns === 1 ? "column" : "columns"}`
+					: null,
+			].filter((part) => part !== null);
+			return `${parts.join(" and ")} not shown.`;
+		},
 	},
 
 	appUpdate: {

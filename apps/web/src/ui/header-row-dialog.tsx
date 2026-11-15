@@ -5,8 +5,10 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
-import { useRef } from "react";
+import { cn } from "@tabelo/ui/lib/utils";
+import { useId, useRef } from "react";
 import { copy } from "@/copy/copy";
+import { type ImportSample, importSample } from "@/import/sample";
 import { useTabeloStore } from "@/state/store";
 import {
 	DialogActions,
@@ -22,8 +24,14 @@ export function HeaderRowDialog({
 }: {
 	readonly onImported: () => void;
 }) {
-	const open = useTabeloStore((state) => state.pendingImport !== null);
+	const pending = useTabeloStore((state) => state.pendingImport);
+	const open = pending !== null;
 	const answered = useRef(false);
+	// The last sample stays while the dialog runs its close transition, so its
+	// content does not collapse as it goes.
+	const lastSample = useRef<ImportSample | null>(null);
+	if (pending) lastSample.current = importSample(pending.prepared.matrix);
+	const sample = lastSample.current;
 
 	const answer = (headerRow: boolean) => {
 		answered.current = true;
@@ -67,11 +75,14 @@ export function HeaderRowDialog({
 				if (!nextOpen) useTabeloStore.getState().cancelPendingImport();
 			}}
 		>
-			<DialogContent finalFocus={finalFocus}>
+			<DialogContent finalFocus={finalFocus} width="wide">
 				<DialogHeader>
 					<DialogTitle>{copy.headerImport.title}</DialogTitle>
 					<DialogDescription>{copy.headerImport.description}</DialogDescription>
 				</DialogHeader>
+				{sample && sample.rows.length > 0 ? (
+					<IncomingSample sample={sample} />
+				) : null}
 				<DialogActions>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>
 					<DialogAlternative onClick={() => answer(false)}>
@@ -83,5 +94,72 @@ export function HeaderRowDialog({
 				</DialogActions>
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+// The incoming rows, read-only and bounded (#454). Every row sits in the body,
+// because which one is the header is the question being asked; row 1 is told
+// apart by its number and the stronger rule under it. Fixed layout at the
+// dialog's width, so a narrow window wraps the text instead of scrolling it
+// sideways, and nothing here takes focus before the buttons.
+function IncomingSample({ sample }: { readonly sample: ImportSample }) {
+	const omitted = sample.omittedRows > 0 || sample.omittedColumns > 0;
+	const omittedId = useId();
+	return (
+		<div className="grid min-w-0 gap-1.5">
+			<table
+				aria-label={copy.headerImport.sample}
+				aria-describedby={omitted ? omittedId : undefined}
+				className="rounded-interactive border-line-subtle w-full table-fixed border-separate border-spacing-0 overflow-hidden border text-xs"
+			>
+				<tbody>
+					{sample.rows.map((row, rowIndex) => (
+						<tr
+							// The sample is rebuilt from the same prepared input each
+							// render and never reordered, so the index is its identity.
+							key={rowIndex}
+							className={cn(rowIndex === 0 && "bg-surface-header")}
+						>
+							<th
+								scope="row"
+								aria-label={copy.headerImport.rowNumber(rowIndex + 1)}
+								className={cn(
+									"text-muted-foreground w-8 px-2 py-1.5 text-right align-top font-normal tabular-nums",
+									rowIndex === 0
+										? "border-line-strong border-b"
+										: "border-line-subtle border-b",
+									rowIndex === sample.rows.length - 1 && "border-b-0",
+								)}
+							>
+								{rowIndex + 1}
+							</th>
+							{row.map((cell, columnIndex) => (
+								<td
+									key={columnIndex}
+									className={cn(
+										"px-2 py-1.5 align-top",
+										rowIndex === 0
+											? "border-line-strong border-b font-medium"
+											: "border-line-subtle border-b",
+										rowIndex === sample.rows.length - 1 && "border-b-0",
+									)}
+								>
+									{/* The clamp sits inside the cell: on the cell itself it
+									    would change its display and break the table. */}
+									<div className="line-clamp-3 break-words whitespace-pre-line">
+										{cell.text}
+									</div>
+								</td>
+							))}
+						</tr>
+					))}
+				</tbody>
+			</table>
+			{omitted ? (
+				<p id={omittedId} className="text-muted-foreground text-xs">
+					{copy.headerImport.omitted(sample.omittedRows, sample.omittedColumns)}
+				</p>
+			) : null}
+		</div>
 	);
 }

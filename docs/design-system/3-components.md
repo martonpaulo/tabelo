@@ -561,6 +561,16 @@ prefilled, with `Remove image`, `Cancel`, and `Save`. An edit's `Save` is
 disabled with its reason until something changes. A missing field is reported
 under it when the confirm is pressed; Cancel writes nothing.
 
+The header question for a CSV, TSV, or plain-text replacement shows what it
+asks about (#454): under its description, a read-only sample of the incoming
+rows in the preview's table treatment, at the wide width. It is bounded to the
+first five rows and five columns, each cell clamped to three lines and 80
+characters, and a line under it says how many rows and columns it leaves out.
+Every row sits in the table body, because which one is the header is the
+question; each starts with its number, and row 1 carries the stronger rule. The
+table has a fixed layout, so a narrow window wraps it rather than scrolling it,
+and it adds no focus stop before the buttons.
+
 Moving a pane also qualifies because the choice is spatial (#73). The Move pane
 dialog shows every other occupied position in the current preset through a
 small layout diagram and a worded name such as "Top left" or "Right, full
