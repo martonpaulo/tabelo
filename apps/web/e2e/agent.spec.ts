@@ -650,26 +650,42 @@ test("first-time MCP setup stays in the dialog and its commands can be copied", 
 	const command = await dialog
 		.getByRole("textbox", { name: copy.agent.setupTitle })
 		.inputValue();
-	expect(command).toContain("codex mcp add tabelo --");
+	// Claude Code is the first choice (#503, #536): one command registers the
+	// local connector, and there is no configuration to edit.
+	expect(command).toContain("claude mcp add --scope user tabelo --");
+	expect(command).toContain("apps/agent-bridge/src/index.ts");
+	await expect(
+		dialog.getByRole("textbox", { name: copy.agent.setupConfig }),
+	).toHaveCount(0);
 	await dialog
 		.getByRole("button", { name: copy.agent.copyCommands, exact: true })
 		.click();
 	expect((await lastCopied(page))?.text).toBe(command);
 
-	// Claude Code registers the same local connector with its own command
-	// (#503), and Copy takes the commands of the app that is chosen.
+	// Claude Desktop prints the two paths and shows the mcpServers entry they
+	// fill in, and Copy takes the commands of the app that is chosen.
 	await dialog
-		.getByRole("radio", { name: copy.agent.setupClients.claude.label })
+		.getByRole("radio", { name: copy.agent.setupClients.claudeDesktop.label })
 		.click();
-	const claudeCommand = await dialog
+	const desktopCommands = await dialog
 		.getByRole("textbox", { name: copy.agent.setupTitle })
 		.inputValue();
-	expect(claudeCommand).toContain("claude mcp add --scope user tabelo --");
-	expect(claudeCommand).toContain("apps/agent-bridge/src/index.ts");
+	expect(desktopCommands).toContain("node -p process.execPath");
+	expect(desktopCommands).toContain("apps/agent-bridge/src/index.ts");
+	const config = JSON.parse(
+		await dialog
+			.getByRole("textbox", { name: copy.agent.setupConfig })
+			.inputValue(),
+	);
+	expect(Object.keys(config.mcpServers.tabelo).sort()).toEqual([
+		"args",
+		"command",
+	]);
+	expect(config.mcpServers.tabelo.args).toHaveLength(1);
 	await dialog
 		.getByRole("button", { name: copy.agent.copyCommands, exact: true })
 		.click();
-	expect((await lastCopied(page))?.text).toBe(claudeCommand);
+	expect((await lastCopied(page))?.text).toBe(desktopCommands);
 	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
 	await expect(
 		page.getByRole("button", { name: copy.actions.openAppMenu }),

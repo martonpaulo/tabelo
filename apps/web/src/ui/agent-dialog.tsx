@@ -40,9 +40,10 @@ const connectionErrorCopy: Record<AgentConnectionError, string> = {
 	uncertain: copy.agent.uncertain,
 };
 
-// The AI apps the setup covers, in the order the choice shows them (#503).
+// The Claude apps the setup covers, in the order the choice shows them (#503,
+// #536).
 type SetupClient = keyof typeof copy.agent.setupClients;
-const SETUP_CLIENTS: readonly SetupClient[] = ["chatgpt", "claude"];
+const SETUP_CLIENTS: readonly SetupClient[] = ["claudeCode", "claudeDesktop"];
 
 export function AgentDialog({
 	open,
@@ -54,7 +55,7 @@ export function AgentDialog({
 	const [descriptor, setDescriptor] = useState("");
 	const [copied, setCopied] = useState(false);
 	const [copyError, setCopyError] = useState(false);
-	const [client, setClient] = useState<SetupClient>("chatgpt");
+	const [client, setClient] = useState<SetupClient>("claudeCode");
 	const clientLabelId = useId();
 	const setup = copy.agent.setupClients[client];
 	const state = useAgentConnection();
@@ -182,6 +183,16 @@ export function AgentDialog({
 								<p className="text-muted-foreground text-sm">
 									{copy.agent.setupExisting}
 								</p>
+								{setup.config === null ? null : (
+									<Textarea
+										readOnly
+										rows={8}
+										wrap="off"
+										aria-label={copy.agent.setupConfig}
+										value={setup.config}
+										className="font-mono text-sm"
+									/>
+								)}
 								<p className="text-muted-foreground text-sm">{setup.pair}</p>
 							</div>
 						</details>

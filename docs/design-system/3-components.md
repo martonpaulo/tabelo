@@ -785,7 +785,8 @@ the relationship visible.
 The app menu offers Connect agent (MCP) when disconnected and shows the connected or
 paused state in the same entry. The owner opens a standard dialog to paste the
 local connection code and read the data-sharing scope. First-time setup stays
-in the dialog: prerequisites, copyable Codex commands, an existing-checkout
+in the dialog: a Claude Code or Claude Desktop choice (#536), prerequisites,
+copyable commands, the Claude Desktop configuration entry, an existing-checkout
 shortcut, and the instruction to request a connection code in a new agent
 conversation. The user does not have to open an external guide to connect. The connected dialog
 uses the existing action hierarchy for Pause/Resume and Disconnect; there is no

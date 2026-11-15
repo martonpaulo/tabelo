@@ -1,5 +1,10 @@
 # MCP library workflow and latency
 
+> Superseded in part (2026-11-15, [#536](https://github.com/martonpaulo/tabelo/issues/536)):
+> Claude (Claude Code and Claude Desktop) is the only supported agent. Every
+> ChatGPT, OpenAI or Codex client below is history, not a supported path. See
+> [agent-protocol-2026-11](agent-protocol-2026-11.md).
+
 Owner request and decision: 2026-09-24. Target: ChatGPT Desktop's local MCP
 host with the production HTTPS editor; no locally served website or hosted
 relay. The owner authorized listing, opening, creating and renaming tables in

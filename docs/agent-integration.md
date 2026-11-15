@@ -21,55 +21,57 @@ process on the same computer as the browser and agent application. There is no
 hosted backend, table database, account, extension, or marketplace registration.
 The external agent may send tool results to its model provider.
 
-The supported scenario is Tabelo at its GitHub Pages address and an MCP-capable
-terminal/desktop agent on the same computer. **The website stays online; only
-the MCP connector runs locally.** Do not run `pnpm dev` for this setup.
+The supported scenario is Tabelo at its GitHub Pages address and Claude on the
+same computer: [Claude Code](https://code.claude.com/docs/en/mcp) or Claude
+Desktop, each starting the connector as a local stdio MCP server. **The website
+stays online; only the MCP connector runs locally.** Do not run `pnpm dev` for
+this setup. This local route needs neither an API key nor a tunnel.
 
-The current [ChatGPT Desktop MCP settings](https://learn.chatgpt.com/docs/extend/mcp)
-support local stdio servers and share configuration with Codex CLI on the same
-host. Use a local conversation that loads that host's MCP tools. A hosted chat
-does not become a local MCP client merely because it appears in a desktop
-window. This local route needs neither an API key nor a tunnel.
+Claude is the only supported agent (decided on #536, which removed the second
+provider #503 had set up beside Claude Code). No other agent, provider, hosted connection, tunnel or cloud
+relay is part of this implementation. MCP stays the protocol: the comparison in
+[agent-protocol-2026-11](research/agent-protocol-2026-11.md) found no current
+alternative that serves a local agent better, and WebMCP and a browser
+extension stay where [local-agent-connection](research/local-agent-connection.md)
+left them. Claude Code 2.1.325 reported the registered connector as connected
+(`claude mcp list`, 2026-11-15).
 
-[Claude Code](https://docs.claude.com/en/docs/claude-code/mcp) is the other
-supported client (#503): it starts local stdio servers registered with
-`claude mcp add`, so it uses the same connector, tools, and pairing with no
-change to the protocol. The setup dialog offers both apps. Claude Code 2.1.325
-reported the registered connector as connected (`claude mcp list`, 2026-11-15).
-Other clients that start local stdio MCP servers can register the same command;
-WebMCP and a browser extension stay where the comparison in
-[local-agent-connection](research/local-agent-connection.md) left them.
-
-Two ordinary tabs, ChatGPT Web and Tabelo, with no local process or additional
-hosted component are not supported. Hosted ChatGPT developer-mode connections
-expect a remote MCP endpoint, and OpenAI's secure tunnel needs a local client;
-neither is a Pages-only substitute. No tunnel or cloud relay is part of this
-implementation. See the official
-[developer-mode](https://developers.openai.com/api/docs/guides/developer-mode)
-and [tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
-requirements before proposing a different deployment.
-
-The connection dialog opens on the code field. **First-time setup** expands the
-installation steps and **Copy commands** button when needed; this guide is a
-reference, not a prerequisite to use the feature.
+The connection dialog opens on the code field. **First-time setup** expands an
+AI app choice (Claude Code or Claude Desktop) with the installation steps and a
+**Copy commands** button; this guide is a reference, not a prerequisite to use
+the feature.
 
 1. Install this repository's dependencies with `pnpm install`.
-2. Configure a local MCP client to start `node` with the absolute path to
-   `apps/agent-bridge/src/index.ts`. From the repository root, with Codex:
-
-   ```sh
-   codex mcp add tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"
-   ```
-
-   Or with Claude Code:
+2. Register the connector: `node` with the absolute path to
+   `apps/agent-bridge/src/index.ts`. From the repository root, with Claude Code:
 
    ```sh
    claude mcp add --scope user tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"
    ```
 
-3. In ChatGPT Desktop, open **Settings → MCP servers**, find **tabelo**, and
-   select **Restart**; in Claude Code, start a new session. Start a new local
-   conversation and ask it to call `tabelo_connect`. In the open online Tabelo table, choose
+   With Claude Desktop, print the two absolute paths:
+
+   ```sh
+   node -p process.execPath
+   echo "$PWD/apps/agent-bridge/src/index.ts"
+   ```
+
+   and add this entry to Claude Desktop's `claude_desktop_config.json`, with
+   the first path as `command` and the second as the only argument:
+
+   ```json
+   {
+     "mcpServers": {
+       "tabelo": {
+         "command": "/absolute/path/to/node",
+         "args": ["/absolute/path/to/tabelo/apps/agent-bridge/src/index.ts"]
+       }
+     }
+   }
+   ```
+
+3. Start a new Claude Code session, or restart Claude Desktop. Ask Claude to
+   call `tabelo_connect`. In the open online Tabelo table, choose
    **Connect AI** from the app menu, paste the returned code and choose **Connect**.
 4. Allow the browser's local-network permission if prompted. Read the sharing
    scope before connecting. The connection reaches this tab and its browser library.
@@ -80,13 +82,12 @@ The MCP host owns process startup. Starting the helper in an ordinary terminal
 just waits for MCP on standard input; it is not a chat program. Keep stdout for
 MCP messages and stderr for sanitized diagnostics. The helper has no model key.
 
-If Tabelo's tools are missing, run `codex mcp get tabelo` (or
-`claude mcp get tabelo`) and verify that the
-configured Node executable and connector path still exist. Registration alone
-does not refresh a conversation's tool catalog: restart the server and use a
-new local conversation. Do not create a tunnel or pay for API access to repair
-missing local tools. The seven tools listed below must be available before
-browser pairing can begin.
+If Tabelo's tools are missing, run `claude mcp get tabelo` (or reopen
+`claude_desktop_config.json`) and verify that the configured Node executable
+and connector path still exist. Registration alone does not refresh a
+conversation's tool catalog: start a new session or restart Claude Desktop. Do
+not create a tunnel or pay for API access to repair missing local tools. The
+seven tools listed below must be available before browser pairing can begin.
 
 For local development, append `--origin http://127.0.0.1:<port>` (or the exact
 localhost origin) to the helper's arguments, using the app's actual worktree
@@ -298,6 +299,11 @@ flow in `apps/web/e2e/agent.spec.ts`. It starts a real stdio MCP process and
 connects through the product's pairing UI. No global browser profile or real
 user table is used. The repository's normal validation, build and browser gates
 remain required, with scope determined by `AGENTS.md`.
+
+`apps/agent-bridge/src/index.test.ts` is the Claude client proof (#536): it
+starts the installed entrypoint over stdio with the official MCP TypeScript
+SDK client, the library Claude Code's MCP client is built on, lists the tools
+and calls them.
 
 The initial implementation at `e67d92d` passed
 [the full validation run](https://github.com/martonpaulo/tabelo/actions/runs/35542163611)

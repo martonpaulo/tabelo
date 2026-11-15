@@ -303,28 +303,31 @@ export const copy = {
 		descriptor: "Connection code",
 		description: "Ask your AI to connect to Tabelo, then paste its code.",
 		setupTitle: "First-time setup",
-		// The AI apps the local connector is set up for (#503). Each speaks the
-		// same local MCP connector; only the command that registers it, and
-		// where the app is restarted, differ.
+		// The Claude apps the local connector is set up for (#503, #536). Both
+		// start the same local MCP connector; only how it is registered, and
+		// how the app picks it up, differ. Claude is the only supported agent.
 		setupClient: "AI app",
 		setupClients: {
-			chatgpt: {
-				label: "ChatGPT",
-				requirements:
-					"Run once in a terminal. Requires Git, Node.js 24+, pnpm and the Codex CLI. Tabelo stays online.",
-				commands: `git clone ${product.repositoryUrl}.git\ncd tabelo\npnpm install\ncodex mcp add tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"`,
-				pair: "In ChatGPT Desktop, restart Tabelo in Settings → MCP servers. In a new conversation, ask it to connect to Tabelo.",
-			},
-			claude: {
+			claudeCode: {
 				label: "Claude Code",
 				requirements:
 					"Run once in a terminal. Requires Git, Node.js 24+, pnpm and Claude Code. Tabelo stays online.",
 				commands: `git clone ${product.repositoryUrl}.git\ncd tabelo\npnpm install\nclaude mcp add --scope user tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"`,
+				config: null,
 				pair: "Start a new Claude Code session, then ask it to connect to Tabelo.",
 			},
+			claudeDesktop: {
+				label: "Claude Desktop",
+				requirements:
+					"Run once in a terminal. Requires Git, Node.js 24+, pnpm and Claude Desktop. Tabelo stays online. The last two commands print the paths for the configuration.",
+				commands: `git clone ${product.repositoryUrl}.git\ncd tabelo\npnpm install\nnode -p process.execPath\necho "$PWD/apps/agent-bridge/src/index.ts"`,
+				config: `{\n  "mcpServers": {\n    "tabelo": {\n      "command": "/absolute/path/to/node",\n      "args": ["/absolute/path/to/tabelo/apps/agent-bridge/src/index.ts"]\n    }\n  }\n}`,
+				pair: "Add the entry above to claude_desktop_config.json, replacing the two paths with the ones the last two commands printed. Restart Claude Desktop, then ask it to connect to Tabelo.",
+			},
 		},
+		setupConfig: "Claude Desktop configuration",
 		setupExisting:
-			"Already installed? Run only the last command from your Tabelo folder.",
+			"Already installed? Skip the first three commands and run the rest from your Tabelo folder.",
 		copyCommands: "Copy commands",
 		commandsCopied: "Commands copied",
 		copyCommandsFailed:

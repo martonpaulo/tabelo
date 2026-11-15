@@ -6,14 +6,19 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { resultSchema, toolSchemas } from "@tabelo/agent-protocol";
 
-test("the installed stdio entrypoint works outside the checkout and refuses unsupported tool input", async () => {
+// Claude is the supported agent (#536). Claude Code's MCP client is built on
+// the official MCP TypeScript SDK, so this client, started the way
+// `claude mcp add` and Claude Desktop's `mcpServers` entry start the connector
+// (the Node executable plus the absolute entrypoint path, outside the
+// checkout), proves Claude can connect and call the connector's tools.
+test("a Claude MCP client connects over stdio outside the checkout, calls tools and is refused unsupported input", async () => {
 	const transport = new StdioClientTransport({
 		command: process.execPath,
 		args: [fileURLToPath(new URL("./index.ts", import.meta.url))],
 		cwd: tmpdir(),
 		stderr: "pipe",
 	});
-	const client = new Client({ name: "entrypoint-test", version: "0.0.0" });
+	const client = new Client({ name: "claude-code", version: "0.0.0" });
 	try {
 		await client.connect(transport);
 		const listed = await client.listTools();

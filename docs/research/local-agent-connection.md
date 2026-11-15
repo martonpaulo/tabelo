@@ -1,5 +1,10 @@
 # Local agent connection: research and proposed design
 
+> Superseded in part (2026-11-15, [#536](https://github.com/martonpaulo/tabelo/issues/536)):
+> Claude (Claude Code and Claude Desktop) is the only supported agent. Every
+> ChatGPT, OpenAI or Codex client below is history, not a supported path. See
+> [agent-protocol-2026-11](agent-protocol-2026-11.md).
+
 Research date: 2026-09-20. Source baseline: `750a9f8bf795989a30a4a6a44208f1965da2f5a5`.
 
 Status: implementation proposal, not an implemented capability or a replacement

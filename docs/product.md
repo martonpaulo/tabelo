@@ -64,8 +64,9 @@ the exact text format the person came for.
   declare it and asking before replacing the table when CSV, TSV, or plain text
   does not.
 - Runs in the browser, offline and without an account. An optional local-agent
-  connection lets an external agent read and edit the active table after an
-  explicit pairing. It may also list, create, open and rename browser tables,
+  connection lets Claude (Claude Code or Claude Desktop), the one supported
+  agent, read and edit the active table over MCP after an explicit pairing;
+  no other agent or provider is supported (decided on #536). It may also list, create, open and rename browser tables,
   but cannot delete them (owner, 2026-09-24); that agent may send shared data to its model provider
   (#405). Ordinary editing sends no table data anywhere.
 
@@ -153,7 +154,7 @@ reversible implementation choice does not belong here.
 | Decision | Current outcome | Recorded in | Decided on |
 | :--- | :--- | :--- | :--- |
 | Product scope | An editor for one table at a time, with a local library of tables to switch between | this document | #92, #403 |
-| External agent | Optional local MCP connection to one tab and its library; active-document edits plus listing, creating, opening and renaming tables; revision-checked commands, protected input and chronological undo; no table deletion | `docs/agent-integration.md`, ADR 0001, ADR 0003 | #405; owner, 2026-09-24 |
+| External agent | Optional local MCP connection to one tab and its library, for Claude (Claude Code and Claude Desktop) only, no other agent (#536); active-document edits plus listing, creating, opening and renaming tables; revision-checked commands, protected input and chronological undo; no table deletion | `docs/agent-integration.md`, ADR 0001, ADR 0003 | #405, #536; owner, 2026-09-24 |
 | Table library | Any number of local tables, at most one active; deleting the last leaves an empty library on the welcome surface, with no blank table regenerated (#466); the app menu lists them and switches; names are unique and numbered from the second table on; a warning, never a refusal, once ten are kept | this document, AGENTS.md | #403, #466, owner, 2026-09-20 |
 | Table mark colour | Stored with each table: a new table takes the first unused of the six marks, adding or deleting never repaints another table, saved tables keep the colour they showed; no colour choice in the interface | design system §2 | #403, #465 |
 | App menu shape | Tables, then an untitled undo and redo pair, then Workspace, with Settings and the agent connection below them; no brand row; every table one row shape with one options control (also a right click on its name) holding open, rename, duplicate, the whole-table commands, copy and download through one format chooser, and delete; importing is Mod+O and the welcome surface; one footer line carrying the product, its copyright and the source link | design system §3 | owner, 2026-09-20 |
