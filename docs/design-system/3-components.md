@@ -291,7 +291,7 @@ declared inline-content capability rather than a list of ids (#306).
 
 Every other choice still opens one dialog, and the two standing examples say
 why. **Add view** carries a consequence the list cannot show, because the same
-seven views mean a different workspace depending on which edge was clicked, and
+nine views mean a different workspace depending on which edge was clicked, and
 its unavailable entries carry reasons worth reading. **Layout** is a visual
 gallery of presets, which a text submenu cannot be. Neither changes: a menu item
 outside the class above either performs its command or opens one dialog.
@@ -542,9 +542,9 @@ download chooser holds format-specific output choices. New table needs no
 dialog: it adds a table beside the others and replaces nothing (#403).
 
 Adding a view qualifies under **"needs stating before it happens"**, not under
-length. Seven views are something a menu holds comfortably, so the list is not
+length. Nine views are something a menu holds comfortably, so the list is not
 what earns the dialog. Two other things do. The choice has a consequence the
-list cannot show, because the same seven views mean a different workspace
+list cannot show, because the same nine views mean a different workspace
 depending on which edge was clicked, and the dialog's supporting copy is where
 that lands: "The new view opens below the Visual Table pane." And a view that
 cannot be added has a reason worth reading, whether it is already open

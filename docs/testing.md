@@ -33,9 +33,20 @@ prove the scopes and their individual cost, but their durations must not be
 added to estimate the complete gate.
 
 Recent GitHub-hosted runs put the complete Vitest gate at 13.99 to 14.97
-seconds for the same 66 files. It is not a CI bottleneck. The browser suite is:
+seconds for the same 66 files. It is not a CI bottleneck. The browser suite is
+the one that is. Its current counts, re-measured on 2026-11-15 at `a198606`
+with `playwright test --list` over each selection (#566):
 
-| selection | current count | observed CI job time |
+| selection | current count | shards at 250 per shard |
+| --- | ---: | ---: |
+| level 3 smoke | 3 | 1 |
+| level 3 smoke and visual system | 27 | 1 |
+| full suite | 838 in 80 files | 4 |
+
+The job times below are dated history from 2026-08-24, when the full suite
+held 412 to 419 tests. They were not re-measured with the current count:
+
+| selection | count then | observed CI job time |
 | --- | ---: | ---: |
 | level 3 smoke | 1 | below the fixed runner setup cost |
 | level 3 smoke and visual system | 22 | below the fixed runner setup cost |
@@ -53,9 +64,10 @@ figures include the fixed checkout, install, and browser-install cost.
 The target is a browser shard job below five minutes, including its fixed setup
 cost. `.github/workflows/validate.yml` owns one `TESTS_PER_SHARD` constant, currently
 250. The Check job lists the selected Chromium tests, counts the JSON report,
-and derives `ceil(test count / TESTS_PER_SHARD)`. Both the 419-test baseline and
-the audited 414-test suite produce two balanced shards. A third runner is not
-paid for until the suite exceeds 500 tests.
+and derives `ceil(test count / TESTS_PER_SHARD)`. The 838-test suite of
+2026-11-15 produces four balanced shards of about 210 tests each, and a fifth
+runner is not paid for until the suite exceeds 1,000 tests. The 2026-08-24
+baseline of 419 tests produced two.
 
 Playwright's `fullyParallel: true` is the balancing mechanism. It lets
 Playwright distribute individual tests across shards, so a hand-maintained

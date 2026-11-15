@@ -69,7 +69,7 @@ Related to: Table document, Pane, Codec, Workspace
 ### Pane
 
 One region of the workspace, showing exactly one view. A pane occupies one
-slot or two adjacent slots.
+slot, two adjacent slots, or all four slots (the single-pane preset).
 
 Related to: View, Slot, Workspace
 

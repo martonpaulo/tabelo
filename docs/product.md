@@ -19,7 +19,7 @@ keeps the fixed product priority order; this file is normative for scope.
 
 Tabelo is a browser-based table editor. One table document is shown through
 several synchronized views: a visual grid, Markdown, CSV, TSV, HTML source,
-Jira syntax, JSON, and a rendered preview, arranged in a workspace of one to
+Jira syntax, JSON, Records, and a rendered preview, arranged in a workspace of one to
 four panes. Edit any view and the others follow.
 
 ## Who it is for

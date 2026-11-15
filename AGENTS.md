@@ -99,7 +99,7 @@ describes the migration and its downstream effects.
 
 Tabelo is a browser-based table editor. One table document is shown through
 several synchronized views: a visual grid, Markdown, CSV, TSV, HTML source,
-Jira syntax, JSON, and a rendered preview, arranged in a configurable workspace
+Jira syntax, JSON, Records, and a rendered preview, arranged in a configurable workspace
 of one to four panes.
 
 **Simple by design.** `docs/product.md` is canonical for who the product
