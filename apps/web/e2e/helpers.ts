@@ -995,7 +995,7 @@ export class TabeloPage {
 
 	async importFile(
 		name: string,
-		text: string,
+		contents: string | Uint8Array,
 		mimeType = "text/plain",
 	): Promise<void> {
 		await expect(this.page.getByRole("dialog")).toHaveCount(0);
@@ -1005,7 +1005,7 @@ export class TabeloPage {
 		await chooser.setFiles({
 			name,
 			mimeType,
-			buffer: Buffer.from(text),
+			buffer: Buffer.from(contents),
 		});
 	}
 

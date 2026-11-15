@@ -1278,6 +1278,8 @@ export const copy = {
 					return `${overLimit(error)} ${reduceTable[error.code]} and try again.`;
 				case "payload-too-large":
 					return "Over the 1 MB limit. Use less data and try again.";
+				case "not-utf8":
+					return "This file isn't UTF-8. Save it as UTF-8 and try again.";
 				case "empty":
 					return "Nothing to import.";
 			}

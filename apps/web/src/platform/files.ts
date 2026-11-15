@@ -50,7 +50,25 @@ export type PickTextFileResult =
 			readonly status: "too-large";
 			readonly name: string;
 			readonly size: number;
+	  }
+	| {
+			readonly status: "not-utf8";
+			readonly name: string;
 	  };
+
+// Tabelo reads text files as UTF-8 only. `Blob.text()` decodes with
+// replacement, so a file in a legacy code page would import with U+FFFD where
+// its accented letters were, and an export would write the loss out (#547).
+// A fatal decoder refuses those bytes instead. Like `Blob.text()`, it drops a
+// leading byte order mark.
+function decodeUtf8(bytes: ArrayBuffer): string | null {
+	try {
+		return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+	} catch (error) {
+		if (error instanceof TypeError) return null;
+		throw error;
+	}
+}
 
 export function pickTextFile(
 	accept: string,
@@ -70,7 +88,12 @@ export function pickTextFile(
 				resolve({ status: "too-large", name: file.name, size: file.size });
 				return;
 			}
-			resolve({ status: "selected", name: file.name, text: await file.text() });
+			const text = decodeUtf8(await file.arrayBuffer());
+			resolve(
+				text === null
+					? { status: "not-utf8", name: file.name }
+					: { status: "selected", name: file.name, text },
+			);
 		});
 		// A cancelled picker fires no change event in most browsers, so the
 		// promise simply never resolves: harmless, and the caller does nothing.

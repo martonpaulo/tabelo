@@ -34,6 +34,10 @@ export async function importTableFile(): Promise<boolean> {
 		});
 		return false;
 	}
+	if (file.status === "not-utf8") {
+		useTabeloStore.getState().reportInputError({ code: "not-utf8" });
+		return false;
+	}
 
 	// The extension picks the codec; anything unrecognised falls through to
 	// sniffing inside importText.

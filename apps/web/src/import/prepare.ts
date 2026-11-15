@@ -33,6 +33,8 @@ export type ImportError =
 			readonly issues: readonly ParseIssue[];
 	  }
 	| { readonly code: "empty" }
+	// A file whose bytes are not UTF-8, refused before any parse (#547).
+	| { readonly code: "not-utf8" }
 	| TableShapeLimitError
 	| {
 			readonly code: "payload-too-large";

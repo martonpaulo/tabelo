@@ -21,6 +21,25 @@ test("a malformed named file preserves the current table", async ({
 	await expect(tabelo.notice("error")).toBeVisible();
 });
 
+// #547: a file in a legacy code page is refused rather than read with its
+// accented letters replaced. These are the Latin-1 bytes of a name column
+// holding an accented name.
+test("a file that is not UTF-8 preserves the current table", async ({
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "keep me");
+	await tabelo.importFile(
+		"legacy.csv",
+		new Uint8Array([
+			0x4e, 0x61, 0x6d, 0x65, 0x0a, 0x4a, 0x6f, 0x73, 0xe9, 0x0a,
+		]),
+		"text/csv",
+	);
+
+	await expect(tabelo.notice("error")).toBeVisible();
+	await expect(tabelo.cell(1, 1)).toHaveText("keep me");
+});
+
 test("a typed JSON import preserves native scalars through an edit and projection", async ({
 	tabelo,
 }) => {
