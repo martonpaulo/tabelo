@@ -456,10 +456,8 @@ body {
    painted as a background layer over the pane's own surface instead, so the
    colour at rest is unchanged. Unselected, a sticky cell needs no utility:
    `bg-surface-code` is already opaque. The base is `--surface-code`, the box every pane's content sits
-   in, rather than `--background`, because
-   the vendored shadcn tokens declare their own `--background` and this file
-   only wins by import order; the pane surface is the unambiguous name for what
-   a grid cell sits on.
+   in, rather than `--background`, the shadcn name for the panel surface;
+   the pane surface is the unambiguous name for what a grid cell sits on.
    Reuse this for any other sticky cell that carries a tint. */
 @utility bg-sticky-selection-fill {
 	background-color: var(--surface-code);

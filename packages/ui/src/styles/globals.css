@@ -16,29 +16,6 @@
 @custom-variant dark (&);
 
 :root {
-	/* shadcn's upstream colour values and radius, kept only as the vendored
-	   baseline. apps/web/src/index.css redeclares every one of them and is the
-	   only owner of what renders; whether this baseline stays is decided by
-	   the upstream check (#535, #561). */
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.205 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.205 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.87 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.371 0 0);
-	--accent-foreground: oklch(0.985 0 0);
-	--destructive: oklch(0.704 0.191 22.216);
-	--border: oklch(1 0 0 / 10%);
-	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.556 0 0);
-	--radius: 0.625rem;
 	/* The thinnest line the interface draws: separators, the layout glyph's
 	   gaps, and the source gutter's edge. One owner, so a border stated in a
 	   JS theme and one stated in a class cannot drift apart. */
@@ -50,6 +27,10 @@
 	--weight-strong: 600;
 }
 
+/* The shadcn colour and radius names below map to values the app declares:
+   apps/web/src/index.css is their only owner (#561). The package keeps no
+   vendored baseline of its own; the shadcn CLI pin is recorded by the upstream
+   check (#535). */
 @theme inline {
 	--spacing-hairline: var(--hairline-w);
 	/* Figtree, self-hosted by the app, with the platform face while it loads

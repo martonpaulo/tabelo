@@ -6,10 +6,11 @@ All tokens live in `apps/web/src/index.css`, the only owner of every colour
 and radius that renders, including the shadcn names (`--background`,
 `--primary`, `--border`, and the rest) the vendored primitives read.
 `packages/ui/src/styles/globals.css` owns only what the package itself needs:
-`--hairline-w`, `--weight-strong`, the font stack, and the `tabelo-hairline`
-utility. It still lists shadcn's upstream colour values as the vendored
-baseline, each one overridden by `index.css`; whether that baseline stays is
-decided by the upstream check (#535, #561).
+`--hairline-w`, `--weight-strong`, the font stack, the `tabelo-hairline`
+utility, and the Tailwind mappings from the shadcn names to utilities. It
+declares no colour or radius value of its own: the upstream baseline it once
+carried was dropped once the upstream check recorded the shadcn CLI pin (#535,
+#561).
 
 ### Rule: use tokens and relative units
 
