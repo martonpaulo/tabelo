@@ -13,13 +13,13 @@ import {
 } from "@tabelo/ui/components/segmented-control";
 import { Textarea } from "@tabelo/ui/components/textarea";
 import { type FormEvent, useId, useRef, useState } from "react";
+import { connectAgent } from "@/agent/connection";
 import {
 	type AgentConnectionError,
-	connectAgent,
 	disconnectAgent,
 	pauseAgent,
 	useAgentConnection,
-} from "@/agent/connection";
+} from "@/agent/connection-state";
 import { copy } from "@/copy/copy";
 import { writeClipboardText } from "@/platform/clipboard";
 import { useTabeloStore } from "@/state/store";

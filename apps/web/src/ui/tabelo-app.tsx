@@ -5,7 +5,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { disconnectAgent } from "@/agent/connection";
+import { disconnectAgent } from "@/agent/connection-state";
 import { copy } from "@/copy/copy";
 import { product, tableDocumentTitle } from "@/copy/product";
 import { isDocumentBlank } from "@/core/document";
@@ -13,14 +13,13 @@ import { runHistory } from "@/history/coordinator";
 import { eraseStoredData, storageErased } from "@/persistence/erase";
 import { usePwaUpdate } from "@/pwa/use-pwa-update";
 import { hasSessionWork, startAutosave, useTabeloStore } from "@/state/store";
-import { AgentDialog } from "@/ui/agent-dialog";
 import { AppMenu } from "@/ui/app-menu";
 import { ConfirmDialog } from "@/ui/confirm-dialog";
-import { DownloadDialog } from "@/ui/download-dialog";
 import { EmptyState } from "@/ui/grid/empty-state";
 import { HeaderRowDialog } from "@/ui/header-row-dialog";
 import { importTableFile } from "@/ui/import-actions";
 import { NoticeBar } from "@/ui/notice-bar";
+import { lazyDialog } from "@/ui/primitives/lazy-dialog";
 import { RenameTableDialog } from "@/ui/rename-table-dialog";
 import { SettingsDialog } from "@/ui/settings-dialog";
 import { LayoutDialog } from "@/ui/workspace/layout-dialog";
@@ -28,6 +27,14 @@ import { preloadPaneContent } from "@/ui/workspace/pane-content";
 import { Workspace } from "@/ui/workspace/workspace";
 import { getView, listViews } from "@/views/registry";
 import { DEFAULT_PANE_ZOOM, stepPaneZoom } from "@/workspace/zoom";
+
+// Not drawn on the first screen, so not in the first download (#559).
+const AgentDialog = lazyDialog(() =>
+	import("@/ui/agent-dialog").then((module) => module.AgentDialog),
+);
+const DownloadDialog = lazyDialog(() =>
+	import("@/ui/download-dialog").then((module) => module.DownloadDialog),
+);
 
 type RootDialog =
 	| "download"

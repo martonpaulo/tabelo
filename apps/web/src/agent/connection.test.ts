@@ -1,12 +1,8 @@
 // @vitest-environment happy-dom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-	connectAgent,
-	disconnectAgent,
-	useAgentConnection,
-	watchInputGuards,
-} from "./connection";
+import { connectAgent, watchInputGuards } from "./connection";
+import { disconnectAgent, useAgentConnection } from "./connection-state";
 
 let guards: ReturnType<typeof watchInputGuards> | null = null;
 afterEach(() => {

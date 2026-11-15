@@ -1222,6 +1222,10 @@ export const copy = {
 	status: {
 		// The state a choice carries beside its label when it can't be chosen.
 		inUse: "In use",
+		// A dialog whose code never arrived, usually a dropped connection on a
+		// first visit (#559). Only loading the page again can fetch it.
+		dialogUnavailable:
+			"This window couldn't be loaded. Check your connection, then reload Tabelo.",
 		// Fit columns to pane width (#404), which measures the pane as it runs.
 		fitColumnsUnavailable: "The pane couldn't be measured.",
 		fitColumnsUnchanged: "The columns already fit the pane.",
