@@ -644,6 +644,48 @@ describe("agent command admission", () => {
 		expect(read().workspaceRevision).toBe(0);
 		expect(useTabeloStore.getState().past).toHaveLength(0);
 	});
+
+	// The store decides these refusals; the agent reports the store's code
+	// rather than reading an untouched workspace as "nothing changed" (#571).
+	it("reports a workspace action the store refuses with its code", () => {
+		const state = useTabeloStore.getState();
+		const pane = required(state.workspace.panes[0]);
+		state.closePane(required(state.workspace.panes[1]).id);
+		const before = useTabeloStore.getState().workspace;
+		expect(before.panes).toHaveLength(1);
+		const revision = Number(read().workspaceRevision);
+		const action = (
+			requestId: string,
+			sequence: number,
+			action:
+				| { kind: "close_view"; paneId: string }
+				| { kind: "set_layout"; layoutId: string },
+		) =>
+			execute(
+				{
+					tool: "tabelo_edit_workspace",
+					args: {
+						sessionId: session.id,
+						tableId: tableId(),
+						requestId,
+						expectedDocumentRevision: 0,
+						expectedWorkspaceRevision: revision,
+						action,
+					},
+				},
+				sequence,
+			);
+		const closing = action("close", 2, { kind: "close_view", paneId: pane.id });
+		expect(closing).toMatchObject({ ok: false, code: "last_pane" });
+		// A known layout for another pane count is refused, not applied.
+		const arranging = action("arrange", 3, {
+			kind: "set_layout",
+			layoutId: "columns",
+		});
+		expect(arranging).toMatchObject({ ok: false, code: "invalid_layout" });
+		expect(useTabeloStore.getState().workspace).toBe(before);
+		expect(Number(read().workspaceRevision)).toBe(revision);
+	});
 	it("rejects stale work after a human edit, including when undo returns the old content", () => {
 		const request = command();
 		useTabeloStore.getState().editCell(0, 0, "Mabel");

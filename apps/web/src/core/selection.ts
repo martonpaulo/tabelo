@@ -717,9 +717,23 @@ export function structureDeletionGuard(
 	const rows = selectionDataRows(selection, rowCount, columnCount);
 	const columns = selectionColumns(selection, rowCount, columnCount);
 
+	return removalGuard(rows.length, columns.length, rowCount, columnCount);
+}
+
+// The one owner of the last-row and last-column rule, for callers that name
+// what they remove by count rather than by selection: a source pane's caret
+// and the external agent's stable ids (#571). Counts are of distinct data rows
+// and columns. Removing the header row removes no data row, because the first
+// data row is promoted into it, so it counts as zero rows here.
+export function removalGuard(
+	removedRows: number,
+	removedColumns: number,
+	rowCount: number,
+	columnCount: number,
+): StructureDeletionGuard {
 	return {
-		wouldRemoveAllRows: rows.length >= rowCount,
-		wouldRemoveAllColumns: columns.length >= columnCount,
+		wouldRemoveAllRows: removedRows >= rowCount,
+		wouldRemoveAllColumns: removedColumns >= columnCount,
 	};
 }
 

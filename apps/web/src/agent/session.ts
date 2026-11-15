@@ -16,10 +16,18 @@ import {
 import { readCell } from "@/core/cell-value";
 import { activeRange } from "@/core/selection";
 import type { CellValue } from "@/core/types";
-import { flushPersistence, useTabeloStore } from "@/state/store";
+import {
+	flushPersistence,
+	useTabeloStore,
+	type WorkspaceOutcome,
+} from "@/state/store";
 import { viewChoiceRefusal } from "@/views/availability";
 import { listViews } from "@/views/registry";
-import { layoutsForPaneCount, splitOptions } from "@/workspace/layout";
+import {
+	layoutPresets,
+	layoutsForPaneCount,
+	splitOptions,
+} from "@/workspace/layout";
 import { prepareTable, preserveSelection } from "./table-commands";
 
 type Receipt = { fingerprint: string; result: AgentResult };
@@ -324,8 +332,8 @@ export class AgentSession {
 				});
 		} else {
 			const outcome = this.workspace(call.args);
-			if (!outcome.ok) return outcome;
-			changed = state.workspace !== useTabeloStore.getState().workspace;
+			if (typeof outcome !== "boolean") return outcome;
+			changed = outcome;
 		}
 		const persistence = changed ? flushPersistence().status : "unchanged";
 		return result(changed ? "applied" : "no_change", {
@@ -373,7 +381,8 @@ export class AgentSession {
 		});
 	}
 
-	private workspace(args: WorkspaceEdit): AgentResult {
+	// A refusal as its result, or whether the workspace changed.
+	private workspace(args: WorkspaceEdit): AgentResult | boolean {
 		const state = useTabeloStore.getState();
 		const action = args.action;
 		const workspace = state.workspace;
@@ -382,48 +391,44 @@ export class AgentSession {
 			!workspace.panes.some((pane) => pane.id === action.paneId)
 		)
 			return failure("target_missing");
+		let outcome: WorkspaceOutcome;
 		if (action.kind === "add_view" || action.kind === "change_view") {
 			const view = listViews().find((view) => view.id === action.viewId);
 			if (!view) return failure("unknown_view");
-			const refusal = viewChoiceRefusal({
-				view,
-				panes: workspace.panes,
-				document: state.document,
-				currentPaneId:
-					action.kind === "change_view" ? action.paneId : undefined,
-				currentViewId:
-					action.kind === "change_view"
-						? workspace.panes.find((pane) => pane.id === action.paneId)?.view
-						: undefined,
-			});
-			if (refusal) return failure(refusal.code);
-			if (action.kind === "add_view") {
-				const option = splitOptions(workspace).find(
-					(option) =>
-						option.paneId === action.paneId &&
-						option.layout === action.layoutId,
-				);
-				if (!option) return failure("invalid_layout");
-				state.addPaneBySplit(option, view.id);
-			} else state.setPaneView(action.paneId, view.id);
+			// The store owns the view-choice and split rules and answers with
+			// its outcome; nothing here repeats them (#571).
+			outcome =
+				action.kind === "add_view"
+					? state.addPaneBySplit(
+							{ paneId: action.paneId, layout: action.layoutId },
+							view.id,
+						)
+					: state.setPaneView(action.paneId, view.id);
 			// The UI versions activate their target; a background command must not
 			// take focus from a surviving pane. React observes the final state.
-			useTabeloStore.getState().setActivePane(workspace.activePaneId);
+			if (outcome.status === "applied")
+				useTabeloStore.getState().setActivePane(workspace.activePaneId);
 		} else if (action.kind === "close_view") {
-			if (workspace.panes.length === 1) return failure("last_pane");
-			state.closePane(action.paneId);
+			outcome = state.closePane(action.paneId);
 		} else if (action.kind === "move_view") {
 			if (!workspace.panes.some((pane) => pane.id === action.destinationPaneId))
 				return failure("target_missing");
-			state.movePane(action.paneId, action.destinationPaneId);
+			outcome = state.movePane(action.paneId, action.destinationPaneId)
+				? { status: "applied" }
+				: { status: "unchanged" };
 		} else if (action.kind === "set_layout") {
-			if (workspace.layout === action.layoutId) return result("workspace");
-			const layout = layoutsForPaneCount(workspace.panes.length).find(
+			// The wire id is resolved to a known layout here; whether it fits the
+			// open panes is the store's rule, refused with its code.
+			const layout = layoutPresets.find(
 				(layout) => layout.id === action.layoutId,
 			);
 			if (!layout) return failure("invalid_layout");
-			state.setLayout(layout.id);
+			outcome = state.setLayout(layout.id);
 		} else return unsupportedAction(action);
-		return result("workspace");
+		if (outcome.status === "refused") return failure(outcome.code);
+		// Agent admission refuses while a draft is unfinished, so this cannot
+		// happen; if it ever does, the user is choosing and the agent waits.
+		if (outcome.status === "confirming") return failure("user_busy");
+		return outcome.status === "applied";
 	}
 }

@@ -95,7 +95,9 @@ describe("adding a view", () => {
 	it("refuses a duplicate even when a caller bypasses the chooser", () => {
 		const state = useTabeloStore.getState();
 		const option = required(splitOptions(state.workspace)[0]);
-		state.addPaneBySplit(option, required(state.workspace.panes[0]).view);
+		expect(
+			state.addPaneBySplit(option, required(state.workspace.panes[0]).view),
+		).toEqual({ status: "refused", code: "duplicate_view" });
 		expect(workspace()).toBe(state.workspace);
 	});
 	it("appends a pane showing the chosen view and makes it active", () => {
@@ -114,7 +116,9 @@ describe("adding a view", () => {
 
 	it("applies the preset the option names", () => {
 		const option = required(splitOptions(workspace())[0]);
-		useTabeloStore.getState().addPaneBySplit(option, "csv");
+		expect(useTabeloStore.getState().addPaneBySplit(option, "csv")).toEqual({
+			status: "applied",
+		});
 		expect(workspace().layout).toBe(option.layout);
 	});
 
@@ -135,7 +139,10 @@ describe("adding a view", () => {
 
 		const settled = workspace();
 		// Replaying it would apply a split to a shape it never described.
-		useTabeloStore.getState().addPaneBySplit(stale, "jira");
+		expect(useTabeloStore.getState().addPaneBySplit(stale, "jira")).toEqual({
+			status: "refused",
+			code: "invalid_layout",
+		});
 		expect(workspace()).toBe(settled);
 	});
 
@@ -228,7 +235,9 @@ describe("closing a view", () => {
 		const onePane = workspace();
 		expect(onePane.panes).toHaveLength(1);
 
-		useTabeloStore.getState().closePane(required(onePane.panes[0]).id);
+		expect(
+			useTabeloStore.getState().closePane(required(onePane.panes[0]).id),
+		).toEqual({ status: "refused", code: "last_pane" });
 
 		expect(workspace()).toBe(onePane);
 	});
@@ -301,7 +310,13 @@ describe("rearranging at a fixed pane count", () => {
 		const before = workspace();
 		expect(before.panes).toHaveLength(3);
 
-		useTabeloStore.getState().setLayout("columns");
+		expect(useTabeloStore.getState().setLayout("columns")).toEqual({
+			status: "refused",
+			code: "invalid_layout",
+		});
+		expect(useTabeloStore.getState().setLayout(before.layout)).toEqual({
+			status: "unchanged",
+		});
 
 		expect(workspace()).toBe(before);
 	});

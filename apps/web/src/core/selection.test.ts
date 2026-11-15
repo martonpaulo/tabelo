@@ -16,6 +16,7 @@ import {
 	rectCoversHeader,
 	rectDataRows,
 	remapSelectionRows,
+	removalGuard,
 	selectedAxis,
 	selectionColumns,
 	selectionContains,
@@ -358,6 +359,17 @@ describe("the axis a region was selected on", () => {
 });
 
 describe("structure deletion guard", () => {
+	// The counted form serves callers that name rows and columns by caret or
+	// id; a header removal counts no data row, since one is promoted (#571).
+	it("refuses removing every data row or column by count", () => {
+		expect(removalGuard(2, 0, 2, 3).wouldRemoveAllRows).toBe(true);
+		expect(removalGuard(1, 0, 2, 3).wouldRemoveAllRows).toBe(false);
+		expect(removalGuard(0, 0, 1, 3).wouldRemoveAllRows).toBe(false);
+		expect(removalGuard(0, 0, 0, 3).wouldRemoveAllRows).toBe(true);
+		expect(removalGuard(0, 3, 2, 3).wouldRemoveAllColumns).toBe(true);
+		expect(removalGuard(0, 2, 2, 3).wouldRemoveAllColumns).toBe(false);
+	});
+
 	it("guards a full column selection but permits a partial selection", () => {
 		const full: GridSelection = {
 			ranges: [

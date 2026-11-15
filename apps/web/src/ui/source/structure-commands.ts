@@ -3,6 +3,7 @@ import { copy } from "@/copy/copy";
 import { duplicateColumns, type SortDirection } from "@/core/operations";
 import {
 	createSelection,
+	removalGuard,
 	type SelectionMoveRefusal,
 	selectionMoveRefusal,
 } from "@/core/selection";
@@ -283,8 +284,9 @@ export function resolveSourceCommand(
 			);
 		case "delete-row": {
 			// Removing the header promotes the first data row, so it needs one.
-			const last = row < 0 ? rowCount === 0 : rowCount <= 1;
-			if (last) return { ok: false, refusal: "last-remaining-row" };
+			const removed = row < 0 ? 0 : 1;
+			if (removalGuard(removed, 0, rowCount, columnCount).wouldRemoveAllRows)
+				return { ok: false, refusal: "last-remaining-row" };
 			const next = row < 0 ? -1 : Math.min(row, rowCount - 2);
 			return editing({ kind: "remove-row", row }, caretAt(next, column));
 		}
@@ -329,7 +331,7 @@ export function resolveSourceCommand(
 				caretAt(row, column + 1),
 			);
 		case "delete-column": {
-			if (columnCount <= 1) {
+			if (removalGuard(0, 1, rowCount, columnCount).wouldRemoveAllColumns) {
 				return { ok: false, refusal: "last-remaining-column" };
 			}
 			return editing(

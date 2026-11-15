@@ -17,6 +17,7 @@ import {
 	clampSelection,
 	type GridSelection,
 	HEADER_ROW,
+	removalGuard,
 } from "@/core/selection";
 import { tableShapeLimitError } from "@/core/table-limits";
 import type { Alignment, TableDocument } from "@/core/types";
@@ -148,7 +149,14 @@ export function prepareTable(
 					break;
 				}
 				case "delete_rows":
-					if (new Set(operation.ids.map(resolve)).size >= document.rows.length)
+					if (
+						removalGuard(
+							new Set(operation.ids.map(resolve)).size,
+							0,
+							document.rows.length,
+							document.columns.length,
+						).wouldRemoveAllRows
+					)
 						throw new CommandRefusal("last_row");
 					document = deleteRows(
 						document,
@@ -157,7 +165,12 @@ export function prepareTable(
 					break;
 				case "delete_columns":
 					if (
-						new Set(operation.ids.map(resolve)).size >= document.columns.length
+						removalGuard(
+							0,
+							new Set(operation.ids.map(resolve)).size,
+							document.rows.length,
+							document.columns.length,
+						).wouldRemoveAllColumns
 					)
 						throw new CommandRefusal("last_column");
 					document = deleteColumns(

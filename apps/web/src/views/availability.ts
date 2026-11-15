@@ -4,7 +4,7 @@ import type { PreconditionFailure } from "@/formats/types";
 import type { WorkspacePane } from "@/workspace/layout";
 import type { ViewDefinition, ViewId } from "./types";
 
-type ViewChoiceRefusal =
+export type ViewChoiceRefusal =
 	| { readonly code: "duplicate_view" }
 	| {
 			readonly code: "view_precondition";

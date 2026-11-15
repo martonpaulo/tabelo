@@ -172,7 +172,10 @@ import {
 	revealInvalid,
 	startInvalidGrace,
 } from "@/sync/draft";
-import { viewChoiceRefusal } from "@/views/availability";
+import {
+	type ViewChoiceRefusal,
+	viewChoiceRefusal,
+} from "@/views/availability";
 import {
 	plainEditableViews,
 	plainViewsSignature,
@@ -277,6 +280,31 @@ export interface FindState {
 export type PendingPaneAction =
 	| { readonly kind: "view"; readonly paneId: string; readonly view: ViewId }
 	| { readonly kind: "close"; readonly paneId: string };
+
+// What a workspace command did (#571). A caller that is not the UI, the
+// external agent, reports this instead of comparing workspace references, so a
+// refusal reaches it with its code rather than as "nothing changed".
+// "confirming" means the command now waits for the user to agree to discard
+// an unfinished draft: nothing has moved yet.
+export type WorkspaceOutcome =
+	| { readonly status: "applied" | "unchanged" | "confirming" }
+	| {
+			readonly status: "refused";
+			readonly code:
+				| ViewChoiceRefusal["code"]
+				| "target_missing"
+				| "invalid_layout"
+				| "last_pane";
+	  };
+
+const APPLIED: WorkspaceOutcome = { status: "applied" };
+const UNCHANGED: WorkspaceOutcome = { status: "unchanged" };
+const CONFIRMING: WorkspaceOutcome = { status: "confirming" };
+function refused(
+	code: Extract<WorkspaceOutcome, { status: "refused" }>["code"],
+): WorkspaceOutcome {
+	return { status: "refused", code };
+}
 
 // What sorting did. "unchanged" is a real answer rather than a failure: a table
 // already in that order is sorted, and saying so is what keeps the
@@ -509,10 +537,16 @@ export interface TabeloState {
 	// projection again. An unfinished draft is never displaced.
 	releaseCleanDraft: (paneId: string, viewId: ViewId) => void;
 
-	setLayout: (layout: LayoutId) => void;
-	setPaneView: (paneId: string, view: ViewId) => void;
-	addPaneBySplit: (option: SplitOption, viewId: ViewId) => void;
-	closePane: (paneId: string) => void;
+	setLayout: (layout: LayoutId) => WorkspaceOutcome;
+	setPaneView: (paneId: string, view: ViewId) => WorkspaceOutcome;
+	// The target names a pane and the layout splitting it would produce; the
+	// store resolves it against the live split options, so a caller holding
+	// only ids (the external agent) needs no copy of that rule (#571).
+	addPaneBySplit: (
+		target: Pick<SplitOption, "paneId"> & { readonly layout: string },
+		viewId: ViewId,
+	) => WorkspaceOutcome;
+	closePane: (paneId: string) => WorkspaceOutcome;
 	movePane: (paneId: string, destinationPaneId: string) => boolean;
 	confirmPaneAction: () => void;
 	setActivePane: (paneId: string) => void;
@@ -1538,55 +1572,56 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				: state,
 		),
 
-	setLayout: (layout) =>
-		set((state) => {
-			// Rearranging is not resizing the workspace. A selection naming another
-			// pane count is stale or impossible, so it is refused rather than
-			// silently opening or closing a pane behind the user's choice.
-			if (paneCount(layout) !== state.workspace.panes.length) return state;
+	setLayout: (layout) => {
+		const state = get();
+		if (layout === state.workspace.layout) return UNCHANGED;
+		// Rearranging is not resizing the workspace. A selection naming another
+		// pane count is stale or impossible, so it is refused rather than
+		// silently opening or closing a pane behind the user's choice.
+		if (paneCount(layout) !== state.workspace.panes.length)
+			return refused("invalid_layout");
 
-			const panes = applyLayout(
+		const panes = applyLayout(
+			layout,
+			state.workspace.panes,
+			state.draft?.paneId,
+		);
+		set({
+			workspace: {
+				...state.workspace,
 				layout,
-				state.workspace.panes,
-				state.draft?.paneId,
-			);
-			return {
-				workspace: {
-					...state.workspace,
-					layout,
-					panes,
-					activePaneId: panes.some(
-						(pane) => pane.id === state.workspace.activePaneId,
-					)
-						? state.workspace.activePaneId
-						: firstPaneId(panes),
-				},
-			};
-		}),
+				panes,
+				activePaneId: panes.some(
+					(pane) => pane.id === state.workspace.activePaneId,
+				)
+					? state.workspace.activePaneId
+					: firstPaneId(panes),
+			},
+		});
+		return APPLIED;
+	},
 
 	setPaneView: (paneId, view) => {
 		const state = get();
 		const pane = state.workspace.panes.find(
 			(candidate) => candidate.id === paneId,
 		);
-		if (
-			!pane ||
-			pane.view === view ||
-			viewChoiceRefusal({
-				view: getView(view),
-				panes: state.workspace.panes,
-				document: state.document,
-				currentPaneId: paneId,
-			})
-		)
-			return;
+		if (!pane) return refused("target_missing");
+		if (pane.view === view) return UNCHANGED;
+		const refusal = viewChoiceRefusal({
+			view: getView(view),
+			panes: state.workspace.panes,
+			document: state.document,
+			currentPaneId: paneId,
+		});
+		if (refusal) return refused(refusal.code);
 
 		const draft = state.draft;
 		const ownsDraft = draft?.paneId === paneId && draft.viewId === pane.view;
 		if (ownsDraft) {
 			if (draft.status !== "clean") {
 				set({ pendingPaneAction: { kind: "view", paneId, view } });
-				return;
+				return CONFIRMING;
 			}
 			state.discardDraft();
 		}
@@ -1605,6 +1640,7 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				fillSeriesOffer: offerSurvivingWorkspace(current, workspace),
 			};
 		});
+		return APPLIED;
 	},
 
 	// Growing the workspace never displaces a pane, so unlike a view change or a
@@ -1614,30 +1650,28 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 	// the user was asked which view before anything moved. No intermediate
 	// workspace holding a pane with an unchosen view is ever rendered, which is
 	// what the old two-step add could not promise.
-	addPaneBySplit: (option, viewId) => {
+	addPaneBySplit: (target, viewId) => {
 		const state = get();
 		const previous = state.workspace.panes;
+		const refusal = viewChoiceRefusal({
+			view: getView(viewId),
+			panes: state.workspace.panes,
+			document: state.document,
+		});
+		if (refusal) return refused(refusal.code);
 		// The option is derived from the workspace it was rendered against, so a
 		// stale one is refused rather than applied to a shape it never described.
-		const stale = !splitOptions(state.workspace).some(
+		const option = splitOptions(state.workspace).find(
 			(candidate) =>
-				candidate.paneId === option.paneId &&
-				candidate.layout === option.layout,
+				candidate.paneId === target.paneId &&
+				candidate.layout === target.layout,
 		);
-		if (
-			stale ||
-			viewChoiceRefusal({
-				view: getView(viewId),
-				panes: state.workspace.panes,
-				document: state.document,
-			})
-		)
-			return;
+		if (!option) return refused("invalid_layout");
 
 		const panes = applyLayout(option.layout, previous, state.draft?.paneId);
 		const existing = new Set(previous.map((pane) => pane.id));
 		const added = panes.find((pane) => !existing.has(pane.id));
-		if (!added) return;
+		if (!added) return refused("invalid_layout");
 
 		set({
 			workspace: {
@@ -1651,23 +1685,28 @@ export const useTabeloStore = create<TabeloState>((set, get) => ({
 				activePaneId: added.id,
 			},
 		});
+		return APPLIED;
 	},
 
 	closePane: (paneId) => {
 		const state = get();
+		if (!state.workspace.panes.some((pane) => pane.id === paneId))
+			return refused("target_missing");
+		// The workspace always shows one pane, so the last one has nowhere to go.
+		if (!smallerLayout(state.workspace.layout)) return refused("last_pane");
 		const draft = state.draft;
 		// Text the document has not read back yet would go with the pane, so ask
 		// first rather than discarding it silently.
 		if (draft?.paneId === paneId && draft.status !== "clean") {
-			if (!smallerLayout(state.workspace.layout)) return;
 			set({ pendingPaneAction: { kind: "close", paneId } });
-			return;
+			return CONFIRMING;
 		}
 
 		const next = closedPaneState(state, paneId);
-		if (!next) return;
+		if (!next) return refused("last_pane");
 		cancelInvalidGrace();
 		set(next);
+		return APPLIED;
 	},
 
 	// Moving a pane is workspace presentation. The pure operation swaps only
