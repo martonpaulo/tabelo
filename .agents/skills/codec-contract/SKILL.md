@@ -17,7 +17,7 @@ Data preservation is Tabelo's highest priority. Treat every external string, fil
    - structured failure or precondition behavior;
    - import, paste, sniffing, clipboard, and download surfaces affected.
 3. Keep syntax rules inside the owning codec. Do not leak format-specific escaping into the document, grid, store, or another codec.
-4. Keep formats and views registry-driven. Add a format with one codec file and one registry entry, then derive download, import, paste, and capability behavior.
+4. Keep formats and views registry-driven. Add a format with the steps ADR 0005's Consequences lists (codec file, codec and view registry entries with their ids, copy, and a highlighting entry only when no existing one reads it), then derive download, import, paste, capability, and source-view behavior. What a source view draws over the text (escape glyphs, empty-value markers, padding) is a codec declaration (`escapeMatcher`, `emptyFields`, `emptyFieldText`, `padsColumns`), never a switch in the editor.
 5. Preserve stable row and column identifiers through structural reconciliation. Preserve document metadata that a format cannot express.
 6. Bound input before expensive decoding or rendering and after an operation changes the resulting table size. Return a clear product-owned error rather than a raw parser or platform message.
 7. Make unsupported output or document preconditions explicit. Never return plausible-looking partial data or silently coerce an invalid document.

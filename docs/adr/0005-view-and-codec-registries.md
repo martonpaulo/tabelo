@@ -13,7 +13,7 @@ union of `"markdown" | "csv"`, a switch in the panel, a hardcoded format
 switch, a hardcoded download button.
 
 Going from two formats to five, and from two fixed panels to a configurable
-workspace with seven views, would have multiplied that. Adding TSV alone
+workspace with seven views (nine today), would have multiplied that. Adding TSV alone
 touched the format union, the panel, the switch, the download menu, the
 clipboard sniffer, the import file filter, and the persistence schema. Seven
 edits to add one parser is the shape of a design that will rot.
@@ -180,6 +180,21 @@ a command at the caret, and a draft that does not parse offers nothing. The
 letters were presentation only until then; they are now the grid's column
 labels, still never text. Decided on #395.
 
+A codec also declares what its source view draws over its text, so the
+editor reads the grammar from the codec and never picks one by the view's
+highlighting name. `escapeMatcher` is the matcher the codec's own decoder
+reads, and a source view draws one glyph over each sequence it matches, so
+the editor and the decoder agree on what a sequence is; `padsColumns` says
+whether a line break's narrower glyph owes its cell the room it gave back.
+`emptyFields` lists the fields whose value the text leaves invisible, read by
+the same splitter the parse uses, so the empty-value marker and the parse
+split a row the same way, a Jira pipe inside a link or an image included;
+`emptyFieldText` names how an empty value is spelled where the format spells
+one, Jira's one space. CSV, TSV, Jira, and Records declare `emptyFields`.
+Markdown, JSON, and HTML do not, because only the editor's syntax tree bounds
+their empty cells, so that reader sits beside each grammar in the editor's one
+table of highlighting names. Decided on #551.
+
 **A view registry** holds what the workspace can display. A `ViewDefinition`
 adds presentation to a codec: a label, a description, an icon, a `kind`
 (`grid`, `source`, or `preview`), a highlight language named as a string, a
@@ -191,8 +206,8 @@ behaviour all read capabilities rather than checking ids.
 Two rules keep the abstraction honest:
 
 - **Rendering dispatches on `kind`, never on `id`.** One `SourceView` component
-  serves Markdown, CSV, TSV, HTML, Jira, and JSON, because everything that differs
-  between them is registry data.
+  serves Markdown, CSV, TSV, HTML, Jira, JSON, and Records, because everything
+  that differs between them is registry data.
 - **The registry never imports the editor.** Highlighting is a name that the
   lazily loaded editor resolves, which is what allows CodeMirror to stay out of
   the initial bundle.
@@ -211,7 +226,15 @@ borrows the HTML codec to serialize for download and simply declares
 
 ## Consequences
 
-- Adding a format is one file plus one registry line. TSV was exactly that.
+- Adding a format is a codec file; its id in `CODEC_IDS` and its line in the
+  codec registry; its id in `VIEW_IDS` and its entry in the view registry; and
+  its labels in `copy/copy.ts`. The compiler refuses a codec id with no codec
+  or no view. A format no existing highlighting reads also adds a
+  `HighlightLanguage` name and its entry in the editor's language table, the
+  one place a name is resolved. Nothing else is edited: downloads, import,
+  paste, and the source view's markers follow from the codec's declarations.
+  TSV, which reuses the delimited highlighting, needed no editor change. This
+  said "one file plus one registry line" until #551 counted the real steps.
 - The download menu, import filter, and paste sniffer cannot drift out of step
   with the format list, because they are generated from it.
 - Capabilities are data, so a view's behaviour is inspectable and testable
@@ -221,4 +244,4 @@ borrows the HTML codec to serialize for download and simply declares
   contract, and no versioned API to maintain. Opening it later is a real
   decision, not an accident.
 - One cost: a capability that only one view uses still appears on every view's
-  record. That is tolerable at seven views and would not be at seventy.
+  record. That is tolerable at nine views and would not be at seventy.

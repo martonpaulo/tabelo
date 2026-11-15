@@ -257,9 +257,12 @@ One idea holds the whole thing up: **there is a single canonical table document,
 and every format is a parser and serializer around it.** No text format is ever
 the source of truth. That is what makes round trips safe.
 
-Formats and views live in two small registries. Adding a format is one file plus
-one registry line, and it becomes editable, downloadable, importable, and
-pasteable everywhere at once.
+Formats and views live in two small registries. Adding a format is a codec
+file, its id and line in the codec registry, its id and entry in the view
+registry, and its labels; it then becomes editable, downloadable, importable,
+and pasteable everywhere at once. A format needing new highlighting also adds
+one entry to the editor's language table
+([ADR 0005](docs/adr/0005-view-and-codec-registries.md#consequences)).
 
 The decisions worth reading before you change anything:
 

@@ -31,8 +31,9 @@ import {
 
 // Every view the workspace can show, described by capability rather than by
 // name. Nothing outside this file enumerates formats: the workspace, the pane
-// header, the download menu, and the clipboard all ask the registry.
-// See docs/adr/0005.
+// header, the download menu, and the clipboard all ask the registry. Adding a
+// format also takes its codec, its ids, its copy, and, only for highlighting
+// no view uses yet, an editor language entry: docs/adr/0005, "Consequences".
 
 const gridCapabilities = {
 	editable: true,

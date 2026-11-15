@@ -226,8 +226,11 @@ vocabulary and `docs/adr/` for the reasoning.
   `formats/index.ts` and `views/registry.ts`, and the framework-free ordered id
   lists beside them that persistence validates against, may enumerate formats
   (#434). Render by `kind`, decide behaviour by `capabilities`, and never
-  switch on a view id. Adding a format is one file plus one registry line: see
-  `docs/adr/0005`.
+  switch on a view id. A source view reads its format's grammar from the
+  codec's declarations, never from its highlighting name (#551). Adding a
+  format is a codec file, its codec and view registry entries with their ids,
+  and its copy, plus a highlighting entry only when no existing one reads it:
+  `docs/adr/0005` owns the exact steps.
 - **Backspace clears contents; the modifier removes structure.** `Backspace`
   empties the selected cells, `Mod+Backspace` deletes the selected rows or
   columns. Neither may fire while text is being edited in a cell or a source

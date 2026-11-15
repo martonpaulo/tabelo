@@ -15,8 +15,8 @@ import {
 } from "./types";
 
 // The codec registry. Downloads, clipboard sniffing, and the view registry all
-// read from here, so adding a format is a single registration rather than an
-// edit in five places. See docs/adr/0005.
+// read from here, so none of them is edited to add a format. The full list of
+// steps is in docs/adr/0005, "Consequences".
 const registry: Record<CodecId, TableCodec> = {
 	markdown: markdownCodec,
 	csv: csvCodec,
