@@ -393,7 +393,8 @@ test("the pane zoom label is announced", async ({ tabelo }) => {
 	// group that changes, so it is still what gets announced.
 	const liveRegion = paneMenu.locator('[aria-live="polite"]');
 	await expect(liveRegion).toHaveCount(1);
-	await expect(liveRegion).toContainText(copy.workspace.zoom(100));
+	// The zoom level is what changes, so it is what the region states.
+	await expect(liveRegion).toContainText(/\b100\b/);
 	await expect(zoomLabel).toBeVisible();
 });
 

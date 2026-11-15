@@ -261,8 +261,9 @@ describe("replacing a range", () => {
 	it("gives text typed over a range the formatting of what it replaces", () => {
 		const code = `${ingrid.name}\n${paulo.name}`;
 		const bold = setMark(code, 0, code.length, "bold", true);
-		expect(replaceRange(bold, 0, 6, "Ana")).toEqual(
-			content(run(`Ana\n${paulo.name}`, "bold")),
+		const mabel = samplePerson(2).name;
+		expect(replaceRange(bold, 0, 6, mabel)).toEqual(
+			content(run(`${mabel}\n${paulo.name}`, "bold")),
 		);
 		const coded = content(run(ingrid.name, "code"));
 		expect(replaceRange(coded, 0, 6, "a\nb")).toEqual(

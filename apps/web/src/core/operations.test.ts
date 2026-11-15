@@ -31,7 +31,7 @@ import {
 	transposeDocument,
 	transposeTypedValueCount,
 } from "./operations";
-import { samplePeopleMatrix } from "./sample-data";
+import { samplePeopleMatrix, samplePerson } from "./sample-data";
 import { HEADER_ROW } from "./selection";
 import type { CellValue, InlineContent, TableDocument } from "./types";
 
@@ -950,17 +950,18 @@ describe("sorting rows by a column", () => {
 	it("keeps the original order for values that compare equal", () => {
 		// The collator ignores case, so these three compare equal and stability
 		// is the only thing that decides their order.
+		const { name } = samplePerson(0);
 		const document = docOf([
 			["name", "seq"],
-			["ana", "1"],
-			["Ana", "2"],
-			["ANA", "3"],
+			[name.toLowerCase(), "1"],
+			[name, "2"],
+			[name.toUpperCase(), "3"],
 		]);
 		const result = sortRows(document, columnId(document, 0), "ascending");
 		expect(documentToMatrix(result.document).slice(1)).toEqual([
-			["ana", "1"],
-			["Ana", "2"],
-			["ANA", "3"],
+			[name.toLowerCase(), "1"],
+			[name, "2"],
+			[name.toUpperCase(), "3"],
 		]);
 	});
 
