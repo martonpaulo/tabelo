@@ -1,5 +1,13 @@
 import { cn } from "@tabelo/ui/lib/utils";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	memo,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { selectionClipboardPayload } from "@/clipboard/serialize";
 import { copy } from "@/copy/copy";
 import { cellText, cellValuesEqual, readCell } from "@/core/cell-value";
@@ -696,11 +704,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// when the cell editor unmounts and drops it on <body>.
 	const wasEditingRef = useRef(false);
 
-	// The focus mark's travel between cells. It reads the marks the cells draw
-	// and owns one element over the surface; nothing else about the selection
-	// changes. See use-selection-glide.
-	const glideRef = useSelectionGlide(wrapperRef, gridRef, focus);
-
 	// Keep DOM focus on the focused cell, but never steal it from the source
 	// panel or a menu: follow the selection only when focus is already inside
 	// the grid, or when an edit just finished and left focus with nobody.
@@ -719,6 +722,43 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 	// Everything else stands down as it always did, a menu having portalled its
 	// popup out, the find bar being the surface's sibling, and another pane
 	// being elsewhere entirely.
+	//
+	// A layout effect, declared before the glide below, so focus moves while
+	// the commit's layout is still the one the fill handle just measured:
+	// `focus()` and the reveal read layout, and run after the glide's writes
+	// they forced the table to be laid out again in the same task (#558).
+	useLayoutEffect(() => {
+		const isEditing = editing !== null || editingHeader !== null;
+		const justFinishedEditing = wasEditingRef.current && !isEditing;
+		wasEditingRef.current = isEditing;
+		if (isEditing) return;
+
+		const grid = gridRef.current;
+		const surface = wrapperRef.current;
+		if (!grid || !surface) return;
+		const active = window.document.activeElement;
+		const insideGrid =
+			grid.contains(active) || stripRef.current?.contains(active) === true;
+		if (!insideGrid && !justFinishedEditing) return;
+
+		const target = grid.querySelector<HTMLElement>(
+			`[data-cell="${focus.row}:${focus.column}"]`,
+		);
+		if (!target) return;
+		// The grid scrolls the cell into view itself, so focus is told not to:
+		// letting both run would scroll twice, and the browser's own attempt is
+		// the one that leaves the cell under the sticky gutter.
+		target.focus({ preventScroll: true });
+		// Rebuilt from the two coordinates rather than passing `focus` itself:
+		// the effect must not wake on a selection object that carries the same
+		// focused cell, which is what listing the members keeps it from doing.
+		revealGridCell(surface, target, { row: focus.row, column: focus.column });
+	}, [focus.row, focus.column, editing, editingHeader]);
+
+	// The focus mark's travel between cells. It reads the marks the cells draw
+	// and owns one element over the surface; nothing else about the selection
+	// changes. See use-selection-glide.
+	const glideRef = useSelectionGlide(wrapperRef, gridRef, focus);
 
 	// Deleting the focused cell's row or column removes the element that holds
 	// focus, and the browser hands focus to the body, where every later key
@@ -747,34 +787,6 @@ export function TableGrid({ zoom }: { readonly zoom: number }) {
 		grid.addEventListener("focusout", onFocusOut);
 		return () => grid.removeEventListener("focusout", onFocusOut);
 	}, []);
-
-	useEffect(() => {
-		const isEditing = editing !== null || editingHeader !== null;
-		const justFinishedEditing = wasEditingRef.current && !isEditing;
-		wasEditingRef.current = isEditing;
-		if (isEditing) return;
-
-		const grid = gridRef.current;
-		const surface = wrapperRef.current;
-		if (!grid || !surface) return;
-		const active = window.document.activeElement;
-		const insideGrid =
-			grid.contains(active) || stripRef.current?.contains(active) === true;
-		if (!insideGrid && !justFinishedEditing) return;
-
-		const target = grid.querySelector<HTMLElement>(
-			`[data-cell="${focus.row}:${focus.column}"]`,
-		);
-		if (!target) return;
-		// The grid scrolls the cell into view itself, so focus is told not to:
-		// letting both run would scroll twice, and the browser's own attempt is
-		// the one that leaves the cell under the sticky gutter.
-		target.focus({ preventScroll: true });
-		// Rebuilt from the two coordinates rather than passing `focus` itself:
-		// the effect must not wake on a selection object that carries the same
-		// focused cell, which is what listing the members keeps it from doing.
-		revealGridCell(surface, target, { row: focus.row, column: focus.column });
-	}, [focus.row, focus.column, editing, editingHeader]);
 
 	// Stepping to a match moves the selection while the find bar keeps the
 	// caret, so the effect above stands down: focus is not in the grid. The

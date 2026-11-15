@@ -1,5 +1,5 @@
 import { cn } from "@tabelo/ui/lib/utils";
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { copy } from "@/copy/copy";
 import type { CellPosition, CellRect } from "@/core/selection";
 import { useTabeloStore } from "@/state/store";
@@ -37,6 +37,25 @@ function samePosition(a: HandlePosition | null, b: HandlePosition): boolean {
 	);
 }
 
+// What the handle was last placed from: the corner cell's element and its
+// classes, which carry whether it sticks, and the rectangle it is the corner
+// of, which decides the edge it stands on.
+interface PlacedFrom {
+	readonly cell: HTMLElement;
+	readonly className: string;
+	readonly sourceKey: string;
+	readonly style: CornerStyle;
+}
+
+// How the corner cell is drawn, read from its computed style. `top` and `left`
+// on a sticky cell are layout values, so this read lays the table out.
+interface CornerStyle {
+	readonly sticky: boolean;
+	readonly followX: boolean;
+	readonly followY: boolean;
+	readonly layer: number;
+}
+
 interface FillHandleProps {
 	readonly gridRef: React.RefObject<HTMLTableElement | null>;
 	readonly wrapperRef: React.RefObject<HTMLElement | null>;
@@ -54,6 +73,7 @@ export function FillHandle({
 }: FillHandleProps) {
 	const entered = usePaneEntered();
 	const [position, setPosition] = useState<HandlePosition | null>(null);
+	const placedRef = useRef<PlacedFrom | null>(null);
 
 	useLayoutEffect(() => {
 		const grid = gridRef.current;
@@ -62,9 +82,26 @@ export function FillHandle({
 			`[data-cell="${corner.row}:${corner.column}"]`,
 		);
 		if (!grid || !wrapper || !cell) {
+			placedRef.current = null;
 			setPosition(null);
 			return;
 		}
+
+		// The grid renders more than once in a task, and this effect runs on
+		// every render: the rectangle is a new object each time. Measuring on
+		// each one laid the whole table out again after every other write in
+		// the commit (#558). When the same cell element, with the same classes,
+		// is still the corner of the same rectangle, nothing it is placed from
+		// has changed, and the observers below place it again when its size
+		// does. Any other render measures, as before.
+		const className = cell.className;
+		const sourceKey = `${source.top}:${source.left}:${source.bottom}:${source.right}`;
+		const placed = placedRef.current;
+		const unchanged =
+			placed !== null &&
+			placed.cell === cell &&
+			placed.className === className &&
+			placed.sourceKey === sourceKey;
 
 		// The handle is placed in the table's scrolling coordinates, which is
 		// right for an ordinary cell: both scroll together. A pinned cell sticks
@@ -76,18 +113,31 @@ export function FillHandle({
 		// same frame as the scroll (index.css, `follow-scroll-hold-*`); placing
 		// it from a scroll listener left it a frame behind the cell (#356).
 		const scroller = grid.closest<HTMLElement>('[data-slot="panel-body"]');
-		const style = getComputedStyle(cell);
-		const sticky = style.position === "sticky" && scroller !== null;
-		const followY = sticky && style.top !== "auto";
-		const followX = sticky && style.left !== "auto";
-
-		// The handle belongs to its cell's layer, not above the whole table. An
-		// ordinary cell scrolls under the header row, a pinned row or column,
-		// and the gutter, so its handle must too, or it floats over the layer
-		// that hides the cell. It comes after the table, so at the cell's own
-		// level it still paints over the cell and every neighbour sharing it.
-		const level = Number.parseInt(style.zIndex, 10);
-		const layer = Number.isNaN(level) ? 0 : level;
+		const readStyle = (): CornerStyle => {
+			const style = getComputedStyle(cell);
+			const sticky = style.position === "sticky" && scroller !== null;
+			// The handle belongs to its cell's layer, not above the whole table.
+			// An ordinary cell scrolls under the header row, a pinned row or
+			// column, and the gutter, so its handle must too, or it floats over
+			// the layer that hides the cell. It comes after the table, so at the
+			// cell's own level it still paints over the cell and every neighbour
+			// sharing it.
+			const level = Number.parseInt(style.zIndex, 10);
+			return {
+				sticky,
+				followY: sticky && style.top !== "auto",
+				followX: sticky && style.left !== "auto",
+				layer: Number.isNaN(level) ? 0 : level,
+			};
+		};
+		const { sticky, followX, followY, layer } =
+			unchanged && placed ? placed.style : readStyle();
+		placedRef.current = {
+			cell,
+			className,
+			sourceKey,
+			style: { sticky, followX, followY, layer },
+		};
 
 		const measure = () => {
 			const box = cell.getBoundingClientRect();
@@ -124,7 +174,7 @@ export function FillHandle({
 				samePosition(previous, next) ? previous : next,
 			);
 		};
-		measure();
+		if (!unchanged) measure();
 
 		// A column or row resize moves the corner without changing the selection,
 		// so the handle is placed again whenever the table or the corner cell

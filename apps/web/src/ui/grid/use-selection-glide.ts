@@ -122,10 +122,12 @@ export function useSelectionGlide(
 		ghost.style.display = "block";
 		ghost.style.transitionProperty = "none";
 		ghost.style.transform = `translate(${travel.left}rem, ${travel.top}rem)`;
-		// Reading layout back commits that starting position. Without it the
-		// browser sees one style change, from the previous state to the final
-		// one, and there is nothing to transition from.
-		ghost.getBoundingClientRect();
+		// Reading a computed style back commits that starting position. Without
+		// it the browser sees one style change, from the previous state to the
+		// final one, and there is nothing to transition from. A property that
+		// needs style alone, not layout: reading a box here laid the whole table
+		// out again in the commit's task (#558).
+		void view.getComputedStyle(ghost).transitionProperty;
 
 		surface.setAttribute("data-selection-gliding", "true");
 		ghost.style.transitionProperty = "";

@@ -490,10 +490,16 @@ export function RichCellEditor({
 		if (!openLink(link.url)) announce(copy.status.linkNotOpened);
 	};
 
-	const finish = (exit: EditorExit) => {
+	const finish = (exit: EditorExit, content = model.current.content) => {
 		if (finished.current) return;
 		finished.current = true;
-		onFinish(model.current.content, exit);
+		// Every exit unmounts the editor. A key that ends the edit lets go of
+		// focus first, while the page is still laid out from the last frame:
+		// removing the focused editor later, in the middle of the commit's
+		// writes, laid the whole table out again just to move focus off it
+		// (#558). A blur exit has already let go.
+		if (exit !== "commit") rootRef.current?.blur();
+		onFinish(content, exit);
 	};
 
 	// The content, focus, and the caret at the end, as the textarea did; then
@@ -742,8 +748,7 @@ export function RichCellEditor({
 				}
 				if (event.key === "Escape") {
 					event.preventDefault();
-					finished.current = true;
-					onFinish(initialValue, "cancel");
+					finish("cancel", initialValue);
 					return;
 				}
 				if (event.key === "Tab") {
