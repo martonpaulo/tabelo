@@ -734,6 +734,28 @@ the hover is drawn before it as it is for a person. Three runs, median.
 | A pane focus change lays the grid out because of the grid | The fill handle re-measured on every grid render, and a pane focus change renders the grid | **Confirmed, and fixed in #558.** It no longer measures. The count did not drop: a press makes the page dirty (`:active`), so the first read after it pays one layout, and it now falls to the source view's column strip hit test or the cell's `focus()`. CodeMirror's own selection read is the second layout in the Markdown pane. |
 | The production dependency bump of 2026-11 (zustand 5.1.0, Tailwind 4.3.5) brought the Enter task back to 6 layouts | Rerun on 2026-11-27 on `main` at `eb5c062` with the CDP stack variant: 1 layout from the fill handle, then 5 from `new EditorView` and its first measures, under React's `recursivelyTraverseReappearLayoutEffects` | **Disproved.** The Markdown pane's editor had not yet been revealed when the test pressed Enter: React holds a lazy view's loading state for up to 300 ms after its module arrives and then reveals it inside the next task, here the traced keydown. Neither dependency is involved. The spec now waits for the editor before tracing, and the task holds 1 layout with the fix and 4 without it. |
 
+### Eager bytes on a first visit (#559)
+
+Measured on 2026-11-15 on the x86_64 cloud container of the entry above.
+Eager bytes are the entry script, its `modulepreload`s and the stylesheet that
+`dist/index.html` names, compressed with gzip level 9. LCP is a first visit to
+the production build served gzip-compressed by a local Node server (HTTP/1.1),
+service worker blocked, in headless Chromium 153 at 375 x 667, with CDP
+throttling at Lighthouse's Slow 4G (562.5 ms latency, 1,474.56 kbit/s down)
+and 4x CPU; nine runs per build, alternated, median. The LCP element is the
+welcome text, so LCP equals FCP in every run.
+
+| build | eager files | eager raw | eager gzip | LCP median (range) |
+| --- | ---: | ---: | ---: | ---: |
+| before | 7 | 1,075,132 B | 317,543 B | 3,752 ms (3,632 to 3,840) |
+| after | 6 | 1,049,392 B | 309,223 B | 3,688 ms (3,632 to 4,048) |
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| Code the first screen never draws is in the first download | The agent connection, its session and wire contract, and the agent, settings and download dialogs were eager | **Confirmed, and fixed in part in #559.** The agent connection, its session, the agent dialog and the download dialog load after first render (`lazyDialog`, and the connection's status split from the connection). The settings dialog stays eager: loaded lazily, its preview grew under the settings with lines wrapped on a 320 px window (`e2e/settings-dialog.spec.ts`), which the eager dialog does not do. The eager set is 8.3 KB gzip smaller; the LCP change is inside the run-to-run noise, as 8.3 KB at this throughput is about 45 ms. |
+| Splitting code out lazily is free | Lazy dialogs alone left 14 eager files and LCP 4,316 to 4,660 ms in three runs: each set of chunks sharing a first-screen module got its own small eager chunk | **Disproved.** Every statically reached application module now goes to one chunk (`eagerApplicationChunk` in `vite.config.ts`). |
+| zod is a large share of the eager set | 91.5 KB raw | **Kept.** Persistence validates the stored table with it before the first screen can draw. |
+
 ### Adding an entry
 
 An entry belongs here when a suspicion has been measured, whatever the answer.

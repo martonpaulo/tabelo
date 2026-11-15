@@ -6,10 +6,15 @@ import { CURRENT_VERSION, type PersistedState } from "@/persistence/schema";
 import type { ViewId } from "@/views/types";
 import { INHERIT_SOURCE_DISPLAY } from "@/workspace/source-display";
 import { expect, test } from "./fixtures";
-import { renderedSource, seedTableStorage, TabeloPage } from "./helpers";
+import {
+	openDownloadChooser,
+	renderedSource,
+	seedTableStorage,
+	TabeloPage,
+} from "./helpers";
 
-// The source editor and the preview arrive as their own chunks, after the
-// page. These cover what the user sees while one is late (#420) and after one
+// The source editor, the preview, and the dialogs the first screen does not
+// draw (#559) arrive as their own chunks, after the page. These cover what the user sees while one is late (#420) and after one
 // failed to arrive at all (#419), with the chunk held or refused at the
 // network the way a slow or dropped connection would.
 //
@@ -18,7 +23,7 @@ import { renderedSource, seedTableStorage, TabeloPage } from "./helpers";
 // is a different path than a lost request and not the one these exercise.
 test.use({ serviceWorkers: "block" });
 
-type LazyChunk = "source-view" | "html-preview";
+type LazyChunk = "source-view" | "html-preview" | "download-dialog";
 
 function chunkPattern(chunk: LazyChunk): RegExp {
 	return new RegExp(`/assets/${chunk}-[^/]+\\.js$`);
@@ -247,4 +252,23 @@ test("a saved workspace says it is loading while its views' code is on the way",
 	await page.reload();
 	await expect(tabelo.source("markdown")).toBeVisible();
 	await expect(tabelo.welcome).toHaveCount(0);
+});
+
+test("a dialog whose code never arrived says so and leaves the menu usable", async ({
+	page,
+}) => {
+	await dropChunk(page, "download-dialog");
+	const tabelo = new TabeloPage(page);
+	await tabelo.open();
+
+	await openDownloadChooser(page);
+	await expect(tabelo.notice("warning")).toBeVisible();
+	await expect(page.getByRole("dialog")).toHaveCount(0);
+
+	// The command is free again: asking a second time answers the same way
+	// rather than waiting on a dialog that never opened.
+	await tabelo.dismissNotices();
+	await openDownloadChooser(page);
+	await expect(tabelo.notice("warning")).toBeVisible();
+	await expect(page.getByRole("dialog")).toHaveCount(0);
 });

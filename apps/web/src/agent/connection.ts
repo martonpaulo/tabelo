@@ -6,42 +6,17 @@ import {
 	requestSchema,
 	WIRE_VERSION,
 } from "@tabelo/agent-protocol";
-import { create } from "zustand";
 import { copy } from "@/copy/copy";
 import { LIBRARY_KEY } from "@/persistence/schema";
 import { useTabeloStore } from "@/state/store";
+import {
+	type ActiveConnection,
+	type AgentConnectionError,
+	disconnectAgent,
+	setActiveConnection,
+	useAgentConnection,
+} from "./connection-state";
 import { AgentSession } from "./session";
-
-// Why the last connection attempt or session ended, as a reason rather than
-// copy (#451): only a malformed code is a fact about what the user typed, and
-// the dialog decides from the reason which of its parts reports it.
-export type AgentConnectionError =
-	| "invalid-descriptor"
-	| "connection-failed"
-	| "invalid-response"
-	| "session-ended"
-	| "uncertain";
-
-type ConnectionState = {
-	status: "disconnected" | "connecting" | "connected" | "paused";
-	error: AgentConnectionError | null;
-	lastOutcome: string | null;
-};
-export const useAgentConnection = create<ConnectionState>(() => ({
-	status: "disconnected",
-	error: null,
-	lastOutcome: null,
-}));
-let cleanup: (() => void) | null = null;
-let activeSession: AgentSession | null = null;
-
-export function disconnectAgent(): void {
-	cleanup?.();
-}
-
-export function pauseAgent(paused: boolean): void {
-	activeSession?.pause(paused);
-}
 
 // The unfinished input the DOM knows about and the store does not. Only a
 // gesture holding pointer capture counts as a pointer gesture: every drag that
@@ -146,8 +121,7 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 		closed = true;
 		clearTimeout(timer);
 		session?.close();
-		activeSession = null;
-		cleanup = null;
+		setActiveConnection(null);
 		socket.close();
 		guards.dispose();
 		window.removeEventListener("storage", storageChanged);
@@ -169,7 +143,8 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 		() => stop("connection-failed"),
 		AGENT_LIMITS.pairingMs,
 	);
-	cleanup = () => stop();
+	const handle: ActiveConnection = { stop: () => stop(), pause: null };
+	setActiveConnection(handle);
 	window.addEventListener("storage", storageChanged);
 	window.addEventListener("pagehide", pageHidden);
 	socket.onopen = () =>
@@ -220,7 +195,8 @@ export function connectAgent(descriptor: string): Promise<boolean> {
 					});
 				},
 			});
-			activeSession = session;
+			const live = session;
+			handle.pause = (paused) => live.pause(paused);
 			useAgentConnection.setState({ status: "connected", error: null });
 			finish(true);
 			return;

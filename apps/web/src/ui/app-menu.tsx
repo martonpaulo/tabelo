@@ -50,7 +50,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
-import { useAgentConnection } from "@/agent/connection";
+import { useAgentConnection } from "@/agent/connection-state";
 import { copy } from "@/copy/copy";
 import { product } from "@/copy/product";
 import { deleteEmptyRowsAndColumns } from "@/core/operations";

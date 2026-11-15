@@ -41,6 +41,64 @@ const CONTENT_SECURITY_POLICY = [
 ].join("; ");
 const CHARSET = '<meta charset="UTF-8" />';
 
+// The part of the module graph `getModuleInfo` describes that the grouping
+// below reads.
+interface ModuleGraph {
+	getModuleInfo(id: string): {
+		readonly isEntry: boolean;
+		readonly importers: readonly string[];
+		readonly dynamicImporters: readonly string[];
+		readonly importedIds: readonly string[];
+	} | null;
+}
+
+// Every application module the first screen loads statically, in one chunk
+// (#559). Left to itself the bundler gives each set of chunks that share a
+// module a chunk of its own, so every lazily loaded dialog that reuses a piece
+// of the first screen split that piece out into another small eager file: more
+// requests on a slow connection and a worse compression ratio for the same
+// bytes. Read from the graph rather than listed, so a module that only a lazy
+// chunk reaches stays lazy.
+function eagerApplicationChunk() {
+	let eager: ReadonlySet<string> | null = null;
+	const entryOf = (start: string, graph: ModuleGraph): string | null => {
+		const seen = new Set([start]);
+		const queue = [start];
+		for (const id of queue) {
+			const info = graph.getModuleInfo(id);
+			if (!info) continue;
+			if (info.isEntry) return id;
+			for (const next of [...info.importers, ...info.dynamicImporters]) {
+				if (seen.has(next)) continue;
+				seen.add(next);
+				queue.push(next);
+			}
+		}
+		return null;
+	};
+	const staticallyReached = (entry: string, graph: ModuleGraph) => {
+		const reached = new Set([entry]);
+		const queue = [entry];
+		for (const id of queue) {
+			for (const next of graph.getModuleInfo(id)?.importedIds ?? []) {
+				if (reached.has(next)) continue;
+				reached.add(next);
+				queue.push(next);
+			}
+		}
+		return reached;
+	};
+	return (id: string, graph: ModuleGraph): string | null => {
+		if (/[\\/]node_modules[\\/]/.test(id)) return null;
+		if (!eager) {
+			const entry = entryOf(id, graph);
+			if (!entry) return null;
+			eager = staticallyReached(entry, graph);
+		}
+		return eager.has(id) ? "app" : null;
+	};
+}
+
 export default defineConfig({
 	base,
 	build: {
@@ -75,6 +133,7 @@ export default defineConfig({
 							name: "vendor",
 							test: /node_modules[\\/](?:zod|tailwind-merge|papaparse|@tabler[\\/]icons-react)[\\/]/,
 						},
+						{ name: eagerApplicationChunk() },
 					],
 				},
 			},
