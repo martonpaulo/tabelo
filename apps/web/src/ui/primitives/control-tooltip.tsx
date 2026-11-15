@@ -11,6 +11,7 @@ import {
 	type ReactElement,
 	useContext,
 	useId,
+	useState,
 } from "react";
 
 type TooltipTargetProps = {
@@ -103,6 +104,10 @@ export function ControlTooltip({
 }) {
 	const nested = useContext(InsideControlTooltip);
 	const descriptionId = useId();
+	// Whether the reason is showing, and whether a tap opened it. Held here
+	// rather than by the primitive only because a tap has to be able to open
+	// it: see the trigger below.
+	const [reasonShown, setReasonShown] = useState<"no" | "yes" | "tapped">("no");
 	if (nested) {
 		throw new Error(
 			"A control carries one ControlTooltip. Pass its name and its reason to the same one.",
@@ -119,10 +124,44 @@ export function ControlTooltip({
 			.join(" ");
 		return (
 			<InsideControlTooltip.Provider value={true}>
-				<Tooltip onOpenChange={onlyUserFocus}>
+				<Tooltip
+					open={reasonShown !== "no"}
+					onOpenChange={(open, details) => {
+						onlyUserFocus(open, details);
+						// A tap is followed by the mouse leave the browser emulates
+						// for it, which is not the pointer moving away: a tapped
+						// reason stays until a press or a key closes it.
+						if (
+							!open &&
+							reasonShown === "tapped" &&
+							details.reason === "trigger-hover"
+						) {
+							details.cancel();
+						}
+						if (!details.isCanceled) setReasonShown(open ? "yes" : "no");
+					}}
+				>
 					{/* A disabled control receives no pointer events, so the wrapper
-					    is what the pointer reaches. */}
-					<TooltipTrigger render={<span className="block" />}>
+					    is what the pointer reaches. A touch screen has no hover and
+					    a tap moves no keyboard focus, so a tap on the control is
+					    what shows its reason there; a press anywhere else closes it
+					    as it closes any tooltip (#553). */}
+					<TooltipTrigger
+						render={<span className="block" />}
+						// On the click rather than the pointer release: the press the
+						// browser emulates after a tap closes a tooltip as a trigger
+						// press, and the click is the last event of the tap. Chromium
+						// delivers a click as a pointer event that names its pointer.
+						onClick={(event) => {
+							const { nativeEvent } = event;
+							if (
+								nativeEvent instanceof PointerEvent &&
+								nativeEvent.pointerType === "touch"
+							) {
+								setReasonShown("tapped");
+							}
+						}}
+					>
 						{cloneElement(named, { "aria-describedby": describedBy })}
 						<span id={descriptionId} className="sr-only">
 							{reason}

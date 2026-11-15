@@ -20,7 +20,9 @@ not a polish item.
 
 Disabled actions stay visible so the interface does not reflow as the selection
 changes. Every disabled control must expose a concise reason through the shared
-disabled-tooltip pattern. Layout stability outranks tidiness.
+disabled-tooltip pattern. It opens on hover and on keyboard focus, and on a
+touch screen, which has neither, a tap on the control opens it; a press
+elsewhere or Escape closes it (#553). Layout stability outranks tidiness.
 
 The copied state marks where the clipboard was filled from, so the user can go
 and find the paste destination without losing track of the source. It outlives
