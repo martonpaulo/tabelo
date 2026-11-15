@@ -135,13 +135,10 @@ import {
 	type PreparedImport,
 	prepareImport,
 } from "@/import/prepare";
-import { storageErased } from "@/persistence/erase";
 import {
-	LIBRARY_KEY,
 	LIBRARY_VERSION,
 	type LibraryIndex,
 	type PersistenceFailureReason,
-	tableKey,
 } from "@/persistence/schema";
 import {
 	loadLibraryIndex,
@@ -154,8 +151,14 @@ import {
 	type StorageLoadOutcome,
 	saveLibraryIndex,
 	saveTable,
-	tableChangedElsewhere,
 } from "@/persistence/storage";
+import {
+	type FlushOutcome,
+	flushStore,
+	savePayload,
+	startStoreAutosave,
+	storageBlocksWrites,
+} from "@/state/autosave";
 import {
 	conditionNoticeIds,
 	type NoticeRequest,
@@ -205,6 +208,8 @@ import type {
 	SourceDisplayOverrides,
 } from "@/workspace/source-display";
 import { clampPaneZoom } from "@/workspace/zoom";
+
+export { type FlushOutcome, savePayload };
 
 // "Nothing has been copied." One shared value rather than a fresh array each
 // time, so clearing a mark that was already clear leaves state referentially
@@ -417,14 +422,6 @@ export type LibraryTransitionOutcome =
 				| "quota"
 				| "unavailable";
 	  };
-
-function storageBlocksWrites(issue: StorageIssue | null): boolean {
-	return (
-		issue?.kind === "unreadable" ||
-		issue?.kind === "changed-elsewhere" ||
-		(issue?.kind === "unavailable" && issue.readBlocked === true)
-	);
-}
 
 export interface TabeloState {
 	// Session-only signals for consumers that must invalidate work across a
@@ -1192,21 +1189,6 @@ function openTable(
 function storedPayload(id: TableId): SavePayload | null {
 	const outcome = loadTable(id);
 	return outcome.status === "ok" ? outcome.state : null;
-}
-
-export function savePayload(state: TabeloState): SavePayload {
-	return {
-		name: state.name,
-		document: state.document,
-		workspace: state.workspace,
-		draft: state.draft
-			? {
-					paneId: state.draft.paneId,
-					viewId: state.draft.viewId,
-					text: state.draft.text,
-				}
-			: null,
-	};
 }
 
 // Serializes the document for a view. Views without a codec: the grid: have
@@ -3256,39 +3238,13 @@ function columnTargets(state: TabeloState, column: number): readonly number[] {
 	return selected.includes(column) ? selected : [column];
 }
 
-// Autosave. Persisting on every keystroke would be wasteful, and persisting
-// only on unload would lose work, so writes are debounced after changes settle.
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
-
-export type FlushOutcome = SaveOutcome | { readonly status: "blocked" };
-
+// The store's own autosave, under the names every caller already imports.
 export function flushPersistence(): FlushOutcome {
-	// Nothing is written after the user erased everything: the reload that
-	// follows would otherwise carry the table back into storage.
-	if (storageErased()) return { status: "blocked" };
-	const current = useTabeloStore.getState();
-	if (storageBlocksWrites(current.storageIssue)) {
-		return { status: "blocked" };
-	}
-	// With no table active there is nothing to write until content arrives,
-	// and content that does arrive gets its own table first (#466).
-	if (current.library.activeId === null) {
-		if (isDocumentBlank(current.document) && current.draft === null)
-			return { status: "saved" };
-		const created = current.ensureActiveTable();
-		return created.status === "saved" ? created : { status: "blocked" };
-	}
-	// The storage event normally says so first; this catches a write it has
-	// not delivered yet, so a stale tab never writes over a newer table (#543).
-	if (tableChangedElsewhere(current.library.activeId)) {
-		markChangedElsewhere();
-		return { status: "blocked" };
-	}
-	const outcome = saveTable(current.library.activeId, savePayload(current));
-	useTabeloStore.setState({
-		storageIssue: outcome.status === "saved" ? null : { kind: outcome.status },
-	});
-	return outcome;
+	return flushStore(useTabeloStore);
+}
+
+export function startAutosave(): () => void {
+	return startStoreAutosave(useTabeloStore);
 }
 
 // A find bar belongs to one pane showing one view, so it goes when either
@@ -3302,66 +3258,3 @@ useTabeloStore.subscribe((state, previous) => {
 	const finds = findsForWorkspace(state.finds, state.workspace);
 	if (finds !== state.finds) useTabeloStore.setState({ finds });
 });
-
-// Another tab wrote what this tab would write next. Every write stops through
-// `storageBlocksWrites` until the user reloads, and the pending save goes with
-// it, so neither tab's stored edit is overwritten by a copy older than it.
-function markChangedElsewhere(): void {
-	if (saveTimer) {
-		clearTimeout(saveTimer);
-		saveTimer = null;
-	}
-	useTabeloStore.setState({ storageIssue: { kind: "changed-elsewhere" } });
-}
-
-// The browser fires `storage` in every other tab of this origin when one
-// writes, never in the writer itself. A null key is a `clear()`.
-function isSharedKeyForThisTab(key: string | null): boolean {
-	if (key === null || key === LIBRARY_KEY) return true;
-	const { activeId } = useTabeloStore.getState().library;
-	return activeId !== null && key === tableKey(activeId);
-}
-
-export function startAutosave(): () => void {
-	const onStorage = (event: StorageEvent) => {
-		if (isSharedKeyForThisTab(event.key)) markChangedElsewhere();
-	};
-	const flush = () => {
-		if (saveTimer) {
-			clearTimeout(saveTimer);
-			saveTimer = null;
-		}
-		flushPersistence();
-	};
-	const unsubscribe = useTabeloStore.subscribe((state, previous) => {
-		if (
-			state.name === previous.name &&
-			state.document === previous.document &&
-			state.workspace === previous.workspace &&
-			state.draft === previous.draft
-		)
-			return;
-
-		if (saveTimer) clearTimeout(saveTimer);
-		saveTimer = setTimeout(() => {
-			saveTimer = null;
-			flushPersistence();
-		}, 500);
-	});
-	const onVisibilityChange = () => {
-		if (document.visibilityState === "hidden") flush();
-	};
-	window.addEventListener("pagehide", flush);
-	window.addEventListener("storage", onStorage);
-	document.addEventListener("visibilitychange", onVisibilityChange);
-	return () => {
-		unsubscribe();
-		window.removeEventListener("pagehide", flush);
-		window.removeEventListener("storage", onStorage);
-		document.removeEventListener("visibilitychange", onVisibilityChange);
-		if (saveTimer) {
-			clearTimeout(saveTimer);
-			saveTimer = null;
-		}
-	};
-}
