@@ -292,6 +292,13 @@ tables, to read, create, open, rename and edit them but never delete one, and
 it may send what it reads to its own model provider. Disconnect it from the
 app menu at any time; until you pair one, nothing is shared.
 
+An image in a cell is the other way the page reaches outside your machine. The
+app loads each `https:` image from its own address whenever the table shows it,
+so that image's host can see your IP address, the time and the image address,
+as with any picture on a web page. The request carries no referrer and
+nothing else from the table. Only `https:` images load at all:
+[how inline content is stored and shown](docs/adr/0011-structured-inline-content.md).
+
 ---
 
 <br />

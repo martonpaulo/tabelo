@@ -68,7 +68,10 @@ the exact text format the person came for.
   agent, read and edit the active table over MCP after an explicit pairing;
   no other agent or provider is supported (decided on #536). It may also list, create, open and rename browser tables,
   but cannot delete them (owner, 2026-09-24); that agent may send shared data to its model provider
-  (#405). Ordinary editing sends no table data anywhere.
+  (#405). Ordinary editing sends no table data anywhere. An image in a cell
+  is loaded from its own `https:` address when the table shows it, so that
+  host can see the visitor's IP address, the time and the image address
+  ([ADR 0011](adr/0011-structured-inline-content.md), #550).
 
 ## What it will never do
 
