@@ -5,6 +5,11 @@
 //
 // Docs: https://better-t-stack.dev/docs
 // Stack Builder: https://better-t-stack.dev/new
+//
+// Upstream checked on 2026-11-15 (tabelo#535): this scaffold was a one-time
+// start at 3.37.0; the newest release is 3.49.1. Nothing is adopted from it:
+// Tabelo has since removed the router it chose (docs/adr/0007), and every
+// addon it set up (Biome, husky, PWA) is maintained here directly.
 
 {
   "$schema": "https://r2.better-t-stack.dev/schema.json",

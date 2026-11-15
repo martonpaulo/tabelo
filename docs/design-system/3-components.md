@@ -32,11 +32,21 @@ shadcn primitives (button, dropdown-menu, toggle, checkbox, dialog,
 tooltip, input, and more). Compose those. A bare `<button>` in product code is
 a pattern break unless it is a grid cell affordance, which the grid owns.
 
-Add a missing primitive with the shadcn CLI rather than hand-writing it:
+Add a missing primitive with the shadcn CLI rather than hand-writing it. Run
+the CLI `@tabelo/ui` pins as a devDependency (the lockfile holds its exact
+version), never `shadcn@latest`, so a later add reads the same registry
+version as the files already vendored:
 
 ```bash
-pnpm dlx shadcn@latest add <name> -c packages/ui
+pnpm --filter @tabelo/ui exec shadcn add <name>
 ```
+
+The vendored files follow `packages/ui/components.json` (style `base-lyra`,
+Base UI primitives, Tabler icons). Upstream checked on 2026-11-15
+([#535](https://github.com/martonpaulo/tabelo/issues/535)): the pinned CLI,
+`shadcn` 4.23.0, is the newest release. Which CLI version each file was first
+added with was never recorded, and the registry at `ui.shadcn.com` could not
+be reached from that session, so the files were not diffed against it.
 
 ### Tooltip
 
