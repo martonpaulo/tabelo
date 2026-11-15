@@ -1088,7 +1088,7 @@ function storedPayload(id: TableId): SavePayload | null {
 	return outcome.status === "ok" ? outcome.state : null;
 }
 
-function savePayload(state: TabeloState): SavePayload {
+export function savePayload(state: TabeloState): SavePayload {
 	return {
 		name: state.name,
 		document: state.document,

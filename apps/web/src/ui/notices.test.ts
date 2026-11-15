@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { documentFromMatrix } from "@/core/document";
+import { samplePerson } from "@/core/sample-data";
 import type { PersistenceFailureReason } from "@/persistence/schema";
 import * as files from "@/platform/files";
 import type { PreferencesIssue } from "@/preferences/store";
@@ -211,6 +212,48 @@ describe("conditions are state, not messages", () => {
 		expect(filename).toMatch(/\.json$/);
 		expect(mimeType).toBe("application/json");
 		expect(contents).toBe(raw);
+		download.mockRestore();
+	});
+
+	// When storage fails the copy keeps what a save keeps: a typed number stays
+	// a number and an unparsed draft travels with it (#567).
+	it("downloads a lossless copy of the table when storage fails", () => {
+		const download = vi
+			.spyOn(files, "downloadText")
+			.mockImplementation(() => {});
+		const person = samplePerson(0);
+		useTabeloStore.setState({
+			document: documentFromMatrix(
+				[
+					["Name", "Age"],
+					[person.name, person.age],
+				],
+				{ headerRow: true },
+			),
+			draft: {
+				paneId: "pane-2",
+				viewId: "markdown",
+				text: "| unparsed",
+				status: "invalid",
+				issues: [],
+				warnings: [],
+				rows: [],
+			},
+			storageIssue: { kind: "quota" },
+		});
+
+		find(conditionNoticeIds.storage)
+			?.actions.find((action) => action.id === "download-copy")
+			?.run();
+
+		expect(download).toHaveBeenCalledTimes(1);
+		const [filename, mimeType, contents] = download.mock.calls[0] ?? [];
+		expect(filename).toMatch(/\.json$/);
+		expect(mimeType).toBe("application/json");
+		const saved = JSON.parse(contents ?? "{}");
+		const [row] = saved.document.rows;
+		expect(Object.values(row.cells)).toContain(person.age);
+		expect(saved.draft.text).toBe("| unparsed");
 		download.mockRestore();
 	});
 

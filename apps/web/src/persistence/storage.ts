@@ -120,9 +120,14 @@ const browserStorage: WritableStorage = {
 	setItem: (key, value) => window.localStorage.setItem(key, value),
 };
 
+// The bytes a table is stored as: also what the storage-trouble notice hands
+// the user, so the copy keeps everything a save would have (#567).
+export function serializeTable(state: SavePayload): string {
+	return JSON.stringify({ ...state, version: CURRENT_VERSION });
+}
+
 export function saveTable(id: string, state: SavePayload): SaveOutcome {
-	const payload = { ...state, version: CURRENT_VERSION };
-	return writeItem(browserStorage, tableKey(id), JSON.stringify(payload));
+	return writeItem(browserStorage, tableKey(id), serializeTable(state));
 }
 
 export function preserveUnreadableAndSave(

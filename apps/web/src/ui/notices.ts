@@ -2,9 +2,9 @@ import { copy } from "@/copy/copy";
 import { hasInlineContent } from "@/core/document";
 import type { FillSeriesOffer } from "@/core/series";
 import type { TableDocument } from "@/core/types";
-import { getCodec } from "@/formats";
 import type { ParseIssue } from "@/formats/types";
 import type { ImportError } from "@/import/prepare";
+import { serializeTable } from "@/persistence/storage";
 import { downloadText, tableDownloadFilename } from "@/platform/files";
 import { type PreferencesIssue, preferencesStore } from "@/preferences/store";
 import {
@@ -14,8 +14,7 @@ import {
 	type TransientNotice,
 } from "@/state/notice-queue";
 import type { PendingPaneAction, StorageIssue } from "@/state/store";
-import { useTabeloStore } from "@/state/store";
-import { codecSpelling } from "@/ui/spelling";
+import { savePayload, useTabeloStore } from "@/state/store";
 import {
 	plainEditableViews,
 	plainViewsSignature,
@@ -420,12 +419,14 @@ function replaceSavedData(): void {
 	});
 }
 
+// When the table may not persist, the copy is exactly what a save would have
+// written: types, alignment, the workspace and an unparsed draft included, in
+// the recovery file's JSON shape rather than a lossy text format (#567).
 function downloadCurrentTable(): void {
-	const codec = getCodec("markdown");
 	const state = useTabeloStore.getState();
 	downloadText(
-		tableDownloadFilename(state.name, codec.extension),
-		codec.mimeType,
-		codec.serialize(state.document, codecSpelling(codec)),
+		tableDownloadFilename(state.name, "json"),
+		"application/json",
+		serializeTable(savePayload(state)),
 	);
 }
