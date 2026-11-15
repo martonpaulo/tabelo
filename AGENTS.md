@@ -300,6 +300,17 @@ prose. The rules match import specifiers, which is complete here only because
 the `@/` alias rule under `## Code, comments, and documentation` leaves no
 parent-relative escape; they detect neither cycles nor orphan modules.
 
+Data staying in the browser is executable too (#541). Biome's
+`noRestrictedGlobals` cannot hold it: it misses `window.localStorage`, every
+current storage use, as well as `globalThis.fetch` and `navigator.sendBeacon`.
+So `scripts/conventions.py` keeps the one table, `API_OWNERS`, of browser
+network and storage APIs and the modules that may reach them: no `fetch`,
+`XMLHttpRequest`, `EventSource` or `sendBeacon` anywhere in application code,
+`WebSocket` only in the agent connection and only to a loopback host, and
+`localStorage` and `sessionStorage` only in persistence and preferences.
+`indexedDB` has no owner. Tests, browser specs and the local helper are outside
+it. A new owner is a line in that table with its reason.
+
 - **Table document**: the internal representation. Columns, rows, cell values,
   stable identifiers, alignment, schema version. Plain data, no framework
   imports.

@@ -84,5 +84,50 @@ class Rules(unittest.TestCase):
         )
 
 
+    def test_network_outside_its_owner(self) -> None:
+        self.assert_fails({"apps/web/src/core/a.ts": 'export const a = fetch("x");\n'}, "apps/web/src/core/a.ts:1: network")
+        self.assert_fails(
+            {"apps/web/src/ui/a.ts": 'export const a = globalThis.fetch("x");\n'}, "apps/web/src/ui/a.ts:1: network"
+        )
+        self.assert_fails(
+            {"packages/ui/src/a.ts": 'navigator.sendBeacon("/x", "");\n'}, "packages/ui/src/a.ts:1: network"
+        )
+        self.assert_fails(
+            {"apps/web/src/ui/a.ts": "export const a = new WebSocket(address);\n"}, "apps/web/src/ui/a.ts:1: network"
+        )
+
+    def test_storage_outside_its_owner(self) -> None:
+        self.assert_fails(
+            {"apps/web/src/ui/a.ts": 'export const a = localStorage.getItem("k");\n'}, "apps/web/src/ui/a.ts:1: storage"
+        )
+        self.assert_fails(
+            {"apps/web/src/ui/a.ts": 'export const a = window.localStorage.getItem("k");\n'},
+            "apps/web/src/ui/a.ts:1: storage",
+        )
+        self.assert_fails(
+            {"apps/web/src/persistence/a.ts": "export const a = window.indexedDB;\n"},
+            "apps/web/src/persistence/a.ts:1: storage",
+        )
+
+    def test_owners_tests_and_documentation_pass(self) -> None:
+        self.assert_passes(
+            {
+                "apps/web/src/persistence/a.ts": 'export const a = window.localStorage.getItem("k");\n',
+                "apps/web/src/preferences/a.ts": "export const a = () => window.localStorage;\n",
+                "apps/web/src/agent/a.ts": "export const a = (port: number) => new WebSocket(`ws://127.0.0.1:${port}/agent`);\n",
+                "apps/web/src/ui/a.test.ts": 'localStorage.setItem("k", "v");\n',
+                "apps/web/e2e/a.spec.ts": "await page.evaluate(() => localStorage.clear());\n",
+                "apps/web/src/copy/a.ts": '// Only a reload can fetch it again.\nexport const a = "https://example.com/docs";\nexport const b = table.fetch;\n',
+                "apps/agent-bridge/src/a.ts": 'import { WebSocket } from "ws";\nexport const a = WebSocket;\n',
+            }
+        )
+
+    def test_request_target_is_loopback_even_in_an_owner(self) -> None:
+        self.assert_fails(
+            {"apps/web/src/agent/a.ts": 'export const a = new WebSocket("wss://example.com/agent");\n'},
+            "apps/web/src/agent/a.ts:1: request-target",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

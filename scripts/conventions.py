@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the mechanical rules AGENTS.md states in prose (#540).
+"""Check the mechanical rules AGENTS.md states in prose (#540, #541).
 
     conventions.py [--root ROOT]
 
@@ -14,6 +14,12 @@ work tree; `node_modules` is always left out.
   `./../x`); anything outside the current directory is reached through the `@/` alias.
 - `e2e-sleep`: no browser test under `apps/web/e2e/` calls `waitForTimeout`; wait on an observable
   condition instead.
+- `network` and `storage`: in application code (`apps/web/src/`, `packages/`, tests and `e2e/`
+  aside), a browser network or storage API (`fetch`, `WebSocket`, `localStorage`, ...), bare or
+  through `window`, `globalThis`, `self` or `navigator`, appears only in the owner modules
+  `API_OWNERS` lists (#541). Comments and string literals do not count.
+- `request-target`: a request opened on a literal absolute address names a loopback host, in an
+  owner module as anywhere else (#541).
 
 Prints `<file>:<line>: <rule>: <problem>` per hit, then exits 1 on any, 0 on none, 2 on a usage
 error. Python's standard library and Git only. `scripts/test_conventions.py` proves each rule on
@@ -45,6 +51,37 @@ SPECIFIER = re.compile(
     r"""(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*)(["'])([^"'\n]*)\1"""
 )
 SLEEP = re.compile(r"\bwaitForTimeout\b")
+
+# The one table of browser network and storage APIs and the only modules that may reach them
+# (#541). Data stays in the browser: no fetch, beacon or event stream at all, the loopback agent
+# connection is the one socket (#405), and `localStorage` belongs to persistence and preferences.
+# IndexedDB has no owner because AGENTS.md rules it out at the target scale. An entry is a path
+# prefix under the repository root; a new owner is a line here, with its reason.
+API_OWNERS: dict[str, tuple[str, tuple[str, ...]]] = {
+    "fetch": ("network", ()),
+    "XMLHttpRequest": ("network", ()),
+    "EventSource": ("network", ()),
+    "sendBeacon": ("network", ()),
+    "WebSocket": ("network", ("apps/web/src/agent/",)),
+    "localStorage": ("storage", ("apps/web/src/persistence/", "apps/web/src/preferences/")),
+    "sessionStorage": ("storage", ("apps/web/src/persistence/", "apps/web/src/preferences/")),
+    "indexedDB": ("storage", ()),
+}
+# Application code the table governs. Tests, browser specs and the local helper, which is a
+# transport by design, are outside it.
+APPLICATION_PREFIXES = ("apps/web/src/", "packages/")
+TEST_NAME = re.compile(r"\.test\.[cm]?[jt]sx?$")
+# A bare global, or one reached through a global object; `table.fetch` is someone else's member.
+API_USE = re.compile(
+    r"(?:(?<![\w$.])|(?<=window\.)|(?<=globalThis\.)|(?<=self\.)|(?<=navigator\.))("
+    + "|".join(API_OWNERS)
+    + r")(?![\w$])"
+)
+# A request opened on a literal absolute address. Only loopback is a target, even for an owner.
+REQUEST_TARGET = re.compile(
+    r"""\b(?:fetch|WebSocket|EventSource|sendBeacon|open)\s*\(\s*(?:["'`][A-Z]+["'`]\s*,\s*)?["'`]((?:https?|wss?)://([^/:"'`$\s]*))"""
+)
+LOOPBACK = {"127.0.0.1", "localhost", "[::1]"}
 
 
 def tracked_files(root: Path) -> list[str]:
@@ -257,6 +294,35 @@ def check_sleeps(label: str, lexed: Lexed) -> list[str]:
     ]
 
 
+def is_application(label: str) -> bool:
+    return (
+        label.startswith(APPLICATION_PREFIXES)
+        and "/e2e/" not in label
+        and not TEST_NAME.search(label)
+    )
+
+
+def check_api_owners(label: str, lexed: Lexed) -> list[str]:
+    if not is_application(label):
+        return []
+    problems = []
+    for match in API_USE.finditer(lexed.bare):
+        name = match.group(1)
+        rule, owners = API_OWNERS[name]
+        if label.startswith(owners):
+            continue
+        where = ", ".join(owners) if owners else "no module"
+        problems.append(
+            f"{label}:{lexed.line(match.start())}: {rule}: {name} is reachable only from {where}; see API_OWNERS in scripts/conventions.py"
+        )
+    for match in REQUEST_TARGET.finditer(lexed.code):
+        if match.group(2) not in LOOPBACK:
+            problems.append(
+                f"{label}:{lexed.line(match.start(1))}: request-target: {match.group(1)} is not loopback; table data never leaves the browser"
+            )
+    return problems
+
+
 def check(root: Path) -> list[str]:
     problems: list[str] = []
     for label in tracked_files(root):
@@ -278,6 +344,7 @@ def check(root: Path) -> list[str]:
         problems.extend(check_block_comments(label, lexed))
         problems.extend(check_parent_imports(label, lexed))
         problems.extend(check_sleeps(label, lexed))
+        problems.extend(check_api_owners(label, lexed))
     return problems
 
 
