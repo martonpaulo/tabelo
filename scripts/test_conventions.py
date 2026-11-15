@@ -74,7 +74,7 @@ class Rules(unittest.TestCase):
 
     def test_e2e_sleep(self) -> None:
         self.assert_fails(
-            {"apps/web/e2e/a.spec.ts": "await page.waitForTimeout(100);\n"}, "apps/web/e2e/a.spec.ts:1: e2e-sleep"
+            {"apps/web/e2e/a.spec.ts": "await page.waitForTimeout(100);\n"}, "apps/web/e2e/a.spec.ts:1: e2e-sleep"  # timing-independent: a fixture string, not a wait
         )
         self.assert_passes(
             {
