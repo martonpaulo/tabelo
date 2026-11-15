@@ -3,7 +3,12 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: /
+    # The pnpm workspace root and every workspace package, so each manifest has
+    # an entry for its own directory (skill-deck#435).
+    directories:
+      - /
+      - /apps/*
+      - /packages/*
     schedule:
       interval: weekly
       day: monday

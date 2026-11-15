@@ -1,0 +1,174 @@
+{
+	"magicValues": {
+		"folders": ["apps", "packages", "scripts"],
+		"exclude": [
+			"packages/ui/src/components/**",
+			"apps/web/e2e/**",
+			"**/*.spec.ts",
+			"**/*.bench.ts",
+			"scripts/dry_check.py",
+			"scripts/text_check.py",
+			"scripts/sleep_guard.py"
+		],
+		"counts": {
+			"apps/agent-bridge/src/bridge.ts": {
+				"number": 11,
+				"url": 1
+			},
+			"apps/agent-bridge/src/index.ts": {
+				"url": 2
+			},
+			"apps/web/playwright.config.ts": {
+				"number": 1,
+				"url": 1
+			},
+			"apps/web/pwa-assets.config.ts": {
+				"colour": 2
+			},
+			"apps/web/src/agent/connection.ts": {
+				"number": 1,
+				"url": 1
+			},
+			"apps/web/src/agent/session.ts": {
+				"number": 3
+			},
+			"apps/web/src/copy/product.ts": {
+				"url": 2
+			},
+			"apps/web/src/core/column-letter.ts": {
+				"number": 3
+			},
+			"apps/web/src/core/ids.ts": {
+				"number": 4
+			},
+			"apps/web/src/core/sample-data.ts": {
+				"number": 5
+			},
+			"apps/web/src/formats/delimited.ts": {
+				"number": 1
+			},
+			"apps/web/src/formats/html-source.ts": {
+				"number": 3
+			},
+			"apps/web/src/formats/inline-syntax.ts": {
+				"number": 1
+			},
+			"apps/web/src/formats/jira.ts": {
+				"number": 1
+			},
+			"apps/web/src/formats/json.ts": {
+				"number": 1
+			},
+			"apps/web/src/formats/markdown-inline.ts": {
+				"number": 5
+			},
+			"apps/web/src/formats/markdown.ts": {
+				"number": 2
+			},
+			"apps/web/src/formats/records.ts": {
+				"number": 1
+			},
+			"apps/web/src/persistence/state-schema.ts": {
+				"number": 7
+			},
+			"apps/web/src/preferences/contract.ts": {
+				"number": 1
+			},
+			"apps/web/src/product-metadata.ts": {
+				"url": 2
+			},
+			"apps/web/src/state/store.ts": {
+				"number": 5
+			},
+			"apps/web/src/testing/bench-fixtures.ts": {
+				"url": 1
+			},
+			"apps/web/src/testing/property-arbitraries.ts": {
+				"number": 13,
+				"url": 4
+			},
+			"apps/web/src/ui/agent-dialog.tsx": {
+				"number": 1,
+				"repeated": 5
+			},
+			"apps/web/src/ui/app-menu.tsx": {
+				"repeated": 3
+			},
+			"apps/web/src/ui/download-dialog.tsx": {
+				"repeated": 4
+			},
+			"apps/web/src/ui/grid/column-width-dialog.tsx": {
+				"number": 1
+			},
+			"apps/web/src/ui/grid/grid-context-menu.tsx": {
+				"repeated": 1
+			},
+			"apps/web/src/ui/grid/rich-cell-editor.tsx": {
+				"repeated": 1
+			},
+			"apps/web/src/ui/header-row-dialog.tsx": {
+				"repeated": 1
+			},
+			"apps/web/src/ui/notice-bar.tsx": {
+				"repeated": 1
+			},
+			"apps/web/src/ui/primitives/form-field.tsx": {
+				"repeated": 1
+			},
+			"apps/web/src/ui/primitives/selection-option.tsx": {
+				"repeated": 2
+			},
+			"apps/web/src/ui/settings-dialog.tsx": {
+				"repeated": 6
+			},
+			"apps/web/src/ui/source/editor-theme.ts": {
+				"colour": 2
+			},
+			"apps/web/src/ui/source/source-context-menu.tsx": {
+				"repeated": 1
+			},
+			"apps/web/src/ui/tabelo-app.tsx": {
+				"repeated": 1
+			},
+			"apps/web/src/ui/workspace/pane-content.tsx": {
+				"repeated": 1
+			},
+			"apps/web/src/ui/workspace/pane-display-dialog.tsx": {
+				"repeated": 1
+			},
+			"apps/web/src/ui/workspace/workspace.tsx": {
+				"number": 4
+			},
+			"apps/web/src/workspace/layout.ts": {
+				"number": 2
+			},
+			"apps/web/vitest.config.ts": {
+				"number": 1
+			},
+			"apps/web/worktree-ports.ts": {
+				"number": 2
+			},
+			"packages/agent-protocol/src/index.ts": {
+				"number": 9
+			}
+		},
+		"accepted": {}
+	},
+	"duplicates": {
+		"depth": 2,
+		"exclude": [
+			"packages/ui/src/components/**",
+			"apps/web/e2e/**",
+			"**/*.spec.ts",
+			"**/*.bench.ts",
+			"scripts/dry_check.py",
+			"scripts/text_check.py",
+			"scripts/sleep_guard.py"
+		],
+		"counts": {
+			"apps/agent-bridge": 1,
+			"apps/web": 58
+		},
+		"identical": {}
+	}
+}

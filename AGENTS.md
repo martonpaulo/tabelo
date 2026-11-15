@@ -54,8 +54,14 @@ describes the migration and its downstream effects.
   `main` and pushed to `main` directly, never through a pull request
 - Commit policy: commit automatically on task completion, one concern per
   commit, landing on `main` as the branch workflow above describes
-- Push policy: push `main` automatically after committing. No pull request is
-  opened, and no automated reviewer is waited for
+- Push policy: push `main` automatically after committing; a cloud session pushes `main` too, only for a `runs: cloud` issue whose gates all ran there ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
+  No pull request is opened, and no automated reviewer is waited for
+- Cloud setup command: `bash scripts/cloud-setup.sh` (a cloud run's start).
+  It runs the Workbench cloud engine from the `workbench` checkout attached
+  beside this one, then `corepack enable && pnpm install --frozen-lockfile`.
+  Browser specs in the cloud also need
+  `TABELO_E2E_CHROMIUM=/opt/pw-browsers/chromium` (`docs/testing.md`).
+  `.github/cloud.json` lists no extra packages and no Mac-only paths
 - Product versioning: **unversioned**. The deployed site is always the current
   version. No version number, tag, or release name ever appears anywhere in
   the product. The `0.0.0` in workspace manifests is a package-manager
@@ -92,8 +98,32 @@ describes the migration and its downstream effects.
 - Release, signing, and secret storage: **not applicable**. Nothing is
   downloaded, installed, or signed. Deployment is GitHub Pages via GitHub
   Actions using the built-in `GITHUB_TOKEN`; this project stores no secrets
-- Skills baseline revision: `0bc967f285693b1589401d00c7fd5f1e1b3e460a`
-- Skills baseline applied: `2026-09-18`
+- Skills baseline revision: `7840d73b4f87da52b78426927e4c6319e905fd40`
+- Skills baseline applied: `2026-11-15`
+- Skills baseline divergence `agents-template:baseline-rules` at `7840d73b4f87da52b78426927e4c6319e905fd40`: this file keeps Tabelo's own sections instead of the template's wording. Tabelo is public and its agent guidance is self-contained (`## Skills`), so the template's references to Workbench-only material (`skd-*` skills, the Inbox, `global/AGENTS.md`, section 15) are not copied; their Tabelo owners are `docs/agent-attention-cards.md`, `docs/testing.md`, `docs/performance.md` (answered suspicions) and `docs/product.md` `## Decision index` (decision history, in place of `docs/decisions.md`) ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
+- Skills baseline divergence `agents-md-size` at `7840d73b4f87da52b78426927e4c6319e905fd40`: this file is over 24000 bytes and 200 lines. Its domain rules, frozen direction and architecture boundaries are the product contract every change reads, and Antigravity CLI, the client the byte limit protects, is not in use (only Claude Code is validated). Moving them into linked documents is its own change ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
+- Skills baseline divergence `agents-md-routes` at `7840d73b4f87da52b78426927e4c6319e905fd40`: the `## Route map` table is kept, but this file stays over 200 lines for the reason `agents-md-size` gives ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
+- Skills baseline divergence `documentation-standard` at `7840d73b4f87da52b78426927e4c6319e905fd40`: no `docs/rules/` and no rule IDs; `docs/product.md`, `CONTEXT.md`, `docs/adr/` and the documents this file names own Tabelo's rules. Adopting the standard is `project-groom`'s migration, a separate change ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
+- Skills baseline divergence `issue-links` at `7840d73b4f87da52b78426927e4c6319e905fd40`: the Markdown cites issues as bare `#N` (510 references when this was recorded), so `issue_links.py` is not in the gate yet; linking them is a separate mechanical change ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
+- Skills baseline divergence `package-manager` at `7840d73b4f87da52b78426927e4c6319e905fd40`: `packageManager` is `pnpm@11.28.2`, newer than the fleet's `11.7.0`; the lockfile is written by it, and going back would be a downgrade with no benefit ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
+- Skills baseline divergence `commit-hooks` at `7840d73b4f87da52b78426927e4c6319e905fd40`: `core.hooksPath` is husky's `.husky/_`, whose `pre-commit` runs lint-staged; the Workbench hooks would replace it. Chaining them is the owner's decision ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
+- Skills baseline divergence `deploy-reads-back` at `7840d73b4f87da52b78426927e4c6319e905fd40`: `deploy.yml` does not run `live_build_check.py` against the live site. Owner-only: an executor does not edit `.github/workflows/` ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
+- Skills baseline divergence `validate-paths` at `7840d73b4f87da52b78426927e4c6319e905fd40`: the Validate workflow's `on.push` uses `paths-ignore` instead of gating a deploy job. Owner-only, as `deploy-reads-back` ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
+- Skills baseline divergence `vulnerability-scan` at `7840d73b4f87da52b78426927e4c6319e905fd40`: no `.github/workflows/scan.yml` with a weekly `pnpm audit`. Owner-only, as `deploy-reads-back` ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
+- Skills baseline divergence `dependency-hooks` at `7840d73b4f87da52b78426927e4c6319e905fd40`: the source editor styles CodeMirror classes, some outside its documented theme classes (for example `.cm-cursorLayer`, `.cm-highlightSpace`, `.cm-trailingSpace`), and one Base UI attribute (`data-base-ui-portal`); `dependency_hooks.py` must run from `validate.yml`. Owner-only, as `deploy-reads-back` ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
+
+## Route map
+
+Before editing under a path, read the file its row names. This root file
+governs everything else, including `apps/web`.
+
+| Path | Read first |
+| :--- | :--- |
+| `apps/agent-bridge/` | `apps/agent-bridge/AGENTS.md` (the local MCP helper) |
+| `packages/agent-protocol/` | `packages/agent-protocol/AGENTS.md` (the shared wire contract) |
+| anything visual | `docs/design-system.md` |
+| a test, a suite, CI selection | `docs/testing.md` |
+| a capability the external agent reaches | `docs/agent-integration.md` |
 
 ## Product
 
@@ -400,8 +430,12 @@ browser result from CI, not from a local gate (`docs/testing.md`). While iterati
   page opens with a Contents list), then `scripts/conventions.py`, Tabelo's
   own check of the mechanical rules under `## Code, comments, and
   documentation` and the no-sleep rule for browser tests, with its fixture
-  tests (#540). `pnpm lint`, which CI runs, does the same without `--write`
-  (#525)
+  tests (#540), then `scripts/dry_check.py` over the root `dry-check.json` (a
+  ratchet on unnamed values and repeated blocks: a count above or below its
+  row fails; lower it with `python3 scripts/dry_check.py --shrink`) and
+  `scripts/sleep_guard.py` (no test waits by sleeping), both unchanged
+  Workbench copies (#534). `pnpm lint`, which CI runs, does the same without
+  `--write` (#525)
 - `pnpm bench`: the performance harness, on fixed synthetic tables at the
   target scale and one step past it. It prints numbers and never gates:
   there is no threshold and no CI job. `docs/performance.md` owns the
@@ -461,11 +495,9 @@ sleeps, no pixel snapshots, and storage isolated per test.
 - Do not duplicate the same rules across instruction files. A scoped file holds
   only what differs in its subtree and routes to the canonical owner for the
   rest; long references live in `docs/` with a stated trigger to read them.
-- Scoped files: `apps/agent-bridge/AGENTS.md` (the local MCP helper) and
-  `packages/agent-protocol/AGENTS.md` (the shared wire contract). A session
-  started at the root does not necessarily load them, so read the applicable
-  one before editing under its path. This root file governs everything else,
-  including `apps/web`.
+- Scoped files are listed in `## Route map`. A session started at the root
+  does not necessarily load them, so read the applicable one before editing
+  under its path.
 - `AGENTS.md` is protected by section, not as a file. `## Project identity and
   policy` is governance and never moves under an executor. Every other section
   documents this code, so a change that makes a recorded rule untrue updates it
