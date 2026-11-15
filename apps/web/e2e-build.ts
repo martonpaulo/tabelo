@@ -20,7 +20,9 @@ const appRoot = dirname(fileURLToPath(import.meta.url));
 // Playwright config, or a unit test is not here, so an edit to one of them keeps
 // the warm round's skipped build. A new build input belongs in this list:
 // leaving one out is how a stale build gets tested again.
-const BUILD_INPUTS = [
+// Every workspace package the app bundles is a build input: a test asserts
+// the list against the manifest, so a new one cannot be forgotten (#585).
+export const BUILD_INPUTS = [
 	"src",
 	"public",
 	"index.html",
@@ -28,6 +30,7 @@ const BUILD_INPUTS = [
 	"worktree-ports.ts",
 	"tsconfig.json",
 	"package.json",
+	"../../packages/agent-protocol",
 	"../../packages/ui",
 ];
 

@@ -1,14 +1,17 @@
 import {
 	mkdirSync,
 	mkdtempSync,
+	readdirSync,
+	readFileSync,
 	rmSync,
 	utimesSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { staleBuildInput } from "./e2e-build";
+import { BUILD_INPUTS, staleBuildInput } from "./e2e-build";
 
 // A warm preview server serves whatever `dist` holds, so the question this
 // module answers is whether a build input changed after the last build. The
@@ -83,5 +86,36 @@ describe("staleBuildInput", () => {
 		touch("src/node_modules", AFTER);
 		touch("src", BEFORE);
 		expect(staleBuildInput(root, INPUTS)).toBeUndefined();
+	});
+});
+
+// A workspace package the app bundles that is missing here is how a warm
+// round tests a stale build (#585).
+describe("build inputs", () => {
+	it("list every bundled workspace package", () => {
+		const here = dirname(fileURLToPath(import.meta.url));
+		const manifest = JSON.parse(
+			readFileSync(join(here, "package.json"), "utf8"),
+		) as { dependencies?: Record<string, string> };
+		// Runtime dependencies are what the bundle contains; the development
+		// ones (configuration, the local helper) are not built into it.
+		const workspaceNames = Object.entries(manifest.dependencies ?? {})
+			.filter(([, version]) => version.startsWith("workspace:"))
+			.map(([name]) => name);
+		const packagesRoot = join(here, "..", "..", "packages");
+		const directoryOf = new Map(
+			readdirSync(packagesRoot).map((directory) => [
+				(
+					JSON.parse(
+						readFileSync(join(packagesRoot, directory, "package.json"), "utf8"),
+					) as { name: string }
+				).name,
+				directory,
+			]),
+		);
+		expect(workspaceNames.length).toBeGreaterThan(0);
+		for (const name of workspaceNames) {
+			expect(BUILD_INPUTS).toContain(`../../packages/${directoryOf.get(name)}`);
+		}
 	});
 });
