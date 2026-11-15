@@ -267,3 +267,27 @@ test("a lossy or inventing Cell type change asks first; a lossless one does not"
 	await expect(dialog).toBeHidden();
 	await expect(cell).toHaveAttribute("data-cell-type", "boolean");
 });
+
+// Emptying a cell in a typed column leaves an empty cell with no question
+// (#473): an empty cell conforms to every expected type, so a divergent
+// value cleared by editing follows the column again.
+test("emptying a divergent cell in a typed column asks nothing and follows the column", async ({
+	page,
+	tabelo,
+}) => {
+	const cell = tabelo.cell(1, 1);
+	await setExpectedType(tabelo, "number");
+	await enterCellText(tabelo, 1, 1, "true");
+	await page
+		.getByRole("dialog")
+		.getByRole("button", { name: copy.typedEditing.keepAsText })
+		.click();
+	await expect(cell).toHaveAttribute("data-cell-type", "string");
+
+	await enterCellText(tabelo, 1, 1, "");
+	await expect(page.getByRole("dialog")).toHaveCount(0);
+	await expect(cell).toHaveText("");
+
+	await enterCellText(tabelo, 1, 1, "123");
+	await expect(cell).toHaveAttribute("data-cell-type", "number");
+});

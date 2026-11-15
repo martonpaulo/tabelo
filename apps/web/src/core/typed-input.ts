@@ -72,6 +72,10 @@ export function parseExpectedValue(
 	expectedType: ExpectedColumnType,
 ): ExpectedTypeParseResult {
 	if (expectedType === "text") return { kind: "typed", value: input };
+	// Emptying a cell leaves an empty cell, which conforms to every expected
+	// type (an empty string never diverges, see `cellTypeDiverges`). Asking
+	// whether to keep it as text offered a choice with one outcome (#473).
+	if (input === "") return { kind: "typed", value: "" };
 	if (input.startsWith("'")) {
 		return { kind: "escaped-string", value: input.slice(1) };
 	}

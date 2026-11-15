@@ -50,8 +50,19 @@ describe("expected-type input", () => {
 		},
 	);
 
+	// A cell emptied in a typed column becomes the empty cell at once, so a
+	// divergent value cleared by editing follows the column again (#473).
+	it.each(["number", "boolean"] as const)(
+		"commits empty input in a %s column as an empty cell",
+		(expectedType) => {
+			expect(parseExpectedValue("", expectedType)).toEqual({
+				kind: "typed",
+				value: "",
+			});
+		},
+	);
+
 	it.each([
-		["", "number"],
 		[" ", "number"],
 		["1,5", "number"],
 		["0x10", "number"],
