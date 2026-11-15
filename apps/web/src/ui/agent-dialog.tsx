@@ -7,6 +7,10 @@ import {
 	DialogTitle,
 } from "@tabelo/ui/components/dialog";
 import { Input } from "@tabelo/ui/components/input";
+import {
+	SegmentedControl,
+	SegmentedControlItem,
+} from "@tabelo/ui/components/segmented-control";
 import { Textarea } from "@tabelo/ui/components/textarea";
 import { type FormEvent, useId, useRef, useState } from "react";
 import {
@@ -36,6 +40,10 @@ const connectionErrorCopy: Record<AgentConnectionError, string> = {
 	uncertain: copy.agent.uncertain,
 };
 
+// The AI apps the setup covers, in the order the choice shows them (#503).
+type SetupClient = keyof typeof copy.agent.setupClients;
+const SETUP_CLIENTS: readonly SetupClient[] = ["chatgpt", "claude"];
+
 export function AgentDialog({
 	open,
 	onOpenChange,
@@ -46,6 +54,9 @@ export function AgentDialog({
 	const [descriptor, setDescriptor] = useState("");
 	const [copied, setCopied] = useState(false);
 	const [copyError, setCopyError] = useState(false);
+	const [client, setClient] = useState<SetupClient>("chatgpt");
+	const clientLabelId = useId();
+	const setup = copy.agent.setupClients[client];
 	const state = useAgentConnection();
 	const titleId = useId();
 	const descriptionId = useId();
@@ -118,15 +129,33 @@ export function AgentDialog({
 								{copy.agent.setupTitle}
 							</summary>
 							<div className="mt-3 grid gap-3">
+								<p id={clientLabelId} className="font-medium">
+									{copy.agent.setupClient}
+								</p>
+								<SegmentedControl
+									aria-labelledby={clientLabelId}
+									value={client}
+									onValueChange={(value) => {
+										setClient(value as SetupClient);
+										setCopied(false);
+										setCopyError(false);
+									}}
+								>
+									{SETUP_CLIENTS.map((option) => (
+										<SegmentedControlItem key={option} value={option}>
+											{copy.agent.setupClients[option].label}
+										</SegmentedControlItem>
+									))}
+								</SegmentedControl>
 								<p className="text-muted-foreground text-sm">
-									{copy.agent.setupRequirements}
+									{setup.requirements}
 								</p>
 								<Textarea
 									readOnly
 									rows={4}
 									wrap="off"
 									aria-label={copy.agent.setupTitle}
-									value={copy.agent.setupCommands}
+									value={setup.commands}
 									className="font-mono text-sm"
 								/>
 								<Button
@@ -134,9 +163,7 @@ export function AgentDialog({
 									variant="outline"
 									className="justify-self-start"
 									onClick={async () => {
-										const outcome = await writeClipboardText(
-											copy.agent.setupCommands,
-										);
+										const outcome = await writeClipboardText(setup.commands);
 										setCopied(outcome.ok);
 										setCopyError(!outcome.ok);
 										if (outcome.ok)
@@ -155,9 +182,7 @@ export function AgentDialog({
 								<p className="text-muted-foreground text-sm">
 									{copy.agent.setupExisting}
 								</p>
-								<p className="text-muted-foreground text-sm">
-									{copy.agent.pairInstructions}
-								</p>
+								<p className="text-muted-foreground text-sm">{setup.pair}</p>
 							</div>
 						</details>
 					</>

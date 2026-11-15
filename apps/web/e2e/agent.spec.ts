@@ -655,6 +655,21 @@ test("first-time MCP setup stays in the dialog and its commands can be copied", 
 		.getByRole("button", { name: copy.agent.copyCommands, exact: true })
 		.click();
 	expect((await lastCopied(page))?.text).toBe(command);
+
+	// Claude Code registers the same local connector with its own command
+	// (#503), and Copy takes the commands of the app that is chosen.
+	await dialog
+		.getByRole("radio", { name: copy.agent.setupClients.claude.label })
+		.click();
+	const claudeCommand = await dialog
+		.getByRole("textbox", { name: copy.agent.setupTitle })
+		.inputValue();
+	expect(claudeCommand).toContain("claude mcp add --scope user tabelo --");
+	expect(claudeCommand).toContain("apps/agent-bridge/src/index.ts");
+	await dialog
+		.getByRole("button", { name: copy.agent.copyCommands, exact: true })
+		.click();
+	expect((await lastCopied(page))?.text).toBe(claudeCommand);
 	await dialog.getByRole("button", { name: copy.actions.cancel }).click();
 	await expect(
 		page.getByRole("button", { name: copy.actions.openAppMenu }),

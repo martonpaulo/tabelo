@@ -303,17 +303,32 @@ export const copy = {
 		descriptor: "Connection code",
 		description: "Ask your AI to connect to Tabelo, then paste its code.",
 		setupTitle: "First-time setup",
-		setupRequirements:
-			"Run once in a terminal. Requires Git, Node.js 24+, pnpm and the Codex CLI. Tabelo stays online.",
+		// The AI apps the local connector is set up for (#503). Each speaks the
+		// same local MCP connector; only the command that registers it, and
+		// where the app is restarted, differ.
+		setupClient: "AI app",
+		setupClients: {
+			chatgpt: {
+				label: "ChatGPT",
+				requirements:
+					"Run once in a terminal. Requires Git, Node.js 24+, pnpm and the Codex CLI. Tabelo stays online.",
+				commands: `git clone ${product.repositoryUrl}.git\ncd tabelo\npnpm install\ncodex mcp add tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"`,
+				pair: "In ChatGPT Desktop, restart Tabelo in Settings → MCP servers. In a new conversation, ask it to connect to Tabelo.",
+			},
+			claude: {
+				label: "Claude Code",
+				requirements:
+					"Run once in a terminal. Requires Git, Node.js 24+, pnpm and Claude Code. Tabelo stays online.",
+				commands: `git clone ${product.repositoryUrl}.git\ncd tabelo\npnpm install\nclaude mcp add --scope user tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"`,
+				pair: "Start a new Claude Code session, then ask it to connect to Tabelo.",
+			},
+		},
 		setupExisting:
 			"Already installed? Run only the last command from your Tabelo folder.",
-		setupCommands: `git clone ${product.repositoryUrl}.git\ncd tabelo\npnpm install\ncodex mcp add tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"`,
 		copyCommands: "Copy commands",
 		commandsCopied: "Commands copied",
 		copyCommandsFailed:
 			"Couldn’t copy. Select the commands and copy them manually.",
-		pairInstructions:
-			"In ChatGPT Desktop, restart Tabelo in Settings → MCP servers. In a new conversation, ask it to connect to Tabelo.",
 		disclosure:
 			"Your AI can read, edit, create and rename tables in this browser. Data may be shared with its provider.",
 		connectedDescription:

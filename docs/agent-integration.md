@@ -31,6 +31,15 @@ host. Use a local conversation that loads that host's MCP tools. A hosted chat
 does not become a local MCP client merely because it appears in a desktop
 window. This local route needs neither an API key nor a tunnel.
 
+[Claude Code](https://docs.claude.com/en/docs/claude-code/mcp) is the other
+supported client (#503): it starts local stdio servers registered with
+`claude mcp add`, so it uses the same connector, tools, and pairing with no
+change to the protocol. The setup dialog offers both apps. Claude Code 2.1.325
+reported the registered connector as connected (`claude mcp list`, 2026-11-15).
+Other clients that start local stdio MCP servers can register the same command;
+WebMCP and a browser extension stay where the comparison in
+[local-agent-connection](research/local-agent-connection.md) left them.
+
 Two ordinary tabs, ChatGPT Web and Tabelo, with no local process or additional
 hosted component are not supported. Hosted ChatGPT developer-mode connections
 expect a remote MCP endpoint, and OpenAI's secure tunnel needs a local client;
@@ -52,9 +61,15 @@ reference, not a prerequisite to use the feature.
    codex mcp add tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"
    ```
 
+   Or with Claude Code:
+
+   ```sh
+   claude mcp add --scope user tabelo -- "$(node -p process.execPath)" "$PWD/apps/agent-bridge/src/index.ts"
+   ```
+
 3. In ChatGPT Desktop, open **Settings → MCP servers**, find **tabelo**, and
-   select **Restart**. Start a new local conversation and ask it to call
-   `tabelo_connect`. In the open online Tabelo table, choose
+   select **Restart**; in Claude Code, start a new session. Start a new local
+   conversation and ask it to call `tabelo_connect`. In the open online Tabelo table, choose
    **Connect AI** from the app menu, paste the returned code and choose **Connect**.
 4. Allow the browser's local-network permission if prompted. Read the sharing
    scope before connecting. The connection reaches this tab and its browser library.
@@ -65,7 +80,8 @@ The MCP host owns process startup. Starting the helper in an ordinary terminal
 just waits for MCP on standard input; it is not a chat program. Keep stdout for
 MCP messages and stderr for sanitized diagnostics. The helper has no model key.
 
-If Tabelo's tools are missing, run `codex mcp get tabelo` and verify that the
+If Tabelo's tools are missing, run `codex mcp get tabelo` (or
+`claude mcp get tabelo`) and verify that the
 configured Node executable and connector path still exist. Registration alone
 does not refresh a conversation's tool catalog: restart the server and use a
 new local conversation. Do not create a tunnel or pay for API access to repair
