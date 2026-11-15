@@ -50,12 +50,9 @@
 				"useExhaustiveDependencies": "info"
 			},
 			"nursery": {
-				"useSortedClasses": {
+				"useTailwindSortedClasses": {
 					"level": "warn",
-					"fix": "safe",
-					"options": {
-						"functions": ["clsx", "cva", "cn"]
-					}
+					"fix": "safe"
 				}
 			},
 			"style": {
@@ -73,6 +70,18 @@
 		}
 	},
 	"overrides": [
+		// Playwright's `locator.innerText()` reads the rendered text on purpose;
+		// the rule added in Biome 2.6 mistakes it for the DOM property.
+		{
+			"includes": ["apps/web/e2e/**"],
+			"linter": {
+				"rules": {
+					"performance": {
+						"useDomNodeTextContent": "off"
+					}
+				}
+			}
+		},
 		{
 			"includes": ["apps/web/src/core/**"],
 			"linter": {
@@ -205,5 +214,13 @@
 		"parser": {
 			"tailwindDirectives": true
 		}
-	}
+	},
+	// Biome 2.6 began formatting Markdown, and its formatter puts a blank line
+	// inside a skill's YAML frontmatter. Prose stays as written.
+	"markdown": {
+		"formatter": {
+			"enabled": false
+		}
+	},
+	"tailwind": { "mergeFunctions": ["clsx", "cn"], "variantFunctions": ["cva"] }
 }
