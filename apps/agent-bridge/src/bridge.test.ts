@@ -88,27 +88,69 @@ test("missing origin, null origin, and an incorrect Host cannot upgrade", async 
 	}
 });
 
-test("five invalid pairing attempts consume the pending authorization", async () => {
+function sendPair(peer: WebSocket, code: string): void {
+	peer.send(
+		JSON.stringify({
+			version: WIRE_VERSION,
+			kind: "pair",
+			code,
+			sessionId: randomUUID(),
+		}),
+	);
+}
+
+// #569: the attempt budget belongs to one connection, so invalid pairing
+// messages end only the connection that sent them.
+test("invalid pairing attempts close only their own connection", async () => {
 	const bridge = new LocalBridge();
 	try {
 		const pairing = await bridge.connect();
+		const [port, code] = String(pairing.data?.descriptor).split(":");
+		const intruder = new WebSocket(`ws://127.0.0.1:${port}/agent`, {
+			origin,
+		});
+		await once(intruder, "open");
+		const closed = once(intruder, "close");
+		for (let attempt = 0; attempt < AGENT_LIMITS.pairingAttempts; attempt++)
+			sendPair(intruder, "00000000");
+		await closed;
+
+		assert.equal(
+			(await bridge.connect()).data?.descriptor,
+			pairing.data?.descriptor,
+		);
+		const peer = new WebSocket(`ws://127.0.0.1:${port}/agent`, { origin });
+		await once(peer, "open");
+		sendPair(peer, String(code));
+		const [message] = await once(peer, "message");
+		assert.equal(JSON.parse(String(message)).kind, "paired");
+	} finally {
+		await bridge.close();
+	}
+});
+
+test("an unpaired connection keeps its slot after it closes", async () => {
+	let now = Date.now();
+	const bridge = new LocalBridge({ now: () => now });
+	try {
+		const pairing = await bridge.connect();
 		const port = String(pairing.data?.descriptor).split(":")[0];
-		for (let attempt = 0; attempt < AGENT_LIMITS.pairingAttempts; attempt++) {
+		for (let slot = 0; slot < AGENT_LIMITS.connections; slot++) {
 			const peer = new WebSocket(`ws://127.0.0.1:${port}/agent`, { origin });
 			await once(peer, "open");
-			peer.send(
-				JSON.stringify({
-					version: WIRE_VERSION,
-					kind: "pair",
-					code: "00000000",
-					sessionId: randomUUID(),
-				}),
-			);
+			peer.close();
 			await once(peer, "close");
 		}
-		const renewed = await bridge.connect();
-		assert.notEqual(renewed.data?.descriptor, pairing.data?.descriptor);
-		assert.equal(renewed.code, "pairing");
+		const refused = new WebSocket(`ws://127.0.0.1:${port}/agent`, { origin });
+		assert.match(String((await once(refused, "error"))[0]), /409/);
+
+		now += AGENT_LIMITS.requestMs;
+		const admitted = new WebSocket(`ws://127.0.0.1:${port}/agent`, {
+			origin,
+		});
+		await once(admitted, "open");
+		admitted.close();
+		await once(admitted, "close");
 	} finally {
 		await bridge.close();
 	}

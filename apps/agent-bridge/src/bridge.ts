@@ -41,7 +41,8 @@ export class LocalBridge {
 	private sessionId = "";
 	private pairingCode = "";
 	private pairingUntil = 0;
-	private attempts = 0;
+	// When each unpaired connection that has closed stops holding its slot.
+	private heldUntil: number[] = [];
 	private port = 0;
 	private sequence = 0;
 	private inFlight = false;
@@ -92,7 +93,7 @@ export class LocalBridge {
 		await this.close();
 		this.pairingCode = String(randomInt(10_000_000, 100_000_000));
 		this.pairingUntil = this.now() + AGENT_LIMITS.pairingMs;
-		this.attempts = 0;
+		this.heldUntil = [];
 		const server = createServer((_request, response) => {
 			response.writeHead(404);
 			response.end();
@@ -114,9 +115,12 @@ export class LocalBridge {
 				socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
 				return;
 			}
+			const now = this.now();
+			this.heldUntil = this.heldUntil.filter((until) => until > now);
 			if (
 				this.peer ||
-				sockets.clients.size >= AGENT_LIMITS.connections ||
+				sockets.clients.size + this.heldUntil.length >=
+					AGENT_LIMITS.connections ||
 				this.now() >= this.pairingUntil ||
 				!this.pairingCode
 			) {
@@ -150,7 +154,18 @@ export class LocalBridge {
 		return this.pairingResult();
 	}
 
+	// Failed pairing attempts are counted per connection, and reaching the
+	// limit closes only that connection, so another local process cannot end
+	// the window the real tab is pairing in (#569). Brute force stays bounded:
+	// a connection that never paired keeps its slot for the whole
+	// authentication period, even when it closes early, so at most
+	// `connections` (8) slots can each spend `pairingAttempts` (5) guesses per
+	// `requestMs` (10 s). Over one `pairingMs` window (120 s) that is 480
+	// guesses against 9 * 10^7 codes, a chance of about 5 * 10^-6.
 	private accept(peer: WebSocket): void {
+		const sockets = this.sockets;
+		const slotUntil = this.now() + AGENT_LIMITS.requestMs;
+		let attempts = 0;
 		const authenticationTimer = setTimeout(
 			() => peer.close(1008, "pairing_timeout"),
 			AGENT_LIMITS.requestMs,
@@ -160,6 +175,8 @@ export class LocalBridge {
 		peer.on("close", () => {
 			clearTimeout(authenticationTimer);
 			if (peer === this.peer) void this.close();
+			else if (sockets && sockets === this.sockets)
+				this.heldUntil.push(slotUntil);
 		});
 		peer.on("message", (bytes, binary) => {
 			let value: unknown;
@@ -179,16 +196,18 @@ export class LocalBridge {
 				return;
 			}
 			if (peer !== this.peer) {
+				if (this.peer || this.now() >= this.pairingUntil) {
+					peer.close(1008, "pairing_failed");
+					return;
+				}
 				const parsed = pairingSchema.safeParse(value);
 				if (
-					this.peer ||
 					!parsed.success ||
-					this.now() >= this.pairingUntil ||
 					!sameSecret(parsed.data.code, this.pairingCode)
 				) {
-					peer.close(1008, "pairing_failed");
-					this.attempts++;
-					if (this.attempts >= AGENT_LIMITS.pairingAttempts) void this.close();
+					attempts++;
+					if (attempts >= AGENT_LIMITS.pairingAttempts)
+						peer.close(1008, "pairing_failed");
 					return;
 				}
 				clearTimeout(authenticationTimer);
