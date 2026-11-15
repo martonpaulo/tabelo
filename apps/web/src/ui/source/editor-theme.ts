@@ -15,11 +15,9 @@ import {
 // with the grid, while structure stays quiet and content remains primary.
 // See docs/design-system.md §1.
 
-// The source text is pane content, so it follows that pane's zoom. This is the
-// same expression the `text-content` utility carries in index.css; CodeMirror
-// styles come from a JS theme rather than a class, so the calc is repeated here
-// instead of being reached through Tailwind.
-const contentFontSize = "calc(var(--pane-zoom, 1) * 0.875rem)";
+// The source text is pane content, so it follows that pane's zoom: the token
+// the `text-content` utility reads, resolved on the pane body (index.css).
+const contentFontSize = "var(--text-content)";
 // One whole row of the content rhythm: see source-metrics.ts.
 const contentLineBox = sourceLineBox;
 
@@ -281,7 +279,7 @@ export const editorTheme = EditorView.theme({
 	".cm-tabeloCaret, .cm-dropCursor": {
 		display: "none",
 		borderLeft: "var(--selection-edge-w) solid var(--selection-edge)",
-		height: "calc(var(--pane-zoom, 1) * 1.25rem) !important",
+		height: "var(--spacing-content-line) !important",
 		marginTop: "calc(var(--pane-zoom, 1) * -0.125rem)",
 	},
 	"&.cm-focused .cm-tabeloCaret, .cm-dropCursor": { display: "block" },
@@ -476,14 +474,20 @@ export const editorTheme = EditorView.theme({
 		textUnderlineOffset: "0.1875rem",
 	},
 	// A diagnostic is a product message, not editor chrome, so it wears the
-	// product tooltip: same surface, boundary, radius, shadow, padding, type
-	// size, and pointer. The values are repeated here rather than shared,
-	// because CodeMirror is styled from a JavaScript theme that Tailwind never
-	// sees. Keep them in step with `packages/ui/src/components/tooltip.tsx`.
+	// product tooltip (`packages/ui/src/components/tooltip.tsx`): the same
+	// hairline stroke, surface, radius, shadow, padding, type, and width. The
+	// stroke is the `tabelo-hairline` utility's two layers, set from the same
+	// custom properties `floatingSurfaceStyles` sets, because CodeMirror is
+	// styled from a JavaScript theme that Tailwind never sees.
 	".cm-tooltip": {
-		border: "var(--hairline-w) solid var(--line-floating)",
+		"--hairline-color": "var(--line-floating)",
+		"--hairline-fill": "var(--popover)",
+		border: "var(--hairline-w) solid transparent",
+		backgroundImage:
+			"linear-gradient(var(--hairline-fill), var(--hairline-fill)), linear-gradient(var(--hairline-color), var(--hairline-color))",
+		backgroundOrigin: "border-box",
+		backgroundClip: "padding-box, border-box",
 		borderRadius: "var(--control-radius)",
-		backgroundColor: "var(--popover)",
 		color: "var(--popover-foreground)",
 		boxShadow: "var(--shadow-floating)",
 	},
@@ -499,12 +503,13 @@ export const editorTheme = EditorView.theme({
 		borderBottomColor: "var(--popover)",
 	},
 	".cm-diagnosticTooltip": {
-		maxWidth: "20rem",
+		// `max-w-xs`, the product tooltip's width.
+		maxWidth: "var(--container-xs)",
 		padding: "calc(var(--spacing) * 1.5) calc(var(--spacing) * 3)",
 		whiteSpace: "pre-line",
 		fontFamily: "var(--font-sans)",
-		fontSize: "0.75rem",
-		lineHeight: "1.5",
+		fontSize: "var(--text-xs)",
+		lineHeight: "var(--text-xs--line-height)",
 	},
 });
 

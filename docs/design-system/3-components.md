@@ -82,7 +82,11 @@ this entry:
   JavaScript theme, so the treatment is written twice: once in
   `packages/ui/src/components/tooltip.tsx`, once in `ui/source/editor-theme.ts`.
   That duplication is unavoidable and commented in both places; keep them in
-  step. A diagnostic is a product message, not editor chrome.
+  step. The theme restates only the property names: every value is a token
+  the product tooltip also reads, the `tabelo-hairline` stroke from
+  `--hairline-color` and `--hairline-fill`, `var(--text-xs)` with its line
+  height, and `var(--container-xs)` for `max-w-xs` (#579). A diagnostic is a
+  product message, not editor chrome.
 - **The browser's own `title`.** The grid's cells keep one, because a cell
   shows a clipped value and the OS tooltip reveals the rest without mounting a
   floating layer per cell across a 200-row table. It is the single recorded

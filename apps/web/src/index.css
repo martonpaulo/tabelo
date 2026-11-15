@@ -79,13 +79,35 @@
 /* Per-pane content scale. `--pane-zoom` is set on one pane's body, and only
    what that pane displays reads it: headers, controls, hit targets, and focus
    rings keep their size so a zoomed-out pane never becomes harder to operate.
-   At 100% these resolve to exactly `text-sm`, so nothing moves by default. */
-@theme inline {
+   At 100% these resolve to exactly `text-sm`, so nothing moves by default.
+
+   A custom property substitutes its `var()` where it is declared, so a value
+   declared on `:root` alone reaches a zoomed pane already resolved at zoom 1.
+   These are declared once, here, on `:root` and again on the pane body that
+   sets the zoom (`tabelo-pane-scale`), so a `var()` read inside a pane, such
+   as the source editor's line box or the grid's row height, follows that
+   pane's zoom just as the utilities do (#579). `@theme reference` registers
+   the names for the utilities without emitting a second, root-only copy;
+   its placeholder values are never read: the utilities read the variables. */
+@theme reference {
+	--text-content: 0;
+	--text-content--line-height: 0;
+	--text-cell-type-mark: 0;
+	--text-cell-type-mark--line-height: 0;
+	--spacing-content-line: 0;
+	--spacing-content-line-box: 0;
+	--spacing-content-line-inset: 0;
+	--spacing-inline-image: 0;
+}
+
+:root,
+.tabelo-pane-scale {
 	--text-content: calc(var(--pane-zoom, 1) * 0.875rem);
 	--text-content--line-height: calc(var(--pane-zoom, 1) * 1.25rem);
 	--text-cell-type-mark: calc(var(--pane-zoom, 1) * 0.75rem);
 	--text-cell-type-mark--line-height: calc(var(--pane-zoom, 1) * 1.25rem);
 	--spacing-content-line: calc(var(--pane-zoom, 1) * 1.25rem);
+	/* One row of content: a grid row, a source line, a preview row. */
 	--spacing-content-line-box: calc(var(--pane-zoom, 1) * 2rem);
 	/* The space above a wrapped value's first line that puts it where a
 	   one-line cell's text sits, so later lines follow at the text's own line
@@ -98,6 +120,8 @@
 	   every surface that renders a cell's content, scaled with the pane, so an
 	   image never sets its own row height. */
 	--spacing-inline-image: calc(var(--pane-zoom, 1) * 6rem);
+	/* A grid row is one content row. */
+	--grid-row-h: var(--spacing-content-line-box);
 }
 
 :root {
@@ -198,7 +222,6 @@
 	/* The column index strip is chrome, but it keeps the same baseline height as
 	   a table row so the table starts on one coherent vertical rhythm. */
 	--grid-strip-h: 2rem;
-	--grid-row-h: calc(var(--pane-zoom, 1) * 2rem);
 	--grid-col-w: 10.5rem;
 	/* How tall a pane stays once the workspace stacks. Enough of the table to
 	   work in, accepting that reaching the next pane means scrolling. */

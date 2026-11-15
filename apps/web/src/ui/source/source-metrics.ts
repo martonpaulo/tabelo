@@ -9,7 +9,7 @@
 // in its own row. The content and the line-number gutter both use it, which is
 // what keeps a number level with its line without either side depending on a
 // measurement pass having already run.
-export const sourceLineBox = "calc(var(--pane-zoom, 1) * 2rem)";
+export const sourceLineBox = "var(--spacing-content-line-box)";
 
 // The column markers (#368) float over the top of the scroller, which runs the
 // pane's full height, so the text starts below them: they publish their height

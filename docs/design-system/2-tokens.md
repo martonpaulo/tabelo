@@ -276,7 +276,7 @@ what used to be two passes over every visual change is now one.
 | `--index-text-gap` | (none) | 1rem: the gap between a row's number and its text, in a source view's line numbers and the grid's row numbers alike (owner, 2026-09-19) |
 | `--grid-gutter-w` | `w-grid-gutter` | 3rem: the row number, a small leading gap, and the whole `--index-text-gap`, so the first cell starts where a source view's text does (owner, 2026-09-19; #288) |
 | `--grid-gutter-trailing` | `pr-grid-gutter-trailing` | `--index-text-gap` less a cell's `px-2`: what a grid row number keeps after its digits |
-| `--grid-row-h` | `min-h-grid-row` | calc(var(--pane-zoom, 1) * 2rem): minimum table row height |
+| `--grid-row-h` | `min-h-grid-row` | `var(--spacing-content-line-box)`: minimum table row height, one content row (#579) |
 | `--grid-col-w` | `w-grid-col` | 10.5rem: default column width |
 | `--control-radius` | `rounded-interactive` | 0.5rem: buttons, fields, menu items, option blocks, badges |
 | `--indicator-radius` | `rounded-indicator` | 0.25rem: a checkbox's 1rem box |
@@ -333,6 +333,14 @@ One pane can scale what it displays without touching the rest of the app.
 
 `--pane-zoom` is set on the pane body and nowhere else. At 100% both utilities
 resolve to exactly `text-sm`, so the default rendering is unchanged.
+
+These tokens are declared on `:root` and again on the pane body, through the
+`tabelo-pane-scale` class beside `--pane-zoom` (#579). A custom property
+substitutes its `var()` where it is declared, so a token declared on `:root`
+alone reaches a pane already resolved at zoom 1. Declared on the pane body too,
+a `var()` read inside the pane follows its zoom exactly as the utilities do:
+the source editor's line box (`sourceLineBox`), its text size and caret, and
+`--grid-row-h` all read these tokens rather than restating the expression.
 
 **A wrapped value is one paragraph** (#374). Its lines follow at
 `leading-content-line`, the text's own line height, and the box's spare height

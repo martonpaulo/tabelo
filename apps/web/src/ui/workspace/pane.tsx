@@ -227,8 +227,9 @@ export const Pane = memo(function Pane({
 					style={{ "--pane-zoom": pane.zoom } as React.CSSProperties}
 					className={cn(
 						// A column, so the find bar can be pushed to the foot of the
-						// pane by the space the content does not use.
-						"flex flex-col",
+						// pane by the space the content does not use. The scale class
+						// resolves the content tokens against this pane's zoom (#579).
+						"tabelo-pane-scale flex flex-col",
 						view.kind === "grid" && "tabelo-grid-scroller",
 						view.kind === "source" && "overflow-hidden",
 						// Editable and read-only content share the one content box
