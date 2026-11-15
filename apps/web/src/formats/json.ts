@@ -2,7 +2,11 @@ import { cellText, readCell } from "@/core/cell-value";
 import { columnLetter } from "@/core/column-letter";
 import { isInlineContent } from "@/core/inline-content";
 import type { CellValue, Column, TableDocument } from "@/core/types";
-import { textlessHeaderRow, toDocumentParseResult } from "./parse";
+import {
+	matchBackslashLineBreak,
+	textlessHeaderRow,
+	toDocumentParseResult,
+} from "./parse";
 import type {
 	MatrixParseResult,
 	ParseIssue,
@@ -347,6 +351,9 @@ export const jsonCodec: TableCodec = {
 	mimeType: "application/json",
 	// Each record from its own parse, as a block under no header line (#402).
 	mapsSourceRows: true,
+	// A line break inside a string is written `\n`; every other escape JSON
+	// writes stays as written in a source view.
+	escapeMatcher: matchBackslashLineBreak,
 	parseMatrix: parseJsonMatrix,
 	parse: (text, options) =>
 		toDocumentParseResult(parseJsonMatrix(text), options),

@@ -14,9 +14,7 @@ import {
 	type ViewUpdate,
 	WidgetType,
 } from "@codemirror/view";
-import { isJiraHeaderLine, JIRA_EMPTY_FIELD } from "@/formats/jira";
-import { headerValueBoundary } from "@/formats/records";
-import type { HighlightLanguage } from "@/views/types";
+import type { EmptySourceField } from "@/formats/types";
 import { htmlCells } from "./html-language";
 
 // An empty field is easy to miss in every syntax Tabelo writes: `a,,b`,
@@ -34,53 +32,17 @@ import { htmlCells } from "./html-language";
 // and where a line's structure is ambiguous it draws nothing rather than
 // guessing. See docs/design-system/2-tokens.md, "Syntax and table structure".
 
-// Which syntax a source view's empty fields follow, derived from registry data
-// rather than from a view's identity: see docs/adr/0005.
-export type EmptyValueSyntax =
-	| { readonly kind: "delimited"; readonly separator: string }
-	| { readonly kind: "markdown" }
-	| { readonly kind: "jira" }
-	| { readonly kind: "json" }
-	| { readonly kind: "html" }
-	| { readonly kind: "records" };
-
-export function emptyValueSyntax(
-	language: HighlightLanguage,
-	fieldSeparator: string | undefined,
-): EmptyValueSyntax | null {
-	switch (language) {
-		// CSV and TSV share one highlighting language and differ only by the
-		// separator their codec declares. Without one there is no structure to
-		// read, so there is nothing to mark.
-		case "delimited":
-			return fieldSeparator === undefined
-				? null
-				: { kind: "delimited", separator: fieldSeparator };
-		case "markdown":
-			return { kind: "markdown" };
-		case "jira":
-			return { kind: "jira" };
-		case "json":
-			return { kind: "json" };
-		case "html":
-			return { kind: "html" };
-		case "records":
-			return { kind: "records" };
-		// Plain text has no field structure to read.
-		default:
-			return null;
-	}
-}
-
-// The text an empty field is written with where a syntax spells one rather
-// than writing nothing: Jira's one space, because `||` is its header delimiter
-// (formats/jira.ts). Column alignment reads it so that field takes the
-// placeholder's room, as a field with nothing in it does.
-export function emptyFieldSpelling(
-	syntax: EmptyValueSyntax | null,
-): string | null {
-	return syntax?.kind === "jira" ? JIRA_EMPTY_FIELD : null;
-}
+// Where a source view's empty fields are, between `from` and `to`, whole
+// lines. One reader per view, chosen by capability rather than by a view's
+// identity (docs/adr/0005): the codec's own `emptyFields` wherever it declares
+// them, so the marker and the parse split a row the same way (#551), and
+// otherwise the editor grammar that already parses the text, for the formats
+// whose cells only that tree bounds (Markdown, JSON, HTML).
+export type EmptyCellReader = (
+	state: EditorState,
+	from: number,
+	to: number,
+) => readonly EmptyCell[];
 
 // The placeholder reads as text and sits where the cell's value would have
 // started. Markdown's serializer reserves the room for it, so the padding it is
@@ -146,121 +108,6 @@ function emptyValueRange(from: number, to: number): Range<Decoration> {
 	);
 }
 
-// Delimited fields, with the quoting rule the delimited codec parses back.
-// Quote state carries across lines because RFC 4180 lets a quoted value hold a
-// line break, which formats/delimited.ts supports.
-interface DelimitedLineScan {
-	// Offsets within the line where an empty field sits.
-	readonly offsets: readonly number[];
-	readonly endsInQuotes: boolean;
-}
-
-export function scanDelimitedLine(
-	line: string,
-	separator: string,
-	startsInQuotes: boolean,
-): DelimitedLineScan {
-	// A line with no separator has no field structure to read. A lone empty
-	// line is a legitimate empty row rather than an empty field, and marking it
-	// would put a glyph on every blank line in the document.
-	if (!startsInQuotes && !line.includes(separator)) {
-		return { offsets: [], endsInQuotes: false };
-	}
-
-	const offsets: number[] = [];
-	let index = 0;
-	let fieldStart = 0;
-	let quoted = startsInQuotes;
-	let inQuotes = startsInQuotes;
-
-	while (index < line.length) {
-		if (inQuotes) {
-			if (line[index] === '"') {
-				// A doubled quote is an escaped quote, not the end of the value.
-				if (line[index + 1] === '"') {
-					index += 2;
-					continue;
-				}
-				inQuotes = false;
-			}
-			index += 1;
-			continue;
-		}
-
-		if (line[index] === '"' && index === fieldStart) {
-			inQuotes = true;
-			quoted = true;
-			index += 1;
-			continue;
-		}
-
-		if (line.startsWith(separator, index)) {
-			// A quoted empty value is written `""`, which the user can already
-			// see. Only a field with nothing at all in it is invisible.
-			if (!quoted && index === fieldStart) offsets.push(index);
-			index += separator.length;
-			fieldStart = index;
-			quoted = false;
-			continue;
-		}
-
-		index += 1;
-	}
-
-	// The value after the last separator, when the line does not continue into
-	// a quoted value on the next one.
-	if (!inQuotes && !quoted && fieldStart === line.length && fieldStart > 0) {
-		offsets.push(fieldStart);
-	}
-
-	return { offsets, endsInQuotes: inQuotes };
-}
-
-// Jira splits a row on unescaped pipes, and a header line's doubled pipes are
-// one delimiter rather than two: the same rule formats/jira.ts parses by. Only
-// the fields between two delimiters are marked, so a malformed row missing its
-// outer pipes is left alone instead of being guessed at. A field is empty when
-// it holds nothing, as a hand-typed `|x||z|` does, or exactly one space, which
-// is how the codec writes an empty cell because Jira itself reads `||` as a
-// header delimiter (formats/jira.ts). Each empty field is returned as offsets
-// within the line, that one space included.
-export function jiraEmptyFields(
-	line: string,
-): readonly { readonly from: number; readonly to: number }[] {
-	const header = isJiraHeaderLine(line);
-	const fields: { from: number; to: number }[] = [];
-	let index = 0;
-	let previousDelimiterEnd: number | null = null;
-	let fieldStart = 0;
-
-	while (index < line.length) {
-		// `\|` and `\\` are escapes, so the character after a backslash is
-		// content whatever it is.
-		if (line[index] === "\\" && index + 1 < line.length) {
-			index += 2;
-			continue;
-		}
-		if (line[index] !== "|") {
-			index += 1;
-			continue;
-		}
-
-		const doubled = header && line[index + 1] === "|";
-		const field = line.slice(fieldStart, index);
-		if (
-			previousDelimiterEnd !== null &&
-			(field === "" || field === JIRA_EMPTY_FIELD)
-		) {
-			fields.push({ from: fieldStart, to: index });
-		}
-		index += doubled ? 2 : 1;
-		previousDelimiterEnd = index;
-		fieldStart = index;
-	}
-
-	return fields;
-}
-
 // One empty field, in document offsets, from the start of its opening
 // delimiter (`before`) to the end of its closing one (`after`). Between the two
 // delimiters it runs from `cellStart` to `cellEnd`, and the placeholder is drawn
@@ -286,15 +133,37 @@ function pointCell(at: number, delimiter: number, after: number): EmptyCell {
 	};
 }
 
+// The empty fields a codec reports for the whole text, as cells. The field's
+// own text, nothing or the format's spelling of an empty value such as Jira's
+// one space, is what the placeholder is drawn instead of, and the caret's one
+// stop sits before it. A quoted delimited value may open on a line above the
+// range, so the codec reads the whole document rather than the requested
+// lines; at the roughly 200-row scale this product targets (AGENTS.md) that is
+// a single pass over a few kilobytes of text.
+export function codecEmptyCells(
+	locate: (text: string) => readonly EmptySourceField[],
+): EmptyCellReader {
+	return (state, from, to) => {
+		const first = state.doc.lineAt(from).from;
+		const last = state.doc.lineAt(to).to;
+		return locate(state.doc.toString())
+			.filter((field) => field.from >= first && field.to <= last)
+			.map((field) => ({
+				before: field.before,
+				cellStart: field.from,
+				valueStart: field.from,
+				valueEnd: field.to,
+				cellEnd: field.to,
+				after: field.after,
+			}));
+	};
+}
+
 // Markdown's empty cells, as the padding between one delimiter and the next.
 // The GFM grammar parses the table itself, so these boundaries come from the
 // same parse that highlights it, and an empty cell produces no `TableCell` node
 // at all: what marks it is two delimiters with only padding between them.
-function markdownEmptyCells(
-	state: EditorState,
-	from: number,
-	to: number,
-): readonly EmptyCell[] {
+export const markdownEmptyCells: EmptyCellReader = (state, from, to) => {
 	const cells: EmptyCell[] = [];
 	let previous: { from: number; to: number; line: number } | null = null;
 
@@ -328,49 +197,7 @@ function markdownEmptyCells(
 	});
 
 	return cells;
-}
-
-// Records lines whose value is empty, by the same escape-aware split the
-// Records codec parses with, so `\: ` in a header is never read as the boundary.
-// A bullet written `- Price:` and a title written `Name: ` both end where their
-// value would start, so the marker sits at the end of the line.
-//
-// Two empty values are deliberately left unmarked. A bullet the serializer
-// omitted, with empty values excluded from the output, has no position at all.
-// A title whose column name is omitted and whose value is empty is a blank
-// line, which is also the separator between records: that line is ambiguous in
-// the grammar, so, as everywhere else in this file, nothing is drawn rather
-// than a guess.
-export function recordsEmptyOffset(line: string): number | null {
-	if (line.trim() === "") return null;
-	const boundary = headerValueBoundary(line);
-	return boundary !== null && boundary.valueFrom === line.length
-		? line.length
-		: null;
-}
-
-function recordsEmptyCells(
-	state: EditorState,
-	from: number,
-	to: number,
-): readonly EmptyCell[] {
-	const cells: EmptyCell[] = [];
-	const lastLine = state.doc.lineAt(to).number;
-	for (
-		let number = state.doc.lineAt(from).number;
-		number <= lastLine;
-		number += 1
-	) {
-		const line = state.doc.line(number);
-		const offset = recordsEmptyOffset(line.text);
-		if (offset === null) continue;
-		const at = line.from + offset;
-		// The caret leaves backwards over the separator and forwards onto the
-		// next line.
-		cells.push(pointCell(at, 1, Math.min(at + 1, state.doc.length)));
-	}
-	return cells;
-}
+};
 
 // JSON's empty strings, read from the JSON grammar the view already parses
 // with. Only a `String` value of exactly `""` is marked, never a property name,
@@ -378,11 +205,7 @@ function recordsEmptyCells(
 // typed values the document carries, not empty fields (docs/adr/0008). The
 // placeholder sits between the two quotes, so the reader still sees that the
 // value is a string.
-function jsonEmptyCells(
-	state: EditorState,
-	from: number,
-	to: number,
-): readonly EmptyCell[] {
+export const jsonEmptyCells: EmptyCellReader = (state, from, to) => {
 	const cells: EmptyCell[] = [];
 	syntaxTree(state).iterate({
 		from,
@@ -394,18 +217,14 @@ function jsonEmptyCells(
 		},
 	});
 	return cells;
-}
+};
 
 // HTML's empty cells, `<td></td>` and `<th></th>`, from the one walk that owns
 // where an HTML cell is. A self-closed `<td/>` has no content position and is
 // skipped by that walk. The caret leaves one character at a time, onto the
 // tag bracket on either side, because stepping over a whole `</td><td>` would
 // be a jump in text that is otherwise edited as markup.
-function htmlEmptyCells(
-	state: EditorState,
-	from: number,
-	to: number,
-): readonly EmptyCell[] {
+export const htmlEmptyCells: EmptyCellReader = (state, from, to) => {
 	const cells: EmptyCell[] = [];
 	for (const cell of htmlCells(state)) {
 		if (cell.contentTo !== cell.contentFrom) continue;
@@ -414,74 +233,15 @@ function htmlEmptyCells(
 		cells.push(pointCell(at, 1, at + 1));
 	}
 	return cells;
-}
-
-// Every empty field the syntax hides between `from` and `to`, whole lines.
-export function emptyCells(
-	state: EditorState,
-	syntax: EmptyValueSyntax,
-	from: number,
-	to: number,
-): readonly EmptyCell[] {
-	if (syntax.kind === "markdown") return markdownEmptyCells(state, from, to);
-	if (syntax.kind === "records") return recordsEmptyCells(state, from, to);
-	if (syntax.kind === "json") return jsonEmptyCells(state, from, to);
-	if (syntax.kind === "html") return htmlEmptyCells(state, from, to);
-
-	const firstLine = state.doc.lineAt(from).number;
-	const lastLine = state.doc.lineAt(to).number;
-	const cells: EmptyCell[] = [];
-
-	if (syntax.kind === "jira") {
-		for (let number = firstLine; number <= lastLine; number += 1) {
-			const line = state.doc.line(number);
-			// A header line's delimiter is a doubled pipe.
-			const delimiter = isJiraHeaderLine(line.text) ? 2 : 1;
-			for (const field of jiraEmptyFields(line.text)) {
-				const from = line.from + field.from;
-				const to = line.from + field.to;
-				// The one space an empty cell is written with is drawn over, as
-				// Markdown's padding is, and the caret's one stop sits before it.
-				cells.push({
-					before: from - delimiter,
-					cellStart: from,
-					valueStart: from,
-					valueEnd: to,
-					cellEnd: to,
-					after: to + delimiter,
-				});
-			}
-		}
-		return cells;
-	}
-
-	// A quoted value may have opened on a line above the range, so the scan
-	// starts at the document rather than at the first requested line. At the
-	// roughly 200-row scale this product targets (AGENTS.md) that is a single
-	// pass over a few kilobytes of text.
-	const width = syntax.separator.length;
-	let inQuotes = false;
-	for (let number = 1; number <= lastLine; number += 1) {
-		const line = state.doc.line(number);
-		const scan = scanDelimitedLine(line.text, syntax.separator, inQuotes);
-		if (number >= firstLine) {
-			for (const offset of scan.offsets) {
-				const at = line.from + offset;
-				cells.push(pointCell(at, width, Math.min(at + width, line.to)));
-			}
-		}
-		inQuotes = scan.endsInQuotes;
-	}
-	return cells;
-}
+};
 
 function buildDecorations(
 	view: EditorView,
-	syntax: EmptyValueSyntax,
+	read: EmptyCellReader,
 ): DecorationSet {
 	const ranges: Range<Decoration>[] = [];
 	for (const { from, to } of view.visibleRanges) {
-		for (const cell of emptyCells(view.state, syntax, from, to)) {
+		for (const cell of read(view.state, from, to)) {
 			ranges.push(emptyValueRange(cell.valueStart, cell.valueEnd));
 		}
 	}
@@ -514,18 +274,18 @@ export function snapToEmptyCell(
 	return cellAt(beyond)?.valueStart ?? beyond;
 }
 
-export function emptyValueMarkers(syntax: EmptyValueSyntax) {
+export function emptyValueMarkers(read: EmptyCellReader) {
 	const plugin = ViewPlugin.fromClass(
 		class {
 			decorations: DecorationSet;
 
 			constructor(view: EditorView) {
-				this.decorations = buildDecorations(view, syntax);
+				this.decorations = buildDecorations(view, read);
 			}
 
 			update(update: ViewUpdate) {
 				if (update.docChanged || update.viewportChanged) {
-					this.decorations = buildDecorations(update.view, syntax);
+					this.decorations = buildDecorations(update.view, read);
 				}
 			}
 		},
@@ -541,7 +301,7 @@ export function emptyValueMarkers(syntax: EmptyValueSyntax) {
 		EditorView.atomicRanges.of(
 			(view) => view.plugin(plugin)?.decorations ?? Decoration.none,
 		),
-		EditorState.transactionFilter.of((tr) => snapCaret(tr, syntax)),
+		EditorState.transactionFilter.of((tr) => snapCaret(tr, read)),
 	];
 }
 
@@ -551,7 +311,7 @@ export function emptyValueMarkers(syntax: EmptyValueSyntax) {
 // to the side before the placeholder, which is where typing inserts the value.
 function snapCaret(
 	tr: Transaction,
-	syntax: EmptyValueSyntax,
+	read: EmptyCellReader,
 ): Transaction | readonly TransactionSpec[] {
 	const selection = tr.selection;
 	if (!selection || tr.docChanged || selection.ranges.length !== 1) return tr;
@@ -564,9 +324,8 @@ function snapCaret(
 	// it becomes the field's one caret stop.
 	if (!next.empty) {
 		if (!tr.isUserEvent("select.pointer")) return tr;
-		const field = emptyCells(
+		const field = read(
 			state,
-			syntax,
 			state.doc.lineAt(next.from).from,
 			state.doc.lineAt(next.to).to,
 		).find((cell) => next.from >= cell.cellStart && next.to <= cell.cellEnd);
@@ -582,7 +341,7 @@ function snapCaret(
 
 	const line = state.doc.lineAt(next.head);
 	const target = snapToEmptyCell(
-		emptyCells(state, syntax, line.from, line.to),
+		read(state, line.from, line.to),
 		state.selection.main.head,
 		next.head,
 	);

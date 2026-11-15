@@ -9,12 +9,7 @@ import {
 	WidgetType,
 } from "@codemirror/view";
 import { copy } from "@/copy/copy";
-import { matchHtmlLineBreak } from "@/formats/html";
-import { matchJiraEscape } from "@/formats/jira-inline";
-import { matchMarkdownEscape } from "@/formats/markdown-inline";
-import { matchBackslashLineBreak } from "@/formats/parse";
 import type { EscapeMatch, EscapeMatcher } from "@/formats/types";
-import type { HighlightLanguage } from "@/views/types";
 import { LINE_BREAK_GLYPH, SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";
 
 // An escape sequence is notation: five characters of `&#32;` standing for one
@@ -29,60 +24,23 @@ import { LINE_BREAK_GLYPH, SPACE_GLYPH, TAB_GLYPH } from "./indicator-glyphs";
 // It is a decoration and nothing else. The text, the caret offsets, the
 // selection, the diagnostics, the clipboard, downloads, drafts, history, and
 // persistence are byte-identical with the glyphs on and off. It is emphatically
-// not a parser either: what an escape sequence is comes from the format that
-// owns the grammar, in formats/markdown.ts and formats/jira.ts, so a sequence
-// the editor draws over and a sequence the codec decodes are the same sequence.
+// not a parser either: what an escape sequence is comes from the codec's
+// `escapeMatcher`, so a sequence the editor draws over and a sequence the codec
+// decodes are the same sequence, and a format with no matcher, as CSV and TSV
+// have none, draws nothing here (#551). CSV and TSV quote a break as a real
+// newline, which line-break-markers.ts marks instead.
 
-// Which grammar a source view's escapes follow. The two pipe formats escape
-// reversibly inside a cell. HTML has the entity rules the browser itself
-// reads, so the only notation drawn there is its line break, `<br>`, which the
-// owner asked to see as the same mark as every other format's (2026-09-19).
-// JSON and Records spell a line break inside a value as `\n`, and it is drawn
-// with that same mark (owner: what one view has, every view that can have it
-// should have, 2026-09-19); every other sequence they write stays as written.
-// CSV and TSV quote a break as a real newline, which line-break-markers.ts
-// marks instead.
-export type EscapeSyntax = "markdown" | "jira" | "html" | "json" | "records";
-
-export function escapeSyntax(language: HighlightLanguage): EscapeSyntax | null {
-	switch (language) {
-		case "markdown":
-			return "markdown";
-		case "jira":
-			return "jira";
-		case "html":
-			return "html";
-		case "json":
-			return "json";
-		case "records":
-			return "records";
-		default:
-			return null;
-	}
+// What the glyphs of one source view follow: the codec's escape grammar, and
+// whether its text pads every cell to a common width (`padsColumns`), which is
+// what decides whether a line break's narrower glyph owes the room it gave
+// back. A format that writes each cell at its own length owes nothing.
+export interface EscapeGrammar {
+	readonly matcher: EscapeMatcher;
+	readonly padsColumns: boolean;
 }
 
-function matcherFor(syntax: EscapeSyntax): EscapeMatcher {
-	switch (syntax) {
-		case "markdown":
-			return matchMarkdownEscape;
-		case "jira":
-			return matchJiraEscape;
-		case "html":
-			return matchHtmlLineBreak;
-		case "json":
-		case "records":
-			return matchBackslashLineBreak;
-	}
-}
-
-// Whether a format pads its cells to a common width, which is what decides
-// whether a line break's narrower glyph owes the room it gave back. Only
-// Markdown aligns its columns; the others write each cell at its own length.
-function padsCells(syntax: EscapeSyntax): boolean {
-	return syntax === "markdown";
-}
-
-// The cell delimiter of the two pipe formats. HTML has none on a line.
+// The cell delimiter of a padded format. Only Markdown pads its columns, and
+// an escaped pipe never ends a cell there, which delimiterOffsets honours.
 const CELL_DELIMITER = "|";
 
 // Whether a sequence stands for a line break, whatever its spelling: `<br>`,
@@ -111,9 +69,8 @@ export interface FoundEscape {
 // splitters follow.
 export function scanEscapes(
 	line: string,
-	syntax: EscapeSyntax,
+	matcher: EscapeMatcher,
 ): readonly FoundEscape[] {
-	const matcher = matcherFor(syntax);
 	const found: FoundEscape[] = [];
 	for (let index = 0; index < line.length; index += 1) {
 		const match = matcher(line, index);
@@ -297,7 +254,7 @@ class EscapeWidget extends WidgetType {
 
 function buildDecorations(
 	view: EditorView,
-	syntax: EscapeSyntax,
+	grammar: EscapeGrammar,
 	lineBreaks: boolean,
 ): DecorationSet {
 	const ranges: Range<Decoration>[] = [];
@@ -309,7 +266,7 @@ function buildDecorations(
 			const line = view.state.doc.line(number);
 			// With the line-break mark switched off, a break's sequence shows as
 			// written; every other glyph is always drawn.
-			const escapes = scanEscapes(line.text, syntax).filter(
+			const escapes = scanEscapes(line.text, grammar.matcher).filter(
 				({ match }) => lineBreaks || !encodesLineBreak(match),
 			);
 			for (const { offset, match } of escapes) {
@@ -324,7 +281,7 @@ function buildDecorations(
 					}).range(at, at + match.source.length),
 				);
 			}
-			if (!padsCells(syntax)) continue;
+			if (!grammar.padsColumns) continue;
 			for (const [offset, columns] of owedPadding(line.text, escapes)) {
 				// On the delimiter's near side, so a caret placed just before the
 				// delimiter is drawn against it rather than where the padding
@@ -347,9 +304,9 @@ function buildDecorations(
 export function escapeAt(
 	line: string,
 	column: number,
-	syntax: EscapeSyntax,
+	matcher: EscapeMatcher,
 ): FoundEscape | null {
-	for (const found of scanEscapes(line, syntax)) {
+	for (const found of scanEscapes(line, matcher)) {
 		if (column < found.offset) break;
 		if (column < found.offset + found.match.source.length) return found;
 	}
@@ -357,7 +314,7 @@ export function escapeAt(
 }
 
 export function escapeSequenceGlyphs(
-	syntax: EscapeSyntax,
+	grammar: EscapeGrammar,
 	lineBreaks: boolean,
 ) {
 	const plugin = ViewPlugin.fromClass(
@@ -365,12 +322,12 @@ export function escapeSequenceGlyphs(
 			decorations: DecorationSet;
 
 			constructor(view: EditorView) {
-				this.decorations = buildDecorations(view, syntax, lineBreaks);
+				this.decorations = buildDecorations(view, grammar, lineBreaks);
 			}
 
 			update(update: ViewUpdate) {
 				if (update.docChanged || update.viewportChanged) {
-					this.decorations = buildDecorations(update.view, syntax, lineBreaks);
+					this.decorations = buildDecorations(update.view, grammar, lineBreaks);
 				}
 			}
 		},
@@ -388,7 +345,7 @@ export function escapeSequenceGlyphs(
 	// it resolves to is exactly the one that cannot be drawn here.
 	const tooltip = hoverTooltip((view, position) => {
 		const line = view.state.doc.lineAt(position);
-		const found = escapeAt(line.text, position - line.from, syntax);
+		const found = escapeAt(line.text, position - line.from, grammar.matcher);
 		if (!found) return null;
 		const at = line.from + found.offset;
 		return {

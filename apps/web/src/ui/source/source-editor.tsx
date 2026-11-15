@@ -36,6 +36,7 @@ import type {
 	SourceFieldRange,
 	SourceTableRow,
 	StructuralAssistance,
+	TableCodec,
 } from "@/formats/types";
 import {
 	type HistoryDirection,
@@ -58,11 +59,14 @@ import { drawnSelection } from "./drawn-selection";
 import { editorFailures } from "./editor-failures";
 import { syntaxTheme } from "./editor-theme";
 import {
-	emptyFieldSpelling,
+	codecEmptyCells,
+	type EmptyCellReader,
 	emptyValueMarkers,
-	emptyValueSyntax,
+	htmlEmptyCells,
+	jsonEmptyCells,
+	markdownEmptyCells,
 } from "./empty-values";
-import { escapeSequenceGlyphs, escapeSyntax } from "./escape-sequences";
+import { escapeSequenceGlyphs } from "./escape-sequences";
 import { sourceTabExtension } from "./field-navigation";
 import { htmlHeaderCells, htmlLanguage } from "./html-language";
 import { jiraLanguage } from "./jira-language";
@@ -218,7 +222,8 @@ export interface IndicatorOptions {
 	// formats that map their rows and do not pad their own text.
 	readonly align: boolean;
 	readonly language: HighlightLanguage;
-	readonly fieldSeparator: string | undefined;
+	// The format facts the markers draw from, read off the view's codec.
+	readonly codec: IndicatorCodec | undefined;
 	// The fields of a format that writes a cell's line break as a real newline,
 	// which is where the literal break marker goes. Absent for every other
 	// format, whose breaks are escape sequences.
@@ -227,6 +232,24 @@ export interface IndicatorOptions {
 
 type SourceFields = (text: string) => readonly SourceFieldRange[];
 
+// What the indicators need from a codec: where its empty fields are and how
+// it writes one, its escape grammar, and whether it pads its own columns.
+export type IndicatorCodec = Pick<
+	TableCodec,
+	"emptyFields" | "emptyFieldText" | "escapeMatcher" | "padsColumns"
+>;
+
+// Where the empty-value marker reads a view's empty fields: the codec's own
+// splitter wherever it declares one, and otherwise the editor grammar that
+// already parses the text, which is part of the highlighting the view names.
+function emptyCellReader(
+	language: HighlightLanguage,
+	codec: IndicatorCodec | undefined,
+): EmptyCellReader | null {
+	if (codec?.emptyFields) return codecEmptyCells(codec.emptyFields);
+	return LANGUAGES[language].emptyCells ?? null;
+}
+
 export function indicatorExtensions({
 	spaces,
 	tabs,
@@ -234,33 +257,34 @@ export function indicatorExtensions({
 	lineBreaks,
 	align,
 	language,
-	fieldSeparator,
+	codec,
 	lineBreakFields,
 }: IndicatorOptions): Extension {
 	const marksWhitespace = tabs || spaces !== "none";
-	const syntax = emptyValues
-		? emptyValueSyntax(language, fieldSeparator)
-		: null;
+	const emptyCells = emptyValues ? emptyCellReader(language, codec) : null;
 	// Escape sequences are notation the format wrote, not a display choice, so
 	// unlike the three preferences above they are always drawn. A reader who
 	// cannot tell `&#32;` from content has no question to answer with a setting.
-	const escapes = escapeSyntax(language);
+	const escapes = codec?.escapeMatcher ?? null;
 	const classes = indicatorClasses(spaces, tabs);
 
 	return [
 		marksWhitespace ? highlightWhitespace() : [],
 		spaceScope(spaces),
-		syntax ? emptyValueMarkers(syntax) : [],
-		escapes ? escapeSequenceGlyphs(escapes, lineBreaks) : [],
+		emptyCells ? emptyValueMarkers(emptyCells) : [],
+		escapes
+			? escapeSequenceGlyphs(
+					{ matcher: escapes, padsColumns: codec?.padsColumns === true },
+					lineBreaks,
+				)
+			: [],
 		lineBreaks && lineBreakFields
 			? literalLineBreakMarkers(lineBreakFields)
 			: [],
 		align
 			? columnAlignment({
 					emptyValues,
-					emptyField: emptyFieldSpelling(
-						emptyValueSyntax(language, fieldSeparator),
-					),
+					emptyField: codec?.emptyFieldText ?? null,
 					lineBreaks,
 					escapes,
 				})
@@ -377,27 +401,37 @@ function contentAttributes(
 }
 
 // Highlighting is chosen by name so the registry never imports CodeMirror,
-// which is what lets the whole editor stay in a lazily loaded chunk.
-export function languageFor(language: HighlightLanguage) {
-	switch (language) {
-		case "markdown":
-			// The GFM base is what parses the table itself, so the header cells,
-			// the row pipes, and the alignment divider arrive as grammar tokens
-			// rather than as a project-owned decoration matching them by regexp.
-			return markdown({ base: markdownLanguage });
-		case "delimited":
-			return csvLanguage;
-		case "html":
-			return [htmlLanguage, htmlHeaderCells];
-		case "jira":
-			return jiraLanguage;
-		case "json":
-			return json();
-		case "records":
-			return recordsLanguage;
-		default:
-			return [];
+// which is what lets the whole editor stay in a lazily loaded chunk. This is
+// the one place a highlighting name is resolved (docs/adr/0005). Beside each
+// grammar sits what only that grammar's tree can bound: the empty cells of a
+// format whose codec does not locate its own (#551).
+const LANGUAGES: Record<
+	HighlightLanguage,
+	{
+		readonly extension: () => Extension;
+		readonly emptyCells?: EmptyCellReader;
 	}
+> = {
+	// The GFM base is what parses the table itself, so the header cells, the
+	// row pipes, and the alignment divider arrive as grammar tokens rather than
+	// as a project-owned decoration matching them by regexp.
+	markdown: {
+		extension: () => markdown({ base: markdownLanguage }),
+		emptyCells: markdownEmptyCells,
+	},
+	delimited: { extension: () => csvLanguage },
+	html: {
+		extension: () => [htmlLanguage, htmlHeaderCells],
+		emptyCells: htmlEmptyCells,
+	},
+	jira: { extension: () => jiraLanguage },
+	json: { extension: () => json(), emptyCells: jsonEmptyCells },
+	records: { extension: () => recordsLanguage },
+	plain: { extension: () => [] },
+};
+
+export function languageFor(language: HighlightLanguage): Extension {
+	return LANGUAGES[language].extension();
 }
 
 // The fields are read through the handler ref at the moment Tab is pressed, so
@@ -446,7 +480,7 @@ interface SourceEditorProps {
 	readonly lineBreakIndicators: boolean;
 	// Column alignment (#396), resolved and narrowed to the formats it applies to.
 	readonly alignColumns: boolean;
-	readonly fieldSeparator?: string;
+	readonly codec?: IndicatorCodec;
 	// The fields a literal line break is marked inside, for the formats that
 	// write a cell's break as a real newline (`literalLineBreaks`).
 	readonly lineBreakFields?: SourceFields;
@@ -502,7 +536,7 @@ export function SourceEditor({
 	emptyValueIndicators,
 	lineBreakIndicators,
 	alignColumns,
-	fieldSeparator,
+	codec,
 	lineBreakFields,
 	diagnostics,
 	rows,
@@ -713,7 +747,7 @@ export function SourceEditor({
 							lineBreaks: lineBreakIndicators,
 							align: alignColumns,
 							language,
-							fieldSeparator,
+							codec,
 							lineBreakFields,
 						}),
 					),
@@ -751,7 +785,7 @@ export function SourceEditor({
 								lineBreaks: lineBreakIndicators,
 								align: alignColumns,
 								language,
-								fieldSeparator,
+								codec,
 								lineBreakFields,
 							}),
 						),
@@ -1070,7 +1104,7 @@ export function SourceEditor({
 					lineBreaks: lineBreakIndicators,
 					align: alignColumns,
 					language,
-					fieldSeparator,
+					codec,
 					lineBreakFields,
 				}),
 			),
@@ -1082,7 +1116,7 @@ export function SourceEditor({
 		lineBreakIndicators,
 		alignColumns,
 		language,
-		fieldSeparator,
+		codec,
 		lineBreakFields,
 	]);
 
@@ -1105,7 +1139,7 @@ export function SourceEditor({
 						lineBreaks: lineBreakIndicators,
 						align: alignColumns,
 						language,
-						fieldSeparator,
+						codec,
 						lineBreakFields,
 					}),
 				),
@@ -1120,7 +1154,7 @@ export function SourceEditor({
 		emptyValueIndicators,
 		lineBreakIndicators,
 		alignColumns,
-		fieldSeparator,
+		codec,
 		lineBreakFields,
 	]);
 

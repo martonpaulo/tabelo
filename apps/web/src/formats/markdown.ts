@@ -11,7 +11,11 @@ import {
 	reservedWidth,
 	splitRow,
 } from "./markdown-grammar";
-import { parseMarkdownCell, writeMarkdownCell } from "./markdown-inline";
+import {
+	matchMarkdownEscape,
+	parseMarkdownCell,
+	writeMarkdownCell,
+} from "./markdown-inline";
 import {
 	firstLineBlock,
 	lineSpans,
@@ -326,6 +330,7 @@ export const markdownCodec: TableCodec = {
 	mapsSourceRows: true,
 	mapsSourceColumns: true,
 	padsColumns: true,
+	escapeMatcher: matchMarkdownEscape,
 	sourceFields: markdownFields,
 	structuralAssistance: markdownAssistance,
 	parseMatrix: (text) => parseMarkdownMatrix(text),

@@ -4,6 +4,7 @@ import type { TableDocument } from "@/core/types";
 import { toDocumentParseResult } from "./parse";
 import type {
 	CodecId,
+	EmptySourceField,
 	MatrixParseResult,
 	ParseIssue,
 	SourceFieldRange,
@@ -248,6 +249,30 @@ function delimitedFields(text: string, delimiter: string): SourceFieldRange[] {
 	);
 }
 
+// The fields of the same Papa Parse run that hold nothing at all. A quoted
+// empty value is written `""`, which the user can already see, so only a field
+// with no characters of its own is invisible. A row of one field has no
+// separator to read: a blank line is a legitimate empty row rather than an
+// empty field, and marking it would put a glyph on every blank line.
+function delimitedEmptyFields(
+	text: string,
+	delimiter: string,
+): EmptySourceField[] {
+	const { rows } = parseDelimitedMatrix(text, delimiter);
+	return rows.flatMap((row) =>
+		row.cells.length < 2
+			? []
+			: row.cells
+					.filter((cell) => cell.from === cell.to)
+					.map((cell) => ({
+						before: Math.max(0, cell.from - delimiter.length),
+						from: cell.from,
+						to: cell.to,
+						after: Math.min(cell.to + delimiter.length, row.to),
+					})),
+	);
+}
+
 export function serializeDelimited(
 	document: TableDocument,
 	delimiter: string,
@@ -329,8 +354,8 @@ export function createDelimitedCodec(config: DelimitedCodecConfig): TableCodec {
 		mimeType: config.mimeType,
 		mapsSourceRows: true,
 		mapsSourceColumns: true,
-		fieldSeparator: config.delimiter,
 		sourceFields: (text) => delimitedFields(text, config.delimiter),
+		emptyFields: (text) => delimitedEmptyFields(text, config.delimiter),
 		// A quoted field carries its line breaks as they are.
 		literalLineBreaks: true,
 		// Import and the clipboard carry text this product did not write, so a

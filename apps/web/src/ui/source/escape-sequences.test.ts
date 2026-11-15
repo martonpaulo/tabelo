@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { documentFromMatrix } from "@/core/document";
 import { samplePerson } from "@/core/sample-data";
-import { jsonCodec, recordsCodec } from "@/formats";
+import {
+	csvCodec,
+	htmlCodec,
+	jiraCodec,
+	jsonCodec,
+	markdownCodec,
+	recordsCodec,
+	tsvCodec,
+} from "@/formats";
 import { escapeJiraCell } from "@/formats/jira-inline";
 import { escapeCell } from "@/formats/markdown-inline";
+import type { EscapeMatcher, TableCodec } from "@/formats/types";
 import {
 	escapeAt,
 	escapeGlyph,
-	escapeSyntax,
 	glyphColumns,
 	owedPadding,
 	scanEscapes,
@@ -18,21 +26,31 @@ import { LINE_BREAK_GLYPH } from "./indicator-glyphs";
 // from serialized text and asserts which runs of it are notation rather than
 // content, and how wide each run is.
 
-describe("escapeSyntax", () => {
+// The escape grammar a source view draws is the one its codec declares (#551).
+function matcherOf(codec: TableCodec): EscapeMatcher {
+	const matcher = codec.escapeMatcher;
+	if (!matcher) throw new Error(`${codec.id} declares no escape grammar`);
+	return matcher;
+}
+
+const markdown = matcherOf(markdownCodec);
+const jira = matcherOf(jiraCodec);
+const html = matcherOf(htmlCodec);
+
+describe("the escape grammar a codec declares", () => {
 	it("draws escapes for the formats whose codecs escape inside a cell", () => {
-		expect(escapeSyntax("markdown")).toBe("markdown");
-		expect(escapeSyntax("jira")).toBe("jira");
+		expect(markdownCodec.escapeMatcher).toBeDefined();
+		expect(jiraCodec.escapeMatcher).toBeDefined();
 	});
 
 	it("draws HTML's line break and none of its other notation", () => {
-		expect(escapeSyntax("html")).toBe("html");
-		const found = scanEscapes("<td>a<br>b &amp; c<BR/>d</td>", "html");
+		const found = scanEscapes("<td>a<br>b &amp; c<BR/>d</td>", html);
 		expect(found.map(({ match }) => match.source)).toEqual(["<br>", "<BR/>"]);
 	});
 
 	it("draws nothing where a format has no escape grammar of its own", () => {
-		for (const language of ["delimited", "plain"] as const) {
-			expect(escapeSyntax(language)).toBeNull();
+		for (const codec of [csvCodec, tsvCodec]) {
+			expect(codec.escapeMatcher).toBeUndefined();
 		}
 	});
 
@@ -42,8 +60,7 @@ describe("escapeSyntax", () => {
 	it.each([
 		["json", jsonCodec],
 		["records", recordsCodec],
-	] as const)("draws %s's line break and nothing else", (syntax, codec) => {
-		expect(escapeSyntax(syntax)).toBe(syntax);
+	] as const)("draws %s's line break and nothing else", (_format, codec) => {
 		const first = samplePerson(0);
 		const second = samplePerson(1);
 		const text = codec.serialize(
@@ -56,7 +73,9 @@ describe("escapeSyntax", () => {
 				{ headerRow: true },
 			),
 		);
-		const found = text.split("\n").flatMap((line) => scanEscapes(line, syntax));
+		const found = text
+			.split("\n")
+			.flatMap((line) => scanEscapes(line, matcherOf(codec)));
 		expect(found.map(({ match }) => match.source)).toEqual(["\\n"]);
 		expect(found.every(({ match }) => match.decoded === "\n")).toBe(true);
 	});
@@ -65,7 +84,7 @@ describe("escapeSyntax", () => {
 describe("scanEscapes", () => {
 	it("finds every sequence in a serialized Markdown row, with its width", () => {
 		const line = `| ${escapeCell("a|b")} | ${escapeCell("trailing ")} |`;
-		const found = scanEscapes(line, "markdown");
+		const found = scanEscapes(line, markdown);
 		expect(found.map(({ match }) => match.source)).toEqual(["\\|", "&#32;"]);
 		// The run each glyph is drawn instead of, which is the room Markdown
 		// already measured for it when it padded the column.
@@ -80,7 +99,7 @@ describe("scanEscapes", () => {
 	});
 
 	it("finds every sequence in a serialized Jira row", () => {
-		const found = scanEscapes("|a\\|b|c&#92;d|e\\\\f|", "jira");
+		const found = scanEscapes("|a\\|b|c&#92;d|e\\\\f|", jira);
 		expect(found.map(({ match }) => match.source)).toEqual([
 			"\\|",
 			"&#92;",
@@ -92,16 +111,16 @@ describe("scanEscapes", () => {
 		// The literal text `&#32;` serializes with its ampersand protected. Only
 		// that ampersand is notation; the rest is the value.
 		const line = `| ${escapeCell("&#32;")} |`;
-		const found = scanEscapes(line, "markdown");
+		const found = scanEscapes(line, markdown);
 		expect(found).toHaveLength(1);
 		expect(found[0]?.match.source).toBe("&amp;");
 		// Jira protects its ampersand the same way.
-		expect(scanEscapes(`|${escapeJiraCell("&#32;")}|`, "jira")).toHaveLength(1);
+		expect(scanEscapes(`|${escapeJiraCell("&#32;")}|`, jira)).toHaveLength(1);
 	});
 
 	it("passes over a line once, never over what a match restored", () => {
 		// `&amp;amp;` is the literal text `&amp;`: one sequence, not two.
-		expect(scanEscapes("&amp;amp;", "markdown")).toHaveLength(1);
+		expect(scanEscapes("&amp;amp;", markdown)).toHaveLength(1);
 	});
 });
 
@@ -109,15 +128,15 @@ describe("escapeGlyph", () => {
 	it("shows what the sequence resolves to, not how it is spelled", () => {
 		const glyphs = scanEscapes(
 			`${escapeCell(" x")}${escapeCell("a|b")}${escapeCell("a\nb")}`,
-			"markdown",
+			markdown,
 		).map(({ match }) => escapeGlyph(match));
 		expect(glyphs).toEqual(["·", "|", LINE_BREAK_GLYPH]);
 	});
 
 	it("tells whitespace apart rather than calling it all a space", () => {
-		const [space] = scanEscapes(escapeCell(" x"), "markdown");
-		const [tab] = scanEscapes(escapeCell("\tx"), "markdown");
-		const [nbsp] = scanEscapes(escapeCell("\u00a0x"), "markdown");
+		const [space] = scanEscapes(escapeCell(" x"), markdown);
+		const [tab] = scanEscapes(escapeCell("\tx"), markdown);
+		const [nbsp] = scanEscapes(escapeCell("\u00a0x"), markdown);
 		const drawn = [space, tab, nbsp].map((found) =>
 			found ? escapeGlyph(found.match) : null,
 		);
@@ -125,7 +144,7 @@ describe("escapeGlyph", () => {
 	});
 
 	it("draws one character for a sequence that restores several", () => {
-		const [found] = scanEscapes(escapeCell("<br>"), "markdown");
+		const [found] = scanEscapes(escapeCell("<br>"), markdown);
 		expect(found?.match.decoded).toBe("<br>");
 		expect(found && escapeGlyph(found.match)).toHaveLength(1);
 	});
@@ -137,13 +156,13 @@ describe("escapeAt", () => {
 
 	it("answers for every column the sequence covers", () => {
 		for (let column = start; column < start + 5; column += 1) {
-			expect(escapeAt(line, column, "markdown")?.offset).toBe(start);
+			expect(escapeAt(line, column, markdown)?.offset).toBe(start);
 		}
 	});
 
 	it("answers for nothing outside it", () => {
-		expect(escapeAt(line, start - 1, "markdown")).toBeNull();
-		expect(escapeAt(line, start + 5, "markdown")).toBeNull();
+		expect(escapeAt(line, start - 1, markdown)).toBeNull();
+		expect(escapeAt(line, start + 5, markdown)).toBeNull();
 	});
 });
 
@@ -155,10 +174,10 @@ describe("line breaks", () => {
 
 	it("draws every spelling of a break as the same one-character glyph", () => {
 		const breaks = [
-			...scanEscapes(escapeCell("a\nb"), "markdown"),
-			...scanEscapes(escapeCell(`${first.city}\n`), "markdown"),
-			...scanEscapes(escapeJiraCell("a\nb"), "jira"),
-			...scanEscapes("a<br>b", "html"),
+			...scanEscapes(escapeCell("a\nb"), markdown),
+			...scanEscapes(escapeCell(`${first.city}\n`), markdown),
+			...scanEscapes(escapeJiraCell("a\nb"), jira),
+			...scanEscapes("a<br>b", html),
 		];
 		expect(breaks).toHaveLength(4);
 		for (const { match } of breaks) {
@@ -168,20 +187,20 @@ describe("line breaks", () => {
 	});
 
 	it("keeps every other glyph at the width of its sequence", () => {
-		const [pipe] = scanEscapes(escapeCell("a|b"), "markdown");
+		const [pipe] = scanEscapes(escapeCell("a|b"), markdown);
 		expect(pipe && glyphColumns(pipe.match)).toBe(2);
 	});
 
 	it("owes each cell's delimiter exactly the room its breaks gave back", () => {
 		const line = `| ${escapeCell("a\nb\nc")} | ${escapeCell("a|b")} |`;
-		const escapes = scanEscapes(line, "markdown");
+		const escapes = scanEscapes(line, markdown);
 		const owed = owedPadding(line, escapes);
 		// Two `&#10;` of five characters each, drawn as one character each.
 		const cellEnd = line.indexOf(" | ") + 1;
 		expect([...owed]).toEqual([[cellEnd, 8]]);
 		// Written as `<br>`, four characters each (#397).
 		const tags = `| ${escapeCell("a\nb\nc", true)} |`;
-		expect([...owedPadding(tags, scanEscapes(tags, "markdown"))]).toEqual([
+		expect([...owedPadding(tags, scanEscapes(tags, markdown))]).toEqual([
 			[tags.lastIndexOf("|"), 6],
 		]);
 		// The escaped pipe in the next cell is not a delimiter, and a cell

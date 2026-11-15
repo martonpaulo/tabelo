@@ -187,13 +187,17 @@ describe("column alignment", () => {
 	it("counts a Jira line break as its one-character glyph while it is drawn", () => {
 		const text = "a\\\\b";
 		expect(
-			drawnWidth(text, { ...plain, escapes: "jira" })(0, text.length),
-		).toBe(3);
-		expect(
-			drawnWidth(text, { ...plain, escapes: "jira", lineBreaks: false })(
+			drawnWidth(text, { ...plain, escapes: jiraCodec.escapeMatcher ?? null })(
 				0,
 				text.length,
 			),
+		).toBe(3);
+		expect(
+			drawnWidth(text, {
+				...plain,
+				escapes: jiraCodec.escapeMatcher ?? null,
+				lineBreaks: false,
+			})(0, text.length),
 		).toBe(4);
 	});
 

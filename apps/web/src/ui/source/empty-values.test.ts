@@ -8,16 +8,16 @@ import { csvCodec } from "@/formats/csv";
 import { htmlCodec } from "@/formats/html";
 import { jiraCodec } from "@/formats/jira";
 import { jsonCodec } from "@/formats/json";
+import { markdownCodec } from "@/formats/markdown";
 import { recordsCodec } from "@/formats/records";
 import { tsvCodec } from "@/formats/tsv";
+import type { EmptySourceField, TableCodec } from "@/formats/types";
 import {
+	codecEmptyCells,
 	type EmptyCell,
-	type EmptyValueSyntax,
-	emptyCells,
-	emptyValueSyntax,
-	jiraEmptyFields,
-	recordsEmptyOffset,
-	scanDelimitedLine,
+	type EmptyCellReader,
+	htmlEmptyCells,
+	jsonEmptyCells,
 	snapToEmptyCell,
 } from "./empty-values";
 import { htmlLanguage } from "./html-language";
@@ -26,42 +26,39 @@ import { htmlLanguage } from "./html-language";
 // states the fields the format's own parser finds and then asserts which of
 // them are invisible in the text.
 
-describe("emptyValueSyntax", () => {
-	it("reads the separator a delimited view's codec declares", () => {
-		expect(emptyValueSyntax("delimited", csvCodec.fieldSeparator)).toEqual({
-			kind: "delimited",
-			separator: ",",
-		});
-		expect(emptyValueSyntax("delimited", tsvCodec.fieldSeparator)).toEqual({
-			kind: "delimited",
-			separator: "\t",
-		});
+// The empty fields a codec locates in its own text (#551).
+function emptyFieldsOf(codec: TableCodec, text: string): EmptySourceField[] {
+	const locate = codec.emptyFields;
+	if (!locate) throw new Error(`${codec.id} locates no empty fields`);
+	return [...locate(text)];
+}
+
+const fieldRanges = (fields: readonly EmptySourceField[]) =>
+	fields.map(({ from, to }) => ({ from, to }));
+
+describe("which codecs locate their own empty fields", () => {
+	it("locates them where the codec's own splitter bounds a field", () => {
+		for (const codec of [csvCodec, tsvCodec, jiraCodec, recordsCodec]) {
+			expect(codec.emptyFields).toBeDefined();
+		}
 	});
 
-	it("marks every source syntax, and nothing in plain text", () => {
-		expect(emptyValueSyntax("json", jsonCodec.fieldSeparator)).toEqual({
-			kind: "json",
-		});
-		expect(emptyValueSyntax("records", undefined)).toEqual({
-			kind: "records",
-		});
-		expect(emptyValueSyntax("html", undefined)).toEqual({ kind: "html" });
-		expect(emptyValueSyntax("plain", undefined)).toBeNull();
+	it("leaves the formats only the editor grammar can bound to that grammar", () => {
+		for (const codec of [markdownCodec, jsonCodec, htmlCodec]) {
+			expect(codec.emptyFields).toBeUndefined();
+		}
 	});
 
-	it("marks the pipe syntaxes without needing a separator", () => {
-		expect(emptyValueSyntax("markdown", undefined)).toEqual({
-			kind: "markdown",
-		});
-		expect(emptyValueSyntax("jira", jiraCodec.fieldSeparator)).toEqual({
-			kind: "jira",
-		});
+	it("names the spelling of an empty value only where the format writes one", () => {
+		expect(jiraCodec.emptyFieldText).toBe(" ");
+		expect(csvCodec.emptyFieldText).toBeUndefined();
 	});
 });
 
-describe("scanDelimitedLine", () => {
-	const scan = (line: string, separator = ",", inQuotes = false) =>
-		scanDelimitedLine(line, separator, inQuotes);
+describe("delimited empty fields", () => {
+	const scan = (text: string, codec: TableCodec = csvCodec) => ({
+		offsets: emptyFieldsOf(codec, text).map(({ from }) => from),
+	});
 
 	it("marks an empty field between two separators", () => {
 		expect(scan("a,,b").offsets).toEqual([2]);
@@ -87,10 +84,9 @@ describe("scanDelimitedLine", () => {
 		expect(scan('"a""b",,c').offsets).toEqual([7]);
 	});
 
-	it("carries an unterminated quoted value into the next line", () => {
-		const opening = scan('a,"line one');
-		expect(opening.endsInQuotes).toBe(true);
-		expect(scan('line two",,b', ",", true).offsets).toEqual([10]);
+	it("carries a quoted value across a line break", () => {
+		const text = 'a,"line one\nline two",,b';
+		expect(scan(text).offsets).toEqual([text.indexOf(",,") + 1]);
 	});
 
 	it("says nothing about a line with no structure at all", () => {
@@ -98,9 +94,9 @@ describe("scanDelimitedLine", () => {
 		expect(scan("a plain sentence").offsets).toEqual([]);
 	});
 
-	it("uses the separator it is given rather than any comma it finds", () => {
-		expect(scan("a,b\t\tc", "\t").offsets).toEqual([4]);
-		expect(scan("a\tb", ",").offsets).toEqual([]);
+	it("uses the separator its codec declares rather than any comma it finds", () => {
+		expect(scan("a,b\t\tc", tsvCodec).offsets).toEqual([4]);
+		expect(scan("a\tb", csvCodec).offsets).toEqual([]);
 	});
 
 	it("agrees with the delimited codec about how many fields a row has", () => {
@@ -114,9 +110,11 @@ describe("scanDelimitedLine", () => {
 	});
 });
 
-describe("jiraEmptyFields", () => {
-	const jiraEmptyOffsets = (line: string) =>
-		jiraEmptyFields(line).map(({ from }) => from);
+describe("Jira empty fields", () => {
+	const jiraEmptyFields = (text: string) =>
+		fieldRanges(emptyFieldsOf(jiraCodec, text));
+	const jiraEmptyOffsets = (text: string) =>
+		jiraEmptyFields(text).map(({ from }) => from);
 
 	it("marks an empty cell in a body row", () => {
 		expect(jiraEmptyOffsets("|x||z|")).toEqual([3]);
@@ -139,6 +137,11 @@ describe("jiraEmptyFields", () => {
 	it("reads a header line's doubled pipes as one delimiter", () => {
 		expect(jiraEmptyOffsets("||a||b||")).toEqual([]);
 		expect(jiraEmptyOffsets("||a|||b||")).toEqual([5]);
+		// Both delimiters keep their two characters, so the caret steps over
+		// the whole of each.
+		expect(emptyFieldsOf(jiraCodec, "||a|| ||")).toEqual([
+			{ before: 3, from: 5, to: 6, after: 8 },
+		]);
 	});
 
 	it("marks a header of only empty cells", () => {
@@ -153,8 +156,7 @@ describe("jiraEmptyFields", () => {
 			],
 			{ headerRow: true },
 		);
-		const lines = jiraCodec.serialize(document).split("\n");
-		for (const line of lines) expect(jiraEmptyFields(line)).toHaveLength(3);
+		expect(jiraEmptyFields(jiraCodec.serialize(document))).toHaveLength(6);
 	});
 
 	it("does not read an escaped pipe as a delimiter", () => {
@@ -166,30 +168,54 @@ describe("jiraEmptyFields", () => {
 		expect(jiraEmptyOffsets("a plain sentence")).toEqual([]);
 	});
 
+	// The editor once split a row on every unescaped pipe while the codec skips
+	// the pipes inside a link or an image, so a marker could sit inside a link
+	// where the parse sees no cell at all (#551).
+	it("marks empty fields at exactly the cells the codec maps around a link", () => {
+		const first = samplePerson(0);
+		const text = [
+			"||name||city||",
+			`|[${first.name}| |https://example.com]| |`,
+			`|!https://example.com/a.png|alt=${first.city}| |!| |`,
+		].join("\n");
+		const parsed = jiraCodec.parseMatrix(text);
+		expect(parsed.ok).toBe(true);
+		if (!parsed.ok) return;
+		expect(parsed.warnings).toBeUndefined();
+		const mappedEmpty = (parsed.rows ?? []).flatMap(({ cells }) =>
+			cells.filter(({ from, to }) => {
+				const field = text.slice(from, to);
+				return field === "" || field === " ";
+			}),
+		);
+		expect(mappedEmpty).toHaveLength(2);
+		expect(jiraEmptyFields(text)).toEqual(
+			mappedEmpty.map(({ from, to }) => ({ from, to })),
+		);
+	});
+
 	it("agrees with the Jira codec about how many cells a row has", () => {
 		const source = "||a|||b||\n|x||z|";
 		const parsed = jiraCodec.parseMatrix(source);
 		expect(parsed.ok).toBe(true);
 		if (!parsed.ok) return;
-		const lines = source.split("\n");
-		for (const [index, row] of parsed.table.matrix.entries()) {
-			const empty = row.filter((cell) => cell === "").length;
-			expect(jiraEmptyOffsets(lines[index] ?? "")).toHaveLength(empty);
-		}
+		const empty = parsed.table.matrix
+			.flat()
+			.filter((cell) => cell === "").length;
+		expect(jiraEmptyOffsets(source)).toHaveLength(empty);
 	});
 });
 
-describe("emptyCells", () => {
-	const cellsOf = (text: string, separator: string) =>
-		emptyCells(
+describe("codecEmptyCells", () => {
+	const cellsOf = (text: string, codec: TableCodec) =>
+		codecEmptyCells((text) => emptyFieldsOf(codec, text))(
 			EditorState.create({ doc: text }),
-			{ kind: "delimited", separator },
 			0,
 			text.length,
 		);
 
 	it("spans an empty delimited field from one separator to the next", () => {
-		expect(cellsOf("a,,b", ",")).toEqual([
+		expect(cellsOf("a,,b", csvCodec)).toEqual([
 			{
 				before: 1,
 				cellStart: 2,
@@ -202,7 +228,7 @@ describe("emptyCells", () => {
 	});
 
 	it("stops a trailing empty field at the end of its line", () => {
-		expect(cellsOf("a,\nb,c", ",")).toEqual([
+		expect(cellsOf("a,\nb,c", csvCodec)).toEqual([
 			{
 				before: 1,
 				cellStart: 2,
@@ -215,7 +241,10 @@ describe("emptyCells", () => {
 	});
 });
 
-describe("recordsEmptyOffset", () => {
+describe("Records empty fields", () => {
+	const recordsEmptyOffset = (line: string) =>
+		emptyFieldsOf(recordsCodec, line)[0]?.from ?? null;
+
 	it("marks a bullet whose value is empty, after its colon", () => {
 		expect(recordsEmptyOffset("- Price:")).toBe(8);
 	});
@@ -263,29 +292,28 @@ describe("recordsEmptyOffset", () => {
 			.slice(1)
 			.flat()
 			.filter((cell) => cell === "").length;
-		const marked = source
-			.split("\n")
-			.filter((line) => recordsEmptyOffset(line) !== null).length;
-		expect(marked).toBe(empty);
+		expect(emptyFieldsOf(recordsCodec, source)).toHaveLength(empty);
 	});
 });
+
+const recordsCells = codecEmptyCells((text) =>
+	emptyFieldsOf(recordsCodec, text),
+);
 
 // The offsets where the placeholder is drawn, for a whole document in the
 // language the view parses it with.
 function markedOffsets(
 	text: string,
-	syntax: EmptyValueSyntax,
+	read: EmptyCellReader,
 	language: Extension = [],
 ): number[] {
 	const state = EditorState.create({ doc: text, extensions: language });
 	ensureSyntaxTree(state, state.doc.length, 5000);
-	return emptyCells(state, syntax, 0, text.length).map(
-		(cell) => cell.valueStart,
-	);
+	return read(state, 0, text.length).map((cell) => cell.valueStart);
 }
 
 describe("JSON empty values", () => {
-	const mark = (text: string) => markedOffsets(text, { kind: "json" }, json());
+	const mark = (text: string) => markedOffsets(text, jsonEmptyCells, json());
 
 	it("marks an empty string value between its quotes", () => {
 		const text = '[{"name":"","city":"Rio"}]';
@@ -308,7 +336,7 @@ describe("JSON empty values", () => {
 
 describe("HTML empty values", () => {
 	const mark = (text: string) =>
-		markedOffsets(text, { kind: "html" }, htmlLanguage);
+		markedOffsets(text, htmlEmptyCells, htmlLanguage);
 
 	it("marks an empty data cell and an empty header cell", () => {
 		const text = "<tr><th></th><td></td></tr>";
@@ -348,23 +376,23 @@ describe("the placeholder over what each codec writes", () => {
 
 	it("marks JSON's empty strings and none of its typed literals", () => {
 		const text = jsonCodec.serialize(document);
-		expect(markedOffsets(text, { kind: "json" }, json())).toHaveLength(3);
+		expect(markedOffsets(text, jsonEmptyCells, json())).toHaveLength(3);
 	});
 
 	it("marks HTML's empty cells", () => {
 		const text = htmlCodec.serialize(document);
 		// `null` projects to empty text, and HTML cannot tell it from `""`.
-		expect(markedOffsets(text, { kind: "html" }, htmlLanguage)).toHaveLength(4);
+		expect(markedOffsets(text, htmlEmptyCells, htmlLanguage)).toHaveLength(4);
 	});
 
 	it("marks Records' empty values, and nothing where the line is blank", () => {
 		const named = recordsCodec.serialize(document);
-		expect(markedOffsets(named, { kind: "records" })).toHaveLength(4);
+		expect(markedOffsets(named, recordsCells)).toHaveLength(4);
 		// With the column name omitted, the empty title is a blank line.
 		const unnamed = recordsCodec.serialize(document, {
 			includeFirstColumnName: false,
 		});
-		expect(markedOffsets(unnamed, { kind: "records" })).toHaveLength(3);
+		expect(markedOffsets(unnamed, recordsCells)).toHaveLength(3);
 	});
 });
 

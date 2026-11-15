@@ -54,7 +54,7 @@ export default function IndicatorPreview({
 						lineBreaks: lineBreakIndicators,
 						align: showsAlignment(alignColumns, wrap),
 						language: "delimited",
-						fieldSeparator: tsvCodec.fieldSeparator,
+						codec: tsvCodec,
 						lineBreakFields: tsvCodec.sourceFields,
 					}),
 					EditorState.readOnly.of(true),

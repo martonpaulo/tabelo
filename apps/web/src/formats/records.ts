@@ -1,7 +1,13 @@
 import { cellText, cellTextAt } from "@/core/cell-value";
 import type { TableDocument } from "@/core/types";
-import { lineSpans, textlessHeaderRow, toDocumentParseResult } from "./parse";
+import {
+	lineSpans,
+	matchBackslashLineBreak,
+	textlessHeaderRow,
+	toDocumentParseResult,
+} from "./parse";
 import type {
+	EmptySourceField,
 	MatrixParseResult,
 	OutputOptions,
 	PreconditionFailure,
@@ -128,9 +134,9 @@ interface HeaderValue {
 // mistaken for the boundary. A trailing bare colon means an empty value (rule
 // 4: `- Status:` parses to `""`, never a skipped bullet). Returns null when no
 // boundary exists at all, which is a malformed line. One owner for the split:
-// the parse reads the two halves, and Tab navigation (#54) and the editor's
-// empty-value placeholder (#274) read where the value begins.
-export function headerValueBoundary(
+// the parse reads the two halves, and Tab navigation (#54) and the empty
+// fields a source view marks (#274) read where the value begins.
+function headerValueBoundary(
 	line: string,
 ): { readonly headerEnd: number; readonly valueFrom: number } | null {
 	for (let index = 0; index < line.length; index += 1) {
@@ -174,6 +180,25 @@ function recordsFields(text: string): SourceFieldRange[] {
 		fields.push({ from: span.from + boundary.valueFrom, to: span.to });
 	}
 	return fields;
+}
+
+// A value line that ends where its value would start, `- Price:` or `Name: `,
+// read from the same fields Tab moves between. Two empty values have no place
+// here. A bullet the serializer omitted, with empty values excluded from the
+// output, has no position at all. A title whose column name is omitted and
+// whose value is empty is a blank line, which also separates records: that
+// line is ambiguous in the grammar, so nothing is reported rather than a guess.
+function recordsEmptyFields(text: string): EmptySourceField[] {
+	return recordsFields(text)
+		.filter(({ from, to }) => from === to)
+		.map(({ from, to }) => ({
+			// The caret leaves backwards over the separator and forwards onto
+			// the next line.
+			before: from - 1,
+			from,
+			to,
+			after: Math.min(to + 1, text.length),
+		}));
 }
 
 interface RecordBlock {
@@ -499,6 +524,10 @@ export const recordsCodec: TableCodec = {
 	extension: "records.txt",
 	mimeType: "text/plain",
 	sourceFields: recordsFields,
+	emptyFields: recordsEmptyFields,
+	// A line break inside a value is written `\n`; every other sequence the
+	// format writes stays as written in a source view.
+	escapeMatcher: matchBackslashLineBreak,
 	// Each record from its own parse, as a block under no header line (#402).
 	mapsSourceRows: true,
 	parseMatrix: parseRecordsMatrix,

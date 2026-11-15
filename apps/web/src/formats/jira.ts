@@ -1,7 +1,12 @@
 import { cellTextContentAt, readCell } from "@/core/cell-value";
 import type { BooleanTokens } from "@/core/document";
 import type { CellValue, Row, TableDocument, TextContent } from "@/core/types";
-import { jiraConstructEnds, parseJiraCell, writeJiraCell } from "./jira-inline";
+import {
+	jiraConstructEnds,
+	matchJiraEscape,
+	parseJiraCell,
+	writeJiraCell,
+} from "./jira-inline";
 import {
 	firstLineBlock,
 	lineSpans,
@@ -10,6 +15,7 @@ import {
 } from "./parse";
 import { jiraRowStartAssistance } from "./row-start-assistance";
 import type {
+	EmptySourceField,
 	MatrixParseResult,
 	ParseIssue,
 	SourceFieldRange,
@@ -82,8 +88,7 @@ function collapseHeaderPipes(line: string): {
 // space is written as its character reference, which the cell grammar already
 // decodes. Each spelling reads back as what wrote it, and a field of one space
 // is the only text read differently from its content.
-export const JIRA_EMPTY_FIELD = " ";
-const EMPTY_FIELD = JIRA_EMPTY_FIELD;
+const EMPTY_FIELD = " ";
 const ONE_SPACE_FIELD = "&#32;";
 
 function writeJiraField(value: TextContent): string {
@@ -140,9 +145,9 @@ function readJiraBodyField(raw: string, booleanMarks: boolean): CellValue {
 const HEADER_LINE = /^\s*\|\|/;
 
 // A Jira header line opens with a doubled pipe, which is also what makes its
-// delimiters double rather than single. One owner for that rule, because the
-// source editor reads the same structure to place empty-value markers.
-export function isJiraHeaderLine(line: string): boolean {
+// delimiters double rather than single. One owner for that rule: the parse,
+// the source fields, and the empty fields all read it.
+function isJiraHeaderLine(line: string): boolean {
 	return HEADER_LINE.test(line);
 }
 
@@ -211,39 +216,73 @@ function parseJiraMatrix(
 	};
 }
 
-// Where each cell of one Jira line sits in that line. A header line's doubled
-// pipes are collapsed for the splitter and its spans mapped back, so a header
-// cell is placed in the line the user is editing.
-function jiraLineCells(line: string, header: boolean): SourceRowRange[] {
-	if (!header) return jiraCellSpans(line);
+// Where each cell of one Jira line sits in that line, with the outer ends of
+// the delimiters around it. A header line's doubled pipes are collapsed for the
+// splitter and its spans mapped back, so a header cell is placed in the line
+// the user is editing and its delimiters keep their two characters.
+function jiraLineFields(line: string, header: boolean): EmptySourceField[] {
+	if (!header) {
+		return jiraCellSpans(line).map((cell) => ({
+			before: cell.from - 1,
+			from: cell.from,
+			to: cell.to,
+			after: cell.to + 1,
+		}));
+	}
 	const { text: collapsed, offsets } = collapseHeaderPipes(line);
+	const at = (index: number) => offsets[index] ?? line.length;
 	return jiraCellSpans(collapsed).map((cell) => ({
-		from: offsets[cell.from] ?? line.length,
-		to: offsets[cell.to] ?? line.length,
+		before: at(cell.from - 1),
+		from: at(cell.from),
+		to: at(cell.to),
+		after: at(cell.to + 1),
 	}));
 }
 
-// The cells of the table block in reading order, header first. Every cell's
-// text is content, so a field spans all of it, and the header's doubled pipes
-// are mapped back to the line the user is editing.
-function jiraFields(text: string): SourceFieldRange[] {
+function jiraLineCells(line: string, header: boolean): SourceRowRange[] {
+	return jiraLineFields(line, header).map(({ from, to }) => ({ from, to }));
+}
+
+// The fields of the table block in reading order, header first, as offsets in
+// `text`. Only the block's first line is read as a header, as the parse reads
+// it; a body line that happens to open with `||` is split like any other.
+function jiraBlockFields(text: string): EmptySourceField[] {
 	const lines = text.split(/\r?\n/);
 	const found = firstLineBlock(lines);
 	if (!found) return [];
 	const spans = lineSpans(text);
-	const fields: SourceFieldRange[] = [];
+	const fields: EmptySourceField[] = [];
 	for (let index = found.start; index < found.end; index += 1) {
 		const line = lines[index];
 		const lineFrom = spans[index]?.from;
 		if (line === undefined || lineFrom === undefined) continue;
-		// Only the block's first line is read as a header, as the parse reads it;
-		// a body line that happens to open with `||` is split like any other.
 		const header = index === found.start && isJiraHeaderLine(line);
-		for (const cell of jiraLineCells(line, header)) {
-			fields.push({ from: lineFrom + cell.from, to: lineFrom + cell.to });
+		for (const field of jiraLineFields(line, header)) {
+			fields.push({
+				before: lineFrom + field.before,
+				from: lineFrom + field.from,
+				to: lineFrom + field.to,
+				after: lineFrom + field.after,
+			});
 		}
 	}
 	return fields;
+}
+
+// Every cell's text is content, so a field spans all of it.
+function jiraFields(text: string): SourceFieldRange[] {
+	return jiraBlockFields(text).map(({ from, to }) => ({ from, to }));
+}
+
+// The fields that hold nothing, as a hand-typed `|x||z|` does, or exactly the
+// one space an empty cell is written with. They come from the same splitter
+// the parse reads, so a pipe inside a link or an image, which splits nothing
+// there, opens no empty field here either (#551).
+function jiraEmptyFields(text: string): EmptySourceField[] {
+	return jiraBlockFields(text).filter(({ from, to }) => {
+		const field = text.slice(from, to);
+		return field === "" || field === EMPTY_FIELD;
+	});
 }
 
 function serializeJira(
@@ -314,6 +353,9 @@ export const jiraCodec: TableCodec = {
 	mapsSourceRows: true,
 	mapsSourceColumns: true,
 	sourceFields: jiraFields,
+	emptyFields: jiraEmptyFields,
+	emptyFieldText: EMPTY_FIELD,
+	escapeMatcher: matchJiraEscape,
 	// Enter at the end of a row or of the header starts the next row with a
 	// bare `|` (#391). Typing into an empty cell replaces the space that spells
 	// it. The two never compete: one wants a line break, the other refuses one.

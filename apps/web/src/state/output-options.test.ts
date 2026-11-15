@@ -122,7 +122,7 @@ describe("the download preference", () => {
 				candidate.serialize(document),
 			);
 			expect(candidate.serialize(document).split("\n")[0]).toBe(
-				["Name", "Role"].join(candidate.fieldSeparator ?? ","),
+				["Name", "Role"].join({ csv: ",", tsv: "\t" }[id]),
 			);
 		},
 	);

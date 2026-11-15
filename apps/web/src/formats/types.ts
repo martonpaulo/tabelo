@@ -146,6 +146,17 @@ export interface SourceFieldRange {
 	readonly to: number;
 }
 
+// One field whose value is invisible in the text, as `emptyFields` reports it:
+// `from` to `to` is the field's own text, nothing or the format's spelling of
+// an empty value, and `before` and `after` are the outer ends of the
+// delimiters around it, which is where a caret leaving the field lands.
+export interface EmptySourceField {
+	readonly before: number;
+	readonly from: number;
+	readonly to: number;
+	readonly after: number;
+}
+
 // One replacement in source text, as UTF-16 offsets into the text it applies
 // to: `from` to `to` becomes `insert`.
 export interface SourceEdit {
@@ -270,10 +281,10 @@ export const defaultOutputOptions: Required<OutputOptions> = {
 };
 
 // A codec is a parser/serializer pair over the table document, plus the file
-// facts needed to download it. Adding a format means adding one of these and
-// registering it; synchronization, history, persistence, downloads, and the
-// clipboard all read the registry rather than naming formats. See
-// docs/adr/0005.
+// facts needed to download it and the grammar facts its source view draws
+// from. Synchronization, history, persistence, downloads, the clipboard, and
+// the source views all read the registry rather than naming formats. See
+// docs/adr/0005, "Consequences", for every step of adding one.
 export interface TableCodec {
 	readonly id: CodecId;
 	// Format facts used by structural reconciliation. A text-only syntax can
@@ -307,11 +318,6 @@ export interface TableCodec {
 	// the token itself, or for HTML's checkbox, which holds no text, the empty
 	// text (#485).
 	readonly booleanTokens?: BooleanTokens;
-	// The separator this format writes between fields, for the formats that
-	// have one. Declared rather than sniffed, because a source view only ever
-	// reads back this codec's own output. Presentation reads it to place
-	// empty-value markers; parsing never consults it.
-	readonly fieldSeparator?: string;
 	// Whether a successful parse returns where each row, and each cell of it,
 	// sits in the source (#296, #255). This is the codec's position mapping: a
 	// source view reads it to name the table row and column under the caret,
@@ -340,6 +346,25 @@ export interface TableCodec {
 	// keeps moving while the user repairs it. Absent for formats that nest
 	// rather than delimit, whose source views indent instead.
 	readonly sourceFields?: (text: string) => readonly SourceFieldRange[];
+	// The fields of `text` whose value the text leaves invisible, for the
+	// formats whose own splitter can bound one from the text alone (#274, #551):
+	// `a,,b`, Jira's `| |`, a Records line that ends at its separator. A source
+	// view draws its empty-value marker over each, so the marker and the parse
+	// can never disagree about where a cell is. Tolerant like `sourceFields`,
+	// and silent where a line's structure is ambiguous. Absent for a format
+	// whose empty cells only its editor grammar can bound (Markdown, JSON,
+	// HTML), and for one with none to mark.
+	readonly emptyFields?: (text: string) => readonly EmptySourceField[];
+	// The text this format writes an empty value with, where it writes one
+	// rather than nothing: Jira's one space, because `||` is its header
+	// delimiter. Column alignment gives such a field the placeholder's room.
+	readonly emptyFieldText?: string;
+	// The escape grammar of this format's cells, for the formats that write
+	// notation in place of a character (#551). A source view draws each match
+	// as one glyph, so a sequence the editor draws over and a sequence the codec
+	// decodes are the same sequence. Absent where every character is written as
+	// itself, as CSV and TSV write theirs.
+	readonly escapeMatcher?: EscapeMatcher;
 	// Whether a line break inside a cell is written as a real newline inside
 	// one of the `sourceFields`, as a quoted delimited field writes it, rather
 	// than as an escape sequence. A source view reads it to mark where such a

@@ -166,7 +166,7 @@ export default function SourceView({
 				emptyValueIndicators={emptyValueIndicators}
 				lineBreakIndicators={lineBreakIndicators}
 				alignColumns={showsAlignment(alignColumns, wrap) && alignsColumns(view)}
-				fieldSeparator={view.codec?.fieldSeparator}
+				codec={view.codec}
 				lineBreakFields={
 					view.codec?.literalLineBreaks ? view.codec.sourceFields : undefined
 				}

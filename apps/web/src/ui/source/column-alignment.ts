@@ -12,9 +12,8 @@ import {
 } from "@codemirror/view";
 import { EMPTY_VALUE_PLACEHOLDER } from "@/core/empty-value";
 import { displayWidth } from "@/formats/markdown-grammar";
-import type { SourceTableRow } from "@/formats/types";
+import type { EscapeMatcher, SourceTableRow } from "@/formats/types";
 import {
-	type EscapeSyntax,
 	encodesLineBreak,
 	glyphColumns,
 	scanEscapes,
@@ -63,7 +62,7 @@ export interface AlignmentOptions {
 	// Whether a line-break sequence is drawn as its one-character glyph.
 	readonly lineBreaks: boolean;
 	// The format's escape grammar, for the formats that have one.
-	readonly escapes: EscapeSyntax | null;
+	readonly escapes: EscapeMatcher | null;
 }
 
 // One run of padding: `columns` characters wide, drawn at offset `at`. A pad at

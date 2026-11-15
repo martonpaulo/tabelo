@@ -83,7 +83,7 @@ export function normalizeLineEndings(value: string): string {
 // Sticky, so the match is anchored at `lastIndex`.
 const LINE_BREAK_ELEMENT = /<br\s*\/?>/iy;
 
-export const matchHtmlLineBreak: EscapeMatcher = (value, index) => {
+const matchHtmlLineBreak: EscapeMatcher = (value, index) => {
 	if (value[index] !== "<") return null;
 	LINE_BREAK_ELEMENT.lastIndex = index;
 	const element = LINE_BREAK_ELEMENT.exec(value);
@@ -755,6 +755,10 @@ export const htmlCodec: TableCodec = {
 	mimeType: "text/html",
 	// Each `<tr>` from its own parse, as a block of lines (#402).
 	mapsSourceRows: true,
+	// HTML has the entity rules the browser itself reads, so the only notation
+	// a source view draws is its line break, `<br>`, as the same mark as every
+	// other format's (owner, 2026-09-19).
+	escapeMatcher: matchHtmlLineBreak,
 	parseMatrix: (text) => parseHtmlMatrix(text),
 	parse: (text, options) =>
 		toDocumentParseResult(
