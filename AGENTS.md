@@ -690,8 +690,8 @@ owner from both UI and agent entrypoints, and compact reads.
 - Update the smallest canonical documentation section when a durable contract
   changes. Do not create empty documentation for possible future use.
 - Keep the README easy to scan. Preserve third-party licenses and notices.
-- `biome.jsonc` disables three a11y rules for `packages/ui/src/components/**`
-  only. Those are vendored shadcn primitives, and the linter cannot see the
+- `biome.jsonc` disables three a11y rules for the vendored shadcn files in
+  `packages/ui/src/components/`, listed by name (#573). Those are vendored shadcn primitives, and the linter cannot see the
   `htmlFor`, role, and handler wiring that consumers supply. The exemption
   covers vendored primitives exclusively: never widen it to Tabelo's own
   components, where those rules are load-bearing.
