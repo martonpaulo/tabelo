@@ -14,10 +14,7 @@ import type { StorageIssue, TabeloState } from "./store";
 // writing because storage no longer agrees with it. The store composes it and
 // exposes it under its own names; this module owns the one pending save.
 
-type TabeloStore = Pick<
-	StoreApi<TabeloState>,
-	"getState" | "setState" | "subscribe"
->;
+type TabeloStore = Pick<StoreApi<TabeloState>, "getState" | "setState">;
 
 export function storageBlocksWrites(issue: StorageIssue | null): boolean {
 	return (
@@ -109,7 +106,9 @@ function isSharedKeyForThisTab(
 	return activeId !== null && key === tableKey(activeId);
 }
 
-export function startStoreAutosave(store: TabeloStore): () => void {
+export function startStoreAutosave(
+	store: TabeloStore & Pick<StoreApi<TabeloState>, "subscribe">,
+): () => void {
 	const onStorage = (event: StorageEvent) => {
 		if (isSharedKeyForThisTab(store, event.key)) markChangedElsewhere(store);
 	};

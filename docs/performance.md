@@ -678,7 +678,7 @@ browser method under `## Method` after #496 if a large-cell stall remains.
 ### Library hydration (#440)
 
 Startup reads every table's payload for its name (`readLibrary` in
-`state/store.ts`), because the name lives in the table's own payload (#403),
+`state/library.ts`, #564), because the name lives in the table's own payload (#403),
 then reads the active table again to open it. The audit on 2026-09-22
 (Chromium, reference machine A, median of three) saw first DOM at 140.2 ms
 with one 200-row table and 233.2 ms with 100 of them, while the read span grew
