@@ -29,7 +29,19 @@ export default defineConfig({
 	projects: [
 		{
 			name: "chromium",
-			use: { ...devices["Desktop Chrome"] },
+			use: {
+				...devices["Desktop Chrome"],
+				// A machine that cannot download Playwright's own Chromium build,
+				// such as a cloud session whose network blocks the download host,
+				// points this at a Chromium it already has (docs/testing.md).
+				...(process.env.TABELO_E2E_CHROMIUM
+					? {
+							launchOptions: {
+								executablePath: process.env.TABELO_E2E_CHROMIUM,
+							},
+						}
+					: {}),
+			},
 		},
 	],
 	// A reused preview server skips the build in `webServer.command`; this brings

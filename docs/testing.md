@@ -182,6 +182,15 @@ TABELO_E2E_WORKERS=1 pnpm test:e2e e2e/import.spec.ts
 pnpm test:e2e e2e/import.spec.ts -g "<title>"
 ```
 
+A machine that cannot run `pnpm test:e2e:install` uses a Chromium it already
+has through `TABELO_E2E_CHROMIUM`. A Claude Code cloud session is one: its
+network blocks `cdn.playwright.dev`, and its image ships a Chromium at
+`/opt/pw-browsers/chromium` (verified with Playwright 1.65 on 2026-11-15):
+
+```sh
+TABELO_E2E_CHROMIUM=/opt/pw-browsers/chromium pnpm test:e2e e2e/import.spec.ts
+```
+
 If execution announces a materially larger test count than the intent,
 interrupt it immediately and correct the command. Do not let a focused run
 silently become a full gate.
