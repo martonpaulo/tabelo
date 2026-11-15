@@ -61,3 +61,7 @@ temp
 
 # Python bytecode from scripts/text_check.py
 __pycache__/
+
+# Claude Code agent worktrees: full checkouts that Knip and git would
+# otherwise read as part of this one
+.claude/worktrees/
