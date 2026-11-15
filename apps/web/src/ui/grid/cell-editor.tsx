@@ -86,10 +86,13 @@ export function CellEditor({
 		element.style.height = `${element.scrollHeight}px`;
 	}, [value, wrapped]);
 
-	const finish = (exit: EditorExit) => {
+	const finish = (exit: EditorExit, next = value) => {
 		if (finished.current) return;
 		finished.current = true;
-		onFinish(value, exit);
+		// Let go of focus before the editor unmounts, as the rich editor does:
+		// see `finish` there (#558). A blur exit has already let go.
+		if (exit !== "commit") ref.current?.blur();
+		onFinish(next, exit);
 	};
 
 	const editor = (
@@ -116,8 +119,7 @@ export function CellEditor({
 				}
 				if (event.key === "Escape") {
 					event.preventDefault();
-					finished.current = true;
-					onFinish(initialValue, "cancel");
+					finish("cancel", initialValue);
 					return;
 				}
 				if (event.key === "Tab") {

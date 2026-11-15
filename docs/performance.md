@@ -710,6 +710,29 @@ name-only read would remove about 34 ms.
 | A metadata index holding the names would remove the cost | Inactive decode drops to one index read | **Not recommended at this benefit.** It stores each name twice, the drift #403 designed out, and needs an index version 4 with its migration, fixture and rollback. Reopen only with a report of startup above 100 ms that the read span explains. |
 | Reading the active table twice at startup is waste | One extra read: 0.46 ms here at 200 rows | **Disproved as worth a change.** |
 
+### Forced layouts in a cell commit (#558)
+
+Measured on 2026-11-15 on an x86_64 cloud container (4 vCPU), production
+build served by `vite preview`, headless Chromium 153 driven by the Playwright
+library at 1440 x 860. A stored table of 200 rows by 100 text columns (20,000
+cells, 94,000 layout objects) beside a Markdown pane. Type five characters into
+a cell, then trace Enter with CDP `Tracing` (`devtools.timeline`, its stack
+variant) and count the `Layout` events inside the task that dispatched the
+`keydown`. For a pane focus change, hover first and trace the press alone, so
+the hover is drawn before it as it is for a person. Three runs, median.
+
+| interaction | before | after |
+| --- | --- | --- |
+| Enter in a cell: layouts in the task | 4 (editor removal, fill handle, focus mark travel, `focus()`) | 1 (fill handle) |
+| Enter in a cell: the task | 450 ms | 198 ms |
+| Press in the Markdown pane, from the grid | 2 (fill handle `getComputedStyle`, CodeMirror) | 2 (column strip hit test, CodeMirror) |
+| Press on the focused grid cell, from the Markdown pane | 1 (fill handle `getComputedStyle`) | 1 (the cell's `focus()`) |
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| A cell commit lays the table out once per geometry read | 4 layouts in the Enter task, each a full pass over the table: removing the focused editor, the fill handle's measure, the focus mark's forced reflow, and `focus()` after the mark's writes | **Confirmed, and fixed in #558.** A key that ends an edit blurs the editor before the commit, focus moves in a layout effect before the mark is written, the mark commits its start with a style-only read, and the fill handle skips a render whose corner cell, classes and rectangle are unchanged. One layout remains: the first read after the commit's writes. |
+| A pane focus change lays the grid out because of the grid | The fill handle re-measured on every grid render, and a pane focus change renders the grid | **Confirmed, and fixed in #558.** It no longer measures. The count did not drop: a press makes the page dirty (`:active`), so the first read after it pays one layout, and it now falls to the source view's column strip hit test or the cell's `focus()`. CodeMirror's own selection read is the second layout in the Markdown pane. |
+
 ### Adding an entry
 
 An entry belongs here when a suspicion has been measured, whatever the answer.
