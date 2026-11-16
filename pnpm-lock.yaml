@@ -149,9 +149,6 @@ importers:
       string-width:
         specifier: 9.0.0
         version: 9.0.0
-      vite-plugin-pwa:
-        specifier: ^2.0.0
-        version: 2.0.0(@vite-pwa/assets-generator@2.0.0(@types/node@24.19.2))(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))(workbox-build@7.4.1)(workbox-window@7.4.1)
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -204,6 +201,9 @@ importers:
       vite:
         specifier: ^8.3.8
         version: 8.3.8(@types/node@24.19.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)
+      vite-plugin-pwa:
+        specifier: ^2.0.0
+        version: 2.0.0(@vite-pwa/assets-generator@2.0.0(@types/node@24.19.2))(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))(workbox-build@7.4.1)(workbox-window@7.4.1)
       vitest:
         specifier: ^4.1.12
         version: 4.1.12(@types/node@24.19.2)(happy-dom@21.0.4)(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
