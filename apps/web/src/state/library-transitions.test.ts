@@ -570,3 +570,50 @@ describe("the library's session state resets with the store (#564)", () => {
 		expect(useTabeloStore.getState().past).toEqual([]);
 	});
 });
+
+describe("naming a table after an imported file (#469)", () => {
+	const markdown = "| Name |\n| --- |\n| Ingrid |";
+
+	it("names a default-named table after the file, in its stored payload too", () => {
+		useTabeloStore
+			.getState()
+			.importText(markdown, "markdown", undefined, "Team roster.md");
+
+		const state = useTabeloStore.getState();
+		expect(state.name).toBe("Team roster");
+		expect(state.library.tables[0]?.name).toBe("Team roster");
+		const stored = JSON.parse(localStorage.getItem(tableKey(activeId())) ?? "");
+		expect(stored.name).toBe("Team roster");
+	});
+
+	it("keeps a name the user gave", () => {
+		useTabeloStore.getState().renameTable("Roster");
+
+		useTabeloStore
+			.getState()
+			.importText(markdown, "markdown", undefined, "Team roster.md");
+
+		expect(useTabeloStore.getState().name).toBe("Roster");
+	});
+
+	it("leaves the name alone for an import that is not from a file", () => {
+		useTabeloStore.getState().importText(markdown, "markdown");
+
+		expect(useTabeloStore.getState().name).toBe(DEFAULT_TABLE_NAME);
+	});
+
+	it("names the table once the header question is answered, not when cancelled", () => {
+		const store = useTabeloStore.getState();
+		store.importText("Name\nIngrid", "csv", undefined, "people.csv");
+		expect(useTabeloStore.getState().name).toBe(DEFAULT_TABLE_NAME);
+
+		useTabeloStore.getState().cancelPendingImport();
+		expect(useTabeloStore.getState().name).toBe(DEFAULT_TABLE_NAME);
+
+		useTabeloStore
+			.getState()
+			.importText("Name\nIngrid", "csv", undefined, "people.csv");
+		useTabeloStore.getState().answerPendingImport(true);
+		expect(useTabeloStore.getState().name).toBe("people");
+	});
+});

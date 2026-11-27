@@ -182,3 +182,20 @@ test("typing lands in the rename field as soon as the dialog opens", async ({
 	await page.keyboard.type("Typed");
 	await expect(input).toHaveValue("Typed");
 });
+
+test("a file import names a default-named table after the file, once (#469)", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.importFile("Team roster.md", "| Name |\n| --- |\n| Ingrid |");
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect(page).toHaveTitle(tableDocumentTitle("Team roster"));
+
+	await page.reload();
+	await expect(page).toHaveTitle(tableDocumentTitle("Team roster"));
+
+	await renameTable(page, "Roster");
+	await tabelo.importFile("Other.md", "| Name |\n| --- |\n| Paulo |");
+	await expect(tabelo.cell(1, 1)).toHaveText("Paulo");
+	await expect(page).toHaveTitle(tableDocumentTitle("Roster"));
+});

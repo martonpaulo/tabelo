@@ -45,6 +45,8 @@ export async function importTableFile(): Promise<boolean> {
 		file.name.toLowerCase().endsWith(`.${codec.extension}`),
 	);
 	const before = useTabeloStore.getState().document;
-	useTabeloStore.getState().importText(file.text, match?.id);
+	useTabeloStore
+		.getState()
+		.importText(file.text, match?.id, undefined, file.name);
 	return useTabeloStore.getState().document !== before;
 }

@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
 	addTable,
+	isDefaultTableName,
 	isLargeLibrary,
 	isNameTaken,
 	LARGE_LIBRARY_SIZE,
 	mergeStoredEntries,
 	nameForDuplicate,
 	nameForNewTable,
+	nameFromFileName,
 	nextTableMark,
 	removeTable,
 	renameEntry,
@@ -219,5 +221,58 @@ describe("mergeStoredEntries", () => {
 			() => "unused",
 		);
 		expect(ids(merged)).toEqual(["t0", "t1", "t2"]);
+	});
+});
+
+describe("names from an imported file (#469)", () => {
+	const library: TableLibrary = {
+		tables: [
+			{ id: "t0", name: "Untitled table", mark: 1 },
+			{ id: "t1", name: "people", mark: 2 },
+		],
+		activeId: "t0",
+	};
+
+	it("tells a default name from one the user typed", () => {
+		expect(isDefaultTableName("Untitled table", "Untitled table")).toBe(true);
+		expect(isDefaultTableName("Untitled table 12", "Untitled table")).toBe(
+			true,
+		);
+		expect(isDefaultTableName("Untitled table 0", "Untitled table")).toBe(
+			false,
+		);
+		expect(isDefaultTableName("Untitled table x", "Untitled table")).toBe(
+			false,
+		);
+		expect(isDefaultTableName("Roster", "Untitled table")).toBe(false);
+	});
+
+	it("takes the file name without its last extension", () => {
+		expect(nameFromFileName(library, "Team roles.csv", "t0")).toBe(
+			"Team roles",
+		);
+		expect(nameFromFileName(library, "roster.v2.md", "t0")).toBe("roster.v2");
+		expect(nameFromFileName(library, "notes", "t0")).toBe("notes");
+		expect(nameFromFileName(library, ".csv", "t0")).toBe(".csv");
+		expect(nameFromFileName(library, "  .csv", "t0")).toBeNull();
+	});
+
+	it("numbers a name another table holds, never the table's own", () => {
+		expect(nameFromFileName(library, "people.csv", "t0")).toBe("people 2");
+		expect(nameFromFileName(library, "people.csv", "t1")).toBe("people");
+	});
+
+	it("keeps a long name within the limit, suffix included", () => {
+		const long = "a".repeat(MAX_TABLE_NAME_CODE_POINTS + 10);
+		const crowded: TableLibrary = {
+			...library,
+			tables: [
+				...library.tables,
+				{ id: "t2", name: long.slice(0, MAX_TABLE_NAME_CODE_POINTS), mark: 3 },
+			],
+		};
+		const name = nameFromFileName(crowded, `${long}.csv`, "t0") ?? "";
+		expect([...name]).toHaveLength(MAX_TABLE_NAME_CODE_POINTS);
+		expect(name.endsWith(" 2")).toBe(true);
 	});
 });

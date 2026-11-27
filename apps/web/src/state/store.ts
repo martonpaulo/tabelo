@@ -82,7 +82,12 @@ import {
 	planFillSeries,
 	planOfferedSeries,
 } from "@/core/series";
-import type { TableId, TableLibrary } from "@/core/table-library";
+import {
+	isDefaultTableName,
+	nameFromFileName,
+	type TableId,
+	type TableLibrary,
+} from "@/core/table-library";
 import { tableShapeLimitError } from "@/core/table-limits";
 import type {
 	Alignment,
@@ -314,6 +319,7 @@ export interface PendingImprecise {
 				readonly kind: "import";
 				readonly text: string;
 				readonly format?: CodecId;
+				readonly fileName?: string;
 		  };
 	// The member key of the first such number, for the question to name.
 	readonly key: string;
@@ -326,6 +332,9 @@ export interface PendingImport {
 	// because applying the document is itself work: the answer can no longer
 	// ask the session whether anything had happened before it.
 	readonly initialSession: boolean;
+	// The file the text came from, when it came from one, so the answer can
+	// name the table after it (#469).
+	readonly fileName?: string;
 }
 
 // What Delete empty rows and columns removed, for the interface to announce.
@@ -694,10 +703,13 @@ export interface TabeloState {
 		payload: ClipboardPayload,
 		options?: MatrixParseOptions,
 	) => PasteRefusal | null;
+	// `fileName`, the imported file's name, names a table that still carries a
+	// default name once the import lands (#469).
 	importText: (
 		text: string,
 		format?: CodecId,
 		options?: MatrixParseOptions,
+		fileName?: string,
 	) => void;
 	reportInputError: (error: ImportError) => void;
 	// A paste into the rich cell editor, which inserts into one cell rather
@@ -1000,6 +1012,19 @@ function isInitialSession(
 	state: Pick<TabeloState, "document" | "hasHeldContent" | "draft">,
 ): boolean {
 	return isDocumentBlank(state.document) && !hasSessionWork(state);
+}
+
+// A table still carrying a default name takes the imported file's name, once,
+// when the import lands (owner decision on #469). A name the user gave is never
+// replaced, and nothing is stored to remember either: the name is the mark.
+// The rename goes through the ordinary command, so a failed write is reported
+// the way any rename's is and leaves the imported document in place.
+function nameTableAfterFile(state: TabeloState, fileName: string | undefined) {
+	const id = state.library.activeId;
+	if (fileName === undefined || id === null) return;
+	if (!isDefaultTableName(state.name, DEFAULT_TABLE_NAME)) return;
+	const name = nameFromFileName(state.library, fileName, id);
+	if (name !== null) state.renameTable(name);
 }
 
 // What accepting an import leaves behind, whichever path answered the header
@@ -2493,7 +2518,7 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 		return null;
 	},
 
-	importText: (text, format, options) => {
+	importText: (text, format, options, fileName) => {
 		const state = get();
 		const prepared = prepareImport({ payload: { text }, format, options });
 		if (!prepared.ok) {
@@ -2501,7 +2526,7 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 			if (imprecise !== null) {
 				set({
 					pendingImprecise: {
-						request: { kind: "import", text, format },
+						request: { kind: "import", text, format, fileName },
 						key: imprecise,
 					},
 					inputError: null,
@@ -2515,7 +2540,11 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 		const initialSession = isInitialSession(state);
 		if (prepared.value.headerRow === undefined) {
 			set({
-				pendingImport: { prepared: prepared.value, initialSession },
+				pendingImport: {
+					prepared: prepared.value,
+					initialSession,
+					fileName,
+				},
 				inputError: null,
 			});
 			return;
@@ -2525,6 +2554,7 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 			prepared.value.headerRow,
 		);
 		state.replaceDocument(document);
+		nameTableAfterFile(get(), fileName);
 		set((current) => ({
 			...importedWorkspaceState(
 				current.workspace,
@@ -2549,6 +2579,7 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 		// applying it is what sets the held-content flag.
 		const initialSession = pending.initialSession && isInitialSession(state);
 		state.replaceDocument(createImportedDocument(pending.prepared, headerRow));
+		nameTableAfterFile(get(), pending.fileName);
 		set((current) => ({
 			...importedWorkspaceState(
 				current.workspace,
@@ -2570,7 +2601,12 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 		if (pending.request.kind === "paste") {
 			state.pasteClipboard(pending.request.payload, options);
 		} else {
-			state.importText(pending.request.text, pending.request.format, options);
+			state.importText(
+				pending.request.text,
+				pending.request.format,
+				options,
+				pending.request.fileName,
+			);
 		}
 	},
 

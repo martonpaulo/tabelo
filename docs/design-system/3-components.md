@@ -669,6 +669,15 @@ Its labelled input starts with the current name, validates before saving, and
 keeps both the prior name and the dialog open when durable storage refuses the
 change.
 
+A file import names the table it lands in after the file, once, while that
+table still carries a default name (`Untitled table`, alone or numbered): the
+file's name without its last extension, numbered apart when another table holds
+it and kept within the name limit. A name the user gave is never replaced, the
+name is not derived from the content, and nothing new is stored: the default
+name is the only mark. Paste and an import that is not from a file leave the
+name alone, and undoing the import keeps it, as a rename stays outside undo
+(decided on #469).
+
 Typed grid entry has one deliberate decision dialog (#201). Committing valid number or
 boolean input whose canonical representation differs from the draft asks
 whether to convert it or keep the entered text exactly. Committing invalid

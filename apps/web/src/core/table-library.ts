@@ -89,6 +89,48 @@ export function nameForDuplicate(
 	return candidate;
 }
 
+// Whether a table still carries a name the library gave it, the default alone
+// or numbered, rather than one the user typed. Read off the name itself, so
+// nothing new is stored to tell the two apart (#469).
+export function isDefaultTableName(name: string, defaultName: string): boolean {
+	if (name === defaultName) return true;
+	const prefix = `${defaultName} `;
+	return (
+		name.startsWith(prefix) && /^[1-9][0-9]*$/.test(name.slice(prefix.length))
+	);
+}
+
+// The name a file import gives a table that still carries a default name: the
+// file's own name without its extension, which the user chose, never a guess
+// read from the content (#469). A name another table holds is numbered apart,
+// and the file's part is shortened to keep the whole within the name limit.
+// A file name with nothing before its extension gives no name.
+export function nameFromFileName(
+	library: TableLibrary,
+	fileName: string,
+	tableId: TableId,
+): string | null {
+	const dot = fileName.lastIndexOf(".");
+	const stem = (dot > 0 ? fileName.slice(0, dot) : fileName).trim();
+	if (stem === "") return null;
+	const taken = new Set(
+		library.tables
+			.filter((table) => table.id !== tableId)
+			.map((table) => table.name),
+	);
+	const named = (suffix: string) => {
+		const room = MAX_TABLE_NAME_CODE_POINTS - [...suffix].length;
+		return `${[...stem].slice(0, room).join("").trimEnd()}${suffix}`;
+	};
+	let candidate = named("");
+	let index = 2;
+	while (taken.has(candidate)) {
+		candidate = named(` ${index}`);
+		index += 1;
+	}
+	return candidate;
+}
+
 // Two tables that already share a name, from before the rule or from a
 // payload edited by hand, are numbered apart when the library is read. The
 // first keeps what it had; each later one takes the first free number.
