@@ -129,7 +129,11 @@ describe("csv parsing", () => {
 	// large for the product has to be refused by the import limits with a
 	// message, not crash the parse that was measuring it. The fixture is tall
 	// rather than large, because the number of rows is what the call counted.
-	it("detects a separator over more rows than a call can take arguments", () => {
+	// Parsing 200,000 rows takes about 2 s alone and over 9 s on a loaded
+	// machine, past the 5 s default, so it carries its own timeout.
+	it("detects a separator over more rows than a call can take arguments", {
+		timeout: 30_000,
+	}, () => {
 		const result = csvCodec.parseMatrix("a\n".repeat(200_000));
 
 		expect(result.ok).toBe(true);
