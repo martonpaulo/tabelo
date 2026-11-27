@@ -24,6 +24,12 @@ export const hairlineStyles = "tabelo-hairline border";
 // 2026-09-19). No floating layer adds a shadow of its own.
 export const floatingSurfaceStyles = `${hairlineStyles} [--hairline-color:var(--line-floating)] [--hairline-fill:var(--popover)] shadow-(--shadow-floating)`;
 
+// What dims the workspace behind a modal layer: every dialog and the start
+// card share it, so one scrim says "the table waits behind this" (owner,
+// decided on tabelo#580).
+export const backdropStyles =
+	"bg-black/10 supports-backdrop-filter:backdrop-blur-xs";
+
 // The same treatment for a surface that sits in the layout rather than over
 // it: the subtle boundary and no shadow.
 export const panelSurfaceStyles = `${hairlineStyles} [--hairline-color:var(--line-pane)] [--hairline-fill:var(--surface-panel)]`;

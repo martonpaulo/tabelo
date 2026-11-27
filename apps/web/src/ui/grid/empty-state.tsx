@@ -4,7 +4,10 @@ import {
 	optionBlockStyles,
 } from "@tabelo/ui/components/menu-styles";
 import { controlStateTransitionStyles } from "@tabelo/ui/components/motion-styles";
-import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
+import {
+	backdropStyles,
+	floatingSurfaceStyles,
+} from "@tabelo/ui/components/surface-styles";
 import { modShortcut } from "@tabelo/ui/lib/platform";
 import { cn } from "@tabelo/ui/lib/utils";
 import {
@@ -91,7 +94,10 @@ export function EmptyState({
 	return (
 		<div
 			inert={suspended || undefined}
-			className="bg-surface-app/60 absolute inset-0 z-40 flex items-center justify-center p-4 supports-backdrop-filter:backdrop-blur-sm"
+			className={cn(
+				"absolute inset-0 z-40 flex items-center justify-center p-4",
+				backdropStyles,
+			)}
 		>
 			<section
 				ref={sectionRef}

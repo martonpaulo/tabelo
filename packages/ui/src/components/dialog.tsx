@@ -6,7 +6,10 @@ import {
 	popupTransitionStyles,
 } from "@tabelo/ui/components/motion-styles";
 
-import { floatingSurfaceStyles } from "@tabelo/ui/components/surface-styles";
+import {
+	backdropStyles,
+	floatingSurfaceStyles,
+} from "@tabelo/ui/components/surface-styles";
 import { cn } from "@tabelo/ui/lib/utils";
 import type * as React from "react";
 
@@ -34,7 +37,7 @@ function DialogOverlay({
 		<DialogPrimitive.Backdrop
 			data-slot="dialog-overlay"
 			className={cn(
-				"fixed inset-0 isolate z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
+				`fixed inset-0 isolate z-50 ${backdropStyles}`,
 				overlayTransitionStyles,
 				className,
 			)}

@@ -708,6 +708,7 @@ than independent booleans. Raising `z-index` is not a hierarchy fix.
 | Rule | Treatment |
 | :--- | :--- |
 | Surface | `rounded-surface`, `bg-popover`, one shadow: a floating layer |
+| Backdrop | `backdropStyles`, a 10% black scrim with a light blur where supported, shared by every dialog and the start card (owner, decided on #580) |
 | Width | One of two presets on `DialogContent` (owner, 2026-09-19): `narrow` (28rem) for a confirmation or a short form, `wide` (32rem) for a chooser whose options carry descriptions, and Settings. A dialog never sets a width class of its own; below the `sm` breakpoint both fill the window less a 1rem margin each side |
 | Body text | `text-sm/relaxed`, owned by the shared `Dialog`; the same 0.875rem floor as everywhere else |
 | Title | `DialogTitle`, `text-lg font-semibold` (see Typography) |
