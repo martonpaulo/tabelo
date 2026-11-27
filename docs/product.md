@@ -142,6 +142,11 @@ baseline, and neither should be given an invented one.
   `apps/web` by CI. The application is its own landing page.
 - The product stores no secrets and holds no user account state.
 - Roughly 200 rows is the working scale, not a limit to engineer past.
+- These constraints and the non-goals above were reviewed against the
+  browser platform's alternatives (Workers, IndexedDB, OPFS, WebAssembly,
+  WebKit, Canvas and WebGPU, among others) and kept. An available API is not a
+  requirement, and each open question stays with its own issue, #442 to #447
+  (decided on #448).
 
 ## Decision index
 
@@ -171,6 +176,7 @@ reversible implementation choice does not belong here.
 | Move pane | One command opening a destination dialog; no pane dragging | design system §3 | #73 |
 | Download | The global format chooser is canonical | design system §3 | #70 |
 | Palette | One unconditional dark palette; no theme preference | ADR 0010 | #289 |
+| Browser-platform alternatives | Every current constraint kept after the platform review; each open question stays with its own issue (#442 to #447); no API is adopted because it exists | this document | #448 |
 | Page titles | `Tabelo · Table editor for Markdown, CSV, JSON and more` on the shell, `{table name} · Tabelo` once a table is open; no not-found title, because every deeper path is the app, normalized to `/` | `AGENTS.md` identity, `copy/product.ts` | #373 |
 | Grid wrapping | Per column, opt-in, off by default; one pane command wraps all columns | design system §9 | #41, #360 |
 | Source wrapping | Off by default; a global default in Settings that each pane may override | design system §2 | #95, #276 |
