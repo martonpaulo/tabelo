@@ -63,6 +63,11 @@ the exact text format the person came for.
 - Accepts pasted and imported data, reading the header row from formats that
   declare it and asking before replacing the table when CSV, TSV, or plain text
   does not.
+- Speaks the formats its views name and no others. A new format is a new
+  codec and a new view to keep synchronized without loss, so it is added only
+  for a real workflow that comes with a sample file. YAML and AsciiDoc were
+  tested, and SQL, reStructuredText, and LaTeX screened; none was added
+  (decided on #443).
 - Runs in the browser, offline and without an account. An optional local-agent
   connection lets Claude (Claude Code or Claude Desktop), the one supported
   agent, read and edit the active table over MCP after an explicit pairing;
@@ -222,6 +227,7 @@ reversible implementation choice does not belong here.
 | Rich cell editor clipboard | Paste into the rich cell editor inserts one cell's formatting from Tabelo's payload or HTML, never from plain text, and more than one cell as plain text; copy and cut write the fragment's text, semantic HTML, and exact structure (owner, 2026-09-19) | ADR 0011 | #306 |
 | Inline syntax per format | Markdown, HTML, and Jira spell inline content in one canonical syntax each and never infer it from ordinary text; HTML input is untrusted, and formatting it declines keeps its text with a warning in the pane, the import, or the paste; CSV, TSV, JSON, and Records disclose the projection instead; only https images load and only web and email links open | ADR 0011 | #306 |
 | Column type change | Changing a column's expected type converts its cells; cells that cannot follow without loss ask first, with Convert the rest or Cancel; one Undo | ADR 0008 | #392 |
+| Additional formats | None added: YAML and AsciiDoc tested, SQL, reStructuredText and LaTeX screened, all deferred; a new format needs a real workflow with a sample file | this document | #443 |
 | JSON shape | An array of row objects with explicit serializer preconditions | `CONTEXT.md` | #42, #145 |
 | JSON number precision | A number a double cannot hold is never rounded silently: an import or a paste asks and, on yes, keeps its digits as text; a source view refuses it and says to quote it | ADR 0008 | #548 |
 | Size limit | 500 data rows, 200 columns, 50,000 data cells, the header never charged; every growth path (import, paste, a draft's parse, insertion, duplication, transpose, agent batches) judges the shape before building it; an oversized draft stays an invalid draft | `CONTEXT.md` | #31, #418 |
