@@ -584,6 +584,23 @@ Node, Vitest bench, mean of 50 samples, milliseconds; `before` is commit
 | --- | --- | --- |
 | One long literal cell of unclosed link syntax can block the main thread | Before, each doubling multiplied the time by about four, up to a second for one 16 KB Jira cell. After, each doubling roughly doubles it, like the control | **Fixed.** A per-cell memo of where each label and destination closes (Markdown) and a per-line table of the next unescaped `]`, `\|` and `!` (Jira) replace the rescans; the grammar is unchanged. |
 
+### Parsing in a Web Worker (#444)
+
+A disposable experiment on 2026-09-22 bundled the same `markdownCodec.parseMatrix`
+once and ran it on the main thread, in a reused Worker, and in a new Worker per
+parse, in headless Chromium 153 on macOS: two series of three samples per mode
+after a warmup, with all 36 results, offsets included, identical. An 8 ms
+heartbeat timer measured event-loop gaps; it is not INP.
+
+| input | main thread | reused Worker | new Worker |
+| --- | ---: | ---: | ---: |
+| 200 x 5 table, 10,407 bytes | 1.2 to 2.8 ms | 2.5 ms | 26.2 to 28.1 ms |
+| 8,000 unclosed `[`, 8,015 bytes, before #417 | 423 to 484 ms, gaps as long | 592 to 629 ms, gaps 9 to 12 ms | 631 to 934 ms, gaps 9 to 25 ms |
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| Parsing should move to a Worker to keep the page responsive | above; the slow input was the quadratic scan #417 fixed, now 1.35 ms for 8,000 `[` on the bench | **Disproved as a reason to change the rule.** A Worker made every parse slower and only hid an algorithmic defect, which is fixed at its source instead. Workers stay excluded (`docs/product.md`); the owner kept the rule (decided on #444). Reopen only with a permitted input whose parse, with no algorithmic defect left, blocks the main thread. |
+
 ### Large cells (#441)
 
 A browser audit on 2026-09-22 saw one permitted long plain cell produce a long
