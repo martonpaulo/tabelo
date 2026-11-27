@@ -204,7 +204,11 @@ its rows open a dialog or ask first, which the shape above otherwise excludes.
 No submenu contains another, and no third level exists. The global `Copy as`
 submenu and the app menu's `Export` submenu are gone: copying the table opens
 the same format chooser as downloading it, and importing a file is `Mod+O` and
-the welcome surface (owner, 2026-09-20).
+the welcome surface (owner, 2026-09-20). That placement was reassessed against
+a shortcut reference, a command search, and Import back in the app menu, and
+kept: there is no command search and no shortcut list, because no difficulty
+of use was measured and each would add a surface to a calm interface (decided
+on #442).
 
 Focus has one owner as a submenu closes (#480). A submenu that closes on its
 own, with `ArrowLeft` or `Escape`, hands focus back to its trigger in the menu
