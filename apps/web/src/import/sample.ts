@@ -54,3 +54,39 @@ export function importSample(
 		omittedColumns: Math.max(0, width - columns),
 	};
 }
+
+// How the sample's width is shared between its columns (#577). Equal shares
+// split a short word such as "Developer" in a narrow dialog whenever another
+// column holds less, and an automatic table layout would let one long value
+// such as a link push the table past the dialog. So each column's share
+// follows its longest word, bounded both ways: a column of short words still
+// has room for one, and a very long word wraps inside a share no wider than
+// the cap instead of taking the table. A column's padding counts as a few
+// characters, so a narrow column is not starved of room for its text.
+export const SAMPLE_COLUMN_SHARE_BOUNDS = {
+	minimumCharacters: 3,
+	maximumCharacters: 24,
+	paddingCharacters: 2,
+} as const;
+
+export function sampleColumnShares(sample: ImportSample): number[] {
+	const columns = sample.rows[0]?.length ?? 0;
+	const { minimumCharacters, maximumCharacters, paddingCharacters } =
+		SAMPLE_COLUMN_SHARE_BOUNDS;
+	const weights = Array.from({ length: columns }, (_, column) => {
+		const longest = sample.rows.reduce((widest, row) => {
+			const words = (row[column]?.text ?? "").split(/\s+/);
+			return words.reduce(
+				(inner, word) => Math.max(inner, [...word].length),
+				widest,
+			);
+		}, 0);
+		const clamped = Math.min(
+			maximumCharacters,
+			Math.max(minimumCharacters, longest),
+		);
+		return clamped + paddingCharacters;
+	});
+	const total = weights.reduce((sum, weight) => sum + weight, 0);
+	return weights.map((weight) => weight / total);
+}

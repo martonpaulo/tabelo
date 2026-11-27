@@ -8,7 +8,11 @@ import {
 import { cn } from "@tabelo/ui/lib/utils";
 import { useId, useRef } from "react";
 import { copy } from "@/copy/copy";
-import { type ImportSample, importSample } from "@/import/sample";
+import {
+	type ImportSample,
+	importSample,
+	sampleColumnShares,
+} from "@/import/sample";
 import { useTabeloStore } from "@/state/store";
 import {
 	DialogActions,
@@ -101,10 +105,13 @@ export function HeaderRowDialog({
 // because which one is the header is the question being asked; row 1 is told
 // apart by its number and the stronger rule under it. Fixed layout at the
 // dialog's width, so a narrow window wraps the text instead of scrolling it
-// sideways, and nothing here takes focus before the buttons.
+// sideways, and nothing here takes focus before the buttons. Each column's
+// width follows its own words (#577), so a word that fits is never split;
+// the percentages share what the row-number column leaves.
 function IncomingSample({ sample }: { readonly sample: ImportSample }) {
 	const omitted = sample.omittedRows > 0 || sample.omittedColumns > 0;
 	const omittedId = useId();
+	const shares = sampleColumnShares(sample);
 	return (
 		<div className="grid min-w-0 gap-1.5">
 			<table
@@ -112,6 +119,13 @@ function IncomingSample({ sample }: { readonly sample: ImportSample }) {
 				aria-describedby={omitted ? omittedId : undefined}
 				className="rounded-interactive border-line-subtle w-full table-fixed border-separate border-spacing-0 overflow-hidden border text-xs"
 			>
+				<colgroup>
+					<col className="w-8" />
+					{shares.map((share, column) => (
+						// One column per sample column, never reordered.
+						<col key={column} style={{ width: `${share * 100}%` }} />
+					))}
+				</colgroup>
 				<tbody>
 					{sample.rows.map((row, rowIndex) => (
 						<tr

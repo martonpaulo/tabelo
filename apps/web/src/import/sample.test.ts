@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 import { samplePeopleMatrix } from "@/core/sample-data";
-import { IMPORT_SAMPLE_LIMITS, importSample } from "./sample";
+import {
+	IMPORT_SAMPLE_LIMITS,
+	importSample,
+	sampleColumnShares,
+} from "./sample";
 
 describe("importSample", () => {
 	it("keeps a small table whole, row 1 first", () => {
@@ -71,5 +75,36 @@ describe("importSample", () => {
 			omittedRows: 0,
 			omittedColumns: 0,
 		});
+	});
+});
+
+// #577. Each column's share follows its longest word, so a short word gets
+// room it fits in and one long value cannot take the whole table.
+describe("sampleColumnShares", () => {
+	it("gives a column with longer words a larger share, summing to the table", () => {
+		const shares = sampleColumnShares(importSample(samplePeopleMatrix()));
+		const [name, city, role, age] = shares;
+		expect(shares.reduce((sum, share) => sum + share, 0)).toBeCloseTo(1);
+		assert(name !== undefined && city !== undefined);
+		assert(role !== undefined && age !== undefined);
+		expect(role).toBeGreaterThan(name);
+		expect(age).toBeLessThan(name);
+	});
+
+	it("bounds the share of a column holding one very long word", () => {
+		const link = "https://example.com/".padEnd(80, "a");
+		const [long, short] = sampleColumnShares(
+			importSample([
+				[link, "Ingrid"],
+				[link, "Paulo"],
+			]),
+		);
+		assert(long !== undefined && short !== undefined);
+		expect(long).toBeLessThan(0.85);
+		expect(short).toBeGreaterThan(0.15);
+	});
+
+	it("has no share for an empty sample", () => {
+		expect(sampleColumnShares(importSample([]))).toEqual([]);
 	});
 });
