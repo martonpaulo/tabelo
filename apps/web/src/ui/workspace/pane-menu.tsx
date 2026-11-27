@@ -547,7 +547,7 @@ export function PaneMenu({
 							}
 						>
 							<IconReplace aria-hidden />
-							{copy.workspace.changeView}
+							{copy.workspace.changeViewCommand}
 						</DropdownMenuItem>
 						<ControlTooltip
 							reason={canMove ? undefined : copy.disabled.moveOnlyView}
@@ -559,7 +559,7 @@ export function PaneMenu({
 								}
 							>
 								<IconArrowsMove aria-hidden />
-								{copy.workspace.movePane}
+								{copy.workspace.movePaneCommand}
 							</DropdownMenuItem>
 						</ControlTooltip>
 

@@ -298,7 +298,7 @@ export function AppMenu({
 						onClick={() => menuDialog.runAfterClose(onAddView)}
 					>
 						<IconLayoutSidebarRightExpand aria-hidden />
-						{copy.workspace.addView}
+						{copy.workspace.addViewCommand}
 					</DropdownMenuItem>
 				</ControlTooltip>
 				<ControlTooltip
@@ -322,7 +322,7 @@ export function AppMenu({
 			<DropdownMenuGroup>
 				<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onSettings)}>
 					<IconAdjustmentsHorizontal aria-hidden />
-					{copy.settings.title}
+					{copy.settings.command}
 				</DropdownMenuItem>
 				<DropdownMenuItem onClick={() => menuDialog.runAfterClose(onAgent)}>
 					<IconPlug aria-hidden />
@@ -330,7 +330,7 @@ export function AppMenu({
 						? copy.agent.paused
 						: agentStatus === "connected"
 							? copy.agent.connected
-							: copy.agent.connect}
+							: copy.agent.connectCommand}
 				</DropdownMenuItem>
 			</DropdownMenuGroup>
 
@@ -498,7 +498,7 @@ function TableCommands({
 			)}
 			<Item onClick={onRename}>
 				<IconPencil aria-hidden />
-				{copy.actions.renameTable}
+				{copy.actions.renameTableCommand}
 			</Item>
 			<Item onClick={onDuplicate}>
 				<IconCopy aria-hidden />
@@ -512,11 +512,11 @@ function TableCommands({
 			{structure}
 			<Item onClick={onCopy}>
 				<IconClipboardCopy aria-hidden />
-				{copy.actions.copyTable}
+				{copy.actions.copyTableCommand}
 			</Item>
 			<Item onClick={onDownload}>
 				<IconDownload aria-hidden />
-				{copy.actions.downloadTable}
+				{copy.actions.downloadTableCommand}
 			</Item>
 			<Separator />
 			<Item variant="destructive" onClick={onDelete}>

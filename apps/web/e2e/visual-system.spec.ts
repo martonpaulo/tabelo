@@ -921,7 +921,7 @@ async function fontSize(control: Locator): Promise<number> {
 
 async function openSettings(tabelo: TabeloPage): Promise<Locator> {
 	const menu = await tabelo.openAppMenu();
-	await menu.getByRole("menuitem", { name: copy.settings.title }).click();
+	await menu.getByRole("menuitem", { name: copy.settings.command }).click();
 	await menu.waitFor({ state: "hidden" });
 	const dialog = tabelo.page.getByRole("dialog", { name: copy.settings.title });
 	await dialog.waitFor({ state: "visible" });
@@ -973,7 +973,7 @@ test("critical control labels hold the shared text-sm floor", async ({
 	const rename = await activeTableMenuItem(
 		page,
 		appMenu,
-		() => copy.actions.renameTable,
+		() => copy.actions.renameTableCommand,
 	);
 	await rename.click();
 	const renameDialog = page.getByRole("dialog", {

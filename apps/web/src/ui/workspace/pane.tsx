@@ -441,7 +441,7 @@ function SplitControl({
 				)}
 			>
 				<IconPlus aria-hidden className="size-3.5 shrink-0" />
-				<span>{copy.workspace.addView}</span>
+				<span>{copy.workspace.addViewCommand}</span>
 			</button>
 		</ControlTooltip>
 	);

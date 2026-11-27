@@ -39,7 +39,7 @@ test("tapping a disabled control shows why it is disabled (#553)", async ({
 	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
 	// Two stacked panes already fill a phone, so a third view is refused.
 	const addView = menu.getByRole("menuitem", {
-		name: copy.workspace.addView,
+		name: copy.workspace.addViewCommand,
 		exact: true,
 	});
 	await expect(addView).toHaveAttribute("aria-disabled", "true");

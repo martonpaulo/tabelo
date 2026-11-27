@@ -334,6 +334,12 @@ conventional names are allowed although they are not verbs: `New table`, the
 what it opens. A dialog is titled for what it holds while the command that
 opens it stays a verb: the `Change layout` command opens the `Layout` dialog.
 
+**Ellipsis.** A command that opens a dialog asking for more before it acts
+ends in an ellipsis, `…`, the one character, never three dots: `Rename
+table…`, `Change view…`, `Settings…`. The dialog's title and its confirming
+button carry none, and neither does a command that acts at once or one whose
+dialog only confirms, such as a delete (decided on #576).
+
 **Descriptions.** The line under a label, in a menu, a choice list, or a
 dialog field, is a fragment or noun phrase of roughly 45 characters or fewer:
 "Tab-separated, pastes into spreadsheets". It carries no full stop.

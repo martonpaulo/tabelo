@@ -208,7 +208,7 @@ function PaneFailure({
 					onClick={(event) => onChangeView(event.currentTarget)}
 				>
 					<IconReplace aria-hidden />
-					{copy.workspace.changeView}
+					{copy.workspace.changeViewCommand}
 				</Button>
 			</div>
 		</div>

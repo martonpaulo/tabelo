@@ -266,7 +266,7 @@ test("with a hovering pointer, a table row's options control shows only on its r
 	const options = menu.getByRole("menuitem", { name, exact: true });
 
 	await menu
-		.getByRole("menuitem", { name: copy.workspace.addView, exact: true })
+		.getByRole("menuitem", { name: copy.workspace.addViewCommand, exact: true })
 		.hover();
 	await expect(options).toHaveCSS("opacity", "0");
 

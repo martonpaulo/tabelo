@@ -99,7 +99,7 @@ test("the settings dialog has no WCAG violations", async ({
 	tabelo,
 }, testInfo) => {
 	const menu = await tabelo.openAppMenu();
-	await menu.getByRole("menuitem", { name: copy.settings.title }).click();
+	await menu.getByRole("menuitem", { name: copy.settings.command }).click();
 	await menu.waitFor({ state: "hidden" });
 	const dialog = page.getByRole("dialog", { name: copy.settings.title });
 	await expect(dialog).toBeVisible();

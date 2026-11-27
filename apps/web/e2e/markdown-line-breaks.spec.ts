@@ -37,7 +37,7 @@ async function seed(tabelo: TabeloPage): Promise<void> {
 async function setTags(page: Page, on: boolean): Promise<void> {
 	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
 	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
-	await menu.getByRole("menuitem", { name: copy.settings.title }).click();
+	await menu.getByRole("menuitem", { name: copy.settings.command }).click();
 	await menu.waitFor({ state: "hidden" });
 	const dialog = page.getByRole("dialog", { name: copy.settings.title });
 	const toggle = dialog.getByRole("switch", {

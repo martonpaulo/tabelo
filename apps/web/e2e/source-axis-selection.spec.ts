@@ -204,7 +204,7 @@ test("a fresh empty table's Jira pane marks three empty cells per row, and a col
 }) => {
 	await page.getByRole("button", { name: copy.actions.openAppMenu }).click();
 	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
-	await menu.getByRole("menuitem", { name: copy.settings.title }).click();
+	await menu.getByRole("menuitem", { name: copy.settings.command }).click();
 	const settings = page.getByRole("dialog", { name: copy.settings.title });
 	await settings
 		.getByRole("switch", { name: copy.settings.emptyValueIndicators.label })

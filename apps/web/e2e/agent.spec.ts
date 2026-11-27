@@ -61,7 +61,7 @@ const test = base.extend<{ agent: Agent }>({
 			).toBe(true);
 			const pairing = await call("tabelo_connect");
 			await (await tabelo.openAppMenu())
-				.getByRole("menuitem", { name: copy.agent.connect, exact: true })
+				.getByRole("menuitem", { name: copy.agent.connectCommand, exact: true })
 				.click();
 			const dialog = page.getByRole("dialog", { name: copy.agent.connect });
 			await dialog
@@ -633,7 +633,7 @@ test("first-time MCP setup stays in the dialog and its commands can be copied", 
 	await page.reload();
 	await tabelo.dismissWelcome();
 	await (await tabelo.openAppMenu())
-		.getByRole("menuitem", { name: copy.agent.connect, exact: true })
+		.getByRole("menuitem", { name: copy.agent.connectCommand, exact: true })
 		.click();
 	const dialog = page.getByRole("dialog", { name: copy.agent.connect });
 	await expect(dialog.getByRole("link")).toHaveCount(0);
@@ -772,7 +772,7 @@ test("a malformed code marks the field and a refused connection does not", async
 	tabelo,
 }) => {
 	await (await tabelo.openAppMenu())
-		.getByRole("menuitem", { name: copy.agent.connect, exact: true })
+		.getByRole("menuitem", { name: copy.agent.connectCommand, exact: true })
 		.click();
 	const dialog = page.getByRole("dialog", { name: copy.agent.connect });
 	const field = dialog.getByRole("textbox", { name: copy.agent.descriptor });

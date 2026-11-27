@@ -129,7 +129,9 @@ test("a narrow window stops Add view at two panes and keeps every open pane", as
 }) => {
 	const addView = async () => {
 		const menu = await tabelo.openAppMenu();
-		const item = menu.getByRole("menuitem", { name: copy.workspace.addView });
+		const item = menu.getByRole("menuitem", {
+			name: copy.workspace.addViewCommand,
+		});
 		const state = {
 			disabled: (await item.getAttribute("aria-disabled")) === "true",
 			described: ((await item.getAttribute("aria-describedby")) ?? "") !== "",

@@ -24,7 +24,7 @@ async function setWrapDefault(page: Page, wrap: boolean): Promise<void> {
 	const trigger = page.getByRole("button", { name: copy.actions.openAppMenu });
 	await trigger.click();
 	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
-	await menu.getByRole("menuitem", { name: copy.settings.title }).click();
+	await menu.getByRole("menuitem", { name: copy.settings.command }).click();
 	await menu.waitFor({ state: "hidden" });
 	const dialog = page.getByRole("dialog", { name: copy.settings.title });
 	await dialog.waitFor({ state: "visible" });

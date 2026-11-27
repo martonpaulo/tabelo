@@ -316,6 +316,9 @@ function preconditionMessage(failure: PreconditionFailure): string {
 export const copy = {
 	agent: {
 		connect: "Connect AI",
+		// The menu command that opens the dialog above: a command that asks for
+		// more before it acts ends in an ellipsis (#576).
+		connectCommand: "Connect AI…",
 		connectAction: "Connect",
 		connected: "AI connected",
 		paused: "AI paused",
@@ -479,6 +482,7 @@ export const copy = {
 
 	settings: {
 		title: "Settings",
+		command: "Settings…",
 		description:
 			"Choose how the Visual Table and every source view show your table. Your table doesn't change.",
 		done: "Done",
@@ -568,10 +572,11 @@ export const copy = {
 		// The dialog is titled for what it holds; the command that opens it is a
 		// verb like every other command.
 		layout: "Layout",
-		changeLayout: "Change layout",
+		changeLayout: "Change layout…",
 		layoutHint: "Choose how the open views are arranged",
 		applyLayout: "Apply layout",
 		changeView: "Change view",
+		changeViewCommand: "Change view…",
 		// A pane whose view failed while the rest of the app kept working. It
 		// promises only what is true: the document and any pending draft live
 		// in the store, not in the view that stopped.
@@ -587,10 +592,12 @@ export const copy = {
 		changeViewHint: (label: string) =>
 			`Choose the view shown in the ${label} pane`,
 		movePane: "Move pane",
+		movePaneCommand: "Move pane…",
 		movePaneHint: (label: string) => `Choose where to move the ${label} pane`,
 		moveDestination: "Pane position",
 		destinationView: (label: string) => `Currently ${label}`,
 		addView: "Add view",
+		addViewCommand: "Add view…",
 		closeView: "Close view",
 		paneActions: PANE_ACTIONS,
 		paneActionsFor: (label: string) => `${PANE_ACTIONS}: ${label}`,
@@ -1000,11 +1007,15 @@ export const copy = {
 		copyFormattedTable: "Copy formatted table",
 		downloadTable: "Download table",
 		copyTable: "Copy table",
+		// The commands that open the two dialogs above (#576).
+		downloadTableCommand: "Download table…",
+		copyTableCommand: "Copy table…",
 		openTable: "Open table",
 		tableOptionsNamed: (name: string) => `Options for ${name}`,
 		download: "Download",
 		cancel: "Cancel",
 		renameTable: "Rename table",
+		renameTableCommand: "Rename table…",
 		// Named for the table it acts on, because every row in the list carries
 		// this command and the name is what tells them apart (owner, 2026-09-20).
 		renameTableNamed: (name: string) => `Rename ${name}`,
@@ -1018,7 +1029,7 @@ export const copy = {
 		selectRow: SELECT_ROW,
 		selectColumn: SELECT_COLUMN,
 		fitColumnToContent: "Fit column to content",
-		setColumnWidth: "Set column width",
+		setColumnWidth: "Set column width…",
 		wrapColumnText: "Wrap text",
 		// Offered on the first data row and the first data column only, which is
 		// the axis each one pins, so the label says what it does rather than

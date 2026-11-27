@@ -135,9 +135,11 @@ test("the range ends stop the commands that would leave it", async ({
 		menu.getByRole("menuitem", { name: copy.workspace.closeView }),
 	).toBeDisabled();
 	await expect(
-		menu.getByRole("menuitem", { name: copy.workspace.movePane }),
+		menu.getByRole("menuitem", { name: copy.workspace.movePaneCommand }),
 	).toBeDisabled();
-	await menu.getByRole("menuitem", { name: copy.workspace.movePane }).hover();
+	await menu
+		.getByRole("menuitem", { name: copy.workspace.movePaneCommand })
+		.hover();
 	await expect(tabelo.page.getByRole("tooltip")).toBeVisible();
 	await tabelo.page.keyboard.press("Escape");
 
@@ -316,7 +318,9 @@ test("Change view leaves the flat pane menu for one dialog", async ({
 }) => {
 	const actionsMenu = await tabelo.openPaneMenu("markdown");
 	await expect(
-		actionsMenu.getByRole("menuitem", { name: copy.workspace.changeView }),
+		actionsMenu.getByRole("menuitem", {
+			name: copy.workspace.changeViewCommand,
+		}),
 	).toBeVisible();
 	await expect(actionsMenu.getByRole("menuitemradio")).toHaveCount(0);
 	await expect(

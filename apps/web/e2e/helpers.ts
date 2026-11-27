@@ -270,7 +270,10 @@ export function activeTableStorageKey(page: Page): Promise<string> {
 export async function openDownloadChooser(page: Page): Promise<void> {
 	const menu = await new TabeloPage(page).openTableOptions();
 	await menu
-		.getByRole("menuitem", { name: copy.actions.downloadTable, exact: true })
+		.getByRole("menuitem", {
+			name: copy.actions.downloadTableCommand,
+			exact: true,
+		})
 		.click();
 }
 
@@ -506,7 +509,7 @@ export class TabeloPage {
 			// means, which a helper reaching a pane count has no opinion about.
 			const menu = await this.openAppMenu();
 			await menu
-				.getByRole("menuitem", { name: copy.workspace.addView })
+				.getByRole("menuitem", { name: copy.workspace.addViewCommand })
 				.click();
 			await menu.waitFor({ state: "hidden" });
 			const dialog = this.page.getByRole("dialog", {
@@ -618,7 +621,10 @@ export class TabeloPage {
 	async openCopyDialog(): Promise<Locator> {
 		const menu = await this.openTableOptions();
 		await menu
-			.getByRole("menuitem", { name: copy.actions.copyTable, exact: true })
+			.getByRole("menuitem", {
+				name: copy.actions.copyTableCommand,
+				exact: true,
+			})
 			.click();
 		const dialog = this.page.getByRole("dialog", {
 			name: copy.actions.copyTable,
@@ -787,7 +793,7 @@ export class TabeloPage {
 	async openChangeViewDialog(view: ViewId, index = 0): Promise<Locator> {
 		const menu = await this.openPaneMenu(view, index);
 		await menu
-			.getByRole("menuitem", { name: copy.workspace.changeView })
+			.getByRole("menuitem", { name: copy.workspace.changeViewCommand })
 			.click();
 		await menu.waitFor({ state: "hidden" });
 		const dialog = this.page.getByRole("dialog", {
@@ -799,7 +805,9 @@ export class TabeloPage {
 
 	async openMovePaneDialog(view: ViewId, index = 0): Promise<Locator> {
 		const menu = await this.openPaneMenu(view, index);
-		await menu.getByRole("menuitem", { name: copy.workspace.movePane }).click();
+		await menu
+			.getByRole("menuitem", { name: copy.workspace.movePaneCommand })
+			.click();
 		await menu.waitFor({ state: "hidden" });
 		const dialog = this.page.getByRole("dialog", {
 			name: copy.workspace.movePane,

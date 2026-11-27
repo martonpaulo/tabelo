@@ -22,7 +22,7 @@ test("document actions live in one compact floating menu", async ({
 		menu.getByRole("menuitem", { name: copy.workspace.changeLayout }),
 	).toBeVisible();
 	await expect(
-		menu.getByRole("menuitem", { name: copy.workspace.addView }),
+		menu.getByRole("menuitem", { name: copy.workspace.addViewCommand }),
 	).toBeVisible();
 	await expect(
 		menu.getByRole("menuitem", { name: copy.actions.github }),
@@ -30,9 +30,9 @@ test("document actions live in one compact floating menu", async ({
 	await page.keyboard.press("Escape");
 	const tableMenu = await tabelo.openTableOptions();
 	for (const label of [
-		copy.actions.copyTable,
-		copy.actions.downloadTable,
-		copy.actions.renameTable,
+		copy.actions.copyTableCommand,
+		copy.actions.downloadTableCommand,
+		copy.actions.renameTableCommand,
 	]) {
 		await expect(
 			tableMenu.getByRole("menuitem", { name: label, exact: true }),
@@ -48,7 +48,9 @@ test("global Add view reuses the chooser and picks placement automatically", asy
 	tabelo,
 }) => {
 	const menu = await tabelo.openAppMenu();
-	await menu.getByRole("menuitem", { name: copy.workspace.addView }).click();
+	await menu
+		.getByRole("menuitem", { name: copy.workspace.addViewCommand })
+		.click();
 
 	const dialog = page.getByRole("dialog", { name: copy.addView.title });
 	await expect(dialog).toBeVisible();
@@ -68,7 +70,7 @@ test("global Add view stays explained at the workspace maximum", async ({
 	await tabelo.chooseLayout("quad");
 	const menu = await tabelo.openAppMenu();
 	const command = menu.getByRole("menuitem", {
-		name: copy.workspace.addView,
+		name: copy.workspace.addViewCommand,
 	});
 	await expect(command).toBeDisabled();
 	await command.hover();
@@ -89,7 +91,9 @@ test("each pane names itself and opens Change view from its actions", async ({
 
 	const actionsMenu = await tabelo.openPaneMenu("markdown");
 	await expect(
-		actionsMenu.getByRole("menuitem", { name: copy.workspace.changeView }),
+		actionsMenu.getByRole("menuitem", {
+			name: copy.workspace.changeViewCommand,
+		}),
 	).toBeVisible();
 	await expect(
 		actionsMenu.getByRole("menuitem", { name: copy.actions.copySource }),
@@ -126,10 +130,10 @@ test("pane actions follow content, display, then pane reading order", async ({
 		menu.getByRole("menuitemcheckbox", { name: copy.workspace.wrapSource }),
 	);
 	const changePosition = await positionOf(
-		menu.getByRole("menuitem", { name: copy.workspace.changeView }),
+		menu.getByRole("menuitem", { name: copy.workspace.changeViewCommand }),
 	);
 	const movePosition = await positionOf(
-		menu.getByRole("menuitem", { name: copy.workspace.movePane }),
+		menu.getByRole("menuitem", { name: copy.workspace.movePaneCommand }),
 	);
 	const closePosition = await positionOf(
 		menu.getByRole("menuitem", { name: copy.workspace.closeView }),
@@ -143,7 +147,7 @@ test("pane actions follow content, display, then pane reading order", async ({
 	expect(changePosition).toBeLessThan(movePosition);
 	expect(movePosition).toBeLessThan(closePosition);
 	await expect(
-		menu.getByRole("menuitem", { name: copy.actions.downloadTable }),
+		menu.getByRole("menuitem", { name: copy.actions.downloadTableCommand }),
 	).toHaveCount(0);
 	await expect(
 		menu.getByRole("menuitem", { name: copy.workspace.changeLayout }),
@@ -171,7 +175,7 @@ test("a dialog command fully replaces the app menu", async ({
 	const menu = page.getByRole("menu", { name: copy.actions.openAppMenu });
 	const exportMenu = await tabelo.openTableOptions();
 	await exportMenu
-		.getByRole("menuitem", { name: copy.actions.downloadTable })
+		.getByRole("menuitem", { name: copy.actions.downloadTableCommand })
 		.click();
 
 	await expect(
