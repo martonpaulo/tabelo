@@ -150,6 +150,11 @@ baseline, and neither should be given an invented one.
   written before the index that names it, and a failed write refuses the step
   (#410). A migration of every stored library would itself risk the data it
   protects.
+- Files go in through import and out through download, never through a kept
+  file handle (decided on #447). Import reads the picked file once, a download
+  writes a new file, and `Mod+S` opens the download chooser. Tabelo never
+  writes back to a file on the user's disk, so no permission, stale file or
+  silent overwrite can reach data the user keeps outside the browser.
 - Published to GitHub Pages at `https://tabelo.martonpaulo.com/`, built from
   `apps/web` by CI. The application is its own landing page.
 - The product stores no secrets and holds no user account state.
@@ -239,6 +244,7 @@ reversible implementation choice does not belong here.
 | CSV export header | Always included | `AGENTS.md` domain rules | #148 |
 | Persistence migrations | An explicit forward-only chain; unreadable data is kept and explained by reason | `AGENTS.md` architecture | #184, #32 |
 | Library storage | `localStorage` only, one key per table and one index, each table written before the index that names it; no IndexedDB, OPFS or SQLite | this document | #446, #410 |
+| Files on disk | Import and download only; no File System Access handle, no save in place, `Mod+S` opens the download chooser | this document | #447 |
 | Two open tabs | A tab that another tab overtook stops saving and offers a download and a reload; index writes keep the tables another tab added | `CONTEXT.md` | #543 |
 | Codec escaping | Every escaping codec round-trips content losslessly | ADR 0002 | #183, #188 |
 
