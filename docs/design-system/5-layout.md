@@ -123,12 +123,14 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
   view's one name, never by shrinking status text below [§2](2-tokens.md)'s floor. No state owns
   the slot exclusively: two conditions present at once still keep the header
   one row, with both meanings readable and no control displaced.
-- The `Read-only` badge sits beside the view identity because it reports state.
+- The read-only lock sits beside the view identity because it reports state:
+  a quiet lock glyph whose accessible name and tooltip are "Read-only", as
+  [§2](2-tokens.md) describes.
   The actions trigger names the view it belongs to, because with four panes open
   the view is what says which pane the command affects: "Pane actions:
   Markdown", never a bare "Pane".
 - Editable pane bodies use the main panel surface. A non-editable pane uses the
-  read-only surface and the written "Read-only" label. Never rely on a muted
+  read-only surface and the lock named "Read-only". Never rely on a muted
   background alone to communicate editability.
 - The pane actions menu is flat and follows one semantic reading order (#70).
   An applicable capability-driven Copy command comes first, and zoom follows as

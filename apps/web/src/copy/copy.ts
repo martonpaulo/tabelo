@@ -1190,6 +1190,9 @@ export const copy = {
 		fileExtension,
 		downloadAs: (extension: string) => `Download ${fileExtension(extension)}`,
 		format: "File format",
+		// Copy table writes no file, so its chooser names the group without the
+		// word and shows no extension (owner, #581).
+		copyFormat: "Format",
 		options: "Options",
 		// Output-only choices, listed by the id the codec declares.
 		option: (id: OutputOptionId) =>

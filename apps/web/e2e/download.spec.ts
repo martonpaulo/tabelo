@@ -562,3 +562,29 @@ test.describe("export losses", () => {
 		await expect(alignment).toHaveCount(0);
 	});
 });
+
+// Copy table writes no file, so its chooser names its group without the word
+// and lists no extension, while the download chooser keeps both (#581).
+test("the copy chooser names no file and lists no extension", async ({
+	page,
+	tabelo,
+}) => {
+	const copyDialog = await tabelo.openCopyDialog();
+	await expect(
+		copyDialog.getByRole("radiogroup", { name: copy.download.copyFormat }),
+	).toBeVisible();
+	await expect(
+		copyDialog.locator("[data-slot='selection-option-metadata']"),
+	).toHaveCount(0);
+	await page.keyboard.press("Escape");
+	await expect(copyDialog).toBeHidden();
+
+	await openDownloadChooser(page);
+	const downloadDialog = page.getByRole("dialog");
+	await expect(
+		downloadDialog.getByRole("radiogroup", { name: copy.download.format }),
+	).toBeVisible();
+	await expect(
+		downloadDialog.locator("[data-slot='selection-option-metadata']"),
+	).toHaveCount(listCodecs().length);
+});

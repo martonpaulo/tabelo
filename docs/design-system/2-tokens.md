@@ -233,7 +233,10 @@ links, and the glyph shape for notation. Close hues also differ by weight, under
 numeric spacing, or literal shape, so hue is never their only distinction.
 These colours describe content, not interaction or status: selection keeps its
 amber fill and edge, while the warning orange and destructive red stay reserved
-for diagnostics and destructive state.
+for diagnostics and destructive state. The notation red `#ff7b72` is the one
+named exception beside `--destructive`: a second red, kept because notation
+is always told apart by its glyph shape and grammar position, never by hue
+alone (owner, decided on #581).
 
 ### Status
 
@@ -285,12 +288,17 @@ what used to be two passes over every visual change is now one.
 | `--panel-header-h` | `h-panel-header` | 2.75rem: every pane header |
 | `--index-text-gap` | (none) | 1rem: the gap between a row's number and its text, in a source view's line numbers and the grid's row numbers alike (owner, 2026-09-19) |
 | `--grid-gutter-w` | `w-grid-gutter` | 3rem: the row number, a small leading gap, and the whole `--index-text-gap`, so the first cell starts where a source view's text does (owner, 2026-09-19; #288) |
-| `--grid-gutter-trailing` | `pr-grid-gutter-trailing` | `--index-text-gap` less a cell's `px-2`: what a grid row number keeps after its digits |
+| `--grid-gutter-trailing` | `pr-grid-gutter-trailing` | The whole `--index-text-gap`: what a grid row number keeps after its digits, with the first cell's own padding inside it, so its text starts where a source view's does (owner, 2026-09-19) |
 | `--grid-row-h` | `min-h-grid-row` | `var(--spacing-content-line-box)`: minimum table row height, one content row (#579) |
 | `--grid-col-w` | `w-grid-col` | 10.5rem: default column width |
 | `--control-radius` | `rounded-interactive` | 0.5rem: buttons, fields, menu items, option blocks, badges |
 | `--indicator-radius` | `rounded-indicator` | 0.25rem: the radius of a small mark inside a control rather than of a control: a checkbox's 1rem box, a segment inside a segmented choice or a menu's inline command row, and a source pane's display glyph (#578) |
 | `--surface-radius` | `rounded-surface` | 0.75rem: panes, menus, dialogs, notices, empty states |
+| `--hairline-w` | `h-hairline`, `gap-hairline`, and the other spacing utilities | 0.0625rem: the one hairline stroke, painted by `tabelo-hairline`; owned by `packages/ui` |
+| `--icon-stroke-width` | (none; every icon's `stroke-width`) | 1.5: the stroke of every Tabler icon, set once in the global stylesheet |
+| `--pane-stack-h` | `min-h-pane-stack` | 60vh: how tall a pane stays once the workspace stacks |
+| `--fab-size` | `size-fab`, `pr-fab` | 3rem: the floating action button, and the room a pane keeps clear for it |
+| `--fab-inset` | `right-fab-inset`, `bottom-fab-inset` | 0.75rem: how far the floating action button rests from the viewport's edges |
 
 Every height in `packages/ui`'s Button, Toggle, Input, and Textarea resolves to one of
 the three control heights; a primitive writing its own `h-9` or `size-8` is a
@@ -820,8 +828,10 @@ no font request leaves the page, then `-apple-system, BlinkMacSystemFont,
 "Segoe UI", sans-serif` while it loads. The owner replaced the Microsoft stack
 on 2026-09-18, together with the warm neutral palette, because the interface
 read as dated; the spreadsheet reference that stack stood for no longer
-decides the type. On 2026-09-19 the owner chose Figtree over Inter as the closest open face to the look he approved. The source editor keeps the existing
-`ui-monospace`, `SF Mono`, `Cascadia Mono`, `Menlo`, `monospace` stack.
+decides the type. On 2026-09-19 the owner chose Figtree over Inter as the closest open face to the look he approved. The source editor and every native
+cell value use `--font-family-source`, `ui-monospace`, `SFMono-Regular`,
+`Menlo`, `Consolas`, `Liberation Mono`, `monospace`, through `font-source` and
+`font-value`; `--font-family-index`, read through `font-index`, aliases it.
 
 | Role | Classes |
 | :--- | :--- |
@@ -831,9 +841,9 @@ decides the type. On 2026-09-19 the owner chose Figtree over Inter as the closes
 | Dialog section | `text-sm font-medium` |
 | Control label | `text-sm font-medium`, owned by the shared `Label` and inherited by every field that uses it (#452) |
 | Nested setting | `text-sm font-normal`: a setting inside a dialog section, and the options it owns, including every segment of a segmented choice, owned by `segmentedItemStyles` (#452) |
-| Table cell | `text-sm` |
+| Table cell | `text-content` |
 | Native cell value | `text-content font-value` |
-| Source editor | `text-sm font-source` |
+| Source editor | `text-content font-source` |
 | Index chrome | `font-index` |
 | Helper / status | `text-xs text-muted-foreground` |
 

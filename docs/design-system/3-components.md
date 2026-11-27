@@ -333,8 +333,8 @@ primitive; no menu adds a local separator variant. Long menus keep the shared
 available-height ceiling and vertical scrolling at narrow viewports.
 
 Shortcut hints use the shared normal sans-serif typeface, never the source
-editor's monospace face. Each physical key is one compact, quiet tonal rectangle
-and adjacent keys use the smallest spacing token. Platform modifiers use their
+editor's monospace face. Each physical key is its own compact `<kbd>` with no
+fill or border of its own, and adjacent keys use the smallest spacing token. Platform modifiers use their
 familiar label or symbol, so zoom in appears as separate `Command` and `+` keys
 instead of the ambiguous string `Mod++`. Smaller text and normal letter spacing
 distinguish the shortcut from its action label without making it look like
@@ -709,7 +709,7 @@ than independent booleans. Raising `z-index` is not a hierarchy fix.
 | :--- | :--- |
 | Surface | `rounded-surface`, `bg-popover`, one shadow: a floating layer |
 | Width | One of two presets on `DialogContent` (owner, 2026-09-19): `narrow` (28rem) for a confirmation or a short form, `wide` (32rem) for a chooser whose options carry descriptions, and Settings. A dialog never sets a width class of its own; below the `sm` breakpoint both fill the window less a 1rem margin each side |
-| Body text | `text-sm`; the same 0.875rem floor as everywhere else |
+| Body text | `text-sm/relaxed`, owned by the shared `Dialog`; the same 0.875rem floor as everywhere else |
 | Title | `DialogTitle`, `text-lg font-semibold` (see Typography) |
 | Supporting copy | `DialogDescription`, one sentence saying what to choose |
 | Initial focus | A dialog that asks for text names its first field as `DialogContent`'s `initialFocus` (owner, 2026-09-19). React's `autoFocus` is never used in a dialog: it fires on mount, before a menu that opened the dialog has returned focus to its trigger, so the first keystrokes land outside the modal |

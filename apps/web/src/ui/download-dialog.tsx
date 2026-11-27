@@ -181,7 +181,11 @@ export function DownloadDialog({
 				) : null}
 
 				<SingleSelectionList
-					aria-label={copy.download.format}
+					aria-label={
+						destination === "clipboard"
+							? copy.download.copyFormat
+							: copy.download.format
+					}
 					aria-describedby={
 						lossy
 							? `${formatDescriptionId} ${lossWarningId}`
@@ -199,7 +203,9 @@ export function DownloadDialog({
 								id={candidate.id}
 								icon={<view.icon />}
 								label={view.label}
-								extension={candidate.extension}
+								extension={
+									destination === "clipboard" ? undefined : candidate.extension
+								}
 								selected={candidate.id === codec.id}
 								failure={canSerialize(candidate, document)}
 								onRecover={() => onOpenChange(false)}
@@ -291,7 +297,8 @@ interface FormatChoiceProps {
 	readonly id: CodecId;
 	readonly icon: ReactNode;
 	readonly label: string;
-	readonly extension: string;
+	// Absent when the chooser copies: no file is written, so none is named.
+	readonly extension: string | undefined;
 	readonly selected: boolean;
 	readonly failure: PreconditionFailure | null;
 	readonly onRecover: () => void;
@@ -326,7 +333,11 @@ function FormatChoice({
 				onRecover={onRecover}
 				icon={icon}
 				label={label}
-				metadata={copy.download.fileExtension(extension)}
+				metadata={
+					extension === undefined
+						? undefined
+						: copy.download.fileExtension(extension)
+				}
 			/>
 		</div>
 	);
