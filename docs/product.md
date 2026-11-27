@@ -222,6 +222,7 @@ reversible implementation choice does not belong here.
 | Decision | Current outcome | Recorded in | Decided on |
 | :--- | :--- | :--- | :--- |
 | Header import | Read an explicit format header; otherwise ask rather than guess | `AGENTS.md` domain rules | #23 |
+| Source reconciliation pairing | A source edit that inserts or deletes a row or a column pairs the others by content, so types, alignment, expected type and identity never move to a neighbour; an edit in place pairs by index | ADR 0008 | #546 |
 | Table name | Renamed from the App Menu, outside undo; the browser title is `Table name · Tabelo`; a file import names a table still carrying a default name after the file, once, never from its content | design system §3 | #82, #469 |
 | Column width owner | A workspace preference keyed by column id | `CONTEXT.md` | #137 |
 | Column and row size | A column width can be typed exactly or reset to the default; rows have no height setting and follow their text | design system §9 | #370 |

@@ -8,7 +8,13 @@ import {
 	documentToMatrix,
 	reconcileDocument,
 } from "@/core/document";
-import { setCell } from "@/core/operations";
+import {
+	deleteColumns,
+	deleteRows,
+	insertColumns,
+	insertRows,
+	setCell,
+} from "@/core/operations";
 import type { CellValue, TableDocument } from "@/core/types";
 import { canSerialize, csvCodec, listCodecs, type TableCodec } from "@/formats";
 import { jiraCodec } from "@/formats/jira";
@@ -422,6 +428,144 @@ describe("source position mapping properties", () => {
 				if (!expectedRow) throw new Error("the parsed row is missing");
 				expectedRow[cell.column] = SENTINEL;
 				expect(documentToMatrix(rewritten)).toEqual(expected);
+			},
+		);
+	}
+});
+
+// #546. Text that deletes or inserts one row or one column reaches the
+// document as that deletion or insertion: every other row and column keeps its
+// id, its cell values with their types, its alignment, and its expected type.
+// The edited element must read differently from its neighbours, because text
+// that repeats a line cannot say which of two identical lines it removed.
+type StructureEdit =
+	| "delete row"
+	| "insert row"
+	| "delete column"
+	| "insert column";
+
+// The intended document and the index of the deleted or inserted element.
+function applyStructureEdit(
+	document: TableDocument,
+	edit: StructureEdit,
+	index: number,
+): { readonly intended: TableDocument; readonly position: number } {
+	const rows = document.rows.length;
+	const columns = document.columns.length;
+	switch (edit) {
+		case "delete row": {
+			const position = index % rows;
+			return { intended: deleteRows(document, [position]), position };
+		}
+		case "insert row": {
+			const position = index % (rows + 1);
+			return { intended: insertRows(document, position), position };
+		}
+		case "delete column": {
+			const position = index % columns;
+			return { intended: deleteColumns(document, [position]), position };
+		}
+		case "insert column": {
+			const position = index % (columns + 1);
+			return { intended: insertColumns(document, position), position };
+		}
+	}
+}
+
+// Whether the edited element reads differently from its neighbours, in the
+// document that holds it: the current one for a deletion, the intended one for
+// an insertion.
+function editIsUnambiguous(
+	edit: StructureEdit,
+	holder: TableDocument,
+	position: number,
+): boolean {
+	const matrix = documentToMatrix(holder);
+	const keys = edit.endsWith("row")
+		? matrix.slice(1).map((row) => JSON.stringify(row))
+		: (matrix[0] ?? []).map((_, column) =>
+				JSON.stringify(matrix.map((row) => row[column])),
+			);
+	const key = keys[position];
+	return keys[position - 1] !== key && keys[position + 1] !== key;
+}
+
+function structureEditCase(codec: TableCodec) {
+	return fc.record({
+		document: typedTextCodecDocumentArbitrary(codec),
+		edit: fc.constantFrom<StructureEdit>(
+			"delete row",
+			"insert row",
+			"delete column",
+			"insert column",
+		),
+		index: fc.nat({ max: 10 }),
+	});
+}
+
+describe("structural source edit properties", () => {
+	for (const codec of listCodecs().filter(
+		(codec) => codec.reconciliation.cellValues === "text",
+	)) {
+		test.prop({ case: structureEditCase(codec) }, { numRuns: PROPERTY_RUNS })(
+			`${codec.id} keeps every other row and column through a text insertion or deletion`,
+			({ case: { document, edit, index } }) => {
+				// Deleting the last row or column leaves a blank one in its place,
+				// which is the document's invariant rather than a text edit.
+				fc.pre(!(edit === "delete column" && document.columns.length < 2));
+				fc.pre(!(edit === "delete row" && document.rows.length < 2));
+				const { intended, position } = applyStructureEdit(
+					document,
+					edit,
+					index,
+				);
+				fc.pre(canSerialize(codec, intended) === null);
+				fc.pre(
+					editIsUnambiguous(
+						edit,
+						edit.startsWith("delete") ? document : intended,
+						position,
+					),
+				);
+				const parsed = codec.parse(codec.serialize(intended));
+				fc.pre(
+					parsed.ok &&
+						parsed.document.rows.length === intended.rows.length &&
+						parsed.document.columns.length === intended.columns.length,
+				);
+				if (!parsed.ok) return;
+
+				const next = reconcileDocument(
+					document,
+					parsed.document,
+					codec.reconciliation,
+				);
+				const existingColumns = new Set(document.columns.map((c) => c.id));
+				const existingRows = new Set(document.rows.map((r) => r.id));
+
+				expect(valuesOf(next)).toEqual(valuesOf(intended));
+				expect(next.columns.map((column) => column.align)).toEqual(
+					intended.columns.map((column) => column.align),
+				);
+				expect(next.columns.map((column) => column.expectedType)).toEqual(
+					intended.columns.map((column) => column.expectedType),
+				);
+				expect(
+					next.columns.map((column) =>
+						existingColumns.has(column.id) ? column.id : "new",
+					),
+				).toEqual(
+					intended.columns.map((column) =>
+						existingColumns.has(column.id) ? column.id : "new",
+					),
+				);
+				expect(
+					next.rows.map((row) => (existingRows.has(row.id) ? row.id : "new")),
+				).toEqual(
+					intended.rows.map((row) =>
+						existingRows.has(row.id) ? row.id : "new",
+					),
+				);
 			},
 		);
 	}

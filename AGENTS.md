@@ -219,7 +219,9 @@ vocabulary and `docs/adr/` for the reasoning.
   read text and conclude a type from it. A format that cannot express a type
   serializes the projected text and parses strings back. During source
   reconciliation, an unchanged string projection retains the existing cell
-  value; changed or newly inserted text stays a string. `null` and the empty
+  value; changed or newly inserted text stays a string. The existing cell is
+  the one the parsed cell continues, matched by content when text inserted or
+  deleted a row or a column, never shifted by index (#546). `null` and the empty
   string project alike and stay distinct only when the previous document
   supplies that distinction. Under a format's opt-in boolean spelling, a token
   keeps a boolean only where the text did not change, and projection text no

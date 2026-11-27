@@ -12,6 +12,7 @@ import {
 } from "./cell-value";
 import { createColumnId, createRowId } from "./ids";
 import { isInlineContent } from "./inline-content";
+import { matchSequences } from "./sequence-match";
 import type {
 	Alignment,
 	CellValue,
@@ -260,15 +261,81 @@ function reconciledValue<Value extends CellValue>(
 	return source.cellValues === "text" ? existing : parsed;
 }
 
+// Which current column or row each parsed one continues (#546). Equal counts
+// are an edit in place and pair by index. A changed count means text inserted
+// or deleted a column or a row, so the pairing follows content: retention,
+// identity, alignment, and expected type then stay with the element they
+// belong to instead of moving to a neighbour.
+function samePositions(count: number): Int32Array {
+	return Int32Array.from({ length: count }, (_, index) => index);
+}
+
+// A column's whole content first, then its header alone, so a column whose
+// cells changed with the row count is still found by its name.
+function columnKeys(
+	document: TableDocument,
+): readonly [contents: string[], headers: string[]] {
+	const contents = document.columns.map((column) =>
+		JSON.stringify([
+			cellText(column.header),
+			...document.rows.map((row) => cellText(readCell(row, column.id))),
+		]),
+	);
+	const headers = document.columns.map((column) => cellText(column.header));
+	return [contents, headers];
+}
+
+function matchColumns(
+	current: TableDocument,
+	parsed: TableDocument,
+): Int32Array {
+	if (current.columns.length === parsed.columns.length) {
+		return samePositions(parsed.columns.length);
+	}
+	const [currentContents, currentHeaders] = columnKeys(current);
+	const [parsedContents, parsedHeaders] = columnKeys(parsed);
+	return matchSequences([
+		[currentContents, parsedContents],
+		[currentHeaders, parsedHeaders],
+	]);
+}
+
+// Rows are compared on the columns both documents share, so a deleted or
+// inserted column does not make every row look new.
+function matchRows(
+	current: TableDocument,
+	parsed: TableDocument,
+	columnMatch: Int32Array,
+): Int32Array {
+	if (current.rows.length === parsed.rows.length) {
+		return samePositions(parsed.rows.length);
+	}
+	const shared: Array<readonly [ColumnId, ColumnId]> = [];
+	parsed.columns.forEach((column, index) => {
+		const existing = current.columns[columnMatch[index] ?? -1];
+		if (existing) shared.push([existing.id, column.id]);
+	});
+	const key = (row: Row, side: 0 | 1) =>
+		JSON.stringify(shared.map((ids) => cellText(readCell(row, ids[side]))));
+	return matchSequences([
+		[
+			current.rows.map((row) => key(row, 0)),
+			parsed.rows.map((row) => key(row, 1)),
+		],
+	]);
+}
+
 export function reconcileDocument(
 	current: TableDocument,
 	parsed: TableDocument,
 	source: ReconciliationSource = DEFAULT_RECONCILIATION_SOURCE,
 ): TableDocument {
 	let columnsUnchanged = parsed.columns.length === current.columns.length;
+	const columnMatch = matchColumns(current, parsed);
+	const rowMatch = matchRows(current, parsed, columnMatch);
 
 	const columns = parsed.columns.map((column, index) => {
-		const existing = current.columns[index];
+		const existing = current.columns[columnMatch[index] ?? -1];
 		if (!existing) {
 			columnsUnchanged = false;
 			return column;
@@ -298,12 +365,12 @@ export function reconcileDocument(
 	let rowsUnchanged = parsed.rows.length === current.rows.length;
 
 	const rows = parsed.rows.map((row, rowIndex) => {
-		const existing = current.rows[rowIndex];
+		const existing = current.rows[rowMatch[rowIndex] ?? -1];
 		const cells: Record<ColumnId, CellValue> = {};
 		columns.forEach((column, columnIndex) => {
 			const parsedColumn = parsed.columns[columnIndex];
 			const parsedValue = parsedColumn ? readCell(row, parsedColumn.id) : "";
-			const existingColumn = current.columns[columnIndex];
+			const existingColumn = current.columns[columnMatch[columnIndex] ?? -1];
 			const existingValue =
 				existing && existingColumn
 					? readCell(existing, existingColumn.id)

@@ -473,7 +473,8 @@ Related to: Table document, Import
 - A cell value's type is carried, never derived. No view may reinterpret a cell,
   and no format that cannot express a type may invent one.
 - Reconciliation preserves an existing cell value only when a text-only source
-  returns its exact cell-text projection. Changed and newly inserted text stays
+  returns its exact cell-text projection for that same cell, which is matched
+  by content when text inserted or deleted a row or a column (#546). Changed and newly inserted text stays
   text. This previous value is what keeps `null` distinct from an empty string.
 - The expected type belongs to the column and the real type belongs to the cell,
   so a column may hold values that disagree with what it expects. Changing the

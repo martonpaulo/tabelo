@@ -9,6 +9,7 @@
 - [Amendment: changing a column's expected type converts its cells (#392)](#amendment-changing-a-columns-expected-type-converts-its-cells-392)
 - [Amendment: a format may spell a boolean (#464, #484, #485)](#amendment-a-format-may-spell-a-boolean-464-484-485)
 - [Amendment: text may carry inline structure (#306)](#amendment-text-may-carry-inline-structure-306)
+- [Amendment: retention follows content, not index (#546)](#amendment-retention-follows-content-not-index-546)
 
 ## Context
 
@@ -77,7 +78,7 @@ Rejected alternatives:
 Markdown, CSV, TSV, Jira, HTML, and Records have no syntax for a type, so they
 serialize `cellText` and parse strings. Inside a synchronized source edit,
 reconciliation still has the previous document: when a parsed string exactly
-equals `cellText` of the existing value at that position, it retains that value
+equals `cellText` of the existing value of the same cell, it retains that value
 and its type. When the text changes, the parsed string wins as a string. A fresh
 import has no previous value to supply a distinction, so a number that leaves
 through CSV and returns through import is a string. That is correct: the format
@@ -244,7 +245,7 @@ set still holds, and the amendment is how:
   every output of the format alike. The cell is the same boolean either way.
 - **A token is read back only through retention.** With the spelling on, the
   parser reports an unescaped whole-cell token as the boolean it spells, and
-  reconciliation keeps it only where the existing value at that position is
+  reconciliation keeps it only where the existing value of the same cell is
   the same boolean: the text did not change since the pane wrote it. An edited
   token, or a token typed into a new or text cell, stays the string the user
   typed. With the spelling on, projection text such as `true` no longer keeps
@@ -274,3 +275,25 @@ created by a command the user chose, and never derived from how text looks.
 alternative text in document order. A number, a boolean, or null is never
 formatted, and converting formatted text to one of them always asks first,
 because the conversion discards the structure.
+
+## Amendment: retention follows content, not index (#546)
+
+Retention pairs a parsed cell with the existing cell it continues, and that
+pairing used to be by index. Text that inserts or deletes a line or a column
+then shifted every later element by one: a neighbour received the removed
+column's expected type, alignment, and id, and a string took the type of the
+value above it. That is a type nobody stated, so it broke this ADR's rule.
+
+"The same cell" is therefore decided by content. When the parsed table has as
+many rows, or as many columns, as the current one, the edit was made in place
+and they pair by index, as before. When the count changed, reconciliation
+pairs them by content: the common prefix and suffix, then the longest common
+subsequence of the remaining elements' text, a column by its header and cells,
+then by its header alone, and a row by the cells of the columns both tables
+share. Between two matched elements, a run of the same length on both sides is
+an edit in place and pairs by position; a run of unequal length is new or
+deleted and borrows nothing. Every retention rule above then applies to the
+pair, and the column's id, alignment where the format cannot spell it, and
+expected type stay with the column they belong to. Text that repeats a line
+exactly cannot say which copy it removed, so either copy may keep the
+identity; their text is the same. Decided on #546 (owner decision D20).
