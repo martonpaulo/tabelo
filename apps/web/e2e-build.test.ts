@@ -1,4 +1,5 @@
 import {
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
@@ -103,15 +104,24 @@ describe("build inputs", () => {
 			.filter(([, version]) => version.startsWith("workspace:"))
 			.map(([name]) => name);
 		const packagesRoot = join(here, "..", "..", "packages");
+		// Only folders holding a manifest are packages: a checkout also gathers
+		// Finder's .DS_Store and folders a removed package left behind.
 		const directoryOf = new Map(
-			readdirSync(packagesRoot).map((directory) => [
-				(
-					JSON.parse(
-						readFileSync(join(packagesRoot, directory, "package.json"), "utf8"),
-					) as { name: string }
-				).name,
-				directory,
-			]),
+			readdirSync(packagesRoot)
+				.filter((entry) =>
+					existsSync(join(packagesRoot, entry, "package.json")),
+				)
+				.map((directory) => [
+					(
+						JSON.parse(
+							readFileSync(
+								join(packagesRoot, directory, "package.json"),
+								"utf8",
+							),
+						) as { name: string }
+					).name,
+					directory,
+				]),
 		);
 		expect(workspaceNames.length).toBeGreaterThan(0);
 		for (const name of workspaceNames) {
