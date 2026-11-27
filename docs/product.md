@@ -138,6 +138,13 @@ baseline, and neither should be given an invented one.
 - The editor needs only the browser. The optional external-agent connection
   additionally needs its local Node.js helper (#405). Persistence remains
   `localStorage`; offline capability is a service worker.
+- The table library stays in `localStorage`, with no move to IndexedDB
+  (decided on #446). IndexedDB would let one transaction write a table and the
+  library index together, but the failures that made it attractive, such as an
+  index naming a table whose write failed, are fixed in place: a table is
+  written before the index that names it, and a failed write refuses the step
+  (#410). A migration of every stored library would itself risk the data it
+  protects.
 - Published to GitHub Pages at `https://tabelo.martonpaulo.com/`, built from
   `apps/web` by CI. The application is its own landing page.
 - The product stores no secrets and holds no user account state.
@@ -223,6 +230,7 @@ reversible implementation choice does not belong here.
 | Source axes | In a pane that maps rows, a column letter and a table row's line number open the grid's column and row menus (less grid-only preferences), a click selects the column's cells or the row's text, a drag of a selected one reorders it, and the keyboard reaches the menus from that selection; the divider and non-table lines offer nothing | design system §9, ADR 0005 | #395 |
 | CSV export header | Always included | `AGENTS.md` domain rules | #148 |
 | Persistence migrations | An explicit forward-only chain; unreadable data is kept and explained by reason | `AGENTS.md` architecture | #184, #32 |
+| Library storage | `localStorage` only, one key per table and one index, each table written before the index that names it; no IndexedDB, OPFS or SQLite | this document | #446, #410 |
 | Two open tabs | A tab that another tab overtook stops saving and offers a download and a reload; index writes keep the tables another tab added | `CONTEXT.md` | #543 |
 | Codec escaping | Every escaping codec round-trips content losslessly | ADR 0002 | #183, #188 |
 
