@@ -63,17 +63,78 @@ describe("queueing", () => {
 		expect(queue).toHaveLength(2);
 	});
 
-	it("drops the oldest once the queue is full", () => {
+	it("drops the oldest confirmation once the queue is full", () => {
 		const queue = push(
 			[],
 			...Array.from({ length: TRANSIENT_NOTICE_LIMIT + 1 }, (_, index) => ({
-				severity: "error" as const,
-				message: `Failure ${index}.`,
+				severity: "info" as const,
+				message: `Done ${index}.`,
 			})),
 		);
 
 		expect(queue).toHaveLength(TRANSIENT_NOTICE_LIMIT);
-		expect(messages(queue)).not.toContain("Failure 0.");
+		expect(messages(queue)).not.toContain("Done 0.");
+	});
+
+	it("keeps a failure that distinct confirmations follow", () => {
+		const queue = push(
+			[],
+			failure,
+			...Array.from({ length: TRANSIENT_NOTICE_LIMIT }, (_, index) => ({
+				severity: "info" as const,
+				message: `Done ${index}.`,
+			})),
+		);
+
+		expect(queue).toHaveLength(TRANSIENT_NOTICE_LIMIT);
+		expect(messages(queue)).toContain(failure.message);
+		expect(messages(queue)).not.toContain("Done 0.");
+	});
+
+	it("keeps a warning that distinct confirmations follow", () => {
+		const warning: NoticeRequest = { severity: "warning", message: "Careful." };
+		const queue = push(
+			[],
+			warning,
+			...Array.from({ length: TRANSIENT_NOTICE_LIMIT }, (_, index) => ({
+				severity: "info" as const,
+				message: `Done ${index}.`,
+			})),
+		);
+
+		expect(messages(queue)).toContain(warning.message);
+	});
+
+	it("keeps every undismissed failure past the limit", () => {
+		const failures = Array.from(
+			{ length: TRANSIENT_NOTICE_LIMIT + 1 },
+			(_, index) => ({
+				severity: "error" as const,
+				message: `Failure ${index}.`,
+			}),
+		);
+		const queue = push([], ...failures);
+
+		expect(messages(queue)).toEqual(failures.map((entry) => entry.message));
+	});
+
+	it("drops a confirmation that arrives while failures fill the queue", () => {
+		const failures = Array.from(
+			{ length: TRANSIENT_NOTICE_LIMIT },
+			(_, index) => ({
+				severity: "error" as const,
+				message: `Failure ${index}.`,
+			}),
+		);
+		const queue = push([], ...failures, confirmation);
+
+		expect(messages(queue)).toEqual(failures.map((entry) => entry.message));
+	});
+
+	it("bounds repeated failures by refreshing them in place", () => {
+		const queue = push([], failure, failure, failure, failure, failure);
+
+		expect(messages(queue)).toEqual([failure.message]);
 	});
 });
 

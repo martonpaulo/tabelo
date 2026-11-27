@@ -259,6 +259,7 @@ reversible implementation choice does not belong here.
 | :--- | :--- | :--- | :--- |
 | Notices | A fixed overlay, never layout content | design system §5 | #44 |
 | Notice expiry | Pauses while the notice is hovered or focused and while the page is unattended, then resumes with the time left; focus returns to its origin when a notice removes the focused control | design system §4 | #450 |
+| Notice queue limit | Three one-off notices; a full queue drops its oldest plain confirmation, never a failure or a warning, which stay until dismissed | design system §4 | #455 |
 | Copy rules and vocabulary | Text, source view, unfinished edits, formatted table, match, Smart editing; `New table` and `Settings` allowed; contractions outside labels; disabled reasons say how to unblock | design system §8, `CONTEXT.md` | #78 |
 | Active pane | A non-layout-shifting boundary | design system §5 | #64 |
 | Destructive contrast | The token and the variant both own the correction | design system §2 | #109 |

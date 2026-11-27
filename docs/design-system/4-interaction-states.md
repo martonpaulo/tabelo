@@ -203,6 +203,13 @@ carrying an action, stays until it is dismissed: a recovery instruction that
 disappears after four seconds is not a recovery path. The timer belongs to the
 notice on screen, never to the notice area, so nothing can expire unseen.
 
+The same rule bounds the queue of one-off notices (decided on #455). It holds
+three; when a fourth arrives, the oldest plain confirmation leaves to make
+room. A failure or a warning is never pushed out: while every queued notice is
+one, the queue holds past three until the user dismisses some, and a
+confirmation arriving then is not shown. A repeated message refreshes its
+entry instead of adding one, which keeps the queue bounded.
+
 The one exception is a confirmation whose only action is `Undo`, which a
 whole-table command raises (#235). Its action repeats the document undo that
 Mod+Z and the menu keep, so expiring removes no way back, and it stays 8s so

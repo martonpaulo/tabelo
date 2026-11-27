@@ -53,6 +53,15 @@ export const conditionNoticeIds = {
 // without letting the queue push the workspace off the screen.
 export const TRANSIENT_NOTICE_LIMIT = 3;
 
+// Only a plain confirmation may leave unattended (#455). A failure or a
+// warning stays until the user dismisses it, so a full queue makes room by
+// dropping its oldest confirmation, and holds past the limit only while every
+// entry is one the user has not dismissed yet. That stays bounded: a repeated
+// message refreshes its entry instead of adding one.
+function isEvictable(notice: TransientNotice): boolean {
+	return notice.severity === "info";
+}
+
 let sequence = 0;
 
 export function queueNotice(
@@ -83,9 +92,12 @@ export function queueNotice(
 	}
 
 	const next = [...queue, notice];
-	return next.length > TRANSIENT_NOTICE_LIMIT
-		? next.slice(next.length - TRANSIENT_NOTICE_LIMIT)
-		: next;
+	while (next.length > TRANSIENT_NOTICE_LIMIT) {
+		const oldest = next.findIndex(isEvictable);
+		if (oldest === -1) break;
+		next.splice(oldest, 1);
+	}
+	return next;
 }
 
 export function removeNotice(
