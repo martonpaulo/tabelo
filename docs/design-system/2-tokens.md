@@ -27,7 +27,9 @@ stays a clean merge; the rule binds every file Tabelo authors, including
 Tabelo's own modules in that package such as `menu-styles.ts`.
 Platform metadata and standalone SVG assets are the narrow exception because
 they cannot consume CSS variables; they repeat an existing token exactly and
-must never introduce another palette value.
+must never introduce another palette value. The product mark, `logo.svg`, and
+the icon backgrounds generated from it are the one named exception, recorded
+in [§6](../design-system.md#6-icons) (#563).
 
 Browser APIs are another boundary exception: pointer coordinates, viewport
 fixtures, and raster dimensions are expressed in CSS or image pixels by those

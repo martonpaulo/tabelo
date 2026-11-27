@@ -6,16 +6,18 @@ import {
 // One source for every derivative: the mark the floating trigger shows. Ordinary
 // icons keep its transparent exterior; the maskable and Apple outputs, whose
 // platforms composite transparency onto a colour of their own choosing, sit on
-// the product's own dark surface instead.
+// the mark's own interior colour instead. The mark's colours are a named
+// exception to the palette: see docs/design-system.md section 6, Icons
+// (#563).
 const preset = {
 	...minimal2023Preset,
 	maskable: {
 		...minimal2023Preset.maskable,
-		resizeOptions: { background: "#1c1c1b" },
+		resizeOptions: { background: "#1f1f1f" },
 	},
 	apple: {
 		...minimal2023Preset.apple,
-		resizeOptions: { background: "#1c1c1b" },
+		resizeOptions: { background: "#1f1f1f" },
 	},
 };
 

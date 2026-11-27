@@ -205,10 +205,16 @@ its rounded grid interior is an opaque dark surface, while the padding outside
 that silhouette stays transparent. It uses one fixed palette in every browser
 theme. The generator keeps that transparent exterior in the favicon and the
 ordinary PWA icons, and composites the maskable and Apple outputs, whose
-platforms fill transparency with a colour of their own, onto `#1c1c1b` with the
-safe-area padding those contexts need. Decided on #307, replacing the separate
-blue-field source. The mark must remain legible at 1rem, use only product
-colours, and keep the grid silhouette intact.
+platforms fill transparency with a colour of their own, onto `#1f1f1f`, the
+mark's own interior, with the safe-area padding those contexts need. Decided on
+#307, replacing the separate blue-field source. The mark must remain legible at
+1rem and keep the grid silhouette intact.
+
+The mark's colours, `#1f1f1f`, `#4da6ff` and `#ffffff`, are the one named
+exception to the palette rule in [§2](design-system/2-tokens.md): they are the
+brand, kept as they were when Ink and Amber (#456) removed blue from the
+interface palette, and the generated icon backgrounds repeat `#1f1f1f`. No
+other asset or interface surface may use them (owner, decided on #563).
 
 Tooltip pointers use the shared Base UI arrow with one clipped triangular
 shape. Do not reintroduce a rotated square or build feature-specific pointers
