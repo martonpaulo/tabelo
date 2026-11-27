@@ -7,6 +7,7 @@ import {
 	addTable,
 	isNameTaken,
 	mergeStoredEntries,
+	nameApart,
 	nameForDuplicate,
 	nameForNewTable,
 	nextTableMark,
@@ -15,6 +16,7 @@ import {
 	TABLE_MARKS,
 	type TableId,
 	type TableLibrary,
+	type TableMark,
 	withUniqueNames,
 } from "@/core/table-library";
 import { validateTableName } from "@/core/table-name";
@@ -23,6 +25,11 @@ import {
 	type HistoryEntry,
 	reconcileColumnPreferences,
 } from "@/history/timeline";
+import {
+	type BackupTable,
+	parseBackup,
+	serializeBackup,
+} from "@/persistence/backup";
 import { LIBRARY_VERSION, type LibraryIndex } from "@/persistence/schema";
 import {
 	loadLibraryIndex,
@@ -60,6 +67,8 @@ type LibrarySlice = Pick<
 	| "switchTable"
 	| "deleteTable"
 	| "ensureActiveTable"
+	| "backupLibrary"
+	| "restoreLibrary"
 >;
 
 // Reading the library means reading each table's own payload for its name:
@@ -681,6 +690,76 @@ export function createLibrarySlice(store: TabeloStore): LibrarySlice {
 			}
 			set({ library: indexed.library, name: entry.name, storageIssue: null });
 			return { status: "saved", tableId: entry.id };
+		},
+
+		// Nothing is flushed first: a backup is most needed when storage refuses
+		// writes, so the open table comes from memory and the others from their
+		// keys.
+		backupLibrary: () => {
+			const state = get();
+			const tables: BackupTable[] = [];
+			let skipped = 0;
+			for (const entry of state.library.tables) {
+				const payload =
+					entry.id === state.library.activeId
+						? savePayload(state)
+						: storedPayload(entry.id);
+				if (payload) tables.push({ mark: entry.mark, state: payload });
+				else skipped += 1;
+			}
+			if (tables.length === 0) return { status: "empty" };
+			return {
+				status: "saved",
+				text: serializeBackup(tables),
+				tables: tables.length,
+				skipped,
+			};
+		},
+
+		// Every table is validated before the first write, each is written
+		// before the index that names it, and a refused write removes the keys
+		// this restore wrote, so a failure leaves the library as it was.
+		restoreLibrary: (text) => {
+			const state = get();
+			if (storageBlocksWrites(state.storageIssue)) return { status: "blocked" };
+			const parsed = parseBackup(text);
+			if (parsed.status === "invalid") return parsed;
+			const taken = new Set(state.library.tables.map((table) => table.name));
+			const written: TableId[] = [];
+			const undo = () => {
+				for (const id of written) removeStoredTable(id);
+			};
+			const added: { id: TableId; name: string; mark: TableMark }[] = [];
+			for (const table of parsed.tables) {
+				const entry = {
+					id: createTableId(),
+					name: nameApart(taken, table.state.name),
+					mark: table.mark,
+				};
+				taken.add(entry.name);
+				const saved = saveTable(entry.id, { ...table.state, name: entry.name });
+				if (saved.status !== "saved") {
+					undo();
+					return saved;
+				}
+				written.push(entry.id);
+				added.push(entry);
+			}
+			// The open table stays open. An empty library opens the first restored
+			// table, the way content arriving there gets a table of its own (#466).
+			const opensFirst = state.library.activeId === null;
+			const library = {
+				tables: [...state.library.tables, ...added],
+				activeId: opensFirst ? (written[0] ?? null) : state.library.activeId,
+			};
+			const indexed = writeLibraryIndex(store, library);
+			if (indexed.status !== "saved") {
+				undo();
+				return indexed;
+			}
+			if (opensFirst) openTable(store, indexed.library);
+			else set({ library: indexed.library });
+			return { status: "saved", tables: written.length };
 		},
 	};
 }

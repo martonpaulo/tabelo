@@ -27,6 +27,7 @@ import {
 	usePreferences,
 	usePreferencesIssue,
 } from "@/preferences/use-preferences";
+import { BackupSection } from "@/ui/backup-section";
 import {
 	DialogActions,
 	DialogAlternative,
@@ -277,6 +278,8 @@ export function SettingsDialog({
 							}
 						/>
 					</section>
+
+					<BackupSection />
 
 					{/* Everything this browser holds, in one place, so the way out
 					    is where the settings are rather than hidden in a menu

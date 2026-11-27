@@ -128,6 +128,7 @@ import {
 	type PreparedImport,
 	prepareImport,
 } from "@/import/prepare";
+import type { BackupFailureReason } from "@/persistence/backup";
 import type { PersistenceFailureReason } from "@/persistence/schema";
 import type { SaveOutcome } from "@/persistence/storage";
 import {
@@ -406,6 +407,22 @@ export type StorageIssue =
 			readonly scope?: "library";
 			readonly replacementFailure?: "unavailable" | "quota";
 	  };
+
+// `skipped` counts tables whose stored payload could not be read: they stay
+// in the library for its own recovery, and the backup says it left them out.
+export type LibraryBackupOutcome =
+	| {
+			readonly status: "saved";
+			readonly text: string;
+			readonly tables: number;
+			readonly skipped: number;
+	  }
+	| { readonly status: "empty" };
+
+export type LibraryRestoreOutcome =
+	| { readonly status: "saved"; readonly tables: number }
+	| { readonly status: "invalid"; readonly reason: BackupFailureReason }
+	| { readonly status: "blocked" | "quota" | "unavailable" };
 
 export type LibraryTransitionOutcome =
 	| { readonly status: "saved"; readonly tableId: TableId }
@@ -739,6 +756,11 @@ export interface TabeloState {
 	// Gives content arriving while no table is active a table to live in, so
 	// nothing is held without a storage key (#466). Unchanged when one is active.
 	ensureActiveTable: () => LibraryTransitionOutcome;
+	// Every table in one backup file, the open one as it is on screen (#430).
+	backupLibrary: () => LibraryBackupOutcome;
+	// Adds every table a backup holds, under new ids and names numbered apart
+	// from the library's; never replaces or changes a table already kept.
+	restoreLibrary: (text: string) => LibraryRestoreOutcome;
 	dismissNotice: (id: string) => void;
 	pushNotice: (request: NoticeRequest) => void;
 	announceStatus: (message: string) => void;

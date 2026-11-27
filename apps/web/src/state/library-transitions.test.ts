@@ -617,3 +617,90 @@ describe("naming a table after an imported file (#469)", () => {
 		expect(useTabeloStore.getState().name).toBe("people");
 	});
 });
+
+describe("library backup and restore (#430)", () => {
+	it("restores every table beside the kept ones, numbering names apart", () => {
+		useTabeloStore.getState().renameTable("Roster");
+		useTabeloStore.getState().replaceDocument(
+			documentFromMatrix(
+				[
+					["Name", "Age"],
+					["Ingrid", 34],
+				],
+				{ headerRow: true },
+			),
+		);
+		const backup = useTabeloStore.getState().backupLibrary();
+		if (backup.status !== "saved") throw new Error("no backup");
+		expect(backup).toMatchObject({ tables: 1, skipped: 0 });
+		const openId = activeId();
+
+		const restored = useTabeloStore.getState().restoreLibrary(backup.text);
+
+		expect(restored).toEqual({ status: "saved", tables: 1 });
+		const state = useTabeloStore.getState();
+		expect(state.library.activeId).toBe(openId);
+		expect(state.library.tables.map((table) => table.name)).toEqual([
+			"Roster",
+			"Roster 2",
+		]);
+		const copyId = state.library.tables[1]?.id ?? "";
+		expect(state.documentForTable(copyId)).toEqual(state.document);
+		const index = JSON.parse(localStorage.getItem(LIBRARY_KEY) ?? "");
+		expect(index.tables.map((table: { id: string }) => table.id)).toEqual([
+			openId,
+			copyId,
+		]);
+	});
+
+	it("leaves the library as it was when a write is refused", () => {
+		flushPersistence();
+		const backup = useTabeloStore.getState().backupLibrary();
+		if (backup.status !== "saved") throw new Error("no backup");
+		const before = useTabeloStore.getState().library;
+		const keys = Object.keys(localStorage).sort();
+		// The table writes land and the index write is refused, so the keys the
+		// restore already wrote must be taken back.
+		const write = localStorage.setItem.bind(localStorage);
+		const writes = vi
+			.spyOn(window.localStorage, "setItem")
+			.mockImplementation((key, value) => {
+				if (key === LIBRARY_KEY)
+					throw new DOMException("full", "QuotaExceededError");
+				write(key, value);
+			});
+
+		expect(useTabeloStore.getState().restoreLibrary(backup.text)).toEqual({
+			status: "quota",
+		});
+
+		writes.mockRestore();
+		expect(useTabeloStore.getState().library).toBe(before);
+		expect(Object.keys(localStorage).sort()).toEqual(keys);
+	});
+
+	it("opens the first restored table in an empty library", () => {
+		const backup = useTabeloStore.getState().backupLibrary();
+		if (backup.status !== "saved") throw new Error("no backup");
+		flushPersistence();
+		useTabeloStore.getState().deleteTable(activeId());
+		expect(useTabeloStore.getState().library.activeId).toBeNull();
+
+		useTabeloStore.getState().restoreLibrary(backup.text);
+
+		const state = useTabeloStore.getState();
+		expect(state.library.tables).toHaveLength(1);
+		expect(state.library.activeId).toBe(state.library.tables[0]?.id);
+		expect(state.name).toBe(DEFAULT_TABLE_NAME);
+	});
+
+	it("refuses an invalid backup without writing anything", () => {
+		const before = useTabeloStore.getState().library;
+
+		expect(useTabeloStore.getState().restoreLibrary("{")).toEqual({
+			status: "invalid",
+			reason: "invalid-json",
+		});
+		expect(useTabeloStore.getState().library).toBe(before);
+	});
+});

@@ -755,6 +755,22 @@ button is a soft tinted fill, never bare red text: `--destructive` at low alpha
 behind `--destructive` text, a step stronger on hover, so it carries the same
 weight as the filled primary it stands in for (owner, 2026-09-19).
 
+The library backup sits in Settings too, in its own section above the erase
+control, below a hairline (decided on #430). `Download backup` writes one file
+with every table in this browser, each as the payload storage keeps for it, so
+a restore keeps every cell's type, inline content, layout and any draft;
+settings, the active choice and agent sessions stay out. `Restore backup`
+reads such a file and adds its tables after the ones kept, under new ids and
+their own names numbered apart (`Name 2`), and never replaces or changes a
+table already there, so it asks nothing first. The open table stays open; an
+empty library opens the first restored table. Every table is validated before
+the first write and a refused write takes back what the restore wrote, so a
+file that is not a backup, comes from a newer version, holds a damaged table,
+or does not fit restores nothing. Its result is one line under the two
+buttons, a status when it worked and the form's failure line when it did not.
+A table whose stored payload cannot be read is left out of a backup, and the
+line says how many were.
+
 One destructive control lives inside Settings rather than in a menu: erasing
 everything Tabelo stored in this browser (owner, 2026-09-20). It sits in its
 own section under the settings, below a hairline, as a destructive button with

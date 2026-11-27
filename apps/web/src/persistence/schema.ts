@@ -30,7 +30,7 @@ export function tableRecoveryKey(id: string): string {
 // empty list and nothing active (#466).
 export const LIBRARY_VERSION = 3 as const;
 
-const tableMarkSchema = z.union(
+export const tableMarkSchema = z.union(
 	TABLE_MARKS.map((mark) => z.literal(mark)) as [
 		z.ZodLiteral<TableMark>,
 		...z.ZodLiteral<TableMark>[],

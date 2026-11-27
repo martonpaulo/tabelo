@@ -49,6 +49,9 @@ the exact text format the person came for.
   projects that active table into every open view at once, so there is no
   copy-and-paste step between formats and no stale second copy. The app menu
   lists the tables and switches between them (#403).
+- Backs up the whole library into one file kept outside the browser, and
+  restores it by adding its tables beside the ones kept, never replacing one
+  (#430).
 - Treats data preservation as the first product requirement. Codec escapes are
   reversible, and any supported round trip that changes or drops a cell value
   is a defect.
@@ -184,6 +187,7 @@ reversible implementation choice does not belong here.
 | Table mark colour | Stored with each table: a new table takes the first unused of the six marks, adding or deleting never repaints another table, saved tables keep the colour they showed; no colour choice in the interface | design system §2 | #403, #465 |
 | App menu shape | Tables, then an untitled undo and redo pair, then Workspace, with Settings and the agent connection below them; no brand row; every table one row shape with one options control (also a right click on its name) holding open, rename, duplicate, the whole-table commands, copy and download through one format chooser, and delete; importing is Mod+O and the welcome surface; one footer line carrying the product, its copyright and the source link | design system §3 | owner, 2026-09-20 |
 | Command discovery | Kept as it is: commands live in the app menu, the context menus, and their shortcuts; no command search, no shortcut list, Import stays Mod+O and the welcome surface | design system §3 | #442 |
+| Library backup | One file holding every table; restoring only adds its tables, numbered apart from kept names, and never replaces one; settings and agent sessions stay out | design system §3 | #430 |
 | Erase everything | One control in Settings clears every Tabelo key in this browser, after a confirmation | design system §3 | owner, 2026-09-20 |
 | Stored schema history | Every historical schema, migration step and fixture deleted while the product is unreleased; versions restart at 1 and forward-only migrations apply from here on | AGENTS.md | owner, 2026-09-20 |
 | Pane count | One through four panes; a fresh visit opens two; a stacked window grows to two | ADR 0006 | #91, #219 |

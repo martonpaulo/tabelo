@@ -145,6 +145,9 @@ function fileExtension(extension: string): string {
 	return `.${extension}`;
 }
 
+// Every way a picked file turns out not to be a backup reads the same.
+const NOT_A_BACKUP = "That file isn't a Tabelo backup. Nothing was restored.";
+
 function plural(count: number, one: string, many: string): string {
 	return `${count} ${count === 1 ? one : many}`;
 }
@@ -440,6 +443,40 @@ export const copy = {
 		description:
 			"Its rows, columns and views are deleted from this browser. This can't be undone.",
 		confirm: "Delete table",
+	},
+
+	// A file of every table, kept outside the browser (#430).
+	backup: {
+		label: "Backup",
+		description:
+			"One file with every table in this browser. Restoring adds its tables beside the ones here and never replaces any. Settings are not included.",
+		download: "Download backup",
+		restore: "Restore backup",
+		downloaded: (tables: number, skipped: number) =>
+			skipped === 0
+				? `Backup of ${plural(tables, "table", "tables")} downloaded.`
+				: `Backup of ${plural(tables, "table", "tables")} downloaded. ${plural(skipped, "table", "tables")} that can't be read here were left out.`,
+		restored: (tables: number) =>
+			`${plural(tables, "table", "tables")} restored beside your tables.`,
+		empty: "There is no table to back up.",
+		failure: {
+			"invalid-json": NOT_A_BACKUP,
+			"not-a-backup": NOT_A_BACKUP,
+			"future-version":
+				"That backup comes from a newer version of Tabelo, so this one can't read it. Nothing was restored.",
+			"invalid-table":
+				"A table in that backup is damaged, so nothing was restored.",
+			empty: "That backup holds no table. Nothing was restored.",
+			"too-large":
+				"That file is too large to be a backup this browser can keep.",
+			"not-utf8": NOT_A_BACKUP,
+			quota:
+				"This browser has no room for those tables. Nothing was restored; free space by deleting tables you no longer need.",
+			unavailable:
+				"This browser isn't letting Tabelo save right now. Nothing was restored.",
+			blocked:
+				"Tabelo can't save until the storage problem shown on screen is resolved. Nothing was restored.",
+		},
 	},
 
 	eraseEverything: {

@@ -118,9 +118,16 @@ export function nameFromFileName(
 			.filter((table) => table.id !== tableId)
 			.map((table) => table.name),
 	);
+	return nameApart(taken, stem);
+}
+
+// `base` itself when no name in `taken` is it, else `base 2`, `base 3` and on,
+// the first one free. The base is shortened when the whole would pass the name
+// limit, so the number, which is what tells the tables apart, always survives.
+export function nameApart(taken: ReadonlySet<string>, base: string): string {
 	const named = (suffix: string) => {
 		const room = MAX_TABLE_NAME_CODE_POINTS - [...suffix].length;
-		return `${[...stem].slice(0, room).join("").trimEnd()}${suffix}`;
+		return `${[...base].slice(0, room).join("").trimEnd()}${suffix}`;
 	};
 	let candidate = named("");
 	let index = 2;
