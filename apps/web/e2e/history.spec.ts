@@ -165,3 +165,41 @@ test("document undo restores an invalid draft with explicit feedback", async ({
 		)
 		.toBe(invalid);
 });
+
+// While a pane's text does not parse, its header says the views are not in
+// sync, and a grid edit that replaces that text says Undo brings it back
+// (#557).
+test("an unparsed draft shows its status and its replacement offers Undo", async ({
+	tabelo,
+}) => {
+	const source = tabelo.source("markdown");
+	const status = tabelo
+		.pane("markdown")
+		.locator("[data-slot='pane-sync-status']");
+	const invalid = "| Name |\n| not a divider |\n| Ingrid |";
+	await source.fill("| Name |\n| --- |\n| Ingrid |");
+	await expect(status).toHaveCount(0);
+	await source.fill(invalid);
+	await expect(status).toBeVisible();
+
+	await tabelo.editCell(1, 1, "Grid wins");
+	await expect(tabelo.cell(1, 1)).toHaveText("Grid wins");
+	await expect(status).toHaveCount(0);
+
+	await tabelo
+		.notice("info")
+		.getByRole("button", { name: copy.actions.undo })
+		.click();
+	await expect(tabelo.cell(1, 1)).toHaveText("Ingrid");
+	await expect(status).toBeVisible();
+	await expect
+		.poll(() =>
+			source.evaluate((element) =>
+				Array.from(
+					element.querySelectorAll(".cm-line"),
+					(line) => line.textContent ?? "",
+				).join("\n"),
+			),
+		)
+		.toBe(invalid);
+});

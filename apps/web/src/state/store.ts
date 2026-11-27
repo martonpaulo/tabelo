@@ -1,6 +1,7 @@
 import { create, type StoreApi } from "zustand";
 import type { ClipboardPayload, ClipboardSource } from "@/clipboard/parse";
 import type { ClipboardSelection } from "@/clipboard/payload";
+import { copy } from "@/copy/copy";
 import { DEFAULT_TABLE_NAME } from "@/copy/product";
 import {
 	type SelectionMarkState,
@@ -1029,6 +1030,7 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 	applyDocument: (next, selectionRestore) => {
 		if (next === get().document) return;
 		cancelInvalidGrace();
+		const displaced = get().draft;
 		set((state) => ({
 			...recordStep(state, selectionRestore),
 			document: next,
@@ -1055,6 +1057,14 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 				next.columns.length,
 			),
 		}));
+		// The text was kept in history, but nothing on screen said so (#557).
+		if (displaced && displaced.status !== "clean") {
+			get().pushNotice({
+				severity: "info",
+				message: copy.notices.draftReplaced(getView(displaced.viewId).label),
+				undoFor: next,
+			});
+		}
 	},
 
 	replaceDocument: (next) => {

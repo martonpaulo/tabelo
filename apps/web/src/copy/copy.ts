@@ -618,6 +618,9 @@ export const copy = {
 		// gathered, out of how many the source holds.
 		occurrencesSelected: (selected: number, total: number) =>
 			`${selected} of ${total} ${total === 1 ? "match" : "matches"} selected`,
+		// The pane header's passive status while this pane's text does not parse
+		// and every other view still shows the last valid table (#557).
+		draftNotSynced: "Not synced: unfinished edits",
 	},
 
 	find: {
@@ -1277,6 +1280,10 @@ export const copy = {
 		// Whole-table commands report in a notice rather than the status line,
 		// because the notice is also where their Undo is offered (#235).
 		tableTransposed: "Table transposed",
+		// A table edit replaced a source pane's text that did not parse yet. The
+		// text is kept in history, and the notice's Undo brings it back (#557).
+		draftReplaced: (view: string) =>
+			`Unfinished ${view} edits were replaced. Undo brings them back.`,
 		// Said after Duplicate table, which opens the copy: the name tells the
 		// reader which table the workspace now shows.
 		tableDuplicated: (source: string, name: string) =>

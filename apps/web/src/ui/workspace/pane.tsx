@@ -134,6 +134,12 @@ export const Pane = memo(function Pane({
 	const [assistanceEnabled, setAssistanceEnabled] = useState(true);
 	const enableAssistance = useCallback(() => setAssistanceEnabled(true), []);
 	const ownsDraft = useTabeloStore((state) => state.draft?.paneId === pane.id);
+	// Only once the grace period has shown the error, so a delimiter typed on
+	// the way to valid text never flashes the status (#557).
+	const notSynced = useTabeloStore(
+		(state) =>
+			state.draft?.paneId === pane.id && state.draft.status === "invalid",
+	);
 	const heldDraft = useRef(ownsDraft);
 	useEffect(() => {
 		if (heldDraft.current && !ownsDraft) enableAssistance();
@@ -200,6 +206,14 @@ export const Pane = memo(function Pane({
 					    actions trigger never moves, and tabular figures keep the count
 					    from resizing as it climbs. Secondary status detail, which is
 					    what text-xs is reserved for: see docs/design-system/2-tokens.md. */}
+					{notSynced ? (
+						<span
+							data-slot="pane-sync-status"
+							className="text-muted-foreground shrink-0 text-xs whitespace-nowrap"
+						>
+							{copy.workspace.draftNotSynced}
+						</span>
+					) : null}
 					{occurrences ? (
 						<span
 							data-slot="pane-occurrences"

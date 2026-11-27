@@ -115,7 +115,8 @@ Part of the [Tabelo Design System](../design-system.md). Its entry point lists e
 - The space between the identity and the trailing trigger is the pane's status
   slot. What sits there is text: no role, no focus, nothing to press, and never
   a third action. It reports a temporary condition of the pane's content, such
-  as how many occurrences an incremental selection has gathered, and a healthy
+  as how many occurrences an incremental selection has gathered or that its
+  text does not parse and the other views are not in sync (#557), and a healthy
   idle pane leaves it empty. It grows leftward, so the trigger never moves, and
   it uses tabular figures so a rising count does not resize itself. Width
   pressure is absorbed by the identity's own truncation, an ellipsis on the
