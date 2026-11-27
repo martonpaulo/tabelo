@@ -104,6 +104,7 @@ workflows use only the `GITHUB_TOKEN` that GitHub Actions provides on its own.
 | :--------------------- | :-------------- | :--------------------------------------------------------------- |
 | `BASE_PATH`            | Build           | Public base path of the built site. Defaults to `/`; the deploy workflow sets it explicitly |
 | `SITE_ORIGIN`          | Build           | Absolute origin used in the page metadata and social card tags    |
+| `BUILD_SHA`            | Build           | Commit stamped into the page as `<meta name="build">`, which the deploy workflow reads back from the live site |
 | `TABELO_DEV_PORT`      | Local dev       | Overrides the path-derived dev server port                        |
 | `TABELO_PREVIEW_PORT`  | Local dev       | Overrides the path-derived preview server port                    |
 | `TABELO_PWA_DEV`       | Local dev       | Enables the service worker in dev, for working on the worker itself |

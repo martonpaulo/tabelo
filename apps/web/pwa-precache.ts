@@ -8,3 +8,8 @@ export const precacheGlobPatterns = [
 	"**/figtree-latin-wght-*.woff2",
 	"logo.svg",
 ];
+
+// The not-found copy of the shell is what Pages answers a deep link with; the
+// installed app always starts from index.html, so caching it would only double
+// the shell's bytes.
+export const precacheGlobIgnores = ["404.html"];

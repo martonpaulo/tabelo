@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { product } from "./copy/product";
-import { createProductMetadata, createStaticIntro } from "./product-metadata";
+import {
+	createNotFoundPage,
+	createProductMetadata,
+	createStaticIntro,
+} from "./product-metadata";
 
 describe("createProductMetadata", () => {
 	it("emits sharing metadata and the deployment URL for a root build with an origin", () => {
@@ -91,6 +95,47 @@ describe("createProductMetadata", () => {
 		expect(metadata).not.toContain("og:image");
 		expect(metadata).not.toContain('rel="canonical"');
 		expect(metadata).not.toContain("tabelo.martonpaulo.com");
+	});
+
+	it("stamps the built commit only when the build names one", () => {
+		const sha = "0123456789abcdef0123456789abcdef01234567";
+		expect(createProductMetadata({ basePath: "/", buildSha: sha })).toContain(
+			`<meta name="build" content="${sha}" />`,
+		);
+		expect(createProductMetadata({ basePath: "/" })).not.toContain(
+			'name="build"',
+		);
+	});
+});
+
+// #586: the copy of index.html that Pages serves with a 404 status.
+describe("createNotFoundPage", () => {
+	const indexHtml = `<!doctype html>
+<html lang="en">
+  <head>
+    ${createProductMetadata({
+			basePath: "/",
+			siteOrigin: "https://tabelo.martonpaulo.com",
+		})}
+  </head>
+  <body></body>
+</html>`;
+
+	it("asks search engines not to index it", () => {
+		expect(createNotFoundPage(indexHtml)).toMatch(
+			/<meta name="robots" content="noindex" \/>\s*<\/head>/,
+		);
+	});
+
+	it("claims neither a canonical address nor the home page's URL", () => {
+		const page = createNotFoundPage(indexHtml);
+		expect(page).not.toContain('rel="canonical"');
+		expect(page).not.toContain("og:url");
+		expect(page).toContain("og:title");
+	});
+
+	it("refuses a document with no head to add noindex to", () => {
+		expect(() => createNotFoundPage("<html></html>")).toThrow("</head>");
 	});
 });
 

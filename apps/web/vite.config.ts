@@ -2,10 +2,11 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
-import { precacheGlobPatterns } from "./pwa-precache";
+import { precacheGlobIgnores, precacheGlobPatterns } from "./pwa-precache";
 import { product } from "./src/copy/product";
 import { THEME_COLOR } from "./src/preferences/contract";
 import {
+	createNotFoundPage,
 	createProductMetadata,
 	createStaticIntro,
 } from "./src/product-metadata";
@@ -19,6 +20,7 @@ const base = process.env.BASE_PATH ?? "/";
 const productMetadata = createProductMetadata({
 	basePath: base,
 	siteOrigin: process.env.SITE_ORIGIN,
+	buildSha: process.env.BUILD_SHA,
 });
 
 // GitHub Pages cannot send response headers, so the policy is a meta tag
@@ -118,6 +120,24 @@ export default defineConfig({
 				);
 			},
 		},
+		{
+			// Pages has no SPA rewrite rule, so a deep link gets 404.html. Built
+			// from the finished index.html, which Vite emits in a later hook,
+			// hence `post`; see createNotFoundPage.
+			name: "tabelo-not-found-page",
+			apply: "build",
+			enforce: "post",
+			generateBundle(_options, bundle) {
+				const index = bundle["index.html"];
+				if (index?.type !== "asset")
+					throw new Error("the build emitted no index.html for 404.html");
+				this.emitFile({
+					type: "asset",
+					fileName: "404.html",
+					source: createNotFoundPage(String(index.source)),
+				});
+			},
+		},
 		tailwindcss(),
 		react(),
 		VitePWA({
@@ -138,6 +158,7 @@ export default defineConfig({
 			},
 			workbox: {
 				globPatterns: precacheGlobPatterns,
+				globIgnores: precacheGlobIgnores,
 			},
 			pwaAssets: {
 				disabled: false,

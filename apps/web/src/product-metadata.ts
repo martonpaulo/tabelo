@@ -3,6 +3,7 @@ import { product } from "./copy/product";
 type ProductMetadataOptions = {
 	basePath: string;
 	siteOrigin?: string;
+	buildSha?: string;
 };
 
 // JSON inside a <script> block is not attribute content: escaping quotes there
@@ -41,6 +42,7 @@ export function createStaticIntro(): string {
 export function createProductMetadata({
 	basePath,
 	siteOrigin,
+	buildSha,
 }: ProductMetadataOptions): string {
 	const title = escapeHtmlAttribute(product.documentTitle);
 	const description = escapeHtmlAttribute(product.description);
@@ -108,5 +110,30 @@ export function createProductMetadata({
 		);
 	}
 
+	// The deploy workflow stamps the commit it built, so its last step can read
+	// the live page back and fail when Pages still serves another build (#586).
+	if (buildSha) {
+		tags.push(
+			`<meta name="build" content="${escapeHtmlAttribute(buildSha)}" />`,
+		);
+	}
+
 	return tags.join("\n    ");
+}
+
+const CANONICAL_LINK = /\s*<link rel="canonical"[^>]*>/g;
+const OG_URL_META = /\s*<meta property="og:url"[^>]*>/g;
+
+// GitHub Pages has no rewrite rule, so the built index.html also ships as
+// 404.html: a deep link then loads the application, which normalizes the path
+// to the canonical one before it mounts (docs/adr/0007). The copy answers with
+// a 404 status, so it asks search engines not to index it and drops the tags
+// that claim it is the home page (#586).
+export function createNotFoundPage(indexHtml: string): string {
+	if (!indexHtml.includes("</head>"))
+		throw new Error("index.html has no </head> to add noindex before");
+	return indexHtml
+		.replace(CANONICAL_LINK, "")
+		.replace(OG_URL_META, "")
+		.replace("</head>", '<meta name="robots" content="noindex" /></head>');
 }
