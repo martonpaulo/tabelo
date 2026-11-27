@@ -12,9 +12,11 @@ import {
 	DialogConfirm,
 } from "@/ui/primitives/dialog-buttons";
 
-// One destructive question, asked the same way wherever it is asked: delete
-// this table, erase everything Tabelo stored, and anything else that cannot
-// be undone. The copy comes from the caller so it stays in copy.ts.
+// One question with one decisive answer, asked the same way wherever it is
+// asked: delete this table, erase everything Tabelo stored, and anything else
+// that cannot be undone, or, with `destructive` off, a choice that loses
+// nothing, such as keeping long numbers as text (#548). The copy comes from
+// the caller so it stays in copy.ts.
 interface ConfirmDialogProps {
 	readonly open: boolean;
 	readonly onOpenChange: (open: boolean) => void;
@@ -26,6 +28,8 @@ interface ConfirmDialogProps {
 	readonly title: string;
 	readonly description: string;
 	readonly confirmLabel: string;
+	// Off for a choice that removes nothing.
+	readonly destructive?: boolean;
 }
 
 export function ConfirmDialog({
@@ -36,6 +40,7 @@ export function ConfirmDialog({
 	title,
 	description,
 	confirmLabel,
+	destructive = true,
 }: ConfirmDialogProps) {
 	return (
 		<Dialog
@@ -51,7 +56,7 @@ export function ConfirmDialog({
 				<DialogActions>
 					<DialogCancel>{copy.actions.cancel}</DialogCancel>
 					<DialogConfirm
-						destructive
+						destructive={destructive}
 						onClick={() => {
 							onConfirm();
 							onOpenChange(false);

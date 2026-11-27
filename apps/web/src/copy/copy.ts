@@ -446,6 +446,13 @@ export const copy = {
 		confirm: "Erase everything",
 	},
 
+	// Asked when incoming JSON holds numbers a double cannot hold (#548).
+	impreciseNumbers: {
+		title: "Keep long numbers as text?",
+		description: (key: string) =>
+			`Some numbers, such as the one under "${key}", have more digits than a number can hold. As numbers they would be rounded; as text they keep every digit.`,
+		asText: "Keep as text",
+	},
 	headerImport: {
 		title: "Is row 1 a header row?",
 		description: "Row 1 can hold column names or be the first data row.",
@@ -860,6 +867,9 @@ export const copy = {
 					break;
 				case "json-number-not-finite":
 					message = `The number under "${issue.key}" is too large to keep. Put it in quotes to keep it as text, or write a smaller number.`;
+					break;
+				case "json-number-imprecise":
+					message = `The number under "${issue.key}" has more digits than a number can hold, so it would be rounded. Put it in quotes to keep its digits as text.`;
 					break;
 				case "delimited-unclosed-quote":
 					message = "A quoted field isn't closed.";

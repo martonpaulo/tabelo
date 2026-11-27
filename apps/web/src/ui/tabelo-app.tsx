@@ -149,8 +149,16 @@ export function TabeloApp() {
 	const [welcomeOpen, setWelcomeOpen] = useState(opensOnWelcome);
 	const [addViewRequest, setAddViewRequest] = useState(0);
 	const tableName = useTabeloStore((state) => state.name);
+	// Incoming numbers that would be rounded wait on the user's answer (#548).
+	// The key stays while the question runs its close transition.
+	const impreciseKey = useTabeloStore(
+		(state) => state.pendingImprecise?.key ?? null,
+	);
+	const lastImpreciseKeyRef = useRef("");
+	if (impreciseKey !== null) lastImpreciseKeyRef.current = impreciseKey;
+	const lastImpreciseKey = lastImpreciseKeyRef.current;
 	const importQuestionOpen = useTabeloStore(
-		(state) => state.pendingImport !== null,
+		(state) => state.pendingImport !== null || state.pendingImprecise !== null,
 	);
 	// A library with no table has nothing to show but the welcome surface
 	// (#466), so it stays up until content or a new table arrives.
@@ -286,7 +294,8 @@ export function TabeloApp() {
 			const after = useTabeloStore.getState();
 			if (
 				after.document === before.document &&
-				after.pendingImport === before.pendingImport
+				after.pendingImport === before.pendingImport &&
+				after.pendingImprecise === before.pendingImprecise
 			)
 				return;
 			event.preventDefault();
@@ -508,6 +517,23 @@ export function TabeloApp() {
 				confirmLabel={copy.deleteTable.confirm}
 			/>
 			<HeaderRowDialog onImported={finishWelcomeImport} />
+			<ConfirmDialog
+				open={impreciseKey !== null}
+				onOpenChange={(open) => {
+					if (!open) useTabeloStore.getState().cancelPendingImprecise();
+				}}
+				onConfirm={() => {
+					const before = useTabeloStore.getState().document;
+					useTabeloStore.getState().answerPendingImprecise();
+					if (useTabeloStore.getState().document !== before) {
+						finishWelcomeImport();
+					}
+				}}
+				title={copy.impreciseNumbers.title}
+				description={copy.impreciseNumbers.description(lastImpreciseKey)}
+				confirmLabel={copy.impreciseNumbers.asText}
+				destructive={false}
+			/>
 		</div>
 	);
 }

@@ -16,7 +16,12 @@ import {
 	readHtmlFragment,
 	readHtmlTable,
 } from "@/formats/html";
-import type { CodecId, ParseIssue, TableCodec } from "@/formats/types";
+import type {
+	CodecId,
+	MatrixParseOptions,
+	ParseIssue,
+	TableCodec,
+} from "@/formats/types";
 import { type ClipboardSelection, readTabeloPayload } from "./payload";
 
 // "tabelo" is not a codec: it is the private flavour Tabelo writes for itself,
@@ -43,10 +48,12 @@ export interface ClipboardPayload {
 // one is raised only by content its format has already recognised, and the
 // formats after it would read the same content as something it is not: merged
 // cells as shifted rows (#415), a JSON number past the largest double as a
-// comma-separated line of text (#416).
+// comma-separated line of text (#416), and one whose digits a double cannot
+// hold, until the user chooses to keep them as text (#548).
 const CONCLUSIVE_REFUSALS: ReadonlySet<ParseIssue["code"]> = new Set([
 	"html-merged-cells-unsupported",
 	"json-number-not-finite",
+	"json-number-imprecise",
 ]);
 
 function conclusiveRefusal(
@@ -58,9 +65,10 @@ function conclusiveRefusal(
 function tableViaCodec(
 	codec: TableCodec,
 	text: string,
+	options: MatrixParseOptions | undefined,
 ): ClipboardReading | null {
 	if (codec.canSniff && !codec.canSniff(text)) return null;
-	const result = codec.parseMatrix(text);
+	const result = codec.parseMatrix(text, options);
 	if (!result.ok) {
 		const issue = conclusiveRefusal(result.issues);
 		return issue ? { ok: false, format: codec.id, issue } : null;
@@ -163,6 +171,7 @@ export type ClipboardReading =
 // exactly the loss the refusal exists to prevent.
 export function readClipboard(
 	payload: ClipboardPayload,
+	options?: MatrixParseOptions,
 ): ClipboardReading | null {
 	const text = payload.text ?? "";
 	const split = payload.html
@@ -173,13 +182,14 @@ export function readClipboard(
 	const refusal =
 		reading?.ok === false ? conclusiveRefusal([reading.issue]) : undefined;
 	if (refusal) return { ok: false, format: "html", issue: refusal };
-	return readTable(text, split, reading);
+	return readTable(text, split, reading, options);
 }
 
 function readTable(
 	text: string,
 	split: ReturnType<typeof readTabeloPayload>,
 	reading: HtmlTableReading | null,
+	options: MatrixParseOptions | undefined,
 ): ClipboardReading | null {
 	const html = reading?.ok ? reading.table : null;
 	if (html) {
@@ -230,7 +240,7 @@ function readTable(
 	if (text === "") return null;
 
 	for (const codec of listSniffableCodecs()) {
-		const read = tableViaCodec(codec, text);
+		const read = tableViaCodec(codec, text, options);
 		if (read) return read;
 	}
 

@@ -130,11 +130,13 @@ describe("json numbers that cannot stay finite", () => {
 		expect(jsonCodec.serialize(result.document)).toBe(text);
 	});
 
-	it("reads underflow as the finite zero JSON.parse gives it", () => {
-		const result = jsonCodec.parse('[{"tiny": 1e-400}]');
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
-		expect(valuesOf(result.document)).toEqual([[0]]);
+	// Underflow stays finite, so it is not this refusal; it is a value a
+	// double cannot hold, which #548 refuses on its own terms.
+	it("does not refuse underflow as a number too large", () => {
+		expect(jsonCodec.parseMatrix('[{"tiny": 1e-400}]')).toEqual({
+			ok: false,
+			issues: [{ code: "json-number-imprecise", key: "tiny", line: 1 }],
+		});
 	});
 });
 
@@ -352,5 +354,74 @@ describe("json header precondition", () => {
 			"2024",
 			"Year",
 		]);
+	});
+});
+
+// #548: JSON.parse reads a literal whose digits a double cannot hold as the
+// nearest double, and the codec would write that rounded value back.
+describe("json numbers a double cannot hold", () => {
+	const text =
+		'[{"id": 12345678901234567890, "n": 0.1000000000000000055511151231257827}]';
+
+	it("refuses the read rather than rounding it", () => {
+		expect(jsonCodec.parseMatrix(text)).toEqual({
+			ok: false,
+			issues: [{ code: "json-number-imprecise", key: "id", line: 1 }],
+		});
+		expect(jsonCodec.parse(text).ok).toBe(false);
+	});
+
+	it("keeps each one as the exact text of its digits when asked to", () => {
+		const result = jsonCodec.parseMatrix(text, {
+			impreciseNumbersAsText: true,
+		});
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.table.matrix).toEqual([
+			["id", "n"],
+			["12345678901234567890", "0.1000000000000000055511151231257827"],
+		]);
+	});
+
+	it("keeps a number that holds its value as a number", () => {
+		const result = jsonCodec.parseMatrix(
+			'[{"a": 12345678901234567890, "b": 7}]',
+			{ impreciseNumbersAsText: true },
+		);
+		expect(result.ok && result.table.matrix[1]).toEqual([
+			"12345678901234567890",
+			7,
+		]);
+	});
+
+	it("locates the first one at its own line", () => {
+		const result = jsonCodec.parseMatrix(
+			'[\n  {"name": "Ingrid", "age": 31},\n  {"name": "Paulo", "age": 1.00000000000000001}\n]',
+		);
+		expect(result).toEqual({
+			ok: false,
+			issues: [{ code: "json-number-imprecise", key: "age", line: 3 }],
+		});
+	});
+
+	it.each([
+		["1.0", 1],
+		["1e2", 100],
+		["-0", -0],
+		["0.10", 0.1],
+		["1E+21", 1e21],
+		["5e-324", 5e-324],
+		["9007199254740993e-16", 0.9007199254740993],
+		["-12.5000", -12.5],
+	])("reads %s, another spelling of one value, as today", (literal, value) => {
+		const result = jsonCodec.parseMatrix(`[{"n": ${literal}}]`);
+		expect(result.ok && result.table.matrix[1]?.[0]).toBe(value);
+	});
+
+	it("judges only the value a repeated key keeps", () => {
+		const result = jsonCodec.parseMatrix(
+			'[{"n": 12345678901234567890, "n": 5}]',
+		);
+		expect(result.ok && result.table.matrix[1]).toEqual([5]);
 	});
 });

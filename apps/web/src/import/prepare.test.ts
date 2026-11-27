@@ -8,6 +8,7 @@ import type { CodecId } from "@/formats";
 import {
 	createImportedDocument,
 	IMPORT_LIMITS,
+	impreciseNumbersKey,
 	prepareImport,
 } from "./prepare";
 
@@ -342,5 +343,45 @@ describe("JSON numbers that cannot stay finite", () => {
 		if (!result.ok) return;
 		expect(result.value.source).toBe("json");
 		expect(result.value.matrix).toEqual([["age"], [Number.MAX_VALUE]]);
+	});
+});
+
+// #548: a JSON number a double cannot hold is refused on every path, with a
+// refusal the user can answer by keeping the digits as text.
+describe("JSON numbers a double cannot hold", () => {
+	const text = '[\n  {"name": "Ingrid", "id": 12345678901234567890}\n]';
+
+	it.each([
+		["a paste", undefined],
+		["a JSON file import", "json" as const],
+	])("refuses %s and names the key to ask about", (_, format) => {
+		const result = prepareImport({ payload: { text }, format });
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(impreciseNumbersKey(result.error)).toBe("id");
+	});
+
+	it.each([
+		["a paste", undefined],
+		["a JSON file import", "json" as const],
+	])("keeps the digits as text in %s once the user chose it", (_, format) => {
+		const result = prepareImport({
+			payload: { text },
+			format,
+			options: { impreciseNumbersAsText: true },
+		});
+		expect(result.ok && result.value.matrix).toEqual([
+			["name", "id"],
+			["Ingrid", "12345678901234567890"],
+		]);
+	});
+
+	it("asks about no other refusal", () => {
+		const result = prepareImport({
+			payload: { text: '[{"age": 1e400}]' },
+		});
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(impreciseNumbersKey(result.error)).toBeNull();
 	});
 });

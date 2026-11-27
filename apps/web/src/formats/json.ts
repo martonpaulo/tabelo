@@ -8,6 +8,7 @@ import {
 	toDocumentParseResult,
 } from "./parse";
 import type {
+	MatrixParseOptions,
 	MatrixParseResult,
 	ParseIssue,
 	PreconditionFailure,
@@ -76,17 +77,15 @@ function jsonScalarEnd(text: string, index: number): number {
 // JSON.parse has already accepted as an array of flat objects of scalars, so
 // this is a position scan over that one shape and not a second grammar: it
 // never judges the text, it only finds the tokens the parse read. A record is
-// its object from `{` to `}`, wherever the user's formatting put it, and each
-// of its lines names it. A value's range is its whole spelling, quotes and
-// escapes included. Cells follow the columns, not the text: each is the value
-// of the key its column names, the last one when a key repeats, as JSON.parse
-// keeps it, up to the first column the record does not spell. The header has
-// no text of its own, because its names are the keys inside every record.
-function jsonSourceRows(
-	text: string,
-	headers: readonly string[],
-): SourceTableRow[] {
-	const rows: SourceTableRow[] = [textlessHeaderRow];
+// its object from `{` to `}`, wherever the user's formatting put it. A value's
+// range is its whole spelling, quotes and escapes included, keyed by its
+// member key: the last one when a key repeats, as JSON.parse keeps it.
+interface JsonRecordRange extends SourceRowRange {
+	readonly values: ReadonlyMap<string, SourceRowRange>;
+}
+
+function jsonRecordRanges(text: string): JsonRecordRange[] {
+	const records: JsonRecordRange[] = [];
 	// Past the array's `[`.
 	let at = skipJsonSpace(text, 0) + 1;
 	for (;;) {
@@ -108,20 +107,38 @@ function jsonSourceRows(
 			if (typeof key === "string") values.set(key, { from: at, to: valueEnd });
 			at = valueEnd;
 		}
+		// Past the `}`.
+		at += 1;
+		records.push({ from, to: at, values });
+	}
+	return records;
+}
+
+// Each record's lines name it. Cells follow the columns, not the text: each
+// is the value of the key its column names, up to the first column the record
+// does not spell. The header has no text of its own, because its names are
+// the keys inside every record.
+function jsonSourceRows(
+	ranges: readonly JsonRecordRange[],
+	headers: readonly string[],
+): SourceTableRow[] {
+	const rows: SourceTableRow[] = [textlessHeaderRow];
+	for (const { from, to, values } of ranges) {
 		const cells: SourceRowRange[] = [];
 		for (const header of headers) {
 			const cell = values.get(header);
 			if (!cell) break;
 			cells.push(cell);
 		}
-		// Past the `}`.
-		at += 1;
-		rows.push({ from, to: at, cells, lines: "all" });
+		rows.push({ from, to, cells, lines: "all" });
 	}
 	return rows;
 }
 
-function parseJsonMatrix(text: string): MatrixParseResult {
+function parseJsonMatrix(
+	text: string,
+	options?: MatrixParseOptions,
+): MatrixParseResult {
 	if (!text.trim()) {
 		return { ok: false, issues: [{ code: "empty-source" }] };
 	}
@@ -169,9 +186,31 @@ function parseJsonMatrix(text: string): MatrixParseResult {
 		return { ok: false, issues: [{ code: "json-scalar-cells-required" }] };
 	}
 
-	const rows = jsonSourceRows(text, headers);
+	const ranges = jsonRecordRanges(text);
+	const rows = jsonSourceRows(ranges, headers);
 	const overflow = nonFiniteNumber(records, headers, rows, text);
 	if (overflow) return { ok: false, issues: [overflow] };
+	const imprecise = impreciseNumbers(records, ranges, text);
+	if (imprecise.length > 0 && !options?.impreciseNumbersAsText) {
+		const [first] = imprecise;
+		return {
+			ok: false,
+			issues: [
+				{
+					code: "json-number-imprecise",
+					key: first?.key ?? "",
+					line: first
+						? text.slice(0, first.range.from).split(/\r?\n/).length
+						: undefined,
+				},
+			],
+		};
+	}
+	// The user chose to keep these digits (#548): each becomes the string of
+	// its own spelling, so its value is exactly what the source wrote.
+	for (const { record, key, range } of imprecise) {
+		record[key] = text.slice(range.from, range.to);
+	}
 
 	const warnings: ParseIssue[] = [];
 	const matrix: CellValue[][] = [headers];
@@ -207,7 +246,8 @@ function parseJsonMatrix(text: string): MatrixParseResult {
 // null (#416). A non-finite number is not a cell value (docs/adr/0008), so the
 // first one refuses the whole read, located at the value's own spelling, or at
 // its record when the value sits past the columns that record maps. Underflow
-// is not this case: a literal too small to represent reads as a finite 0.
+// is not this case: a literal too small to represent reads as a finite 0,
+// which `impreciseNumbers` refuses instead (#548).
 // https://tc39.es/ecma262/#sec-json.parse
 function nonFiniteNumber(
 	records: readonly Record<string, unknown>[],
@@ -232,6 +272,59 @@ function nonFiniteNumber(
 		}
 	}
 	return null;
+}
+
+// A decimal literal reduced to its digits and exponent, without leading or
+// trailing zeros, so that two spellings of one value compare equal: `1.0`,
+// `1`, and `1e0` all read `1e0`. Zero is `0` whatever its sign or spelling,
+// because `-0` and `0` are one cell value (docs/adr/0008). It reads JSON's
+// number grammar and the shortest spelling JavaScript writes for a double,
+// which is the same grammar with an optional `+` in the exponent.
+// https://www.rfc-editor.org/rfc/rfc8259#section-6
+function decimalValue(literal: string): string {
+	const match = /^(-?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/.exec(literal);
+	if (!match) return literal;
+	const [, sign = "", whole = "", fraction = "", exponent = "0"] = match;
+	let digits = `${whole}${fraction}`.replace(/^0+/, "");
+	let power = Number(exponent) - fraction.length;
+	const trimmed = digits.replace(/0+$/, "");
+	power += digits.length - trimmed.length;
+	digits = trimmed;
+	if (digits === "") return "0";
+	return `${sign}${digits}e${power}`;
+}
+
+interface ImpreciseNumber {
+	readonly record: Record<string, unknown>;
+	readonly key: string;
+	readonly range: SourceRowRange;
+}
+
+// A number literal whose value a double cannot hold (#548): JSON.parse reads
+// the nearest double, so `12345678901234567890` becomes
+// `12345678901234567000` and a long decimal is cut short, and the codec would
+// write that changed value back. A literal holds its value when the shortest
+// spelling of the double it parsed to names the same decimal, which is why a
+// different spelling of one value, `1.0` for `1`, is not this case. Only the
+// value a record keeps is judged, the last one when a key repeats.
+function impreciseNumbers(
+	records: readonly Record<string, unknown>[],
+	ranges: readonly JsonRecordRange[],
+	text: string,
+): ImpreciseNumber[] {
+	const found: ImpreciseNumber[] = [];
+	for (const [index, record] of records.entries()) {
+		for (const [key, cell] of Object.entries(record)) {
+			if (typeof cell !== "number") continue;
+			const range = ranges[index]?.values.get(key);
+			if (!range) continue;
+			const literal = text.slice(range.from, range.to);
+			if (decimalValue(literal) !== decimalValue(String(cell))) {
+				found.push({ record, key, range });
+			}
+		}
+	}
+	return found;
 }
 
 // The key every column is written under. A named column keys on its header

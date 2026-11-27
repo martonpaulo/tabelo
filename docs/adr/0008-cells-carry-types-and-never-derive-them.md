@@ -149,6 +149,15 @@ holds the same line on the way in (#416): a number literal past the
 largest double, which `JSON.parse` reads as `Infinity`, refuses the whole read,
 in the source view, a file import, and a paste alike, instead of being carried
 as a number that cannot be written back or coerced to text or `null`.
+A literal whose digits a double cannot hold, such as `12345678901234567890`,
+a long decimal, or an underflow to `0`, is refused the same way, since
+`JSON.parse` would round it and the codec would write the rounded value back
+(decided on #548). Only its value counts: `1.0` and `1e2` are other spellings of
+values a double holds and parse as before. An import or a paste then asks,
+like typed grid entry of the same digits, and on the user's yes keeps each
+such number as the string of its own digits; that string is the user's
+choice, not a type read off the text. A source view never asks: quoting the
+number there is the same choice, and its error says so.
 Negative zero is the opposite case and needs no refusal: `JSON.stringify` and
 the text projection both spell it `0`, the same type and the same text, so a
 cell number treats `-0` and `0` as one value, and writing one over the other

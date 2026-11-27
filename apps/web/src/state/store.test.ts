@@ -107,6 +107,47 @@ describe("session content", () => {
 	});
 });
 
+// #548: numbers a double cannot hold wait on the user's answer.
+describe("incoming numbers that would be rounded", () => {
+	const text = '[{"name": "Ingrid", "id": 12345678901234567890}]';
+
+	it("asks before importing and imports nothing on cancel", () => {
+		const before = useTabeloStore.getState();
+		before.importText(text, "json");
+		const asked = useTabeloStore.getState();
+		expect(asked.document).toBe(before.document);
+		expect(asked.inputError).toBeNull();
+		expect(asked.pendingImprecise?.key).toBe("id");
+
+		asked.cancelPendingImprecise();
+		const cancelled = useTabeloStore.getState();
+		expect(cancelled.pendingImprecise).toBeNull();
+		expect(cancelled.document).toBe(before.document);
+	});
+
+	it.each([
+		[
+			"an import",
+			(store: ReturnType<typeof useTabeloStore.getState>) =>
+				store.importText(text, "json"),
+		],
+		[
+			"a paste",
+			(store: ReturnType<typeof useTabeloStore.getState>) =>
+				store.pasteClipboard({ text }),
+		],
+	])("keeps the digits as text once %s is answered", (_, request) => {
+		request(useTabeloStore.getState());
+		useTabeloStore.getState().answerPendingImprecise();
+		const after = useTabeloStore.getState();
+		expect(after.pendingImprecise).toBeNull();
+		expect(documentToMatrix(after.document)).toEqual([
+			["name", "id"],
+			["Ingrid", "12345678901234567890"],
+		]);
+	});
+});
+
 describe("transactional input", () => {
 	it("preserves the document and selection after a named format failure", () => {
 		useTabeloStore.setState({

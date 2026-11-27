@@ -97,6 +97,7 @@ import type {
 import { canSerialize } from "@/formats";
 import type {
 	CodecId,
+	MatrixParseOptions,
 	OutputOptionId,
 	OutputOptions,
 	ParseIssue,
@@ -118,6 +119,7 @@ import {
 	createImportedDocument,
 	droppedFormatting,
 	type ImportError,
+	impreciseNumbersKey,
 	type PreparedImport,
 	prepareImport,
 } from "@/import/prepare";
@@ -302,6 +304,21 @@ export type StructureEdit =
 			readonly offset: number;
 	  };
 
+// An import or a paste refused only because the incoming text holds numbers a
+// double cannot hold (#548). Answering yes runs the same request again,
+// keeping those numbers as the exact text of their digits.
+export interface PendingImprecise {
+	readonly request:
+		| { readonly kind: "paste"; readonly payload: ClipboardPayload }
+		| {
+				readonly kind: "import";
+				readonly text: string;
+				readonly format?: CodecId;
+		  };
+	// The member key of the first such number, for the question to name.
+	readonly key: string;
+}
+
 export interface PendingImport {
 	readonly prepared: PreparedImport;
 	// Whether the request was made from an untouched session, which is what
@@ -476,6 +493,9 @@ export interface TabeloState {
 	// A document replacement whose format does not identify row 1. It remains
 	// outside the document and history until the user answers the question.
 	pendingImport: PendingImport | null;
+	// An import or paste waiting for the user's answer about numbers that
+	// would be rounded. Outside the document and history, as above.
+	pendingImprecise: PendingImprecise | null;
 	pendingPaneAction: PendingPaneAction | null;
 	// What the next download should produce. Deliberately session-only: it
 	// changes the shape of the exported file, and a silently remembered "leave
@@ -670,14 +690,24 @@ export interface TabeloState {
 	writeSelectedCells: (write: CellsWrite) => number;
 	deleteSelectedStructure: () => StructureDeletionRefusal | null;
 	clipboardSelection: () => ClipboardSelection;
-	pasteClipboard: (payload: ClipboardPayload) => PasteRefusal | null;
-	importText: (text: string, format?: CodecId) => void;
+	pasteClipboard: (
+		payload: ClipboardPayload,
+		options?: MatrixParseOptions,
+	) => PasteRefusal | null;
+	importText: (
+		text: string,
+		format?: CodecId,
+		options?: MatrixParseOptions,
+	) => void;
 	reportInputError: (error: ImportError) => void;
 	// A paste into the rich cell editor, which inserts into one cell rather
 	// than writing the document, reports what it read the way a grid paste does.
 	reportPasteWarnings: (warnings: readonly ParseIssue[]) => void;
 	answerPendingImport: (headerRow: boolean) => void;
 	cancelPendingImport: () => void;
+	// Yes runs the waiting request again with the numbers kept as text.
+	answerPendingImprecise: () => void;
+	cancelPendingImprecise: () => void;
 	resetDocument: () => void;
 	// The table library (#403). At most one table is active, and none once the
 	// last one is deleted (#466); the others sit in storage under their own keys
@@ -1021,6 +1051,7 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 	importWarnings: [],
 	politeStatus: null,
 	pendingImport: null,
+	pendingImprecise: null,
 	pendingPaneAction: null,
 	outputOptions: { ...defaultOutputOptions },
 
@@ -1039,6 +1070,7 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 			draft: null,
 			inputError: null,
 			pendingImport: null,
+			pendingImprecise: null,
 			pendingPaneAction: null,
 			// A changed document is a changed meaning for the copied rectangle: an
 			// insert, a move, or a delete leaves those coordinates describing cells
@@ -1122,6 +1154,7 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 				: reconcileColumnPreferences(current.workspace, next),
 			draft: read.draft,
 			pendingImport: null,
+			pendingImprecise: null,
 			inputError: null,
 			pendingPaneAction: null,
 			copiedRanges: NO_COPIED_RANGES,
@@ -1461,6 +1494,7 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 				workspace: workspaceForEntry(state.workspace, state.document, entry),
 				draft: restoreDraft(entry.draft, state.workspace),
 				pendingImport: null,
+				pendingImprecise: null,
 				inputError: null,
 				pendingPaneAction: null,
 				copiedRanges: NO_COPIED_RANGES,
@@ -1491,6 +1525,7 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 				workspace: workspaceForEntry(state.workspace, state.document, entry),
 				draft: restoreDraft(entry.draft, state.workspace),
 				pendingImport: null,
+				pendingImprecise: null,
 				inputError: null,
 				pendingPaneAction: null,
 				copiedRanges: NO_COPIED_RANGES,
@@ -2375,11 +2410,20 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 		};
 	},
 
-	pasteClipboard: (payload) => {
+	pasteClipboard: (payload, options) => {
 		const state = get();
-		const prepared = prepareImport({ payload });
+		const prepared = prepareImport({ payload, options });
 		if (!prepared.ok) {
-			if (prepared.error.code !== "empty") {
+			const imprecise = impreciseNumbersKey(prepared.error);
+			if (imprecise !== null) {
+				set({
+					pendingImprecise: {
+						request: { kind: "paste", payload },
+						key: imprecise,
+					},
+					inputError: null,
+				});
+			} else if (prepared.error.code !== "empty") {
 				set({ inputError: prepared.error });
 			}
 			return null;
@@ -2449,11 +2493,20 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 		return null;
 	},
 
-	importText: (text, format) => {
+	importText: (text, format, options) => {
 		const state = get();
-		const prepared = prepareImport({ payload: { text }, format });
+		const prepared = prepareImport({ payload: { text }, format, options });
 		if (!prepared.ok) {
-			if (prepared.error.code !== "empty") {
+			const imprecise = impreciseNumbersKey(prepared.error);
+			if (imprecise !== null) {
+				set({
+					pendingImprecise: {
+						request: { kind: "import", text, format },
+						key: imprecise,
+					},
+					inputError: null,
+				});
+			} else if (prepared.error.code !== "empty") {
 				set({ inputError: prepared.error });
 			}
 			return;
@@ -2507,6 +2560,21 @@ export const useTabeloStore = create<TabeloState>((set, get, api) => ({
 	},
 
 	cancelPendingImport: () => set({ pendingImport: null }),
+
+	answerPendingImprecise: () => {
+		const state = get();
+		const pending = state.pendingImprecise;
+		if (!pending) return;
+		set({ pendingImprecise: null });
+		const options = { impreciseNumbersAsText: true };
+		if (pending.request.kind === "paste") {
+			state.pasteClipboard(pending.request.payload, options);
+		} else {
+			state.importText(pending.request.text, pending.request.format, options);
+		}
+	},
+
+	cancelPendingImprecise: () => set({ pendingImprecise: null }),
 
 	resetDocument: () => {
 		get().replaceDocument(createEmptyDocument());

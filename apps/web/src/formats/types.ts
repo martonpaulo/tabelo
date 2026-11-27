@@ -78,6 +78,14 @@ export type ParseIssue =
 			readonly code: "json-number-not-finite";
 			readonly key: string;
 	  } & LocatedParseIssue)
+	// A number literal whose digits a double cannot hold, so JSON.parse would
+	// round it (#548). The read is refused unless the user chose to keep such
+	// numbers as the exact text of their digits: see MatrixParseOptions. `key`
+	// is the member key of the first one.
+	| ({
+			readonly code: "json-number-imprecise";
+			readonly key: string;
+	  } & LocatedParseIssue)
 	| ({ readonly code: "delimited-unclosed-quote" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-invalid-quote" } & LocatedParseIssue)
 	| ({ readonly code: "delimited-delimiter-undetected" } & LocatedParseIssue)
@@ -208,6 +216,14 @@ export interface ParseOptions extends Spelling {
 	readonly limited?: boolean;
 }
 
+// A choice the user made about one import or paste, asked for after a parse
+// refused without it. `impreciseNumbersAsText` keeps each JSON number a
+// double cannot hold as the string of its own digits (#548). A source pane
+// never passes it: there, quoting the number is the same choice.
+export interface MatrixParseOptions {
+	readonly impreciseNumbersAsText?: boolean;
+}
+
 export interface ParsedTable {
 	readonly matrix: CellValue[][];
 	// Formats that encode row roles declare whether row 1 is a header. An
@@ -296,7 +312,10 @@ export interface TableCodec {
 	readonly mimeType: string;
 	// Import and clipboard preparation validate this neutral matrix before any
 	// application document is constructed or rendered.
-	readonly parseMatrix: (text: string) => MatrixParseResult;
+	readonly parseMatrix: (
+		text: string,
+		options?: MatrixParseOptions,
+	) => MatrixParseResult;
 	readonly parse: (text: string, options?: ParseOptions) => ParseResult;
 	readonly serialize: (
 		document: TableDocument,

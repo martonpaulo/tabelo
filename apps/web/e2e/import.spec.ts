@@ -85,6 +85,31 @@ test("a JSON file with nested cells preserves the current table", async ({
 	await expect(tabelo.notice("error")).toBeVisible();
 });
 
+// #548: a JSON number a double cannot hold is never rounded silently. The
+// import asks, Cancel keeps the table, and Keep as text keeps every digit.
+const LONG_NUMBER = '[{"name":"Ingrid","id":12345678901234567890}]';
+
+test("a JSON import with a number that would round asks first", async ({
+	page,
+	tabelo,
+}) => {
+	await tabelo.editCell(1, 1, "keep me");
+	await tabelo.importFile("long.json", LONG_NUMBER, "application/json");
+
+	const question = page.getByRole("dialog");
+	await expect(question).toBeVisible();
+	await question.getByRole("button", { name: copy.actions.cancel }).click();
+	await expect(question).toBeHidden();
+	await expect(tabelo.cell(1, 1)).toHaveText("keep me");
+
+	await tabelo.importFile("long.json", LONG_NUMBER, "application/json");
+	await page
+		.getByRole("dialog")
+		.getByRole("button", { name: copy.impreciseNumbers.asText })
+		.click();
+	await expect(tabelo.cell(1, 2)).toHaveText("12345678901234567890");
+});
+
 // #415: a merged cell would move every later value under the wrong header,
 // so a rich paste or an HTML file holding one is refused, never read as the
 // shifted plain text beside it.

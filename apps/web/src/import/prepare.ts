@@ -17,7 +17,7 @@ import type {
 	TableDocument,
 } from "@/core/types";
 import { getCodec } from "@/formats";
-import type { CodecId, ParseIssue } from "@/formats/types";
+import type { CodecId, MatrixParseOptions, ParseIssue } from "@/formats/types";
 
 // The table shape every input path shares, plus the byte budget that only an
 // import or a paste has to spend.
@@ -71,6 +71,18 @@ export type PrepareImportResult =
 export interface PrepareImportRequest {
 	readonly payload: ClipboardPayload;
 	readonly format?: CodecId;
+	// The user's answer to a refusal that asked them (#548).
+	readonly options?: MatrixParseOptions;
+}
+
+// The member key of the first JSON number a double cannot hold, when that is
+// the only reason the import was refused: a choice the user can make, keeping
+// such numbers as exact text (#548). Null for every other refusal.
+export function impreciseNumbersKey(error: ImportError): string | null {
+	if (error.code !== "invalid-format") return null;
+	const [first, ...others] = error.issues;
+	if (first?.code !== "json-number-imprecise" || others.length > 0) return null;
+	return first.key;
 }
 
 function payloadBytes(payload: ClipboardPayload): number {
@@ -111,7 +123,10 @@ export function prepareImport(
 	};
 
 	if (namedCodec) {
-		const parsed = namedCodec.parseMatrix(request.payload.text);
+		const parsed = namedCodec.parseMatrix(
+			request.payload.text,
+			request.options,
+		);
 		if (!parsed.ok) {
 			return {
 				ok: false,
@@ -130,7 +145,7 @@ export function prepareImport(
 			warnings: parsed.warnings,
 		};
 	} else {
-		const parsed = readClipboard(request.payload);
+		const parsed = readClipboard(request.payload, request.options);
 		if (!parsed) return { ok: false, error: { code: "empty" } };
 		if (!parsed.ok) {
 			return {
