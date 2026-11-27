@@ -773,6 +773,38 @@ welcome text, so LCP equals FCP in every run.
 | Splitting code out lazily is free | Lazy dialogs alone left 14 eager files and LCP 4,316 to 4,660 ms in three runs: each set of chunks sharing a first-screen module got its own small eager chunk | **Disproved.** Every statically reached application module now goes to one chunk (`eagerApplicationChunk` in `vite.config.ts`). |
 | zod is a large share of the eager set | 91.5 KB raw | **Kept.** Persistence validates the stored table with it before the first screen can draw. |
 
+### What the cell limit allows (#545)
+
+The audit of 2026-11-15 measured, on a container about 2.3 times slower than
+machine A, a production build with the grid beside a Markdown pane:
+
+| shape | cells | paste longest task | paste INP | grid edit INP | reload |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 200 x 8 | 1,600 | 257 ms | 528 ms | 136 ms | 453 ms |
+| 200 x 25 | 5,000 | 466 ms | 824 ms | 112 ms | 846 ms |
+| 499 x 20 | 9,980 | 905 ms | 1,616 ms | 272 ms | 1,666 ms |
+| 499 x 100 | 49,900 | 3,562 to 3,824 ms | 6,080 to 7,136 ms | 624 to 720 ms | 4,203 to 6,155 ms |
+
+Re-run on 2026-11-27 on a 4 vCPU x86_64 cloud container, not machine A:
+production build served by `vite preview`, headless Chromium driven by
+Playwright, the default workspace (grid beside a Markdown pane), with the
+limit set back to 50,000 for the run. A tab-separated table is pasted into the
+grid with its header declared, and the longest `longtask` entry until the grid
+shows every row is kept; then three reloads, each timed from `reload()` until
+the grid shows every row, median; then one character typed into a cell and
+committed with Enter, longest task. One run per shape.
+
+| shape | cells | paste longest task | reload median | edit longest task |
+| --- | ---: | ---: | ---: | ---: |
+| 200 x 25 | 5,000 | 381 ms | 1,257 ms | 53 ms |
+| 499 x 20 | 9,980 | 622 ms | 884 ms | 80 ms |
+| 499 x 40 | 19,960 | 1,317 ms | 1,479 ms | 132 ms |
+| 499 x 100 | 49,900 | 2,636 ms | 3,476 ms | 278 ms |
+
+| suspicion | measured | verdict |
+| --- | --- | --- |
+| A table the 50,000-cell limit accepts freezes the tab | The cost is linear in cells, about 50 us of paste task per cell here; 49,900 cells hold the tab for 2.6 s on paste and 3.5 s on reload | **Confirmed, and fixed in #545.** The owner lowered `TABLE_LIMITS.cells` to 10,000, where the paste's longest task stays under about 1 s on both containers. Import, paste, a draft's parse, insertion, duplication, transpose and agent batches read that one constant (#418). The limit judges input only: a stored table above it still opens whole. |
+
 ### Adding an entry
 
 An entry belongs here when a suspicion has been measured, whatever the answer.

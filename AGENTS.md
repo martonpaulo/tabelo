@@ -231,7 +231,9 @@ vocabulary and `docs/adr/` for the reasoning.
 - **Target scale is roughly 200 rows.** Do not add virtualization, Web Workers,
   or IndexedDB. Refuse oversized input with a clear, actionable message before
   it can freeze or crash the tab. An engine limit or allocation failure is a
-  defect, not an acceptable oversized-input path.
+  defect, not an acceptable oversized-input path. The cell limit is 10,000
+  data cells, which keeps a paste's longest task under about 1 s; a stored
+  table above it still opens (decided on #545).
 - **Source text is free; structural assistance is narrow** (#294). A source
   view is a text editor first: it never protects a range, rejects a keystroke,
   normalizes a draft in the background, or keeps a hidden canonical source. A

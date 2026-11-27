@@ -9,6 +9,9 @@ function matrix(rows: number, columns: number): string[][] {
 
 // A parsed matrix is judged as the table it would become (#418): data rows,
 // the widest row as the column count, and their product as the cells.
+// The data rows that fill the cell limit at 200 columns.
+const fullRows = TABLE_LIMITS.cells / 200;
+
 describe("matrix shape limits", () => {
 	it.each([
 		// A declared header is not a data row.
@@ -20,10 +23,10 @@ describe("matrix shape limits", () => {
 		[TABLE_LIMITS.rows + 1, 1, false, "too-many-rows"],
 		[2, TABLE_LIMITS.columns, true, null],
 		[2, TABLE_LIMITS.columns + 1, true, "too-many-columns"],
-		[251, 200, true, null],
-		[252, 200, true, "too-many-cells"],
-		[250, 200, undefined, null],
-		[251, 200, undefined, "too-many-cells"],
+		[fullRows + 1, 200, true, null],
+		[fullRows + 2, 200, true, "too-many-cells"],
+		[fullRows, 200, undefined, null],
+		[fullRows + 1, 200, undefined, "too-many-cells"],
 	] as const)(
 		"%i rows by %i columns, header %s",
 		(rows, columns, header, code) => {

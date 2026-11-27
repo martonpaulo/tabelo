@@ -5,13 +5,19 @@
 // roughly 200 rows; these are the ceilings past which input is refused with a
 // message rather than allowed to freeze the tab.
 //
+// `cells` was 50,000 until #545 measured what that allowed: a paste whose
+// longest task ran about 2.6 s and a reload of about 3.5 s. At 10,000 cells
+// the paste's longest task stays under about 1 s (docs/performance.md, owner
+// decision on #545). The limit judges what input may produce, never what is
+// stored: a table saved under the earlier limit still opens whole.
+//
 // `rows` always counts data rows, as `document.rows` holds them: the header
 // row is structural and every table has exactly one, so it is never charged.
 // `cells` is data rows times columns.
 export const TABLE_LIMITS = {
 	rows: 500,
 	columns: 200,
-	cells: 50_000,
+	cells: 10_000,
 } as const;
 
 export type TableShapeLimitError =

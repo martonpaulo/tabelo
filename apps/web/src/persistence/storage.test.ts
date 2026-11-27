@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createEmptyDocument } from "@/core/document";
+import { createEmptyDocument, documentFromMatrix } from "@/core/document";
+import { TABLE_LIMITS } from "@/core/table-limits";
 import { createDefaultWorkspace } from "@/workspace/layout";
 import { CURRENT_VERSION, tableKey, tableRecoveryKey } from "./schema";
 import {
@@ -35,6 +36,29 @@ afterEach(() => {
 });
 
 describe("browser storage outcomes", () => {
+	// The size limit judges what input may produce, never what was stored: a
+	// table saved under an earlier, larger limit still opens whole (#545).
+	it("opens a stored table larger than the size limit", () => {
+		const columns = 100;
+		const rows = Math.ceil((TABLE_LIMITS.cells + 1) / columns);
+		const document = documentFromMatrix(
+			Array.from({ length: rows + 1 }, (_, row) =>
+				Array.from({ length: columns }, (_, column) => `${row}:${column}`),
+			),
+			{ headerRow: true },
+		);
+		expect(saveTable(TABLE_ID, { ...payload, document })).toEqual({
+			status: "saved",
+		});
+
+		const outcome = loadTable(TABLE_ID);
+
+		expect(outcome.status).toBe("ok");
+		if (outcome.status !== "ok") return;
+		expect(outcome.state.document.rows).toHaveLength(rows);
+		expect(outcome.state.document.columns).toHaveLength(columns);
+	});
+
 	it("keeps invalid JSON byte-for-byte and reports it as unreadable", () => {
 		const raw = "{invalid json\nwith exact bytes";
 		window.localStorage.setItem(STORAGE_KEY, raw);

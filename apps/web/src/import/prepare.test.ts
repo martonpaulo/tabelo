@@ -135,8 +135,8 @@ describe("supported import limits", () => {
 		[{ rows: IMPORT_LIMITS.rows + 1, columns: 1 }, "too-many-rows"],
 		[{ rows: 1, columns: IMPORT_LIMITS.columns }, null],
 		[{ rows: 1, columns: IMPORT_LIMITS.columns + 1 }, "too-many-columns"],
-		[{ rows: 250, columns: 200 }, null],
-		[{ rows: 251, columns: 200 }, "too-many-cells"],
+		[{ rows: IMPORT_LIMITS.cells / 200, columns: 200 }, null],
+		[{ rows: IMPORT_LIMITS.cells / 200 + 1, columns: 200 }, "too-many-cells"],
 	] as const)("validates resulting table shape %#", (shape, code) => {
 		expect(tableShapeLimitError(shape)?.code ?? null).toBe(code);
 	});
@@ -166,10 +166,10 @@ describe("supported import limits", () => {
 
 	it("accepts the total cell limit and rejects the next rectangular size", () => {
 		const atLimit = prepareImport({
-			payload: { text: matrixText(250, 200) },
+			payload: { text: matrixText(IMPORT_LIMITS.cells / 200, 200) },
 		});
 		const aboveLimit = prepareImport({
-			payload: { text: matrixText(251, 200) },
+			payload: { text: matrixText(IMPORT_LIMITS.cells / 200 + 1, 200) },
 		});
 
 		expect(atLimit.ok).toBe(true);

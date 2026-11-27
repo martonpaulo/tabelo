@@ -365,7 +365,7 @@ Related to: Header decision, Format sniffing, Size limit
 ### Size limit
 
 The largest table any input may produce: 500 data rows, 200 columns, and
-50,000 data cells. Rows are counted as the table document holds them, so the
+10,000 data cells (lowered from 50,000 on #545). Rows are counted as the table document holds them, so the
 header row is never charged; cells are data rows times columns. Every path
 that can grow the table (import, paste, a draft's parse, inserting or
 duplicating rows and columns, transposing, an agent batch) judges the shape it
@@ -376,7 +376,8 @@ keeps them all. A refusal changes nothing: an import or a grid command reports
 why, and a draft past the limit is an invalid draft, its text kept (#418).
 A menu disables an insert or duplicate command that would pass the limit,
 with the reason, before it can be chosen; its shortcut is still refused and
-reported (#489). Import also has a byte budget of its own.
+reported (#489). Import also has a byte budget of its own. The limit judges
+input only: a table stored under an earlier, larger limit still opens whole.
 
 Related to: Import, Draft, Table operation
 

@@ -10,6 +10,7 @@ import {
 	type SelectionRange,
 	selectionDataRows,
 } from "@/core/selection";
+import { TABLE_LIMITS } from "@/core/table-limits";
 import type { CellValue, TableDocument } from "@/core/types";
 import { hasSessionWork, resetStoreSession, useTabeloStore } from "./store";
 
@@ -333,7 +334,7 @@ describe("transactional input", () => {
 		const document = documentFromMatrix(
 			[
 				Array.from({ length: 200 }, (_, index) => `column ${index}`),
-				...Array.from({ length: 249 }, () =>
+				...Array.from({ length: TABLE_LIMITS.cells / 200 - 1 }, () =>
 					Array.from({ length: 200 }, () => ""),
 				),
 			],
@@ -341,12 +342,17 @@ describe("transactional input", () => {
 		);
 		useTabeloStore.setState({
 			document,
-			selection: createSelection({ row: 248, column: 0 }),
+			selection: createSelection({
+				row: TABLE_LIMITS.cells / 200 - 2,
+				column: 0,
+			}),
 			inputError: null,
 		});
 
 		useTabeloStore.getState().addRowBelow();
-		expect(useTabeloStore.getState().document.rows).toHaveLength(250);
+		expect(useTabeloStore.getState().document.rows).toHaveLength(
+			TABLE_LIMITS.cells / 200,
+		);
 		expect(useTabeloStore.getState().inputError).toBeNull();
 
 		const atLimit = useTabeloStore.getState().document;
