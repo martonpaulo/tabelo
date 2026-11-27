@@ -276,6 +276,13 @@ without the command. Destructive colour follows the same rule as everywhere
 else: the row's trash is muted at rest and turns destructive only under its own
 hover or focus.
 
+The pane-edge Add view band ([the design system's §6](../design-system.md#6-icons))
+is the deliberate exception: on a screen that cannot hover it stays hidden
+until keyboard focus reaches it, and adding a view there is left to the app
+menu's `Add view…`, which is always drawn. Drawing the bands on every phone
+and tablet would change the workspace's look for a command the menu already
+offers (owner, decided on #588).
+
 **Every table menu lists its commands in one order** (owner, 2026-09-19): the
 Visual Table's cell, row, and column menus and every source view's text, line
 number, and letter menus alike. A menu omits what its view or its target
