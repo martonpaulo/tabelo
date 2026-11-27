@@ -81,10 +81,17 @@ const ACCENT_HUE_FAMILY_DEGREES = 25;
 // A colour token's hue in degrees, or null for a neutral grey, which has no
 // hue to share.
 async function hueOf(page: Page, token: string): Promise<number | null> {
-	return page.evaluate((token) => {
-		const value = getComputedStyle(document.documentElement)
-			.getPropertyValue(token)
-			.trim();
+	const value = await page.evaluate(
+		(token) =>
+			getComputedStyle(document.documentElement).getPropertyValue(token).trim(),
+		token,
+	);
+	return hueOfColor(page, value);
+}
+
+// The hue of any CSS colour value, such as an element's computed `color`.
+async function hueOfColor(page: Page, value: string): Promise<number | null> {
+	return page.evaluate((value) => {
 		const canvas = document.createElement("canvas");
 		canvas.width = 1;
 		canvas.height = 1;
@@ -106,7 +113,13 @@ async function hueOf(page: Page, token: string): Promise<number | null> {
 					? (blue - red) / chroma + 2
 					: (red - green) / chroma + 4;
 		return sector * 60;
-	}, token);
+	}, value);
+}
+
+// The hue distance from the accent, folded onto the colour wheel.
+function hueDistance(hue: number, accent: number): number {
+	const distance = Math.abs(hue - accent);
+	return Math.min(distance, 360 - distance);
 }
 
 test("controls, surfaces, and menus share their semantic visual hierarchy", async ({
@@ -779,8 +792,7 @@ test("text and focus tokens meet their contrast floors", async ({ page }) => {
 		for (const token of [...contentTokens, "--syntax-punctuation"]) {
 			const hue = await hueOf(page, token);
 			if (hue === null || accentHue === null) continue;
-			const distance = Math.abs(hue - accentHue);
-			expect(Math.min(distance, 360 - distance), token).toBeGreaterThan(
+			expect(hueDistance(hue, accentHue), token).toBeGreaterThan(
 				ACCENT_HUE_FAMILY_DEGREES,
 			);
 		}
@@ -1059,4 +1071,48 @@ test("segmented choices keep their labels whole at 200% text size", async ({
 			() => document.documentElement.scrollWidth <= window.innerWidth,
 		),
 	).toBe(true);
+});
+
+// An info notice is none of what amber means, selection, focus, or the primary
+// action, so its icon is neutral, and an error keeps its own red (#562). A
+// warning is the one documented neighbour: orange, always beside its icon and
+// text (#456), so it is not held to this rule.
+test("notice status icons stay out of the accent's hue family", async ({
+	page,
+	tabelo,
+}) => {
+	const accentHue = await hueOf(page, "--selection-edge");
+	expect(accentHue).not.toBeNull();
+	const iconHue = async (severity: "info" | "error") => {
+		const color = await tabelo
+			.notice(severity)
+			.locator("svg")
+			.first()
+			.evaluate((icon) => getComputedStyle(icon).color);
+		return hueOfColor(page, color);
+	};
+
+	await tabelo.editCell(1, 1, "Ingrid");
+	const menu = await tabelo.openTableOptions();
+	await menu
+		.getByRole("menuitem", { name: copy.actions.transposeTable })
+		.click();
+	await menu.waitFor({ state: "hidden" });
+	await expect(tabelo.notice("info")).toBeVisible();
+	const infoHue = await iconHue("info");
+	if (infoHue !== null && accentHue !== null) {
+		expect(hueDistance(infoHue, accentHue)).toBeGreaterThan(
+			ACCENT_HUE_FAMILY_DEGREES,
+		);
+	}
+
+	await tabelo.importFile("broken.csv", 'Name\n"unterminated', "text/csv");
+	await expect(tabelo.notice("error")).toBeVisible();
+	const errorHue = await iconHue("error");
+	expect(errorHue).not.toBeNull();
+	if (errorHue !== null && accentHue !== null) {
+		expect(hueDistance(errorHue, accentHue)).toBeGreaterThan(
+			ACCENT_HUE_FAMILY_DEGREES,
+		);
+	}
 });

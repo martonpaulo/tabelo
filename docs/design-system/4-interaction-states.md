@@ -188,15 +188,19 @@ A notice's appearance, its announcement, and whether it may expire are all
 derived from one declared severity. None of them may be derived from which
 part of the app produced the message.
 
-| Severity | Surface | Announced | Expires |
+| Severity | Icon tone | Announced | Expires |
 | :--- | :--- | :--- | :--- |
-| `info` | `bg-surface-header` | Polite | After 4s with no action; after 8s when its only action is Undo |
-| `warning` | `bg-destructive/10` | Polite | Never |
-| `error` | `bg-destructive/10` | Polite, or assertive when the table is at risk | Never |
+| `info` | `text-muted-foreground` | Polite | After 4s with no action; after 8s when its only action is Undo |
+| `warning` | `text-status-warning` | Polite | Never |
+| `error` | `text-destructive` | Polite, or assertive when the table is at risk | Never |
 
-Warning and error share the one status surface this design line has. They
-differ in how they are announced and in whether they may clear themselves, not
-in how loud they look. A failure never renders as `info`.
+Every severity sits on the same neutral surface, and severity is carried by
+its icon, in its own shape and tone (owner, 2026-09-19): the shape says
+"notice", the icon says how serious, and a symbol never depends on colour
+alone. Info is neutral rather than amber, which is reserved for selection,
+focus, and the primary action (decided on #562). Severities differ in their
+icon and in how they are announced and whether they may clear themselves, not
+in a tinted block. A failure never renders as `info`.
 
 Only a plain confirmation may expire unattended. A failure, or anything
 carrying an action, stays until it is dismissed: a recovery instruction that

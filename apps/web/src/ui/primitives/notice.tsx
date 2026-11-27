@@ -28,7 +28,9 @@ const severityIcon: Record<NoticeSeverity, typeof IconInfoCircle> = {
 };
 
 const severityTone: Record<NoticeSeverity, string> = {
-	info: "text-selection-edge",
+	// Neutral: amber means selection, focus, or the primary action, and an
+	// info notice is none of them (owner, #562).
+	info: "text-muted-foreground",
 	warning: "text-status-warning",
 	error: "text-destructive",
 };

@@ -237,7 +237,8 @@ for diagnostics and destructive state.
 
 | Token | Utility | Meaning |
 | :--- | :--- | :--- |
-| `--status-warning` | `bg-status-warning` | Source parses with a non-blocking warning. `#ff9e4f`, orange rather than yellow so a warning does not read as a selection: it always comes with its icon and its text and is never drawn as a fill or an edge (#456) |
+| `--muted-foreground` | `text-muted-foreground` | An info notice's icon. Neutral, because amber means selection, focus, or the primary action, and an info notice is none of those (owner, #562) |
+| `--status-warning` | `text-status-warning` | Source parses with a non-blocking warning. `#ff9e4f`, orange rather than yellow so a warning does not read as a selection: it always comes with its icon and its text and is never drawn as a fill or an edge (#456) |
 | `--destructive` | `text-destructive` | Destructive action confirmation |
 
 **Colour never carries meaning alone.** A source diagnostic combines underline
