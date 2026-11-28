@@ -7,7 +7,7 @@ import { showsAlignment } from "./column-alignment";
 import { syntaxTheme } from "./editor-theme";
 import {
 	PREVIEW_FRAME_CLASS,
-	PREVIEW_MIN_HEIGHT,
+	PREVIEW_HEIGHT,
 	PREVIEW_ROWS,
 	PREVIEW_TEXT,
 } from "./indicator-preview-sample";
@@ -59,7 +59,12 @@ export default function IndicatorPreview({
 					}),
 					EditorState.readOnly.of(true),
 					EditorView.editable.of(false),
-					EditorView.contentAttributes.of({ "aria-label": label }),
+					// A tab stop, so the lines that scroll inside the fixed box
+					// can be scrolled from the keyboard too.
+					EditorView.contentAttributes.of({
+						"aria-label": label,
+						tabindex: "0",
+					}),
 				],
 			}),
 		});
@@ -78,11 +83,12 @@ export default function IndicatorPreview({
 		<div
 			ref={hostRef}
 			data-slot="indicator-preview"
-			// The trailing padding keeps a clipped line off the box's edge on a
-			// narrow window: the preview never scrolls, so text that does not
-			// fit stops short of the edge instead of touching it.
-			className={`pointer-events-none pr-3 select-none [&_.cm-content]:select-none! [&_.cm-editor]:m-0 [&_.cm-editor]:h-auto ${PREVIEW_FRAME_CLASS}`}
-			style={{ minHeight: PREVIEW_MIN_HEIGHT }}
+			// The box keeps its height and the editor scrolls inside it, so
+			// lines wrapped on a narrow window never move the settings under
+			// it (decided on #559). The trailing padding keeps a line off the
+			// box's edge.
+			className={`pr-3 select-none [&_.cm-content]:select-none! [&_.cm-editor]:m-0 [&_.cm-editor]:h-full ${PREVIEW_FRAME_CLASS}`}
+			style={{ height: PREVIEW_HEIGHT }}
 		/>
 	);
 }

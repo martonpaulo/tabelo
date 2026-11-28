@@ -29,12 +29,13 @@ export const PREVIEW_TEXT = tsvCodec.serialize(
 const parsed = tsvCodec.parse(PREVIEW_TEXT);
 export const PREVIEW_ROWS = parsed.ok ? (parsed.rows ?? null) : null;
 
-// The height the editor takes for the sample with lines unwrapped, from the
-// same terms its theme lays the text out with, so the box waiting for it and
-// the editor that arrives in it are the same size. Wrapped lines on a narrow
-// window can only add rows to that.
+// The preview's fixed height: the height the editor takes for the sample with
+// lines unwrapped, from the same terms its theme lays the text out with, so
+// the box waiting for it and the editor that arrives in it are the same size.
+// Wrapped lines on a narrow window scroll inside it rather than growing it,
+// so nothing under the preview moves when it arrives (decided on #559).
 const lineCount = PREVIEW_TEXT.split("\n").length;
-export const PREVIEW_MIN_HEIGHT = `calc(${lineCount} * ${sourceLineBox} + ${sourceTopInset} + ${sourceEndRoom})`;
+export const PREVIEW_HEIGHT = `calc(${lineCount} * ${sourceLineBox} + ${sourceTopInset} + ${sourceEndRoom})`;
 
 // The box both the pending and the drawn preview sit in.
 export const PREVIEW_FRAME_CLASS =

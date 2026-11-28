@@ -37,7 +37,7 @@ import { MenuOption } from "@/ui/primitives/menu-option";
 import { DisplayGlyph, GlyphSlot } from "@/ui/source/display-glyph";
 import {
 	PREVIEW_FRAME_CLASS,
-	PREVIEW_MIN_HEIGHT,
+	PREVIEW_HEIGHT,
 } from "@/ui/source/indicator-preview-sample";
 import { SOURCE_DISPLAY_ORDER } from "@/workspace/source-display";
 
@@ -56,7 +56,7 @@ function PreviewPlaceholder({
 		<div
 			data-slot="indicator-preview-placeholder"
 			className={cn(PREVIEW_FRAME_CLASS, "flex items-center justify-center")}
-			style={{ minHeight: PREVIEW_MIN_HEIGHT }}
+			style={{ height: PREVIEW_HEIGHT }}
 		>
 			<p
 				role="status"

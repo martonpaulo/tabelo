@@ -21,7 +21,6 @@ import { importTableFile } from "@/ui/import-actions";
 import { NoticeBar } from "@/ui/notice-bar";
 import { lazyDialog } from "@/ui/primitives/lazy-dialog";
 import { RenameTableDialog } from "@/ui/rename-table-dialog";
-import { SettingsDialog } from "@/ui/settings-dialog";
 import { LayoutDialog } from "@/ui/workspace/layout-dialog";
 import { preloadPaneContent } from "@/ui/workspace/pane-content";
 import { Workspace } from "@/ui/workspace/workspace";
@@ -34,6 +33,9 @@ const AgentDialog = lazyDialog(() =>
 );
 const DownloadDialog = lazyDialog(() =>
 	import("@/ui/download-dialog").then((module) => module.DownloadDialog),
+);
+const SettingsDialog = lazyDialog(() =>
+	import("@/ui/settings-dialog").then((module) => module.SettingsDialog),
 );
 
 type RootDialog =

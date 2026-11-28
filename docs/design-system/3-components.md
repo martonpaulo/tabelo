@@ -620,9 +620,12 @@ every other dialog's. The footer is the shared action row, `Reset to defaults`
 as the ordinary alternative and `Done` last, stacking at full width on a phone
 (owner, 2026-09-19). Each option block's glyph sits in one fixed slot as wide
 as the widest mark, so every row's label starts on the same line, and the
-preview keeps a trailing gap so a clipped line never touches its box. While
-the editor's code is still loading, that box is already drawn at the height the
-editor takes, from the same line terms, with a written loading status painted
+preview keeps a trailing gap so a clipped line never touches its box. The box has a
+fixed height, the editor's with lines unwrapped, and wrapped lines on a narrow
+window scroll inside it, by pointer or from the keyboard, rather than growing it
+(decided on #559). While
+the editor's code is still loading, that box is already drawn at that height,
+from the same line terms, with a written loading status painted
 only after a short delay, so nothing under it moves when the editor arrives;
 code that never arrives leaves the box in place with a status saying so, and
 every setting still applies (#422). Wrap

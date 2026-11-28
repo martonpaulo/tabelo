@@ -291,6 +291,38 @@ test("with lines wrapped, the preview still loads without moving the settings", 
 	expect(await shifts()).toBe(0);
 });
 
+// The preview keeps its box and scrolls inside it when wrapped lines need
+// more rows (#559), from the wheel and from the keyboard.
+test("with lines wrapped on a narrow window, the preview scrolls inside its box", async ({
+	page,
+	tabelo,
+}) => {
+	await page.setViewportSize({ width: 320, height: 800 });
+	const settings = await openSettings(tabelo);
+	await settings
+		.getByRole("switch", { name: copy.settings.wrap.label })
+		.check();
+	await expect(previewEditor(settings)).toBeVisible();
+
+	const scroller = settings.locator(
+		'[data-slot="indicator-preview"] .cm-scroller',
+	);
+	const scrollTop = () => scroller.evaluate((node) => node.scrollTop);
+	expect(
+		await scroller.evaluate((node) => node.scrollHeight > node.clientHeight),
+	).toBe(true);
+	await scroller.hover();
+	await page.mouse.wheel(0, 200);
+	await expect.poll(scrollTop).toBeGreaterThan(0);
+
+	await scroller.evaluate((node) => {
+		node.scrollTop = 0;
+	});
+	await settings.getByRole("textbox", { name: copy.settings.preview }).focus();
+	await page.keyboard.press("PageDown");
+	await expect.poll(scrollTop).toBeGreaterThan(0);
+});
+
 test("a preview that cannot load leaves the dialog working", async ({
 	page,
 	tabelo,
