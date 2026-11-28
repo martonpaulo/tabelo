@@ -203,6 +203,15 @@ network blocks `cdn.playwright.dev`, and its image ships a Chromium at
 TABELO_E2E_CHROMIUM=/opt/pw-browsers/chromium pnpm test:e2e e2e/import.spec.ts
 ```
 
+A failed spec already carries the page's accessibility tree: Playwright 1.65
+attaches `error-context` (`error-context.md` beside the screenshot under
+`test-results/`, and an attachment in the HTML report CI merges), which holds
+the error and the page's `ariaSnapshot()` as YAML. Read it first when a locator
+finds nothing: it shows the roles and names the page really had, without
+opening the trace. A passing spec gets none. Setting
+`PLAYWRIGHT_NO_COPY_PROMPT` turns it off, so neither the configuration nor CI
+sets it, and no fixture of our own repeats it (verified on 2026-11-28, #599).
+
 If execution announces a materially larger test count than the intent,
 interrupt it immediately and correct the command. Do not let a focused run
 silently become a full gate.
