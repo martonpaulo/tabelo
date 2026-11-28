@@ -56,6 +56,7 @@ describes the migration and its downstream effects.
   commit, landing on `main` as the branch workflow above describes
 - Push policy: push `main` automatically after committing; a cloud session pushes `main` too, only for a `runs: cloud` issue whose gates all ran there ([#534](https://github.com/martonpaulo/tabelo/issues/534)).
   No pull request is opened, and no automated reviewer is waited for
+- Cloud hand-off: on (owner, 2026-11-28): a cloud session also delivers the `[cloud]` Tasks of a split issue, on `cloud/<issue>` when it cannot push `main`.
 - Cloud setup command: `bash scripts/cloud-setup.sh` (a cloud run's start).
   It runs the Workbench cloud engine from the `workbench` checkout attached
   beside this one, then `corepack enable && pnpm install --frozen-lockfile`.
