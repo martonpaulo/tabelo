@@ -28,6 +28,9 @@ test("JSON scalar roles use distinct semantic and upright treatments", async ({
 		'[{"text":"alpha","qty":17,"ok":true,"note":null}]',
 		"application/json",
 	);
+	// The import replaces the pane beside the grid when it lands, so switching
+	// before then would act on the pane it removes (#597).
+	await expect(tabelo.cell(1, 1)).toHaveText("alpha");
 	await tabelo.showInSourcePane("json");
 	const pane = tabelo.pane("json");
 	await expect(

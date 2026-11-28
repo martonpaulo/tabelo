@@ -508,9 +508,9 @@ test("the cell menu edits and removes a cell's only image", async ({
 		"| Photo |\n| --- |\n| ![Retiro](https://example.com/madrid.png) |",
 		"text/markdown",
 	);
-	await tabelo.showInSourcePane("markdown");
 	const cell = tabelo.cell(1, 1);
 	await expect(cell.getByRole("img", { name: "Retiro" })).toHaveCount(1);
+	await tabelo.showInSourcePane("markdown");
 
 	let menu = await openCellMenu(tabelo, cell);
 	await menu.getByRole("menuitem", { name: copy.actions.image }).click();
@@ -567,8 +567,9 @@ test("the editor's menu edits the image beside the caret", async ({
 		"| Photo |\n| --- |\n| Madrid ![Retiro](https://example.com/madrid.png) |",
 		"text/markdown",
 	);
-	await tabelo.showInSourcePane("markdown");
 	const cell = tabelo.cell(1, 1);
+	await expect(cell).toContainText("Madrid");
+	await tabelo.showInSourcePane("markdown");
 	await cell.dblclick();
 	const editor = tabelo.grid().getByRole("textbox", {
 		name: copy.a11y.cellEditor(0, 0),

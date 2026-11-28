@@ -165,6 +165,9 @@ test("JSON marks an empty string and never a typed literal", async ({
 		`[{"name":"${first.name}","city":"","age":0,"active":false,"note":null}]`,
 		"application/json",
 	);
+	// The import replaces the pane beside the grid when it lands, so switching
+	// before then would act on the pane it removes (#597).
+	await expect(tabelo.cell(1, 1)).toHaveText(first.name);
 	await tabelo.showInSourcePane("json");
 	const pane = tabelo.pane("json");
 	await expect(pane.locator(`${marker}${outsidePinnedHeader}`)).toHaveCount(1);

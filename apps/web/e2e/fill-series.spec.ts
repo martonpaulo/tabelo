@@ -35,7 +35,15 @@ function seriesAction(tabelo: TabeloPage): Locator {
 
 async function copyFillTwoRows(tabelo: TabeloPage): Promise<void> {
 	await tabelo.importFile("counts.json", COUNTS, "application/json");
+	// The import lands after the chooser returns, and it opens its own format
+	// beside the grid. Switching before it lands would leave that pane showing
+	// JSON (#597).
+	await expectValue(tabelo, 4, "9");
 	await tabelo.showInSourcePane("markdown");
+	await expect(
+		tabelo.source("markdown"),
+		"the Markdown view is beside the grid",
+	).toBeVisible();
 	await tabelo.cell(1, 1).click();
 	await tabelo.page.keyboard.press("Shift+ArrowDown");
 
@@ -83,9 +91,10 @@ test("a repeated numeric fill becomes a series only when the user asks", async (
 		.not.toBe(beforeChoice);
 
 	// Every other view sees the series immediately.
-	await expect
-		.poll(async () => (await tabelo.source("markdown").textContent()) ?? "")
-		.toContain("4");
+	await expect(
+		tabelo.source("markdown"),
+		"the Markdown view shows the series",
+	).toContainText("4");
 
 	// Two operations, two undo steps: the copied result, then the table it
 	// replaced.
