@@ -54,6 +54,13 @@ test("the grid renders formatting and links as semantic elements", async ({
 	// A plain click selects the cell; Mod+click opens the link.
 	await link.click();
 	await expect(tabelo.cell(1, 2)).toHaveAttribute("aria-selected", "true");
+	// The link's host is answered here, so the popup opens without a network
+	// (#595): the assertion is the address the link opens, not the site.
+	await tabelo.page
+		.context()
+		.route("https://example.com/**", (route) =>
+			route.fulfill({ status: 200, contentType: "text/html", body: "" }),
+		);
 	const popup = tabelo.page.waitForEvent("popup");
 	await link.click({ modifiers: ["ControlOrMeta"] });
 	expect((await popup).url()).toBe("https://example.com/rio");
