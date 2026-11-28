@@ -366,6 +366,18 @@ export async function openSubmenu(
 	return submenu;
 }
 
+// Two rendered frames: the first runs the pending layout, ResizeObserver and
+// effect work, the second starts after it has been painted. A wait on the page's
+// own rendering, never a sleep.
+export async function nextTwoAnimationFrames(page: Page): Promise<void> {
+	await page.evaluate(
+		() =>
+			new Promise<void>((resolve) => {
+				requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+			}),
+	);
+}
+
 export class TabeloPage {
 	readonly workspace: Locator;
 	readonly welcome: Locator;

@@ -1,6 +1,6 @@
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
-import { outsidePinnedHeader } from "./helpers";
+import { nextTwoAnimationFrames, outsidePinnedHeader } from "./helpers";
 
 function largeTable(rows = 80, columns = 12): string {
 	const header = Array.from(
@@ -13,15 +13,6 @@ function largeTable(rows = 80, columns = 12): string {
 			header.map((_, column) => `${row + 1}:${column + 1}`).join("\t"),
 		),
 	].join("\n");
-}
-
-async function nextTwoAnimationFrames(page: import("@playwright/test").Page) {
-	await page.evaluate(
-		() =>
-			new Promise<void>((resolve) => {
-				requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-			}),
-	);
 }
 
 test("every scroll boundary prevents scroll chaining on both axes", async ({

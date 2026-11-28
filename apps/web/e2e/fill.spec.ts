@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { copy } from "@/copy/copy";
 import { expect, test } from "./fixtures";
-import type { TabeloPage } from "./helpers";
+import { nextTwoAnimationFrames, type TabeloPage } from "./helpers";
 
 const modifier = process.platform === "darwin" ? "Meta" : "Control";
 
@@ -24,6 +24,41 @@ function fillHandle(tabelo: TabeloPage): Locator {
 
 function fillPreview(tabelo: TabeloPage): Locator {
 	return tabelo.pane("grid").locator("[data-fill-preview]");
+}
+
+// Presses the fill handle and drags it onto `toward`, a cell inside the
+// scrollport on the fill's axis, and proves the grid took the press as a fill
+// on that axis before the caller crosses an edge. Under full-suite load the
+// reduced-motion spec once read no sideways autoscroll at all, with nothing to
+// say which step had not happened (#596). The handle is measured only after a
+// rendered frame, so a placement the previous step left pending has run, and
+// each step that can fail names what did not happen.
+async function startFill(
+	page: Page,
+	tabelo: TabeloPage,
+	toward: Locator,
+	axis: "row" | "column",
+): Promise<Point> {
+	await nextTwoAnimationFrames(page);
+	const start = await centre(fillHandle(tabelo));
+	const through = await centre(toward);
+	await page.mouse.move(start.x, start.y);
+	await page.mouse.down();
+	await page.mouse.move(
+		axis === "column" ? through.x : start.x,
+		axis === "row" ? through.y : start.y,
+		{ steps: 4 },
+	);
+	// The preview names the target rectangle as top:left:bottom:right, so a
+	// fill from the first cell grows only its bottom or only its right.
+	await expect(
+		fillPreview(tabelo),
+		`the press on the fill handle did not start a ${axis} fill`,
+	).toHaveAttribute(
+		"data-fill-preview",
+		axis === "row" ? /^0:0:[1-9]\d*:0$/ : /^0:0:0:[1-9]\d*$/,
+	);
+	return start;
 }
 
 async function selectRectangle(
@@ -245,14 +280,14 @@ test("fill autoscroll remains usable with reduced motion", async ({
 	const scroller = tabelo.pane("grid").locator('[data-slot="panel-body"]');
 	const scrollerBox = await scroller.boundingBox();
 	if (!scrollerBox) throw new Error("The grid scrollport is not rendered.");
-	const start = await centre(fillHandle(tabelo));
-	await page.mouse.move(start.x, start.y);
-	await page.mouse.down();
+	const start = await startFill(page, tabelo, tabelo.cell(3, 1), "row");
 	await page.mouse.move(start.x, scrollerBox.y + scrollerBox.height + 8, {
-		steps: 12,
+		steps: 4,
 	});
 	await expect
-		.poll(() => scroller.evaluate((element) => element.scrollTop))
+		.poll(() => scroller.evaluate((element) => element.scrollTop), {
+			message: "a row fill held below the grid did not scroll it down",
+		})
 		.toBeGreaterThan(0);
 	await expect(fillPreview(tabelo)).toBeVisible();
 	const target = await fillPreview(tabelo).getAttribute("data-fill-preview");
@@ -267,16 +302,22 @@ test("fill autoscroll remains usable with reduced motion", async ({
 		element.scrollTop = 0;
 		element.scrollLeft = 0;
 	});
-	const horizontalStart = await centre(fillHandle(tabelo));
-	await page.mouse.move(horizontalStart.x, horizontalStart.y);
-	await page.mouse.down();
+	const horizontalStart = await startFill(
+		page,
+		tabelo,
+		tabelo.cell(1, 3),
+		"column",
+	);
 	await page.mouse.move(
 		scrollerBox.x + scrollerBox.width + 8,
 		horizontalStart.y,
-		{ steps: 12 },
+		{ steps: 4 },
 	);
 	await expect
-		.poll(() => scroller.evaluate((element) => element.scrollLeft))
+		.poll(() => scroller.evaluate((element) => element.scrollLeft), {
+			message:
+				"a column fill held past the grid's right edge did not scroll it sideways",
+		})
 		.toBeGreaterThan(0);
 	const horizontalTarget =
 		await fillPreview(tabelo).getAttribute("data-fill-preview");
