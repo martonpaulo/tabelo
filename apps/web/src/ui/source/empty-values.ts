@@ -284,7 +284,16 @@ export function emptyValueMarkers(read: EmptyCellReader) {
 			}
 
 			update(update: ViewUpdate) {
-				if (update.docChanged || update.viewportChanged) {
+				// Markdown, JSON, and HTML find their fields in the syntax tree,
+				// which CodeMirror finishes parsing in the background after the
+				// editor opens. A tree that grows with no edit must still redraw,
+				// or a field the first, partial parse missed stays unmarked: under
+				// load that is the whole visible table (#600).
+				if (
+					update.docChanged ||
+					update.viewportChanged ||
+					syntaxTree(update.startState) !== syntaxTree(update.state)
+				) {
 					this.decorations = buildDecorations(update.view, read);
 				}
 			}
