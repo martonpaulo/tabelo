@@ -36,6 +36,9 @@ test("the keyboard gesture opens it, and Escape walks back out of the pane", asy
 	await page.keyboard.press("ContextMenu");
 	const menu = page.getByRole("menu");
 	await expect(menu).toBeVisible();
+	// Drawn a moment before it takes focus: an Escape in that moment would
+	// reach the editor and leave for the pane (#598).
+	await expect(menu).toBeFocused();
 
 	// First Escape closes the menu and gives the text its focus back; the
 	// second leaves the editor for the pane, as it does without the menu.

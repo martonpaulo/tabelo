@@ -147,8 +147,13 @@ for (const view of columnViews) {
 		await expect(menu).toHaveAccessibleName(
 			copy.actions.rowActionsFor(copy.a11y.rowNumber(1)),
 		);
+		// The menu is drawn a moment before it takes focus. An Escape in that
+		// moment reaches the editor, which leaves for the pane, and the closing
+		// menu keeps focus where it moved on to (#598).
+		await expect(menu).toBeFocused();
 		await page.keyboard.press("Escape");
 		await closed(page);
+		await expect(editor).toBeFocused();
 
 		// Back into the last row's last value, whatever closes the line.
 		await page.keyboard.press("End");
@@ -159,6 +164,7 @@ for (const view of columnViews) {
 			.getByRole("menuitem", { name: copy.actions.selectColumn })
 			.click();
 		await closed(page);
+		await expect(editor).toBeFocused();
 		await page.keyboard.press("ContextMenu");
 		await expect(menu).toHaveAccessibleName(/City/);
 		await (await openSubmenu(page, menu, copy.actions.sort))
